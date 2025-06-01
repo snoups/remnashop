@@ -3,7 +3,8 @@ from aiogram_dialog.widgets.kbd import Button, Row
 from aiogram_dialog.widgets.text import Const
 
 from app.bot.states import MenuState
-from app.bot.widgets import I18NFormat, IgnoreInput
+from app.bot.widgets import Banner, I18NFormat, IgnoreInput
+from app.core.enums import BannerName
 
 
 async def getter(dialog_manager: DialogManager, **kwargs):
@@ -17,6 +18,7 @@ async def getter(dialog_manager: DialogManager, **kwargs):
 
 dialog = Dialog(
     Window(
+        Banner(BannerName.MENU),
         I18NFormat("profile"),
         I18NFormat("space"),
         I18NFormat("subscription"),

@@ -7,13 +7,10 @@ HEADER_SECRET_TOKEN: str = "x-telegram-bot-api-secret-token"
 TIMEZONE = timezone.utc
 
 # Resource file names for i18n
-RESOURCE_MESSAGES = "messages.ftl"
-RESOURCE_BUTTONS = "buttons.ftl"
-RESOURCE_NOTIFICATIONS = "notifications.ftl"
-RESOURCE_POPUPS = "popups.ftl"
-RESOURCE_I18N = [RESOURCE_MESSAGES, RESOURCE_BUTTONS, RESOURCE_NOTIFICATIONS, RESOURCE_POPUPS]
+RESOURCE_I18N = ["messages.ftl", "buttons.ftl", "notifications.ftl", "popups.ftl"]
 
 # Keys for aiogram data
+MIDDLEWARE_DATA_KEY = "middleware_data"
 USER_KEY = "user"
 USER_SERVICE_KEY = "user_service"
 THROTTLING_KEY = "throttling_key"

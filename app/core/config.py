@@ -12,6 +12,7 @@ from app.core.enums import ArchiveFormat, Locale, LogLevel
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_ASSETS_DIR = BASE_DIR / "app" / "assets"
+DEFAULT_BANNERS_DIR = DEFAULT_ASSETS_DIR / "banners"
 DEFAULT_LOCALES_DIR = DEFAULT_ASSETS_DIR / "locales"
 DEFAULT_I18N_LOCALES = [Locale.EN, Locale.RU]
 DEFAULT_I18N_LOCALE = Locale.EN
@@ -22,6 +23,7 @@ DEFAULT_BOT_WEBHOOK_PORT = 443
 DEFAULT_BOT_RESET_WEBHOOK = True
 DEFAULT_BOT_DROP_PENDING_UPDATES = False
 DEFAULT_BOT_SETUP_COMMANDS = True
+DEFAULT_BOT_USE_BANNERS = True
 
 DEFAULT_DB_HOST = "remnashop-db"
 DEFAULT_DB_PORT = 5432
@@ -48,6 +50,7 @@ class BotConfig(BaseSettings, env_prefix="BOT_"):
     reset_webhook: bool = DEFAULT_BOT_RESET_WEBHOOK
     drop_pending_updates: bool = DEFAULT_BOT_DROP_PENDING_UPDATES
     setup_commands: bool = DEFAULT_BOT_SETUP_COMMANDS
+    use_banners: bool = DEFAULT_BOT_USE_BANNERS
 
     @field_validator("domain")
     @classmethod

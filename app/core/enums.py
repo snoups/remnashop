@@ -1,6 +1,29 @@
 from enum import Enum, StrEnum, auto
 
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, ContentType
+
+
+class BannerFormat(StrEnum):
+    JPG = auto()
+    JPEG = auto()
+    PNG = auto()
+    GIF = auto()
+    WEBP = auto()  # TODO: check
+
+    @property
+    def content_type(self) -> ContentType:
+        return {
+            self.JPG: ContentType.PHOTO,
+            self.JPEG: ContentType.PHOTO,
+            self.PNG: ContentType.PHOTO,
+            self.GIF: ContentType.ANIMATION,
+            self.WEBP: ContentType.PHOTO,
+        }[self]
+
+
+class BannerName(StrEnum):
+    DEFAULT = auto()
+    MENU = auto()
 
 
 class UserRole(StrEnum):
