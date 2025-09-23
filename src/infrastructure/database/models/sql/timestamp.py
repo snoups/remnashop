@@ -1,12 +1,21 @@
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import Function, func
+from sqlalchemy import DateTime, Function, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-NowFunc: Final[Function[Any]] = func.timezone("UTC", func.now())
+NOW_FUNC: Final[Function[Any]] = func.timezone("UTC", func.now())
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(server_default=NowFunc)
-    updated_at: Mapped[datetime] = mapped_column(server_default=NowFunc, server_onupdate=NowFunc)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=NOW_FUNC,
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=NOW_FUNC,
+        server_onupdate=NOW_FUNC,
+        nullable=False,
+    )

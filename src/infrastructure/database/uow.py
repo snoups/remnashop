@@ -12,7 +12,7 @@ class UnitOfWork:
 
     repository: RepositoriesFacade
 
-    def __init__(self, session_pool: async_sessionmaker[AsyncSession]):
+    def __init__(self, session_pool: async_sessionmaker[AsyncSession]) -> None:
         self.session_pool = session_pool
 
     async def __aenter__(self) -> Self:

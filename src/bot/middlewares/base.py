@@ -1,10 +1,9 @@
-from abc import ABC
-from typing import ClassVar, Final, Optional
+from abc import ABC, abstractmethod
+from typing import Any, Awaitable, Callable, ClassVar, Final, Optional
 
 from aiogram import BaseMiddleware, Router
-from aiogram.types import CallbackQuery, ChatMemberUpdated, ErrorEvent, Message, TelegramObject
+from aiogram.types import ErrorEvent, TelegramObject
 from aiogram.types import User as AiogramUser
-from aiogram_dialog.api.entities import DialogUpdateEvent
 from loguru import logger
 
 from src.core.enums import MiddlewareEventType
@@ -17,6 +16,15 @@ DEFAULT_UPDATE_TYPES: Final[list[MiddlewareEventType]] = [
 
 class EventTypedMiddleware(BaseMiddleware, ABC):
     __event_types__: ClassVar[list[MiddlewareEventType]] = DEFAULT_UPDATE_TYPES
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        result = await self.middleware_logic(handler, event, data)
+        return result
 
     def setup_inner(self, router: Router) -> None:
         for event_type in self.__event_types__:
@@ -36,17 +44,18 @@ class EventTypedMiddleware(BaseMiddleware, ABC):
             f"{', '.join(t.value for t in self.__event_types__)}"
         )
 
-    @staticmethod
-    def _get_aiogram_user(
+    @abstractmethod
+    async def middleware_logic(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,
-    ) -> Optional[AiogramUser]:
-        if (
-            isinstance(event, Message)
-            or isinstance(event, CallbackQuery)
-            or isinstance(event, DialogUpdateEvent)
-            or isinstance(event, ChatMemberUpdated)
-        ):
-            return event.from_user
+        data: dict[str, Any],
+    ) -> Any: ...  # TODO: Implement checking performance
+
+    @staticmethod
+    def _get_aiogram_user(event: TelegramObject) -> Optional[AiogramUser]:
+        if hasattr(event, "from_user"):
+            return event.from_user  # type: ignore[no-any-return]
         elif isinstance(event, ErrorEvent):
             if event.update.callback_query:
                 return event.update.callback_query.from_user

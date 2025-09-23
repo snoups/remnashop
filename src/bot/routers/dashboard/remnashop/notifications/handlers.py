@@ -9,7 +9,7 @@ from src.core.constants import USER_KEY
 from src.core.enums import SystemNotificationType, UserNotificationType
 from src.core.utils.formatters import format_log_user
 from src.infrastructure.database.models.dto import UserDto
-from src.services import NotificationService
+from src.services.notification import NotificationService
 
 
 @inject
@@ -35,11 +35,9 @@ async def on_system_type_selected(
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     settings = await notification_service.get_system_settings()
-
-    setattr(settings, selected_type, not getattr(settings, selected_type))
+    new_value = settings.toggle_notification(selected_type)
     await notification_service.set_system_settings(settings)
 
     logger.info(
-        f"{format_log_user(user)} Change notification type: "
-        f"'{selected_type}' to '{getattr(settings, selected_type)}'"
+        f"{format_log_user(user)} Change notification type: '{selected_type}' to '{new_value}'"
     )

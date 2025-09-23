@@ -1,21 +1,31 @@
 from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Button, Column, ListGroup, Row, Select, Start, SwitchTo
+from aiogram_dialog.widgets.kbd import (
+    Button,
+    Column,
+    Group,
+    ListGroup,
+    Row,
+    Select,
+    Start,
+    SwitchTo,
+    Url,
+)
+from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
-from src.bot.routers.extra.test import show_dev_popup
 from src.bot.states import DashboardRemnashop, RemnashopGateways
 from src.bot.widgets import Banner, I18nFormat, IgnoreUpdate
 from src.core.enums import BannerName, Currency
 
-from .getters import currency_getter, gateway_getter, gateways_getter
+from .getters import currency_getter, field_getter, gateway_getter, gateways_getter
 from .handlers import (
     on_active_toggle,
     on_default_currency_selected,
+    on_field_input,
+    on_field_selected,
     on_gateway_selected,
     on_gateway_test,
-    on_merchant_input,
-    on_secret_input,
 )
 
 gateways = Window(
@@ -24,15 +34,14 @@ gateways = Window(
     ListGroup(
         Row(
             Button(
-                text=I18nFormat("btn-gateway-title", type=F["item"]["type"]),
+                text=I18nFormat("btn-gateway-title", gateway_type=F["item"]["gateway_type"]),
                 id="select_gateway",
                 on_click=on_gateway_selected,
             ),
             Button(
                 text=I18nFormat("btn-gateway-test"),
                 id="test_gateway",
-                # on_click=on_gateway_test,
-                on_click=show_dev_popup,
+                on_click=on_gateway_test,
             ),
             Button(
                 text=I18nFormat("btn-gateway-active", is_active=F["item"]["is_active"]),
@@ -64,9 +73,26 @@ gateways = Window(
     getter=gateways_getter,
 )
 
-gateway_merchant = Window(
+gateway_settings = Window(
     Banner(BannerName.DASHBOARD),
-    I18nFormat("msg-gateways-merchant", type=F["type"]),
+    I18nFormat("msg-gateways-settings", gateway_type=F["gateway_type"]),
+    Group(
+        Select(
+            text=I18nFormat("btn-gateways-setting", field=F["item"]["field"].upper()),
+            id="setting",
+            item_id_getter=lambda item: item["field"],
+            items="settings",
+            type_factory=str,
+            on_click=on_field_selected,
+        ),
+        width=2,
+    ),
+    Row(
+        Url(
+            text=I18nFormat("btn-gateways-guide"),
+            url=Format("{url}"),
+        ),
+    ),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back"),
@@ -74,26 +100,25 @@ gateway_merchant = Window(
             state=RemnashopGateways.MAIN,
         ),
     ),
-    MessageInput(func=on_merchant_input),
     IgnoreUpdate(),
-    state=RemnashopGateways.MERCHANT,
+    state=RemnashopGateways.SETTINGS,
     getter=gateway_getter,
 )
 
-gateway_secret = Window(
+gateway_field = Window(
     Banner(BannerName.DASHBOARD),
-    I18nFormat("msg-gateways-secret", type=F["type"]),
+    I18nFormat("msg-gateways-field", gateway_type=F["gateway_type"]),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back"),
             id="back",
-            state=RemnashopGateways.MERCHANT,
+            state=RemnashopGateways.MAIN,
         ),
     ),
-    MessageInput(func=on_secret_input),
+    MessageInput(func=on_field_input),
     IgnoreUpdate(),
-    state=RemnashopGateways.SECRET,
-    getter=gateway_getter,
+    state=RemnashopGateways.FIELD,
+    getter=field_getter,
 )
 
 default_currency = Window(
@@ -128,7 +153,7 @@ default_currency = Window(
 
 router = Dialog(
     gateways,
-    gateway_merchant,
-    gateway_secret,
+    gateway_settings,
+    gateway_field,
     default_currency,
 )

@@ -1,7 +1,7 @@
 from dishka import Provider, Scope, provide
-from remnawave_api import RemnawaveSDK
+from remnawave import RemnawaveSDK
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 
 
 class RemnawaveProvider(Provider):

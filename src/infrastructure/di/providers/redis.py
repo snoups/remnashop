@@ -22,6 +22,4 @@ class RedisProvider(Provider):
         await client.close()
         await connection_pool.disconnect()
 
-    @provide
-    def get_redis_repository(self, config: AppConfig, client: Redis) -> RedisRepository:
-        return RedisRepository(config=config, client=client)
+    redis_repository = provide(source=RedisRepository)

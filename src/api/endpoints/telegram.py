@@ -54,7 +54,7 @@ class TelegramWebhookEndpoint:
         if not self._verify_secret(x_telegram_bot_api_secret_token):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
-        async def run_feed_update_and_track():
+        async def run_feed_update_and_track() -> None:
             task = asyncio.create_task(self._feed_update(bot=bot, update=update))
             self._feed_update_tasks.add(task)
             task.add_done_callback(self._feed_update_tasks.discard)

@@ -24,5 +24,6 @@ def create_app(config: AppConfig, dispatcher: Dispatcher) -> FastAPI:
     )
     telegram_webhook_endpoint.register(app=app, path=config.bot.webhook_path)
     app.state.telegram_webhook_endpoint = telegram_webhook_endpoint
+    app.state.dispatcher = dispatcher
 
     return app

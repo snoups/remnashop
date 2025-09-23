@@ -14,14 +14,9 @@ from src.core.enums import MessageEffect, UserRole
 from src.core.utils.formatters import format_log_user
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import UserDto
-from src.services import NotificationService, UserService
-
-
-async def reset_user_dialog(dialog_manager: DialogManager, target_user: UserDto) -> None:
-    logger.debug(f"Attempting to reset dialog stack for user {format_log_user(target_user)}")
-    bg_manager = dialog_manager.bg(user_id=target_user.telegram_id, chat_id=target_user.telegram_id)
-    await bg_manager.start(state=MainMenu.MAIN, mode=StartMode.RESET_STACK)
-    logger.debug(f"Dialog stack for user {format_log_user(target_user)} reset successfully")
+from src.infrastructure.taskiq.tasks.redirects import redirect_to_main_menu_task
+from src.services.notification import NotificationService
+from src.services.user import UserService
 
 
 @inject
@@ -38,7 +33,7 @@ async def handle_role_switch_preconditions(
         await notification_service.notify_user(
             user=user,
             payload=MessagePayload(
-                text_key="ntf-user-switch-role-self",
+                i18n_key="ntf-user-switch-role-self",
                 message_effect=MessageEffect.POOP,
             ),
         )
@@ -53,15 +48,27 @@ async def handle_role_switch_preconditions(
 
         await manager.start(state=MainMenu.MAIN, mode=StartMode.RESET_STACK)
         await notification_service.notify_super_dev(
-            dev=await user_service.get(telegram_id=config.bot.dev_id),
             payload=MessagePayload(
-                text_key="ntf-user-switch-role-dev",
+                i18n_key="ntf-user-switch-role-dev",
                 auto_delete_after=None,
-                add_close_buttn=True,
-                kwargs={
+                add_close_button=True,
+                i18n_kwargs={
                     "id": str(user.telegram_id),
                     "name": user.name,
                 },
+            ),
+        )
+        return True
+
+    if user.role != UserRole.DEV and user.role <= target_user.role:
+        logger.debug(
+            f"{format_log_user(user)} Attempted to modify role of a user with equal or higher role "
+            f"({format_log_user(target_user)})"
+        )
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(
+                i18n_key="ntf-user-switch-role-equal",
             ),
         )
         return True
@@ -108,7 +115,7 @@ async def on_block_toggle(
         await notification_service.notify_user(
             user=user,
             payload=MessagePayload(
-                text_key="ntf-user-block-self",
+                i18n_key="ntf-user-block-self",
                 message_effect=MessageEffect.POOP,
             ),
         )
@@ -123,10 +130,9 @@ async def on_block_toggle(
 
         await dialog_manager.start(state=MainMenu.MAIN, mode=StartMode.RESET_STACK)
         await notification_service.notify_super_dev(
-            dev=await user_service.get(telegram_id=config.bot.dev_id),
             payload=MessagePayload(
-                text_key="ntf-user-block-dev",
-                kwargs={
+                i18n_key="ntf-user-block-dev",
+                i18n_kwargs={
                     "id": str(user.telegram_id),
                     "name": user.name,
                 },
@@ -134,8 +140,21 @@ async def on_block_toggle(
         )
         return
 
+    if user.role <= target_user.role:
+        logger.warning(
+            f"User {user.telegram_id} attempted to block a user with equal or higher role "
+            f"({target_user.telegram_id})"
+        )
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(
+                i18n_key="ntf-user-block-equal",
+            ),
+        )
+        return
+
     await user_service.set_block(user=target_user, blocked=blocked)
-    await reset_user_dialog(dialog_manager, target_user)
+    await redirect_to_main_menu_task.kiq(target_user)
     logger.info(
         f"{format_log_user(user)} Successfully {'blocked' if blocked else 'unblocked'} "
         f"user {format_log_user(target_user)}"
@@ -170,7 +189,7 @@ async def on_role_selected(
         return
 
     await user_service.set_role(user=target_user, role=selected_role)
-    await reset_user_dialog(dialog_manager, target_user)
+    await redirect_to_main_menu_task.kiq(target_user)
     logger.info(
         f"{format_log_user(user)} Successfully changed role for "
         f"{format_log_user(target_user)} to '{selected_role}'"

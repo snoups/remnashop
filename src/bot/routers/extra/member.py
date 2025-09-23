@@ -6,7 +6,7 @@ from loguru import logger
 
 from src.core.utils.formatters import format_log_user
 from src.infrastructure.database.models.dto import UserDto
-from src.services import UserService
+from src.services.user import UserService
 
 # For only ChatType.PRIVATE (app/bot/filters/private.py)
 router = Router(name=__name__)

@@ -2,16 +2,18 @@ from typing import Any, Optional, Type, TypeVar
 
 from aiogram_dialog import DialogManager
 from loguru import logger
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
-T = TypeVar("T", bound=BaseModel)
+from src.infrastructure.database.models.dto import BaseDto
+
+DtoModel = TypeVar("DtoModel", bound="BaseDto")
 
 
 class DialogDataAdapter:
     def __init__(self, dialog_manager: DialogManager) -> None:
         self.dialog_manager = dialog_manager
 
-    def load(self, model_cls: Type[T]) -> Optional[T]:
+    def load(self, model_cls: Type[DtoModel]) -> Optional[DtoModel]:
         key = model_cls.__name__.lower()
         raw = self.dialog_manager.dialog_data.get(key)
         logger.debug(f"Loading model '{key}' with data: {raw}")
@@ -24,7 +26,7 @@ class DialogDataAdapter:
         except ValidationError:
             return None
 
-    def save(self, model: BaseModel) -> dict[str, Any]:
+    def save(self, model: DtoModel) -> dict[str, Any]:
         key = model.__class__.__name__.lower()
         data = model.model_dump()
         try:

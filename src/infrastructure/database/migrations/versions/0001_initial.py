@@ -1,11 +1,3 @@
-"""initial
-
-Revision ID: 0001
-Revises:
-Create Date: 2025-07-28 14:52:55.196075
-
-"""
-
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -59,7 +51,40 @@ def upgrade() -> None:
         sa.Column("telegram_id", sa.BigInteger(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("role", sa.Enum("DEV", "ADMIN", "USER", name="userrole"), nullable=False),
-        sa.Column("language", sa.String(), nullable=False),
+        sa.Column(
+            "language",
+            sa.Enum(
+                "AR",
+                "AZ",
+                "BE",
+                "CS",
+                "DE",
+                "EN",
+                "ES",
+                "FA",
+                "FR",
+                "HE",
+                "HI",
+                "ID",
+                "IT",
+                "JA",
+                "KK",
+                "KO",
+                "MS",
+                "NL",
+                "PL",
+                "PT",
+                "RO",
+                "RU",
+                "SR",
+                "TR",
+                "UK",
+                "UZ",
+                "VI",
+                name="locale",
+            ),
+            nullable=False,
+        ),
         sa.Column("personal_discount", sa.Integer(), nullable=False),
         sa.Column("purchase_discount", sa.Integer(), nullable=False),
         sa.Column("is_blocked", sa.Boolean(), nullable=False),
@@ -100,7 +125,7 @@ def upgrade() -> None:
                 "SUBSCRIPTION",
                 "PERSONAL_DISCOUNT",
                 "PURCHASE_DISCOUNT",
-                name="promocodetype",
+                name="promocoderewardtype",
             ),
             nullable=False,
         ),

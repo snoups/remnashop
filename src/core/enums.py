@@ -1,27 +1,54 @@
-from enum import Enum, StrEnum, auto
-from typing import Any, Callable
+from enum import Enum, IntEnum, StrEnum, auto
+from typing import Any, Callable, Union
 
 from aiogram import Bot
 from aiogram.types import BotCommand, ContentType
 
 
-class MessageEffect(StrEnum):
+class UpperStrEnum(StrEnum):
+    @staticmethod
+    def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str:
+        return name
+
+
+class TransactionStatus(UpperStrEnum):
+    PENDING = auto()
+    COMPLETED = auto()
+    CANCELED = auto()
+    REFUNDED = auto()
+
+
+class SubscriptionStatus(UpperStrEnum):
+    ACTIVE = auto()
+    DISABLED = auto()
+    LIMITED = auto()
+    EXPIRED = auto()
+
+
+class TrafficLimitStrategy(UpperStrEnum):
+    NO_RESET = auto()
+    DAY = auto()
+    WEEK = auto()
+    MONTH = auto()
+
+
+class MessageEffect(UpperStrEnum):
     FIRE = "5104841245755180586"  #     🔥
     LIKE = "5107584321108051014"  #     👍
     DISLIKE = "5104858069142078462"  #  👎
-    LOVE = "5044134455711629726"  #     ❤️
+    LOVE = "5159385139981059251"  #     ❤️
     CONFETTI = "5046509860389126442"  # 🎉
     POOP = "5046589136895476101"  #     💩
 
 
-class BannerName(StrEnum):
+class BannerName(UpperStrEnum):
     DEFAULT = auto()
     MENU = auto()
     DASHBOARD = auto()
     SUBSCRIPTION = auto()
 
 
-class BannerFormat(StrEnum):
+class BannerFormat(UpperStrEnum):
     JPG = auto()
     JPEG = auto()
     PNG = auto()
@@ -30,16 +57,14 @@ class BannerFormat(StrEnum):
 
     @property
     def content_type(self) -> ContentType:
-        return {
-            BannerFormat.JPG: ContentType.PHOTO,
-            BannerFormat.JPEG: ContentType.PHOTO,
-            BannerFormat.PNG: ContentType.PHOTO,
-            BannerFormat.GIF: ContentType.ANIMATION,
-            BannerFormat.WEBP: ContentType.PHOTO,
-        }[self]
+        match self:
+            case BannerFormat.JPG | BannerFormat.JPEG | BannerFormat.PNG | BannerFormat.WEBP:
+                return ContentType.PHOTO
+            case BannerFormat.GIF:
+                return ContentType.ANIMATION
 
 
-class MediaType(StrEnum):
+class MediaType(UpperStrEnum):
     PHOTO = auto()
     VIDEO = auto()
     DOCUMENT = auto()
@@ -54,24 +79,48 @@ class MediaType(StrEnum):
                 return bot_instance.send_document
 
 
-class SystemNotificationType(StrEnum):
+class SystemNotificationType(UpperStrEnum):
     BOT_LIFETIME = auto()
     USER_REGISTERED = auto()
     SUBSCRIPTION = auto()
     PROMOCODE_ACTIVATED = auto()
 
 
-class UserNotificationType(StrEnum):
+class UserNotificationType(UpperStrEnum):
     pass
 
 
-class UserRole(StrEnum):
+class UserRoleHierarchy(Enum):
+    DEV = 3
+    ADMIN = 2
+    USER = 1
+
+
+class UserRole(UpperStrEnum):
     DEV = auto()
     ADMIN = auto()
     USER = auto()
 
+    def __le__(self, other: Union["UserRole", str]) -> bool:
+        if isinstance(other, UserRole):
+            other_name = other.name
+        elif isinstance(other, str):
+            other_name = other
+        else:
+            raise TypeError(f"Cannot compare UserRole with '{type(other)}'")
+        return UserRoleHierarchy[self.name].value <= UserRoleHierarchy[other_name].value
 
-class PromocodeType(StrEnum):
+    def __lt__(self, other: Union["UserRole", str]) -> bool:
+        if isinstance(other, UserRole):
+            other_name = other.name
+        elif isinstance(other, str):
+            other_name = other
+        else:
+            raise TypeError(f"Cannot compare UserRole with '{type(other)}'")
+        return UserRoleHierarchy[self.name].value < UserRoleHierarchy[other_name].value
+
+
+class PromocodeRewardType(UpperStrEnum):
     DURATION = auto()
     TRAFFIC = auto()
     SUBSCRIPTION = auto()
@@ -79,14 +128,15 @@ class PromocodeType(StrEnum):
     PURCHASE_DISCOUNT = auto()
 
 
-class PlanType(StrEnum):
+class PlanType(UpperStrEnum):
     TRAFFIC = auto()
     DEVICES = auto()
     BOTH = auto()
     UNLIMITED = auto()
+    # TODO: TRIAL = auto() ???
 
 
-class PlanAvailability(StrEnum):
+class PlanAvailability(UpperStrEnum):
     ALL = auto()
     NEW = auto()
     EXISTING = auto()
@@ -94,10 +144,10 @@ class PlanAvailability(StrEnum):
     ALLOWED = auto()
 
 
-class Currency(str, Enum):
-    USD = "USD"
-    XTR = "XTR"
-    RUB = "RUB"
+class Currency(UpperStrEnum):
+    USD = auto()
+    XTR = auto()
+    RUB = auto()
 
     @property
     def symbol(self) -> str:
@@ -110,11 +160,10 @@ class Currency(str, Enum):
 
     @classmethod
     def from_code(cls, code: str) -> "Currency":
-        code = code.upper()
         return cls(code)
 
 
-class PaymentGatewayType(StrEnum):
+class PaymentGatewayType(UpperStrEnum):
     TELEGRAM_STARS = auto()
     YOOKASSA = auto()
     YOOMONEY = auto()
@@ -123,10 +172,15 @@ class PaymentGatewayType(StrEnum):
     # TRIBUTE = auto()
 
 
-class MaintenanceMode(StrEnum):
+class MaintenanceMode(UpperStrEnum):
     GLOBAL = auto()
     PURCHASE = auto()
     OFF = auto()
+
+    # BotAccessMode.ALL: "Разрешен для всех",
+    # BotAccessMode.INVITED: "Разрешен для приглашенных",
+    # BotAccessMode.NO_PURCHASES: "Запрещены покупки",
+    # BotAccessMode.BLOCKED: "Запрещены любые действия",
 
 
 class Command(Enum):
@@ -164,7 +218,8 @@ class Locale(StrEnum):
     VI = auto()  # Vietnamese
 
 
-class MiddlewareEventType(StrEnum):  # https://docs.aiogram.dev/en/latest/api/types/update.html
+# https://docs.aiogram.dev/en/latest/api/types/update.html
+class MiddlewareEventType(StrEnum):
     AIOGD_UPDATE = auto()  # AIOGRAM DIALOGS
     UPDATE = auto()
     MESSAGE = auto()
@@ -191,3 +246,17 @@ class MiddlewareEventType(StrEnum):  # https://docs.aiogram.dev/en/latest/api/ty
     CHAT_BOOST = auto()
     REMOVED_CHAT_BOOST = auto()
     ERROR = auto()
+
+
+# https://yookassa.ru/developers/payment-acceptance/receipts/54fz/yoomoney/parameters-values#vat-codes
+class YookassaVatCode(IntEnum):
+    VAT_CODE_01 = auto()  # Without VAT
+    VAT_CODE_02 = auto()  # VAT at 0% rate
+    VAT_CODE_03 = auto()  # VAT at 10% rate
+    VAT_CODE_04 = auto()  # VAT at 20% rate
+    VAT_CODE_05 = auto()  # VAT at calculated rate 10/110
+    VAT_CODE_06 = auto()  # VAT at calculated rate 20/120
+    VAT_CODE_07 = auto()  # VAT at 5% rate
+    VAT_CODE_08 = auto()  # VAT at 7% rate
+    VAT_CODE_09 = auto()  # VAT at calculated rate 5/105
+    VAT_CODE_10 = auto()  # VAT at calculated rate 7/107

@@ -1,0 +1,22 @@
+from uuid import UUID
+
+from dishka import FromDishka
+from dishka.integrations.taskiq import inject
+
+from src.core.enums import TransactionStatus
+from src.infrastructure.taskiq.broker import broker
+from src.services.payment_gateway import PaymentGatewayService
+
+
+@broker.task
+@inject
+async def handle_payment_transaction_task(
+    payment_id: UUID,
+    payment_status: TransactionStatus,
+    payment_gateway_service: FromDishka[PaymentGatewayService],
+) -> None:
+    match payment_status:
+        case TransactionStatus.COMPLETED:
+            await payment_gateway_service.handle_payment_succeeded(payment_id)
+        case TransactionStatus.CANCELED:
+            await payment_gateway_service.handle_payment_canceled(payment_id)

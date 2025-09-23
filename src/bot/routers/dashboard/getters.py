@@ -5,7 +5,7 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from src.infrastructure.database.models.dto import UserDto
-from src.services import MaintenanceService
+from src.services.maintenance import MaintenanceService
 
 
 async def dashboard_getter(

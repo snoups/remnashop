@@ -4,11 +4,13 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
+from remnawave import RemnawaveSDK
+from remnawave.models import GetAllInternalSquadsResponseDto
 
 from src.core.enums import Currency, PlanAvailability, PlanType
 from src.core.utils.adapter import DialogDataAdapter
 from src.infrastructure.database.models.dto import PlanDto, PlanDurationDto, PlanPriceDto
-from src.services import PlanService
+from src.services.plan import PlanService
 
 
 @inject
@@ -42,23 +44,16 @@ async def plan_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict[str,
 
     if plan is None:
         plan = PlanDto(
-            name="Default Plan",
-            type=PlanType.BOTH,
-            is_active=False,
-            traffic_limit=100,
-            device_limit=1,
             durations=[
                 PlanDurationDto(days=7, prices=generate_prices(100)),
                 PlanDurationDto(days=30, prices=generate_prices(100)),
             ],
-            availability=PlanAvailability.ALL,
-            allowed_users_ids=None,
         )
         adapter.save(plan)
 
     helpers = {
-        "has_traffic_limit": plan.type in {PlanType.TRAFFIC, PlanType.BOTH},
-        "has_device_limit": plan.type in {PlanType.DEVICES, PlanType.BOTH},
+        "is_unlimited_traffic": plan.is_unlimited_traffic,
+        "is_unlimited_devices": plan.is_unlimited_devices,
     }
 
     data = plan.model_dump()
@@ -126,4 +121,47 @@ async def allowed_users_getter(dialog_manager: DialogManager, **kwargs: Any) -> 
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
 
+    if not plan:
+        return {}
+
     return {"allowed_users": plan.allowed_user_ids if plan.allowed_user_ids else []}
+
+
+@inject
+async def squads_getter(
+    dialog_manager: DialogManager,
+    remnawave: FromDishka[RemnawaveSDK],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    adapter = DialogDataAdapter(dialog_manager)
+    plan = adapter.load(PlanDto)
+
+    if not plan:
+        return {}
+
+    response = await remnawave.internal_squads.get_internal_squads()
+
+    if not isinstance(response, GetAllInternalSquadsResponseDto):
+        return {}
+
+    existing_squad_uuids = {squad.uuid for squad in response.internal_squads}
+
+    if plan.squad_ids:
+        plan_squad_uuids_set = set(plan.squad_ids)
+        valid_squad_uuids_set = plan_squad_uuids_set.intersection(existing_squad_uuids)
+        plan.squad_ids = list(valid_squad_uuids_set)
+
+    adapter.save(plan)
+
+    squads = [
+        {
+            "uuid": squad.uuid,
+            "name": squad.name,
+            "selected": True if squad.uuid in plan.squad_ids else False,
+        }
+        for squad in response.internal_squads
+    ]
+
+    return {
+        "squads": squads,
+    }

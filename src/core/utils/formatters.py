@@ -1,51 +1,36 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from fluentogram import TranslatorRunner
-
-from src.core.i18n_keys import ByteUnitKey, TimeUnitKey, UtilKey
+from typing import TYPE_CHECKING, Final, Optional, Union
 
 if TYPE_CHECKING:
     from src.infrastructure.database.models.dto import UserDto
 
-from math import ceil
-from typing import Union
+from decimal import ROUND_HALF_UP, ROUND_UP, Decimal
+
+from src.core.i18n_keys import ByteUnitKey, TimeUnitKey, UtilKey
 
 
 def format_log_user(user: UserDto) -> str:
     return f"[{user.role.upper()}:{user.telegram_id} ({user.name})]"
 
 
-def format_bytes(
-    value: int,
-    i18n: TranslatorRunner,
-    round_up: bool = False,
-    min_unit: ByteUnitKey = ByteUnitKey.GIGABYTE,
-) -> str:
-    size = float(value)
-    started = False
+def format_device_count(value: int) -> int:
+    if value == -1:  # UNLIMITED
+        return 0
 
-    for unit in ByteUnitKey:
-        if unit == min_unit:
-            started = True
+    return value
 
-        if not started:
-            size /= 1024
-            continue
 
-        if size < 1024:
-            if round_up and not size.is_integer():
-                size = ceil(size)
-            size_str = str(int(size)) if size.is_integer() else str(round(size, 2))
-            unit_str = i18n.get(str(unit), {"value": float(size_str)})
-            return f"{size_str} {unit_str}"
+def format_gb_to_bytes(value: int, *, binary: bool = True) -> int:
+    gb_value = Decimal(value)
 
-        size /= 1024
+    if gb_value == -1:  # UNLIMITED
+        return 0
 
-    size_str = str(int(size)) if size.is_integer() else str(round(size, 2))
-    unit_str = i18n.get(str(ByteUnitKey.TERABYTE), {"value": float(size_str)})
-    return f"{size_str} {unit_str}"
+    multiplier = Decimal(1024**3) if binary else Decimal(10**9)
+    bytes_value = (gb_value * multiplier).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+    return max(0, int(bytes_value))
 
 
 def format_percent(part: int, whole: int) -> str:
@@ -56,39 +41,6 @@ def format_percent(part: int, whole: int) -> str:
     return f"{percent:.2f}"
 
 
-def format_duration(
-    seconds: Union[int, float],
-    i18n: TranslatorRunner,
-    round_up: bool = False,
-) -> str:
-    units = [
-        (TimeUnitKey.DAY, 86400),
-        (TimeUnitKey.HOUR, 3600),
-        (TimeUnitKey.MINUTE, 60),
-    ]
-
-    remaining = int(seconds)
-
-    for i, (unit, unit_seconds) in enumerate(units):
-        value, mod = divmod(remaining, unit_seconds)
-        if value > 0:
-            if round_up:
-                if mod > 0 or any(divmod(remaining, u[1])[0] > 0 for u in units[i + 1 :]):
-                    value = ceil(remaining / unit_seconds)
-                return i18n.get(unit, value=value)
-
-            parts = [i18n.get(unit, value=value)]
-            remaining %= unit_seconds
-            for unit2, unit_seconds2 in units[i + 1 :]:
-                value2, _ = divmod(remaining, unit_seconds2)
-                if value2 > 0:
-                    parts.append(i18n.get(unit2, value=value2))
-                    remaining %= unit_seconds2
-            return " ".join(parts)
-
-    return i18n.get(TimeUnitKey.MINUTE, value=0)
-
-
 def format_country_code(code: str) -> str:
     if not code.isalpha() or len(code) != 2:
         return "🏴‍☠️"
@@ -96,16 +48,67 @@ def format_country_code(code: str) -> str:
     return "".join(chr(ord("🇦") + ord(c.upper()) - ord("A")) for c in code)
 
 
-def format_subscription_period(days: int, i18n: TranslatorRunner) -> str:
-    if days == -1:
-        return i18n.get(UtilKey.UNLIMITED)
+def i18n_format_bytes_to_gb(
+    value: Optional[Union[int, float]],
+    *,
+    round_up: bool = False,
+    min_unit: ByteUnitKey = ByteUnitKey.GIGABYTE,
+) -> tuple[str, dict[str, float]]:
+    if not value or value == 0:  # UNLIMITED
+        return UtilKey.UNLIMITED, {}
 
-    if days % 365 == 0:
-        value = days // 365
-        return i18n.get(TimeUnitKey.YEAR, value=value)
+    bytes_value = Decimal(value)
+    units: Final[list[ByteUnitKey]] = list(reversed(list(ByteUnitKey)))
 
-    if days % 30 == 0:
-        value = days // 30
-        return i18n.get(TimeUnitKey.MONTH, value=value)
+    for unit in units:
+        if bytes_value >= 1024:
+            bytes_value /= Decimal(1024)
+        else:
+            if units.index(unit) <= units.index(min_unit):
+                rounding = ROUND_UP if round_up else ROUND_HALF_UP
+                size_formatted = bytes_value.quantize(Decimal("0.01"), rounding=rounding)
+                return unit, {"value": float(size_formatted)}
 
-    return i18n.get(TimeUnitKey.DAY, value=days)
+    rounding = ROUND_UP if round_up else ROUND_HALF_UP
+    size_formatted = bytes_value.quantize(Decimal("0.01"), rounding=rounding)
+    return min_unit, {"value": float(size_formatted)}
+
+
+def i18n_format_seconds_to_duration(
+    value: Union[int, float, str],
+) -> list[tuple[str, dict[str, int]]]:
+    remaining = int(value)
+    parts = []
+
+    if remaining < 60:
+        return [(TimeUnitKey.MINUTE, {"value": 0})]
+
+    units: dict[str, int] = {
+        TimeUnitKey.DAY: 86400,
+        TimeUnitKey.HOUR: 3600,
+        TimeUnitKey.MINUTE: 60,
+    }
+
+    for unit, unit_seconds in units.items():
+        value = remaining // unit_seconds
+        if value > 0:
+            parts.append((unit, {"value": value}))
+            remaining %= unit_seconds
+
+    if not parts:
+        return [(TimeUnitKey.MINUTE, {"value": 1})]
+
+    return parts
+
+
+def i18n_format_days_to_duration(value: int) -> tuple[str, dict[str, int]]:
+    if value == -1:  # UNLIMITED
+        return UtilKey.UNLIMITED, {}
+
+    if value % 365 == 0:
+        return TimeUnitKey.YEAR, {"value": value // 365}
+
+    if value % 30 == 0:
+        return TimeUnitKey.MONTH, {"value": value // 30}
+
+    return TimeUnitKey.DAY, {"value": value}

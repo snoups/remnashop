@@ -37,9 +37,9 @@ ntf-event-bot-startup =
 
     <blockquote>
     • Режим обслуживания: { $mode ->
-        [global] включен (глобальный)
-        [purchase] включен (платежи)
-        *[off] выключен
+        [GLOBAL] включен (глобальный)
+        [PURCHASE] включен (платежи)
+        *[OFF] выключен
     }
     </blockquote>
 
@@ -55,14 +55,56 @@ ntf-event-new-user =
 
     <blockquote>
     • ID: <code>{ $id }</code>
-    • Имя: { $name }
+    • Имя: { $name } { $username -> 
+        [0] { space }
+        *[has] (<a href="tg://user?id={ $id }">@{ $username }</a>)
+    }
     </blockquote>
 
+ntf-event-payment-info =
+    <blockquote>
+    • ID: <code>{ $payment_id }</code>
+    • Способ оплаты: { gateway-type }
+    • Сумма: { $payment_amount } { $currency }
+    </blockquote>
+
+    <blockquote>
+    • ID: <code>{ $user_id }</code>
+    • Имя: { $user_name } { $user_username -> 
+        [0] { space }
+        *[has] (<a href="tg://user?id={ $user_id }">@{ $user_username }</a>)
+    }
+    </blockquote>
+
+    <blockquote>
+    • План: <code>{ $plan_name }</code>
+    • Тип: { plan-type }
+    • Лимит трафика: { $plan_traffic_limit } { unit-gigabyte }
+    • Лимит устройств: { $plan_device_limit }
+    • Длительность: { $plan_duration }
+    </blockquote>
+
+ntf-event-subscription-purchase =
+    #SubscriptionPurchase
+
+    <b>🔅 Событие: Покупка подписки!</b>
+
+    { ntf-event-payment-info }
+
+
+ntf-event-subscription-renewal =
+    #SubscriptionRenewal
+
+    <b>🔅 Событие: Продление подписки!</b>
+
+    { ntf-event-payment-info }
 
 # Notifications
 ntf-throttling-many-requests = <i>⚠️ Вы отправляете слишком много запросов, пожалуйста, подождите немного</i>
 ntf-user-block-self = <i>❌ Нельзя заблокировать самого себя</i>
+ntf-user-block-equal = <i>❌ Нельзя заблокировать равноправного пользователя</i>
 ntf-user-switch-role-self = <i>❌ Нельзя сменить роль самому себе</i>
+ntf-user-switch-role-equal = <i>❌ Нельзя сменить роль равноправному пользователю</i>
 ntf-user-not-found = <i>❌ Пользователь не найден</i>
 
 ntf-user-block-dev =
@@ -93,9 +135,9 @@ ntf-plan-created-success = <i>✅ План успешно создан</i>
 
 ntf-gateway-not-configured = <i>❌ Платежный шлюз не настроен</i>
 ntf-gateway-not-configurable = <i>❌ Платежный шлюз не имеет настроек</i>
-ntf-gateway-wrong-merchant = <i>❌ Некорректный MERCHANT</i>
-ntf-gateway-wrong-secret = <i>❌ Некорректный SECRET</i>
-
+ntf-gateway-field-wrong-value = <i>❌ Некорректное значение</i>
+ntf-gateway-test-payment-success = <i>✅ <a href="{ $url }">Тестовый платеж</a> успешно создан</i>
+ntf-gateway-test-payment-error = <i>❌ Произошла ошибка при создании тестового платежа</i>
 
 ntf-subscription-plans-not-available = <i>❌ Нет доступных планов</i>
 ntf-subscription-gateways-not-available = <i>❌ Нет доступных платежных систем</i>

@@ -11,7 +11,8 @@ from src.core.constants import USER_KEY
 from src.core.utils.formatters import format_log_user
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import UserDto
-from src.services import NotificationService, UserService
+from src.services.notification import NotificationService
+from src.services.user import UserService
 
 from .user.handlers import start_user_window
 
@@ -37,7 +38,7 @@ async def on_user_search(
         logger.info(f"{format_log_user(user)} User search for '{search_query}' yielded no results")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-user-not-found"),
+            payload=MessagePayload(i18n_key="ntf-user-not-found"),
         )
     elif len(found_users) == 1:
         target_user = found_users[0]

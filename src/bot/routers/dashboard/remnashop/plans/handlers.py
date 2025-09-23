@@ -1,4 +1,6 @@
 from decimal import ROUND_UP, Decimal, InvalidOperation
+from typing import Optional
+from uuid import UUID
 
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, SubManager
@@ -15,7 +17,9 @@ from src.core.utils.adapter import DialogDataAdapter
 from src.core.utils.formatters import format_log_user
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import PlanDto, PlanDurationDto, PlanPriceDto, UserDto
-from src.services import NotificationService, PlanService, UserService
+from src.services.notification import NotificationService
+from src.services.plan import PlanService
+from src.services.user import UserService
 
 
 @inject
@@ -25,7 +29,11 @@ async def on_plan_selected(
     sub_manager: SubManager,
     plan_service: FromDishka[PlanService],
 ) -> None:
-    plan: PlanDto = await plan_service.get(plan_id=int(sub_manager.item_id))
+    plan: Optional[PlanDto] = await plan_service.get(plan_id=int(sub_manager.item_id))
+
+    if not plan:
+        return
+
     logger.debug(f"Selected plan ID: {plan.id}")
 
     adapter = DialogDataAdapter(sub_manager.manager)
@@ -64,18 +72,18 @@ async def on_name_input(
         logger.warning(f"{format_log_user(user)} Provided empty plan name input")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-name"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-name"),
         )
         return
 
-    if await plan_service.get_by_name(name=message.text):
+    if await plan_service.get_by_name(plan_name=message.text):
         logger.warning(
             f"{format_log_user(user)} Tried to set plan name to "
             f"'{message.text}', which already exists"
         )
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-name"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-name"),
         )
         return
 
@@ -83,7 +91,6 @@ async def on_name_input(
     plan = adapter.load(PlanDto)
 
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for name input")
         return
 
     plan.name = message.text
@@ -103,11 +110,20 @@ async def on_type_selected(
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
 
+    if not plan:
+        return
+
     logger.debug(f"{format_log_user(user)} Selected plan type '{selected_type}'")
 
-    if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for type selection")
-        return
+    if selected_type == PlanType.DEVICES and plan.device_limit == -1:
+        plan.device_limit = 1
+    elif selected_type == PlanType.TRAFFIC and plan.traffic_limit == -1:
+        plan.traffic_limit = 100
+    elif selected_type == PlanType.BOTH:
+        if plan.traffic_limit == -1:
+            plan.traffic_limit = 100
+        if plan.device_limit == -1:
+            plan.device_limit = 1
 
     plan.type = selected_type
     adapter.save(plan)
@@ -126,11 +142,10 @@ async def on_availability_selected(
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
 
-    logger.debug(f"{format_log_user(user)} Selected plan availability '{selected_availability}'")
-
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for availability selection")
         return
+
+    logger.debug(f"{format_log_user(user)} Selected plan availability '{selected_availability}'")
 
     plan.availability = selected_availability
     adapter.save(plan)
@@ -150,11 +165,10 @@ async def on_active_toggle(
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
 
-    logger.debug(f"{format_log_user(user)} Attempted to toggle plan active status")
-
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for active toggle")
         return
+
+    logger.debug(f"{format_log_user(user)} Attempted to toggle plan active status")
 
     plan.is_active = not plan.is_active
     adapter.save(plan)
@@ -181,7 +195,7 @@ async def on_traffic_input(
         )
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
         )
         return
 
@@ -190,7 +204,6 @@ async def on_traffic_input(
     plan = adapter.load(PlanDto)
 
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for traffic input")
         return
 
     plan.traffic_limit = number
@@ -220,7 +233,7 @@ async def on_devices_input(
         )
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
         )
         return
 
@@ -229,7 +242,6 @@ async def on_devices_input(
     plan = adapter.load(PlanDto)
 
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for devices input")
         return
 
     plan.device_limit = number
@@ -266,7 +278,6 @@ async def on_duration_removed(
     plan = adapter.load(PlanDto)
 
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for duration removal")
         return
 
     duration_to_remove = int(sub_manager.item_id)
@@ -291,11 +302,13 @@ async def on_duration_input(
 
     logger.debug(f"{format_log_user(user)} Attempted to add new plan duration")
 
-    if message.text is None or not (message.text.isdigit() and int(message.text) > 0):
+    if message.text is None or not (
+        message.text.isdigit() and int(message.text) > 0 or int(message.text) == -1
+    ):
         logger.warning(f"{format_log_user(user)} Provided invalid duration input: '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
         )
         return
 
@@ -304,7 +317,6 @@ async def on_duration_input(
     plan = adapter.load(PlanDto)
 
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for duration input")
         return
 
     plan.durations.append(
@@ -353,7 +365,7 @@ async def on_price_input(
         logger.warning(f"{format_log_user(user)} Provided empty price input")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
         )
         return
 
@@ -365,7 +377,7 @@ async def on_price_input(
         logger.warning(f"{format_log_user(user)} Provided invalid price input: '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
         )
         return
 
@@ -373,7 +385,6 @@ async def on_price_input(
     plan = adapter.load(PlanDto)
 
     if not plan:
-        logger.error(f"{format_log_user(user)} Failed to load PlanDto for price input")
         return
 
     duration_selected = dialog_manager.dialog_data.get("duration_selected")
@@ -417,24 +428,25 @@ async def on_allowed_user_input(
         logger.warning(f"{format_log_user(user)} Provided non-numeric user ID")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-wrong-allowed-id"),
+            payload=MessagePayload(i18n_key="ntf-plan-wrong-allowed-id"),
         )
         return
 
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
+
+    if not plan:
+        return
+
     allowed_user = await user_service.get(telegram_id=int(message.text))
 
     if not allowed_user:
         logger.warning(f"{format_log_user(user)} No user found with Telegram ID '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-no-user-found"),
+            payload=MessagePayload(i18n_key="ntf-plan-no-user-found"),
         )
         return  # TODO: Allow adding non-existent users to the list?
-
-    if plan.allowed_user_ids is None:
-        plan.allowed_user_ids = []
 
     if allowed_user.telegram_id in plan.allowed_user_ids:
         logger.warning(
@@ -442,7 +454,7 @@ async def on_allowed_user_input(
         )
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-user-already-allowed"),
+            payload=MessagePayload(i18n_key="ntf-plan-user-already-allowed"),
         )
         return
 
@@ -463,7 +475,35 @@ async def on_allowed_user_removed(
     adapter = DialogDataAdapter(sub_manager.manager)
     plan = adapter.load(PlanDto)
 
+    if not plan:
+        return
+
     plan.allowed_user_ids.remove(user_id)
+    adapter.save(plan)
+
+
+@inject
+async def on_squad_selected(
+    callback: CallbackQuery,
+    widget: Select[UUID],
+    dialog_manager: DialogManager,
+    selected_squad: UUID,
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+
+    adapter = DialogDataAdapter(dialog_manager)
+    plan = adapter.load(PlanDto)
+
+    if not plan:
+        return
+
+    if selected_squad in plan.squad_ids:
+        plan.squad_ids.remove(selected_squad)
+        logger.debug(f"{format_log_user(user)} Unset squad '{selected_squad}'")
+    else:
+        plan.squad_ids.append(selected_squad)
+        logger.debug(f"{format_log_user(user)} Set squad '{selected_squad}'")
+
     adapter.save(plan)
 
 
@@ -486,24 +526,21 @@ async def on_confirm_plan(
         logger.error(f"{format_log_user(user)} Failed to load PlanDto for plan confirmation")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-save-error"),
+            payload=MessagePayload(i18n_key="ntf-plan-save-error"),
         )
         return
 
     if plan_dto.type == PlanType.DEVICES:
-        plan_dto.traffic_limit = None
+        plan_dto.traffic_limit = -1
     elif plan_dto.type == PlanType.TRAFFIC:
-        plan_dto.device_limit = None
+        plan_dto.device_limit = -1
     elif plan_dto.type == PlanType.BOTH:
         pass
     else:  # PlanType.UNLIMITED
-        plan_dto.traffic_limit = None
-        plan_dto.device_limit = None
+        plan_dto.traffic_limit = -1
+        plan_dto.device_limit = -1
 
     if plan_dto.availability != PlanAvailability.ALLOWED:
-        plan_dto.allowed_user_ids = None
-
-    if plan_dto.allowed_user_ids is None:
         plan_dto.allowed_user_ids = []
 
     if plan_dto.id:
@@ -512,10 +549,10 @@ async def on_confirm_plan(
         logger.info(f"{format_log_user(user)} Plan '{plan_dto.name}' updated successfully")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-updated-success"),
+            payload=MessagePayload(i18n_key="ntf-plan-updated-success"),
         )
     else:
-        existing_plan: PlanDto = await plan_service.get_by_name(name=plan_dto.name)
+        existing_plan: Optional[PlanDto] = await plan_service.get_by_name(plan_name=plan_dto.name)
         if existing_plan:
             logger.warning(
                 f"{format_log_user(user)} Plan with name '{plan_dto.name}' "
@@ -523,7 +560,7 @@ async def on_confirm_plan(
             )
             await notification_service.notify_user(
                 user=user,
-                payload=MessagePayload(text_key="ntf-plan-name-already-exists"),
+                payload=MessagePayload(i18n_key="ntf-plan-name-already-exists"),
             )
             return
 
@@ -532,7 +569,7 @@ async def on_confirm_plan(
         logger.info(f"{format_log_user(user)} Plan '{plan.name}' created successfully")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-plan-created-success"),
+            payload=MessagePayload(i18n_key="ntf-plan-created-success"),
         )
 
     await dialog_manager.reset_stack()

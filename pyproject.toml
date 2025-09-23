@@ -19,7 +19,7 @@ dependencies = [
     "msgspec~=0.19.0",
     "pydantic-settings~=2.9.1",
     "redis~=6.2.0",
-    "remnawave-api~=1.1.2",
+    "remnawave==2.1.13",        #NOTE: Remnawave Panel >= 2.1.13
     "taskiq~=0.11.18",
     "taskiq-redis~=1.1.0",
     "uvicorn>=0.34.2",
@@ -37,11 +37,8 @@ dev-dependencies = [
     "pytest>=8.4.0",
     "watchfiles>=1.1.0",
     "ftl-extract>=0.9.0a9",
+    "types-cachetools",
 ]
-
-[tool.black]
-line-length = 100
-exclude = "\\.?venv|\\.?tests"
 
 [tool.ruff]
 target-version = "py312"
@@ -62,13 +59,13 @@ lint.select = [
     "YTT",
 ]
 lint.ignore = ["N805"]
-exclude = [".venv", ".idea"]
+exclude = ["venv", ".venv", ".idea", "tests"]
 
 [tool.mypy]
+packages = ["src"]
 plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
 exclude = ["venv", ".venv", ".idea", "tests"]
 warn_unused_configs = true
-disallow_any_generics = true
 disallow_subclassing_any = true
 disallow_untyped_calls = true
 disallow_untyped_defs = true
@@ -80,13 +77,14 @@ warn_return_any = true
 no_implicit_reexport = true
 strict_equality = true
 extra_checks = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["fluentogram.*", "remnawave.*"]
+follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
 module = ["app.bot.handlers.*"]
 strict_optional = false
 warn_return_any = false
 disable_error_code = ["union-attr"]
-
-[[tool.mypy.overrides]]
-module = "remnawave_api.*"
-ignore_missing_imports = true

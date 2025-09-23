@@ -7,7 +7,6 @@ from loguru import logger
 
 from src.bot.routers.dashboard.users.user.handlers import (
     handle_role_switch_preconditions,
-    reset_user_dialog,
     start_user_window,
 )
 from src.core.constants import LOG_DIR, USER_KEY
@@ -17,7 +16,9 @@ from src.core.utils.formatters import format_log_user
 from src.core.utils.message_payload import MessagePayload
 from src.core.utils.time import datetime_now
 from src.infrastructure.database.models.dto import UserDto
-from src.services import NotificationService, UserService
+from src.infrastructure.taskiq.tasks.redirects import redirect_to_main_menu_task
+from src.services.notification import NotificationService
+from src.services.user import UserService
 
 
 @inject
@@ -38,14 +39,14 @@ async def on_logs_requested(
         logger.error(f"{format_log_user(user)} Log file not found at '{LOG_DIR}/{LOG_FILENAME}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-error-log-not-found"),
+            payload=MessagePayload(i18n_key="ntf-error-log-not-found"),
         )
         return
 
     await notification_service.notify_user(
         user=user,
         payload=MessagePayload(
-            text_key="",
+            i18n_key="",
             media=file,
             media_type=MediaType.DOCUMENT,
             auto_delete_after=None,
@@ -55,6 +56,7 @@ async def on_logs_requested(
     logger.info(f"{format_log_user(user)} Log file '{file.filename}' sent successfully")
 
 
+@inject
 async def on_user_selected(
     callback: CallbackQuery,
     widget: Button,
@@ -94,7 +96,7 @@ async def on_user_role_removed(
         return
 
     await user_service.set_role(user=target_user, role=UserRole.USER)
-    await reset_user_dialog(sub_manager.manager, target_user)
+    await redirect_to_main_menu_task.kiq(target_user)
     logger.info(
         f"{format_log_user(user)} Successfully changed role for "
         f"{format_log_user(target_user)} to '{UserRole.USER}'"

@@ -1,5 +1,4 @@
 import re
-from typing import Type
 
 from pydantic import SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
@@ -15,18 +14,18 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
     host: SecretStr
     token: SecretStr
 
+    @property
+    def url(self) -> SecretStr:
+        url = f"https://{self.host.get_secret_value()}"
+        return SecretStr(url)
+
     @field_validator("host")
     @classmethod
-    def validate_host(cls: Type["RemnawaveConfig"], field: SecretStr) -> SecretStr:
+    def validate_host(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
         host = field.get_secret_value()
 
-        if not host:
-            raise ValueError("REMNAWAVE_HOST cannot be empty")
-
-        if host == "remnawave":
-            return field
-
-        if re.match(DOMAIN_REGEX, host):
+        if host == "remnawave" or re.match(DOMAIN_REGEX, host):
+            validate_not_change_me(field, info)
             return field
 
         raise ValueError(
@@ -35,15 +34,6 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
 
     @field_validator("token")
     @classmethod
-    def validate_remnawave_token(
-        cls,
-        field: SecretStr,
-        info: FieldValidationInfo,
-    ) -> SecretStr:
+    def validate_remnawave_token(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
         validate_not_change_me(field, info)
         return field
-
-    @property
-    def url(self) -> SecretStr:
-        url = f"https://{self.host.get_secret_value()}"
-        return SecretStr(url)

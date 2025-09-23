@@ -1,11 +1,3 @@
-"""add_payment_gateways
-
-Revision ID: 0002
-Revises: 0001
-Create Date: 2025-08-18 08:11:49.159090
-
-"""
-
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -42,8 +34,7 @@ def upgrade() -> None:
         sa.Column("type", payment_gateway_type, nullable=False),
         sa.Column("currency", currency, nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),
-        sa.Column("merchant_id", sa.String(), nullable=True),
-        sa.Column("secret", sa.String(), nullable=True),
+        sa.Column("settings", sa.JSON(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("type"),
     )
@@ -54,44 +45,56 @@ def upgrade() -> None:
             sa.column("type", payment_gateway_type),
             sa.column("currency", currency),
             sa.column("is_active", sa.Boolean),
-            sa.column("merchant_id", sa.String),
-            sa.column("secret", sa.String),
+            sa.column("settings", sa.JSON),
         ),
         [
             {
                 "type": "TELEGRAM_STARS",
                 "currency": "XTR",
                 "is_active": True,
-                "merchant_id": None,
-                "secret": None,
+                "settings": None,
             },
             {
                 "type": "YOOKASSA",
                 "currency": "RUB",
                 "is_active": False,
-                "merchant_id": None,
-                "secret": None,
+                "settings": {
+                    "type": "YOOKASSA",
+                    "shop_id": None,
+                    "key": None,
+                    "customer": None,
+                    "vat_code": None,
+                },
             },
             {
                 "type": "YOOMONEY",
                 "currency": "RUB",
                 "is_active": False,
-                "merchant_id": None,
-                "secret": None,
+                "settings": {
+                    "type": "YOOMONEY",
+                    "wallet_id": None,
+                    "key": None,
+                },
             },
             {
                 "type": "CRYPTOMUS",
                 "currency": "USD",
                 "is_active": False,
-                "merchant_id": None,
-                "secret": None,
+                "settings": {
+                    "type": "CRYPTOMUS",
+                    "merchant_id": None,
+                    "key": None,
+                },
             },
             {
                 "type": "HELEKET",
                 "currency": "USD",
                 "is_active": False,
-                "merchant_id": None,
-                "secret": None,
+                "settings": {
+                    "type": "HELEKET",
+                    "merchant_id": None,
+                    "key": None,
+                },
             },
         ],
     )

@@ -3,6 +3,23 @@ btn = Кнопка
 msg = Сообщение
 unlimited = ∞
 development = В разработке
+test-payment = Тестовый платеж
+
+# Remnashop
+ntf-remnashop = 
+    <b>💎 remnashop</b>
+
+    Данный проект был создан и поддерживается всего одним <strike>разработчиком</strike>. Поскольку бот полностью бесплатный и с открытым исходным кодом, он существует только благодаря вашей поддержке.
+
+    ⭐ <i>Поставьте звёздочку на GitHub и присоединяйтесь к нашему сообществу.</i>
+
+btn-remnashop-github = GitHub
+btn-remnashop-telegram = Telegram
+btn-remnashop-donate = Поддержать разработчика
+
+
+# Payment
+payment-invoice-description = { $name } { $traffic } { $devices } { $duration }
 
 # Commands
 cmd-start = Перезапустить бота
@@ -20,9 +37,9 @@ role-user = Пользователь
 
 role = 
     { $role ->
-    [dev] { role-dev }
-    [admin] { role-admin }
-    *[user] { role-user }
+    [DEV] { role-dev }
+    [ADMIN] { role-admin }
+    *[USER] { role-user }
 }
 
 
@@ -33,7 +50,7 @@ unit-megabyte = МБ
 unit-gigabyte = ГБ
 unit-terabyte = ТБ
 
-unit-second = { $value } { $value ->
+unit-second = { $value} { $value ->
     [one] секунда
     [few] секунды
     *[other] секунд
@@ -70,12 +87,21 @@ unit-year = { $value } { $value ->
 }
 
 
-# Gateways
-gateway-type = { $type ->
-    [telegram_stars] Telegram Stars
-    [yookassa] ЮKassa
-    [yoomoney] ЮMoney
-    [cryptomus] Cryptomus
-    [heleket] Heleket
-    *[other] { $type }
+# Types
+plan-type = { $plan_type -> 
+    [TRAFFIC] Трафик
+    [DEVICES] Устройства
+    [BOTH] Трафик + устройства
+    [UNLIMITED] Безлимитный
+    *[OTHER] { $plan_type }
 }
+
+gateway-type = { $gateway_type ->
+    [TELEGRAM_STARS] Telegram Stars
+    [YOOKASSA] ЮKassa
+    [YOOMONEY] ЮMoney
+    [CRYPTOMUS] Cryptomus
+    [HELEKET] Heleket
+    *[OTHER] { $gateway_type }
+}
+

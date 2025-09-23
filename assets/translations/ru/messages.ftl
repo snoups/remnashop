@@ -1,13 +1,18 @@
 msg-plan-details =
     <blockquote>
     { $type ->
-    [devices]
-    • Количество устройств: { $current_devices } / { $max_devices }
-    • Заканчивается через: { $expiry_time }
-    *[traffic]
-    • Трафик: { $current_traffic } / { $max_traffic }
-    • Заканчивается через: { $expiry_time }
+    [TRAFFIC]
+    • Лимит трафика: { $traffic_limit }
+    [DEVICES]
+    • Лимит устройств: { $devices_limit }
+    [BOTH]
+    • Лимит трафика: { $traffic_limit }
+    • Лимит устройств: { $devices_limit }
+    *[UNLIMITED]
+    • Лимит трафика: { unlimited } { unit-gigabyte }
+    • Лимит устройств: { unlimited }
     }
+    • Заканчивается через: { $expiry_time }
     </blockquote>
 
 
@@ -15,15 +20,15 @@ msg-plan-details =
 msg-menu-subscription =
     <b>💳 Подписка:</b>
     { $status ->
-    [active]
-    { $plan-details }
-    [expired]
+    [ACTIVE]
+    { msg-plan-details }
+    [EXPIRED]
     <blockquote>
     • Срок действия истёк.
 
     <i>Чтобы продлить перейдите в меню «💳 Подписка»</i>
     </blockquote>
-    *[none]
+    *[NONE]
     <blockquote>
     • У вас нет оформленной подписки.
 
@@ -49,9 +54,9 @@ msg-maintenance-main =
     <b>🚧 Режим обслуживания</b>
     
     Статус: { $status ->
-    [global] 🔴 Включен (глобальный)
-    [purchase] 🟠 Включен (платежи)
-    *[off] ⚪ Выключен
+    [GLOBAL] 🔴 Включен (глобальный)
+    [PURCHASE] 🟠 Включен (платежи)
+    *[OFF] ⚪ Выключен
     }
 
 
@@ -67,26 +72,25 @@ msg-users-search-results =
     Найдено { $count } { $count ->
     [one] пользователь
     [few] пользователя
-    *[other] пользователей
+    *[more] пользователей
     }, { $count ->
     [one] соответствующий
-    *[other] соответствующих
+    *[more] соответствующих
     } запросу
 
 msg-users-recent-registered = <b>🆕 Последние зарегистрированные</b>
-
 msg-users-recent-activity = <b>📝 Последние взаимодействующие</b>
 
 msg-user-subscription =
     <b>💳 Подписка:</b>
     { $status ->
-    [active]
+    [ACTIVE]
     { $plan_details }
-    [expired]
+    [EXPIRED]
     <blockquote>
     • Срок действия истёк.
     </blockquote>
-    *[none]
+    *[NONE]
     <blockquote>
     • Нет оформленной подписки.
     </blockquote>
@@ -98,18 +102,19 @@ msg-user-main =
     👤 Профиль:
     <blockquote>
     • ID: <code>{ $id }</code>
-    • Имя: { $name }
+    • Имя: { $name } { $username -> 
+        [0] { space }
+        *[has] (<a href="tg://user?id={ $id }">@{ $username }</a>)
+    }
     • Роль: { role }
     </blockquote>
 
     { msg-user-subscription }
-    
 
 msg-user-role = 
     <b>👮‍♂️ Изменить роль</b>
     
     Выберите новую роль для пользователя
-
 
 msg-users-blacklist =
     <b>🚫 Черный список</b>
@@ -131,11 +136,11 @@ msg-remnawave-main =
     • ЦПУ: { $cpu_cores } { $cpu_cores ->
     [one] ядро
     [few] ядра
-    *[other] ядер
+    *[more] ядер
     } { $cpu_threads } { $cpu_threads ->
     [one] поток
     [few] потока
-    *[other] потоков
+    *[more] потоков
     }
     • ОЗУ: { $ram_used } / { $ram_total } ({ $ram_used_percent }%)
     • Аптайм: { $uptime }
@@ -163,8 +168,8 @@ msg-remnawave-users =
 
 msg-remnawave-host-details =
     { $remark } ({ $status ->
-    [on] включен
-    *[off] выключен
+    [ON] включен
+    *[OFF] выключен
     }):
     <blockquote>
     • Адрес: <code>{ $address }:{ $port }</code>
@@ -178,8 +183,8 @@ msg-remnawave-hosts =
 
 msg-remnawave-node-details =
     { $country } { $name } ({ $status ->
-    [on] подключено
-    *[off] отключено
+    [ON] подключено
+    *[OFF] отключено
     }):
     <blockquote>
     • Адрес: <code>{ $address }:{ $port }</code>
@@ -215,49 +220,36 @@ msg-admins-main = <b>👮‍♂️ Администраторы</b>
 
 # Gateways
 msg-gateways-main = <b>🌐 Платежные системы</b>
-msg-gateways-merchant = 
+msg-gateways-settings = <b>🌐 { gateway-type }</b>
+
+msg-gateways-field =
     <b>🌐 { gateway-type }</b>
 
-    Введите { $type ->
-    [yookassa] SHOP ID <a href="https://yookassa.ru/my/shop-settings">(*)</a>
-    [yoomoney] WALLET ID <a href="https://yoomoney.ru/settings">(*)</a>
-    [cryptomus] MERCHANT ID <a href="https://app.cryptomus.com/">(*)</a>
-    [heleket] MERCHANT ID <a href="https://heleket.com/">(*)</a>
-    *[other] { $type }
-    }
-msg-gateways-secret =
-    <b>🌐 { gateway-type }</b>
-
-    Введите { $type ->
-    [yookassa] API KEY <a href="https://yookassa.ru/my/merchant/integration/api-keys">(*)</a>
-    [yoomoney] NOTIFICATION SECRET <a href="https://yoomoney.ru/transfer/myservices/http-notification">(*)</a>
-    [cryptomus] API KEY <a href="https://app.cryptomus.com/">(*)</a>
-    [heleket] API KEY <a href="https://heleket.com/">(*)</a>
-    *[other] { $type }
-    }
+    Введите новое значение для { $field }
 
 msg-gateways-default-currency = <b>💸 Валюта по умолчанию</b>
 
 
 # Plans
 msg-plans-main = <b>📦 Планы</b>
+
 msg-plan-config =
     <b>📦 Конфигурация плана</b>
 
     <blockquote>
     Имя: { $name }
     Тип: { $type -> 
-        [traffic] Трафик
-        [devices] Устройства
-        [both] Трафик + устройства
-        *[unlimited] Безлимитный
+        [TRAFFIC] Трафик
+        [DEVICES] Устройства
+        [BOTH] Трафик + устройства
+        *[UNLIMITED] Безлимитный
         }
     Доступ: { $availability -> 
-        [all] Для всех
-        [new] Для новых
-        [existing] Для существующих
-        [invited] Для приглашенных
-        *[allowed] Для разрешенных
+        [ALL] Для всех
+        [NEW] Для новых
+        [EXISTING] Для существующих
+        [INVITED] Для приглашенных
+        *[ALLOWED] Для разрешенных
         }
     Статус: { $is_active -> 
         [1] 🟢 Включен
@@ -266,17 +258,13 @@ msg-plan-config =
     </blockquote>
     
     <blockquote>
-    Трафик: { $has_traffic_limit -> 
-        [1] { $traffic_limit } ГБ
-        *[0] безлимит
+    Лимит трафика: { $is_unlimited_traffic -> 
+        [1] { unlimited }
+        *[0] { $traffic_limit } { unit-gigabyte }
         }
-    Устройства: { $has_device_limit -> 
-        [1] { $device_limit } { $device_limit ->
-            [one] устройство
-            [few] устройства
-            *[other] устройств
-            }
-        *[0] безлимит
+    Лимит устройств: { $is_unlimited_devices -> 
+        [1] { unlimited }
+        *[0] { $device_limit }
         }
     </blockquote>
 
@@ -318,26 +306,18 @@ msg-plan-duration =
     Введите новую длительность в днях
 
 msg-plan-prices =
-    <b>💰 Изменить цены длительности ({ $duration ->
-            [0] { unlimited }
-            *[other] { $duration }
-        } { $duration ->
-            [one] день
-            [few] дня
-            *[other] дней
-    })</b>
+    <b>💰 Изменить цены длительности ({ $value ->
+            [-1] { unlimited }
+            *[other] { unit-day }
+        })</b>
 
     Выберите валюту с ценой для изменения
 
 msg-plan-price =
-    <b>💰 Изменить цену для длительности ({ $duration ->
-            [0] { unlimited }
-            *[other] { $duration }
-        } { $duration ->
-            [one] день
-            [few] дня
-            *[other] дней
-    })</b>
+    <b>💰 Изменить цену для длительности ({ $value ->
+            [-1] { unlimited }
+            *[other] { unit-day }
+        })</b>
 
     Введите новую цену для валюты { $currency }
 
@@ -345,6 +325,11 @@ msg-plan-allowed-users =
     <b>👥 Изменить список разрешенных пользователей</b>
 
     Введите ID пользователя для добавления в список
+
+msg-plan-squads =
+    <b>🔗 Изменить список внутренних сквадов</b>
+
+    Выберите какие внутренние группы будут доступны этому плану.
 
 
 # Notifications
@@ -360,31 +345,42 @@ msg-subscription-duration-details =
     *[has] • Длительность: { $period }
     }
 
+msg-subscription-price-details =
+    { $price -> 
+    [0] {space}
+    *[has] • Стоимость: { $price } { $currency }
+    }
+
 msg-subscription-details =
     { $plan }
     <blockquote>
     { $type ->
-    [devices]
-    • Кол-во устройств: { $devices }
-    • Лимит трафика: { unlimited } { unit-gigabyte }
-    { msg-subscription-duration-details }
-    [traffic]
-    • Кол-во устройств: { unlimited }
+    [TRAFFIC]
     • Лимит трафика: { $traffic } { unit-gigabyte }
+    • Лимит устройств: { unlimited }
     { msg-subscription-duration-details }
-    [unlimited]
-    • Кол-во устройств: { unlimited }
-    • Лимит трафика: { unlimited } { unit-gigabyte }
+    { msg-subscription-price-details }
+    [DEVICES]
+    • Лимит трафика: { unlimited }
+    • Лимит устройств: { $devices }
     { msg-subscription-duration-details }
-    *[both]
-    • Кол-во устройств: { $devices }
+    { msg-subscription-price-details }
+    [BOTH]
     • Лимит трафика: { $traffic } { unit-gigabyte }
+    • Лимит устройств: { $devices }
     { msg-subscription-duration-details }
+    { msg-subscription-price-details }
+    *[UNLIMITED]
+    • Лимит трафика: { unlimited }
+    • Лимит устройств: { unlimited }
+    { msg-subscription-duration-details }
+    { msg-subscription-price-details }
     }
     </blockquote>
 
 msg-subscription-main = <b>💳 Подписка</b>
 msg-subscription-plans = <b>📦 Выберите план</b>
+
 msg-subscription-duration = 
     <b>⏳ Выберите длительность</b>
 
@@ -392,5 +388,10 @@ msg-subscription-duration =
 
 msg-subscription-payment-method =
     <b>💳 Выберите способ оплаты</b>
+
+    { msg-subscription-details }
+
+msg-subscription-confirm =
+    <b>🛒 Подтверждение покупки</b>
 
     { msg-subscription-details }

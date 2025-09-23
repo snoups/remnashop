@@ -69,6 +69,8 @@ class DashboardRemnashop(StatesGroup):
 
 class RemnashopGateways(StatesGroup):
     MAIN = State()
+    SETTINGS = State()
+    FIELD = State()
     MERCHANT = State()
     SECRET = State()
     CURRENCY = State()
@@ -95,6 +97,7 @@ class RemnashopPlans(StatesGroup):
     PRICES = State()
     PRICE = State()
     ALLOWED = State()
+    SQUADS = State()
 
 
 class DashboardRemnawave(StatesGroup):

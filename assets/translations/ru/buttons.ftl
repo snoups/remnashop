@@ -45,6 +45,7 @@ btn-user-role = 👮‍♂️ Изменить роль
 btn-user-transactions = 🧾 Транзакции
 btn-user-subscription = 💳 Подписка
 btn-user-role-choice = { role }
+
 btn-user-block =  { $is_blocked ->
     [1] 🔓 Разблокировать
     *[0] 🔒 Заблокировать
@@ -70,9 +71,9 @@ btn-promocodes-edit = ✏️ Редактировать
 
 # Maintenance
 btn-maintenance-mode = { $mode ->
-    [global] 🔴 Глобальный
-    [purchase] 🟠 Платежи
-    *[off] ⚪ Выключить
+    [GLOBAL] 🔴 Глобальный
+    [PURCHASE] 🟠 Платежи
+    *[OFF] ⚪ Выключить
     }
 
 
@@ -89,6 +90,8 @@ btn-remnashop-audit = 🔍 Аудит
 
 # Gateways
 btn-gateway-title = { gateway-type }
+btn-gateways-guide = Инструкция
+btn-gateways-setting = { $field }
 
 btn-gateway-active = { $is_active ->
     [1] 🟢 Включено
@@ -111,10 +114,8 @@ btn-notifications-user-choice = { $enabled ->
     [1] 🔘
     *[0] ⚪
     } { $type ->
-    [type] type
-    [type] type
-    [type] type
-    *[type] type
+    [TYPE] type
+    *[TYPE] type
     }
 
 btn-notifications-system = ⚙️ Системные
@@ -123,10 +124,10 @@ btn-notifications-system-choice = { $enabled ->
     [1] 🔘
     *[0] ⚪
     } { $type ->
-    [bot_lifetime] Жизненный цикл бота
-    [user_registered] Регистрация пользователя
-    [subscription] Оформление подписки
-    *[promocode_activated] Активация промокода
+    [BOT_LIFETIME] Жизненный цикл бота
+    [USER_REGISTERED] Регистрация пользователя
+    [SUBSCRIPTION] Оформление подписки
+    *[PROMOCODE_ACTIVATED] Активация промокода
     }
 
 
@@ -142,38 +143,46 @@ btn-plan-confirm = ✅ Подтвердить
 btn-plan-name = 🏷️ Имя
 btn-plan-type = 🔖 Тип
 btn-plan-availability = ✴️ Доступ
+
 btn-plan-active = { $is_active -> 
     [1] 🟢
     *[0] 🔴
     } Статус
+
 btn-plan-durations-prices = ⏳ Длительности и 💰 Цены
 btn-plan-traffic = 🌐 Трафик
 btn-plan-devices = 📱 Устройства
 btn-plan-allowed = 👥 Разрешенные пользователи
+btn-plan-squads = 🔗 Внутренние сквады
 btn-allowed-user = { $id }
+
 btn-plan-type-choice = { $type -> 
-    [traffic] 🌐 Трафик
-    [devices] 📱 Устройства
-    [both] 🔗 Трафик + устройства
-    *[unlimited] ♾️ Безлимит
+    [TRAFFIC] 🌐 Трафик
+    [DEVICES] 📱 Устройства
+    [BOTH] 🔗 Трафик + устройства
+    *[UNLIMITED] ♾️ Безлимит
     }
+
 btn-plan-availability-choice = { $type -> 
-    [all] 🌍 Для всех
-    [new] 🌱 Для новых
-    [existing] 👥 Для клиентов
-    [invited] ✉️ Для приглашенных
-    *[allowed] 🔐 Для разрешенных
+    [ALL] 🌍 Для всех
+    [NEW] 🌱 Для новых
+    [EXISTING] 👥 Для клиентов
+    [INVITED] ✉️ Для приглашенных
+    *[ALLOWED] 🔐 Для разрешенных
     }
-btn-plan-duration = ⌛ { $duration ->
-    [0] { unlimited }
-    *[other] { $duration }
-    } { $duration ->
-    [one] день
-    [few] дня
-    *[other] дней
+    
+btn-plan-duration = ⌛ { $value ->
+    [-1] { unlimited }
+    *[other] { unit-day }
     }
+
 btn-plan-duration-add = 🆕 Добавить длительность
 btn-plan-price-choice = 💸 { $price } { $currency }
+
+btn-plan-squad-choice = { $selected -> 
+    [1] 🔘
+    *[0] ⚪
+    } { $name }
 
 
 # RemnaWave
@@ -191,6 +200,7 @@ btn-subscription-change = 🔃 Изменить подписку
 btn-subscription-plan = { $name }
 btn-subscription-duration = { $period } | { $price } { $currency }
 btn-subscription-payment-method = { gateway-type } | { $price } { $currency }
+btn-subscription-pay = 💳 Оплатить
 
 btn-subscription-back-plans = ⬅️ Назад к выбору плана
 btn-subscription-back-duration = ⬅️ Изменить длительность

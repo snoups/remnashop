@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import (
@@ -26,6 +28,7 @@ from .getters import (
     plans_getter,
     price_getter,
     prices_getter,
+    squads_getter,
     type_getter,
 )
 from .handlers import (
@@ -43,6 +46,7 @@ from .handlers import (
     on_plan_removed,
     on_plan_selected,
     on_price_input,
+    on_squad_selected,
     on_traffic_input,
     on_type_selected,
 )
@@ -129,13 +133,13 @@ plan_config = Window(
             text=I18nFormat("btn-plan-traffic"),
             id="traffic",
             state=RemnashopPlans.TRAFFIC,
-            when=F["has_traffic_limit"],
+            when=~F["is_unlimited_traffic"],
         ),
         SwitchTo(
             text=I18nFormat("btn-plan-devices"),
             id="devices",
             state=RemnashopPlans.DEVICES,
-            when=F["has_device_limit"],
+            when=~F["is_unlimited_devices"],
         ),
     ),
     Row(
@@ -151,6 +155,13 @@ plan_config = Window(
             id="allowed",
             state=RemnashopPlans.ALLOWED,
             when=F["availability"] == PlanAvailability.ALLOWED,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-plan-squads"),
+            id="squads",
+            state=RemnashopPlans.SQUADS,
         ),
     ),
     Row(
@@ -275,14 +286,14 @@ plan_durations = Window(
     ListGroup(
         Row(
             Button(
-                text=I18nFormat("btn-plan-duration", duration=F["item"]["days"]),
+                text=I18nFormat("btn-plan-duration", value=F["item"]["days"]),
                 id="select_duration",
-                on_click=on_duration_selected,  # type: ignore
+                on_click=on_duration_selected,  # type: ignore[arg-type]
             ),
             Button(
                 text=Format("❌"),
                 id="remove_duration",
-                on_click=on_duration_removed,  # type: ignore
+                on_click=on_duration_removed,  # type: ignore[arg-type]
             ),
         ),
         id="duration_list",
@@ -325,7 +336,7 @@ plan_durations_add = Window(
 
 plan_prices = Window(
     Banner(BannerName.DASHBOARD),
-    I18nFormat("msg-plan-prices", duration=F["duration"]),
+    I18nFormat("msg-plan-prices", value=F["duration"]),
     Column(
         Select(
             text=I18nFormat(
@@ -354,7 +365,7 @@ plan_prices = Window(
 
 plan_price = Window(
     Banner(BannerName.DASHBOARD),
-    I18nFormat("msg-plan-price", duration=F["duration"], currency=F["currency"]),
+    I18nFormat("msg-plan-price", value=F["duration"], currency=F["currency"]),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back"),
@@ -400,6 +411,35 @@ plan_allowed_users = Window(
     getter=allowed_users_getter,
 )
 
+plan_squads = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-plan-squads"),
+    Column(
+        Select(
+            text=I18nFormat(
+                "btn-plan-squad-choice",
+                name=F["item"]["name"],
+                selected=F["item"]["selected"],
+            ),
+            id="select_squad",
+            item_id_getter=lambda item: item["uuid"],
+            items="squads",
+            type_factory=UUID,
+            on_click=on_squad_selected,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back"),
+            id="back",
+            state=RemnashopPlans.PLAN,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=RemnashopPlans.SQUADS,
+    getter=squads_getter,
+)
+
 router = Dialog(
     plans,
     plan_config,
@@ -413,4 +453,5 @@ router = Dialog(
     plan_prices,
     plan_price,
     plan_allowed_users,
+    plan_squads,
 )

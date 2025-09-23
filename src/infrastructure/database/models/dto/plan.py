@@ -1,53 +1,67 @@
-from datetime import timedelta
 from decimal import Decimal
 from typing import Optional
+from uuid import UUID
 
 from pydantic import Field
 
 from src.core.enums import Currency, PlanAvailability, PlanType
 
-from .base import TrackableModel
+from .base import TrackableDto
 
 
-class PlanDto(TrackableModel):
-    id: Optional[int] = Field(default=None, frozen=True)
-
+class PlanSnapshotDto(TrackableDto):
+    id: int
     name: str
     type: PlanType
-    is_active: bool
+    traffic_limit: int
+    device_limit: int
+    duration: int
+    squad_ids: list[UUID]
 
-    traffic_limit: Optional[int] = None
-    device_limit: Optional[int] = None
 
-    availability: PlanAvailability
-    allowed_user_ids: Optional[list[int]] = None
+class PlanDto(TrackableDto):
+    id: Optional[int] = Field(default=None, frozen=True)
 
-    durations: list["PlanDurationDto"]
+    name: str = "Default Plan"
+    type: PlanType = PlanType.BOTH
+    is_active: bool = False
+
+    traffic_limit: int = 100
+    device_limit: int = 1
+
+    # TODO: add tag and traffic_reset_strategy
+
+    availability: PlanAvailability = PlanAvailability.ALL
+    allowed_user_ids: list[int] = []
+    squad_ids: list[UUID] = []
+
+    durations: list["PlanDurationDto"] = []
 
     @property
     def is_unlimited_traffic(self) -> bool:
-        return self.traffic_limit is None or self.traffic_limit == 0
+        return self.type not in {PlanType.TRAFFIC, PlanType.BOTH}
 
     @property
     def is_unlimited_devices(self) -> bool:
-        return self.device_limit is None or self.device_limit == 0
+        return self.type not in {PlanType.DEVICES, PlanType.BOTH}
 
     def get_duration(self, days: int) -> Optional["PlanDurationDto"]:
         return next((d for d in self.durations if d.days == days), None)
 
 
-class PlanDurationDto(TrackableModel):
+class PlanDurationDto(TrackableDto):
     id: Optional[int] = Field(default=None, frozen=True)
 
     days: int
-    prices: list["PlanPriceDto"]
+
+    prices: list["PlanPriceDto"] = []
 
     @property
-    def total_duration(self) -> timedelta:
-        return timedelta(days=self.days)
+    def is_unlimited(self) -> bool:
+        return self.days == -1
 
-    def get_price(self, currency: Currency) -> Optional["PlanPriceDto"]:
-        return next((p for p in self.prices if p.currency == currency), None)
+    def get_price(self, currency: Currency) -> Decimal:
+        return next((p.price for p in self.prices if p.currency == currency))
 
     def get_price_per_day(self, currency: Currency) -> Optional[Decimal]:
         if self.days <= 0:
@@ -59,7 +73,7 @@ class PlanDurationDto(TrackableModel):
         return None
 
 
-class PlanPriceDto(TrackableModel):
+class PlanPriceDto(TrackableDto):
     id: Optional[int] = Field(default=None, frozen=True)
 
     currency: Currency

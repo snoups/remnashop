@@ -1,31 +1,49 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .subscription import SubscriptionDto
+
 from datetime import datetime
-from typing import Optional
 
 from pydantic import Field
 
+from src.core.constants import REMNASHOP_TAG
 from src.core.enums import Locale, UserRole
 from src.core.utils.time import datetime_now
 
-from .base import TrackableModel
+from .base import TrackableDto
 
 
-class UserDto(TrackableModel):
+class UserDto(TrackableDto):
     id: Optional[int] = Field(default=None, frozen=True)
-    telegram_id: int = Field(default=None, frozen=True)
+    telegram_id: int
+    username: Optional[str] = None
 
     name: str
     role: UserRole = UserRole.USER
     language: Locale
 
-    personal_discount: float = 0
-    purchase_discount: float = 0
+    personal_discount: int = 0
+    purchase_discount: int = 0
 
     is_blocked: bool = False
     is_bot_blocked: bool = False
     is_trial_used: bool = False
 
+    subscription: Optional["SubscriptionDto"] = None
+
     created_at: Optional[datetime] = Field(default=None, frozen=True)
     updated_at: Optional[datetime] = Field(default=None, frozen=True)
+
+    @property
+    def remna_name(self) -> str:
+        return f"{REMNASHOP_TAG}{self.telegram_id}"
+
+    @property
+    def remna_description(self) -> str:
+        return f"name: {self.name}\nusername: {self.username or ''}"
 
     @property
     def is_dev(self) -> bool:
@@ -44,5 +62,4 @@ class UserDto(TrackableModel):
         if self.created_at is None:
             return None
 
-        current_time = datetime_now()
-        return (current_time - self.created_at).days
+        return (datetime_now() - self.created_at).days

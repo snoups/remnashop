@@ -12,12 +12,12 @@ from .base import BaseService
 
 
 class WebhookService(BaseService):
-    async def setup(self) -> WebhookInfo:
+    async def setup(self, allowed_updates: list[str]) -> WebhookInfo:
         safe_webhook_url = self.config.bot.safe_webhook_url(domain=self.config.domain)
 
         webhook = SetWebhook(
             url=self.config.bot.webhook_url(domain=self.config.domain).get_secret_value(),
-            # allowed_updates=dispatcher.resolve_used_update_types(),
+            allowed_updates=allowed_updates,
             drop_pending_updates=self.config.bot.drop_pending_updates,
             secret_token=self.config.bot.secret_token.get_secret_value(),
         )
@@ -53,10 +53,13 @@ class WebhookService(BaseService):
             logger.error("Failed to delete bot webhook")
 
     def has_error(self, webhook_info: WebhookInfo) -> bool:
-        if not webhook_info.last_error_message:
+        if not webhook_info.last_error_message or webhook_info.last_error_date is None:
             return False
+
         if self._is_new_error(error_time=webhook_info.last_error_date):
             return True
+        else:
+            return False
 
     def _is_new_error(self, error_time: datetime, tolerance: int = 5) -> bool:
         current_time = datetime_now()

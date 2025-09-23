@@ -1,36 +1,67 @@
-from typing import Optional
+from __future__ import annotations
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import TYPE_CHECKING, Optional
 
-from src.core.enums import PromocodeType
-from src.infrastructure.database.models.dto import PromocodeDto
+if TYPE_CHECKING:
+    from .user import User
 
-from .base import Base
-from .timestamp import TimestampMixin
+from datetime import datetime
+
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from src.core.enums import PromocodeRewardType
+
+from .base import BaseSql
+from .timestamp import NOW_FUNC, TimestampMixin
 
 
-class Promocode(Base, TimestampMixin):
+class Promocode(BaseSql, TimestampMixin):
     __tablename__ = "promocodes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     code: Mapped[str] = mapped_column(String, nullable=False, unique=True)
-    type: Mapped[PromocodeType] = mapped_column(Enum(PromocodeType), nullable=False)
+    reward_type: Mapped[PromocodeRewardType] = mapped_column(
+        Enum(PromocodeRewardType),
+        nullable=False,
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    is_multi_use: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    reward: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # TODO: Implement storing plan for activation (relationship plan_duration?)
 
-    lifetime: Mapped[Optional[int]] = mapped_column(Integer, default=None, nullable=True)
-    duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    traffic: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    # TODO: Implement storing subscription for activation
-    discount_percent: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    lifetime: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    max_activations: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    activated_by: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("users.telegram_id"),
-        nullable=True,
+    activations: Mapped[list["PromocodeActivation"]] = relationship(
+        "PromocodeActivation",
+        back_populates="promocode",
+        cascade="all, delete-orphan",
     )
 
-    def dto(self) -> PromocodeDto:
-        return PromocodeDto.model_validate(self)
+
+class PromocodeActivation(BaseSql):
+    __tablename__ = "promocode_activations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    promocode_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("promocodes.id"),
+        nullable=False,
+    )
+    user_telegram_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_id"),
+        nullable=False,
+    )
+
+    activated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=NOW_FUNC,
+        nullable=False,
+    )
+
+    promocode: Mapped["Promocode"] = relationship("Promocode", back_populates="activations")
+    user: Mapped["User"] = relationship("User", back_populates="promocode_activations")

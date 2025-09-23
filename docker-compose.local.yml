@@ -65,10 +65,12 @@ services:
     <<: *remnashop
     container_name: "remnashop-taskiq-worker"
     hostname: remnashop-taskiq-worker
-    command: taskiq worker src.infrastructure.taskiq.broker:worker 
+    command: taskiq worker src.infrastructure.taskiq.worker:worker 
       --tasks-pattern src/infrastructure/taskiq/tasks -fsd
     depends_on:
       remnashop-redis:
+        condition: service_healthy
+      remnashop-db:
         condition: service_healthy
 
 networks:

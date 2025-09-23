@@ -1,5 +1,3 @@
-from typing import Type
-
 from pydantic import SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
@@ -19,16 +17,6 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
     setup_commands: bool
     use_banners: bool
 
-    @field_validator("token", "secret_token")
-    @classmethod
-    def validate_bot_fields(
-        cls: Type["BotConfig"],
-        field: object,
-        info: FieldValidationInfo,
-    ) -> object:
-        validate_not_change_me(field, info)
-        return field
-
     @property
     def webhook_path(self) -> str:
         return f"{API_V1}{BOT_WEBHOOK_PATH}"
@@ -39,3 +27,9 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
 
     def safe_webhook_url(self, domain: SecretStr) -> str:
         return f"https://{domain}{self.webhook_path}"
+
+    @field_validator("token", "secret_token")
+    @classmethod
+    def validate_bot_fields(cls, field: object, info: FieldValidationInfo) -> object:
+        validate_not_change_me(field, info)
+        return field

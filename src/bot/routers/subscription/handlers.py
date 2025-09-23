@@ -7,10 +7,13 @@ from loguru import logger
 
 from src.bot.states import Subscription
 from src.core.constants import USER_KEY
+from src.core.enums import PaymentGatewayType
 from src.core.utils.adapter import DialogDataAdapter
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import PlanDto, UserDto
-from src.services import NotificationService, PaymentGatewayService, PlanService
+from src.services.notification import NotificationService
+from src.services.payment_gateway import PaymentGatewayService
+from src.services.plan import PlanService
 
 
 @inject
@@ -28,15 +31,15 @@ async def on_subscription_plans(
 
     if not plans:
         await notification_service.notify_user(
-            user=user,
-            payload=MessagePayload(text_key="ntf-subscription-plans-not-available"),
+            user,
+            MessagePayload(i18n_key="ntf-subscription-plans-not-available"),
         )
         return
 
     if not gateways:
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(text_key="ntf-subscription-gateways-not-available"),
+            payload=MessagePayload(i18n_key="ntf-subscription-gateways-not-available"),
         )
         return
 
@@ -53,6 +56,9 @@ async def on_plan_selected(
 ) -> None:
     plan = await plan_service.get(plan_id=selected_plan)
 
+    if not plan:
+        return
+
     adapter = DialogDataAdapter(dialog_manager)
     adapter.save(plan)
 
@@ -65,7 +71,15 @@ async def on_duration_selected(
     dialog_manager: DialogManager,
     selected_duration: int,
 ) -> None:
-    # adapter = DialogDataAdapter(dialog_manager)
-    # plan: PlanDto = adapter.load(PlanDto)
     dialog_manager.dialog_data["selected_duration"] = selected_duration
     await dialog_manager.switch_to(state=Subscription.PAYMENT_METHOD)
+
+
+async def on_payment_method_selected(
+    callback: CallbackQuery,
+    widget: Select,
+    dialog_manager: DialogManager,
+    selected_payment_method: PaymentGatewayType,
+) -> None:
+    dialog_manager.dialog_data["selected_payment_method"] = selected_payment_method
+    await dialog_manager.switch_to(state=Subscription.CONFIRM)

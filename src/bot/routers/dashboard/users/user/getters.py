@@ -5,7 +5,7 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from src.core.enums import UserRole
-from src.services import UserService
+from src.services.user import UserService
 
 
 @inject
@@ -24,6 +24,7 @@ async def user_getter(
 
     return {
         "id": str(target_user.telegram_id),
+        "username": target_user.username or False,
         "name": target_user.name,
         "role": target_user.role,
         "is_blocked": target_user.is_blocked,

@@ -1,10 +1,10 @@
 from functools import wraps
-from typing import Any, Awaitable, Callable, Optional, ParamSpec, get_type_hints
+from typing import Any, Awaitable, Callable, Optional, ParamSpec, TypeVar, get_type_hints
 
+from loguru import logger
 from pydantic import TypeAdapter
 from redis.asyncio import Redis
 from redis.typing import ExpiryT
-from typing_extensions import TypeVar
 
 from src.core.constants import TIME_1M
 from src.core.utils import mjson
@@ -24,28 +24,37 @@ def redis_cache(
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             self: Any = args[0]
-            key: str = ":".join(
-                [
-                    "cache",
-                    prefix or func.__name__,
-                    *map(str, args[1:]),
-                    *map(str, kwargs.values()),
-                ]
-            )
-
             redis: Redis = self.redis_client
-            cached_value: Any = await redis.get(key)
 
-            if isinstance(cached_value, bytes):
-                cached_value = cached_value.decode()
+            key_parts = [
+                "cache",
+                prefix or func.__name__,
+                *map(str, args[1:]),
+                *map(str, kwargs.values()),
+            ]
+            key: str = ":".join(key_parts)
 
-            if cached_value is not None:
-                return type_adapter.validate_python(mjson.decode(cached_value))
+            try:
+                cached_value: Optional[bytes] = await redis.get(key)
 
-            result: T = await func(*args, **kwargs)
-            cached_result: str = mjson.encode(type_adapter.dump_python(result))
-            await redis.setex(key, ttl, cached_result)
-            return result
+                if cached_value is not None:
+                    logger.debug(f"Cache hit for key: {key}")
+                    # Decode the bytes and then parse the JSON string
+                    return type_adapter.validate_python(mjson.decode(cached_value.decode()))
+
+                logger.debug(f"Cache miss for key: {key}. Executing function")
+                result: T = await func(*args, **kwargs)
+
+                # Serialize the result to a JSON string before caching
+                cached_result: str = mjson.encode(type_adapter.dump_python(result))
+                await redis.setex(key, ttl, cached_result)
+
+                return result
+
+            except Exception as exception:
+                logger.error(f"Cache operation failed for key '{key}': {exception}")
+                # Fallback to executing the function without caching
+                return await func(*args, **kwargs)
 
         return wrapper
 

@@ -1,5 +1,5 @@
 import re
-from typing import Self, Type
+from typing import Self
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
@@ -38,11 +38,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
 
     @field_validator("domain")
     @classmethod
-    def validate_domain(
-        cls: Type["AppConfig"],
-        field: SecretStr,
-        info: FieldValidationInfo,
-    ) -> SecretStr:
+    def validate_domain(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
         validate_not_change_me(field, info)
 
         if not re.match(DOMAIN_REGEX, field.get_secret_value()):
@@ -52,11 +48,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
 
     @field_validator("crypt_key")
     @classmethod
-    def validate_crypt_key(
-        cls: Type["AppConfig"],
-        field: SecretStr,
-        info: FieldValidationInfo,
-    ) -> SecretStr:
+    def validate_crypt_key(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
         validate_not_change_me(field, info)
 
         if not re.match(r"^[A-Za-z0-9+/=]{44}$", field.get_secret_value()):

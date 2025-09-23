@@ -1,6 +1,6 @@
 import functools
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from aiogram.types import ContentType
 from aiogram_dialog import DialogManager
@@ -9,10 +9,10 @@ from aiogram_dialog.widgets.common import Whenable
 from aiogram_dialog.widgets.media import StaticMedia
 from loguru import logger
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import BANNERS_DIR, CONFIG_KEY, USER_KEY
 from src.core.enums import BannerFormat, BannerName, Locale
-from src.infrastructure.database.models.dto.user import UserDto
+from src.infrastructure.database.models.dto import UserDto
 
 
 @functools.lru_cache(maxsize=None)
@@ -20,7 +20,7 @@ def get_banner(
     name: BannerName,
     locale: Locale,
     default_locale: Locale,
-) -> Tuple[Path, ContentType]:
+) -> tuple[Path, ContentType]:
     for current_locale in [locale, default_locale]:
         path_locale = BANNERS_DIR / current_locale
 
@@ -75,7 +75,7 @@ class Banner(StaticMedia):
         return MediaAttachment(
             type=banner_content_type,
             url=None,
-            path=str(banner_path),
+            path=banner_path,
             use_pipe=self.use_pipe,
             **self.media_params,
         )

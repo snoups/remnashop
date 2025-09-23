@@ -9,7 +9,7 @@ from src.core.constants import USER_KEY
 from src.core.enums import MaintenanceMode
 from src.core.utils.formatters import format_log_user
 from src.infrastructure.database.models.dto import UserDto
-from src.services import MaintenanceService
+from src.services.maintenance import MaintenanceService
 
 
 @inject

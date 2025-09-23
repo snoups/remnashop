@@ -12,6 +12,8 @@ __all__ = [
     "setup_middlewares",
 ]
 
+# TODO: Create middleware for rules and banlist(rework Maintenance) and ?channel sub?
+
 
 def setup_middlewares(router: Router) -> None:
     outer_middlewares: list[EventTypedMiddleware] = [

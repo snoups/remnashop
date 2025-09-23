@@ -14,7 +14,7 @@ from .base import EventTypedMiddleware
 class GarbageMiddleware(EventTypedMiddleware):
     __event_types__ = [MiddlewareEventType.MESSAGE]
 
-    async def __call__(
+    async def middleware_logic(
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,

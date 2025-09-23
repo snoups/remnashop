@@ -10,7 +10,7 @@ from aiogram.types import (
 )
 from pydantic import PlainValidator
 
-from src.core.enums import Locale
+from src.core.enums import Locale, SystemNotificationType, UserNotificationType
 
 if TYPE_CHECKING:
     ListStr: TypeAlias = list[str]
@@ -27,6 +27,9 @@ AnyKeyboard: TypeAlias = Union[
     ReplyKeyboardRemove,
     ForceReply,
 ]
+
+AnyNotification: TypeAlias = Union[SystemNotificationType, UserNotificationType]
+
 
 StringList: TypeAlias = Annotated[
     ListStr, PlainValidator(lambda x: [s.strip() for s in x.split(",")])

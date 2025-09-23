@@ -6,7 +6,7 @@ from dishka.integrations.aiogram_dialog import inject
 
 from src.core.enums import UserRole
 from src.infrastructure.database.models.dto import UserDto
-from src.services import UserService
+from src.services.user import UserService
 
 
 @inject

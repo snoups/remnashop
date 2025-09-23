@@ -6,7 +6,7 @@ from dishka.integrations.aiogram_dialog import inject
 
 from src.core.utils.formatters import format_percent
 from src.infrastructure.database.models.dto import UserDto
-from src.services import UserService
+from src.services.user import UserService
 
 
 async def search_results_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict[str, Any]:

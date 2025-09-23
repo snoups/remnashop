@@ -3,9 +3,9 @@ from typing import Any
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import CONFIG_KEY, USER_KEY
-from src.infrastructure.database.models.dto.user import UserDto
+from src.infrastructure.database.models.dto import UserDto
 
 
 class SuperDevFilter(BaseFilter):

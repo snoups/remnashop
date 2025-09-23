@@ -4,13 +4,13 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
-from loguru import logger
 
 from src.core.constants import USER_KEY
 from src.core.utils.adapter import DialogDataAdapter
-from src.core.utils.formatters import format_subscription_period
-from src.infrastructure.database.models.dto import PlanDto, UserDto
-from src.services import PaymentGatewayService, PlanService
+from src.core.utils.formatters import i18n_format_days_to_duration
+from src.infrastructure.database.models.dto import PlanDto, PlanSnapshotDto, UserDto
+from src.services.payment_gateway import PaymentGatewayService
+from src.services.plan import PlanService
 
 
 @inject
@@ -28,7 +28,7 @@ async def plans_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    plans: list[PlanDto] = await plan_service.get_available_plans(user=user)
+    plans: list[PlanDto] = await plan_service.get_available_plans(user)
 
     formatted_plans = [
         {
@@ -53,16 +53,22 @@ async def duration_getter(
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
 
+    if not plan:
+        return {}
+
     currency = await payment_gateway_service.get_default_currency()
-    durations = [
-        {
-            "days": duration.days,
-            "period": format_subscription_period(days=duration.days, i18n=i18n),
-            "price": duration.get_price(currency).price,
-            "currency": currency.symbol,
-        }
-        for duration in plan.durations
-    ]
+    durations = []
+
+    for duration in plan.durations:
+        key, kw = i18n_format_days_to_duration(duration.days)
+        durations.append(
+            {
+                "days": duration.days,
+                "period": i18n.get(key, **kw),
+                "price": duration.get_price(currency),
+                "currency": currency.symbol,
+            }
+        )
 
     return {
         "plan": plan.name,
@@ -71,6 +77,8 @@ async def duration_getter(
         "traffic": plan.traffic_limit,
         "period": 0,
         "durations": durations,
+        "price": 0,
+        "currency": "",
     }
 
 
@@ -83,33 +91,38 @@ async def payment_method_getter(
 ) -> dict[str, Any]:
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
-    logger.debug(f"Loaded plan: {plan}")
+
+    if not plan:
+        return {}
 
     gateways = await payment_gateway_service.filter_active()
     selected_duration = dialog_manager.dialog_data["selected_duration"]
     duration = plan.get_duration(selected_duration)
 
+    if not duration:
+        return {}
+
     payment_methods = []
     for gateway in gateways:
-        price_obj = duration.get_price(gateway.currency)
-        if not price_obj:
-            continue
-
         payment_methods.append(
             {
-                "method": gateway.type,
-                "price": price_obj.price,
-                "currency": price_obj.currency.symbol,
+                "gateway_type": gateway.type,
+                "price": duration.get_price(gateway.currency),
+                "currency": gateway.currency.symbol,
             }
         )
+
+    key, kw = i18n_format_days_to_duration(duration.days)
 
     return {
         "plan": plan.name,
         "type": plan.type,
         "devices": plan.device_limit,
         "traffic": plan.traffic_limit,
-        "period": format_subscription_period(days=duration.days, i18n=i18n),
+        "period": i18n.get(key, **kw),
         "payment_methods": payment_methods,
+        "price": 0,
+        "currency": "",
     }
 
 
@@ -117,10 +130,53 @@ async def payment_method_getter(
 async def confirm_getter(
     dialog_manager: DialogManager,
     i18n: FromDishka[TranslatorRunner],
+    payment_gateway_service: FromDishka[PaymentGatewayService],
     **kwargs: Any,
 ) -> dict[str, Any]:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
-    logger.debug(f"Loaded plan: {plan}")
 
-    return {}
+    if not plan:
+        return {}
+
+    selected_duration = dialog_manager.dialog_data["selected_duration"]
+    selected_payment_method = dialog_manager.dialog_data["selected_payment_method"]
+    payment_gateway = await payment_gateway_service.get_by_type(selected_payment_method)
+    duration = plan.get_duration(selected_duration)
+
+    if not duration or not payment_gateway:
+        return {}
+
+    transaction_plan = PlanSnapshotDto(
+        id=plan.id,
+        name=plan.name,
+        type=plan.type,
+        traffic_limit=plan.traffic_limit,
+        device_limit=plan.device_limit,
+        duration=duration.days,
+        squad_ids=plan.squad_ids,
+    )
+
+    price = duration.get_price(payment_gateway.currency)
+
+    url = await payment_gateway_service.create_payment(
+        user=user,
+        plan=transaction_plan,
+        price=price,
+        gateway_type=selected_payment_method,
+    )
+
+    key, kw = i18n_format_days_to_duration(duration.days)
+
+    return {
+        "plan": plan.name,
+        "type": plan.type,
+        "devices": plan.device_limit,
+        "traffic": plan.traffic_limit,
+        "period": i18n.get(key, **kw),
+        "payment_method": selected_payment_method,
+        "price": price,
+        "currency": payment_gateway.currency.symbol,
+        "url": url,
+    }

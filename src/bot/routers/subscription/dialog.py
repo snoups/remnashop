@@ -1,5 +1,6 @@
 from aiogram_dialog import Dialog, StartMode, Window
-from aiogram_dialog.widgets.kbd import Button, Column, Group, Row, Select, Start, SwitchTo
+from aiogram_dialog.widgets.kbd import Button, Column, Group, Row, Select, Start, SwitchTo, Url
+from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.bot.states import MainMenu, Subscription
@@ -13,7 +14,12 @@ from .getters import (
     plans_getter,
     subscription_getter,
 )
-from .handlers import on_duration_selected, on_plan_selected, on_subscription_plans
+from .handlers import (
+    on_duration_selected,
+    on_payment_method_selected,
+    on_plan_selected,
+    on_subscription_plans,
+)
 
 subscription = Window(
     Banner(BannerName.SUBSCRIPTION),
@@ -115,15 +121,15 @@ payment_method = Window(
         Select(
             text=I18nFormat(
                 "btn-subscription-payment-method",
-                type=F["item"]["method"],
+                gateway_type=F["item"]["gateway_type"],
                 price=F["item"]["price"],
                 currency=F["item"]["currency"],
             ),
             id="select_payment_method",
-            item_id_getter=lambda item: item["method"],
+            item_id_getter=lambda item: item["gateway_type"],
             items="payment_methods",
             type_factory=PaymentGatewayType,
-            # on_click=on_payment_method_selected,
+            on_click=on_payment_method_selected,
         ),
     ),
     Row(
@@ -148,6 +154,12 @@ payment_method = Window(
 confirm = Window(
     Banner(BannerName.SUBSCRIPTION),
     I18nFormat("msg-subscription-confirm"),
+    Row(
+        Url(
+            text=I18nFormat("btn-subscription-pay"),
+            url=Format("{url}"),
+        ),
+    ),
     Row(
         SwitchTo(
             text=I18nFormat("btn-subscription-back-payment-method"),

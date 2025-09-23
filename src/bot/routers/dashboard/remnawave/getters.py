@@ -4,20 +4,20 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
-from remnawave_api import RemnawaveSDK
-from remnawave_api.models import (
-    HostsResponseDto,
-    InboundsResponseDto,
-    NodesResponseDto,
-    StatisticResponseDto,
+from remnawave import RemnawaveSDK
+from remnawave.models import (
+    GetAllHostsResponseDto,
+    GetAllInboundsResponseDto,
+    GetAllNodesResponseDto,
+    GetStatsResponseDto,
 )
 
-from src.core.i18n_keys import UtilKey
+from src.core.translator_kwargs import get_translated_kwargs
 from src.core.utils.formatters import (
-    format_bytes,
     format_country_code,
-    format_duration,
     format_percent,
+    i18n_format_bytes_to_gb,
+    i18n_format_seconds_to_duration,
 )
 
 
@@ -28,19 +28,21 @@ async def system_getter(
     i18n: FromDishka[TranslatorRunner],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    stats: StatisticResponseDto = await remnawave.system.get_stats()
+    response = await remnawave.system.get_stats()
+
+    if not isinstance(response, GetStatsResponseDto):
+        return {}
 
     return {
-        "cpu_cores": str(stats.cpu.physical_cores),
-        "cpu_threads": str(stats.cpu.cores),
-        "ram_used": format_bytes(value=stats.memory.active, i18n=i18n),
-        "ram_total": format_bytes(value=stats.memory.total, i18n=i18n),
-        "ram_used_percent": format_percent(part=stats.memory.active, whole=stats.memory.total),
-        "uptime": format_duration(
-            seconds=stats.uptime,
-            i18n=i18n,
-            round_up=True,
+        "cpu_cores": response.cpu.physical_cores,
+        "cpu_threads": response.cpu.cores,
+        "ram_used": i18n_format_bytes_to_gb(response.memory.active),
+        "ram_total": i18n_format_bytes_to_gb(response.memory.total),
+        "ram_used_percent": format_percent(
+            part=response.memory.active,
+            whole=response.memory.total,
         ),
+        "uptime": i18n_format_seconds_to_duration(response.uptime),
     }
 
 
@@ -50,18 +52,21 @@ async def users_getter(
     remnawave: FromDishka[RemnawaveSDK],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    stats: StatisticResponseDto = await remnawave.system.get_stats()
+    response = await remnawave.system.get_stats()
+
+    if not isinstance(response, GetStatsResponseDto):
+        return {}
 
     return {
-        "users_total": str(stats.users.total_users),
-        "users_active": str(stats.users.status_counts.active),
-        "users_disabled": str(stats.users.status_counts.disabled),
-        "users_limited": str(stats.users.status_counts.limited),
-        "users_expired": str(stats.users.status_counts.expired),
-        "online_last_day": str(stats.online_stats.last_day),
-        "online_last_week": str(stats.online_stats.last_week),
-        "online_never": str(stats.online_stats.never_online),
-        "online_now": str(stats.online_stats.online_now),
+        "users_total": str(response.users.total_users),
+        "users_active": str(response.users.status_counts.active),
+        "users_disabled": str(response.users.status_counts.disabled),
+        "users_limited": str(response.users.status_counts.limited),
+        "users_expired": str(response.users.status_counts.expired),
+        "online_last_day": str(response.online_stats.last_day),
+        "online_last_week": str(response.online_stats.last_week),
+        "online_never": str(response.online_stats.never_online),
+        "online_now": str(response.online_stats.online_now),
     }
 
 
@@ -72,20 +77,21 @@ async def hosts_getter(
     i18n: FromDishka[TranslatorRunner],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    hosts: HostsResponseDto = await remnawave.hosts.get_all_hosts()
+    response = await remnawave.hosts.get_all_hosts()
+
+    if not isinstance(response, GetAllHostsResponseDto):
+        return {}
 
     hosts_text = "\n".join(
         i18n.get(
             "msg-remnawave-host-details",
-            {
-                "remark": host.remark,
-                "status": "off" if host.is_disabled else "on",
-                "address": host.address,
-                "port": str(host.port),
-                "inbound_uuid": str(host.inbound_uuid),
-            },
+            remark=host.remark,
+            status="OFF" if host.is_disabled else "ON",
+            address=host.address,
+            port=str(host.port),
+            inbound_uuid=str(host.inbound_uuid),
         )
-        for host in hosts.response
+        for host in response
     )
 
     return {"hosts": hosts_text}
@@ -98,42 +104,39 @@ async def nodes_getter(
     i18n: FromDishka[TranslatorRunner],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    nodes: NodesResponseDto = await remnawave.nodes.get_all_nodes()
+    response = await remnawave.nodes.get_all_nodes()
 
-    nodes_text = "\n".join(
-        i18n.get(
-            "msg-remnawave-node-details",
-            {
-                "country": format_country_code(code=node.country_code),
-                "name": node.name,
-                "status": "on" if node.is_connected else "off",
-                "address": node.address,
-                "port": str(node.port),
-                "xray_uptime": format_duration(
-                    seconds=node.xray_uptime,
-                    i18n=i18n,
-                    round_up=True,
-                ),
-                "users_online": str(node.users_online),
-                "traffic_used": format_bytes(  # FIXME: not for all time? (only 7 days period)
-                    value=node.traffic_used_bytes,
-                    i18n=i18n,
-                ),
-                "traffic_limit": (
-                    format_bytes(
-                        value=node.traffic_limit_bytes,
-                        i18n=i18n,
-                        round_up=True,
-                    )
-                    if node.traffic_limit_bytes > 0
-                    else i18n.get(UtilKey.UNLIMITED)
-                ),
-            },
+    if not isinstance(response, GetAllNodesResponseDto):
+        return {}
+
+    nodes_text = []
+
+    for node in response.root:
+        kwargs_for_i18n = {
+            "xray_uptime": i18n_format_seconds_to_duration(node.xray_uptime),
+            "traffic_used": i18n_format_bytes_to_gb(node.traffic_used_bytes),
+            "traffic_limit": i18n_format_bytes_to_gb(node.traffic_limit_bytes, round_up=True),
+        }
+
+        translated_data = get_translated_kwargs(i18n, kwargs_for_i18n)
+        xray_uptime_str = " ".join(translated_data["xray_uptime"])
+
+        nodes_text.append(
+            i18n.get(
+                "msg-remnawave-node-details",
+                country=format_country_code(code=node.country_code),
+                name=node.name,
+                status="ON" if node.is_connected else "OFF",
+                address=node.address,
+                port=str(node.port),
+                xray_uptime=xray_uptime_str,
+                users_online=str(node.users_online),
+                traffic_used=translated_data["traffic_used"],
+                traffic_limit=translated_data["traffic_limit"],
+            )
         )
-        for node in nodes.response
-    )
 
-    return {"nodes": nodes_text}
+    return {"nodes_text": "\n".join(nodes_text)}
 
 
 @inject
@@ -143,21 +146,22 @@ async def inbounds_getter(
     i18n: FromDishka[TranslatorRunner],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    inbounds: InboundsResponseDto = await remnawave.inbounds.get_inbounds()
+    response = await remnawave.inbounds.get_all_inbounds()
+
+    if not isinstance(response, GetAllInboundsResponseDto):
+        return {}
 
     inbounds_text = "\n".join(
         i18n.get(
             "msg-remnawave-inbound-details",
-            {
-                "uuid": str(inbound.uuid),
-                "tag": inbound.tag,
-                "type": inbound.type,
-                "port": str(int(inbound.port)),
-                "network": inbound.network,
-                "security": inbound.security,
-            },
+            uuid=str(inbound.uuid),
+            tag=inbound.tag,
+            type=inbound.type,
+            port=str(int(inbound.port)),
+            network=inbound.network,
+            security=inbound.security,
         )
-        for inbound in inbounds.response
+        for inbound in response.inbounds  # type: ignore[attr-defined]
     )
 
     return {"inbounds": inbounds_text}

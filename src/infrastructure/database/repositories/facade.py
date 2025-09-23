@@ -1,21 +1,29 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .base import BaseRepository
 from .payment_gateway import PaymentGatewayRepository
 from .plan import PlanRepository
 from .promocode import PromocodeRepository
+from .subscription import SubscriptionRepository
+from .transaction import TransactionRepository
 from .user import UserRepository
 
 
-class RepositoriesFacade(BaseRepository):
+class RepositoriesFacade:
+    session: AsyncSession
+
     gateways: PaymentGatewayRepository
-    users: UserRepository
-    promocodes: PromocodeRepository
     plans: PlanRepository
+    promocodes: PromocodeRepository
+    subscriptions: SubscriptionRepository
+    transactions: TransactionRepository
+    users: UserRepository
 
     def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session)
+        self.session = session
+
         self.gateways = PaymentGatewayRepository(session)
-        self.users = UserRepository(session)
-        self.promocodes = PromocodeRepository(session)
         self.plans = PlanRepository(session)
+        self.promocodes = PromocodeRepository(session)
+        self.subscriptions = SubscriptionRepository(session)
+        self.transactions = TransactionRepository(session)
+        self.users = UserRepository(session)

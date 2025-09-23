@@ -7,14 +7,15 @@ from src.core.utils.types import AnyInputFile, AnyKeyboard
 
 
 class MessagePayload(BaseModel):
-    text_key: str
+    i18n_key: str
+    i18n_kwargs: dict[str, Any] = {}
+
     media: Optional[AnyInputFile] = None
     media_type: Optional[MediaType] = None
     reply_markup: Optional[AnyKeyboard] = None
     auto_delete_after: Optional[int] = 5
     add_close_button: bool = False
     message_effect: Optional[MessageEffect] = None
-    kwargs: Optional[dict[str, Any]] = {}
 
     model_config = ConfigDict(
         extra="ignore",

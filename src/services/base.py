@@ -1,3 +1,5 @@
+from abc import ABC
+
 from aiogram import Bot
 from fluentogram import TranslatorHub
 from redis.asyncio import Redis
@@ -6,7 +8,7 @@ from src.core.config import AppConfig
 from src.infrastructure.redis import RedisRepository
 
 
-class BaseService:
+class BaseService(ABC):
     config: AppConfig
     bot: Bot
     redis_client: Redis

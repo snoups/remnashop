@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from aiogram import Bot
+from aiogram import Bot, Dispatcher
 from aiogram.types import WebhookInfo
 from dishka import AsyncContainer
 from fastapi import FastAPI
@@ -9,12 +9,18 @@ from loguru import logger
 
 from src.api.endpoints import TelegramWebhookEndpoint
 from src.core.enums import SystemNotificationType
-from src.infrastructure.taskiq.tasks import send_system_notification_task
-from src.services import CommandService, MaintenanceService, WebhookService
+from src.infrastructure.taskiq.tasks.notifications import (
+    send_remnashop_notification_task,
+    send_system_notification_task,
+)
+from src.services.command import CommandService
+from src.services.maintenance import MaintenanceService
+from src.services.webhook import WebhookService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    dispatcher: Dispatcher = app.state.dispatcher
     telegram_webhook_endpoint: TelegramWebhookEndpoint = app.state.telegram_webhook_endpoint
     container: AsyncContainer = app.state.dishka_container
 
@@ -22,13 +28,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     command_service: CommandService = await container.get(CommandService)
     maintenance_service: MaintenanceService = await container.get(MaintenanceService)
 
-    webhook_info: WebhookInfo = await webhook_service.setup()
+    allowed_updates = dispatcher.resolve_used_update_types()
+    webhook_info: WebhookInfo = await webhook_service.setup(allowed_updates)
+
     if webhook_service.has_error(webhook_info):
         logger.critical(f"Webhook has a last error message: {webhook_info.last_error_message}")
         await send_system_notification_task.kiq(
             ntf_type=SystemNotificationType.BOT_LIFETIME,
-            text_key="ntf-event-error-webhook",
-            error=webhook_info.last_error_message,
+            i18n_key="ntf-event-error-webhook",
+            i18n_kwargs={"error": webhook_info.last_error_message},
         )
 
     await command_service.setup()
@@ -50,15 +58,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await send_system_notification_task.kiq(
         ntf_type=SystemNotificationType.BOT_LIFETIME,
-        text_key="ntf-event-bot-startup",
-        mode=maintenance_mode,
+        i18n_key="ntf-event-bot-startup",
+        i18n_kwargs={"mode": maintenance_mode},
     )
+    await send_remnashop_notification_task.kiq()
 
     yield
 
     await send_system_notification_task.kiq(
         ntf_type=SystemNotificationType.BOT_LIFETIME,
-        text_key="ntf-event-bot-shutdown",
+        i18n_key="ntf-event-bot-shutdown",
     )
 
     await telegram_webhook_endpoint.shutdown()

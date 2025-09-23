@@ -7,15 +7,17 @@ from src.core.constants import CONTAINER_KEY, USER_KEY
 from src.core.enums import MiddlewareEventType
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import UserDto
-from src.services import MaintenanceService, NotificationService
+from src.services.maintenance import MaintenanceService
+from src.services.notification import NotificationService
 
 from .base import EventTypedMiddleware
 
 
+# TODO: rework Maintenance -> Access + handle is_blocked
 class MaintenanceMiddleware(EventTypedMiddleware):
     __event_types__ = [MiddlewareEventType.MESSAGE, MiddlewareEventType.CALLBACK_QUERY]
 
-    async def __call__(
+    async def middleware_logic(
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,
@@ -29,8 +31,8 @@ class MaintenanceMiddleware(EventTypedMiddleware):
 
         if not await maintenance_service.is_access_allowed(user=user, event=event):
             await notification_service.notify_user(
-                telegram_id=user.telegram_id,
-                payload=MessagePayload(text_key="ntf-maintenance-denied-global"),
+                user=user,
+                payload=MessagePayload(i18n_key="ntf-maintenance-denied-global"),
             )
             return
 

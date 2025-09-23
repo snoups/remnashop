@@ -16,11 +16,15 @@ from src.infrastructure.database.models.dto import UserDto
 router = Router(name=__name__)
 
 
+@inject
 @router.message(Command("test"), SuperDevFilter())
-async def on_test_command(message: Message, user: UserDto) -> None:
+async def on_test_command(
+    message: Message,
+    user: UserDto,
+) -> None:
     logger.info(f"{format_log_user(user)} Test command executed")
     raise UnknownState("test_state")
-    raise UnknownIntent("test_intent")
+    # raise UnknownIntent("test_intent")
 
 
 @inject

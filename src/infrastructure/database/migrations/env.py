@@ -10,7 +10,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from src.core.config import AppConfig
-from src.infrastructure.database.models.sql import Base
+from src.infrastructure.database.models.sql import BaseSql
 
 config = context.config
 db_config = AppConfig.get().database
@@ -18,7 +18,7 @@ db_config = AppConfig.get().database
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata
+target_metadata = BaseSql.metadata
 
 
 def process_revision_directives(

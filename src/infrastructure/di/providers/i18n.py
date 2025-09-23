@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional
 
 from dishka import Provider, Scope, provide
 from dishka.integrations.aiogram import AiogramMiddlewareData
@@ -16,7 +16,7 @@ class I18nProvider(Provider):
     @provide
     def get_hub(self, config: AppConfig) -> TranslatorHub:
         storage = FileStorage(path=TRANSLATIONS_DIR / "{locale}")
-        locales_map: dict[str, Tuple[str, ...]] = {}
+        locales_map: dict[str, tuple[str, ...]] = {}
 
         for locale_code in config.locales:
             fallback_chain: list[str] = [locale_code]
@@ -25,7 +25,9 @@ class I18nProvider(Provider):
             locales_map[locale_code] = tuple(fallback_chain)
 
         if config.default_locale not in locales_map:
-            locales_map[config.default_locale] = config.default_locale
+            locales_map[config.default_locale] = tuple(
+                config.default_locale,
+            )
 
         return TranslatorHub(locales_map, root_locale=config.default_locale, storage=storage)
 
@@ -36,7 +38,7 @@ class I18nProvider(Provider):
         hub: TranslatorHub,
         middleware_data: AiogramMiddlewareData,
     ) -> TranslatorRunner:
-        user: UserDto = middleware_data.get(USER_KEY)
+        user: Optional[UserDto] = middleware_data.get(USER_KEY)
 
         if user:
             return hub.get_translator_by_locale(locale=user.language)

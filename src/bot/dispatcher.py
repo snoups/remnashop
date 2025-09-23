@@ -1,7 +1,7 @@
 from aiogram import Dispatcher
 from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram_dialog import setup_dialogs
+from aiogram_dialog import BgManagerFactory, setup_dialogs
 
 from src.bot.filters import setup_global_filters
 from src.bot.middlewares import setup_middlewares
@@ -24,11 +24,16 @@ def create_dispatcher(config: AppConfig) -> Dispatcher:
         config=config,  # for banners
     )
 
+    return dispatcher
+
+
+def create_bg_manager_factory(dispatcher: Dispatcher) -> BgManagerFactory:
+    return setup_dialogs(router=dispatcher)
+
+
+def setup_dispatcher(dispatcher: Dispatcher) -> None:
     # request -> outer middleware -> filter -> inner middleware -> handler #
-    setup_dialogs(router=dispatcher)
     setup_middlewares(router=dispatcher)
     setup_global_filters(router=dispatcher)
     setup_routers(router=dispatcher)
     setup_error_handlers(router=dispatcher)
-
-    return dispatcher
