@@ -91,7 +91,7 @@ def i18n_format_bytes_to_gb(
     return min_unit, {"value": float(size_formatted)}
 
 
-def i18n_format_seconds_to_duration(
+def i18n_format_seconds(
     value: Union[int, float, str],
 ) -> list[tuple[str, dict[str, int]]]:
     remaining = int(value)
@@ -118,7 +118,7 @@ def i18n_format_seconds_to_duration(
     return parts
 
 
-def i18n_format_days_to_duration(value: int) -> tuple[str, dict[str, int]]:
+def i18n_format_days(value: int) -> tuple[str, dict[str, int]]:
     if value == -1:  # UNLIMITED
         return UtilKey.UNLIMITED, {}
 
@@ -133,3 +133,43 @@ def i18n_format_days_to_duration(value: int) -> tuple[str, dict[str, int]]:
 
 def i18n_format_limit(value: int) -> tuple[str, dict[str, int]]:
     return UtilKey.UNIT_UNLIMITED, {"value": value}
+
+
+def i18n_format_expire_time(expiry_time: timedelta) -> list[tuple[str, dict[str, int]]]:
+    days = expiry_time.days
+    seconds = expiry_time.seconds
+    parts: list[tuple[str, dict[str, int]]] = []
+
+    # > 1 year
+    if days >= 365:
+        years, days = divmod(days, 365)
+        months, days = divmod(days, 30)
+        parts.append((TimeUnitKey.YEAR, {"value": years}))
+        if months:
+            parts.append((TimeUnitKey.MONTH, {"value": months}))
+        if days:
+            parts.append((TimeUnitKey.DAY, {"value": days}))
+        return parts
+
+    # > 1 month
+    if days >= 30:
+        months, days = divmod(days, 30)
+        hours, seconds = divmod(seconds, 3600)
+        parts.append((TimeUnitKey.MONTH, {"value": months}))
+        if days:
+            parts.append((TimeUnitKey.DAY, {"value": days}))
+        if hours:
+            parts.append((TimeUnitKey.HOUR, {"value": hours}))
+        return parts
+
+    # < 30 days
+    hours, seconds = divmod(seconds, 3600)
+    minutes, _ = divmod(seconds, 60)
+    if days:
+        parts.append((TimeUnitKey.DAY, {"value": days}))
+    if hours:
+        parts.append((TimeUnitKey.HOUR, {"value": hours}))
+    if minutes:
+        parts.append((TimeUnitKey.MINUTE, {"value": minutes}))
+
+    return parts or [(TimeUnitKey.MINUTE, {"value": 1})]

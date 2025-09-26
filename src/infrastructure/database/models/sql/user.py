@@ -34,14 +34,14 @@ class User(BaseSql, TimestampMixin):
     is_bot_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False)
     is_trial_used: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
-    active_subscription_id: Mapped[Optional[int]] = mapped_column(
+    current_subscription_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("subscriptions.id", ondelete="SET NULL"),
         nullable=True,
     )
 
-    active_subscription: Mapped[Optional["Subscription"]] = relationship(
+    current_subscription: Mapped[Optional["Subscription"]] = relationship(
         "Subscription",
-        foreign_keys=[active_subscription_id],
+        foreign_keys=[current_subscription_id],
         lazy="joined",
     )
 

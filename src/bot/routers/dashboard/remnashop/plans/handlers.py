@@ -319,6 +319,14 @@ async def on_duration_input(
     if not plan:
         return
 
+    if plan.get_duration(number):
+        logger.warning(f"{format_log_user(user)} Provided already existing duration")
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-plan-duration-already-exists"),
+        )
+        return
+
     plan.durations.append(
         PlanDurationDto(
             days=number,

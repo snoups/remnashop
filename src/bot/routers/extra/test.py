@@ -25,7 +25,7 @@ async def on_test_command(
     logger.info(f"{format_log_user(user)} Test command executed")
 
     logger.critical(user.transactions)
-    logger.critical(user.active_subscription)
+    logger.critical(user.current_subscription)
     logger.critical(user.subscriptions)
     logger.critical(user.promocode_activations)
     # raise UnknownState("test_state")

@@ -5,6 +5,7 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from remnawave import RemnawaveSDK
 
+from src.core.utils.formatters import i18n_format_expire_time, i18n_format_limit
 from src.infrastructure.database.models.dto import UserDto
 from src.services.plan import PlanService
 
@@ -23,15 +24,19 @@ async def menu_getter(
     # logger.critical(remna_user)
     # logger.critical(plan)
 
-    subscription = None  # user.current_subscription
+    subscription = user.current_subscription
 
     return {
         "id": str(user.telegram_id),
         "name": user.name,
         "status": subscription.status if subscription else None,
-        "type": subscription.plan_type if subscription else None,
-        "traffic_limit": subscription.traffic_limit if subscription else None,
-        "devices_limit": subscription.device_limit if subscription else None,
-        "expiry_time": subscription.expiry_time if subscription else None,
+        "type": subscription.plan.type if subscription else None,
+        "traffic_limit": i18n_format_limit(subscription.plan.traffic_limit)
+        if subscription
+        else None,
+        "device_limit": i18n_format_limit(subscription.plan.device_limit) if subscription else None,
+        "expiry_time": i18n_format_expire_time(subscription.expiry_time)
+        if subscription and subscription.expiry_time
+        else None,
         "is_privileged": user.is_privileged,
     }

@@ -43,6 +43,14 @@ async def on_subscription_plans(
         )
         return
 
+    if len(plans) == 1:
+        adapter = DialogDataAdapter(dialog_manager)
+        adapter.save(plans[0])
+        dialog_manager.dialog_data["only_single_plan"] = True
+        await dialog_manager.switch_to(state=Subscription.DURATION)
+        return
+
+    dialog_manager.dialog_data["only_single_plan"] = False
     await dialog_manager.switch_to(state=Subscription.PLANS)
 
 
@@ -62,16 +70,29 @@ async def on_plan_selected(
     adapter = DialogDataAdapter(dialog_manager)
     adapter.save(plan)
 
+    if len(plan.durations) == 1:
+        await on_duration_selected(callback, widget, dialog_manager, plan.durations[0].days)
+        return
+
     await dialog_manager.switch_to(state=Subscription.DURATION)
 
 
+@inject
 async def on_duration_selected(
     callback: CallbackQuery,
     widget: Select,
     dialog_manager: DialogManager,
     selected_duration: int,
+    payment_gateway_service: FromDishka[PaymentGatewayService],
 ) -> None:
     dialog_manager.dialog_data["selected_duration"] = selected_duration
+
+    gateways = await payment_gateway_service.filter_active()
+    if len(gateways) == 1:
+        dialog_manager.dialog_data["selected_payment_method"] = gateways[0].type
+        await dialog_manager.switch_to(state=Subscription.CONFIRM)
+        return
+
     await dialog_manager.switch_to(state=Subscription.PAYMENT_METHOD)
 
 

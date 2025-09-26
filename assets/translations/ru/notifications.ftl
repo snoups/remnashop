@@ -36,11 +36,11 @@ ntf-event-bot-startup =
     <b>🔅 Событие: Бот запущен!</b>
 
     <blockquote>
-    • Режим обслуживания: { $mode ->
+    • Режим обслуживания: <b>{ $mode ->
         [GLOBAL] включен (глобальный)
         [PURCHASE] включен (платежи)
         *[OFF] выключен
-    }
+    }</b>
     </blockquote>
 
 ntf-event-bot-shutdown =
@@ -55,7 +55,7 @@ ntf-event-new-user =
 
     <blockquote>
     • ID: <code>{ $id }</code>
-    • Имя: { $name } { $username -> 
+    • Имя: <b>{ $name }</b> { $username -> 
         [0] { space }
         *[has] (<a href="tg://user?id={ $id }">@{ $username }</a>)
     }
@@ -70,13 +70,13 @@ ntf-event-payment-info-amount =
 ntf-event-payment-info =
     <blockquote>
     • ID: <code>{ $payment_id }</code>
-    • Способ оплаты: { gateway-type }
+    • Способ оплаты: <b>{ gateway-type }</b>
     • Сумма: { ntf-event-payment-info-amount }
     </blockquote>
 
     <blockquote>
     • ID: <code>{ $user_id }</code>
-    • Имя: { $user_name } { $user_username -> 
+    • Имя: <b>{ $user_name }</b> { $user_username -> 
         [0] { space }
         *[has] (<a href="tg://user?id={ $user_id }">@{ $user_username }</a>)
     }
@@ -85,19 +85,19 @@ ntf-event-payment-info =
 ntf-event-payment-info-plan =
     <blockquote>
     • План: <code>{ $plan_name }</code>
-    • Тип: { plan-type }
-    • Лимит трафика: { $plan_traffic_limit } { unit-gigabyte }
-    • Лимит устройств: { $plan_device_limit }
-    • Длительность: { $plan_duration }
+    • Тип: <b>{ plan-type }</b>
+    • Лимит трафика: <b>{ $plan_traffic_limit } { unit-gigabyte }</b>
+    • Лимит устройств: <b>{ $plan_device_limit }</b>
+    • Длительность: <b>{ $plan_duration }</b>
     </blockquote>
 
 ntf-event-payment-info-previous-plan =
     <blockquote>
     • План: <code>{ $previous_plan_name }</code> -> <code>{ $plan_name }</code> 
-    • Тип: { $previous_plan_type } -> { plan-type }
-    • Лимит трафика: { $previous_plan_traffic_limit } { unit-gigabyte } -> { $plan_traffic_limit } { unit-gigabyte }
-    • Лимит устройств: { $previous_plan_device_limit } -> { $plan_device_limit }
-    • Длительность: { $previous_plan_duration } -> { $plan_duration }
+    • Тип: <b>{ $previous_plan_type }</b> -> <b>{ plan-type }</b>
+    • Лимит трафика: <b>{ $previous_plan_traffic_limit } { unit-gigabyte }</b> -> <b>{ $plan_traffic_limit } { unit-gigabyte }</b>
+    • Лимит устройств: <b>{ $previous_plan_device_limit }</b> -> <b>{ $plan_device_limit }</b>
+    • Длительность: <b>{ $previous_plan_duration }</b> -> <b>{ $plan_duration }</b>
     </blockquote>
 
 ntf-event-subscription-new =
@@ -147,10 +147,11 @@ ntf-user-switch-role-dev =
     <i>Он был разжалован и заблокирован</i>
 
 ntf-maintenance-denied-global = <i>🚧 Бот в режиме обслуживания, попробуйте позже</i>
-ntf-maintenance-denied-purchase= <i>🚧 Бот в режиме обслуживания, Вам придет уведомление когда бот снова будет доступен</i>
+ntf-maintenance-denied-purchase = <i>🚧 Бот в режиме обслуживания, Вам придет уведомление когда бот снова будет доступен</i>
 
 ntf-plan-wrong-name = <i>❌ Некорректное имя</i>
-ntf-plan-wrong-number= <i>❌ Некорректное число</i>
+ntf-plan-wrong-number = <i>❌ Некорректное число</i>
+ntf-plan-duration-already-exists = <i>❌ Такая длительность уже существует</i>
 ntf-plan-save-error = <i>❌ Ошибка сохранения плана</i>
 ntf-plan-name-already-exists = <i>❌ План с таким именем уже существует</i>
 ntf-plan-wrong-allowed-id = <i>❌ Некорректный ID пользователя</i>

@@ -17,7 +17,7 @@ from src.core.utils.formatters import (
     format_country_code,
     format_percent,
     i18n_format_bytes_to_gb,
-    i18n_format_seconds_to_duration,
+    i18n_format_seconds,
 )
 
 
@@ -42,7 +42,7 @@ async def system_getter(
             part=response.memory.active,
             whole=response.memory.total,
         ),
-        "uptime": i18n_format_seconds_to_duration(response.uptime),
+        "uptime": i18n_format_seconds(response.uptime),
     }
 
 
@@ -113,7 +113,7 @@ async def nodes_getter(
 
     for node in response.root:
         kwargs_for_i18n = {
-            "xray_uptime": i18n_format_seconds_to_duration(node.xray_uptime),
+            "xray_uptime": i18n_format_seconds(node.xray_uptime),
             "traffic_used": i18n_format_bytes_to_gb(node.traffic_used_bytes),
             "traffic_limit": i18n_format_bytes_to_gb(node.traffic_limit_bytes, round_up=True),
         }

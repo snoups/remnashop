@@ -66,7 +66,7 @@ class BaseUserDto(TrackableDto):
 
 
 class UserDto(BaseUserDto):
-    active_subscription: "Optional[BaseSubscriptionDto]" = None
+    current_subscription: "Optional[BaseSubscriptionDto]" = None
     subscriptions: "list[BaseSubscriptionDto]" = []
     promocode_activations: "list[PromocodeActivationDto]" = []
     transactions: "list[BaseTransactionDto]" = []

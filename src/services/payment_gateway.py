@@ -20,7 +20,7 @@ from src.core.enums import (
     TransactionStatus,
 )
 from src.core.storage_keys import DefaultCurrencyKey
-from src.core.utils.formatters import i18n_format_days_to_duration, i18n_format_limit
+from src.core.utils.formatters import i18n_format_days, i18n_format_limit
 from src.infrastructure.database import UnitOfWork
 from src.infrastructure.database.models.dto import (
     AnyGatewaySettingsDto,
@@ -189,7 +189,7 @@ class PaymentGatewayService(BaseService):
         # TODO: Simplify
         extra_i18n_kwargs = {}
         if transaction.purchase_type == PurchaseType.CHANGE:
-            subscription = await self.subscription_service.get_active(transaction.user.telegram_id)
+            subscription = await self.subscription_service.get_current(transaction.user.telegram_id)
             extra_i18n_kwargs = {
                 "previous_plan_name": subscription.plan.name if subscription else "N/A",
                 "previous_plan_type": {
@@ -202,7 +202,7 @@ class PaymentGatewayService(BaseService):
                 "previous_plan_device_limit": i18n_format_limit(subscription.plan.device_limit)
                 if subscription
                 else "N/A",
-                "previous_plan_duration": i18n_format_days_to_duration(subscription.plan.duration)
+                "previous_plan_duration": i18n_format_days(subscription.plan.duration)
                 if subscription
                 else "N/A",
             }
@@ -221,7 +221,7 @@ class PaymentGatewayService(BaseService):
             "plan_type": transaction.plan.type,
             "plan_traffic_limit": i18n_format_limit(transaction.plan.traffic_limit),
             "plan_device_limit": i18n_format_limit(transaction.plan.device_limit),
-            "plan_duration": i18n_format_days_to_duration(transaction.plan.duration),
+            "plan_duration": i18n_format_days(transaction.plan.duration),
         }
 
         await send_system_notification_task.kiq(
@@ -229,8 +229,9 @@ class PaymentGatewayService(BaseService):
             i18n_key=i18n_key,
             i18n_kwargs={**i18n_kwargs, **extra_i18n_kwargs},
         )
-        await redirect_to_main_menu_task.kiq(transaction.user)
         await create_subscription_task.kiq(transaction.user, transaction.plan)
+        await redirect_to_main_menu_task.kiq(transaction.user)
+        # TODO: redirect to succeeded payment window
         logger.debug("Called tasks for payment")
 
     async def handle_payment_canceled(self, payment_id: UUID) -> None:

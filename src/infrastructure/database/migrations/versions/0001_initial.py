@@ -176,7 +176,7 @@ def upgrade() -> None:
         sa.Column("is_blocked", sa.Boolean(), nullable=False),
         sa.Column("is_bot_blocked", sa.Boolean(), nullable=False),
         sa.Column("is_trial_used", sa.Boolean(), nullable=False),
-        sa.Column("active_subscription_id", sa.Integer(), nullable=True),
+        sa.Column("current_subscription_id", sa.Integer(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -224,10 +224,10 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_foreign_key(
-        "fk_users_active_subscription",
+        "fk_users_current_subscription",
         "users",
         "subscriptions",
-        ["active_subscription_id"],
+        ["current_subscription_id"],
         ["id"],
         ondelete="SET NULL",
     )

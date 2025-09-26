@@ -231,6 +231,13 @@ class UserService(BaseService):
 
         return found_users
 
+    async def set_current_subscription(self, telegram_id: int, subscription_id: int) -> None:
+        await self.uow.repository.users.update(
+            telegram_id=telegram_id,
+            current_subscription_id=subscription_id,
+        )
+        await self._clear_user_cache(telegram_id)
+
     #
 
     async def _clear_user_cache(self, telegram_id: int) -> None:

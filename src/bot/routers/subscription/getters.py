@@ -5,10 +5,11 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
 
+from src.bot.states import Subscription
 from src.core.constants import USER_KEY
 from src.core.enums import PurchaseType
 from src.core.utils.adapter import DialogDataAdapter
-from src.core.utils.formatters import i18n_format_days_to_duration
+from src.core.utils.formatters import i18n_format_days, i18n_format_limit
 from src.infrastructure.database.models.dto import PlanDto, PlanSnapshotDto, UserDto
 from src.services.payment_gateway import PaymentGatewayService
 from src.services.plan import PlanService
@@ -62,7 +63,7 @@ async def duration_getter(
     durations = []
 
     for duration in plan.durations:
-        key, kw = i18n_format_days_to_duration(duration.days)
+        key, kw = i18n_format_days(duration.days)
         durations.append(
             {
                 "days": duration.days,
@@ -75,12 +76,13 @@ async def duration_getter(
     return {
         "plan": plan.name,
         "type": plan.type,
-        "devices": plan.device_limit,
-        "traffic": plan.traffic_limit,
+        "devices": i18n_format_limit(plan.device_limit),
+        "traffic": i18n_format_limit(plan.traffic_limit),
         "period": 0,
         "durations": durations,
         "final_amount": 0,
         "currency": "",
+        "only_single_plan": dialog_manager.dialog_data["only_single_plan"],
     }
 
 
@@ -114,13 +116,13 @@ async def payment_method_getter(
             }
         )
 
-    key, kw = i18n_format_days_to_duration(duration.days)
+    key, kw = i18n_format_days(duration.days)
 
     return {
         "plan": plan.name,
         "type": plan.type,
-        "devices": plan.device_limit,
-        "traffic": plan.traffic_limit,
+        "devices": i18n_format_limit(plan.device_limit),
+        "traffic": i18n_format_limit(plan.traffic_limit),
         "period": i18n.get(key, **kw),
         "payment_methods": payment_methods,
         "final_amount": 0,
@@ -167,18 +169,19 @@ async def confirm_getter(
         user=user,
         plan=transaction_plan,
         pricing=pricing,
-        purchase_type=PurchaseType.CHANGE,
+        purchase_type=PurchaseType.NEW,  # TODO: реализовать разделение платежек
         gateway_type=selected_payment_method,
     )
     dialog_manager.dialog_data["payment_id"] = result.payment_id
 
-    key, kw = i18n_format_days_to_duration(duration.days)
+    key, kw = i18n_format_days(duration.days)
+    gateways = await payment_gateway_service.filter_active()
 
     return {
         "plan": plan.name,
         "type": plan.type,
-        "devices": plan.device_limit,
-        "traffic": plan.traffic_limit,
+        "devices": i18n_format_limit(plan.device_limit),
+        "traffic": i18n_format_limit(plan.traffic_limit),
         "period": i18n.get(key, **kw),
         "payment_method": selected_payment_method,
         "final_amount": pricing.final_amount,
@@ -186,4 +189,5 @@ async def confirm_getter(
         "original_amount": pricing.original_amount,
         "currency": payment_gateway.currency.symbol,
         "url": result.pay_url,
+        "only_single_gateway": len(gateways) == 1,
     }

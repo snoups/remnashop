@@ -1,27 +1,13 @@
-msg-plan-details =
-    <blockquote>
-    { $type ->
-    [TRAFFIC]
-    • Лимит трафика: { $traffic_limit }
-    [DEVICES]
-    • Лимит устройств: { $devices_limit }
-    [BOTH]
-    • Лимит трафика: { $traffic_limit }
-    • Лимит устройств: { $devices_limit }
-    *[UNLIMITED]
-    • Лимит трафика: { unlimited } { unit-gigabyte }
-    • Лимит устройств: { unlimited }
-    }
-    • Заканчивается через: { $expiry_time }
-    </blockquote>
-
-
 # Menu
 msg-menu-subscription =
     <b>💳 Подписка:</b>
     { $status ->
     [ACTIVE]
-    { msg-plan-details }
+    <blockquote>
+    • <b>Лимит трафика</b>: { $traffic_limit } { unit-gigabyte }
+    • <b>Лимит устройств</b>: { $device_limit }
+    • <b>Заканчивается через</b>: { $expiry_time }
+    </blockquote>
     [EXPIRED]
     <blockquote>
     • Срок действия истёк.
@@ -39,8 +25,8 @@ msg-menu-subscription =
 msg-menu-profile =
     <b>👤 Профиль:</b>
     <blockquote>
-    • ID: <code>{ $id }</code>
-    • Имя: { $name }
+    • <b>ID</b>: <code>{ $id }</code>
+    • <b>Имя</b>: { $name }
     </blockquote>
 
 
@@ -53,7 +39,7 @@ msg-promocodes-main = <b>🎟 Промокоды</b>
 msg-maintenance-main =
     <b>🚧 Режим обслуживания</b>
     
-    Статус: { $status ->
+    <b>Статус</b>: { $status ->
     [GLOBAL] 🔴 Включен (глобальный)
     [PURCHASE] 🟠 Включен (платежи)
     *[OFF] ⚪ Выключен
@@ -69,7 +55,7 @@ msg-users-search =
 msg-users-search-results =
     <b>🔍 Поиск пользователя</b>
 
-    Найдено { $count } { $count ->
+    Найдено <b>{ $count }</b> { $count ->
     [one] пользователь
     [few] пользователя
     *[more] пользователей
@@ -99,14 +85,14 @@ msg-user-subscription =
 msg-user-main = 
     <b>📝 Информация о пользователе</b>
 
-    👤 Профиль:
+    <b>👤 Профиль:</b>
     <blockquote>
-    • ID: <code>{ $id }</code>
-    • Имя: { $name } { $username -> 
+    • <b>ID</b>: <code>{ $id }</code>
+    • <b>Имя</b>: { $name } { $username -> 
         [0] { space }
         *[has] (<a href="tg://user?id={ $id }">@{ $username }</a>)
     }
-    • Роль: { role }
+    • <b>Роль</b>: { role }
     </blockquote>
 
     { msg-user-subscription }
@@ -119,7 +105,7 @@ msg-user-role =
 msg-users-blacklist =
     <b>🚫 Черный список</b>
 
-    Заблокировано: { $count_blocked } / { $count_users } ({ $percent }%)
+    Заблокировано: <b>{ $count_blocked }</b> / <b>{ $count_users }</b> ({ $percent }%)
 
 msg-users-unblock-all =
     <b>🚫 Черный список</b>
@@ -131,9 +117,9 @@ msg-users-unblock-all =
 msg-remnawave-main =
     <b>🌊 RemnaWave</b>
     
-    🖥️ Система:
+    <b>🖥️ Система:</b>
     <blockquote>
-    • ЦПУ: { $cpu_cores } { $cpu_cores ->
+    • <b>ЦПУ</b>: { $cpu_cores } { $cpu_cores ->
     [one] ядро
     [few] ядра
     *[more] ядер
@@ -142,28 +128,28 @@ msg-remnawave-main =
     [few] потока
     *[more] потоков
     }
-    • ОЗУ: { $ram_used } / { $ram_total } ({ $ram_used_percent }%)
-    • Аптайм: { $uptime }
+    • <b>ОЗУ</b>: { $ram_used } / { $ram_total } ({ $ram_used_percent }%)
+    • <b>Аптайм</b>: { $uptime }
     </blockquote>
 
 msg-remnawave-users =
     <b>👥 Пользователи</b>
 
-    📊 Статистика:
+    <b>📊 Статистика:</b>
     <blockquote>
-    • Всего: { $users_total }
-    • Активные: { $users_active }
-    • Отключённые: { $users_disabled }
-    • Ограниченные: { $users_limited }
-    • Истёкшие: { $users_expired }
+    • <b>Всего</b>: { $users_total }
+    • <b>Активные</b>: { $users_active }
+    • <b>Отключённые</b>: { $users_disabled }
+    • <b>Ограниченные</b>: { $users_limited }
+    • <b>Истёкшие</b>: { $users_expired }
     </blockquote>
 
-    🟢 Онлайн:
+    <b>🟢 Онлайн:</b>
     <blockquote>
-    • За день: { $online_last_day }
-    • За неделю: { $online_last_week }
-    • Никогда не заходили: { $online_never }
-    • Сейчас онлайн: { $online_now }
+    • <b>За день</b>: { $online_last_day }
+    • <b>За неделю</b>: { $online_last_week }
+    • <b>Никогда не заходили</b>: { $online_never }
+    • <b>Сейчас онлайн</b>: { $online_now }
     </blockquote>
 
 msg-remnawave-host-details =
@@ -172,8 +158,8 @@ msg-remnawave-host-details =
     *[OFF] выключен
     }):
     <blockquote>
-    • Адрес: <code>{ $address }:{ $port }</code>
-    • Инбаунд: <code>{ $inbound_uuid }</code>
+    • <b>Адрес</b>: <code>{ $address }:{ $port }</code>
+    • <b>Инбаунд</b>: <code>{ $inbound_uuid }</code>
     </blockquote>
 
 msg-remnawave-hosts =
@@ -187,10 +173,10 @@ msg-remnawave-node-details =
     *[OFF] отключено
     }):
     <blockquote>
-    • Адрес: <code>{ $address }:{ $port }</code>
-    • Аптайм (xray): { $xray_uptime }
-    • Пользователей онлайн: { $users_online }
-    • Трафик: { $traffic_used } / { $traffic_limit }
+    • <b>Адрес</b>: <code>{ $address }:{ $port }</code>
+    • <b>Аптайм (xray)</b>: { $xray_uptime }
+    • <b>Пользователей онлайн</b>: { $users_online }
+    • <b>Трафик</b>: { $traffic_used } / { $traffic_limit }
     </blockquote>
 
 msg-remnawave-nodes =
@@ -201,10 +187,10 @@ msg-remnawave-nodes =
 msg-remnawave-inbound-details =
     🔗 { $tag }
     <blockquote>
-    • UUID: <code>{ $uuid }</code>
-    • Протокол: { $type } ({ $network })
-    • Порт: { $port }
-    • Безопасность: { $security } 
+    • <b>UUID</b>: <code>{ $uuid }</code>
+    • <b>Протокол</b>: { $type } ({ $network })
+    • <b>Порт</b>: { $port }
+    • <b>Безопасность</b>: { $security } 
     </blockquote>
 
 msg-remnawave-inbounds =
@@ -237,32 +223,32 @@ msg-plan-config =
     <b>📦 Конфигурация плана</b>
 
     <blockquote>
-    Имя: { $name }
-    Тип: { $type -> 
+    • <b>Имя</b>: { $name }
+    • <b>Тип</b>: { $type -> 
         [TRAFFIC] Трафик
         [DEVICES] Устройства
         [BOTH] Трафик + устройства
         *[UNLIMITED] Безлимитный
         }
-    Доступ: { $availability -> 
+    • <b>Доступ</b>: { $availability -> 
         [ALL] Для всех
         [NEW] Для новых
         [EXISTING] Для существующих
         [INVITED] Для приглашенных
         *[ALLOWED] Для разрешенных
         }
-    Статус: { $is_active -> 
+    • <b>Статус</b>: { $is_active -> 
         [1] 🟢 Включен
         *[0] 🔴 Выключен
         }
     </blockquote>
     
     <blockquote>
-    Лимит трафика: { $is_unlimited_traffic -> 
+    • <b>Лимит трафика</b>: { $is_unlimited_traffic -> 
         [1] { unlimited }
         *[0] { $traffic_limit } { unit-gigabyte }
         }
-    Лимит устройств: { $is_unlimited_devices -> 
+    • <b>Лимит устройств</b>: { $is_unlimited_devices -> 
         [1] { unlimited }
         *[0] { $device_limit }
         }
@@ -329,7 +315,7 @@ msg-plan-allowed-users =
 msg-plan-squads =
     <b>🔗 Изменить список внутренних сквадов</b>
 
-    Выберите какие внутренние группы будут доступны этому плану.
+    Выберите какие внутренние группы будут доступны этому плану
 
 
 # Notifications
@@ -342,7 +328,7 @@ msg-notifications-system = <b>⚙️ Системные уведомления</
 msg-subscription-duration-details =
     { $period -> 
     [0] {space}
-    *[has] • Длительность: { $period }
+    *[has] • Длительность: <b>{ $period }</b>
     }
 
 msg-subscription-price-details =
@@ -356,30 +342,12 @@ msg-subscription-price-details =
     }
 
 msg-subscription-details =
-    { $plan }
+    <b>{ $plan }</b>
     <blockquote>
-    { $type ->
-    [TRAFFIC]
-    • Лимит трафика: { $traffic } { unit-gigabyte }
-    • Лимит устройств: { unlimited }
+    • Лимит трафика: <b>{ $traffic } { unit-gigabyte }</b>
+    • Лимит устройств: <b>{ $devices }</b>
     { msg-subscription-duration-details }
     { msg-subscription-price-details }
-    [DEVICES]
-    • Лимит трафика: { unlimited }
-    • Лимит устройств: { $devices }
-    { msg-subscription-duration-details }
-    { msg-subscription-price-details }
-    [BOTH]
-    • Лимит трафика: { $traffic } { unit-gigabyte }
-    • Лимит устройств: { $devices }
-    { msg-subscription-duration-details }
-    { msg-subscription-price-details }
-    *[UNLIMITED]
-    • Лимит трафика: { unlimited }
-    • Лимит устройств: { unlimited }
-    { msg-subscription-duration-details }
-    { msg-subscription-price-details }
-    }
     </blockquote>
 
 msg-subscription-main = <b>💳 Подписка</b>

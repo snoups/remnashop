@@ -12,6 +12,7 @@ from loguru import logger
 from magic_filter import MagicFilter
 
 from src.core.constants import CONTAINER_KEY
+from src.core.translator_kwargs import get_translated_kwargs
 
 
 def collapse_closing_tags(text: str) -> str:
@@ -69,4 +70,5 @@ class I18nFormat(Text):
         if self.mapping:
             data = await self._transform(data, dialog_manager)
 
+        data = get_translated_kwargs(i18n, data)
         return collapse_closing_tags(text=i18n.get(self.key, **data))

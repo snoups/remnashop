@@ -99,8 +99,15 @@ duration = Window(
     Row(
         SwitchTo(
             text=I18nFormat("btn-subscription-back-plans"),
-            id="back",
+            id="back_plans",
             state=Subscription.PLANS,
+            when=~F["only_single_plan"],
+        ),
+        SwitchTo(
+            text=I18nFormat("btn-back"),
+            id="back_main",
+            state=Subscription.MAIN,
+            when=F["only_single_plan"],
         ),
     ),
     Row(
@@ -171,8 +178,15 @@ confirm = Window(
     Row(
         SwitchTo(
             text=I18nFormat("btn-subscription-back-payment-method"),
-            id="back",
+            id="back_payment_method",
             state=Subscription.PAYMENT_METHOD,
+            when=~F["only_single_gateway"],
+        ),
+        SwitchTo(
+            text=I18nFormat("btn-subscription-back-duration"),
+            id="back_duration",
+            state=Subscription.DURATION,
+            when=F["only_single_gateway"],
         ),
     ),
     Row(
