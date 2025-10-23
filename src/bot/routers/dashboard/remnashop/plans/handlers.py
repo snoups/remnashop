@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -77,7 +78,7 @@ async def on_plan_remove(
     sub_manager.dialog_data[key] = now.isoformat()
     await notification_service.notify_user(
         user=user,
-        payload=MessagePayload(i18n_key="ntf-plan-click-for-delete"),
+        payload=MessagePayload(i18n_key="ntf-plan-confirm-delete"),
     )
     logger.debug(f"{log(user)} Clicked delete for plan ID '{plan_id}' (awaiting confirmation)")
 
@@ -98,7 +99,7 @@ async def on_name_input(
         logger.warning(f"{log(user)} Provided empty plan name input")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-name"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-name"),
         )
         return
 
@@ -106,7 +107,7 @@ async def on_name_input(
         logger.warning(f"{log(user)} Tried to set duplicate plan name '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-name"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-name"),
         )
         return
 
@@ -210,7 +211,7 @@ async def on_traffic_input(
         logger.warning(f"{log(user)} Invalid traffic limit input: '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-number"),
         )
         return
 
@@ -243,7 +244,7 @@ async def on_devices_input(
         logger.warning(f"{log(user)} Invalid device limit input: '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-number"),
         )
         return
 
@@ -272,10 +273,12 @@ async def on_duration_select(
     await sub_manager.switch_to(state=RemnashopPlans.PRICES)
 
 
+@inject
 async def on_duration_remove(
     callback: CallbackQuery,
     widget: Button,
     sub_manager: SubManager,
+    notification_service: FromDishka[NotificationService],
 ) -> None:
     await sub_manager.load_data()
     user: UserDto = sub_manager.middleware_data[USER_KEY]
@@ -286,6 +289,13 @@ async def on_duration_remove(
 
     if not plan:
         raise ValueError("PlanDto not found in dialog data")
+
+    if len(plan.durations) <= 1:
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-plan-duration-last"),
+        )
+        return
 
     duration_to_remove = int(sub_manager.item_id)
     new_durations = [d for d in plan.durations if d.days != duration_to_remove]
@@ -311,7 +321,7 @@ async def on_duration_input(
         logger.warning(f"{log(user)} Provided invalid duration input: '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-number"),
         )
         return
 
@@ -375,7 +385,7 @@ async def on_price_input(
         logger.warning(f"{log(user)} Provided empty price input")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-number"),
         )
         return
 
@@ -391,7 +401,7 @@ async def on_price_input(
         logger.warning(f"{log(user)} Provided invalid price input: '{message.text}'")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-number"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-number"),
         )
         return
 
@@ -433,7 +443,7 @@ async def on_allowed_user_input(
         logger.warning(f"{log(user)} Provided non-numeric user ID")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-plan-wrong-allowed-id"),
+            payload=MessagePayload(i18n_key="ntf-plan-invalid-user-id"),
         )
         return
 
@@ -513,7 +523,7 @@ async def on_squad_select(
 
 
 @inject
-async def on_confirm_plan(
+async def on_confirm_plan(  # noqa: C901
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
@@ -546,6 +556,25 @@ async def on_confirm_plan(
 
     if plan_dto.availability != PlanAvailability.ALLOWED:
         plan_dto.allowed_user_ids = []
+
+    if plan_dto.availability == PlanAvailability.TRIAL:
+        if await plan_service.get_trial_plan():
+            await notification_service.notify_user(
+                user=user,
+                payload=MessagePayload(i18n_key="ntf-plan-trial-already-exists"),
+            )
+            return
+
+        if len(plan_dto.durations) > 1:
+            await notification_service.notify_user(
+                user=user,
+                payload=MessagePayload(i18n_key="ntf-plan-trial-once-duration"),
+            )
+            return
+
+        for duration in plan_dto.durations:
+            for price in duration.prices:
+                price.price = Decimal("0")
 
     if plan_dto.id:
         logger.info(f"{log(user)} Updating existing plan with ID '{plan_dto.id}'")

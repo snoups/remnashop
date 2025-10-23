@@ -50,6 +50,27 @@ def _update_payload(dialog_manager: DialogManager, **updates: Any) -> MessagePay
 
 
 @inject
+async def on_broadcast_list(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    broadcast_service: FromDishka[BroadcastService],
+    notification_service: FromDishka[NotificationService],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    broadcasts = await broadcast_service.get_all()
+
+    if not broadcasts:
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-broadcast-list-empty"),
+        )
+        return
+
+    await dialog_manager.switch_to(state=DashboardBroadcast.LIST)
+
+
+@inject
 async def on_broadcast_select(
     callback: CallbackQuery,
     widget: Select[UUID],

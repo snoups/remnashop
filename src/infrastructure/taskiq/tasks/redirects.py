@@ -30,6 +30,25 @@ async def redirect_to_main_menu_task(
 
 @broker.task
 @inject
+async def redirect_to_successed_trial_task(
+    user: UserDto,
+    bot: FromDishka[Bot],
+    bg_manager_factory: FromDishka[BgManagerFactory],
+) -> None:
+    bg_manager = bg_manager_factory.bg(
+        bot=bot,
+        user_id=user.telegram_id,
+        chat_id=user.telegram_id,
+    )
+    await bg_manager.start(
+        state=Subscription.TRIAL,
+        mode=StartMode.RESET_STACK,
+        show_mode=ShowMode.DELETE_AND_SEND,
+    )
+
+
+@broker.task
+@inject
 async def redirect_to_successed_payment_task(
     user: UserDto,
     purchase_type: PurchaseType,
@@ -51,7 +70,7 @@ async def redirect_to_successed_payment_task(
 
 @broker.task
 @inject
-async def redirect_to_failed_payment_task(
+async def redirect_to_failed_subscription_task(
     user: UserDto,
     bot: FromDishka[Bot],
     bg_manager_factory: FromDishka[BgManagerFactory],

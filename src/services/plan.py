@@ -83,6 +83,20 @@ class PlanService(BaseService):
 
     #
 
+    async def get_trial_plan(self) -> Optional[PlanDto]:
+        db_plans: list[Plan] = await self.uow.repository.plans.filter_by_availability(
+            availability=PlanAvailability.TRIAL
+        )
+
+        if db_plans:
+            db_plan = db_plans[0]
+
+            if db_plan.is_active:
+                logger.debug(f"Available trial plan '{db_plans[0].name}'")
+                return PlanDto.from_model(db_plans[0])
+
+        return None
+
     async def get_available_plans(self, user_dto: UserDto, is_new_user: bool) -> list[PlanDto]:
         logger.debug(f"{log(user_dto)} Fetching available plans")
 

@@ -62,3 +62,48 @@ Supported locales are defined in environment variables:
 
 * **`APP_LOCALES`**: A list of supported locales. A full list of available locales can be found in `remnashop/src/core/enums.py` as `Locale`.
 * **`APP_DEFAULT_LOCALE`**: The default locale to be used if a user's language preference is not specified or not supported.
+
+
+## Key naming convention
+
+All translation keys must follow a unified structure:
+```
+{category}-{scope}-{entity}-{action-or-state}
+```
+
+## Components
+
+| Part                | Description                   | Example                                                                            |
+| ------------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
+| `{category}`        | Top-level type of text        | `btn`, `msg`, `ntf`                                                                |
+| `{scope}`           | Logical group or subsystem    | `user`, `plan`, `broadcast`, `gateway`, `subscription`, `access`, `error`, `event` |
+| `{entity}`          | Specific object or sub-entity | `content`, `payment`, `link`, `node`                                               |
+| `{action-or-state}` | Action or state, in lowercase | `created`, `deleted`, `empty`, `invalid`, `failed`, `not-found`                    |
+
+## Naming rules
+
+1. Use lowercase with hyphens (-) — no underscores or spaces.
+2. Follow the order:
+    ```
+    category → scope → entity → action/state
+    ```
+    - ✅ ntf-broadcast-content-empty
+    - ✅ btn-user-create
+    - ✅ msg-plan-deleted-success
+
+    - ❌ ntf-content-empty-broadcast
+    - ❌ btn-create-user
+    - ❌ msg-plan-success-deleted
+3. Actions — past tense verbs (created, updated, deleted, canceled, failed).
+4. States — adjectives (empty, invalid, not-found, expired, not-available).
+5. Limit to 5 segments maximum.
+
+## Examples
+
+| Purpose                               | Key                               |
+| ------------------------------------- | --------------------------------- |
+| Notification: user expired            | `ntf-user-expired`                |
+| Notification: broadcast empty content | `ntf-broadcast-content-empty`     |
+| Button: confirm deletion              | `btn-plan-confirm-delete`         |
+| Message: plan created successfully    | `msg-plan-created-success`        |
+| Notification: gateway test failed     | `ntf-gateway-test-payment-failed` |

@@ -16,7 +16,57 @@ from src.services.remnawave import RemnawaveService
 from src.services.subscription import SubscriptionService
 from src.services.user import UserService
 
-from .redirects import redirect_to_failed_payment_task, redirect_to_successed_payment_task
+from .redirects import (
+    redirect_to_failed_subscription_task,
+    redirect_to_successed_payment_task,
+    redirect_to_successed_trial_task,
+)
+
+
+@broker.task
+@inject
+async def trial_subscription_task(
+    user: UserDto,
+    plan: PlanSnapshotDto,
+    remnawave_service: FromDishka[RemnawaveService],
+    subscription_service: FromDishka[SubscriptionService],
+) -> None:
+    logger.info(f"Task 'trial_subscription' started for user {user.telegram_id}")
+
+    try:
+        created_user = await remnawave_service.create_user(user, plan)
+        trial_subscription = SubscriptionDto(
+            user_remna_id=created_user.uuid,
+            status=created_user.status,
+            expire_at=created_user.expire_at,
+            url=created_user.short_uuid,
+            plan=plan,
+            is_trial=True,
+        )
+        await subscription_service.create(user, trial_subscription)
+        logger.debug(f"Created new trial subscription for user {user.telegram_id}")
+
+        await redirect_to_successed_trial_task.kiq(user)
+        logger.info(f"Trial subscription task completed successfully for user {user.telegram_id}")
+
+    except Exception as exception:
+        logger.exception(f"Failed to give trial for user {user.telegram_id}: {exception}")
+        traceback_str = traceback.format_exc()
+        error_type_name = type(exception).__name__
+        error_message = Text(str(exception)[:512])
+
+        await send_error_notification_task.kiq(
+            error_id=user.telegram_id,
+            traceback_str=traceback_str,
+            i18n_kwargs={
+                "user": True,
+                "id": str(user.telegram_id),
+                "name": user.name,
+                "error": f"{error_type_name}: {error_message.as_html()}",
+            },
+        )
+
+        await redirect_to_failed_subscription_task.kiq(user)
 
 
 @broker.task
@@ -109,7 +159,7 @@ async def purchase_subscription_task(
             },
         )
 
-        await redirect_to_failed_payment_task.kiq(user)
+        await redirect_to_failed_subscription_task.kiq(user)
 
 
 @broker.task

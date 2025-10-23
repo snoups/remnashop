@@ -118,7 +118,6 @@ async def nodes_getter(
         }
 
         translated_data = get_translated_kwargs(i18n, kwargs_for_i18n)
-        xray_uptime_str = " ".join(translated_data["xray_uptime"])
 
         nodes_text.append(
             i18n.get(
@@ -128,14 +127,14 @@ async def nodes_getter(
                 status="ON" if node.is_connected else "OFF",
                 address=node.address,
                 port=str(node.port),
-                xray_uptime=xray_uptime_str,
+                xray_uptime=translated_data["xray_uptime"],
                 users_online=str(node.users_online),
                 traffic_used=translated_data["traffic_used"],
                 traffic_limit=translated_data["traffic_limit"],
             )
         )
 
-    return {"nodes_text": "\n".join(nodes_text)}
+    return {"nodes": "\n".join(nodes_text)}
 
 
 @inject

@@ -72,7 +72,7 @@ async def on_rules_input(
         logger.warning(f"{log(user)} Provided invalid rules link format: {input_text}")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-access-wrong-link"),
+            payload=MessagePayload(i18n_key="ntf-access-invalid-link"),
         )
         return
 
@@ -105,7 +105,7 @@ async def on_channel_input(
         logger.warning(f"{log(user)} Provided invalid channel link format: {input_text}")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-access-wrong-link"),
+            payload=MessagePayload(i18n_key="ntf-access-invalid-link"),
         )
         return
 

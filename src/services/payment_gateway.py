@@ -220,15 +220,7 @@ class PaymentGatewayService(BaseService):
 
         test_payment_id = uuid.uuid4()
         test_pricing = PriceDetailsDto()
-        test_plan = PlanSnapshotDto(
-            id=-1,
-            name="test",
-            type=PlanType.UNLIMITED,
-            traffic_limit=-1,
-            device_limit=-1,
-            duration=-1,
-            squad_ids=[],
-        )
+        test_plan = PlanSnapshotDto.test()
 
         test_payment: PaymentResult = await gateway_instance.handle_create_payment(
             amount=test_pricing.final_amount,

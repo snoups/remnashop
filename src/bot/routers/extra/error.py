@@ -21,7 +21,7 @@ async def on_unknown_state(
     logger.error(f"{log(user)} Unknown state")
     await notification_service.notify_user(
         user=user,
-        payload=MessagePayload(i18n_key="ntf-error-unknown-state"),
+        payload=MessagePayload(i18n_key="ntf-error-dialog-unknown"),
     )
 
     logger.debug(f"{log(user)} Restarting dialog")
@@ -37,7 +37,7 @@ async def on_unknown_intent(
     logger.error(f"{log(user)} Unknown intent")
     await notification_service.notify_user(
         user=user,
-        payload=MessagePayload(i18n_key="ntf-error-unknown-intent"),
+        payload=MessagePayload(i18n_key="ntf-error-dialog-unknown"),
     )
 
     logger.debug(f"{log(user)} Restarting dialog")

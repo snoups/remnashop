@@ -105,7 +105,11 @@ async def durations_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict
         raise ValueError("PlanDto not found in dialog data")
 
     durations = [duration.model_dump() for duration in plan.durations]
-    return {"durations": durations}
+
+    return {
+        "deletable": len(durations) > 1,
+        "durations": durations,
+    }
 
 
 def get_prices_for_duration(

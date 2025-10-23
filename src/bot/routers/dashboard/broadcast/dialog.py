@@ -3,7 +3,6 @@ from uuid import UUID
 from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Column, ListGroup, Row, Select, Start, SwitchTo
-from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.bot.states import Dashboard, DashboardBroadcast
@@ -13,6 +12,7 @@ from src.core.enums import BannerName, BroadcastAudience, BroadcastStatus
 from .getters import buttons_getter, list_getter, plans_getter, send_getter, view_getter
 from .handlers import (
     on_audience_select,
+    on_broadcast_list,
     on_broadcast_select,
     on_button_select,
     on_cancel,
@@ -27,10 +27,10 @@ broadcast = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-broadcast-main"),
     Row(
-        SwitchTo(
+        Button(
             I18nFormat("btn-broadcast-list"),
             id="list",
-            state=DashboardBroadcast.LIST,
+            on_click=on_broadcast_list,
         ),
     ),
     Row(
@@ -86,7 +86,11 @@ list = Window(
     I18nFormat("msg-broadcast-list"),
     Column(
         Select(
-            text=Format("{item[created_at]}"),
+            text=I18nFormat(
+                "btn-broadcast",
+                status=F["item"]["status"],
+                created_at=F["item"]["created_at"],
+            ),
             id="broadcast",
             item_id_getter=lambda item: item["task_id"],
             items="broadcasts",

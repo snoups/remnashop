@@ -14,15 +14,14 @@ from src.core.enums import (
     SubscriptionStatus,
 )
 from src.infrastructure.database import UnitOfWork
-from src.infrastructure.database.models.dto import BroadcastDto, UserDto
-from src.infrastructure.database.models.dto.broadcast import BroadcastMessageDto
-from src.infrastructure.database.models.sql import Broadcast, Subscription, User
-from src.infrastructure.database.models.sql.broadcast import BroadcastMessage
+from src.infrastructure.database.models.dto import BroadcastDto, BroadcastMessageDto, UserDto
+from src.infrastructure.database.models.sql import Broadcast, BroadcastMessage, Subscription, User
 from src.infrastructure.redis import RedisRepository
 
 from .base import BaseService
 
 
+# TODO: Implement removal from DB
 class BroadcastService(BaseService):
     uow: UnitOfWork
 

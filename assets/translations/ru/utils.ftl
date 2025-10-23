@@ -1,43 +1,36 @@
 # Test
-btn = Кнопка
-msg = Сообщение
+btn-test = Кнопка
+msg-test = Сообщение
 unlimited = ∞
 development = В разработке
 test-payment = Тестовый платеж
 
-
-# Remnashop
-ntf-remnashop = 
+# RemnaShop
+ntf-remnashop-info = 
     <b>💎 remnashop</b>
 
     Данный проект был создан и поддерживается всего одним <strike>разработчиком</strike>. Поскольку бот полностью бесплатный и с открытым исходным кодом, он существует только благодаря вашей поддержке.
 
     ⭐ <i>Поставьте звёздочку на GitHub и присоединяйтесь к нашему сообществу.</i>
-
 btn-remnashop-github = GitHub
 btn-remnashop-telegram = Telegram
 btn-remnashop-donate = Поддержать разработчика
 
-
 # Payment
 payment-invoice-description = Подписка { $name } на { $duration }
-
 
 # Commands
 cmd-start = Перезапустить бота
 cmd-help = Помощь
 
-
-# Used to create a blank line between elements
+# Layout
 space = {" "}
 separator = {"\u00A0"}
-
 
 # Roles
 role-dev = Разработчик
 role-admin = Администратор
 role-user = Пользователь
-
 role = 
     { $role ->
     [DEV] { role-dev }
@@ -45,9 +38,13 @@ role =
     *[USER] { role-user }
 }
 
-
 # Units
-unit-unlimited = { unlimited }
+# unit-unlimited = { unlimited }
+
+unit-unlimited = { $value ->
+    [-1] { unlimited }
+    *[other] { $value }
+}
 
 unit-byte = { $value } Б
 unit-kilobyte = { $value } КБ
@@ -60,37 +57,31 @@ unit-second = { $value } { $value ->
     [few] секунды
     *[other] секунд
 }
-
 unit-minute = { $value } { $value ->
     [one] минута
     [few] минуты
     *[other] минут
 }
-
 unit-hour = { $value } { $value ->
     [one] час
     [few] часа
     *[other] часов
 }
-
 unit-day = { $value } { $value ->
     [one] день
     [few] дня
     *[other] дней
 }
-
 unit-month = { $value } { $value ->
     [one] месяц
     [few] месяца
     *[other] месяцев
 }
-
 unit-year = { $value } { $value ->
     [one] год
     [few] года
     *[other] лет
 }
-
 
 # Types
 plan-type = { $plan_type -> 
@@ -100,7 +91,6 @@ plan-type = { $plan_type ->
     [UNLIMITED] Безлимитный
     *[OTHER] { $plan_type }
 }
-
 availability-type = { $availability_type -> 
     [ALL] Для всех
     [NEW] Для новых
@@ -110,7 +100,6 @@ availability-type = { $availability_type ->
     [TRIAL] Для пробника
     *[OTHER] { $availability_type }
 }
-
 gateway-type = { $gateway_type ->
     [TELEGRAM_STARS] Telegram Stars
     [YOOKASSA] ЮKassa
@@ -120,7 +109,6 @@ gateway-type = { $gateway_type ->
     [URLPAY] UrlPay
     *[OTHER] { $gateway_type }
 }
-
 access-mode = { $access_mode ->
     [ALL] 🟢 Разрешен для всех
     [INVITED] ⚪ Разрешен для приглашенных
@@ -128,7 +116,6 @@ access-mode = { $access_mode ->
     [BLOCKED] 🔴 Запрещены любые действия
     *[OTHER] { $access_mode }
 }
-
 audience-type = { $audience_type ->
     [ALL] Всем
     [PLAN] По плану
@@ -138,7 +125,6 @@ audience-type = { $audience_type ->
     [TRIAL] С пробником
     *[OTHER] { $audience_type }
 }
-
 broadcast-status = { $broadcast_status ->
     [PROCESSING] В процессе
     [COMPLETED] Завершена

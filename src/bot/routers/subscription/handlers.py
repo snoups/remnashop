@@ -67,15 +67,7 @@ async def _create_payment_and_get_data(
         logger.error(f"{log(user)} Failed to find duration or gateway for payment creation")
         return None
 
-    transaction_plan = PlanSnapshotDto(
-        id=plan.id,
-        name=plan.name,
-        type=plan.type,
-        traffic_limit=plan.traffic_limit,
-        device_limit=plan.device_limit,
-        duration=duration.days,
-        squad_ids=plan.squad_ids,
-    )
+    transaction_plan = PlanSnapshotDto.from_plan(plan, duration.days)
     price = duration.get_price(payment_gateway.currency)
     pricing = PricingService.calculate(user, price, payment_gateway.currency)
 
@@ -168,7 +160,7 @@ async def on_purchase_type_select(
                 logger.warning(f"{log(user)} Tried to renew, but no matching plan found")
                 await notification_service.notify_user(
                     user=user,
-                    payload=MessagePayload(i18n_key="ntf-subscription-renew-plan-mismatch"),
+                    payload=MessagePayload(i18n_key="ntf-subscription-renew-plan-unavailable"),
                 )
                 return
 
@@ -241,7 +233,7 @@ async def on_subscription_plans(
                 logger.warning(f"{log(user)} Tried to renew, but no matching plan found")
                 await notification_service.notify_user(
                     user=user,
-                    payload=MessagePayload(i18n_key="ntf-subscription-renew-plan-mismatch"),
+                    payload=MessagePayload(i18n_key="ntf-subscription-renew-plan-unavailable"),
                 )
                 return
 

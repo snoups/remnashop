@@ -66,7 +66,7 @@ class AccessService(BaseService):
                     logger.info(f"{log(user)} Access denied (purchase event)")
                     await send_access_denied_notification_task.kiq(
                         user=user,
-                        i18n_key="ntf-access-denied-purchase",
+                        i18n_key="ntf-access-denied-purchasing",
                     )
 
                     if await self._can_add_to_waitlist(user.telegram_id):

@@ -69,7 +69,7 @@ async def on_gateway_test(
         await notification_service.notify_user(
             user=user,
             payload=MessagePayload(
-                i18n_key="ntf-gateway-test-payment-success",
+                i18n_key="ntf-gateway-test-payment-created",
                 i18n_kwargs={"url": payment.url},
             ),
         )

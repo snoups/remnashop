@@ -120,13 +120,13 @@ async def send_subscription_expire_notification_task(
         return
 
     if ntf_type == UserNotificationType.EXPIRES_IN_3_DAYS:
-        i18n_key = "ntf-event-user-expires"
+        i18n_key = "ntf-event-user-expiring"
         i18n_kwargs_extra = {"value": 3}
     elif ntf_type == UserNotificationType.EXPIRES_IN_2_DAYS:
-        i18n_key = "ntf-event-user-expires"
+        i18n_key = "ntf-event-user-expiring"
         i18n_kwargs_extra = {"value": 2}
     elif ntf_type == UserNotificationType.EXPIRES_IN_1_DAYS:
-        i18n_key = "ntf-event-user-expires"
+        i18n_key = "ntf-event-user-expiring"
         i18n_kwargs_extra = {"value": 1}
     elif ntf_type == UserNotificationType.EXPIRED:
         i18n_key = "ntf-event-user-expired"
@@ -185,6 +185,6 @@ async def send_test_transaction_notification_task(
     await notification_service.notify_user(
         user=user,
         payload=MessagePayload(
-            i18n_key="ntf-gateway-test-payment-confirm",
+            i18n_key="ntf-gateway-test-payment-confirmed",
         ),
     )

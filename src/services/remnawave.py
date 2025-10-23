@@ -19,7 +19,7 @@ from remnawave.models.webhook import UserDto as RemnaUserDto
 from remnawave.models.webhook import UserHwidDeviceEventDto
 
 from src.core.config import AppConfig
-from src.core.constants import REMNASHOP_PREFIX
+from src.core.constants import DATETIME_FORMAT, REMNASHOP_PREFIX
 from src.core.enums import (
     RemnaNodeEvent,
     RemnaUserEvent,
@@ -286,6 +286,7 @@ class RemnawaveService(BaseService):
             i18n_key = "ntf-event-node-connection-restored"
 
         elif event == RemnaNodeEvent.TRAFFIC_NOTIFY:
+            # TODO: Temporarily shutting down the node before the traffic is reset
             logger.debug(f"Traffic threshold reached on node '{node.name}'")
             i18n_key = "ntf-event-node-traffic"
 
@@ -293,8 +294,6 @@ class RemnawaveService(BaseService):
             logger.warning(f"Unhandled node event '{event}' for node '{node.name}'")
             return
 
-        logger.critical(node)
-        logger.critical(i18n_format_bytes_to_unit(node.traffic_used_bytes))
         await send_system_notification_task.kiq(
             ntf_type=SystemNotificationType.NODE_STATUS,
             i18n_key=i18n_key,
@@ -306,6 +305,8 @@ class RemnawaveService(BaseService):
                 "traffic_used": i18n_format_bytes_to_unit(node.traffic_used_bytes),
                 "traffic_limit": i18n_format_bytes_to_unit(node.traffic_limit_bytes),
                 "last_status_message": node.last_status_message or "None",
-                "last_status_change": node.last_status_change,
+                "last_status_change": node.last_status_change.strftime(DATETIME_FORMAT)
+                if node.last_status_change
+                else "None",
             },
         )

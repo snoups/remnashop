@@ -293,7 +293,8 @@ plan_durations = Window(
             Button(
                 text=Format("❌"),
                 id="remove_duration",
-                on_click=on_duration_remove,  # type: ignore[arg-type]
+                on_click=on_duration_remove,
+                when=F["data"]["deletable"],
             ),
         ),
         id="duration_list",

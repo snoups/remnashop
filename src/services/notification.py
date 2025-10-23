@@ -132,7 +132,7 @@ class NotificationService(BaseService):
         )
 
         payload = MessagePayload(
-            i18n_key="ntf-remnashop",
+            i18n_key="ntf-remnashop-info",
             reply_markup=builder.as_markup(),
             auto_delete_after=None,
             add_close_button=True,
@@ -267,7 +267,7 @@ class NotificationService(BaseService):
 
     def _get_close_notification_button(self, locale: Locale) -> InlineKeyboardButton:
         i18n = self.translator_hub.get_translator_by_locale(locale=locale)
-        button_text = i18n.get("btn-close-notification")
+        button_text = i18n.get("btn-notification-close")
         return InlineKeyboardButton(text=button_text, callback_data=Notification.CLOSE.state)
 
     def _get_close_notification_keyboard(

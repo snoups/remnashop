@@ -1,6 +1,7 @@
 from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Row, Start
+from magic_filter import F
 
 from src.bot.routers.dashboard.users.handlers import on_user_search
 from src.bot.routers.extra.test import show_dev_popup
@@ -10,6 +11,7 @@ from src.core.constants import PURCHASE_PREFIX
 from src.core.enums import BannerName
 
 from .getters import menu_getter
+from .handlers import on_get_trial
 
 menu = Window(
     Banner(BannerName.MENU),
@@ -22,12 +24,14 @@ menu = Window(
     #         id="connect",
     #     ),
     # ),
-    # Row(
-    #     Button(
-    #         text=I18nFormat(ButtonKey.TRIAL),
-    #         id="trial",
-    #     ),
-    # ),
+    Row(
+        Button(
+            text=I18nFormat("btn-menu-trial"),
+            id="trial",
+            on_click=on_get_trial,
+            when=F["trial"],
+        ),
+    ),
     Row(
         # Button(
         #     text=I18nFormat(ButtonKey.PROMOCODE),

@@ -5,6 +5,7 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from src.bot.keyboards import goto_buttons
+from src.core.constants import DATETIME_FORMAT
 from src.infrastructure.database.models.dto import PlanDto
 from src.services.broadcast import BroadcastService
 from src.services.plan import PlanService
@@ -76,8 +77,9 @@ async def list_getter(
 
     formatted_broadcasts = [
         {
-            **broadcast.model_dump(),
-            "created_at": broadcast.created_at.strftime("%d.%m.%Y %H:%M:%S"),  # type: ignore[union-attr]
+            "task_id": broadcast.task_id,
+            "status": broadcast.status,
+            "created_at": broadcast.created_at.strftime(DATETIME_FORMAT),  # type: ignore[union-attr]
         }
         for broadcast in broadcasts
     ]
@@ -107,7 +109,7 @@ async def view_getter(
         "id": str(broadcast.task_id),
         "broadcast_status": broadcast.status,
         "audience_type": broadcast.audience,
-        "created_at": broadcast.created_at.strftime("%d.%m.%Y %H:%M:%S"),  # type: ignore[union-attr]
+        "created_at": broadcast.created_at.strftime(DATETIME_FORMAT),  # type: ignore[union-attr]
         "total_count": broadcast.total_count,
         "success_count": broadcast.success_count,
         "failed_count": broadcast.failed_count,

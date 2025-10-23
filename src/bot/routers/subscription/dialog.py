@@ -247,7 +247,30 @@ success_payment = Window(
     getter=success_payment_getter,
 )
 
-failed_payment = Window(
+success_trial = Window(
+    Banner(BannerName.SUBSCRIPTION),
+    I18nFormat("msg-subscription-trial"),
+    Row(
+        Start(
+            text=I18nFormat("btn-subscription-connect"),
+            id="connect",
+            state=Connect.MAIN,
+            mode=StartMode.RESET_STACK,
+        ),
+    ),
+    Row(
+        Start(
+            text=I18nFormat("btn-back-menu"),
+            id="back_menu",
+            state=MainMenu.MAIN,
+            mode=StartMode.RESET_STACK,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=Subscription.TRIAL,
+)
+
+failed = Window(
     Banner(BannerName.SUBSCRIPTION),
     I18nFormat("msg-subscription-failed"),
     Row(
@@ -269,5 +292,6 @@ router = Dialog(
     payment_method,
     confirm,
     success_payment,
-    failed_payment,
+    success_trial,
+    failed,
 )

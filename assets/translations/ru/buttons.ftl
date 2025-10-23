@@ -14,18 +14,21 @@ btn-channel-confirm = ✅ Подтвердить
 
 
 # Notification
-btn-close-notification = ❌ Закрыть
+btn-notification-close = ❌ Закрыть
 
 
 # Menu
 btn-menu-connect = 🚀 Подключиться
+btn-menu-trial = 🎁 ПОПРОБОВАТЬ БЕСПЛАТНО
 btn-menu-subscription = 💳 Подписка
 btn-menu-invite = 👥 Пригласить
 btn-menu-support = 🆘 Поддержка
 btn-menu-dashboard = 🛠 Панель управления
 
+
 # Connect
 btn-connect = 🚀 Подключиться
+
 
 # Dashboard
 btn-dashboard-statistics = 📊 Статистика
@@ -42,9 +45,6 @@ btn-users-search = 🔍 Поиск пользователя
 btn-users-recent-registered = 🆕 Последние зарегистрированные
 btn-users-recent-activity = 📝 Последние взаимодействующие
 btn-users-blacklist = 🚫 Чёрный список
-
-
-# Blacklist
 btn-users-unblock-all = 🔓 Разблокировать всех
 btn-users-unblock-all-confirm = ✅ Подтвердить
 
@@ -57,7 +57,7 @@ btn-user-transactions = 🧾 Транзакции
 btn-user-subscription = 💳 Подписка
 btn-user-role-choice = { role }
 
-btn-user-block =  { $is_blocked ->
+btn-user-block = { $is_blocked ->
     [1] 🔓 Разблокировать
     *[0] 🔒 Заблокировать
     }
@@ -84,6 +84,15 @@ btn-broadcast-button-select = { $selected ->
     [1] 🔘
     *[0] ⚪
     }
+
+btn-broadcast =  { $status ->
+    [PROCESSING] ⏳
+    [COMPLETED] ✅
+    [CANCELED] ⛔
+    [DELETED] ❌
+    [ERROR] ⚠️
+    *[OTHER] { $broadcast_status }
+} { $created_at }
 
 
 # Go to
@@ -156,7 +165,6 @@ btn-notifications-user-choice = { $enabled ->
     [LIMITED] Трафик исчерпан
     *[OTHER] { $type }
     }
-
 btn-notifications-system = ⚙️ Системные
 
 btn-notifications-system-choice = { $enabled -> 
@@ -216,7 +224,7 @@ btn-plan-availability-choice = { $type ->
     [TRIAL] 🎁 Для пробника
     *[OTHER] { $type }
     }
-    
+
 btn-plan-duration = ⌛ { $value ->
     [-1] { unlimited }
     *[other] { unit-day }
@@ -243,13 +251,11 @@ btn-subscription-new = 💸 Купить подписку
 btn-subscription-renew = 🔄 Продлить
 btn-subscription-change = 🔃 Изменить
 btn-subscription-promocode = 🎟 Активировать промокод
-
 btn-subscription-plan = { $name }
 btn-subscription-duration = { $period } | { $price } { $currency }
 btn-subscription-payment-method = { gateway-type } | { $price } { $currency }
 btn-subscription-pay = 💳 Оплатить
 btn-subscription-get = 🆓 Получить бесплатно
-
 btn-subscription-back-plans = ⬅️ Назад к выбору плана
 btn-subscription-back-duration = ⬅️ Изменить длительность
 btn-subscription-back-payment-method = ⬅️ Изменить способ оплаты

@@ -22,6 +22,30 @@ class PlanSnapshotDto(TrackableDto):
     def is_unlimited_duration(self) -> bool:
         return self.duration == -1
 
+    @classmethod
+    def from_plan(cls, plan: "PlanDto", duration_days: int) -> "PlanSnapshotDto":
+        return cls(
+            id=plan.id,
+            name=plan.name,
+            type=plan.type,
+            traffic_limit=plan.traffic_limit,
+            device_limit=plan.device_limit,
+            duration=duration_days,
+            squad_ids=plan.squad_ids.copy(),
+        )
+
+    @classmethod
+    def test(cls) -> "PlanSnapshotDto":
+        return cls(
+            id=-1,
+            name="test",
+            type=PlanType.UNLIMITED,
+            traffic_limit=-1,
+            device_limit=-1,
+            duration=-1,
+            squad_ids=[],
+        )
+
 
 class PlanDto(TrackableDto):
     id: Optional[int] = Field(default=None, frozen=True)
