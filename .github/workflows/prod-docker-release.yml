@@ -37,8 +37,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/remnashop:latest
-            ghcr.io/remnashop:${{ github.ref_name }}
+            ghcr.io/snoups/remnashop:latest
+            ghcr.io/snoups/remnashop:${{ github.ref_name }}
 
       - name: 📦 Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -63,12 +63,12 @@ jobs:
 
             ### Latest:
             ```
-            ghcr.io/remnashop:latest
+            ghcr.io/snoups/remnashop:latest
             ```
 
             ### Versioned:
             ```
-            ghcr.io/remnashop:${{ github.ref_name }}
+            ghcr.io/snoups/remnashop:${{ github.ref_name }}
             ```
           draft: false
           prerelease: false
