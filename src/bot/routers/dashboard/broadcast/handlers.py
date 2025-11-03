@@ -181,9 +181,7 @@ async def on_content_input(
         media_type = MediaType.DOCUMENT
         file_id = message.sticker.file_id
 
-    text = message.html_text or message.caption or ""
-
-    if not (text or file_id):
+    if not (message.html_text or file_id):
         logger.warning(f"{log(user)} Provided invalid or empty content")
         await notification_service.notify_user(
             user=user,
@@ -193,7 +191,7 @@ async def on_content_input(
 
     _update_payload(
         dialog_manager,
-        i18n_kwargs={"content": text},
+        i18n_kwargs={"content": message.html_text},
         media_type=media_type,
         media_id=file_id,
     )

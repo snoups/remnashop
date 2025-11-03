@@ -31,6 +31,7 @@ class RemnawaveProvider(Provider):
         client = AsyncClient(
             base_url=f"{config.remnawave.url.get_secret_value()}/api",
             headers=headers,
+            cookies=config.remnawave.cookies,
             verify=True,
             timeout=Timeout(connect=15.0, read=25.0, write=10.0, pool=5.0),
         )

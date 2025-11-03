@@ -1,5 +1,6 @@
 import re
 
+from httpx import Cookies
 from pydantic import SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
@@ -14,6 +15,7 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
     token: SecretStr
     caddy_token: SecretStr
     webhook_secret: SecretStr
+    cookie: SecretStr
 
     @property
     def is_external(self) -> bool:
@@ -27,6 +29,19 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
         else:
             url = f"http://{self.host.get_secret_value()}:3000"
             return SecretStr(url)
+
+    @property
+    def cookies(self) -> Cookies:
+        cookie = self.cookie.get_secret_value()
+        cookies = Cookies()
+
+        if not self.cookie:
+            return cookies
+
+        key, value = cookie.split("=", 1)
+        cookies.set(key.strip(), value.strip())
+
+        return cookies
 
     @field_validator("host")
     @classmethod
@@ -55,4 +70,19 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
         info: FieldValidationInfo,
     ) -> SecretStr:
         validate_not_change_me(field, info)
+        return field
+
+    @field_validator("cookie")
+    @classmethod
+    def validate_cookie(cls, field: SecretStr) -> SecretStr:
+        cookie = field.get_secret_value()
+
+        if not cookie:
+            return field
+
+        cookie = cookie.strip()
+
+        if "=" not in cookie or cookie.startswith("=") or cookie.endswith("="):
+            raise ValueError("REMNAWAVE_COOKIE must be in 'key=value' format")
+
         return field
