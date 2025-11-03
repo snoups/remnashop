@@ -1,5 +1,6 @@
 from aiogram import Bot
 from aiogram.types import CallbackQuery, TelegramObject
+from aiogram.types import User as AiogramUser
 from aiogram_dialog.utils import remove_intent_id
 from fluentogram import TranslatorHub
 from loguru import logger
@@ -17,12 +18,14 @@ from src.infrastructure.taskiq.tasks.notifications import (
 )
 from src.infrastructure.taskiq.tasks.redirects import redirect_to_main_menu_task
 from src.services.settings import SettingsService
+from src.services.user import UserService
 
 from .base import BaseService
 
 
 class AccessService(BaseService):
     settings_service: SettingsService
+    user_service: UserService
 
     def __init__(
         self,
@@ -33,19 +36,44 @@ class AccessService(BaseService):
         translator_hub: TranslatorHub,
         #
         settings_service: SettingsService,
+        user_service: UserService,
     ) -> None:
         super().__init__(config, bot, redis_client, redis_repository, translator_hub)
         self.settings_service = settings_service
+        self.user_service = user_service
 
-    async def is_access_allowed(self, user: UserDto, event: TelegramObject) -> bool:
+    async def is_access_allowed(self, aiogram_user: AiogramUser, event: TelegramObject) -> bool:  # noqa: C901
+        user = await self.user_service.get(aiogram_user.id)
+        mode = await self.settings_service.get_access_mode()
+
+        if not user:
+            if mode in (AccessMode.REG_BLOCKED, AccessMode.RESTRICTED):
+                logger.info(
+                    f"{self.tag} Access denied for new user '{aiogram_user.id}' (mode: {mode})"
+                )
+                i18n_key = (
+                    "ntf-access-denied"
+                    if mode == AccessMode.RESTRICTED
+                    else "ntf-access-denied-registration"
+                )
+                temp_user = UserDto(
+                    telegram_id=aiogram_user.id,
+                    name=aiogram_user.full_name,
+                    language=aiogram_user.language_code,
+                )
+                await send_access_denied_notification_task.kiq(
+                    user=temp_user,
+                    i18n_key=i18n_key,
+                )
+                return False
+            return True
+
         if user.is_blocked:
             logger.info(f"{self.tag} Access denied for user '{user.telegram_id} '(blocked)")
             return False
 
-        mode = await self.settings_service.get_access_mode()
-
-        if mode == AccessMode.ALL:
-            logger.info(f"{self.tag} Access allowed for user '{user.telegram_id}' (mode: ALL)")
+        if mode == AccessMode.PUBLIC:
+            logger.info(f"{self.tag} Access allowed for user '{user.telegram_id}' (mode: PUBLIC)")
             return True
 
         if user.is_privileged:
@@ -53,9 +81,9 @@ class AccessService(BaseService):
             return True
 
         match mode:
-            case AccessMode.BLOCKED:
+            case AccessMode.RESTRICTED:
                 logger.info(
-                    f"{self.tag} Access denied for user '{user.telegram_id}' (mode: BLOCKED)"
+                    f"{self.tag} Access denied for user '{user.telegram_id}' (mode: RESTRICTED)"
                 )
                 await send_access_denied_notification_task.kiq(
                     user=user,
@@ -63,7 +91,7 @@ class AccessService(BaseService):
                 )
                 return False
 
-            case AccessMode.PURCHASE:
+            case AccessMode.PURCHASE_BLOCKED:
                 if self._is_purchase_action(event):
                     logger.info(
                         f"{self.tag} Access denied for user '{user.telegram_id}' (purchase event)"
@@ -81,7 +109,7 @@ class AccessService(BaseService):
 
                 logger.info(
                     f"{self.tag} Access allowed for user '{user.telegram_id}' "
-                    f"(mode: PURCHASE, non-purchase event)"
+                    f"(mode: PURCHASE_BLOCKED)"
                 )
                 return True
 
@@ -118,7 +146,7 @@ class AccessService(BaseService):
         await self.settings_service.set_access_mode(mode)
         logger.info(f"{self.tag} Access mode changed to '{mode}'")
 
-        if mode in (AccessMode.ALL, AccessMode.INVITED):
+        if mode in (AccessMode.PUBLIC, AccessMode.INVITED):
             waiting_users = await self.get_all_waiting_users()
 
             if waiting_users:

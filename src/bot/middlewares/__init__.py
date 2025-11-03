@@ -18,11 +18,11 @@ __all__ = [
 def setup_middlewares(router: Router) -> None:
     outer_middlewares: list[EventTypedMiddleware] = [
         ErrorMiddleware(),
+        AccessMiddleware(),
         RulesMiddleware(),
         UserMiddleware(),
         ChannelMiddleware(),
         ThrottlingMiddleware(),
-        AccessMiddleware(),
     ]
     inner_middlewares: list[EventTypedMiddleware] = [
         GarbageMiddleware(),

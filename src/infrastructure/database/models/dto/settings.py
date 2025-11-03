@@ -43,7 +43,7 @@ class SettingsDto(TrackableDto):
     rules_link: SecretStr = SecretStr("https://telegram.org/tos/")
     channel_link: SecretStr = SecretStr("@remna_shop")
 
-    access_mode: AccessMode = AccessMode.ALL
+    access_mode: AccessMode = AccessMode.PUBLIC
     default_currency: Currency = Currency.XTR
 
     user_notifications: UserNotificationDto = UserNotificationDto()

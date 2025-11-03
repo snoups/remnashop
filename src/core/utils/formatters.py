@@ -218,21 +218,30 @@ def i18n_format_expire_time(expiry: Union[timedelta, datetime]) -> list[tuple[st
     return parts or [(TimeUnitKey.MINUTE, {"value": 1})]
 
 
-def i18n_format_collapse_tags(text: str, collapse_level: int = 2) -> str:
-    def replacer(match: Match[str]) -> str:
-        tag = match.group(1)
-        content = match.group(2).rstrip()
-        return f"<{tag}>{content}</{tag}>"
+def i18n_postprocess_text(text: str, collapse_level: int = 2) -> str:
+    def collapse_html_tags(txt: str) -> str:
+        pattern = r"<(\w+)>[\n\r]+(.*?)[\n\r]+</\1>"
 
-    text = re.sub(
-        r"<(\w+)>[\n\r]+(.*?)[\n\r]+</\1>",
-        replacer,
-        text,
-        flags=re.DOTALL,
-    )
+        def tag_replacer(match: Match[str]) -> str:
+            tag = match[1]
+            content = match[2].rstrip()
+            return f"<{tag}>{content}</{tag}>"
 
-    max_newlines = "\n" * collapse_level
-    pattern = rf"\n{{{collapse_level + 1},}}"
-    text = re.sub(pattern, max_newlines, text)
+        return re.sub(pattern, tag_replacer, txt, flags=re.DOTALL)
+
+    def normalize_newlines(txt: str) -> str:
+        max_newlines = "\n" * collapse_level
+        pattern = rf"\n{{{collapse_level + 1},}}"
+        return re.sub(pattern, max_newlines, txt)
+
+    def remove_empty_markers(txt: str) -> str:
+        txt = re.sub(r"\s*!empty!\s*", "", txt)
+        txt = re.sub(r"\n{3,}", "\n\n", txt)
+        txt = re.sub(r"[ \t]+\n", "\n", txt)
+        return re.sub(r" {2,}", " ", txt).strip()
+
+    text = collapse_html_tags(text)
+    text = normalize_newlines(text)
+    text = remove_empty_markers(text)
 
     return text

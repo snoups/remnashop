@@ -225,6 +225,17 @@ Now, open the .env file and update the variables:
 - **`REMNAWAVE_TOKEN`** : Remnawave API token, created in the panel.
 - **`REMNAWAVE_WEBHOOK_SECRET`** : Must match the value of `WEBHOOK_SECRET_HEADER` from `.env` the panel.
 
+    > [!IMPORTANT]
+    > The bot requires a properly configured webhook to function.  
+    > In the Remnawave Panel `.env` file, set:
+    > 
+    > ```
+    > WEBHOOK_ENABLED=true
+    > WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
+    > ```
+    > Replace `bot.domain.com` with your actual domain.  
+    > This step is critically important for the bot to receive events correctly.
+
 
 ## Step 3 – Start the containers
 

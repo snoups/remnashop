@@ -20,7 +20,7 @@ from src.core.enums import (
     UserRole,
 )
 from src.core.i18n.translator import get_translated_kwargs
-from src.core.utils.formatters import i18n_format_collapse_tags
+from src.core.utils.formatters import i18n_postprocess_text
 from src.core.utils.message_payload import MessagePayload
 from src.core.utils.types import AnyKeyboard
 from src.infrastructure.database.models.dto import UserDto
@@ -296,7 +296,7 @@ class NotificationService(BaseService):
 
         i18n = self.translator_hub.get_translator_by_locale(locale=locale)
         kwargs = get_translated_kwargs(i18n, i18n_kwargs)
-        return i18n_format_collapse_tags(i18n.get(i18n_key, **kwargs))
+        return i18n_postprocess_text(i18n.get(i18n_key, **kwargs))
 
     def _translate_keyboard_texts(self, keyboard: AnyKeyboard, locale: Locale) -> AnyKeyboard:  # noqa: C901
         if isinstance(keyboard, InlineKeyboardMarkup):

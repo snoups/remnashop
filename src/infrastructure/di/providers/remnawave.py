@@ -15,21 +15,24 @@ class RemnawaveProvider(Provider):
 
         # Oh, what is all this garbage, what's the point???
 
-        client = AsyncClient(
-            base_url=config.remnawave.url.get_secret_value() + "/api",
-            headers={
-                "Authorization": f"Bearer {config.remnawave.token.get_secret_value()}",
-                "X-Api-Key": config.remnawave.caddy_token.get_secret_value(),
+        extra_headers = {}
+        if not config.remnawave.is_external:
+            extra_headers = {
                 "x-forwarded-proto": "https",
                 "x-forwarded-for": "127.0.0.1",
-            },
+            }
+
+        headers = {
+            "Authorization": f"Bearer {config.remnawave.token.get_secret_value()}",
+            "X-Api-Key": config.remnawave.caddy_token.get_secret_value(),
+            **extra_headers,
+        }
+
+        client = AsyncClient(
+            base_url=f"{config.remnawave.url.get_secret_value()}/api",
+            headers=headers,
             verify=True,
-            timeout=Timeout(
-                connect=15.0,
-                read=25.0,
-                write=10.0,
-                pool=5.0,
-            ),
+            timeout=Timeout(connect=15.0, read=25.0, write=10.0, pool=5.0),
         )
 
         return RemnawaveSDK(client)

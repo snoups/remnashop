@@ -181,7 +181,7 @@ async def on_content_input(
         media_type = MediaType.DOCUMENT
         file_id = message.sticker.file_id
 
-    text = message.text or message.caption or ""
+    text = message.html_text or message.caption or ""
 
     if not (text or file_id):
         logger.warning(f"{log(user)} Provided invalid or empty content")
