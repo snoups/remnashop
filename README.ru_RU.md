@@ -225,6 +225,16 @@ sed -i "s/^DATABASE_PASSWORD=.*/DATABASE_PASSWORD=$(openssl rand -hex 24)/" .env
 - **`REMNAWAVE_TOKEN`** : API-токен Remnawave, созданный в панели.
 - **`REMNAWAVE_WEBHOOK_SECRET`** : Должен совпадать со значением `WEBHOOK_SECRET_HEADER` из `.env` панели.
 
+    > [!IMPORTANT]
+    > Для корректной работы бота необходимо правильно настроить вебхук.  
+    > В файле `.env` панели Remnawave укажите:
+    > ```
+    > WEBHOOK_ENABLED=true
+    > WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
+    > ```
+    > Замените `bot.domain.com` на ваш реальный домен.  
+    > Этот шаг критически важен для корректного получения событий ботом.
+
 
 ## Шаг 3 – Запуск контейнеров
 

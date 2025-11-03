@@ -2,11 +2,14 @@ from enum import StrEnum
 
 
 class UtilKey(StrEnum):
-    BUTTON = "btn"
-    MESSAGE = "msg"
-    UNLIMITED = "unlimited"
     SPACE = "space"
-    SEPARATOR = "separator"
+    EMPTY = "empty"
+    BUTTON = "btn-test"
+    MESSAGE = "msg-test"
+    DEVELOPMENT = "development"
+    TEST_PAYMENT = "test-payment"
+    UNLIMITED = "unlimited"
+    UNKNOWN = "unknown"
     UNIT_UNLIMITED = "unit-unlimited"
 
 

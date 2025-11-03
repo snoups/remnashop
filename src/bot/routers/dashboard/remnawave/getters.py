@@ -88,7 +88,7 @@ async def hosts_getter(
             status="OFF" if host.is_disabled else "ON",
             address=host.address,
             port=str(host.port),
-            inbound_uuid=str(host.inbound_uuid),
+            inbound_uuid=str(host.inbound_uuid) if host.inbound_uuid else False,
         )
         for host in response
     )
@@ -126,7 +126,7 @@ async def nodes_getter(
                 name=node.name,
                 status="ON" if node.is_connected else "OFF",
                 address=node.address,
-                port=str(node.port),
+                port=str(node.port) if node.port else False,
                 xray_uptime=translated_data["xray_uptime"],
                 users_online=str(node.users_online),
                 traffic_used=translated_data["traffic_used"],
@@ -156,8 +156,8 @@ async def inbounds_getter(
             tag=inbound.tag,
             type=inbound.type,
             port=str(int(inbound.port)),
-            network=inbound.network,
-            security=inbound.security,
+            network=inbound.network or False,
+            security=inbound.security or False,
         )
         for inbound in response.inbounds  # type: ignore[attr-defined]
     )

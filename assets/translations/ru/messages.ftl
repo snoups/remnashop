@@ -76,7 +76,7 @@ msg-statistics-transactions =
     • <b>Завершенных транзакций</b>: { $completed_transactions }
     • <b>Бесплатных транзакций</b>: { $free_transactions }
     { $popular_gateway ->
-    [0] { space }
+    [0] { empty }
     *[HAS] • <b>Популярная платежная система</b>: { $popular_gateway }
     }
     </blockquote>
@@ -402,7 +402,10 @@ msg-remnawave-host-details =
     }):</b>
     <blockquote>
     • <b>Адрес</b>: <code>{ $address }:{ $port }</code>
-    • <b>Инбаунд</b>: <code>{ $inbound_uuid }</code>
+    { $inbound_uuid ->
+    [0] { empty }
+    *[HAS] • <b>Инбаунд</b>: <code>{ $inbound_uuid }</code>
+    }
     </blockquote>
 
 msg-remnawave-node-details =
@@ -411,7 +414,10 @@ msg-remnawave-node-details =
     *[OFF] отключено
     }):</b>
     <blockquote>
-    • <b>Адрес</b>: <code>{ $address }:{ $port }</code>
+    • <b>Адрес</b>: <code>{ $address }{ $port -> 
+    [0] { empty }
+    *[HAS]:{ $port }
+    }</code>
     • <b>Аптайм (xray)</b>: { $xray_uptime }
     • <b>Пользователей онлайн</b>: { $users_online }
     • <b>Трафик</b>: { $traffic_used } / { $traffic_limit }
@@ -422,8 +428,14 @@ msg-remnawave-inbound-details =
     <blockquote>
     • <b>ID</b>: <code>{ $inbound_id }</code>
     • <b>Протокол</b>: { $type } ({ $network })
-    • <b>Порт</b>: { $port }
-    • <b>Безопасность</b>: { $security } 
+    { $port ->
+    [0] { empty }
+    *[HAS] • <b>Порт</b>: { $port }
+    }
+    { $security ->
+    [0] { empty }
+    *[HAS] • <b>Безопасность</b>: { $security } 
+    }
     </blockquote>
 
 msg-remnawave-hosts =
@@ -567,12 +579,12 @@ msg-subscription-details =
     • <b>Лимит трафика</b>: { $traffic }
     • <b>Лимит устройств</b>: { $devices }
     { $period ->
-    [0] {space}
-    *[has] • <b>Длительность</b>: { $period }
+    [0] { empty }
+    *[HAS] • <b>Длительность</b>: { $period }
     }
     { $final_amount ->
-    [0] {space}
-    *[has] • <b>Стоимость</b>: { frg-payment-amount }
+    [0] { empty }
+    *[HAS] • <b>Стоимость</b>: { frg-payment-amount }
     }
     </blockquote>
 

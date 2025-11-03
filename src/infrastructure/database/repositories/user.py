@@ -20,7 +20,10 @@ class UserRepository(BaseRepository):
 
     async def get_by_partial_name(self, query: str) -> list[User]:
         search_pattern = f"%{query.lower()}%"
-        conditions = [func.lower(User.name).like(search_pattern)]
+        conditions = [
+            func.lower(User.name).like(search_pattern),
+            func.lower(User.username).like(search_pattern),
+        ]
         return await self._get_many(User, or_(*conditions))
 
     async def update(self, telegram_id: int, **data: Any) -> Optional[User]:

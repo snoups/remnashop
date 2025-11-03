@@ -1,14 +1,18 @@
 # Layout
 space = {" "}
-separator = {"\u00A0"}
+empty = { "!empty!" }
 btn-test = Кнопка
 msg-test = Сообщение
 development = Временно недоступно!
 test-payment = Тестовый платеж
 unlimited = ∞
 unknown = —
-newline = {"\u000A"}
 
+unit-unlimited = { $value ->
+    [-1] { unlimited }
+    [0] { unlimited }
+    *[other] { $value }
+}
 
 # Other
 # TODO: Implement new/renew/change
@@ -39,7 +43,7 @@ frg-user =
     • <b>ID</b>: <code>{ $user_id }</code>
     • <b>Имя</b>: { $user_name }
     { $personal_discount ->
-    [0] { space }
+    [0] { empty }
     *[HAS] • <b>Ваша скидка</b>: { $personal_discount }%
     }
     </blockquote>
@@ -48,8 +52,8 @@ frg-user-info =
     <blockquote>
     • <b>ID</b>: <code>{ $user_id }</code>
     • <b>Имя</b>: { $user_name } { $username -> 
-        [0] { space }
-        *[has] (<a href="tg://user?id={ $user_id }">@{ $username }</a>)
+        [0] { empty }
+        *[HAS] (<a href="tg://user?id={ $user_id }">@{ $username }</a>)
     }
     </blockquote>
 
@@ -58,7 +62,7 @@ frg-user-details =
     • <b>ID</b>: <code>{ $user_id }</code>
     • <b>Имя</b>: { $user_name } { $username -> 
         [0] { space }
-        *[has] (<a href="tg://user?id={ $user_id }">@{ $username }</a>)
+        *[HAS] (<a href="tg://user?id={ $user_id }">@{ $username }</a>)
     }
     • <b>Роль</b>: { role }
     • <b>Язык</b>: { language }
@@ -94,7 +98,7 @@ frg-payment-info =
     </blockquote>
 
 frg-payment-amount = { $final_amount }{ $currency } { $discount_percent -> 
-    [0] { space }
+    [0] { empty }
     *[more] { space } <strike>{ $original_amount }{ $currency }</strike> (-{ $discount_percent }%)
     }
 
@@ -156,12 +160,6 @@ unit-device = { $value ->
     [one] устройство
     [few] устройства
     *[other] устройств
-}
-
-unit-unlimited = { $value ->
-    [-1] { unlimited }
-    [0] { unlimited }
-    *[other] { $value }
 }
 
 unit-byte = { $value } Б
@@ -237,10 +235,11 @@ gateway-type = { $gateway_type ->
 }
 
 access-mode = { $access_mode ->
-    [ALL] 🟢 Разрешен для всех
+    [PUBLIC] 🟢 Разрешен для всех
     [INVITED] ⚪ Разрешен для приглашенных
-    [PURCHASE] 🟠 Запрещены покупки
-    [BLOCKED] 🔴 Запрещены любые действия
+    [PURCHASE_BLOCKED] 🟡 Запрещены покупки
+    [REG_BLOCKED] 🟠 Запрещена регистрация
+    [RESTRICTED] 🔴 Запрещен для всех
     *[OTHER] { $access_mode }
 }
 

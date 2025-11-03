@@ -226,10 +226,11 @@ class Currency(UpperStrEnum):
 
 
 class AccessMode(UpperStrEnum):
-    ALL = auto()  # Allowed for everyone
-    INVITED = auto()  # Allowed for invitees
-    PURCHASE = auto()  # Purchases are prohibited
-    BLOCKED = auto()  # Any actions are prohibited
+    PUBLIC = auto()  # Access is allowed for everyone
+    INVITED = auto()  # Invited users only
+    PURCHASE_BLOCKED = auto()  # Purchases are forbidden
+    REG_BLOCKED = auto()  # Registration is forbidden
+    RESTRICTED = auto()  # All actions are completely forbidden
 
 
 class Command(Enum):
