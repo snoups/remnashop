@@ -550,7 +550,8 @@ async def on_confirm_plan(  # noqa: C901
         plan_dto.allowed_user_ids = []
 
     if plan_dto.availability == PlanAvailability.TRIAL:
-        if await plan_service.get_trial_plan():
+        existing_trial = await plan_service.get_trial_plan()
+        if existing_trial and existing_trial.id != plan_dto.id:
             await notification_service.notify_user(
                 user=user,
                 payload=MessagePayload(i18n_key="ntf-plan-trial-already-exists"),
