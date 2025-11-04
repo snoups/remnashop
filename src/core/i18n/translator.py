@@ -35,7 +35,11 @@ def get_translated_kwargs(i18n: TranslatorRunner, kwargs: dict[str, Any]) -> dic
 
         # case [("day", {"value": 6}), ("hour", {"value": 23})]
         elif isinstance(v, list) and all(
-            isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str) for item in v
+            isinstance(item, (tuple, list))
+            and len(item) == 2
+            and isinstance(item[0], str)
+            and isinstance(item[1], dict)
+            for item in v
         ):
             parts = [
                 i18n.get(item_key, **get_translated_kwargs(i18n, item_kwargs))
