@@ -6,7 +6,7 @@ from dishka.integrations.aiogram_dialog import inject
 from remnawave import RemnawaveSDK
 from remnawave.models import GetAllInternalSquadsResponseDto
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import DATETIME_FORMAT
 from src.core.enums import UserRole
 from src.core.i18n.keys import ByteUnitKey

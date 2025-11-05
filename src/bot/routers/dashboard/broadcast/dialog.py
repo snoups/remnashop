@@ -176,7 +176,7 @@ view = Window(
 
 plan = Window(
     Banner(BannerName.DASHBOARD),
-    I18nFormat("msg-broadcast-select-plan"),
+    I18nFormat("msg-broadcast-plan-choice"),
     Column(
         Select(
             text=I18nFormat(
@@ -273,7 +273,7 @@ buttons = Window(
                 id="preview_button",
             ),
             Button(
-                text=I18nFormat("btn-broadcast-button-select", selected=F["item"]["selected"]),
+                text=I18nFormat("btn-broadcast-button-choice", selected=F["item"]["selected"]),
                 id="select_button",
                 on_click=on_button_select,
             ),

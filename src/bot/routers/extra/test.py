@@ -28,7 +28,7 @@ async def on_test_command(
     # logger.critical(user.transactions)
     # logger.critical(user.subscriptions)
     # logger.critical(user.promocode_activations)
-    # raise UnknownState("test_state")
+    raise UnknownState("test_state")
     # raise UnknownIntent("test_intent")
 
 

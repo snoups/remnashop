@@ -34,6 +34,11 @@ btn-statistics-current-page =
     *[OTHER] [page]
     }
 
+btn-squad-choice = { $selected -> 
+    [1] 🔘
+    *[0] ⚪
+    } { $name }
+
 
 # Menu
 btn-menu-connect = 🚀 Подключиться
@@ -62,6 +67,7 @@ btn-dashboard-promocodes = 🎟 Промокоды
 btn-dashboard-access = 🔓 Режим доступа
 btn-dashboard-remnawave = 🌊 RemnaWave
 btn-dashboard-remnashop = 🛍 RemnaShop
+btn-dashboard-importer = 📥 Импорт пользователей
 
 
 # Users
@@ -79,7 +85,6 @@ btn-user-message = 📩 Сообщение
 btn-user-role = 👮‍♂️ Изменить роль
 btn-user-transactions = 🧾 Транзакции
 btn-user-give-access = 🔑 Доступ к планам
-btn-user-role-choice = { role }
 btn-user-current-subscription = 💳 Текущая подписка
 btn-user-subscription-traffic-limit = 🌐 Лимит трафика
 btn-user-subscription-device-limit = 📱 Лимит устройств
@@ -99,7 +104,7 @@ btn-user-subscription-duration = { $operation ->
     *[SUB] -
     } { $duration }
 
-btn-user-allowed-plan-select = { $selected ->
+btn-user-allowed-plan-choice = { $selected ->
     [1] 🔘
     *[0] ⚪
     } { $plan_name }
@@ -141,7 +146,7 @@ btn-broadcast-viewing = 👀 Просмотр
 btn-broadcast-cancel = ⛔ Остановить рассылку
 btn-broadcast-delete = ❌ Удалить отправленное
 
-btn-broadcast-button-select = { $selected ->
+btn-broadcast-button-choice = { $selected ->
     [1] 🔘
     *[0] ⚪
     }
@@ -295,17 +300,23 @@ btn-plan-duration = ⌛ { $value ->
 btn-plan-duration-add = 🆕 Добавить длительность
 btn-plan-price-choice = 💸 { $price } { $currency }
 
-btn-plan-squad-choice = { $selected -> 
-    [1] 🔘
-    *[0] ⚪
-    } { $name }
-
 
 # RemnaWave
 btn-remnawave-users = 👥 Пользователи
 btn-remnawave-hosts = 🌐 Хосты
 btn-remnawave-nodes = 🖥️ Ноды
 btn-remnawave-inbounds = 🔌 Инбаунды
+
+
+# Importer
+btn-importer-from-xui = 💩 Панель 3X-UI
+btn-importer-from-xui-shop = 🛒 Бот 3xui-shop
+btn-importer-from-jolymmiles = 🌀 Бот от Jolymmiles
+btn-importer-from-machka-pasla = 🐾 Бот от machka-pasla
+btn-importer-from-fringg = 🤖 Бот от Fr1ngg
+btn-importer-squads = 🔗 Внутренние сквады
+btn-importer-import-all = ✅ Импортировать всех
+btn-importer-import-active = ❇️ Импортировать активных
 
 
 # Subscription

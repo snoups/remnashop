@@ -15,7 +15,7 @@ from loguru import logger
 
 from src.bot.keyboards import goto_buttons
 from src.bot.states import DashboardBroadcast
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import USER_KEY
 from src.core.enums import BroadcastAudience, BroadcastStatus, MediaType
 from src.core.utils.formatters import format_user_log as log
@@ -373,7 +373,7 @@ async def on_delete(
     )
 
     task = await delete_broadcast_task.kiq(broadcast)
-    result = await task.wait_result(timeout=2)
+    result = await task.wait_result()
     total_count, deleted_count, failed_count = result.return_value
 
     await notification_service.notify_user(
@@ -390,4 +390,3 @@ async def on_delete(
             add_close_button=True,
         ),
     )
-    return

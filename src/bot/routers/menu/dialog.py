@@ -17,7 +17,7 @@ from src.bot.routers.dashboard.users.handlers import on_user_search
 from src.bot.routers.extra.test import show_dev_popup
 from src.bot.states import Dashboard, MainMenu, Subscription
 from src.bot.widgets import Banner, I18nFormat, IgnoreUpdate
-from src.core.constants import PURCHASE_PREFIX
+from src.core.constants import MIDDLEWARE_DATA_KEY, PURCHASE_PREFIX, USER_KEY
 from src.core.enums import BannerName
 
 from .getters import devices_getter, menu_getter
@@ -75,7 +75,7 @@ menu = Window(
             id="dashboard",
             state=Dashboard.MAIN,
             mode=StartMode.RESET_STACK,
-            when=F["middleware_data"]["user"].is_privileged,
+            when=F[MIDDLEWARE_DATA_KEY][USER_KEY].is_privileged,
         ),
     ),
     MessageInput(func=on_user_search),

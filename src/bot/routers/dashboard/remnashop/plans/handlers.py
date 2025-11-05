@@ -9,6 +9,8 @@ from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
+from remnawave import RemnawaveSDK
+from remnawave.models import GetAllInternalSquadsResponseDto
 
 from src.bot.states import RemnashopPlans
 from src.core.constants import USER_KEY
@@ -490,6 +492,30 @@ async def on_allowed_user_remove(
 
 
 @inject
+async def on_squads(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    remnawave: FromDishka[RemnawaveSDK],
+    notification_service: FromDishka[NotificationService],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    response = await remnawave.internal_squads.get_internal_squads()
+
+    if not isinstance(response, GetAllInternalSquadsResponseDto):
+        raise ValueError("Wrong response from Remnawave")
+
+    if not response.internal_squads:
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-squads-empty"),
+        )
+        return
+
+    await dialog_manager.switch_to(state=RemnashopPlans.SQUADS)
+
+
+@inject
 async def on_squad_select(
     callback: CallbackQuery,
     widget: Select[UUID],
@@ -535,6 +561,13 @@ async def on_confirm_plan(  # noqa: C901
             payload=MessagePayload(i18n_key="ntf-plan-save-error"),
         )
         raise ValueError("PlanDto not found in dialog data")
+
+    if not plan_dto.internal_squads:
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-plan-internal-squads-empty"),
+        )
+        return
 
     if plan_dto.type == PlanType.DEVICES:
         plan_dto.traffic_limit = -1

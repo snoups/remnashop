@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, Optional, Union
 
+from src.core.enums import PlanType
+
 if TYPE_CHECKING:
     from src.infrastructure.database.models.dto import UserDto
 
@@ -41,8 +43,8 @@ def format_days_to_datetime(value: int, year: int = 2099) -> datetime:
     return dt + timedelta(days=value)
 
 
-def format_device_count(value: int) -> int:
-    if value == 0:
+def format_device_count(value: Optional[int]) -> int:
+    if value == 0 or value is None:
         return -1  # UNLIMITED for bot
 
     if value == -1:
@@ -73,6 +75,20 @@ def format_bytes_to_gb(value: int, *, binary: bool = True) -> int:
     gb_value = (bytes_value / multiplier).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
     return max(0, int(gb_value))
+
+
+def format_limits_to_plan_type(traffic: int, devices: int) -> PlanType:
+    has_traffic = traffic > 0
+    has_devices = devices > 0
+
+    if has_traffic and has_devices:
+        return PlanType.BOTH
+    elif has_traffic:
+        return PlanType.TRAFFIC
+    elif has_devices:
+        return PlanType.DEVICES
+    else:
+        return PlanType.UNLIMITED
 
 
 def format_percent(part: int, whole: int) -> str:
@@ -231,14 +247,11 @@ def i18n_postprocess_text(text: str, collapse_level: int = 2) -> str:
 
     def normalize_newlines(txt: str) -> str:
         max_newlines = "\n" * collapse_level
-        pattern = rf"\n{{{collapse_level + 1},}}"
+        pattern = rf"(?:\n[ \t]*){{{collapse_level + 1},}}"
         return re.sub(pattern, max_newlines, txt)
 
     def remove_empty_markers(txt: str) -> str:
-        txt = re.sub(r"\s*!empty!\s*", "", txt)
-        txt = re.sub(r"\n{3,}", "\n\n", txt)
-        txt = re.sub(r"[ \t]+\n", "\n", txt)
-        return re.sub(r" {2,}", " ", txt).strip()
+        return re.sub(r"\s*!empty!\s*", "", txt)
 
     text = collapse_html_tags(text)
     text = normalize_newlines(text)

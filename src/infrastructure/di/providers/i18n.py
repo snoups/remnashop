@@ -7,7 +7,7 @@ from fluentogram.storage import FileStorage
 from loguru import logger
 
 from src.core.config import AppConfig
-from src.core.constants import TRANSLATIONS_DIR, USER_KEY
+from src.core.constants import USER_KEY
 from src.infrastructure.database.models.dto import UserDto
 
 
@@ -16,7 +16,7 @@ class I18nProvider(Provider):
 
     @provide
     def get_hub(self, config: AppConfig) -> TranslatorHub:
-        storage = FileStorage(path=TRANSLATIONS_DIR / "{locale}")
+        storage = FileStorage(path=config.translations_dir / "{locale}")
         locales_map: dict[str, tuple[str, ...]] = {}
 
         for locale_code in config.locales:

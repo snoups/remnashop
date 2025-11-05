@@ -127,6 +127,14 @@ class DashboardRemnawave(StatesGroup):
     INBOUNDS = State()
 
 
+class DashboardImporter(StatesGroup):
+    MAIN = State()
+    FROM_XUI = State()
+    FROM_BOT = State()
+    SQUADS = State()
+    COMPLETED = State()
+
+
 def state_from_string(state_str: str, sep: Optional[str] = ":") -> Optional[State]:
     try:
         group_name, state_name = state_str.split(":")

@@ -14,7 +14,7 @@ from remnawave import RemnawaveSDK
 
 from src.bot.keyboards import get_contact_support_keyboard
 from src.bot.states import DashboardUser
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import USER_KEY
 from src.core.enums import SubscriptionStatus, UserRole
 from src.core.utils.formatters import format_user_log as log

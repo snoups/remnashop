@@ -255,6 +255,9 @@ class RemnawaveService(BaseService):
     #
 
     async def handle_user_event(self, event: str, remna_user: RemnaUserDto) -> None:  # noqa: C901
+        from src.infrastructure.taskiq.tasks.importer import (  # noqa: PLC0415
+            sync_imported_user_task,
+        )
         from src.infrastructure.taskiq.tasks.subscriptions import (  # noqa: PLC0415
             delete_current_subscription_task,
             sync_current_subscription_task,
@@ -269,6 +272,11 @@ class RemnawaveService(BaseService):
 
         if not remna_user.telegram_id:
             logger.debug(f"{self.tag} Skipping user '{remna_user.username}': telegram_id is empty")
+            return
+
+        if event == RemnaUserEvent.CREATED:
+            logger.debug(f"{self.tag} User '{remna_user.username}' created")
+            await sync_imported_user_task.kiq(remna_user)
             return
 
         user = await self.user_service.get(telegram_id=remna_user.telegram_id)
@@ -333,7 +341,7 @@ class RemnawaveService(BaseService):
             elif event == RemnaUserEvent.EXPIRED:
                 await send_subscription_expire_notification_task.kiq(
                     remna_user=remna_user,
-                    ntf_type=event,
+                    ntf_type=UserNotificationType.EXPIRED,
                     i18n_kwargs=i18n_kwargs,
                 )
 

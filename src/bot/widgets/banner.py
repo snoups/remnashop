@@ -10,19 +10,20 @@ from aiogram_dialog.widgets.media import StaticMedia
 from loguru import logger
 
 from src.core.config import AppConfig
-from src.core.constants import BANNERS_DIR, CONFIG_KEY, USER_KEY
+from src.core.constants import CONFIG_KEY, USER_KEY
 from src.core.enums import BannerFormat, BannerName, Locale
 from src.infrastructure.database.models.dto import UserDto
 
 
 @functools.lru_cache(maxsize=None)
 def get_banner(
+    banners_dir: Path,
     name: BannerName,
     locale: Locale,
     default_locale: Locale,
 ) -> tuple[Path, ContentType]:
     for current_locale in [locale, default_locale]:
-        path_locale = BANNERS_DIR / current_locale
+        path_locale = banners_dir / current_locale
 
         if not path_locale.exists():
             continue
@@ -40,7 +41,7 @@ def get_banner(
     logger.warning(
         f"[WIDGET] Banner '{name}' not found in locales '{locale}' or '{default_locale}'"
     )
-    path = BANNERS_DIR / f"{BannerName.DEFAULT}.{BannerFormat.JPG}"
+    path = banners_dir / f"{BannerName.DEFAULT}.{BannerFormat.JPG}"
     content_type = BannerFormat.JPG.content_type
 
     if not path.exists():
@@ -68,6 +69,7 @@ class Banner(StaticMedia):
         config: AppConfig = manager.middleware_data[CONFIG_KEY]
 
         banner_path, banner_content_type = get_banner(
+            banners_dir=config.banners_dir,
             name=self.banner_name,
             locale=user.language,
             default_locale=config.default_locale,

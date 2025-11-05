@@ -8,12 +8,14 @@ from src.bot.states import (
     Dashboard,
     DashboardAccess,
     DashboardBroadcast,
+    DashboardImporter,
     DashboardPromocodes,
     DashboardRemnashop,
     DashboardStatistics,
     DashboardUsers,
 )
 from src.bot.widgets import Banner, I18nFormat, IgnoreUpdate
+from src.core.constants import IS_SUPER_DEV_KEY, MIDDLEWARE_DATA_KEY, USER_KEY
 from src.core.enums import BannerName
 
 from .remnawave.handlers import start_remnawave_window
@@ -69,7 +71,15 @@ dashboard = Window(
             state=DashboardRemnashop.MAIN,
             mode=StartMode.RESET_STACK,
         ),
-        when=F["middleware_data"]["user"].is_dev,
+        when=F[MIDDLEWARE_DATA_KEY][USER_KEY].is_dev,
+    ),
+    Row(
+        Start(
+            text=I18nFormat("btn-dashboard-importer"),
+            id="importer",
+            state=DashboardImporter.MAIN,
+        ),
+        when=F[MIDDLEWARE_DATA_KEY][IS_SUPER_DEV_KEY],
     ),
     *back_main_menu_button,
     IgnoreUpdate(),

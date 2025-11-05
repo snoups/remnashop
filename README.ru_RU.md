@@ -207,12 +207,12 @@ mkdir /opt/remnashop && cd /opt/remnashop
 
 - Генерация ключей безопасности:
 ```
-sed -i "s/^APP_CRYPT_KEY=.*/APP_CRYPT_KEY=$(openssl rand -base64 32)/" .env && sed -i "s/^BOT_SECRET_TOKEN=.*/BOT_SECRET_TOKEN=$(openssl rand -hex 64)/" .env 
+sed -i "s|^APP_CRYPT_KEY=.*|APP_CRYPT_KEY=$(openssl rand -base64 32 | tr -d '\n')|" .env && sed -i "s|^BOT_SECRET_TOKEN=.*|BOT_SECRET_TOKEN=$(openssl rand -hex 64 | tr -d '\n')|" .env
 ```
 
 - Генерация паролей:
 ```
-sed -i "s/^DATABASE_PASSWORD=.*/DATABASE_PASSWORD=$(openssl rand -hex 24)/" .env && sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 24)/" .env
+sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env && sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env
 ```
 
 Теперь откройте файл `.env` и обновите значения переменных:
@@ -225,15 +225,15 @@ sed -i "s/^DATABASE_PASSWORD=.*/DATABASE_PASSWORD=$(openssl rand -hex 24)/" .env
 - **`REMNAWAVE_TOKEN`** : API-токен Remnawave, созданный в панели.
 - **`REMNAWAVE_WEBHOOK_SECRET`** : Должен совпадать со значением `WEBHOOK_SECRET_HEADER` из `.env` панели.
 
-    > [!IMPORTANT]
-    > Для корректной работы бота необходимо правильно настроить вебхук.  
-    > В файле `.env` панели Remnawave укажите:
-    > ```
-    > WEBHOOK_ENABLED=true
-    > WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
-    > ```
-    > Замените `bot.domain.com` на ваш реальный домен.  
-    > Этот шаг критически важен для корректного получения событий ботом.
+> [!IMPORTANT]
+> Для корректной работы бота необходимо правильно настроить вебхук.  
+> В файле `.env` панели Remnawave укажите:
+> ```
+> WEBHOOK_ENABLED=true
+> WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
+> ```
+> Замените `bot.domain.com` на ваш реальный домен.  
+> Этот шаг критически важен для корректного получения событий ботом.
 
 
 ## Шаг 3 – Запуск контейнеров

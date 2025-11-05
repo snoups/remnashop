@@ -292,7 +292,7 @@ squads = Window(
     Column(
         Select(
             text=I18nFormat(
-                "btn-plan-squad-choice",
+                "btn-squad-choice",
                 name=F["item"]["name"],
                 selected=F["item"]["selected"],
             ),
@@ -426,7 +426,7 @@ role = Window(
     I18nFormat("msg-user-role"),
     Column(
         Select(
-            text=I18nFormat("btn-user-role-choice", role=F["item"]),
+            text=I18nFormat("role", role=F["item"]),
             id="role_select",
             item_id_getter=lambda item: item.value,
             items="roles",
@@ -451,7 +451,7 @@ give_access = Window(
     I18nFormat("msg-user-give-access"),
     Select(
         text=I18nFormat(
-            "btn-user-allowed-plan-select",
+            "btn-user-allowed-plan-choice",
             plan_name=F["item"]["plan_name"],
             selected=F["item"]["selected"],
         ),

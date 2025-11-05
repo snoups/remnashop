@@ -6,7 +6,7 @@ from dishka import AsyncContainer
 from loguru import logger
 
 from src.bot.keyboards import CALLBACK_RULES_ACCEPT, get_rules_keyboard
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import CONTAINER_KEY
 from src.core.enums import MiddlewareEventType
 from src.core.utils.message_payload import MessagePayload

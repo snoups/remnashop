@@ -6,7 +6,7 @@ from fluentogram import TranslatorHub
 from loguru import logger
 from redis.asyncio import Redis
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import PURCHASE_PREFIX
 from src.core.enums import AccessMode
 from src.core.storage.keys import AccessWaitListKey

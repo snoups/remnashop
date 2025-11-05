@@ -3,6 +3,7 @@ from dishka import Provider, Scope, provide
 from src.services.access import AccessService
 from src.services.broadcast import BroadcastService
 from src.services.command import CommandService
+from src.services.importer import ImporterService
 from src.services.notification import NotificationService
 from src.services.payment_gateway import PaymentGatewayService
 from src.services.plan import PlanService
@@ -33,3 +34,4 @@ class ServicesProvider(Provider):
     settings_service = provide(source=SettingsService, scope=Scope.REQUEST)
     broadcast_service = provide(source=BroadcastService, scope=Scope.REQUEST)
     pricing_service = provide(source=PricingService)
+    importer_service = provide(source=ImporterService)

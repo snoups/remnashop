@@ -47,6 +47,7 @@ from .handlers import (
     on_plan_select,
     on_price_input,
     on_squad_select,
+    on_squads,
     on_traffic_input,
     on_type_select,
 )
@@ -153,10 +154,10 @@ plan_config = Window(
         ),
     ),
     Row(
-        SwitchTo(
+        Button(
             text=I18nFormat("btn-plan-squads"),
             id="squads",
-            state=RemnashopPlans.SQUADS,
+            on_click=on_squads,
         ),
     ),
     Row(
@@ -413,7 +414,7 @@ plan_squads = Window(
     Column(
         Select(
             text=I18nFormat(
-                "btn-plan-squad-choice",
+                "btn-squad-choice",
                 name=F["item"]["name"],
                 selected=F["item"]["selected"],
             ),

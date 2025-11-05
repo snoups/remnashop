@@ -4,7 +4,7 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.enums import UserRole
 from src.infrastructure.database.models.dto import UserDto
 from src.services.user import UserService

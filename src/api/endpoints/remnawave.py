@@ -12,7 +12,7 @@ from remnawave.models.webhook import NodeDto as RemnaNodeDto
 from remnawave.models.webhook import UserDto as RemnaUserDto
 from remnawave.models.webhook import UserHwidDeviceEventDto
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import API_V1, REMNAWAVE_WEBHOOK_PATH
 from src.infrastructure.taskiq.tasks.notifications import send_error_notification_task
 from src.services.remnawave import RemnawaveService

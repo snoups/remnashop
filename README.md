@@ -207,12 +207,12 @@ Generate secret keys by running the following commands:
 
 - Generate secure keys
 ```
-sed -i "s/^APP_CRYPT_KEY=.*/APP_CRYPT_KEY=$(openssl rand -base64 32)/" .env && sed -i "s/^BOT_SECRET_TOKEN=.*/BOT_SECRET_TOKEN=$(openssl rand -hex 64)/" .env 
+sed -i "s|^APP_CRYPT_KEY=.*|APP_CRYPT_KEY=$(openssl rand -base64 32 | tr -d '\n')|" .env && sed -i "s|^BOT_SECRET_TOKEN=.*|BOT_SECRET_TOKEN=$(openssl rand -hex 64 | tr -d '\n')|" .env
 ```
 
 - Generate passwords
 ```
-sed -i "s/^DATABASE_PASSWORD=.*/DATABASE_PASSWORD=$(openssl rand -hex 24)/" .env && sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 24)/" .env
+sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env && sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env
 ```
 
 Now, open the .env file and update the variables:
@@ -225,16 +225,16 @@ Now, open the .env file and update the variables:
 - **`REMNAWAVE_TOKEN`** : Remnawave API token, created in the panel.
 - **`REMNAWAVE_WEBHOOK_SECRET`** : Must match the value of `WEBHOOK_SECRET_HEADER` from `.env` the panel.
 
-    > [!IMPORTANT]
-    > The bot requires a properly configured webhook to function.  
-    > In the Remnawave Panel `.env` file, set:
-    > 
-    > ```
-    > WEBHOOK_ENABLED=true
-    > WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
-    > ```
-    > Replace `bot.domain.com` with your actual domain.  
-    > This step is critically important for the bot to receive events correctly.
+> [!IMPORTANT]
+> The bot requires a properly configured webhook to function.  
+> In the Remnawave Panel `.env` file, set:
+> 
+> ```
+> WEBHOOK_ENABLED=true
+> WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
+> ```
+> Replace `bot.domain.com` with your actual domain.  
+> This step is critically important for the bot to receive events correctly.
 
 
 ## Step 3 – Start the containers

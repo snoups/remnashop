@@ -3,7 +3,6 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from loguru import logger
 
-from src.bot.routers.menu.handlers import on_start_command
 from src.core.utils.formatters import format_user_log as log
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import UserDto
@@ -24,9 +23,6 @@ async def on_unknown_state(
         payload=MessagePayload(i18n_key="ntf-error-dialog-unknown"),
     )
 
-    logger.debug(f"{log(user)} Restarting dialog")
-    await on_start_command(message=event.update.message, user=user, dialog_manager=dialog_manager)
-
 
 async def on_unknown_intent(
     event: ErrorEvent,
@@ -39,6 +35,3 @@ async def on_unknown_intent(
         user=user,
         payload=MessagePayload(i18n_key="ntf-error-dialog-unknown"),
     )
-
-    logger.debug(f"{log(user)} Restarting dialog")
-    await on_start_command(message=event.update.message, user=user, dialog_manager=dialog_manager)

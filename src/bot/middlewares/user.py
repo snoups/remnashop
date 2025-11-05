@@ -6,7 +6,8 @@ from aiogram_dialog.api.internal import FakeUser
 from dishka import AsyncContainer
 from loguru import logger
 
-from src.core.constants import CONTAINER_KEY, USER_KEY
+from src.core.config import AppConfig
+from src.core.constants import CONTAINER_KEY, IS_SUPER_DEV_KEY, USER_KEY
 from src.core.enums import MiddlewareEventType, SystemNotificationType
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import UserDto
@@ -40,6 +41,7 @@ class UserMiddleware(EventTypedMiddleware):
 
         container: AsyncContainer = data[CONTAINER_KEY]
         notification_service: NotificationService = await container.get(NotificationService)
+        config: AppConfig = await container.get(AppConfig)
         user_service: UserService = await container.get(UserService)
         user: Optional[UserDto] = await user_service.get(telegram_id=aiogram_user.id)
 
@@ -63,5 +65,6 @@ class UserMiddleware(EventTypedMiddleware):
 
         await user_service.update_recent_activity(telegram_id=user.telegram_id)
         data[USER_KEY] = user
+        data[IS_SUPER_DEV_KEY] = user.telegram_id == config.bot.dev_id
 
         return await handler(event, data)

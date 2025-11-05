@@ -243,7 +243,8 @@ def get_subscriptions_statistics(
             if 0 <= (s.expire_at - now).days <= 7:
                 expiring_subscriptions += 1
 
-            if s.device_limit == -1 or s.traffic_limit == -1 or s.plan.is_unlimited_duration:
+            # TODO: separate unlim for traffic, device, duration
+            if not s.has_devices_limit or not s.has_traffic_limit or s.is_unlimited:
                 total_unlimited += 1
             if s.traffic_limit != -1:
                 total_traffic += 1
@@ -340,7 +341,7 @@ def get_plans_statistics(
             )
         )
 
-    return {"plans": "\n".join(plans_stats)}
+    return {"plans": "\n\n".join(plans_stats)}
 
 
 def get_promocodes_statistics(promocodes: list[PromocodeDto]) -> dict[str, Any]:

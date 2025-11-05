@@ -1,29 +1,14 @@
 from decimal import ROUND_DOWN, Decimal, InvalidOperation
 
-from aiogram import Bot
-from fluentogram import TranslatorHub
 from loguru import logger
-from redis.asyncio import Redis
 
-from src.core.config import AppConfig
 from src.core.enums import Currency
 from src.infrastructure.database.models.dto import PriceDetailsDto, UserDto
-from src.infrastructure.redis import RedisRepository
 
 from .base import BaseService
 
 
 class PricingService(BaseService):
-    def __init__(
-        self,
-        config: AppConfig,
-        bot: Bot,
-        redis_client: Redis,
-        redis_repository: RedisRepository,
-        translator_hub: TranslatorHub,
-    ) -> None:
-        super().__init__(config, bot, redis_client, redis_repository, translator_hub)
-
     def calculate(self, user: UserDto, price: Decimal, currency: Currency) -> PriceDetailsDto:
         logger.debug(
             f"{self.tag} Calculating price for amount '{price}' and currency "

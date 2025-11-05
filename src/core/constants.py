@@ -6,8 +6,6 @@ from typing import Final
 
 BASE_DIR: Final[Path] = Path(__file__).resolve().parents[2]
 ASSETS_DIR: Final[Path] = BASE_DIR / "assets"
-BANNERS_DIR: Final[Path] = ASSETS_DIR / "banners"
-TRANSLATIONS_DIR: Final[Path] = ASSETS_DIR / "translations"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
 
 DOMAIN_REGEX: Final[str] = r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$"
@@ -28,9 +26,12 @@ PURCHASE_PREFIX: Final[str] = "purchase_"
 GOTO_PREFIX: Final[str] = "gt_"
 ENCRYPTED_PREFIX: Final[str] = "enc_"
 
+
+MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"
 CONFIG_KEY: Final[str] = "config"
 USER_KEY: Final[str] = "user"
+IS_SUPER_DEV_KEY: Final[str] = "is_super_dev"
 
 TIME_1M: Final[int] = 60
 TIME_5M: Final[int] = TIME_1M * 5

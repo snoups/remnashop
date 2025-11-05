@@ -1,10 +1,11 @@
 import re
+from pathlib import Path
 from typing import Self
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
-from src.core.constants import API_V1, DOMAIN_REGEX, PAYMENTS_WEBHOOK_PATH
+from src.core.constants import API_V1, ASSETS_DIR, DOMAIN_REGEX, PAYMENTS_WEBHOOK_PATH
 from src.core.enums import Locale, PaymentGatewayType
 from src.core.utils.types import LocaleList, StringList
 
@@ -25,12 +26,21 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     default_locale: Locale
 
     crypt_key: SecretStr
+    assets_dir: Path = Field(default_factory=lambda: ASSETS_DIR)
     origins: StringList = StringList("")  # for miniapp
 
     bot: BotConfig = Field(default_factory=BotConfig)
     remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
+
+    @property
+    def banners_dir(self) -> Path:
+        return self.assets_dir / "banners"
+
+    @property
+    def translations_dir(self) -> Path:
+        return self.assets_dir / "translations"
 
     def get_webhook(self, gateway_type: PaymentGatewayType) -> str:
         domain = f"https://{self.domain.get_secret_value()}"

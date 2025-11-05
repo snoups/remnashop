@@ -20,6 +20,7 @@ from src.core.utils.formatters import (
     i18n_format_device_limit,
     i18n_format_traffic_limit,
 )
+from src.core.utils.time import datetime_now
 from src.infrastructure.database.models.dto import (
     PlanSnapshotDto,
     SubscriptionDto,
@@ -242,6 +243,13 @@ async def delete_current_subscription_task(
     if not subscription:
         logger.debug(
             f"[TASK] No current subscription for user '{user.telegram_id}', skipping deletion"
+        )
+        return
+
+    if subscription.expire_at - datetime_now() > timedelta(days=2):
+        logger.debug(
+            f"[TASK] Subscription for user '{user.telegram_id}' "
+            f"expires in more than 2 days, skipping"
         )
         return
 

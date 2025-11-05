@@ -6,6 +6,7 @@ from aiogram.types import User as AiogramUser
 from fluentogram import TranslatorHub
 from loguru import logger
 from redis.asyncio import Redis
+from remnawave.models.webhook import UserDto as RemnaUserDto
 
 from src.core.config import AppConfig
 from src.core.constants import (
@@ -60,6 +61,21 @@ class UserService(BaseService):
         await self.add_to_recent_registered(user.telegram_id)
         await self.clear_user_cache(user.telegram_id)
         logger.info(f"{self.tag} Created new user '{user.telegram_id}'")
+        return UserDto.from_model(db_created_user)  # type: ignore[return-value]
+
+    async def create_from_panel(self, remna_user: RemnaUserDto) -> UserDto:
+        user = UserDto(
+            telegram_id=remna_user.telegram_id,
+            name=str(remna_user.telegram_id),
+            role=UserRole.USER,
+            language=self.config.default_locale,
+        )
+        db_user = User(**user.model_dump())
+        db_created_user = await self.uow.repository.users.create(db_user)
+
+        await self.add_to_recent_registered(user.telegram_id)
+        await self.clear_user_cache(user.telegram_id)
+        logger.info(f"{self.tag} Created new user '{user.telegram_id}' from panel")
         return UserDto.from_model(db_created_user)  # type: ignore[return-value]
 
     @redis_cache(prefix="get_user", ttl=TIME_1M)
