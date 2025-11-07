@@ -225,6 +225,9 @@ sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=$(openssl rand -hex 24 | tr -d
 - **`REMNAWAVE_TOKEN`** : API-токен Remnawave, созданный в панели.
 - **`REMNAWAVE_WEBHOOK_SECRET`** : Должен совпадать со значением `WEBHOOK_SECRET_HEADER` из `.env` панели.
 
+> [!WARNING]
+> Также в зависимости от вашей конфигурации обратите внимание на данные переменные: **`BOT_MINI_APP_URL`**, **`REMNAWAVE_CADDY_TOKEN`**, **`REMNAWAVE_COOKIE`**.
+
 > [!IMPORTANT]
 > Для корректной работы бота необходимо правильно настроить вебхук.  
 > В файле `.env` панели Remnawave укажите:
