@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+from src.core.utils.time import datetime_now
+
 if TYPE_CHECKING:
     from .plan import PlanSnapshotDto
     from .user import BaseUserDto
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -47,6 +49,15 @@ class BaseTransactionDto(TrackableDto):
     @property
     def is_completed(self) -> bool:
         return self.status == TransactionStatus.COMPLETED
+
+    @property
+    def has_old(self) -> bool:
+        if not self.created_at:
+            return False
+        return (
+            self.status == TransactionStatus.PENDING
+            and datetime_now() - self.created_at > timedelta(minutes=30)
+        )
 
 
 class TransactionDto(BaseTransactionDto):

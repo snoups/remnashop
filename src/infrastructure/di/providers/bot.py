@@ -17,7 +17,7 @@ class BotProvider(Provider):
 
     @provide
     async def get_bot(self, config: AppConfig) -> AsyncIterable[Bot]:
-        logger.debug("[BOT] Initializing Bot instance")
+        logger.debug("Initializing Bot instance")
 
         async with Bot(
             token=config.bot.token.get_secret_value(),
@@ -25,5 +25,5 @@ class BotProvider(Provider):
         ) as bot:
             yield bot
 
-        logger.debug("[BOT] Closing Bot session")
+        logger.debug("Closing Bot session")
         await bot.session.close()

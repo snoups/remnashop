@@ -31,16 +31,16 @@ class PromocodeService(BaseService):
         self.uow = uow
 
     async def create(self, promocode: PromocodeDto) -> PromocodeDto:  # type: ignore
-        # logger.info(f"{self.tag} Created promocode '{promocode.code}'")
+        # logger.info(f"Created promocode '{promocode.code}'")
         pass
 
     async def get(self, promocode_id: int) -> Optional[PromocodeDto]:
         db_promocode = await self.uow.repository.promocodes.get(promocode_id)
 
         if db_promocode:
-            logger.debug(f"{self.tag} Retrieved promocode '{promocode_id}'")
+            logger.debug(f"Retrieved promocode '{promocode_id}'")
         else:
-            logger.warning(f"{self.tag} Promocode '{promocode_id}' not found")
+            logger.warning(f"Promocode '{promocode_id}' not found")
 
         return PromocodeDto.from_model(db_promocode)
 
@@ -48,15 +48,15 @@ class PromocodeService(BaseService):
         db_promocode = await self.uow.repository.promocodes.get_by_code(promocode_code)
 
         if db_promocode:
-            logger.debug(f"{self.tag} Retrieved promocode by code '{promocode_code}'")
+            logger.debug(f"Retrieved promocode by code '{promocode_code}'")
         else:
-            logger.warning(f"{self.tag} Promocode with code '{promocode_code}' not found")
+            logger.warning(f"Promocode with code '{promocode_code}' not found")
 
         return PromocodeDto.from_model(db_promocode)
 
     async def get_all(self) -> list[PromocodeDto]:
         db_promocodes = await self.uow.repository.promocodes.get_all()
-        logger.debug(f"{self.tag} Retrieved '{len(db_promocodes)}' promocodes")
+        logger.debug(f"Retrieved '{len(db_promocodes)}' promocodes")
         return PromocodeDto.from_model_list(db_promocodes)
 
     async def update(self, promocode: PromocodeDto) -> Optional[PromocodeDto]:
@@ -66,11 +66,11 @@ class PromocodeService(BaseService):
         )
 
         if db_updated_promocode:
-            logger.info(f"{self.tag} Updated promocode '{promocode.code}' successfully")
+            logger.info(f"Updated promocode '{promocode.code}' successfully")
         else:
             logger.warning(
-                f"{self.tag} Attempted to update promocode '{promocode.code}' "
-                f"(ID: {promocode.id}), but promocode was not found or update failed"
+                f"Attempted to update promocode '{promocode.code}' "
+                f"(ID: '{promocode.id}'), but promocode was not found or update failed"
             )
 
         return PromocodeDto.from_model(db_updated_promocode)
@@ -79,10 +79,10 @@ class PromocodeService(BaseService):
         result = await self.uow.repository.promocodes.delete(promocode_id)
 
         if result:
-            logger.info(f"{self.tag} Promocode '{promocode_id}' deleted successfully")
+            logger.info(f"Promocode '{promocode_id}' deleted successfully")
         else:
             logger.warning(
-                f"{self.tag} Failed to delete promocode '{promocode_id}'. "
+                f"Failed to delete promocode '{promocode_id}'. "
                 f"Promocode not found or deletion failed"
             )
 
@@ -91,14 +91,11 @@ class PromocodeService(BaseService):
     async def filter_by_type(self, promocode_type: PromocodeRewardType) -> list[PromocodeDto]:
         db_promocodes = await self.uow.repository.promocodes.filter_by_type(promocode_type)
         logger.debug(
-            f"{self.tag} Filtered promocodes by type "
-            f"'{promocode_type}', found '{len(db_promocodes)}'"
+            f"Filtered promocodes by type '{promocode_type}', found '{len(db_promocodes)}'"
         )
         return PromocodeDto.from_model_list(db_promocodes)
 
     async def filter_active(self, is_active: bool = True) -> list[PromocodeDto]:
         db_promocodes = await self.uow.repository.promocodes.filter_active(is_active)
-        logger.debug(
-            f"{self.tag} Filtered active promocodes: '{is_active}', found '{len(db_promocodes)}'"
-        )
+        logger.debug(f"Filtered active promocodes: '{is_active}', found '{len(db_promocodes)}'")
         return PromocodeDto.from_model_list(db_promocodes)

@@ -11,12 +11,12 @@ from .base import BaseService
 class PricingService(BaseService):
     def calculate(self, user: UserDto, price: Decimal, currency: Currency) -> PriceDetailsDto:
         logger.debug(
-            f"{self.tag} Calculating price for amount '{price}' and currency "
+            f"Calculating price for amount '{price}' and currency "
             f"'{currency}' for user '{user.telegram_id}'"
         )
 
         if price <= 0:
-            logger.debug(f"{self.tag} Price is zero, returning without discount")
+            logger.debug(f"Price is zero, returning without discount")
             return PriceDetailsDto(
                 original_amount=Decimal(0),
                 final_amount=Decimal(0),
@@ -25,9 +25,7 @@ class PricingService(BaseService):
         discount_percent = min(user.purchase_discount or user.personal_discount or 0, 100)
 
         if discount_percent >= 100:
-            logger.info(
-                f"{self.tag} 100% discount applied, price is free for user '{user.telegram_id}'"
-            )
+            logger.info(f"100% discount applied, price is free for user '{user.telegram_id}'")
             return PriceDetailsDto(
                 original_amount=price,
                 discount_percent=100,
@@ -41,7 +39,7 @@ class PricingService(BaseService):
             discount_percent = 0
 
         logger.info(
-            f"{self.tag} Price calculated: original='{price}', "
+            f"Price calculated: original='{price}', "
             f"discount_percent='{discount_percent}', final='{final_amount}'"
         )
 
@@ -52,7 +50,7 @@ class PricingService(BaseService):
         )
 
     def parse_price(self, input_price: str, currency: Currency) -> Decimal:
-        logger.debug(f"{self.tag} Parsing input price '{input_price}' for currency '{currency}'")
+        logger.debug(f"Parsing input price '{input_price}' for currency '{currency}'")
         try:
             price = Decimal(input_price.strip())
         except InvalidOperation:
@@ -64,13 +62,11 @@ class PricingService(BaseService):
             return Decimal(0)
 
         final_price = self.apply_currency_rules(price, currency)
-        logger.debug(f"{self.tag} Parsed price '{final_price}' after applying currency rules")
+        logger.debug(f"Parsed price '{final_price}' after applying currency rules")
         return final_price
 
     def apply_currency_rules(self, amount: Decimal, currency: Currency) -> Decimal:
-        logger.debug(
-            f"{self.tag} Applying currency rules for amount '{amount}' and currency '{currency}'"
-        )
+        logger.debug(f"Applying currency rules for amount '{amount}' and currency '{currency}'")
 
         match currency:
             case Currency.XTR | Currency.RUB:
@@ -81,8 +77,8 @@ class PricingService(BaseService):
                 min_amount = Decimal("0.01")
 
         if amount < min_amount:
-            logger.debug(f"{self.tag} Amount '{amount}' less than min '{min_amount}', adjusting")
+            logger.debug(f"Amount '{amount}' less than min '{min_amount}', adjusting")
             amount = min_amount
 
-        logger.debug(f"{self.tag} Final amount after currency rules: '{amount}'")
+        logger.debug(f"Final amount after currency rules: '{amount}'")
         return amount

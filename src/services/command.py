@@ -11,7 +11,7 @@ from .base import BaseService
 class CommandService(BaseService):
     async def setup(self) -> None:
         if not self.config.bot.setup_commands:
-            logger.debug(f"{self.tag} Bot commands setup is disabled")
+            logger.debug(f"Bot commands setup is disabled")
             return
 
         locales_to_set: list[Optional[Locale]] = list(self.config.locales) + [None]
@@ -38,17 +38,15 @@ class CommandService(BaseService):
 
             if success:
                 logger.info(
-                    f"{self.tag} Commands successfully set for language '{display_language_code}': "
+                    f"Commands successfully set for language '{display_language_code}': "
                     f"{[cmd.command for cmd in commands_for_locale]}"
                 )
             else:
-                logger.error(
-                    f"{self.tag} Failed to set commands for language '{display_language_code}'"
-                )
+                logger.error(f"Failed to set commands for language '{display_language_code}'")
 
     async def delete(self) -> None:
         if not self.config.bot.setup_commands:
-            logger.debug(f"{self.tag} Bot commands deletion is disabled")
+            logger.debug("Bot commands deletion is disabled")
             return
 
         locales_to_delete: list[Optional[str]] = list(self.config.locales) + [None]
@@ -62,6 +60,6 @@ class CommandService(BaseService):
             )
 
             if success:
-                logger.info(f"{self.tag} Commands deleted for '{display_language_code}'")
+                logger.info(f"Commands deleted for '{display_language_code}'")
             else:
-                logger.error(f"{self.tag} Failed to delete commands for '{display_language_code}'")
+                logger.error(f"Failed to delete commands for '{display_language_code}'")

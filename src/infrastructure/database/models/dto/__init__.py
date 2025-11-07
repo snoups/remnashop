@@ -3,17 +3,18 @@ from .broadcast import BroadcastDto, BroadcastMessageDto
 from .payment_gateway import (
     AnyGatewaySettingsDto,
     CryptomusGatewaySettingsDto,
+    CryptopayGatewaySettingsDto,
     HeleketGatewaySettingsDto,
     PaymentGatewayDto,
     PaymentResult,
-    UrlpayGatewaySettingsDto,
+    RobokassaGatewaySettingsDto,
     YookassaGatewaySettingsDto,
     YoomoneyGatewaySettingsDto,
 )
 from .plan import PlanDto, PlanDurationDto, PlanPriceDto, PlanSnapshotDto
 from .promocode import PromocodeActivationDto, PromocodeDto
 from .settings import SettingsDto, SystemNotificationDto, UserNotificationDto
-from .subscription import BaseSubscriptionDto, SubscriptionDto
+from .subscription import BaseSubscriptionDto, RemnaSubscriptionDto, SubscriptionDto
 from .transaction import BaseTransactionDto, PriceDetailsDto, TransactionDto
 from .user import BaseUserDto, UserDto
 
@@ -21,6 +22,7 @@ BaseSubscriptionDto.model_rebuild()
 SubscriptionDto.model_rebuild()
 BaseUserDto.model_rebuild()
 UserDto.model_rebuild()
+PromocodeDto.model_rebuild()
 PromocodeActivationDto.model_rebuild()
 BaseTransactionDto.model_rebuild()
 TransactionDto.model_rebuild()
@@ -34,10 +36,11 @@ __all__ = [
     "TrackableDto",
     "AnyGatewaySettingsDto",
     "CryptomusGatewaySettingsDto",
+    "CryptopayGatewaySettingsDto",
     "HeleketGatewaySettingsDto",
     "PaymentGatewayDto",
     "PaymentResult",
-    "UrlpayGatewaySettingsDto",
+    "RobokassaGatewaySettingsDto",
     "YookassaGatewaySettingsDto",
     "YoomoneyGatewaySettingsDto",
     "PlanDto",
@@ -50,6 +53,7 @@ __all__ = [
     "SystemNotificationDto",
     "UserNotificationDto",
     "SubscriptionDto",
+    "RemnaSubscriptionDto",
     "PriceDetailsDto",
     "TransactionDto",
     "UserDto",

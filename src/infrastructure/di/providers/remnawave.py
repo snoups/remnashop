@@ -11,7 +11,7 @@ class RemnawaveProvider(Provider):
 
     @provide
     def get_remnawave(self, config: AppConfig) -> RemnawaveSDK:
-        logger.debug("[REMNAWAVE] Initializing RemnawaveSDK")
+        logger.debug("Initializing RemnawaveSDK")
 
         # Oh, what is all this garbage, what's the point???
 

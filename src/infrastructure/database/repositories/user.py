@@ -26,6 +26,9 @@ class UserRepository(BaseRepository):
         ]
         return await self._get_many(User, or_(*conditions))
 
+    async def get_all(self) -> list[User]:
+        return await self._get_many(User)
+
     async def update(self, telegram_id: int, **data: Any) -> Optional[User]:
         return await self._update(User, User.telegram_id == telegram_id, **data)
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+import string
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -10,7 +12,7 @@ from datetime import datetime, timedelta
 
 from pydantic import Field
 
-from src.core.enums import PromocodeRewardType
+from src.core.enums import PromocodeAvailability, PromocodeRewardType
 from src.core.utils.time import datetime_now
 
 from .base import BaseDto, TrackableDto
@@ -19,15 +21,16 @@ from .base import BaseDto, TrackableDto
 class PromocodeDto(TrackableDto):
     id: Optional[int] = Field(default=None, frozen=True)
 
-    code: str
-    is_active: bool
+    code: str = Field(default_factory=lambda: PromocodeDto.generate_code())
+    is_active: bool = False
 
-    reward_type: PromocodeRewardType
-    reward: Optional[int] = None
+    availability: PromocodeAvailability = PromocodeAvailability.ALL
+    reward_type: PromocodeRewardType = PromocodeRewardType.PERSONAL_DISCOUNT
+    reward: Optional[int] = 1
     plan: Optional["PlanSnapshotDto"] = None
 
-    lifetime: Optional[int] = None
-    max_activations: Optional[int] = None
+    lifetime: int = -1
+    max_activations: int = -1
 
     activations: list["PromocodeActivationDto"] = []
 
@@ -71,6 +74,11 @@ class PromocodeDto(TrackableDto):
         current_time = datetime_now()
         delta = self.expires_at - current_time
         return delta if delta.total_seconds() > 0 else timedelta(seconds=0)
+
+    @staticmethod
+    def generate_code(length: int = 10) -> str:
+        alphabet = string.ascii_uppercase + string.digits
+        return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 class PromocodeActivationDto(BaseDto):

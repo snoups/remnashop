@@ -65,11 +65,11 @@ def format_gb_to_bytes(value: int, *, binary: bool = True) -> int:
     return max(0, int(bytes_value))
 
 
-def format_bytes_to_gb(value: int, *, binary: bool = True) -> int:
-    bytes_value = Decimal(value)
-
-    if bytes_value == 0:
+def format_bytes_to_gb(value: Optional[int], *, binary: bool = True) -> int:
+    if not value or value == 0:
         return -1  # UNLIMITED for bot
+
+    bytes_value = Decimal(value)
 
     multiplier = Decimal(1024**3) if binary else Decimal(10**9)
     gb_value = (bytes_value / multiplier).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
@@ -178,6 +178,10 @@ def i18n_format_days(value: int) -> tuple[str, dict[str, int]]:
         return TimeUnitKey.MONTH, {"value": value // 30}
 
     return TimeUnitKey.DAY, {"value": value}
+
+
+def i18n_format_limit(value: int) -> tuple[str, dict[str, int]]:
+    return UtilKey.UNIT_UNLIMITED, {"value": value}
 
 
 def i18n_format_traffic_limit(value: int) -> tuple[str, dict[str, int]]:

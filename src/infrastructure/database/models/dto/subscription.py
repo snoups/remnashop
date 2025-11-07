@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+from src.core.utils.formatters import format_bytes_to_gb, format_device_count
 
 if TYPE_CHECKING:
     from .plan import PlanDto, PlanSnapshotDto
@@ -9,11 +11,57 @@ if TYPE_CHECKING:
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import Field
+from loguru import logger
+from pydantic import BaseModel, Field
+from remnawave.enums import TrafficLimitStrategy
 
 from src.core.enums import PlanType, SubscriptionStatus
 
 from .base import TrackableDto
+
+
+class RemnaSubscriptionDto(BaseModel):
+    uuid: UUID
+    status: SubscriptionStatus
+    expire_at: datetime
+    url: str
+
+    traffic_limit: int
+    device_limit: int
+    traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
+
+    tag: Optional[str] = None
+    internal_squads: list[UUID]
+    external_squad: Optional[UUID] = None
+
+    @classmethod
+    def from_remna_user(cls, user: dict[str, Any]) -> "RemnaSubscriptionDto":
+        def get_field(*keys: str, default: Any = None) -> Any:
+            for key in keys:
+                if key in user:
+                    return user[key]
+            return default
+
+        traffic_limit_bytes = get_field("traffic_limit_bytes", "trafficLimitBytes")
+        hwid_device_limit = get_field("hwid_device_limit", "hwidDeviceLimit", default=0)
+
+        raw_squads = get_field("active_internal_squads", "activeInternalSquads", default=[])
+        internal_squads = [
+            s["uuid"] if isinstance(s, dict) and "uuid" in s else s for s in raw_squads
+        ]
+
+        return cls(
+            uuid=get_field("uuid"),
+            status=get_field("status"),
+            expire_at=get_field("expire_at", "expireAt"),
+            url=get_field("subscription_url", "subscriptionUrl", default=""),
+            traffic_limit=format_bytes_to_gb(traffic_limit_bytes),
+            device_limit=format_device_count(hwid_device_limit),
+            traffic_limit_strategy=get_field("traffic_limit_strategy", "trafficLimitStrategy"),
+            tag=get_field("tag", default=None),
+            internal_squads=internal_squads,
+            external_squad=get_field("external_squad_uuid", "externalSquadUuid", default=None),
+        )
 
 
 class BaseSubscriptionDto(TrackableDto):
@@ -85,3 +133,14 @@ class BaseSubscriptionDto(TrackableDto):
 
 class SubscriptionDto(BaseSubscriptionDto):
     user: Optional["BaseUserDto"] = None
+
+    def apply_sync(self, sync_data: RemnaSubscriptionDto) -> SubscriptionDto:
+        for field in type(sync_data).model_fields:
+            if hasattr(self, field):
+                old_value = getattr(self, field)
+                new_value = getattr(sync_data, field)
+                if old_value != new_value:
+                    setattr(self, field, new_value)
+                    logger.info(f"Field '{field}' updated: '{old_value}' → '{new_value}'")
+
+        return self

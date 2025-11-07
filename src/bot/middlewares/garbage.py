@@ -24,8 +24,6 @@ class GarbageMiddleware(EventTypedMiddleware):
 
         if message.text != f"/{Command.START.value.command}":
             await message.delete()
-            logger.debug(
-                f"{self.tag} Message '{message.content_type}' deleted from '{user.telegram_id}'"
-            )
+            logger.debug(f"Message '{message.content_type}' deleted from '{user.telegram_id}'")
 
         return await handler(event, data)

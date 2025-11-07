@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
@@ -6,6 +6,7 @@ from pydantic import Field
 
 from src.core.enums import BroadcastAudience, BroadcastMessageStatus, BroadcastStatus
 from src.core.utils.message_payload import MessagePayload
+from src.core.utils.time import datetime_now
 
 from .base import TrackableDto
 
@@ -26,6 +27,15 @@ class BroadcastDto(TrackableDto):
 
     created_at: Optional[datetime] = Field(default=None, frozen=True)
     updated_at: Optional[datetime] = Field(default=None, frozen=True)
+
+    @property
+    def has_old(self) -> bool:
+        if not self.created_at:
+            return False
+        return (
+            self.status != BroadcastStatus.PROCESSING
+            and datetime_now() - self.created_at > timedelta(days=7)
+        )
 
 
 class BroadcastMessageDto(TrackableDto):

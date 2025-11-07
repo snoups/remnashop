@@ -33,7 +33,7 @@ class UnitOfWork:
         if exc_type is None:
             await self.commit()
         else:
-            logger.warning(f"[UOW] Exception detected ({exc_val}), rolling back session")
+            logger.warning(f"Exception detected ({exc_val}), rolling back session")
             await self.rollback()
 
         await self.session.close()
@@ -46,4 +46,4 @@ class UnitOfWork:
     async def rollback(self) -> None:
         if self.session:
             await self.session.rollback()
-            logger.debug("[UOW] Session rolled back")
+            logger.debug("Session rolled back")

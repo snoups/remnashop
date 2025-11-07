@@ -26,8 +26,8 @@ class WebhookService(BaseService):
         webhook_hash: str = get_webhook_hash(webhook_data)
 
         if await self._is_set(bot_id=self.bot.id, webhook_hash=webhook_hash):
-            logger.info(f"{self.tag} Bot webhook setup skipped, already configured")
-            logger.debug(f"{self.tag} Current webhook URL: '{safe_webhook_url}'")
+            logger.info(f"Bot webhook setup skipped, already configured")
+            logger.debug(f"Current webhook URL: '{safe_webhook_url}'")
             return await self.bot.get_webhook_info()
 
         if not await self.bot(webhook):
@@ -36,21 +36,21 @@ class WebhookService(BaseService):
         await self._clear(bot_id=self.bot.id)
         await self._set(bot_id=self.bot.id, webhook_hash=webhook_hash)
 
-        logger.success(f"{self.tag} Bot webhook set successfully")
-        logger.debug(f"{self.tag} Webhook URL: '{safe_webhook_url}'")
+        logger.success(f"Bot webhook set successfully")
+        logger.debug(f"Webhook URL: '{safe_webhook_url}'")
 
         return await self.bot.get_webhook_info()
 
     async def delete(self) -> None:
         if not self.config.bot.reset_webhook:
-            logger.debug(f"{self.tag} Bot webhook reset is disabled")
+            logger.debug(f"Bot webhook reset is disabled")
             return
 
         if await self.bot.delete_webhook():
-            logger.info(f"{self.tag} Bot webhook deleted successfully")
+            logger.info(f"Bot webhook deleted successfully")
             await self._clear(bot_id=self.bot.id)
         else:
-            logger.error(f"{self.tag} Failed to delete bot webhook")
+            logger.error(f"Failed to delete bot webhook")
 
     def has_error(self, webhook_info: WebhookInfo) -> bool:
         if not webhook_info.last_error_message or webhook_info.last_error_date is None:
@@ -73,15 +73,15 @@ class WebhookService(BaseService):
     async def _set(self, bot_id: int, webhook_hash: str) -> None:
         key: WebhookLockKey = WebhookLockKey(bot_id=bot_id, webhook_hash=webhook_hash)
         await self.redis_repository.set(key, value=None)
-        logger.debug(f"{self.tag} Set webhook lock key '{key.pack()}' in Redis")
+        logger.debug(f"Set webhook lock key '{key.pack()}' in Redis")
 
     async def _clear(self, bot_id: int) -> None:
         key: WebhookLockKey = WebhookLockKey(bot_id=bot_id, webhook_hash="*")
         keys: list[bytes] = await self.redis_repository.client.keys(key.pack())
 
         if not keys:
-            logger.debug(f"{self.tag} No webhook lock keys to clear for bot '{bot_id}'")
+            logger.debug(f"No webhook lock keys to clear for bot '{bot_id}'")
             return
 
         await self.redis_repository.client.delete(*keys)
-        logger.debug(f"{self.tag} Cleared '{len(keys)}' webhook lock keys for bot '{bot_id}'")
+        logger.debug(f"Cleared '{len(keys)}' webhook lock keys for bot '{bot_id}'")

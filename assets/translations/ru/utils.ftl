@@ -15,8 +15,7 @@ unit-unlimited = { $value ->
 }
 
 # Other
-# TODO: Implement new/renew/change
-payment-invoice-description = Подписка { $name } на { $duration }
+payment-invoice-description = { purchase-type } подписки { $name } на { $duration }
 contact-support = Здравствуйте! Мне нужна помощь.
 cmd-start = Перезапустить бота
 cmd-help = Помощь
@@ -214,6 +213,16 @@ plan-type = { $plan_type ->
     *[OTHER] { $plan_type }
 }
 
+promocode-type = { $promocode_type -> 
+    [DURATION] Длительность
+    [TRAFFIC] Трафик
+    [DEVICES] Устройства
+    [SUBSCRIPTION] Подписка
+    [PERSONAL_DISCOUNT] Персональная скидка
+    [PURCHASE_DISCOUNT] Скидка на покупку
+    *[OTHER] { $promocode_type }
+}
+
 availability-type = { $availability_type -> 
     [ALL] Для всех
     [NEW] Для новых
@@ -317,19 +326,3 @@ language = { $language ->
     [vi] Вьетнамский
     *[OTHER] { $language }
 }
-
-
-
-# RemnaShop
-# Кто удалит - у того пипирка отпадет
-ntf-remnashop-info = 
-    <b>💎 Remnashop v{ $version }</b>
-
-    Данный проект был создан и поддерживается всего одним <strike>разработчиком</strike> электриком. Поскольку бот полностью БЕСПЛАТНЫЙ и с открытым исходным кодом, он существует только благодаря вашей поддержке.
-
-    ⭐ <i>Поставьте звездочку на <a href="https://github.com/snoups/remnashop">GitHub</a> и присоединяйтесь к нашему <a href="https://t.me/@remna_shop">сообществу</a>.</i>
-
-btn-remnashop-github = ⭐ GitHub
-btn-remnashop-telegram = 👪 Telegram
-btn-remnashop-donate = 💰 Поддержать разработчика
-btn-remnashop-guide = ❓ Инструкция

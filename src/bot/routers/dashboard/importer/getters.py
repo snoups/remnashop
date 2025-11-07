@@ -27,22 +27,6 @@ async def from_xui_getter(
 
 
 @inject
-async def from_bot_getter(
-    dialog_manager: DialogManager,
-    **kwargs: Any,
-) -> dict[str, Any]:
-    selected_bot = dialog_manager.dialog_data["selected_bot"]
-    users = dialog_manager.dialog_data["users"]
-
-    return {
-        "bot": selected_bot,
-        "total": len(users["all"]),
-        "active": len(users["active"]),
-        "expired": len(users["expired"]),
-    }
-
-
-@inject
 async def squads_getter(
     dialog_manager: DialogManager,
     remnawave: FromDishka[RemnawaveSDK],
@@ -66,7 +50,16 @@ async def squads_getter(
     return {"squads": squads}
 
 
-async def completed_getter(
+@inject
+async def import_completed_getter(
+    dialog_manager: DialogManager,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    completed: dict = dialog_manager.dialog_data["completed"]
+    return completed
+
+
+async def sync_completed_getter(
     dialog_manager: DialogManager,
     **kwargs: Any,
 ) -> dict[str, Any]:

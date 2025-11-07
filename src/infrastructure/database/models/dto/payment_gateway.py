@@ -67,8 +67,15 @@ class HeleketGatewaySettingsDto(GatewaySettingsDto):
     api_key: Optional[SecretStr] = None
 
 
-class UrlpayGatewaySettingsDto(GatewaySettingsDto):
-    type: PaymentGatewayType = PaymentGatewayType.URLPAY
+class CryptopayGatewaySettingsDto(GatewaySettingsDto):
+    type: PaymentGatewayType = PaymentGatewayType.CRYPTOPAY
+    shop_id: Optional[str] = None
+    api_key: Optional[SecretStr] = None
+    secret_key: Optional[SecretStr] = None
+
+
+class RobokassaGatewaySettingsDto(GatewaySettingsDto):
+    type: PaymentGatewayType = PaymentGatewayType.ROBOKASSA
     shop_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     secret_key: Optional[SecretStr] = None
@@ -79,5 +86,6 @@ AnyGatewaySettingsDto = Union[
     YoomoneyGatewaySettingsDto,
     CryptomusGatewaySettingsDto,
     HeleketGatewaySettingsDto,
-    UrlpayGatewaySettingsDto,
+    CryptopayGatewaySettingsDto,
+    RobokassaGatewaySettingsDto,
 ]

@@ -1,5 +1,5 @@
 import traceback
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Union
 
 from aiogram import Bot
 from aiogram.enums import ChatMemberStatus
@@ -29,7 +29,7 @@ ALLOWED_STATUSES = (
 class ChannelMiddleware(EventTypedMiddleware):
     __event_types__ = [MiddlewareEventType.MESSAGE, MiddlewareEventType.CALLBACK_QUERY]
 
-    async def middleware_logic(
+    async def middleware_logic(  # noqa: C901
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,
@@ -43,18 +43,30 @@ class ChannelMiddleware(EventTypedMiddleware):
             return await handler(event, data)
 
         if user.is_privileged:
-            logger.debug(f"{self.tag} User '{user.telegram_id}' skipped channel check (privileged)")
+            logger.debug(f"User '{user.telegram_id}' skipped channel check (privileged)")
             return await handler(event, data)
 
         bot: Bot = await container.get(Bot)
         notification_service: NotificationService = await container.get(NotificationService)
 
         settings = await settings_service.get()
+
+        chat_id: Union[str, int, None] = None
         channel_link = settings.channel_link.get_secret_value()
+        if settings.channel_has_username:
+            chat_id = channel_link
+        elif settings.channel_id:
+            chat_id = settings.channel_id
+
+        if chat_id is None:
+            logger.warning(
+                f"User '{user.telegram_id}' skipped channel check: no valid chat_id or username"
+            )
+            return await handler(event, data)
 
         try:
             member = await bot.get_chat_member(
-                chat_id=channel_link,
+                chat_id=chat_id,
                 user_id=user.telegram_id,
             )
         except Exception as exception:
@@ -80,10 +92,8 @@ class ChannelMiddleware(EventTypedMiddleware):
             if self._is_click_confirm(event):
                 await self._delete_channel_message(event)
 
-            logger.debug(
-                f"{self.tag} User '{user.telegram_id}' "
-                f"passed channel check. Status: {member.status.value}"
-            )
+            logger.debug(f"User '{user.telegram_id}' passed channel check. Status: {member.status}")
+            # TODO: Auto confirming
             return await handler(event, data)
 
         if self._is_click_confirm(event):
@@ -97,20 +107,24 @@ class ChannelMiddleware(EventTypedMiddleware):
                     add_close_button=False,
                 ),
             )
-            logger.debug(f"{self.tag} User '{user.telegram_id}' failed channel check")
+            logger.debug(f"User '{user.telegram_id}' failed channel check")
             return
 
+        if member.status == ChatMemberStatus.LEFT:
+            i18n_key = "ntf-channel-join-required-left"
+        else:
+            i18n_key = "ntf-channel-join-required"
+
+        logger.debug(f"User '{user.telegram_id}' is not subscribed to channel")
         await notification_service.notify_user(
             user=user,
             payload=MessagePayload(
-                i18n_key="ntf-channel-join-required",
+                i18n_key=i18n_key,
                 reply_markup=get_channel_keyboard(settings.get_url_channel_link),
                 auto_delete_after=None,
                 add_close_button=False,
             ),
         )
-        logger.debug(f"{self.tag} User '{user.telegram_id}' is not subscribed to channel")
-
         return
 
     def _is_click_confirm(self, event: TelegramObject) -> bool:

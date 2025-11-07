@@ -1,4 +1,6 @@
-from sqlalchemy import JSON, Boolean, Enum, Integer, String
+from typing import Optional
+
+from sqlalchemy import JSON, BigInteger, Boolean, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.enums import AccessMode, Currency
@@ -19,6 +21,7 @@ class Settings(BaseSql):
     channel_required: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     rules_link: Mapped[str] = mapped_column(String, nullable=False)
+    channel_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     channel_link: Mapped[str] = mapped_column(String, nullable=False)
 
     access_mode: Mapped[AccessMode] = mapped_column(

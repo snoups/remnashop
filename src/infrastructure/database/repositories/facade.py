@@ -20,7 +20,7 @@ class RepositoriesFacade:
     transactions: TransactionRepository
     users: UserRepository
     settings: SettingsRepository
-    broadcast: BroadcastRepository
+    broadcasts: BroadcastRepository
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -32,4 +32,4 @@ class RepositoriesFacade:
         self.transactions = TransactionRepository(session)
         self.users = UserRepository(session)
         self.settings = SettingsRepository(session)
-        self.broadcast = BroadcastRepository(session)
+        self.broadcasts = BroadcastRepository(session)

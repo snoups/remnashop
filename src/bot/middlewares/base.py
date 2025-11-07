@@ -17,10 +17,6 @@ DEFAULT_UPDATE_TYPES: Final[list[MiddlewareEventType]] = [
 class EventTypedMiddleware(BaseMiddleware, ABC):
     __event_types__: ClassVar[list[MiddlewareEventType]] = DEFAULT_UPDATE_TYPES
 
-    @property
-    def tag(self) -> str:
-        return f"[{self.__class__.__name__}]"
-
     async def __call__(
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
@@ -35,16 +31,18 @@ class EventTypedMiddleware(BaseMiddleware, ABC):
             router.observers[event_type].middleware(self)
 
         logger.debug(
-            f"{self.tag} Set as INNER for: {', '.join(t.value for t in self.__event_types__)}"
+            f"{self.__class__.__name__} set as INNER for: "
+            f"{', '.join(t.value for t in self.__event_types__)}"
         )
 
     def setup_outer(self, router: Router) -> None:
         for event_type in self.__event_types__:
             router.observers[event_type].outer_middleware(self)
 
-        logger.debug(
-            f"{self.tag} Set as OUTER for: {', '.join(t.value for t in self.__event_types__)}"
-        )
+            logger.debug(
+                f"{self.__class__.__name__} set as OUTER for: "
+                f"{', '.join(t.value for t in self.__event_types__)}"
+            )
 
     @abstractmethod
     async def middleware_logic(

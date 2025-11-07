@@ -57,19 +57,18 @@ class NotificationService(BaseService):
         ntf_type: Optional[UserNotificationType] = None,
     ) -> Optional[Message]:
         if not user:
-            logger.warning(f"{self.tag} Skipping user notification: user object is empty")
+            logger.warning("Skipping user notification: user object is empty")
             return None
 
         if ntf_type and not await self.settings_service.is_notification_enabled(ntf_type):
             logger.debug(
-                f"{self.tag} Skipping user notification for '{user.telegram_id}': "
+                f"Skipping user notification for '{user.telegram_id}': "
                 f"notification type is disabled in settings"
             )
             return None
 
         logger.debug(
-            f"{self.tag} Attempting to send user notification "
-            f"'{payload.i18n_key}' to '{user.telegram_id}'"
+            f"Attempting to send user notification '{payload.i18n_key}' to '{user.telegram_id}'"
         )
 
         return await self._send_message(user, payload)
@@ -85,15 +84,11 @@ class NotificationService(BaseService):
             devs = [self._get_temp_dev()]
 
         if not await self.settings_service.is_notification_enabled(ntf_type):
-            logger.debug(
-                f"{self.tag} Skipping system notification: "
-                f"notification type is disabled in settings"
-            )
+            logger.debug("Skipping system notification: notification type is disabled in settings")
             return []
 
         logger.debug(
-            f"{self.tag} Attempting to send system notification "
-            f"'{payload.i18n_key}' to '{len(devs)}' devs"
+            f"Attempting to send system notification '{payload.i18n_key}' to '{len(devs)}' devs"
         )
 
         async def send_to_dev(dev: UserDto) -> bool:
@@ -111,8 +106,7 @@ class NotificationService(BaseService):
             dev = self._get_temp_dev()
 
         logger.debug(
-            f"{self.tag} Attempting to send super dev notification "
-            f"'{payload.i18n_key}' to '{dev.telegram_id}'"
+            f"Attempting to send super dev notification '{payload.i18n_key}' to '{dev.telegram_id}'"
         )
 
         return bool(await self._send_message(user=dev, payload=payload))
@@ -146,7 +140,7 @@ class NotificationService(BaseService):
             else:
                 if (payload.media or payload.media_id) and not payload.media_type:
                     logger.warning(
-                        f"{self.tag} Validation warning: Media provided without media_type "
+                        f"Validation warning: Media provided without media_type "
                         f"for chat '{user.telegram_id}'. Sending as text message"
                     )
                 sent_message = await self._send_text_message(user, payload, reply_markup)
@@ -249,7 +243,7 @@ class NotificationService(BaseService):
             return self._translate_keyboard_texts(reply_markup, locale)
 
         logger.warning(
-            f"{self.tag} Unsupported reply_markup type '{type(reply_markup).__name__}' "
+            f"Unsupported reply_markup type '{type(reply_markup).__name__}' "
             f"for chat '{chat_id}'. Close button will not be added"
         )
         return reply_markup
@@ -269,20 +263,17 @@ class NotificationService(BaseService):
 
     async def _schedule_message_deletion(self, chat_id: int, message_id: int, delay: int) -> None:
         logger.debug(
-            f"{self.tag} Scheduling message '{message_id}' "
-            f"for auto-deletion in {delay}s (chat {chat_id})"
+            f"Scheduling message '{message_id}' for auto-deletion in '{delay}' (chat '{chat_id}')"
         )
         try:
             await asyncio.sleep(delay)
             await self.bot.delete_message(chat_id=chat_id, message_id=message_id)
             logger.debug(
-                f"{self.tag} Message '{message_id}' in chat "
-                f"'{chat_id}' deleted after '{delay}' seconds"
+                f"Message '{message_id}' in chat '{chat_id}' deleted after '{delay}' seconds"
             )
         except Exception as exception:
             logger.error(
-                f"{self.tag} Failed to delete message '{message_id}' "
-                f"in chat '{chat_id}': {exception}"
+                f"Failed to delete message '{message_id}' in chat '{chat_id}': {exception}"
             )
 
     def _get_translated_text(
@@ -345,5 +336,5 @@ class NotificationService(BaseService):
             language=Locale.EN,
         )
 
-        logger.warning(f"{self.tag} Dev is empty! Adding a fallback dev from environment config")
+        logger.warning("Dev is empty! Adding a fallback dev from environment config")
         return temp_dev

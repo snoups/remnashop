@@ -36,7 +36,7 @@ class ThrottlingMiddleware(EventTypedMiddleware):
                 user=user,
                 payload=MessagePayload(i18n_key="ntf-throttling-many-requests"),
             )
-            logger.warning(f"{self.tag} User '{user.telegram_id}' throttled")
+            logger.warning(f"User '{user.telegram_id}' throttled")
             return
 
         self.cache[user.telegram_id] = None

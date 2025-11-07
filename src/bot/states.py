@@ -6,6 +6,8 @@ from aiogram.fsm.state import State, StatesGroup
 class MainMenu(StatesGroup):
     MAIN = State()
     DEVICES = State()
+    INVITE = State()
+    INVITED_USERS = State()
 
 
 class Notification(StatesGroup):
@@ -45,9 +47,13 @@ class DashboardBroadcast(StatesGroup):
 class DashboardPromocodes(StatesGroup):
     MAIN = State()
     LIST = State()
-    CREATE = State()
-    DELETE = State()
-    EDIT = State()
+    CONFIGURATOR = State()
+    CODE = State()
+    TYPE = State()
+    AVAILABILITY = State()
+    REWARD = State()
+    LIFETIME = State()
+    ALLOWED = State()
 
 
 class DashboardAccess(StatesGroup):
@@ -105,7 +111,7 @@ class RemnashopNotifications(StatesGroup):
 
 class RemnashopPlans(StatesGroup):
     MAIN = State()
-    PLAN = State()
+    CONFIGURATOR = State()
     NAME = State()
     TYPE = State()
     AVAILABILITY = State()
@@ -130,14 +136,15 @@ class DashboardRemnawave(StatesGroup):
 class DashboardImporter(StatesGroup):
     MAIN = State()
     FROM_XUI = State()
-    FROM_BOT = State()
+    SYNC = State()
     SQUADS = State()
-    COMPLETED = State()
+    IMPORT_COMPLETED = State()
+    SYNC_COMPLETED = State()
 
 
 def state_from_string(state_str: str, sep: Optional[str] = ":") -> Optional[State]:
     try:
-        group_name, state_name = state_str.split(":")
+        group_name, state_name = state_str.split(":")[:2]
         group_cls = globals().get(group_name)
         if group_cls is None:
             return None

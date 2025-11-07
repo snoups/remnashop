@@ -25,10 +25,6 @@ class BasePaymentGateway(ABC):
 
     NETWORKS: list[str] = []
 
-    @property
-    def tag(self) -> str:
-        return f"[{self.__class__.__name__}]"
-
     def __init__(
         self,
         gateway: PaymentGatewayDto,
@@ -38,7 +34,7 @@ class BasePaymentGateway(ABC):
         self.bot = bot
         self._bot_username: Optional[str] = None
 
-        logger.debug(f"{self.tag} Initialized")
+        logger.debug(f"{self.__class__.__name__} Initialized")
 
     @abstractmethod
     async def handle_create_payment(
@@ -71,7 +67,7 @@ class BasePaymentGateway(ABC):
         try:
             return ip_address(ip) in ip_network(network, strict=False)
         except Exception as exception:
-            logger.error(f"{self.tag} Failed to check IP '{ip}' in network {network}: {exception}")
+            logger.error(f"Failed to check IP '{ip}' in network '{network}': {exception}")
             return False
 
     def _is_ip_trusted(self, ip: str) -> bool:

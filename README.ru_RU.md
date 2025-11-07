@@ -86,7 +86,7 @@
     > Поддержка двухуровневых рефералов.
     
 - **💳 Гибкая платежная система**
-    > Поддержка множества агрегаторов: Telegram Stars, YooKassa, YooMoney, Cryptomus, Heleket, WataPay.
+    > Поддержка множества агрегаторов: Telegram Stars, YooKassa, YooMoney, Cryptomus, Heleket, CryptoPay, RoboKassa.
 
     > Конфигуратор платежных шлюзов.
 
@@ -259,7 +259,7 @@ docker compose up -d && docker compose logs -f -t
 
 **Добавьте правило для маршрута:**
 
-`https://your-domain/api/v1` -> `http://remnawave:5000`
+`https://your-domain/api/v1` -> `http://remnashop:5000`
 
 
 # 🖼️ Баннеры

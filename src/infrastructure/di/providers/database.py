@@ -18,7 +18,7 @@ class DatabaseProvider(Provider):
 
     @provide
     async def get_engine(self, config: AppConfig) -> AsyncIterable[AsyncEngine]:
-        logger.debug("[DB] Creating AsyncEngine")
+        logger.debug("Creating AsyncEngine")
         engine = create_async_engine(
             url=config.database.dsn,
             echo=config.database.echo,
@@ -29,13 +29,13 @@ class DatabaseProvider(Provider):
             pool_recycle=config.database.pool_recycle,
         )
         yield engine
-        logger.debug("[DB] Disposing AsyncEngine")
+        logger.debug("Disposing AsyncEngine")
         await engine.dispose()
 
     @provide
     def get_session_maker(self, engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
         session_maker = async_sessionmaker(bind=engine, expire_on_commit=False)
-        logger.debug("[DB] Created session maker")
+        logger.debug("Created session maker")
         return session_maker
 
     @provide(scope=Scope.REQUEST)

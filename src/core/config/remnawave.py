@@ -13,9 +13,9 @@ from .validators import validate_not_change_me
 class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
     host: SecretStr
     token: SecretStr
-    caddy_token: SecretStr
+    caddy_token: SecretStr = SecretStr("")
     webhook_secret: SecretStr
-    cookie: SecretStr
+    cookie: SecretStr = SecretStr("")
 
     @property
     def is_external(self) -> bool:

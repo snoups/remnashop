@@ -19,6 +19,7 @@ from magic_filter import F
 
 from src.bot.keyboards import back_main_menu_button
 from src.bot.routers.dashboard.broadcast.handlers import on_content_input, on_preview
+from src.bot.routers.extra.test import show_dev_popup
 from src.bot.states import DashboardUser, DashboardUsers
 from src.bot.widgets import Banner, I18nFormat, IgnoreUpdate
 from src.core.enums import BannerName, SubscriptionStatus, UserRole
@@ -75,6 +76,7 @@ user = Window(
         Button(
             text=I18nFormat("btn-user-statistics"),
             id="statistics",
+            on_click=show_dev_popup,
         ),
     ),
     Row(

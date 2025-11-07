@@ -48,9 +48,7 @@ class AccessService(BaseService):
 
         if not user:
             if mode in (AccessMode.REG_BLOCKED, AccessMode.RESTRICTED):
-                logger.info(
-                    f"{self.tag} Access denied for new user '{aiogram_user.id}' (mode: {mode})"
-                )
+                logger.info(f"Access denied for new user '{aiogram_user.id}' (mode: {mode})")
                 i18n_key = (
                     "ntf-access-denied"
                     if mode == AccessMode.RESTRICTED
@@ -69,22 +67,20 @@ class AccessService(BaseService):
             return True
 
         if user.is_blocked:
-            logger.info(f"{self.tag} Access denied for user '{user.telegram_id} '(blocked)")
+            logger.info(f"Access denied for user '{user.telegram_id} '(blocked)")
             return False
 
         if mode == AccessMode.PUBLIC:
-            logger.info(f"{self.tag} Access allowed for user '{user.telegram_id}' (mode: PUBLIC)")
+            logger.info(f"Access allowed for user '{user.telegram_id}' (mode: PUBLIC)")
             return True
 
         if user.is_privileged:
-            logger.info(f"{self.tag} Access allowed for user '{user.telegram_id}' (privileged)")
+            logger.info(f"Access allowed for user '{user.telegram_id}' (privileged)")
             return True
 
         match mode:
             case AccessMode.RESTRICTED:
-                logger.info(
-                    f"{self.tag} Access denied for user '{user.telegram_id}' (mode: RESTRICTED)"
-                )
+                logger.info(f"Access denied for user '{user.telegram_id}' (mode: RESTRICTED)")
                 await send_access_denied_notification_task.kiq(
                     user=user,
                     i18n_key="ntf-access-denied",
@@ -93,9 +89,7 @@ class AccessService(BaseService):
 
             case AccessMode.PURCHASE_BLOCKED:
                 if self._is_purchase_action(event):
-                    logger.info(
-                        f"{self.tag} Access denied for user '{user.telegram_id}' (purchase event)"
-                    )
+                    logger.info(f"Access denied for user '{user.telegram_id}' (purchase event)")
                     await redirect_to_main_menu_task.kiq(user.telegram_id)
                     await send_access_denied_notification_task.kiq(
                         user=user,
@@ -108,8 +102,7 @@ class AccessService(BaseService):
                     return False
 
                 logger.info(
-                    f"{self.tag} Access allowed for user '{user.telegram_id}' "
-                    f"(mode: PURCHASE_BLOCKED)"
+                    f"Access allowed for user '{user.telegram_id}' (mode: PURCHASE_BLOCKED)"
                 )
                 return True
 
@@ -117,43 +110,36 @@ class AccessService(BaseService):
                 invited = await self.is_invited(user)
 
                 if invited:
-                    logger.info(
-                        f"{self.tag} Access allowed for user '{user.telegram_id}' (mode: INVITED)"
-                    )
+                    logger.info(f"Access allowed for user '{user.telegram_id}' (mode: INVITED)")
                     return True
 
-                logger.info(f"{self.tag} Access denied for user '{user.telegram_id}' (not invited)")
+                logger.info(f"Access denied for user '{user.telegram_id}' (not invited)")
                 return False
 
             case _:
-                logger.warning(f"{self.tag} Unknown access mode '{mode}'")
+                logger.warning(f"Unknown access mode '{mode}'")
                 return True
 
     async def is_invited(self, user: UserDto) -> bool:
         result = True  # TODO: Replace with actual referral check
-        logger.debug(f"{self.tag} Invited check for user '{user.telegram_id}': {result}")
+        logger.debug(f"Invited check for user '{user.telegram_id}': {result}")
         return result
 
     async def get_available_modes(self) -> list[AccessMode]:
         current = await self.settings_service.get_access_mode()
         available = [mode for mode in AccessMode if mode != current]
-        logger.debug(
-            f"{self.tag} Available access modes (excluding current '{current}'): {available}"
-        )
+        logger.debug(f"Available access modes (excluding current '{current}'): {available}")
         return available
 
     async def set_mode(self, mode: AccessMode) -> None:
         await self.settings_service.set_access_mode(mode)
-        logger.info(f"{self.tag} Access mode changed to '{mode}'")
+        logger.info(f"Access mode changed to '{mode}'")
 
         if mode in (AccessMode.PUBLIC, AccessMode.INVITED):
             waiting_users = await self.get_all_waiting_users()
 
             if waiting_users:
-                logger.info(
-                    f"{self.tag} Notifying '{len(waiting_users)}' "
-                    f"waiting users about access opening"
-                )
+                logger.info(f"Notifying '{len(waiting_users)}' waiting users about access opening")
                 await send_access_opened_notifications_task.kiq(waiting_users)
 
         await self.clear_all_waiting_users()
@@ -162,10 +148,10 @@ class AccessService(BaseService):
         added_count = await self.redis_repository.collection_add(AccessWaitListKey(), telegram_id)
 
         if added_count > 0:
-            logger.info(f"{self.tag} User '{telegram_id}' added to access waitlist")
+            logger.info(f"User '{telegram_id}' added to access waitlist")
             return True
 
-        logger.debug(f"{self.tag} User '{telegram_id}' already in access waitlist")
+        logger.debug(f"User '{telegram_id}' already in access waitlist")
         return False
 
     async def remove_user_from_waitlist(self, telegram_id: int) -> bool:
@@ -175,21 +161,21 @@ class AccessService(BaseService):
         )
 
         if removed_count > 0:
-            logger.info(f"{self.tag} User '{telegram_id}' removed from access waitlist")
+            logger.info(f"User '{telegram_id}' removed from access waitlist")
             return True
 
-        logger.debug(f"{self.tag} User '{telegram_id}' not found in access waitlist")
+        logger.debug(f"User '{telegram_id}' not found in access waitlist")
         return False
 
     async def get_all_waiting_users(self) -> list[int]:
         members_str = await self.redis_repository.collection_members(key=AccessWaitListKey())
         users = [int(member) for member in members_str]
-        logger.debug(f"{self.tag} Retrieved '{len(users)}' users from access waitlist")
+        logger.debug(f"Retrieved '{len(users)}' users from access waitlist")
         return users
 
     async def clear_all_waiting_users(self) -> None:
         await self.redis_repository.delete(key=AccessWaitListKey())
-        logger.info(f"{self.tag} Access waitlist completely cleared")
+        logger.info(f"Access waitlist completely cleared")
 
     async def _can_add_to_waitlist(self, telegram_id: int) -> bool:
         is_member = await self.redis_repository.collection_is_member(
@@ -198,10 +184,10 @@ class AccessService(BaseService):
         )
 
         if is_member:
-            logger.debug(f"{self.tag} User '{telegram_id}' already in access waitlist")
+            logger.debug(f"User '{telegram_id}' already in access waitlist")
             return False
 
-        logger.debug(f"{self.tag} User '{telegram_id}' can be added to access waitlist")
+        logger.debug(f"User '{telegram_id}' can be added to access waitlist")
         return True
 
     def _is_purchase_action(self, event: TelegramObject) -> bool:
@@ -210,7 +196,7 @@ class AccessService(BaseService):
 
         callback_data = remove_intent_id(event.data)
         if callback_data[-1].startswith(PURCHASE_PREFIX):
-            logger.debug(f"{self.tag} Detected purchase action: {callback_data}")
+            logger.debug(f"Detected purchase action: {callback_data}")
             return True
 
         return False

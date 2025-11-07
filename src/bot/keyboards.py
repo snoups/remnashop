@@ -7,7 +7,7 @@ from aiogram_dialog.widgets.kbd import Row, Start, Url, WebApp
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
-from src.bot.states import MainMenu, Subscription
+from src.bot.states import DashboardUser, MainMenu, Subscription
 from src.bot.widgets.i18n_format import I18nFormat
 from src.core.constants import GOTO_PREFIX, PURCHASE_PREFIX
 from src.core.enums import PurchaseType
@@ -139,6 +139,36 @@ def get_remnashop_keyboard() -> InlineKeyboardMarkup:
             text="btn-remnashop-donate",
             url="https://yookassa.ru/my/i/Z8AkHJ_F9sO_/l",
         )
+    )
+
+    return builder.as_markup()
+
+
+def get_remnashop_update_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(
+            text="btn-remnashop-release-latest",
+            url="https://github.com/snoups/remnashop/releases/latest",
+        ),
+        InlineKeyboardButton(
+            text="btn-remnashop-how-upgrade",
+            url="https://github.com/snoups/remnashop?tab=readme-ov-file#step-5---how-to-upgrade",
+        ),
+    )
+
+    return builder.as_markup()
+
+
+def get_user_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(
+            text="btn-goto-user-profile",
+            callback_data=f"{GOTO_PREFIX}{DashboardUser.MAIN.state}:{telegram_id}",
+        ),
     )
 
     return builder.as_markup()

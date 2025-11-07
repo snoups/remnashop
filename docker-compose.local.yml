@@ -90,6 +90,19 @@ services:
         remnashop-db:
           condition: service_healthy
 
+  remnashop-taskiq-scheduler:
+    <<: *remnashop
+    container_name: "remnashop-taskiq-scheduler"
+    hostname: remnashop-taskiq-scheduler
+    command: taskiq scheduler src.infrastructure.taskiq.scheduler:scheduler
+      --tasks-pattern src/infrastructure/taskiq/tasks -fsd
+
+    depends_on:
+        remnashop-redis:
+          condition: service_healthy
+        remnashop-db:
+          condition: service_healthy
+
 
 networks:
   remnawave-network:

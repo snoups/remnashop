@@ -86,7 +86,7 @@
     > Two-level referral support.
 
 - **💳 Flexible Payment System**
-    > Supports multiple payment gateways: Telegram Stars, YooKassa, YooMoney, Cryptomus, Heleket, WataPay.
+    > Supports multiple payment gateways: Telegram Stars, YooKassa, YooMoney, Cryptomus, Heleket, CryptoPay, RoboKassa.
 
     > Payment gateway configurator.
 
@@ -261,7 +261,7 @@ You can use any proxy solution, similar to how it is done for [**Remnawave**](ht
 
 **Configure the following path to forward requests to the bot container:**
 
-`https://your-domain/api/v1` -> `http://remnawave:5000`
+`https://your-domain/api/v1` -> `http://remnashop:5000`
 
 
 # 🖼️ Banners

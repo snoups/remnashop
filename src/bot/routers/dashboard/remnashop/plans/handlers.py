@@ -44,7 +44,7 @@ async def on_plan_select(
     adapter = DialogDataAdapter(sub_manager.manager)
     adapter.save(plan)
 
-    await sub_manager.switch_to(state=RemnashopPlans.PLAN)
+    await sub_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
 
 @inject
@@ -114,7 +114,7 @@ async def on_name_input(
     adapter.save(plan)
 
     logger.info(f"{log(user)} Successfully set plan name to '{plan.name}'")
-    await dialog_manager.switch_to(state=RemnashopPlans.PLAN)
+    await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
 
 async def on_type_select(
@@ -145,7 +145,7 @@ async def on_type_select(
     adapter.save(plan)
 
     logger.info(f"{log(user)} Successfully updated plan type to '{plan.type.name}'")
-    await dialog_manager.switch_to(state=RemnashopPlans.PLAN)
+    await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
 
 async def on_availability_select(
@@ -167,7 +167,7 @@ async def on_availability_select(
     adapter.save(plan)
 
     logger.info(f"{log(user)} Successfully updated plan availability to '{plan.availability}'")
-    await dialog_manager.switch_to(state=RemnashopPlans.PLAN)
+    await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
 
 async def on_active_toggle(
@@ -219,7 +219,7 @@ async def on_traffic_input(
     adapter.save(plan)
 
     logger.info(f"{log(user)} Successfully set plan traffic limit to '{plan.traffic_limit}'")
-    await dialog_manager.switch_to(state=RemnashopPlans.PLAN)
+    await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
 
 @inject
@@ -252,7 +252,7 @@ async def on_devices_input(
     adapter.save(plan)
 
     logger.info(f"{log(user)} Successfully set plan device limit to '{plan.device_limit}'")
-    await dialog_manager.switch_to(state=RemnashopPlans.PLAN)
+    await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
 
 async def on_duration_select(

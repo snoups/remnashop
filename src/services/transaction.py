@@ -39,32 +39,32 @@ class TransactionService(BaseService):
 
         db_transaction = Transaction(**data, user_telegram_id=user.telegram_id)
         db_created_transaction = await self.uow.repository.transactions.create(db_transaction)
-        logger.info(
-            f"{self.tag} Created transaction '{transaction.payment_id}' "
-            f"for user '{user.telegram_id}'"
-        )
+        logger.info(f"Created transaction '{transaction.payment_id}' for user '{user.telegram_id}'")
         return TransactionDto.from_model(db_created_transaction)  # type: ignore[return-value]
 
     async def get(self, payment_id: UUID) -> Optional[TransactionDto]:
         db_transaction = await self.uow.repository.transactions.get(payment_id)
 
         if db_transaction:
-            logger.debug(f"{self.tag} Retrieved transaction '{payment_id}'")
+            logger.debug(f"Retrieved transaction '{payment_id}'")
         else:
-            logger.warning(f"{self.tag} Transaction '{payment_id}' not found")
+            logger.warning(f"Transaction '{payment_id}' not found")
 
         return TransactionDto.from_model(db_transaction)
 
     async def get_by_user(self, telegram_id: int) -> list[TransactionDto]:
         db_transactions = await self.uow.repository.transactions.get_by_user(telegram_id)
-        logger.debug(
-            f"{self.tag} Retrieved '{len(db_transactions)}' transactions for user '{telegram_id}'"
-        )
+        logger.debug(f"Retrieved '{len(db_transactions)}' transactions for user '{telegram_id}'")
         return TransactionDto.from_model_list(db_transactions)
 
     async def get_all(self) -> list[TransactionDto]:
         db_transactions = await self.uow.repository.transactions.get_all()
-        logger.debug(f"{self.tag} Retrieved '{len(db_transactions)}' total transactions")
+        logger.debug(f"Retrieved '{len(db_transactions)}' total transactions")
+        return TransactionDto.from_model_list(db_transactions)
+
+    async def get_by_status(self, status: TransactionStatus) -> list[TransactionDto]:
+        db_transactions = await self.uow.repository.transactions.get_by_status(status)
+        logger.debug(f"Retrieved '{len(db_transactions)}' transactions with status '{status}'")
         return TransactionDto.from_model_list(db_transactions)
 
     async def update(self, transaction: TransactionDto) -> Optional[TransactionDto]:
@@ -74,10 +74,10 @@ class TransactionService(BaseService):
         )
 
         if db_updated_transaction:
-            logger.info(f"{self.tag} Updated transaction '{transaction.payment_id}' successfully")
+            logger.info(f"Updated transaction '{transaction.payment_id}' successfully")
         else:
             logger.warning(
-                f"{self.tag} Attempted to update transaction '{transaction.payment_id}', "
+                f"Attempted to update transaction '{transaction.payment_id}', "
                 "but transaction was not found or update failed"
             )
 
@@ -85,10 +85,10 @@ class TransactionService(BaseService):
 
     async def count(self) -> int:
         count = await self.uow.repository.transactions.count()
-        logger.debug(f"{self.tag} Total transactions count: '{count}'")
+        logger.debug(f"Total transactions count: '{count}'")
         return count
 
     async def count_by_status(self, status: TransactionStatus) -> int:
         count = await self.uow.repository.transactions.count_by_status(status)
-        logger.debug(f"{self.tag} Transactions count with status '{status}': '{count}'")
+        logger.debug(f"Transactions count with status '{status}': '{count}'")
         return count

@@ -150,7 +150,7 @@ async def on_purchase_type_select(
     if purchase_type == PurchaseType.RENEW:
         if user.current_subscription:
             matched_plan = user.current_subscription.find_matching_plan(plans)
-            logger.debug(f"Matched plan for renewal: {matched_plan}")
+            logger.debug(f"Matched plan for renewal: 'э'{matched_plan}'")
 
             if matched_plan:
                 adapter.save(matched_plan)
@@ -223,7 +223,7 @@ async def on_subscription_plans(  # noqa: C901
     if purchase_type == PurchaseType.RENEW:
         if user.current_subscription:
             matched_plan = user.current_subscription.find_matching_plan(plans)
-            logger.debug(f"Matched plan for renewal: {matched_plan}")
+            logger.debug(f"Matched plan for renewal: '{matched_plan}'")
 
             if matched_plan:
                 adapter.save(matched_plan)

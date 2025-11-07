@@ -12,7 +12,7 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
     secret_token: SecretStr
     dev_id: int
     support_username: SecretStr
-    mini_app_url: SecretStr
+    mini_app_url: SecretStr = SecretStr("")
 
     reset_webhook: bool
     drop_pending_updates: bool

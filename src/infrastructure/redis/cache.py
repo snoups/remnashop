@@ -48,22 +48,22 @@ def redis_cache(
             try:
                 cached_value: Optional[bytes] = await redis.get(key)
                 if cached_value is not None:
-                    logger.debug(f"[REDIS] Cache hit: {key}")
+                    logger.debug(f"Cache hit: '{key}'")
                     parsed = json_utils.decode(cached_value.decode())
                     return type_adapter.validate_python(parsed)
 
-                logger.debug(f"[REDIS] Cache miss: {key}. Executing function")
+                logger.debug(f"Cache miss: '{key}'. Executing function")
                 result: T = await func(*args, **kwargs)
 
                 # Serialize and store result
                 safe_result = prepare_for_cache(type_adapter.dump_python(result))
                 await redis.setex(key, ttl, json_utils.encode(safe_result))
-                logger.debug(f"[REDIS] Result cached: {key} (ttl={ttl})")
+                logger.debug(f"Result cached: '{key}' (ttl={ttl})")
 
                 return result
 
             except Exception as exception:
-                logger.warning(f"[REDIS] Cache operation failed for key '{key}': {exception}")
+                logger.warning(f"Cache operation failed for key '{key}': {exception}")
                 return await func(*args, **kwargs)
 
         return wrapper

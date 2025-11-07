@@ -200,7 +200,7 @@ async def discount_getter(
     dialog_manager: DialogManager,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    return {"percentages": [1, 5, 10, 20, 25, 30, 40, 50, 60, 70, 80, 90]}
+    return {"percentages": [0, 5, 10, 25, 40, 50, 70, 80, 100]}
 
 
 async def traffic_limit_getter(

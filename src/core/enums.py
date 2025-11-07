@@ -109,6 +109,8 @@ class MediaType(UpperStrEnum):
 
 class SystemNotificationType(UpperStrEnum):  # == SystemNotificationDto
     BOT_LIFETIME = auto()
+    BOT_UPDATE = auto()
+    #
     USER_REGISTERED = auto()
     SUBSCRIPTION = auto()
     PROMOCODE_ACTIVATED = auto()
@@ -160,6 +162,7 @@ class UserRole(UpperStrEnum):
 class PromocodeRewardType(UpperStrEnum):
     DURATION = auto()
     TRAFFIC = auto()
+    DEVICES = auto()
     SUBSCRIPTION = auto()
     PERSONAL_DISCOUNT = auto()
     PURCHASE_DISCOUNT = auto()
@@ -181,13 +184,22 @@ class PlanAvailability(UpperStrEnum):
     TRIAL = auto()
 
 
+class PromocodeAvailability(UpperStrEnum):
+    ALL = auto()
+    NEW = auto()
+    EXISTING = auto()
+    INVITED = auto()
+    ALLOWED = auto()
+
+
 class PaymentGatewayType(UpperStrEnum):
     TELEGRAM_STARS = auto()
     YOOKASSA = auto()
     YOOMONEY = auto()
     CRYPTOMUS = auto()
     HELEKET = auto()
-    URLPAY = auto()
+    CRYPTOPAY = auto()
+    ROBOKASSA = auto()
 
 
 class Currency(UpperStrEnum):
@@ -214,9 +226,10 @@ class Currency(UpperStrEnum):
             PaymentGatewayType.TELEGRAM_STARS: cls.XTR,
             PaymentGatewayType.YOOKASSA: cls.RUB,
             PaymentGatewayType.YOOMONEY: cls.RUB,
-            PaymentGatewayType.URLPAY: cls.RUB,
+            PaymentGatewayType.ROBOKASSA: cls.RUB,
             PaymentGatewayType.CRYPTOMUS: cls.USD,
             PaymentGatewayType.HELEKET: cls.USD,
+            PaymentGatewayType.CRYPTOPAY: cls.USD,
         }
 
         try:

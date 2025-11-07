@@ -71,7 +71,7 @@ async def statistics_getter(
             # statistics = get_referrals_statistics(referrals)
             template = "msg-statistics-referrals"
         case _:
-            raise ValueError(f"Invalid statistics page index: {current_page}")
+            raise ValueError(f"Invalid statistics page index: '{current_page}'")
 
     formatted_message = i18n.get(template, **statistics)
 

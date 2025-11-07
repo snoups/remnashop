@@ -70,17 +70,15 @@ class YookassaGateway(BasePaymentGateway):
 
         except HTTPStatusError as exception:
             logger.error(
-                f"{self.tag} HTTP error creating payment. "
+                f"HTTP error creating payment. "
                 f"Status: '{exception.response.status_code}', Body: {exception.response.text}"
             )
             raise
         except (KeyError, orjson.JSONDecodeError) as exception:
-            logger.error(f"{self.tag} Failed to parse response. Error: {exception}")
+            logger.error(f"Failed to parse response. Error: {exception}")
             raise
         except Exception as exception:
-            logger.exception(
-                f"{self.tag} An unexpected error occurred while creating payment: {exception}"
-            )
+            logger.exception(f"An unexpected error occurred while creating payment: {exception}")
             raise
 
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
@@ -88,12 +86,12 @@ class YookassaGateway(BasePaymentGateway):
         logger.critical(request.headers)
 
         if not self._is_ip_trusted(client_ip):
-            logger.warning(f"Webhook received from untrusted IP: {client_ip}")
+            logger.warning(f"Webhook received from untrusted IP: '{client_ip}'")
             raise PermissionError("IP address is not trusted")
 
         try:
             webhook_data = orjson.loads(await request.body())
-            logger.debug(f"{self.tag} Webhook data: {webhook_data}")
+            logger.debug(f"Webhook data: {webhook_data}")
 
             if not isinstance(webhook_data, dict):
                 raise ValueError
@@ -116,13 +114,13 @@ class YookassaGateway(BasePaymentGateway):
                 case "canceled":
                     transaction_status = TransactionStatus.CANCELED
                 case _:
-                    logger.info(f"{self.tag} Ignoring webhook status: {status_str}")
+                    logger.info(f"Ignoring webhook status: {status_str}")
                     raise ValueError("Field 'status' not support")
 
             return payment_id, transaction_status
 
         except (orjson.JSONDecodeError, ValueError) as exception:
-            logger.error(f"{self.tag} Failed to parse or validate webhook payload: {exception}")
+            logger.error(f"Failed to parse or validate webhook payload: {exception}")
             raise ValueError("Invalid webhook payload") from exception
 
     async def _create_payment_payload(self, amount: str, details: str) -> dict[str, Any]:

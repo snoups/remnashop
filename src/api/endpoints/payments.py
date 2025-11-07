@@ -32,11 +32,11 @@ async def payments_webhook(
         return Response(status_code=status.HTTP_200_OK)
 
     except ValueError:
-        logger.exception(f"[PAYMENTS] Invalid gateway type received: {gateway_type}")
+        logger.exception(f"Invalid gateway type received: '{gateway_type}'")
         return Response(status_code=status.HTTP_404_NOT_FOUND)
 
     except Exception as exception:
-        logger.exception(f"[PAYMENTS] Error processing webhook for {gateway_type}: {exception}")
+        logger.exception(f"Error processing webhook for '{gateway_type}': {exception}")
         traceback_str = traceback.format_exc()
         error_type_name = type(exception).__name__
         error_message = Text(str(exception)[:512])

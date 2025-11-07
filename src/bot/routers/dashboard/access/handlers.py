@@ -69,7 +69,7 @@ async def on_rules_input(
     input_text: str = message.text.strip() if message.text else ""
 
     if not is_valid_url(input_text):
-        logger.warning(f"{log(user)} Provided invalid rules link format: {input_text}")
+        logger.warning(f"{log(user)} Provided invalid rules link format: '{input_text}'")
         await notification_service.notify_user(
             user=user,
             payload=MessagePayload(i18n_key="ntf-access-invalid-link"),
@@ -99,23 +99,43 @@ async def on_channel_input(
     dialog_manager.show_mode = ShowMode.EDIT
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     logger.debug(f"{log(user)} Attempted to set channel link")
-    input_text: str = message.text.strip() if message.text else ""
 
-    if not is_valid_username(input_text):
-        logger.warning(f"{log(user)} Provided invalid channel link format: {input_text}")
+    input_text: str = message.text.strip() if message.text else ""
+    settings = await settings_service.get()
+
+    if input_text.isdigit():
+        channel_id = int(input_text)
+        if not input_text.startswith("-100"):
+            channel_id = int(f"-100{input_text}")
+        settings.channel_id = channel_id
+        logger.info(f"{log(user)} Saved channel ID: {channel_id}")
         await notification_service.notify_user(
             user=user,
-            payload=MessagePayload(i18n_key="ntf-access-invalid-link"),
+            payload=MessagePayload(i18n_key="ntf-access-id-saved"),
+        )
+
+    elif input_text.startswith("-100") and input_text[1:].isdigit():
+        settings.channel_id = int(input_text)
+        logger.info(f"{log(user)} Saved channel ID: {input_text}")
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-access-id-saved"),
+        )
+
+    elif is_valid_username(input_text) or input_text.startswith("https://t.me/"):
+        settings.channel_link = SecretStr(input_text)
+        logger.info(f"{log(user)} Saved channel link: '{input_text}'")
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-access-link-saved"),
+        )
+
+    else:
+        logger.warning(f"{log(user)} Provided invalid channel input: '{input_text}'")
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-access-channel-invalid"),
         )
         return
 
-    settings = await settings_service.get()
-    settings.channel_link = SecretStr(input_text)
     await settings_service.update(settings)
-
-    logger.info(f"{log(user)} Successfully set channel link")
-    await notification_service.notify_user(
-        user=user,
-        payload=MessagePayload(i18n_key="ntf-access-link-saved"),
-    )
-    await dialog_manager.switch_to(state=DashboardAccess.CONDITIONS)

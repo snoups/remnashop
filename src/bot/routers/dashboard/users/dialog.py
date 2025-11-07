@@ -17,7 +17,6 @@ from .getters import (
 )
 from .handlers import on_unblock_all, on_user_search, on_user_select
 
-# TODO: User search by filters
 users = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-users-main"),

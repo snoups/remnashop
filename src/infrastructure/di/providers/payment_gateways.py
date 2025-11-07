@@ -39,7 +39,7 @@ class PaymentGatewaysProvider(Provider):
 
                 if cached_gateway.gateway != gateway:
                     logger.warning(
-                        f"[GATEWAY:{gateway_type}] Gateway data changed. Re-initializing instance"
+                        f"Gateway '{gateway_type}' data changed. Re-initializing instance"
                     )
                     del self._cached_gateways[gateway_type]
 
@@ -47,11 +47,10 @@ class PaymentGatewaysProvider(Provider):
                 gateway_instance = GATEWAY_MAP.get(gateway_type)
 
                 if not gateway_instance:
-                    logger.error(f"[GATEWAY:{gateway_type}] Unknown gateway type")
-                    raise ValueError(f"Unknown gateway type: {gateway_type}")
+                    raise ValueError(f"Unknown gateway type '{gateway_type}'")
 
                 self._cached_gateways[gateway_type] = gateway_instance(gateway=gateway, bot=bot)
-                logger.debug(f"[GATEWAY:{gateway_type}] Initialized new gateway instance")
+                logger.debug(f"Initialized new gateway '{gateway_type}' instance")
 
             return self._cached_gateways[gateway_type]
 

@@ -34,7 +34,7 @@ async def plans_getter(
     }
 
 
-async def plan_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict[str, Any]:
+async def configurator_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict[str, Any]:
     adapter = DialogDataAdapter(dialog_manager)
     plan = adapter.load(PlanDto)
 

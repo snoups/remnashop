@@ -24,7 +24,7 @@ class AccessMiddleware(EventTypedMiddleware):
         aiogram_user: Optional[AiogramUser] = self._get_aiogram_user(event)
 
         if aiogram_user is None or aiogram_user.is_bot:
-            logger.warning(f"{self.tag} Terminating middleware: event from bot or missing user")
+            logger.warning("Terminating middleware: event from bot or missing user")
             return
 
         container: AsyncContainer = data[CONTAINER_KEY]

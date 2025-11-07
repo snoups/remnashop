@@ -26,6 +26,7 @@ PURCHASE_PREFIX: Final[str] = "purchase_"
 GOTO_PREFIX: Final[str] = "gt_"
 ENCRYPTED_PREFIX: Final[str] = "enc_"
 
+IMPORTED_TAG: Final[str] = "IMPORTED"
 
 MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"

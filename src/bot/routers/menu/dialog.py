@@ -6,6 +6,7 @@ from aiogram_dialog.widgets.kbd import (
     ListGroup,
     Row,
     Start,
+    SwitchInlineQueryChosenChatButton,
     SwitchTo,
     Url,
 )
@@ -62,6 +63,7 @@ menu = Window(
             text=I18nFormat("btn-menu-invite"),
             id="invite",
             on_click=show_dev_popup,
+            # state=MainMenu.INVITE,
         ),
         Url(
             text=I18nFormat("btn-menu-support"),
@@ -122,7 +124,50 @@ devices = Window(
     getter=devices_getter,
 )
 
+invite = Window(
+    Banner(BannerName.MENU),
+    I18nFormat("msg-menu-invite"),
+    Row(
+        CopyText(
+            text=I18nFormat("btn-menu-invite-copy"),
+            copy_text=Format("copy"),
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-menu-invite-qr"),
+            id="qr",
+        ),
+        SwitchInlineQueryChosenChatButton(
+            text=I18nFormat("btn-menu-invite-send"),
+            query=Format("query"),
+            allow_user_chats=True,
+            allow_group_chats=True,
+            allow_channel_chats=True,
+            id="send",
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-menu-invite-users"),
+            id="users",
+            state=MainMenu.INVITED_USERS,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back"),
+            id="back",
+            state=MainMenu.MAIN,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=MainMenu.INVITE,
+    # getter=invite_getter,
+)
+
 router = Dialog(
     menu,
     devices,
+    invite,
 )
