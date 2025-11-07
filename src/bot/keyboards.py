@@ -154,7 +154,7 @@ def get_remnashop_update_keyboard() -> InlineKeyboardMarkup:
         ),
         InlineKeyboardButton(
             text="btn-remnashop-how-upgrade",
-            url="https://github.com/snoups/remnashop?tab=readme-ov-file#step-5---how-to-upgrade",
+            url="https://github.com/snoups/remnashop?tab=readme-ov-file#step-5--how-to-upgrade",
         ),
     )
 

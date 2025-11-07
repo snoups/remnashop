@@ -63,7 +63,7 @@
 
     > User notifications: subscription expiring, expired, traffic exhausted.
 
-    > System notifications: bot lifecycle, new user registration, subscription activation, promocode activation, get trial, node status, first user connection, device add/remove events.
+    > System notifications: bot lifecycle, bot update, new user registration, subscription activation, promocode activation, get trial, node status, first user connection, device add/remove events.
 
 - **🧪 Trial**
     > Configurable trial setup through the plan configurator.
@@ -186,11 +186,11 @@ Download `docker-compose.yml` compose-file and `.env` by running these commands:
 
 - Get `docker-compose.yml` file:
 
-    - For external panel (the bot is hosted on a separate server from the panel):
+    - For external panel **(the bot is hosted on a separate server from the panel)**:
     ```
     curl -o docker-compose.yml https://raw.githubusercontent.com/snoups/remnashop/refs/heads/main/docker-compose.prod.external.yml
     ```
-    - For internal panel (the bot and panel are hosted on the same server):
+    - For internal panel **(the bot and panel are hosted on the same server)**:
     ```
     curl -o docker-compose.yml https://raw.githubusercontent.com/snoups/remnashop/refs/heads/main/docker-compose.prod.internal.yml
     ```
@@ -264,6 +264,23 @@ You can use any proxy solution, similar to how it is done for [**Remnawave**](ht
 `https://your-domain/api/v1` -> `http://remnashop:5000`
 
 
+## Step 5 – How to upgrade
+
+To update and restart the bot, run the following command:
+```
+RESET_ASSETS=true cd /opt/remnashop && docker compose pull && docker compose down && docker compose up -d && docker compose logs -f
+```
+
+When using `RESET_ASSETS=true`, the following actions are performed:
+  - All current assets are backed up with a timestamp (`/opt/remnashop/assets/*.bak`).
+  - New assets from the image are downloaded and unpacked.
+  - After the update, the bot will use the latest files.
+
+> [!CAUTION]
+> If you do not use `RESET_ASSETS=true`, the old assets will remain unchanged.  
+> This may cause the bot to work incorrectly after the update.
+
+
 # 🖼️ Banners
 
 The bot supports custom banners for each page category and locale: `menu`, `dashboard`, `subscription`, `promocode`, `referral`. 
@@ -273,7 +290,8 @@ To set a custom banner, name it according to the target page and ensure it uses 
 Banners should be placed in: `/opt/remnashop/assets/banners/(locale)/`  
 Example: `/opt/remnashop/assets/banners/en/menu.gif`
 
-> **Important**: Do not delete the `default.jpg` file — it is required for proper operation.
+> [!IMPORTANT]
+> Do not delete the `default.jpg` file — it is required for proper operation.
 
 
 # 🌐 Translations
@@ -282,8 +300,9 @@ You can edit any translation file located in:
 
 After making changes, you need to restart the container for the updates to take effect.
 
-> **Important**: Currently, translation persistence during bot updates is not supported.  
-> When updating, your previous assets will be archived in: `/opt/remnashop/assets_backup/`
+> [!IMPORTANT]
+> Currently, translation persistence during bot updates is not supported.  
+> When updating, your previous assets will be archived in: `/opt/remnashop/assets/*.bak`
 
 
 # 💸 Project Support
