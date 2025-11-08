@@ -271,7 +271,7 @@ You can use any proxy solution, similar to how it is done for [**Remnawave**](ht
 
 To update and restart the bot, run the following command:
 ```
-RESET_ASSETS=true cd /opt/remnashop && docker compose pull && docker compose down && docker compose up -d && docker compose logs -f
+cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=true docker compose up -d && docker compose logs -f
 ```
 
 When using `RESET_ASSETS=true`, the following actions are performed:

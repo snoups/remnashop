@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Optional
 from uuid import UUID
 
@@ -43,6 +44,7 @@ from src.core.utils.formatters import (
     i18n_format_traffic_limit,
 )
 from src.core.utils.message_payload import MessagePayload
+from src.core.utils.time import datetime_now
 from src.core.utils.types import RemnaUserDto
 from src.infrastructure.database.models.dto import (
     PlanSnapshotDto,
@@ -92,23 +94,8 @@ class RemnawaveService(BaseService):
         self,
         user: UserDto,
         plan: PlanSnapshotDto,
-        recreate: bool = False,
     ) -> UserResponseDto:
-        if recreate:
-            remna_user = await self.remnawave.users.get_user_by_username(user.remna_name)
-
-            if isinstance(remna_user, UserResponseDto):
-                logger.info(f"Deleting existing Remnawave user '{remna_user.username}'")
-                deleted_user = await self.remnawave.users.delete_user(str(remna_user.uuid))
-
-                if isinstance(deleted_user, DeleteUserResponseDto) and deleted_user.is_deleted:
-                    logger.info("Existing user deleted successfully")
-                else:
-                    raise ValueError(f"Could not delete user '{remna_user.username}'")
-            else:
-                logger.warning("No existing Remnawave user found for recreation")
-
-        logger.info(f"Creating Remnawave user for plan '{plan.name}'")
+        logger.info(f"Creating RemnaUser '{user.telegram_id}' for plan '{plan.name}'")
         created_user = await self.remnawave.users.create_user(
             CreateUserRequestDto(
                 expire_at=format_days_to_datetime(plan.duration),
@@ -125,9 +112,9 @@ class RemnawaveService(BaseService):
         )
 
         if not isinstance(created_user, UserResponseDto):
-            raise ValueError("Failed to create Remnawave user: unexpected response")
+            raise ValueError("Failed to create RemnaUser: unexpected response")
 
-        logger.info(f"Remnawave user '{created_user.username}' created successfully")
+        logger.info(f"RemnaUser '{created_user.telegram_id}' created successfully")
         return created_user
 
     async def updated_user(
@@ -145,7 +132,7 @@ class RemnawaveService(BaseService):
             internal_squads = subscription.internal_squads
             expire_at = subscription.expire_at
             logger.info(
-                f"Updating Remnawave user '{user.remna_name}' from subscription '{subscription.id}'"
+                f"Updating RemnaUser '{user.telegram_id}' from subscription '{subscription.id}'"
             )
         elif plan:
             status = SubscriptionStatus.ACTIVE
@@ -154,7 +141,7 @@ class RemnawaveService(BaseService):
             internal_squads = plan.internal_squads
             expire_at = format_days_to_datetime(plan.duration)
 
-            logger.info(f"Updating Remnawave user '{user.remna_name}' from plan '{plan.name}'")
+            logger.info(f"Updating RemnaUser '{user.telegram_id}' from plan '{plan.name}'")
         else:
             raise ValueError("Either 'plan' or 'subscription' must be provided")
 
@@ -176,19 +163,19 @@ class RemnawaveService(BaseService):
 
         if reset_traffic:
             await self.remnawave.users.reset_user_traffic(str(uuid))
-            logger.info(f"Traffic reset for user '{user.remna_name}'")
+            logger.info(f"Traffic reset for RemnaUser '{user.telegram_id}'")
 
         if not isinstance(updated_user, UserResponseDto):
-            raise ValueError("Failed to update Remnawave user: unexpected response")
+            raise ValueError("Failed to update RemnaUser: unexpected response")
 
-        logger.info(f"Remnawave user '{user.remna_name}' updated successfully")
+        logger.info(f"RemnaUser '{user.telegram_id}' updated successfully")
         return updated_user
 
     async def delete_user(self, user: UserDto) -> bool:
-        logger.info(f"Deleting Remnawave user '{user.remna_name}'")
+        logger.info(f"Deleting RemnaUser '{user.telegram_id}'")
 
         if not user.current_subscription:
-            logger.warning(f"No current subscription for user '{user.remna_name}'")
+            logger.warning(f"No current subscription for user '{user.telegram_id}'")
             return False
 
         result = await self.remnawave.users.delete_user(
@@ -196,20 +183,20 @@ class RemnawaveService(BaseService):
         )
 
         if not isinstance(result, DeleteUserResponseDto):
-            raise ValueError("Failed to delete Remnawave user: unexpected response")
+            raise ValueError("Failed to delete RemnaUser: unexpected response")
 
         if result.is_deleted:
-            logger.info(f"Remnawave user '{user.remna_name}' deleted successfully")
+            logger.info(f"RemnaUser '{user.telegram_id}' deleted successfully")
         else:
-            logger.warning(f"Remnawave user '{user.remna_name}' deletion failed")
+            logger.warning(f"RemnaUser '{user.telegram_id}' deletion failed")
 
         return result.is_deleted
 
     async def get_devices_user(self, user: UserDto) -> list[HwidDeviceDto]:
-        logger.info(f"Fetching devices for Remnawave user '{user.remna_name}'")
+        logger.info(f"Fetching devices for RemnaUser '{user.telegram_id}'")
 
         if not user.current_subscription:
-            logger.warning(f"No subscription found for user '{user.remna_name}'")
+            logger.warning(f"No subscription found for user '{user.telegram_id}'")
             return []
 
         result = await self.remnawave.hwid.get_hwid_user(
@@ -220,17 +207,17 @@ class RemnawaveService(BaseService):
             raise ValueError("Unexpected response fetching devices")
 
         if result.total:
-            logger.info(f"Found {result.total} device(s) for user '{user.remna_name}'")
+            logger.info(f"Found '{result.total}' device(s) for RemnaUser '{user.telegram_id}'")
             return result.devices
 
-        logger.info(f"No devices found for user '{user.remna_name}'")
+        logger.info(f"No devices found for RemnaUser '{user.telegram_id}'")
         return []
 
     async def delete_device(self, user: UserDto, hwid: str) -> Optional[int]:
-        logger.info(f"Deleting device '{hwid}' for user '{user.remna_name}'")
+        logger.info(f"Deleting device '{hwid}' for RemnaUser '{user.telegram_id}'")
 
         if not user.current_subscription:
-            logger.warning(f"No subscription found for user '{user.remna_name}'")
+            logger.warning(f"No subscription found for user '{user.telegram_id}'")
             return None
 
         result = await self.remnawave.hwid.delete_hwid_to_user(
@@ -243,22 +230,22 @@ class RemnawaveService(BaseService):
         if not isinstance(result, DeleteUserHwidDeviceResponseDto):
             raise ValueError("Unexpected response deleting device")
 
-        logger.info(f"Deleted device '{hwid}' for user '{user.remna_name}'")
+        logger.info(f"Deleted device '{hwid}' for RemnaUser '{user.telegram_id}'")
         return result.total
 
-    async def get_user(self, user: UserDto) -> Optional[UserResponseDto]:
-        logger.info(f"Fetching Remnawave user '{user.remna_name}'")
-        remna_user = await self.remnawave.users.get_user_by_username(user.remna_name)
+    async def get_user(self, uuid: UUID) -> Optional[UserResponseDto]:
+        logger.info(f"Fetching RemnaUser '{uuid}'")
+        remna_user = await self.remnawave.users.get_user_by_uuid(str(uuid))
 
         if not isinstance(remna_user, UserResponseDto):
-            logger.warning(f"User '{user.remna_name}' not found")
+            logger.warning(f"RemnaUser '{uuid}' not found")
             return None
 
-        logger.info(f"Remnawave user '{user.remna_name}' fetched successfully")
+        logger.info(f"RemnaUser '{remna_user.telegram_id}' fetched successfully")
         return remna_user
 
-    async def get_subscription_url(self, user: UserDto) -> Optional[str]:
-        remna_user = await self.get_user(user)
+    async def get_subscription_url(self, uuid: UUID) -> Optional[str]:
+        remna_user = await self.get_user(uuid)
 
         if remna_user is None:
             return None
@@ -277,14 +264,13 @@ class RemnawaveService(BaseService):
             update_status_current_subscription_task,
         )
 
-        logger.info(f"Received user event '{event}' for user '{remna_user.username}'")
+        logger.info(f"Received event '{event}' for RemnaUser '{remna_user.telegram_id}'")
 
         if not remna_user.telegram_id:
-            logger.debug(f"Skipping user '{remna_user.username}': telegram_id is empty")
+            logger.debug(f"Skipping RemnaUser '{remna_user.username}': telegram_id is empty")
             return
 
         if event == RemnaUserEvent.CREATED:
-            logger.debug(f"User '{remna_user.username}' created")
             await sync_imported_user_task.kiq(remna_user)
             return
 
@@ -319,11 +305,11 @@ class RemnawaveService(BaseService):
         }
 
         if event == RemnaUserEvent.MODIFIED:
-            logger.debug(f"User '{remna_user.username}' modified")
-            subscription_url = await self.get_subscription_url(user)
+            logger.debug(f"RemnaUser '{remna_user.telegram_id}' modified")
+            subscription_url = await self.get_subscription_url(remna_user.uuid)
 
             if not subscription_url:
-                logger.warning(f"User '{user.telegram_id}' has not subscription_url")
+                logger.warning(f"RemnaUser '{user.telegram_id}' has not subscription_url")
                 return
 
             remna_subscription = RemnaSubscriptionDto.from_remna_user(remna_user.model_dump())
@@ -331,8 +317,15 @@ class RemnawaveService(BaseService):
             await sync_current_subscription_task.kiq(user.telegram_id, remna_subscription)
 
         elif event == RemnaUserEvent.DELETED:
-            logger.debug(f"User '{remna_user.username}' deleted in Remnawave")
+            logger.debug(f"RemnaUser '{remna_user.telegram_id}' deleted")
             await delete_current_subscription_task.kiq(user_telegram_id=remna_user.telegram_id)
+
+        elif remna_user.expire_at + timedelta(days=2) < datetime_now():  # type: ignore[operator]
+            logger.debug(
+                f"Subscription for RemnaUser '{user.telegram_id}' expired more than 2 days ago, "
+                "skipping — most likely an imported user"
+            )
+            return
 
         elif event in {
             RemnaUserEvent.REVOKED,
@@ -341,7 +334,9 @@ class RemnawaveService(BaseService):
             RemnaUserEvent.LIMITED,
             RemnaUserEvent.EXPIRED,
         }:
-            logger.debug(f"User '{remna_user.username}' status changed to '{remna_user.status}'")
+            logger.debug(
+                f"RemnaUser '{remna_user.telegram_id}' status changed to '{remna_user.status}'"
+            )
             await update_status_current_subscription_task.kiq(
                 user_telegram_id=remna_user.telegram_id,
                 status=SubscriptionStatus(remna_user.status),  # type: ignore[arg-type]
@@ -359,7 +354,7 @@ class RemnawaveService(BaseService):
                 )
 
         elif event == RemnaUserEvent.FIRST_CONNECTED:
-            logger.debug(f"User '{remna_user.username}' connected for the first time")
+            logger.debug(f"RemnaUser '{remna_user.telegram_id}' connected for the first time")
             await send_system_notification_task.kiq(
                 ntf_type=SystemNotificationType.USER_FIRST_CONNECTED,
                 payload=MessagePayload.not_deleted(
@@ -374,7 +369,9 @@ class RemnawaveService(BaseService):
             RemnaUserEvent.EXPIRES_IN_48_HOURS,
             RemnaUserEvent.EXPIRES_IN_24_HOURS,
         }:
-            logger.debug(f"Sending expiration notification for '{remna_user.username}'")
+            logger.debug(
+                f"Sending expiration notification for RemnaUser '{remna_user.telegram_id}'"
+            )
             expire_map = {
                 RemnaUserEvent.EXPIRES_IN_72_HOURS: UserNotificationType.EXPIRES_IN_3_DAYS,
                 RemnaUserEvent.EXPIRES_IN_48_HOURS: UserNotificationType.EXPIRES_IN_2_DAYS,
@@ -387,11 +384,11 @@ class RemnawaveService(BaseService):
             )
 
         elif event == RemnaUserEvent.EXPIRED_24_HOURS_AGO:
-            logger.debug(f"User '{remna_user.username}' expired 24 hours ago")
+            logger.debug(f"RemnaUser '{remna_user.telegram_id}' expired 24 hours ago")
             await delete_current_subscription_task.kiq(user_telegram_id=remna_user.telegram_id)
 
         else:
-            logger.warning(f"Unhandled user event '{event}' for '{remna_user.username}'")
+            logger.warning(f"Unhandled user event '{event}' for '{remna_user.telegram_id}'")
 
     async def handle_device_event(
         self,
@@ -399,10 +396,10 @@ class RemnawaveService(BaseService):
         remna_user: RemnaUserDto,
         device: HwidUserDeviceDto,
     ) -> None:
-        logger.info(f"Received device event '{event}' for user '{remna_user.username}'")
+        logger.info(f"Received device event '{event}' for RemnaUser '{remna_user.telegram_id}'")
 
         if not remna_user.telegram_id:
-            logger.debug(f"Skipping user '{remna_user.username}': telegram_id is empty")
+            logger.debug(f"Skipping RemnaUser '{remna_user.username}': telegram_id is empty")
             return
 
         user = await self.user_service.get(telegram_id=remna_user.telegram_id)
@@ -412,15 +409,17 @@ class RemnawaveService(BaseService):
             return
 
         if event == RemnaUserHwidDevicesEvent.ADDED:
-            logger.debug(f"Device '{device.hwid}' added for user '{remna_user.username}'")
+            logger.debug(f"Device '{device.hwid}' added for RemnaUser '{remna_user.telegram_id}'")
             i18n_key = "ntf-event-user-hwid-added"
 
         elif event == RemnaUserHwidDevicesEvent.DELETED:
-            logger.debug(f"Device '{device.hwid}' deleted for user '{remna_user.username}'")
+            logger.debug(f"Device '{device.hwid}' deleted for RemnaUser '{remna_user.telegram_id}'")
             i18n_key = "ntf-event-user-hwid-deleted"
 
         else:
-            logger.warning(f"Unhandled device event '{event}' for user '{remna_user.username}'")
+            logger.warning(
+                f"Unhandled device event '{event}' for RemnaUser '{remna_user.telegram_id}'"
+            )
             return
 
         await send_system_notification_task.kiq(

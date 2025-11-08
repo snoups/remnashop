@@ -4,6 +4,7 @@ from aiogram_dialog.widgets.kbd import Button, Column, Row, Select, Start, Switc
 from magic_filter import F
 
 from src.bot.keyboards import back_main_menu_button, main_menu_button
+from src.bot.routers.extra.test import show_dev_popup
 from src.bot.states import Dashboard, DashboardImporter
 from src.bot.widgets.banner import Banner
 from src.bot.widgets.i18n_format import I18nFormat
@@ -40,7 +41,8 @@ importer = Window(
         Button(
             text=I18nFormat("btn-importer-sync"),
             id="sync",
-            on_click=on_sync,
+            # on_click=on_sync,
+            on_click=show_dev_popup,
         ),
     ),
     Row(

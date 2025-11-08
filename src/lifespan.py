@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     states: dict[Optional[bool], str] = {True: "Enabled", False: "Disabled", None: "Unknown"}
 
     logger.opt(colors=True).info(
-        f"""
+        rf"""
     <cyan> _____                                _                 </>
     <cyan>|  __ \                              | |                </>
     <cyan>| |__) |___ _ __ ___  _ __   __ _ ___| |__   ___  _ __  </>

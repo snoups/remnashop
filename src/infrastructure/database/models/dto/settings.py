@@ -9,6 +9,7 @@ from .base import TrackableDto
 
 class SystemNotificationDto(TrackableDto):  # == SystemNotificationType
     bot_lifetime: bool = True
+    bot_update: bool = True
     user_registered: bool = True
     subscription: bool = True
     promocode_activated: bool = True

@@ -269,7 +269,7 @@ docker compose up -d && docker compose logs -f -t
 
 Для обновления и перезапуска бота выполните следующую команду:
 ```
-RESET_ASSETS=true cd /opt/remnashop && docker compose pull && docker compose down && docker compose up -d && docker compose logs -f
+cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=true docker compose up -d && docker compose logs -f
 ```
 
 При использовании `RESET_ASSETS=true` выполняются следующие действия:  

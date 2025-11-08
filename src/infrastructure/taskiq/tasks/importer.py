@@ -56,7 +56,9 @@ async def import_exported_users_task(
 @inject
 async def sync_imported_user_task(remna_user: RemnaUserDto) -> None:
     if not remna_user.telegram_id:
-        logger.warning(f"Skipping sync for user '{remna_user.username}', missing 'telegram_id'")
+        logger.warning(
+            f"Skipping sync for RemnaUser '{remna_user.username}', missing 'telegram_id'"
+        )
         return
 
     logger.info(f"Starting sync for imported user '{remna_user.telegram_id}'")
@@ -81,7 +83,7 @@ async def sync_all_users_from_panel_task(
 
     while True:
         response = await remnawave.users.get_all_users_v2(start=start, size=size)
-
+        logger.success(response)
         if not isinstance(response, UsersResponseDto) or not response.users:
             break
 
@@ -119,16 +121,20 @@ async def sync_all_users_from_panel_task(
                     await create_user_from_panel_task.kiq(remna_user)
                     added += 1
                 else:
+                    logger.success(remna_user.hwid_device_limit)
                     remna_subscription = RemnaSubscriptionDto.from_remna_user(
                         remna_user.model_dump()
                     )
+                    logger.success(remna_subscription.device_limit)
                     await sync_current_subscription_task.kiq(
                         remna_user.telegram_id, remna_subscription
                     )
                     updated += 1
 
         except Exception as exception:
-            logger.exception(f"Error syncing user '{remna_user.username}' exception: {exception}")
+            logger.exception(
+                f"Error syncing RemnaUser '{remna_user.telegram_id}' exception: {exception}"
+            )
             errors += 1
 
     result = {
@@ -165,7 +171,7 @@ async def create_user_from_panel_task(
     remna_subscription = RemnaSubscriptionDto.from_remna_user(remna_user.model_dump())
 
     if not remna_subscription.url:
-        subscription_url = await remnawave_service.get_subscription_url(user)
+        subscription_url = await remnawave_service.get_subscription_url(remna_user.uuid)
         remna_subscription.url = subscription_url  # type: ignore[assignment]
 
     temp_plan = PlanSnapshotDto(

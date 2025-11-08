@@ -19,7 +19,6 @@ from src.core.utils.formatters import (
     i18n_format_traffic_limit,
 )
 from src.core.utils.message_payload import MessagePayload
-from src.core.utils.time import datetime_now
 from src.infrastructure.database.models.dto import (
     PlanSnapshotDto,
     RemnaSubscriptionDto,
@@ -246,12 +245,6 @@ async def delete_current_subscription_task(
         logger.debug(f"No current subscription for user '{user.telegram_id}', skipping deletion")
         return
 
-    if subscription.expire_at - datetime_now() > timedelta(days=2):
-        logger.debug(
-            f"Subscription for user '{user.telegram_id}' expires in more than 2 days, skipping"
-        )
-        return
-
     subscription.status = SubscriptionStatus.DELETED
     await subscription_service.update(subscription)
     await user_service.delete_current_subscription(user.telegram_id)
@@ -307,6 +300,8 @@ async def sync_current_subscription_task(
         logger.debug(f"No active subscription for user '{user.telegram_id}'")
         return
 
+    logger.success(remna_subscription)
     subscription = subscription.apply_sync(remna_subscription)
+    logger.success(subscription)
     await subscription_service.update(subscription)
     logger.info(f"Subscription for '{telegram_id}' successfully synchronized")

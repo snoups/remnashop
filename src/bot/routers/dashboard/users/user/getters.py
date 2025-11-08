@@ -101,7 +101,7 @@ async def subscription_getter(
     if not subscription:
         raise ValueError(f"Current subscription for user '{target_telegram_id}' not found")
 
-    remna_user = await remnawave_service.get_user(target_user)
+    remna_user = await remnawave_service.get_user(subscription.user_remna_id)
 
     if not remna_user:
         raise ValueError(f"User Remnawave '{target_telegram_id}' not found")

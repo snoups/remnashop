@@ -30,7 +30,7 @@ async def on_goto(callback: CallbackQuery, dialog_manager: DialogManager, user: 
         return
 
     state = state_from_string(data)
-    logger.success(state)
+
     if not state:
         logger.warning(f"{log(user)} Trying go to not exist state '{data}'")
         return

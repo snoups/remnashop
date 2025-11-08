@@ -6,6 +6,7 @@ from aiogram_dialog.api.internal import FakeUser
 from dishka import AsyncContainer
 from loguru import logger
 
+from src.bot.keyboards import get_user_keyboard
 from src.core.config import AppConfig
 from src.core.constants import CONTAINER_KEY, IS_SUPER_DEV_KEY, USER_KEY
 from src.core.enums import MiddlewareEventType, SystemNotificationType
@@ -57,6 +58,7 @@ class UserMiddleware(EventTypedMiddleware):
                     },
                     auto_delete_after=None,
                     add_close_button=True,
+                    reply_markup=get_user_keyboard(user.telegram_id),
                 ),
                 ntf_type=SystemNotificationType.USER_REGISTERED,
             )

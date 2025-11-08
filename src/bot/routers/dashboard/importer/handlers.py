@@ -158,9 +158,9 @@ async def on_import_all_xui(
         return
 
     dialog_manager.dialog_data["has_started"] = True
-    await notification_service.notify_user(
+    notification = await notification_service.notify_user(
         user=user,
-        payload=MessagePayload(i18n_key="ntf-importer-import-started"),
+        payload=MessagePayload.not_deleted(i18n_key="ntf-importer-import-started"),
     )
 
     task = await import_exported_users_task.kiq(users["all"], selected_squads)
@@ -168,6 +168,9 @@ async def on_import_all_xui(
     logger.info(f"{log(user)} Started import '{len(users['all'])}' users")
     result = await task.wait_result()
     success_count, failed_count = result.return_value
+
+    if notification:
+        await notification.delete()
 
     dialog_manager.dialog_data["completed"] = {
         "total_count": len(users["all"]),
@@ -196,15 +199,18 @@ async def on_import_active_xui(
         return
 
     dialog_manager.dialog_data["has_started"] = True
-    await notification_service.notify_user(
+    notification = await notification_service.notify_user(
         user=user,
-        payload=MessagePayload(i18n_key="ntf-importer-import-started"),
+        payload=MessagePayload.not_deleted(i18n_key="ntf-importer-import-started"),
     )
 
     task = await import_exported_users_task.kiq(users["active"], selected_squads)
     logger.info(f"{log(user)} Started import '{len(users['active'])}' users")
     result = await task.wait_result()
     success_count, failed_count = result.return_value
+
+    if notification:
+        await notification.delete()
 
     dialog_manager.dialog_data["completed"] = {
         "total_count": len(users["active"]),

@@ -20,6 +20,7 @@ dependencies = [
     "pydantic-settings~=2.11.0",
     "redis~=6.4.0",
     "remnawave>=2.2.3",
+    #"remnawave @ file:///opt/python-sdk/remnawave",
     #"remnawave @ git+https://github.com/remnawave/python-sdk.git@development",
     "taskiq~=0.11.19",
     "taskiq-redis~=1.1.2",

@@ -43,7 +43,7 @@ class RemnaSubscriptionDto(BaseModel):
             return default
 
         traffic_limit_bytes = get_field("traffic_limit_bytes", "trafficLimitBytes")
-        hwid_device_limit = get_field("hwid_device_limit", "hwidDeviceLimit", default=0)
+        hwid_device_limit = get_field("hwid_device_limit", "hwidDeviceLimit")
 
         raw_squads = get_field("active_internal_squads", "activeInternalSquads", default=[])
         internal_squads = [
