@@ -360,8 +360,8 @@ class RemnawaveService(BaseService):
                 payload=MessagePayload.not_deleted(
                     i18n_key="ntf-event-user-first-connected",
                     i18n_kwargs=i18n_kwargs,
+                    reply_markup=get_user_keyboard(user.telegram_id),
                 ),
-                reply_markup=get_user_keyboard(user.telegram_id),
             )
 
         elif event in {

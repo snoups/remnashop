@@ -339,8 +339,8 @@ class PaymentGatewayService(BaseService):
             payload=MessagePayload.not_deleted(
                 i18n_key=i18n_key,
                 i18n_kwargs={**i18n_kwargs, **extra_i18n_kwargs},
+                reply_markup=get_user_keyboard(transaction.user.telegram_id),
             ),
-            reply_markup=get_user_keyboard(transaction.user.telegram_id),
         )
 
         await purchase_subscription_task.kiq(transaction, subscription)
