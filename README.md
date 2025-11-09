@@ -5,7 +5,6 @@
     <a href="https://github.com/snoups/remnashop/blob/main/README.ru_RU.md"><b>РУССКИЙ</b></a>
 </p>
 
-
 ![remnashop](https://github.com/user-attachments/assets/57ba5832-4646-45e1-b082-f8f2f5e82c3e)
 
 **This project is a Telegram bot for selling VPN subscriptions, integrated with Remnawave.**
