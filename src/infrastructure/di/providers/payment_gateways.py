@@ -13,12 +13,13 @@ from src.infrastructure.payment_gateways import (
     PaymentGatewayFactory,
     TelegramStarsGateway,
     YookassaGateway,
+    YoomoneyGateway,
 )
 
 GATEWAY_MAP: dict[PaymentGatewayType, Type[BasePaymentGateway]] = {
     PaymentGatewayType.TELEGRAM_STARS: TelegramStarsGateway,
     PaymentGatewayType.YOOKASSA: YookassaGateway,
-    # PaymentGatewayType.YOOMONEY: YoomoneyGateway,
+    PaymentGatewayType.YOOMONEY: YoomoneyGateway,
     # PaymentGatewayType.CRYPTOMUS: CryptomusGateway,
     # PaymentGatewayType.HELEKET: HeleketGateway,
     # PaymentGatewayType.URLPAY: UrlpayGateway,
