@@ -91,15 +91,15 @@ class PaymentGatewayService(BaseService):
                 case PaymentGatewayType.YOOKASSA:
                     is_active = False
                     settings = YookassaGatewaySettingsDto()
-                # case PaymentGatewayType.YOOMONEY:
-                #     is_active = False
-                #     settings = YoomoneyGatewaySettingsDto()
-                # case PaymentGatewayType.CRYPTOMUS:
-                #     is_active = False
-                #     settings = CryptomusGatewaySettingsDto()
-                # case PaymentGatewayType.HELEKET:
-                #     is_active = False
-                #     settings = HeleketGatewaySettingsDto()
+                case PaymentGatewayType.YOOMONEY:
+                    is_active = False
+                    settings = YoomoneyGatewaySettingsDto()
+                case PaymentGatewayType.CRYPTOMUS:
+                    is_active = False
+                    settings = CryptomusGatewaySettingsDto()
+                case PaymentGatewayType.HELEKET:
+                    is_active = False
+                    settings = HeleketGatewaySettingsDto()
                 # case PaymentGatewayType.CRYPTOPAY:
                 #     is_active = False
                 #     settings = CryptopayGatewaySettingsDto()

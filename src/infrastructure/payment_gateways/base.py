@@ -9,6 +9,7 @@ from fastapi import Request
 from httpx import AsyncClient, Timeout
 from loguru import logger
 
+from src.core.config import AppConfig
 from src.core.enums import TransactionStatus
 from src.infrastructure.database.models.dto import PaymentGatewayDto, PaymentResult
 
@@ -29,9 +30,11 @@ class BasePaymentGateway(ABC):
         self,
         gateway: PaymentGatewayDto,
         bot: Bot,
+        config: AppConfig
     ) -> None:
         self.gateway = gateway
         self.bot = bot
+        self.config = config
         self._bot_username: Optional[str] = None
 
         logger.debug(f"{self.__class__.__name__} Initialized")

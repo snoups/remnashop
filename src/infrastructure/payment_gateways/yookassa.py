@@ -9,6 +9,7 @@ from fastapi import Request
 from httpx import AsyncClient, HTTPStatusError
 from loguru import logger
 
+from src.core.config import AppConfig
 from src.core.enums import TransactionStatus, YookassaVatCode
 from src.infrastructure.database.models.dto import (
     PaymentGatewayDto,
@@ -42,8 +43,8 @@ class YookassaGateway(BasePaymentGateway):
         "2a02:5180:0:2669::/64",
     ]
 
-    def __init__(self, gateway: PaymentGatewayDto, bot: Bot) -> None:
-        super().__init__(gateway, bot)
+    def __init__(self, gateway: PaymentGatewayDto, bot: Bot, config: AppConfig) -> None:
+        super().__init__(gateway, bot, config)
 
         if not isinstance(self.gateway.settings, YookassaGatewaySettingsDto):
             raise TypeError("YookassaGateway requires YookassaGatewaySettingsDto")
