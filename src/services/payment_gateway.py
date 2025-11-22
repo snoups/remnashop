@@ -97,9 +97,9 @@ class PaymentGatewayService(BaseService):
                 case PaymentGatewayType.CRYPTOMUS:
                     is_active = False
                     settings = CryptomusGatewaySettingsDto()
-                # case PaymentGatewayType.HELEKET:
-                #     is_active = False
-                #     settings = HeleketGatewaySettingsDto()
+                case PaymentGatewayType.HELEKET:
+                    is_active = False
+                    settings = HeleketGatewaySettingsDto()
                 # case PaymentGatewayType.CRYPTOPAY:
                 #     is_active = False
                 #     settings = CryptopayGatewaySettingsDto()

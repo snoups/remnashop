@@ -16,6 +16,7 @@ from src.infrastructure.payment_gateways import (
     YookassaGateway,
     YoomoneyGateway,
     CryptomusGateway,
+    HeleketGateway
 )
 
 GATEWAY_MAP: dict[PaymentGatewayType, Type[BasePaymentGateway]] = {
@@ -23,7 +24,7 @@ GATEWAY_MAP: dict[PaymentGatewayType, Type[BasePaymentGateway]] = {
     PaymentGatewayType.YOOKASSA: YookassaGateway,
     PaymentGatewayType.YOOMONEY: YoomoneyGateway,
     PaymentGatewayType.CRYPTOMUS: CryptomusGateway,
-    # PaymentGatewayType.HELEKET: HeleketGateway,
+    PaymentGatewayType.HELEKET: HeleketGateway,
     # PaymentGatewayType.URLPAY: UrlpayGateway,
 }
 
