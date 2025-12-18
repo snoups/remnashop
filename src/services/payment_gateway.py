@@ -41,11 +41,8 @@ from src.infrastructure.database.models.dto import (
 from src.infrastructure.database.models.sql import PaymentGateway
 from src.infrastructure.payment_gateways import BasePaymentGateway, PaymentGatewayFactory
 from src.infrastructure.redis import RedisRepository
-from src.infrastructure.taskiq.tasks.notifications import (
-    send_system_notification_task,
-    send_test_transaction_notification_task,
-)
 from src.infrastructure.taskiq.tasks.subscriptions import purchase_subscription_task
+from src.services.notification import NotificationService
 from src.services.referral import ReferralService
 from src.services.subscription import SubscriptionService
 
@@ -73,6 +70,7 @@ class PaymentGatewayService(BaseService):
         subscription_service: SubscriptionService,
         payment_gateway_factory: PaymentGatewayFactory,
         referral_service: ReferralService,
+        notification_service: NotificationService,
     ) -> None:
         super().__init__(config, bot, redis_client, redis_repository, translator_hub)
         self.uow = uow
@@ -80,6 +78,7 @@ class PaymentGatewayService(BaseService):
         self.subscription_service = subscription_service
         self.payment_gateway_factory = payment_gateway_factory
         self.referral_service = referral_service
+        self.notification_service = notification_service
 
     async def create_default(self) -> None:
         for gateway_type in PaymentGatewayType:
@@ -228,9 +227,9 @@ class PaymentGatewayService(BaseService):
         transaction_data = {
             "status": TransactionStatus.PENDING,
             "purchase_type": purchase_type,
-            "gateway_type": gateway_instance.gateway.type,
+            "gateway_type": gateway_instance.data.type,
             "pricing": pricing,
-            "currency": gateway_instance.gateway.currency,
+            "currency": gateway_instance.data.currency,
             "plan": plan,
         }
 
@@ -263,8 +262,7 @@ class PaymentGatewayService(BaseService):
         i18n = self.translator_hub.get_translator_by_locale(locale=user.language)
         test_details = i18n.get("test-payment")
 
-        test_payment_id = uuid.uuid4()
-        test_pricing = PriceDetailsDto()
+        test_pricing = PriceDetailsDto(original_amount=2)
         test_plan = PlanSnapshotDto.test()
 
         test_payment: PaymentResult = await gateway_instance.handle_create_payment(
@@ -275,15 +273,15 @@ class PaymentGatewayService(BaseService):
             payment_id=test_payment.id,
             status=TransactionStatus.PENDING,
             purchase_type=PurchaseType.NEW,
-            gateway_type=gateway_instance.gateway.type,
+            gateway_type=gateway_instance.data.type,
             is_test=True,
             pricing=test_pricing,
-            currency=gateway_instance.gateway.currency,
+            currency=gateway_instance.data.currency,
             plan=test_plan,
         )
         await self.transaction_service.create(user, test_transaction)
 
-        logger.info(f"Created test transaction '{test_payment_id}' for user '{user.telegram_id}'")
+        logger.info(f"Created test transaction '{test_payment.id}' for user '{user.telegram_id}'")
         logger.info(
             f"Created test payment '{test_payment.id}' for gateway '{gateway_type}', "
             f"link: '{test_payment.url}'"
@@ -310,7 +308,12 @@ class PaymentGatewayService(BaseService):
         logger.info(f"Payment succeeded '{payment_id}' for user '{transaction.user.telegram_id}'")
 
         if transaction.is_test:
-            await send_test_transaction_notification_task.kiq(user=transaction.user)
+            await self.notification_service.notify_user(
+                user=transaction.user,
+                payload=MessagePayload(
+                    i18n_key="ntf-gateway-test-payment-confirmed",
+                ),
+            )
             return
 
         i18n_keys = {
@@ -358,7 +361,7 @@ class PaymentGatewayService(BaseService):
             "plan_duration": i18n_format_days(transaction.plan.duration),
         }
 
-        await send_system_notification_task.kiq(
+        await self.notification_service.system_notify(
             ntf_type=SystemNotificationType.SUBSCRIPTION,
             payload=MessagePayload.not_deleted(
                 i18n_key=i18n_key,

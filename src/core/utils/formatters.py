@@ -2,27 +2,67 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, Optional, Union
 
-from src.core.constants import T_ME
-from src.core.enums import PlanType
-
 if TYPE_CHECKING:
     from src.infrastructure.database.models.dto import UserDto
 
+import html
 import re
+import unicodedata
 from calendar import monthrange
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, ROUND_UP, Decimal
 from re import Match
 from urllib.parse import quote
 
+from src.core.constants import T_ME
+from src.core.enums import PlanType
 from src.core.i18n.keys import ByteUnitKey, TimeUnitKey, UtilKey
 from src.core.utils.time import datetime_now
 from src.infrastructure.database.models.dto.user import BaseUserDto
+
+_HTML_RE = re.compile(r"<[^>]*>")
+_URL_RE = re.compile(r"(?i)\b(?:https?://|www\.|tg://|t\.me/|telegram\.me/|joinchat/)\S+")
+_USER_NAME_PLACEHOLDER = "User123"
 
 
 # For only user action
 def format_user_log(user: Union[BaseUserDto, UserDto]) -> str:
     return f"[{user.role.upper()}:{user.telegram_id} ({user.name})]"
+
+
+def format_user_name(name: Optional[str]) -> str:
+    if not name:
+        return _USER_NAME_PLACEHOLDER
+
+    text = html.unescape(name)
+    text = unicodedata.normalize("NFKC", text)
+
+    text = _HTML_RE.sub("", text)
+    text = _URL_RE.sub("", text)
+
+    allowed_prefixes = {"L", "N"}
+    allowed_symbols = {"$", "_", "-", "."}
+
+    chars: list[str] = []
+
+    for char in text:
+        cat = unicodedata.category(char)
+
+        if cat == "Mn":
+            continue
+
+        if cat[0] in allowed_prefixes or char in allowed_symbols or cat == "Zs":
+            chars.append(char)
+
+    cleaned = " ".join("".join(chars).split())
+
+    if not cleaned:
+        return _USER_NAME_PLACEHOLDER
+
+    if len(cleaned) > 32:
+        cleaned = f"{cleaned[:31]}"
+
+    return cleaned
 
 
 def format_username_to_url(username: str, text: Optional[str]) -> str:

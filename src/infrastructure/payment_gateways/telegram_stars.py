@@ -14,7 +14,7 @@ from .base import BasePaymentGateway
 
 class TelegramStarsGateway(BasePaymentGateway):
     async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResult:
-        prices = [LabeledPrice(label=self.gateway.currency, amount=int(amount))]
+        prices = [LabeledPrice(label=self.data.currency, amount=int(amount))]
         payment_id = uuid.uuid4()
 
         try:
@@ -22,7 +22,7 @@ class TelegramStarsGateway(BasePaymentGateway):
                 title=details[:32],
                 description=details[:255],
                 payload=str(payment_id),
-                currency=self.gateway.currency,
+                currency=self.data.currency,
                 prices=prices,
             )
 

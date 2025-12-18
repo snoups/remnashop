@@ -7,8 +7,7 @@ from aiogram.methods import TelegramMethod
 from aiogram.types import Update
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import Body, FastAPI, Header, HTTPException, Response, status
-from starlette.background import BackgroundTask
-from starlette.responses import JSONResponse
+from loguru import logger
 
 
 class TelegramWebhookEndpoint:
@@ -52,14 +51,12 @@ class TelegramWebhookEndpoint:
         bot: FromDishka[Bot],
     ) -> Response:
         if not self._verify_secret(x_telegram_bot_api_secret_token):
+            logger.warning(f"Invalid secret token for update '{update.update_id}'")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
-        async def run_feed_update_and_track() -> None:
-            task = asyncio.create_task(self._feed_update(bot=bot, update=update))
-            self._feed_update_tasks.add(task)
-            task.add_done_callback(self._feed_update_tasks.discard)
-            await task
+        task = asyncio.create_task(self._feed_update(bot=bot, update=update))
+        self._feed_update_tasks.add(task)
+        task.add_done_callback(self._feed_update_tasks.discard)
 
-        background_task = BackgroundTask(run_feed_update_and_track)
-
-        return JSONResponse({}, background=background_task, status_code=status.HTTP_200_OK)
+        logger.debug(f"Update '{update.update_id}' scheduled for processing")
+        return Response(status_code=status.HTTP_200_OK)

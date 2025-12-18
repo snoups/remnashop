@@ -6,43 +6,13 @@ from dishka.integrations.taskiq import FromDishka, inject
 
 from src.bot.keyboards import get_buy_keyboard, get_renew_keyboard
 from src.core.constants import BATCH_DELAY, BATCH_SIZE
-from src.core.enums import MediaType, SystemNotificationType, UserNotificationType
+from src.core.enums import MediaType, UserNotificationType
 from src.core.utils.iterables import chunked
 from src.core.utils.message_payload import MessagePayload
 from src.core.utils.types import RemnaUserDto
-from src.infrastructure.database.models.dto import UserDto
 from src.infrastructure.taskiq.broker import broker
 from src.services.notification import NotificationService
 from src.services.user import UserService
-
-
-@broker.task
-@inject
-async def send_user_notification_task(
-    user: UserDto,
-    ntf_type: UserNotificationType,
-    payload: MessagePayload,
-    notification_service: FromDishka[NotificationService],
-) -> None:
-    await notification_service.notify_user(user=user, payload=payload, ntf_type=ntf_type)
-
-
-@broker.task
-@inject
-async def send_system_notification_task(
-    ntf_type: SystemNotificationType,
-    payload: MessagePayload,
-    notification_service: FromDishka[NotificationService],
-) -> None:
-    await notification_service.system_notify(payload=payload, ntf_type=ntf_type)
-
-
-@broker.task
-@inject
-async def send_remnashop_notification_task(
-    notification_service: FromDishka[NotificationService],
-) -> None:
-    await notification_service.remnashop_notify()
 
 
 @broker.task
@@ -60,19 +30,6 @@ async def send_error_notification_task(
     payload.media = file_data
     payload.media_type = MediaType.DOCUMENT
     await notification_service.notify_super_dev(payload=payload)
-
-
-@broker.task
-@inject
-async def send_access_denied_notification_task(
-    user: UserDto,
-    i18n_key: str,
-    notification_service: FromDishka[NotificationService],
-) -> None:
-    await notification_service.notify_user(
-        user=user,
-        payload=MessagePayload(i18n_key=i18n_key),
-    )
 
 
 @broker.task
@@ -96,7 +53,7 @@ async def send_access_opened_notifications_task(
         await asyncio.sleep(BATCH_DELAY)
 
 
-@broker.task
+@broker.task(retry_on_error=True)
 @inject
 async def send_subscription_expire_notification_task(
     remna_user: RemnaUserDto,
@@ -148,7 +105,7 @@ async def send_subscription_expire_notification_task(
     )
 
 
-@broker.task
+@broker.task(retry_on_error=True)
 @inject
 async def send_subscription_limited_notification_task(
     remna_user: RemnaUserDto,
@@ -167,7 +124,7 @@ async def send_subscription_limited_notification_task(
 
     i18n_kwargs_extra = {
         "is_trial": user.current_subscription.is_trial,
-        "traffic_strategy": user.current_subscription.plan.traffic_limit_strategy,
+        "traffic_strategy": user.current_subscription.traffic_limit_strategy,
         "reset_time": user.current_subscription.get_expire_time,
     }
 
@@ -183,18 +140,4 @@ async def send_subscription_limited_notification_task(
             add_close_button=True,
         ),
         ntf_type=UserNotificationType.LIMITED,
-    )
-
-
-@broker.task
-@inject
-async def send_test_transaction_notification_task(
-    user: UserDto,
-    notification_service: FromDishka[NotificationService],
-) -> None:
-    await notification_service.notify_user(
-        user=user,
-        payload=MessagePayload(
-            i18n_key="ntf-gateway-test-payment-confirmed",
-        ),
     )

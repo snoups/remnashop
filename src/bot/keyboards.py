@@ -9,7 +9,7 @@ from magic_filter import F
 
 from src.bot.states import DashboardUser, MainMenu, Subscription
 from src.bot.widgets.i18n_format import I18nFormat
-from src.core.constants import GOTO_PREFIX, PURCHASE_PREFIX, T_ME
+from src.core.constants import GOTO_PREFIX, PURCHASE_PREFIX, REPOSITORY, T_ME
 from src.core.enums import PurchaseType
 from src.core.utils.formatters import format_username_to_url
 
@@ -145,7 +145,7 @@ def get_remnashop_keyboard() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(
             text="btn-remnashop-github",
-            url="https://github.com/snoups/remnashop",
+            url=REPOSITORY,
         ),
         InlineKeyboardButton(
             text="btn-remnashop-telegram",
@@ -173,11 +173,11 @@ def get_remnashop_update_keyboard() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(
             text="btn-remnashop-release-latest",
-            url="https://github.com/snoups/remnashop/releases/latest",
+            url=f"{REPOSITORY}/releases/latest",
         ),
         InlineKeyboardButton(
             text="btn-remnashop-how-upgrade",
-            url="https://github.com/snoups/remnashop?tab=readme-ov-file#step-5--how-to-upgrade",
+            url=f"{REPOSITORY}?tab=readme-ov-file#step-5--how-to-upgrade",
         ),
     )
 

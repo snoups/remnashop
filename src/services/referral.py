@@ -32,7 +32,7 @@ from src.infrastructure.database.models.dto import (
 )
 from src.infrastructure.database.models.sql import Referral, ReferralReward
 from src.infrastructure.redis import RedisRepository
-from src.infrastructure.taskiq.tasks.notifications import send_user_notification_task
+from src.services.notification import NotificationService
 from src.services.settings import SettingsService
 from src.services.user import UserService
 
@@ -56,11 +56,13 @@ class ReferralService(BaseService):
         uow: UnitOfWork,
         user_service: UserService,
         settings_service: SettingsService,
+        notification_service: NotificationService,
     ) -> None:
         super().__init__(config, bot, redis_client, redis_repository, translator_hub)
         self.uow = uow
         self.user_service = user_service
         self.settings_service = settings_service
+        self.notification_service = notification_service
         self._bot_username: Optional[str] = None
 
     async def create_referral(
@@ -174,7 +176,7 @@ class ReferralService(BaseService):
         await self.create_referral(referrer, user, level)
 
         if await self.settings_service.is_referral_enable():
-            await send_user_notification_task.kiq(
+            await self.notification_service.notify_user(
                 user=referrer,
                 ntf_type=UserNotificationType.REFERRAL_ATTACHED,
                 payload=MessagePayload.not_deleted(
@@ -221,6 +223,9 @@ class ReferralService(BaseService):
             reward_chain[ReferralLevel.SECOND] = parent.referrer
 
         for level, referrer in reward_chain.items():
+            if level > settings.level:
+                continue
+
             config_value = settings.reward.config.get(level)
 
             if config_value is None:

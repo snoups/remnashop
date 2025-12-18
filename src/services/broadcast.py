@@ -99,6 +99,11 @@ class BroadcastService(BaseService):
             **message.changed_data,
         )
 
+    async def bulk_update_messages(self, messages: list[BroadcastMessageDto]) -> None:
+        await self.uow.repository.broadcasts.bulk_update_messages(
+            data=[m.model_dump() for m in messages],
+        )
+
     async def delete_broadcast(self, broadcast_id: int) -> None:
         await self.uow.repository.broadcasts._delete(Broadcast, Broadcast.id == broadcast_id)
 

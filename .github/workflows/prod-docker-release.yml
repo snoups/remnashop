@@ -21,6 +21,20 @@ jobs:
         id: latest-tag
         uses: JinoArch/get-latest-tag@latest
 
+      - name: 🏷️ Define Build Args
+        id: vars
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY}"
+          IMAGE_TAGS="${IMAGE_REPO}:latest,${IMAGE_REPO}:${GITHUB_REF_NAME}"
+
+          echo "image_tag=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          echo "✅ Tags: ${IMAGE_TAGS}"
+          echo "✅ SHA: ${SHORT_SHA}"
+
       - name: 🛠️ Set Up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -39,6 +53,11 @@ jobs:
           tags: |
             ghcr.io/snoups/remnashop:latest
             ghcr.io/snoups/remnashop:${{ github.ref_name }}
+          build-args: |
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
+            BUILD_BRANCH=${{ github.ref_name }}
+            BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
+            BUILD_TAG=${{ github.ref_name }}
 
       - name: 📦 Create GitHub Release
         uses: softprops/action-gh-release@v2

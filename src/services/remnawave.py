@@ -1,29 +1,24 @@
 from datetime import timedelta
-from typing import Optional, Union, cast
+from typing import Optional, cast
 from uuid import UUID
 
 from aiogram import Bot
 from fluentogram import TranslatorHub
-from httpx import Response
 from loguru import logger
 from redis.asyncio import Redis
-from remnawave import RemnawaveSDK
-from remnawave.exceptions import ConflictError, NotFoundError
-from remnawave.models import (
+from remnapy import RemnawaveSDK
+from remnapy.exceptions import ConflictError, NotFoundError
+from remnapy.models import (
     CreateUserRequestDto,
     CreateUserResponseDto,
-    DeleteUserHwidDeviceResponseDto,
-    DeleteUserResponseDto,
     GetStatsResponseDto,
-    GetUserHwidDevicesResponseDto,
     HWIDDeleteRequest,
     HwidUserDeviceDto,
-    TelegramUserResponseDto,
     UpdateUserRequestDto,
     UserResponseDto,
 )
-from remnawave.models.hwid import HwidDeviceDto
-from remnawave.models.webhook import NodeDto
+from remnapy.models.hwid import HwidDeviceDto
+from remnapy.models.webhook import NodeDto
 
 from src.bot.keyboards import get_user_keyboard
 from src.core.config import AppConfig
@@ -61,8 +56,8 @@ from src.infrastructure.redis import RedisRepository
 from src.infrastructure.taskiq.tasks.notifications import (
     send_subscription_expire_notification_task,
     send_subscription_limited_notification_task,
-    send_system_notification_task,
 )
+from src.services.notification import NotificationService
 from src.services.subscription import SubscriptionService
 from src.services.user import UserService
 
@@ -85,18 +80,18 @@ class RemnawaveService(BaseService):
         remnawave: RemnawaveSDK,
         user_service: UserService,
         subscription_service: SubscriptionService,
+        notification_service: NotificationService,
     ) -> None:
         super().__init__(config, bot, redis_client, redis_repository, translator_hub)
         self.remnawave = remnawave
         self.user_service = user_service
         self.subscription_service = subscription_service
+        self.notification_service = notification_service
 
     async def try_connection(self) -> None:
         response = await self.remnawave.system.get_stats()
 
         if not isinstance(response, GetStatsResponseDto):
-            if isinstance(response, (bytes, bytearray)):
-                response = response.decode(errors="ignore")
             raise ValueError(f"Invalid response from Remnawave panel: {response}")
 
     async def create_user(
@@ -106,7 +101,7 @@ class RemnawaveService(BaseService):
         subscription: Optional[SubscriptionDto] = None,
         force: bool = False,
     ) -> UserResponseDto:
-        async def _do_create() -> Union[CreateUserResponseDto, str, bytes, Response]:
+        async def _do_create() -> CreateUserResponseDto:
             if subscription:
                 logger.info(
                     f"Creating RemnaUser '{user.remna_name}' "
@@ -118,9 +113,9 @@ class RemnawaveService(BaseService):
                         expire_at=subscription.expire_at,
                         username=user.remna_name,
                         traffic_limit_bytes=format_gb_to_bytes(subscription.traffic_limit),
-                        traffic_limit_strategy=subscription.plan.traffic_limit_strategy,
+                        traffic_limit_strategy=subscription.traffic_limit_strategy,
                         description=user.remna_description,
-                        tag=subscription.plan.tag,
+                        tag=subscription.tag,
                         telegram_id=user.telegram_id,
                         hwid_device_limit=format_device_count(subscription.device_limit),
                         active_internal_squads=subscription.internal_squads,
@@ -160,16 +155,8 @@ class RemnawaveService(BaseService):
             )
 
             old_remna_user = await self.remnawave.users.get_user_by_username(user.remna_name)
-
-            if not isinstance(old_remna_user, UserResponseDto):
-                logger.warning(f"RemnaUser '{user.remna_name}' not found")
-                raise ValueError("Failed to get RemnaUser: unexpected response")
-
-            await self.remnawave.users.delete_user(uuid=str(old_remna_user.uuid))
+            await self.remnawave.users.delete_user(old_remna_user.uuid)
             created = await _do_create()
-
-        if not isinstance(created, UserResponseDto):
-            raise ValueError("Failed to create RemnaUser: unexpected response")
 
         logger.info(f"RemnaUser '{created.username}' created successfully")
         return created
@@ -196,8 +183,8 @@ class RemnawaveService(BaseService):
             internal_squads = subscription.internal_squads
             external_squad = subscription.external_squad
             expire_at = subscription.expire_at
-            tag = subscription.plan.tag
-            strategy = subscription.plan.traffic_limit_strategy
+            tag = subscription.tag
+            strategy = subscription.traffic_limit_strategy
 
         elif plan:
             logger.info(f"Updating RemnaUser '{user.telegram_id}' from plan '{plan.name}'")
@@ -229,11 +216,8 @@ class RemnawaveService(BaseService):
         )
 
         if reset_traffic:
-            await self.remnawave.users.reset_user_traffic(str(uuid))
+            await self.remnawave.users.reset_user_traffic(uuid)
             logger.info(f"Traffic reset for RemnaUser '{user.telegram_id}'")
-
-        if not isinstance(updated_user, UserResponseDto):
-            raise ValueError("Failed to update RemnaUser: unexpected response")
 
         logger.info(f"RemnaUser '{user.telegram_id}' updated successfully")
         return updated_user
@@ -248,17 +232,14 @@ class RemnawaveService(BaseService):
                 telegram_id=str(user.telegram_id)
             )
 
-            if not isinstance(users_result, TelegramUserResponseDto) or not users_result:
+            if not users_result:
                 return False
 
             uuid = users_result[0].uuid
         else:
             uuid = user.current_subscription.user_remna_id
 
-        result = await self.remnawave.users.delete_user(uuid=str(uuid))
-
-        if not isinstance(result, DeleteUserResponseDto):
-            raise ValueError("Failed to delete RemnaUser: unexpected response")
+        result = await self.remnawave.users.delete_user(uuid)
 
         if result.is_deleted:
             logger.info(f"RemnaUser '{user.telegram_id}' deleted successfully")
@@ -274,12 +255,7 @@ class RemnawaveService(BaseService):
             logger.warning(f"No subscription found for user '{user.telegram_id}'")
             return []
 
-        result = await self.remnawave.hwid.get_hwid_user(
-            uuid=str(user.current_subscription.user_remna_id)
-        )
-
-        if not isinstance(result, GetUserHwidDevicesResponseDto):
-            raise ValueError("Unexpected response fetching devices")
+        result = await self.remnawave.hwid.get_hwid_user(user.current_subscription.user_remna_id)
 
         if result.total:
             logger.info(f"Found '{result.total}' device(s) for RemnaUser '{user.telegram_id}'")
@@ -297,13 +273,10 @@ class RemnawaveService(BaseService):
 
         result = await self.remnawave.hwid.delete_hwid_to_user(
             HWIDDeleteRequest(
-                user_uuid=str(user.current_subscription.user_remna_id),
+                user_uuid=user.current_subscription.user_remna_id,
                 hwid=hwid,
             )
         )
-
-        if not isinstance(result, DeleteUserHwidDeviceResponseDto):
-            raise ValueError("Unexpected response deleting device")
 
         logger.info(f"Deleted device '{hwid}' for RemnaUser '{user.telegram_id}'")
         return result.total
@@ -311,11 +284,8 @@ class RemnawaveService(BaseService):
     async def get_user(self, uuid: UUID) -> Optional[UserResponseDto]:
         logger.info(f"Fetching RemnaUser '{uuid}'")
         try:
-            remna_user = await self.remnawave.users.get_user_by_uuid(str(uuid))
+            remna_user = await self.remnawave.users.get_user_by_uuid(uuid)
         except NotFoundError:
-            return None
-
-        if not isinstance(remna_user, UserResponseDto):
             logger.warning(f"RemnaUser '{uuid}' not found")
             return None
 
@@ -344,7 +314,7 @@ class RemnawaveService(BaseService):
 
         user = cast(UserDto, user)
         subscription = await self.subscription_service.get_current(telegram_id=user.telegram_id)
-        remna_subscription = RemnaSubscriptionDto.from_remna_user(remna_user.model_dump())
+        remna_subscription = RemnaSubscriptionDto.from_remna_user(remna_user)
 
         if not remna_subscription.url:
             remna_subscription.url = await self.get_subscription_url(remna_user.uuid)  # type: ignore[assignment]
@@ -376,6 +346,8 @@ class RemnawaveService(BaseService):
                 status=status,
                 traffic_limit=temp_plan.traffic_limit,
                 device_limit=temp_plan.device_limit,
+                traffic_limit_strategy=temp_plan.traffic_limit_strategy,
+                tag=temp_plan.tag,
                 internal_squads=remna_subscription.internal_squads,
                 external_squad=remna_subscription.external_squad,
                 expire_at=remna_user.expire_at,
@@ -494,7 +466,7 @@ class RemnawaveService(BaseService):
 
         elif event == RemnaUserEvent.FIRST_CONNECTED:
             logger.debug(f"RemnaUser '{remna_user.telegram_id}' connected for the first time")
-            await send_system_notification_task.kiq(
+            await self.notification_service.system_notify(
                 ntf_type=SystemNotificationType.USER_FIRST_CONNECTED,
                 payload=MessagePayload.not_deleted(
                     i18n_key="ntf-event-user-first-connected",
@@ -558,7 +530,7 @@ class RemnawaveService(BaseService):
             )
             return
 
-        await send_system_notification_task.kiq(
+        await self.notification_service.system_notify(
             ntf_type=SystemNotificationType.USER_HWID,
             payload=MessagePayload.not_deleted(
                 i18n_key=i18n_key,
@@ -596,7 +568,7 @@ class RemnawaveService(BaseService):
             logger.warning(f"Unhandled node event '{event}' for node '{node.name}'")
             return
 
-        await send_system_notification_task.kiq(
+        await self.notification_service.system_notify(
             ntf_type=SystemNotificationType.NODE_STATUS,
             payload=MessagePayload.not_deleted(
                 i18n_key=i18n_key,
@@ -607,10 +579,10 @@ class RemnawaveService(BaseService):
                     "port": str(node.port),
                     "traffic_used": i18n_format_bytes_to_unit(node.traffic_used_bytes),
                     "traffic_limit": i18n_format_bytes_to_unit(node.traffic_limit_bytes),
-                    "last_status_message": node.last_status_message or "None",
+                    "last_status_message": node.last_status_message or False,
                     "last_status_change": node.last_status_change.strftime(DATETIME_FORMAT)
                     if node.last_status_change
-                    else "None",
+                    else False,
                 },
             ),
         )

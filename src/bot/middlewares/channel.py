@@ -13,7 +13,6 @@ from src.core.constants import CONTAINER_KEY, USER_KEY
 from src.core.enums import MiddlewareEventType
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import UserDto
-from src.infrastructure.taskiq.tasks.notifications import send_error_notification_task
 from src.services.notification import NotificationService
 from src.services.settings import SettingsService
 
@@ -74,7 +73,7 @@ class ChannelMiddleware(EventTypedMiddleware):
             error_type_name = type(exception).__name__
             error_message = Text(str(exception)[:512])
 
-            await send_error_notification_task.kiq(
+            await notification_service.error_notify(
                 error_id=user.telegram_id,
                 traceback_str=traceback_str,
                 payload=MessagePayload.not_deleted(

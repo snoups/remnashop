@@ -12,17 +12,18 @@ from src.core.storage.keys import LastNotifiedVersionKey
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.redis.repository import RedisRepository
 from src.infrastructure.taskiq.broker import broker
-from src.infrastructure.taskiq.tasks.notifications import send_system_notification_task
+from src.services.notification import NotificationService
 
 REMOTE_VERSION_URL: Final[str] = (
     "https://raw.githubusercontent.com/snoups/remnashop/main/src/__version__.py"
 )
 
 
-@broker.task(schedule=[{"cron": "*/60 * * * *"}])
+@broker.task(schedule=[{"cron": "*/60 * * * *"}], retry_on_error=False)
 @inject
 async def check_bot_update(
     redis_repository: FromDishka[RedisRepository],
+    notification_service: FromDishka[NotificationService],
 ) -> None:
     try:
         async with httpx.AsyncClient() as client:
@@ -51,7 +52,7 @@ async def check_bot_update(
             await redis_repository.set(key, value=remote_version)
 
             logger.info(f"New version available: {remote_version} (local: {local_version})")
-            await send_system_notification_task.kiq(
+            await notification_service.system_notify(
                 ntf_type=SystemNotificationType.BOT_UPDATE,
                 payload=MessagePayload.not_deleted(
                     i18n_key="ntf-event-bot-update",

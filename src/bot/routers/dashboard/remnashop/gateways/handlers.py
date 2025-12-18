@@ -166,9 +166,17 @@ async def on_field_input(
     if selected_field in ["api_key", "secret_key"]:
         input_value = SecretStr(input_value)  # type: ignore[assignment]
 
-    setattr(gateway.settings, selected_field, input_value)
-    logger.info(f"{log(user)} Updated '{selected_field}' for gateway '{gateway_id}'")
+    try:
+        setattr(gateway.settings, selected_field, input_value)
+    except ValueError:
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-gateway-field-wrong-value"),
+        )
+        return
+
     await payment_gateway_service.update(gateway)
+    logger.info(f"{log(user)} Updated '{selected_field}' for gateway '{gateway_id}'")
     await dialog_manager.switch_to(state=RemnashopGateways.SETTINGS)
 
 

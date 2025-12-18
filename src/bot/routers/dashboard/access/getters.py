@@ -15,11 +15,13 @@ async def access_getter(
     settings_service: FromDishka[SettingsService],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    current_mode = await settings_service.get_access_mode()
+    settings = await settings_service.get()
     modes = await access_service.get_available_modes()
 
     return {
-        "access_mode": current_mode,
+        "purchases_allowed": settings.purchases_allowed,
+        "registration_allowed": settings.registration_allowed,
+        "access_mode": settings.access_mode,
         "modes": modes,
     }
 

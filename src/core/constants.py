@@ -19,6 +19,7 @@ API_V1: Final[str] = "/api/v1"
 BOT_WEBHOOK_PATH: Final[str] = "/telegram"
 PAYMENTS_WEBHOOK_PATH: Final[str] = "/payments"
 REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
+REPOSITORY: Final[str] = "https://github.com/snoups/remnashop"
 
 TIMEZONE: Final[timezone] = timezone.utc
 REMNASHOP_PREFIX: Final[str] = "rs_"

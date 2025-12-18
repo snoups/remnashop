@@ -18,7 +18,7 @@ class RedisProvider(Provider):
         client = Redis(connection_pool=connection_pool)
 
         try:
-            await client.ping()
+            await client.ping()  # type: ignore[misc]
             logger.debug("Successfully connected to Redis")
         except Exception as exception:
             logger.error(f"Failed to connect to Redis: {exception}")

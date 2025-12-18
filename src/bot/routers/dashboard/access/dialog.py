@@ -9,7 +9,14 @@ from src.bot.widgets import Banner, I18nFormat, IgnoreUpdate
 from src.core.enums import AccessMode, BannerName
 
 from .getters import access_getter, conditions_getter
-from .handlers import on_access_mode_select, on_channel_input, on_condition_toggle, on_rules_input
+from .handlers import (
+    on_access_mode_select,
+    on_channel_input,
+    on_condition_toggle,
+    on_purchases_toggle,
+    on_registration_toggle,
+    on_rules_input,
+)
 
 access = Window(
     Banner(BannerName.DASHBOARD),
@@ -19,6 +26,18 @@ access = Window(
             text=I18nFormat("btn-access-conditions"),
             id="conditions",
             state=DashboardAccess.CONDITIONS,
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-access-purchases-toggle", enabled=F["purchases_allowed"]),
+            id="purchases",
+            on_click=on_purchases_toggle,
+        ),
+        Button(
+            text=I18nFormat("btn-access-registration-toggle", enabled=F["registration_allowed"]),
+            id="registration",
+            on_click=on_registration_toggle,
         ),
     ),
     Column(

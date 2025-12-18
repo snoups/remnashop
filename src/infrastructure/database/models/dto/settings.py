@@ -85,6 +85,9 @@ class SettingsDto(TrackableDto):
     channel_link: SecretStr = SecretStr("@remna_shop")
 
     access_mode: AccessMode = AccessMode.PUBLIC
+    purchases_allowed: bool = True
+    registration_allowed: bool = True
+
     default_currency: Currency = Currency.XTR
 
     user_notifications: UserNotificationDto = UserNotificationDto()

@@ -1,5 +1,4 @@
 import traceback
-import uuid
 from typing import cast
 
 from aiogram.utils.formatting import Text
@@ -7,13 +6,13 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from loguru import logger
-from remnawave.controllers import WebhookUtility
-from remnawave.models.webhook import NodeDto, UserDto, UserHwidDeviceEventDto
+from remnapy.controllers import WebhookUtility
+from remnapy.models.webhook import NodeDto, UserDto, UserHwidDeviceEventDto
 
 from src.core.config import AppConfig
 from src.core.constants import API_V1, REMNAWAVE_WEBHOOK_PATH
 from src.core.utils.message_payload import MessagePayload
-from src.infrastructure.taskiq.tasks.notifications import send_error_notification_task
+from src.services.notification import NotificationService
 from src.services.remnawave import RemnawaveService
 
 router = APIRouter(prefix=API_V1)
@@ -25,9 +24,12 @@ async def remnawave_webhook(
     request: Request,
     config: FromDishka[AppConfig],
     remnawave_service: FromDishka[RemnawaveService],
+    notification_service: FromDishka[NotificationService],
 ) -> Response:
     try:
         raw_body = await request.body()
+        data = await request.json()
+        logger.debug(f"Received Remnawave webhook payload: '{data}'")
         payload = WebhookUtility.parse_webhook(
             body=raw_body.decode("utf-8"),
             headers=dict(request.headers),
@@ -35,10 +37,11 @@ async def remnawave_webhook(
             validate=True,
         )
     except Exception as exception:
-        logger.exception(f"Webhook validation failed: {exception}")
+        logger.exception(f"Webhook validation failed with error '{exception}'")
         raise HTTPException(status_code=401)
 
     if not payload:
+        logger.warning("Payload is empty after validation")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
@@ -59,16 +62,15 @@ async def remnawave_webhook(
             await remnawave_service.handle_node_event(payload.event, node)
 
         else:
-            logger.warning(f"Unhandled Remnawave event type: '{payload.event}'")
+            logger.warning(f"Unhandled Remnawave event type '{payload.event}'")
 
     except Exception as exception:
-        logger.exception(f"Error processing Remnawave webhook: {exception}")
+        logger.exception(f"Failed to process Remnawave webhook due to '{exception}'")
         traceback_str = traceback.format_exc()
         error_type_name = type(exception).__name__
         error_message = Text(str(exception)[:512])
 
-        await send_error_notification_task.kiq(
-            error_id=str(uuid.uuid4()),
+        await notification_service.error_notify(
             traceback_str=traceback_str,
             payload=MessagePayload.not_deleted(
                 i18n_key="ntf-event-error",

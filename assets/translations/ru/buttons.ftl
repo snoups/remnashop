@@ -196,6 +196,17 @@ btn-promocodes-edit = ✏️ Редактировать
 
 # Access
 btn-access-mode = { access-mode }
+
+btn-access-purchases-toggle = { $enabled ->
+    [1] 🔘
+    *[0] ⚪
+    } Покупки
+
+btn-access-registration-toggle = { $enabled ->
+    [1] 🔘
+    *[0] ⚪
+    } Регистрация
+
 btn-access-conditions = ⚙️ Условия доступа
 btn-access-rules = ✳️ Принятие правил
 btn-access-channel = ❇️ Подписка на канал

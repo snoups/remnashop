@@ -5,6 +5,7 @@ from typing import Optional, cast
 from aiogram.utils.formatting import Text
 from dishka.integrations.taskiq import FromDishka, inject
 from loguru import logger
+from remnapy.exceptions import ConflictError
 
 from src.bot.keyboards import get_user_keyboard
 from src.core.enums import (
@@ -19,6 +20,7 @@ from src.core.utils.formatters import (
     i18n_format_traffic_limit,
 )
 from src.core.utils.message_payload import MessagePayload
+from src.core.utils.time import datetime_now
 from src.core.utils.types import RemnaUserDto
 from src.infrastructure.database.models.dto import (
     PlanSnapshotDto,
@@ -27,10 +29,7 @@ from src.infrastructure.database.models.dto import (
     UserDto,
 )
 from src.infrastructure.taskiq.broker import broker
-from src.infrastructure.taskiq.tasks.notifications import (
-    send_error_notification_task,
-    send_system_notification_task,
-)
+from src.services.notification import NotificationService
 from src.services.remnawave import RemnawaveService
 from src.services.subscription import SubscriptionService
 from src.services.transaction import TransactionService
@@ -43,13 +42,14 @@ from .redirects import (
 )
 
 
-@broker.task
+@broker.task(retry_on_error=True)
 @inject
 async def trial_subscription_task(
     user: UserDto,
     plan: PlanSnapshotDto,
     remnawave_service: FromDishka[RemnawaveService],
     subscription_service: FromDishka[SubscriptionService],
+    notification_service: FromDishka[NotificationService],
 ) -> None:
     logger.info(f"Started trial for user '{user.telegram_id}'")
 
@@ -61,6 +61,8 @@ async def trial_subscription_task(
             is_trial=True,
             traffic_limit=plan.traffic_limit,
             device_limit=plan.device_limit,
+            traffic_limit_strategy=plan.traffic_limit_strategy,
+            tag=plan.tag,
             internal_squads=plan.internal_squads,
             external_squad=plan.external_squad,
             expire_at=created_user.expire_at,
@@ -70,7 +72,7 @@ async def trial_subscription_task(
         await subscription_service.create(user, trial_subscription)
         logger.debug(f"Created new trial subscription for user '{user.telegram_id}'")
 
-        await send_system_notification_task.kiq(
+        await notification_service.system_notify(
             ntf_type=SystemNotificationType.TRIAL_GETTED,
             payload=MessagePayload.not_deleted(
                 i18n_key="ntf-event-subscription-trial",
@@ -90,6 +92,13 @@ async def trial_subscription_task(
         await redirect_to_successed_trial_task.kiq(user)
         logger.info(f"Trial subscription task completed successfully for user '{user.telegram_id}'")
 
+    except ConflictError:
+        logger.warning(
+            "Trial subscription grant skipped: "
+            "user already exists in the panel and likely has an active trial"
+        )
+        return
+
     except Exception as exception:
         logger.exception(
             f"Failed to give trial for user '{user.telegram_id}' exception: {exception}"
@@ -98,7 +107,7 @@ async def trial_subscription_task(
         error_type_name = type(exception).__name__
         error_message = Text(str(exception)[:512])
 
-        await send_error_notification_task.kiq(
+        await notification_service.error_notify(
             error_id=user.telegram_id,
             traceback_str=traceback_str,
             payload=MessagePayload.not_deleted(
@@ -117,7 +126,7 @@ async def trial_subscription_task(
         await redirect_to_failed_subscription_task.kiq(user)
 
 
-@broker.task
+@broker.task(retry_on_error=True)
 @inject
 async def purchase_subscription_task(
     transaction: TransactionDto,
@@ -125,6 +134,7 @@ async def purchase_subscription_task(
     remnawave_service: FromDishka[RemnawaveService],
     subscription_service: FromDishka[SubscriptionService],
     transaction_service: FromDishka[TransactionService],
+    notification_service: FromDishka[NotificationService],
 ) -> None:
     purchase_type = transaction.purchase_type
     user = cast(UserDto, transaction.user)
@@ -145,6 +155,8 @@ async def purchase_subscription_task(
                 status=created_user.status,
                 traffic_limit=plan.traffic_limit,
                 device_limit=plan.device_limit,
+                traffic_limit_strategy=plan.traffic_limit_strategy,
+                tag=plan.tag,
                 internal_squads=plan.internal_squads,
                 external_squad=plan.external_squad,
                 expire_at=created_user.expire_at,
@@ -158,7 +170,8 @@ async def purchase_subscription_task(
             if not subscription:
                 raise ValueError(f"No subscription found for renewal for user '{user.telegram_id}'")
 
-            new_expire = subscription.expire_at + timedelta(days=transaction.plan.duration)
+            base_date = max(subscription.expire_at, datetime_now())
+            new_expire = base_date + timedelta(days=transaction.plan.duration)
             subscription.expire_at = new_expire
 
             updated_user = await remnawave_service.updated_user(
@@ -180,13 +193,18 @@ async def purchase_subscription_task(
             await subscription_service.update(subscription)
 
             updated_user = await remnawave_service.updated_user(
-                user=user, uuid=subscription.user_remna_id, plan=plan, reset_traffic=True
+                user=user,
+                uuid=subscription.user_remna_id,
+                plan=plan,
+                reset_traffic=True,
             )
             new_subscription = SubscriptionDto(
                 user_remna_id=updated_user.uuid,
                 status=updated_user.status,
                 traffic_limit=plan.traffic_limit,
                 device_limit=plan.device_limit,
+                traffic_limit_strategy=plan.traffic_limit_strategy,
+                tag=plan.tag,
                 internal_squads=plan.internal_squads,
                 external_squad=plan.external_squad,
                 expire_at=updated_user.expire_at,
@@ -216,7 +234,7 @@ async def purchase_subscription_task(
         transaction.status = TransactionStatus.FAILED
         await transaction_service.update(transaction)
 
-        await send_error_notification_task.kiq(
+        await notification_service.error_notify(
             error_id=user.telegram_id,
             traceback_str=traceback_str,
             payload=MessagePayload.not_deleted(

@@ -8,15 +8,16 @@ from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
-from remnawave import RemnawaveSDK
-from remnawave.models import GetAllInternalSquadsResponseDto
+from remnapy import RemnawaveSDK
 
 from src.bot.states import DashboardImporter
 from src.core.constants import USER_KEY
+from src.core.storage.keys import SyncRunningKey
 from src.core.utils.formatters import format_user_log as log
 from src.core.utils.message_payload import MessagePayload
 from src.core.utils.validators import is_double_click
 from src.infrastructure.database.models.dto import UserDto
+from src.infrastructure.redis.repository import RedisRepository
 from src.infrastructure.taskiq.tasks.importer import (
     import_exported_users_task,
     sync_all_users_from_panel_task,
@@ -105,12 +106,9 @@ async def on_squads(
     notification_service: FromDishka[NotificationService],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    response = await remnawave.internal_squads.get_internal_squads()
+    result = await remnawave.internal_squads.get_internal_squads()
 
-    if not isinstance(response, GetAllInternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    if not response.internal_squads:
+    if not result.internal_squads:
         await notification_service.notify_user(
             user=user,
             payload=MessagePayload(i18n_key="ntf-squads-empty"),
@@ -226,17 +224,28 @@ async def on_sync(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
+    redis_repository: FromDishka[RedisRepository],
     notification_service: FromDishka[NotificationService],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     selected_bot = callback.data
     dialog_manager.dialog_data["selected_bot"] = selected_bot
+    key = SyncRunningKey()
+
+    if await redis_repository.get(key, str, False):
+        await notification_service.notify_user(
+            user=user,
+            payload=MessagePayload(i18n_key="ntf-importer-sync-already-running"),
+        )
+        return
 
     if is_double_click(
         dialog_manager,
         key="sync_confirm",
         cooldown=10,
     ):
+        await redis_repository.set(key, value=True, ex=3600)
+
         notification = await notification_service.notify_user(
             user=user,
             payload=MessagePayload.not_deleted(i18n_key="ntf-importer-sync-started"),

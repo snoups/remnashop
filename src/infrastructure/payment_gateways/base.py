@@ -4,11 +4,14 @@ from ipaddress import ip_address, ip_network
 from typing import Optional, Protocol
 from uuid import UUID
 
+import orjson
 from aiogram import Bot
 from fastapi import Request
 from httpx import AsyncClient, Timeout
 from loguru import logger
+from starlette.datastructures import Headers
 
+from src.core.config.app import AppConfig
 from src.core.constants import T_ME
 from src.core.enums import TransactionStatus
 from src.infrastructure.database.models.dto import PaymentGatewayDto, PaymentResult
@@ -19,20 +22,15 @@ class PaymentGatewayFactory(Protocol):
 
 
 class BasePaymentGateway(ABC):
-    gateway: PaymentGatewayDto
+    data: PaymentGatewayDto
     bot: Bot
 
     _bot_username: Optional[str]
 
     NETWORKS: list[str] = []
 
-    def __init__(
-        self,
-        gateway: PaymentGatewayDto,
-        bot: Bot,
-        config: AppConfig
-    ) -> None:
-        self.gateway = gateway
+    def __init__(self, gateway: PaymentGatewayDto, bot: Bot, config: AppConfig) -> None:
+        self.data = gateway
         self.bot = bot
         self.config = config
         self._bot_username: Optional[str] = None
@@ -40,11 +38,7 @@ class BasePaymentGateway(ABC):
         logger.debug(f"{self.__class__.__name__} Initialized")
 
     @abstractmethod
-    async def handle_create_payment(
-        self,
-        amount: Decimal,
-        details: str,
-    ) -> PaymentResult: ...
+    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResult: ...
 
     @abstractmethod
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]: ...
@@ -53,6 +47,19 @@ class BasePaymentGateway(ABC):
         if self._bot_username is None:
             self._bot_username = (await self.bot.get_me()).username
         return f"{T_ME}{self._bot_username}"
+
+    async def _get_webhook_data(self, request: Request) -> dict:
+        try:
+            data = orjson.loads(await request.body())
+            logger.debug(f"Webhook data: {data}")
+
+            if not isinstance(data, dict):
+                raise ValueError("Payload is not a dictionary")
+
+            return data
+        except (orjson.JSONDecodeError, ValueError) as exception:
+            logger.error(f"Failed to parse webhook payload: {exception}")
+            raise ValueError("Invalid webhook payload") from exception
 
     def _make_client(
         self,
@@ -75,3 +82,15 @@ class BasePaymentGateway(ABC):
 
     def _is_ip_trusted(self, ip: str) -> bool:
         return any(self._is_ip_in_network(ip, net) for net in self.NETWORKS)
+
+    def _get_ip(self, headers: Headers) -> str:
+        ip = (
+            headers.get("CF-Connecting-IP")
+            or headers.get("X-Real-IP")
+            or headers.get("X-Forwarded-For")
+        )
+
+        if not ip:
+            raise PermissionError("Client IP not found in request headers")
+
+        return ip

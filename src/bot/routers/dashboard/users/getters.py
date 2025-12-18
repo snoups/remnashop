@@ -35,10 +35,11 @@ async def recent_registered_getter(
 @inject
 async def recent_activity_getter(
     dialog_manager: DialogManager,
+    user: UserDto,
     user_service: FromDishka[UserService],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    users = await user_service.get_recent_activity_users()
+    users = await user_service.get_recent_activity_users(excluded_ids=[user.telegram_id])
     return {"recent_activity_users": users}
 
 

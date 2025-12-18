@@ -14,7 +14,7 @@ from aiogram_dialog.widgets.kbd import (
 )
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
-from remnawave.enums.users import TrafficLimitStrategy
+from remnapy.enums.users import TrafficLimitStrategy
 
 from src.bot.keyboards import main_menu_button
 from src.bot.states import DashboardRemnashop, RemnashopPlans

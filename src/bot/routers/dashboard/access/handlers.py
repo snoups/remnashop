@@ -34,6 +34,40 @@ async def on_access_mode_select(
 
 
 @inject
+async def on_purchases_toggle(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    settings_service: FromDishka[SettingsService],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    settings = await settings_service.get()
+
+    new_state = not settings.purchases_allowed
+    settings.purchases_allowed = new_state
+
+    await settings_service.update(settings)
+    logger.info(f"{log(user)} Toggled purchases allowed -> '{new_state}'")
+
+
+@inject
+async def on_registration_toggle(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    settings_service: FromDishka[SettingsService],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    settings = await settings_service.get()
+
+    new_state = not settings.registration_allowed
+    settings.registration_allowed = new_state
+
+    await settings_service.update(settings)
+    logger.info(f"{log(user)} Toggled registration allowed -> '{new_state}'")
+
+
+@inject
 async def on_condition_toggle(
     callback: CallbackQuery,
     widget: Button,

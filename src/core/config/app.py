@@ -11,6 +11,7 @@ from src.core.utils.types import LocaleList, StringList
 
 from .base import BaseConfig
 from .bot import BotConfig
+from .build import BuildConfig
 from .database import DatabaseConfig
 from .redis import RedisConfig
 from .remnawave import RemnawaveConfig
@@ -33,6 +34,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
+    build: BuildConfig = Field(default_factory=BuildConfig)
 
     @property
     def banners_dir(self) -> Path:

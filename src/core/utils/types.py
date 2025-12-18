@@ -9,8 +9,8 @@ from aiogram.types import (
     ReplyKeyboardRemove,
 )
 from pydantic import PlainValidator
-from remnawave.models import UserResponseDto
-from remnawave.models.webhook import UserDto as UserWebhookDto
+from remnapy.models import UserResponseDto
+from remnapy.models.webhook import UserDto as UserWebhookDto
 
 from src.core.enums import Locale, SystemNotificationType, UserNotificationType
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:
     from .plan import PlanSnapshotDto
@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from remnawave.enums import TrafficLimitStrategy
+from remnapy.enums import TrafficLimitStrategy
 
 from src.core.enums import PlanType, SubscriptionStatus
 from src.core.utils.formatters import (
@@ -19,6 +19,7 @@ from src.core.utils.formatters import (
     i18n_format_expire_time,
 )
 from src.core.utils.time import datetime_now
+from src.core.utils.types import RemnaUserDto
 
 from .base import TrackableDto
 
@@ -38,27 +39,18 @@ class RemnaSubscriptionDto(BaseModel):
     external_squad: Optional[UUID] = None
 
     @classmethod
-    def from_remna_user(cls, user: dict[str, Any]) -> "RemnaSubscriptionDto":
-        traffic_limit_bytes = user.get("traffic_limit_bytes") or user.get("trafficLimitBytes")
-        hwid_device_limit = user.get("hwid_device_limit") or user.get("hwidDeviceLimit")
-
-        raw_squads = user.get("active_internal_squads") or user.get("activeInternalSquads") or []
-        internal_squads = [
-            s["uuid"] if isinstance(s, dict) and "uuid" in s else s for s in raw_squads
-        ]
-
+    def from_remna_user(cls, remna_user: RemnaUserDto) -> "RemnaSubscriptionDto":
         return cls(
-            uuid=user.get("uuid"),
-            status=user.get("status"),
-            expire_at=user.get("expire_at") or user.get("expireAt"),
-            url=user.get("subscription_url") or user.get("subscriptionUrl") or "",
-            traffic_limit=format_bytes_to_gb(traffic_limit_bytes),
-            device_limit=format_device_count(hwid_device_limit),
-            traffic_limit_strategy=user.get("traffic_limit_strategy")
-            or user.get("trafficLimitStrategy"),
-            tag=user.get("tag"),
-            internal_squads=internal_squads,
-            external_squad=user.get("external_squad_uuid") or user.get("externalSquadUuid"),
+            uuid=remna_user.uuid,
+            status=remna_user.status,
+            expire_at=remna_user.expire_at,
+            url=remna_user.subscription_url,
+            traffic_limit=format_bytes_to_gb(remna_user.traffic_limit_bytes),
+            device_limit=format_device_count(remna_user.hwid_device_limit),
+            traffic_limit_strategy=remna_user.traffic_limit_strategy,
+            tag=remna_user.tag,
+            internal_squads=[squad.uuid for squad in remna_user.active_internal_squads],
+            external_squad=remna_user.external_squad_uuid,
         )
 
 
@@ -72,6 +64,9 @@ class BaseSubscriptionDto(TrackableDto):
 
     traffic_limit: int
     device_limit: int
+    traffic_limit_strategy: TrafficLimitStrategy
+
+    tag: Optional[str] = None
     internal_squads: list[UUID]
     external_squad: Optional[UUID]
 
@@ -88,6 +83,10 @@ class BaseSubscriptionDto(TrackableDto):
         return self.get_status == SubscriptionStatus.ACTIVE
 
     @property
+    def is_expired(self) -> bool:
+        return self.get_status == SubscriptionStatus.EXPIRED
+
+    @property
     def is_unlimited(self) -> bool:
         return self.expire_at.year == 2099
 
@@ -101,7 +100,7 @@ class BaseSubscriptionDto(TrackableDto):
     def get_traffic_reset_delta(self) -> Optional[timedelta]:
         from src.services.subscription import SubscriptionService  # noqa: PLC0415
 
-        return SubscriptionService.get_traffic_reset_delta(self.plan.traffic_limit_strategy)
+        return SubscriptionService.get_traffic_reset_delta(self.traffic_limit_strategy)
 
     @property
     def get_expire_time(self) -> Union[list[tuple[str, dict[str, int]]], bool]:

@@ -11,12 +11,12 @@ from src.core.enums import PaymentGatewayType
 from src.infrastructure.database.models.dto import PaymentGatewayDto
 from src.infrastructure.payment_gateways import (
     BasePaymentGateway,
+    CryptomusGateway,
+    HeleketGateway,
     PaymentGatewayFactory,
     TelegramStarsGateway,
     YookassaGateway,
     YoomoneyGateway,
-    CryptomusGateway,
-    HeleketGateway
 )
 
 GATEWAY_MAP: dict[PaymentGatewayType, Type[BasePaymentGateway]] = {
@@ -41,7 +41,7 @@ class PaymentGatewaysProvider(Provider):
             if gateway_type in self._cached_gateways:
                 cached_gateway = self._cached_gateways[gateway_type]
 
-                if cached_gateway.gateway != gateway:
+                if cached_gateway.data != gateway:
                     logger.warning(
                         f"Gateway '{gateway_type}' data changed. Re-initializing instance"
                     )
@@ -53,7 +53,9 @@ class PaymentGatewaysProvider(Provider):
                 if not gateway_instance:
                     raise ValueError(f"Unknown gateway type '{gateway_type}'")
 
-                self._cached_gateways[gateway_type] = gateway_instance(gateway=gateway, bot=bot, config=config)
+                self._cached_gateways[gateway_type] = gateway_instance(
+                    gateway=gateway, bot=bot, config=config
+                )
                 logger.debug(f"Initialized new gateway '{gateway_type}' instance")
 
             return self._cached_gateways[gateway_type]

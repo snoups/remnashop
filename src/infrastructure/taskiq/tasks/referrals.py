@@ -15,7 +15,7 @@ from src.services.subscription import SubscriptionService
 from src.services.user import UserService
 
 
-@broker.task
+@broker.task(retry_on_error=True)
 @inject
 async def give_referrer_reward_task(
     user_telegram_id: int,

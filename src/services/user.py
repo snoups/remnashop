@@ -12,12 +12,13 @@ from src.core.constants import (
     RECENT_ACTIVITY_MAX_COUNT,
     RECENT_REGISTERED_MAX_COUNT,
     REMNASHOP_PREFIX,
-    TIME_1M,
+    TIME_5M,
     TIME_10M,
 )
 from src.core.enums import Locale, UserRole
 from src.core.storage.key_builder import StorageKey, build_key
-from src.core.storage.keys import RecentActivityUsersKey, RecentRegisteredUsersKey
+from src.core.storage.keys import RecentActivityUsersKey
+from src.core.utils.formatters import format_user_name
 from src.core.utils.generators import generate_referral_code
 from src.core.utils.types import RemnaUserDto
 from src.infrastructure.database import UnitOfWork
@@ -65,7 +66,6 @@ class UserService(BaseService):
         db_created_user = await self.uow.repository.users.create(db_user)
         await self.uow.commit()
 
-        await self.add_to_recent_registered(user.telegram_id)
         await self.clear_user_cache(user.telegram_id)
         logger.info(f"Created new user '{user.telegram_id}'")
         return UserDto.from_model(db_created_user)  # type: ignore[return-value]
@@ -85,12 +85,11 @@ class UserService(BaseService):
         db_created_user = await self.uow.repository.users.create(db_user)
         await self.uow.commit()
 
-        await self.add_to_recent_registered(user.telegram_id)
         await self.clear_user_cache(user.telegram_id)
         logger.info(f"Created new user '{user.telegram_id}' from panel")
         return UserDto.from_model(db_created_user)  # type: ignore[return-value]
 
-    @redis_cache(prefix="get_user", ttl=TIME_1M)
+    @redis_cache(prefix="get_user", ttl=TIME_5M)
     async def get(self, telegram_id: int) -> Optional[UserDto]:
         db_user = await self.uow.repository.users.get(telegram_id)
 
@@ -130,7 +129,7 @@ class UserService(BaseService):
             )
             user.username = new_username
 
-        new_name = aiogram_user.full_name
+        new_name = format_user_name(aiogram_user.full_name)
         if user.name != new_name:
             logger.debug(f"User '{user.telegram_id}' name changed ({user.name} -> {new_name})")
             user.name = new_name
@@ -161,7 +160,6 @@ class UserService(BaseService):
 
         if result:
             await self.clear_user_cache(user.telegram_id)
-            await self._remove_from_recent_registered(user.telegram_id)
             await self._remove_from_recent_activity(user.telegram_id)
 
         logger.info(f"Deleted user '{user.telegram_id}': '{result}'")
@@ -229,32 +227,27 @@ class UserService(BaseService):
 
     #
 
-    async def add_to_recent_registered(self, telegram_id: int) -> None:
-        await self._add_to_recent_list(RecentRegisteredUsersKey(), telegram_id)
-
     async def update_recent_activity(self, telegram_id: int) -> None:
-        await self._add_to_recent_list(RecentActivityUsersKey(), telegram_id)
+        await self._add_to_recent_activity(RecentActivityUsersKey(), telegram_id)
 
     async def get_recent_registered_users(self) -> list[UserDto]:
-        telegram_ids = await self._get_recent_registered()
-        db_users = await self.uow.repository.users.get_by_ids(telegram_ids)
-
-        found_ids = {user.telegram_id for user in db_users}
-        for telegram_id in telegram_ids:
-            if telegram_id not in found_ids:
-                logger.warning(
-                    f"User '{telegram_id}' not found in DB, removing from recent registered cache"
-                )
-                await self._remove_from_recent_registered(telegram_id)
+        db_users = await self.uow.repository.users._get_many(
+            User,
+            order_by=User.id.asc(),
+            limit=RECENT_REGISTERED_MAX_COUNT,
+        )
 
         logger.debug(f"Retrieved '{len(db_users)}' recent registered users")
         return UserDto.from_model_list(list(reversed(db_users)))
 
-    async def get_recent_activity_users(self) -> list[UserDto]:
+    async def get_recent_activity_users(self, excluded_ids: list[int] = []) -> list[UserDto]:
         telegram_ids = await self._get_recent_activity()
         users: list[UserDto] = []
 
         for telegram_id in telegram_ids:
+            if telegram_id in excluded_ids:
+                continue
+
             user = await self.get(telegram_id)
 
             if user:
@@ -365,37 +358,11 @@ class UserService(BaseService):
         await self.redis_client.delete(*list_cache_keys_to_invalidate)
         logger.debug("List caches invalidated")
 
-    async def _add_to_recent_list(self, key: StorageKey, telegram_id: int) -> None:
+    async def _add_to_recent_activity(self, key: StorageKey, telegram_id: int) -> None:
         await self.redis_repository.list_remove(key, value=telegram_id, count=0)
         await self.redis_repository.list_push(key, telegram_id)
-
-        if key == RecentRegisteredUsersKey():
-            end = RECENT_REGISTERED_MAX_COUNT - 1
-            log_message = "registered"
-        else:
-            end = RECENT_ACTIVITY_MAX_COUNT - 1
-            log_message = "activity updated"
-
-        await self.redis_repository.list_trim(key, start=0, end=end)
-        logger.debug(f"User '{telegram_id}' {log_message} in recent cache")
-
-    async def _remove_from_recent_registered(self, telegram_id: int) -> None:
-        await self.redis_repository.list_remove(
-            key=RecentRegisteredUsersKey(),
-            value=telegram_id,
-            count=0,
-        )
-        logger.debug(f"User '{telegram_id}' removed from recent registered cache")
-
-    async def _get_recent_registered(self) -> list[int]:
-        telegram_ids_str = await self.redis_repository.list_range(
-            key=RecentRegisteredUsersKey(),
-            start=0,
-            end=RECENT_REGISTERED_MAX_COUNT - 1,
-        )
-        ids = [int(uid) for uid in telegram_ids_str]
-        logger.debug(f"Retrieved '{len(ids)}' recent registered user IDs from cache")
-        return ids
+        await self.redis_repository.list_trim(key, start=0, end=RECENT_ACTIVITY_MAX_COUNT - 1)
+        logger.debug(f"User '{telegram_id}' activity updated in recent cache")
 
     async def _remove_from_recent_activity(self, telegram_id: int) -> None:
         await self.redis_repository.list_remove(

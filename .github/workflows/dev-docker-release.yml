@@ -32,11 +32,13 @@ jobs:
         id: vars
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY}"
           IMAGE_TAGS="${IMAGE_REPO}:dev,${IMAGE_REPO}:dev-${SHORT_SHA}"
 
           echo "image_tag=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
 
           echo "✅ Tags: ${IMAGE_TAGS}"
           echo "✅ SHA: ${SHORT_SHA}"
@@ -48,6 +50,11 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.vars.outputs.image_tag }}
+          build-args: |
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
+            BUILD_BRANCH=${{ github.ref_name }}
+            BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
+            BUILD_TAG=dev
 
   release:
     name: 📦 Build and Publish Dev Artifact

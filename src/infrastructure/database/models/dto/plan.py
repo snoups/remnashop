@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from pydantic import Field
-from remnawave.enums.users import TrafficLimitStrategy
+from remnapy.enums.users import TrafficLimitStrategy
 
 from src.core.enums import Currency, PlanAvailability, PlanType
 

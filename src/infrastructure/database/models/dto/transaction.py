@@ -20,9 +20,9 @@ from .base import TrackableDto
 
 
 class PriceDetailsDto(TrackableDto):
-    original_amount: Decimal = Decimal(1)
+    original_amount: Decimal = Decimal(2)
     discount_percent: int = 0
-    final_amount: Decimal = Decimal(1)
+    final_amount: Decimal = Decimal(2)
 
     @property
     def is_free(self) -> bool:

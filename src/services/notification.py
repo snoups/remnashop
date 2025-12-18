@@ -1,8 +1,15 @@
 import asyncio
-from typing import Any, Optional, cast
+import uuid
+from typing import Any, Optional, Union, cast
 
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, ReplyKeyboardMarkup
+from aiogram.types import (
+    BufferedInputFile,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardMarkup,
+)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fluentogram import TranslatorHub
 from loguru import logger
@@ -12,8 +19,10 @@ from src.__version__ import __version__
 from src.bot.keyboards import get_remnashop_keyboard
 from src.bot.states import Notification
 from src.core.config import AppConfig
+from src.core.constants import REPOSITORY
 from src.core.enums import (
     Locale,
+    MediaType,
     MessageEffect,
     SystemNotificationType,
     UserNotificationType,
@@ -24,6 +33,7 @@ from src.core.utils.formatters import i18n_postprocess_text
 from src.core.utils.message_payload import MessagePayload
 from src.core.utils.types import AnyKeyboard
 from src.infrastructure.database.models.dto import UserDto
+from src.infrastructure.database.models.dto.user import BaseUserDto
 from src.infrastructure.redis.repository import RedisRepository
 from src.services.settings import SettingsService
 
@@ -52,7 +62,7 @@ class NotificationService(BaseService):
 
     async def notify_user(
         self,
-        user: Optional[UserDto],
+        user: Optional[BaseUserDto],
         payload: MessagePayload,
         ntf_type: Optional[UserNotificationType] = None,
     ) -> Optional[Message]:
@@ -115,7 +125,7 @@ class NotificationService(BaseService):
         dev = await self.user_service.get(self.config.bot.dev_id) or self._get_temp_dev()
         payload = MessagePayload(
             i18n_key="ntf-remnashop-info",
-            i18n_kwargs={"version": __version__},
+            i18n_kwargs={"version": __version__, "repository": REPOSITORY},
             reply_markup=get_remnashop_keyboard(),
             auto_delete_after=None,
             add_close_button=True,
@@ -123,9 +133,24 @@ class NotificationService(BaseService):
         )
         return bool(await self._send_message(user=dev, payload=payload))
 
+    async def error_notify(
+        self,
+        traceback_str: str,
+        payload: MessagePayload,
+        error_id: Optional[Union[str, int]] = str(uuid.uuid4()),
+    ) -> None:
+        file_data = BufferedInputFile(
+            file=traceback_str.encode(),
+            filename=f"error_{error_id}.txt",
+        )
+        payload.media = file_data
+        payload.media_type = MediaType.DOCUMENT
+        payload.i18n_kwargs.update(self.config.build.data)
+        await self.notify_super_dev(payload=payload)
+
     #
 
-    async def _send_message(self, user: UserDto, payload: MessagePayload) -> Optional[Message]:
+    async def _send_message(self, user: BaseUserDto, payload: MessagePayload) -> Optional[Message]:
         try:
             reply_markup = self._prepare_reply_markup(
                 payload.reply_markup,
@@ -166,7 +191,7 @@ class NotificationService(BaseService):
 
     async def _send_media_message(
         self,
-        user: UserDto,
+        user: BaseUserDto,
         payload: MessagePayload,
         reply_markup: Optional[AnyKeyboard],
     ) -> Message:
@@ -195,7 +220,7 @@ class NotificationService(BaseService):
 
     async def _send_text_message(
         self,
-        user: UserDto,
+        user: BaseUserDto,
         payload: MessagePayload,
         reply_markup: Optional[AnyKeyboard],
     ) -> Message:

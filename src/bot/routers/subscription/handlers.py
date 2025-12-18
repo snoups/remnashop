@@ -17,7 +17,6 @@ from src.core.utils.adapter import DialogDataAdapter
 from src.core.utils.formatters import format_user_log as log
 from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import PlanDto, PlanSnapshotDto, UserDto
-from src.infrastructure.taskiq.tasks.notifications import send_error_notification_task
 from src.services.notification import NotificationService
 from src.services.payment_gateway import PaymentGatewayService
 from src.services.plan import PlanService
@@ -95,7 +94,7 @@ async def _create_payment_and_get_data(
         error_type_name = type(exception).__name__
         error_message = Text(str(exception)[:512])
 
-        await send_error_notification_task.kiq(
+        await notification_service.error_notify(
             error_id=user.telegram_id,
             traceback_str=traceback_str,
             payload=MessagePayload.not_deleted(

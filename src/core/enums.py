@@ -265,8 +265,6 @@ class Currency(UpperStrEnum):
 class AccessMode(UpperStrEnum):
     PUBLIC = auto()  # Access is allowed for everyone
     INVITED = auto()  # Invited users only
-    PURCHASE_BLOCKED = auto()  # Purchases are forbidden
-    REG_BLOCKED = auto()  # Registration is forbidden
     RESTRICTED = auto()  # All actions are completely forbidden
 
 

@@ -10,9 +10,8 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
 from loguru import logger
-from remnawave import RemnawaveSDK
-from remnawave.exceptions import NotFoundError
-from remnawave.models import TelegramUserResponseDto
+from remnapy import RemnawaveSDK
+from remnapy.exceptions import NotFoundError
 
 from src.bot.keyboards import get_contact_support_keyboard
 from src.bot.states import DashboardUser
@@ -134,7 +133,7 @@ async def on_active_toggle(
         remnawave.users.disable_user if subscription.is_active else remnawave.users.enable_user
     )
 
-    await remnawave_toggle_status(uuid=str(subscription.user_remna_id))
+    await remnawave_toggle_status(subscription.user_remna_id)
     subscription.status = new_status
     await subscription_service.update(subscription)
     logger.info(
@@ -253,7 +252,7 @@ async def on_reset_traffic(
     if not subscription:
         raise ValueError(f"Current subscription for user '{target_telegram_id}' not found")
 
-    await remnawave.users.reset_user_traffic(uuid=str(subscription.user_remna_id))
+    await remnawave.users.reset_user_traffic(subscription.user_remna_id)
     logger.info(f"{log(user)} Reset trafic for user '{target_telegram_id}'")
 
 
@@ -900,9 +899,6 @@ async def on_sync(
 
     try:
         result = await remnawave.users.get_users_by_telegram_id(telegram_id=str(target_telegram_id))
-
-        if not isinstance(result, TelegramUserResponseDto):
-            raise ValueError("Unexpected response TelegramUserResponseDto")
     except NotFoundError:
         result = None
 
@@ -914,7 +910,7 @@ async def on_sync(
         return
 
     if result:
-        remna_subscription = RemnaSubscriptionDto.from_remna_user(result[0].model_dump())
+        remna_subscription = RemnaSubscriptionDto.from_remna_user(result[0])
 
     if SubscriptionService.subscriptions_match(bot_subscription, remna_subscription):
         await notification_service.notify_user(
@@ -948,9 +944,6 @@ async def on_sync_from_remnawave(
 
     try:
         result = await remnawave.users.get_users_by_telegram_id(telegram_id=str(target_telegram_id))
-
-        if not isinstance(result, TelegramUserResponseDto):
-            raise ValueError("Unexpected response TelegramUserResponseDto")
     except NotFoundError:
         result = None
 
@@ -1104,6 +1097,8 @@ async def on_subscription_duration_select(
         status=remna_user.status,
         traffic_limit=plan.traffic_limit,
         device_limit=plan.device_limit,
+        traffic_limit_strategy=plan.traffic_limit_strategy,
+        tag=plan.tag,
         internal_squads=plan.internal_squads,
         external_squad=plan.external_squad,
         expire_at=remna_user.expire_at,

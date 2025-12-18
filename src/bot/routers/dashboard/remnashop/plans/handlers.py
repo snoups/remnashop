@@ -9,9 +9,8 @@ from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
-from remnawave import RemnawaveSDK
-from remnawave.enums.users import TrafficLimitStrategy
-from remnawave.models import GetAllInternalSquadsResponseDto
+from remnapy import RemnawaveSDK
+from remnapy.enums.users import TrafficLimitStrategy
 
 from src.bot.states import RemnashopPlans
 from src.core.constants import TAG_REGEX, USER_KEY
@@ -642,12 +641,9 @@ async def on_squads(
     notification_service: FromDishka[NotificationService],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    response = await remnawave.internal_squads.get_internal_squads()
+    result = await remnawave.internal_squads.get_internal_squads()
 
-    if not isinstance(response, GetAllInternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    if not response.internal_squads:
+    if not result.internal_squads:
         await notification_service.notify_user(
             user=user,
             payload=MessagePayload(i18n_key="ntf-squads-empty"),

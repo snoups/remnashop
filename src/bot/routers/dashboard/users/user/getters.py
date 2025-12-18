@@ -4,14 +4,9 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
-from remnawave import RemnawaveSDK
-from remnawave.exceptions import NotFoundError
-from remnawave.models import (
-    GetAllInternalSquadsResponseDto,
-    GetExternalSquadsResponseDto,
-    GetOneNodeResponseDto,
-    TelegramUserResponseDto,
-)
+from remnapy import RemnawaveSDK
+from remnapy.exceptions import NotFoundError
+from remnapy.models import GetOneNodeResponseDto
 
 from src.core.config import AppConfig
 from src.core.constants import DATETIME_FORMAT
@@ -122,8 +117,7 @@ async def subscription_getter(
 
     last_node: Optional[GetOneNodeResponseDto] = None
     if remna_user.last_connected_node_uuid:
-        result = await remnawave.nodes.get_one_node(str(remna_user.last_connected_node_uuid))
-        assert isinstance(result, GetOneNodeResponseDto), "Wrong response from Remnawave"
+        result = await remnawave.nodes.get_one_node(remna_user.last_connected_node_uuid)
         last_node = result
 
     return {
@@ -165,6 +159,7 @@ async def subscription_getter(
         "plan_traffic_limit": i18n_format_traffic_limit(subscription.plan.traffic_limit),
         "plan_device_limit": i18n_format_device_limit(subscription.plan.device_limit),
         "plan_duration": i18n_format_days(subscription.plan.duration),
+        "can_edit": not subscription.is_expired,
     }
 
 
@@ -278,18 +273,12 @@ async def squads_getter(
         raise ValueError(f"Current subscription for user '{target_telegram_id}' not found")
 
     internal_response = await remnawave.internal_squads.get_internal_squads()
-    if not isinstance(internal_response, GetAllInternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave internal squads")
-
     internal_dict = {s.uuid: s.name for s in internal_response.internal_squads}
     internal_squads_names = ", ".join(
         internal_dict.get(squad, str(squad)) for squad in subscription.internal_squads
     )
 
     external_response = await remnawave.external_squads.get_external_squads()
-    if not isinstance(external_response, GetExternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave external squads")
-
     external_dict = {s.uuid: s.name for s in external_response.external_squads}
     external_squad_name = (
         external_dict.get(subscription.external_squad) if subscription.external_squad else False
@@ -314,10 +303,7 @@ async def internal_squads_getter(
     if not subscription:
         raise ValueError(f"Current subscription for user '{target_telegram_id}' not found")
 
-    response = await remnawave.internal_squads.get_internal_squads()
-
-    if not isinstance(response, GetAllInternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
+    result = await remnawave.internal_squads.get_internal_squads()
 
     squads = [
         {
@@ -325,7 +311,7 @@ async def internal_squads_getter(
             "name": squad.name,
             "selected": True if squad.uuid in subscription.internal_squads else False,
         }
-        for squad in response.internal_squads
+        for squad in result.internal_squads
     ]
 
     return {"squads": squads}
@@ -344,12 +330,8 @@ async def external_squads_getter(
     if not subscription:
         raise ValueError(f"Current subscription for user '{target_telegram_id}' not found")
 
-    response = await remnawave.external_squads.get_external_squads()
-
-    if not isinstance(response, GetExternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    existing_squad_uuids = {squad.uuid for squad in response.external_squads}
+    result = await remnawave.external_squads.get_external_squads()
+    existing_squad_uuids = {squad.uuid for squad in result.external_squads}
 
     if subscription.external_squad and subscription.external_squad not in existing_squad_uuids:
         subscription.external_squad = None
@@ -360,7 +342,7 @@ async def external_squads_getter(
             "name": squad.name,
             "selected": True if squad.uuid == subscription.external_squad else False,
         }
-        for squad in response.external_squads
+        for squad in result.external_squads
     ]
 
     return {"squads": squads}
@@ -573,15 +555,12 @@ async def sync_getter(  # noqa: C901
 
     try:
         result = await remnawave.users.get_users_by_telegram_id(telegram_id=str(target_telegram_id))
-
-        if not isinstance(result, TelegramUserResponseDto):
-            raise ValueError("Unexpected response TelegramUserResponseDto")
     except NotFoundError:
         result = None
 
     if result:
-        raw_remna = result[0].model_dump()
-        remna_subscription = RemnaSubscriptionDto.from_remna_user(raw_remna)
+        remna_user = result[0]
+        remna_subscription = RemnaSubscriptionDto.from_remna_user(remna_user)
 
     bot_info = ""
     remna_info = ""
@@ -589,9 +568,6 @@ async def sync_getter(  # noqa: C901
     remna_version = ""
 
     internal_response = await remnawave.internal_squads.get_internal_squads()
-    if not isinstance(internal_response, GetAllInternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave internal squads")
-
     internal_dict = {s.uuid: s.name for s in internal_response.internal_squads}
 
     if bot_subscription:
@@ -606,9 +582,11 @@ async def sync_getter(  # noqa: C901
             "device_limit": i18n_format_device_limit(bot_subscription.device_limit),
             "expire_time": i18n_format_expire_time(bot_subscription.expire_at),
             "internal_squads": internal_squads_names or False,
-            "external_squad": bot_subscription.external_squad or False,
-            "traffic_limit_strategy": bot_subscription.plan.traffic_limit_strategy,
-            "tag": bot_subscription.plan.tag or False,
+            "external_squad": str(bot_subscription.external_squad)
+            if bot_subscription.external_squad
+            else False,
+            "traffic_limit_strategy": bot_subscription.traffic_limit_strategy,
+            "tag": bot_subscription.tag or False,
             "updated_at": bot_subscription.updated_at,
         }
         bot_info = i18n.get(
@@ -628,10 +606,12 @@ async def sync_getter(  # noqa: C901
             "device_limit": i18n_format_device_limit(remna_subscription.device_limit),
             "expire_time": i18n_format_expire_time(remna_subscription.expire_at),
             "internal_squads": internal_squads_names or False,
-            "external_squad": remna_subscription.external_squad or False,
+            "external_squad": str(remna_subscription.external_squad)
+            if remna_subscription.external_squad
+            else False,
             "traffic_limit_strategy": remna_subscription.traffic_limit_strategy or False,
             "tag": remna_subscription.tag or False,
-            "updated_at": raw_remna["updated_at"],
+            "updated_at": remna_user.updated_at,
         }
         remna_info = i18n.get(
             "msg-user-sync-subscription",
@@ -639,11 +619,11 @@ async def sync_getter(  # noqa: C901
         )
 
     bot_time = bot_subscription.updated_at if bot_subscription else None
-    remna_time = raw_remna["updated_at"] if remna_subscription else None
+    remna_time = remna_user.updated_at if remna_subscription else None
 
     if bot_subscription and remna_subscription:
         bot_time = bot_subscription.updated_at
-        remna_time = raw_remna["updated_at"]
+        remna_time = remna_user.updated_at
 
         if bot_time > remna_time:
             bot_version, remna_version = "NEWER", "OLDER"

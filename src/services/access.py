@@ -10,13 +10,12 @@ from src.core.config import AppConfig
 from src.core.constants import PURCHASE_PREFIX
 from src.core.enums import AccessMode
 from src.core.storage.keys import AccessWaitListKey
+from src.core.utils.message_payload import MessagePayload
 from src.infrastructure.database.models.dto import UserDto
 from src.infrastructure.redis.repository import RedisRepository
-from src.infrastructure.taskiq.tasks.notifications import (
-    send_access_denied_notification_task,
-    send_access_opened_notifications_task,
-)
+from src.infrastructure.taskiq.tasks.notifications import send_access_opened_notifications_task
 from src.infrastructure.taskiq.tasks.redirects import redirect_to_main_menu_task
+from src.services.notification import NotificationService
 from src.services.referral import ReferralService
 from src.services.settings import SettingsService
 from src.services.user import UserService
@@ -40,15 +39,21 @@ class AccessService(BaseService):
         settings_service: SettingsService,
         user_service: UserService,
         referral_service: ReferralService,
+        notification_service: NotificationService,
     ) -> None:
         super().__init__(config, bot, redis_client, redis_repository, translator_hub)
         self.settings_service = settings_service
         self.user_service = user_service
         self.referral_service = referral_service
+        self.notification_service = notification_service
 
     async def is_access_allowed(self, aiogram_user: AiogramUser, event: TelegramObject) -> bool:  # noqa: C901
         user = await self.user_service.get(aiogram_user.id)
-        mode = await self.settings_service.get_access_mode()
+        settings = await self.settings_service.get()
+        mode = settings.access_mode
+
+        is_purchase_blocked = not settings.purchases_allowed
+        is_registration_blocked = not settings.registration_allowed
 
         if not user:
             if mode == AccessMode.INVITED and await self.referral_service.is_referral_event(
@@ -57,10 +62,10 @@ class AccessService(BaseService):
                 logger.info(f"Access allowed for referral event for user '{aiogram_user.id}'")
                 return True
 
-            if mode in (AccessMode.REG_BLOCKED, AccessMode.INVITED, AccessMode.RESTRICTED):
+            if mode in (AccessMode.INVITED, AccessMode.RESTRICTED) or is_registration_blocked:
                 logger.info(f"Access denied for new user '{aiogram_user.id}' (mode: {mode})")
 
-                if mode == AccessMode.REG_BLOCKED:
+                if is_registration_blocked:
                     i18n_key = "ntf-access-denied-registration"
                 elif mode == AccessMode.INVITED:
                     i18n_key = "ntf-access-denied-only-invited"
@@ -72,9 +77,9 @@ class AccessService(BaseService):
                     name=aiogram_user.full_name,
                     language=aiogram_user.language_code,
                 )
-                await send_access_denied_notification_task.kiq(
+                await self.notification_service.notify_user(
                     user=temp_user,
-                    i18n_key=i18n_key,
+                    payload=MessagePayload(i18n_key=i18n_key),
                 )
                 return False
             return True
@@ -83,49 +88,41 @@ class AccessService(BaseService):
             logger.info(f"Access denied for user '{user.telegram_id} '(blocked)")
             return False
 
-        if mode == AccessMode.PUBLIC:
-            logger.info(f"Access allowed for user '{user.telegram_id}' (mode: PUBLIC)")
-            return True
-
         if user.is_privileged:
             logger.info(f"Access allowed for user '{user.telegram_id}' (privileged)")
             return True
 
-        match mode:
-            case AccessMode.RESTRICTED:
-                logger.info(f"Access denied for user '{user.telegram_id}' (mode: RESTRICTED)")
-                await send_access_denied_notification_task.kiq(
-                    user=user,
-                    i18n_key="ntf-access-denied",
-                )
-                return False
+        if self._is_purchase_action(event) and is_purchase_blocked:
+            logger.info(f"Access denied for user '{user.telegram_id}' (purchase event)")
+            await redirect_to_main_menu_task.kiq(user.telegram_id)
 
-            case AccessMode.PURCHASE_BLOCKED:
-                if self._is_purchase_action(event):
-                    logger.info(f"Access denied for user '{user.telegram_id}' (purchase event)")
-                    await redirect_to_main_menu_task.kiq(user.telegram_id)
-                    await send_access_denied_notification_task.kiq(
-                        user=user,
-                        i18n_key="ntf-access-denied-purchasing",
-                    )
+            await self.notification_service.notify_user(
+                user=user,
+                payload=MessagePayload(i18n_key="ntf-access-denied-purchasing"),
+            )
 
-                    if await self._can_add_to_waitlist(user.telegram_id):
-                        await self.add_user_to_waitlist(user.telegram_id)
+            if await self._can_add_to_waitlist(user.telegram_id):
+                await self.add_user_to_waitlist(user.telegram_id)
 
-                    return False
+            return False
 
-                logger.info(
-                    f"Access allowed for user '{user.telegram_id}' (mode: PURCHASE_BLOCKED)"
-                )
-                return True
+        if mode == AccessMode.PUBLIC:
+            logger.info(f"Access allowed for user '{user.telegram_id}' (mode: PUBLIC)")
+            return True
 
-            case AccessMode.INVITED:
-                logger.info(f"Access allowed for user '{user.telegram_id}' (mode: INVITED)")
-                return True
+        if mode == AccessMode.RESTRICTED:
+            logger.info(f"Access denied for user '{user.telegram_id}' (mode: RESTRICTED)")
+            await self.notification_service.notify_user(
+                user=user,
+                payload=MessagePayload(i18n_key="ntf-access-denied"),
+            )
+            return False
 
-            case _:
-                logger.warning(f"Unknown access mode '{mode}'")
-                return True
+        if mode == AccessMode.INVITED:
+            logger.info(f"Access allowed for user '{user.telegram_id}' (mode: INVITED)")
+            return True
+
+        return True
 
     async def get_available_modes(self) -> list[AccessMode]:
         current = await self.settings_service.get_access_mode()

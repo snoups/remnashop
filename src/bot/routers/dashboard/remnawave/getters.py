@@ -5,13 +5,7 @@ from aiogram_dialog.widgets.common import ManagedScroll
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
-from remnawave import RemnawaveSDK
-from remnawave.models import (
-    GetAllHostsResponseDto,
-    GetAllInboundsResponseDto,
-    GetAllNodesResponseDto,
-    GetStatsResponseDto,
-)
+from remnapy import RemnawaveSDK
 
 from src.core.i18n.translator import get_translated_kwargs
 from src.core.utils.formatters import (
@@ -28,22 +22,19 @@ async def system_getter(
     remnawave: FromDishka[RemnawaveSDK],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    response = await remnawave.system.get_stats()
-
-    if not isinstance(response, GetStatsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
+    result = await remnawave.system.get_stats()
 
     return {
         "version": "",  # TODO: Добавить версию панели
-        "cpu_cores": response.cpu.physical_cores,
-        "cpu_threads": response.cpu.cores,
-        "ram_used": i18n_format_bytes_to_unit(response.memory.active),
-        "ram_total": i18n_format_bytes_to_unit(response.memory.total),
+        "cpu_cores": result.cpu.physical_cores,
+        "cpu_threads": result.cpu.cores,
+        "ram_used": i18n_format_bytes_to_unit(result.memory.active),
+        "ram_total": i18n_format_bytes_to_unit(result.memory.total),
         "ram_used_percent": format_percent(
-            part=response.memory.active,
-            whole=response.memory.total,
+            part=result.memory.active,
+            whole=result.memory.total,
         ),
-        "uptime": i18n_format_seconds(response.uptime),
+        "uptime": i18n_format_seconds(result.uptime),
     }
 
 
@@ -53,21 +44,18 @@ async def users_getter(
     remnawave: FromDishka[RemnawaveSDK],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    response = await remnawave.system.get_stats()
-
-    if not isinstance(response, GetStatsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
+    result = await remnawave.system.get_stats()
 
     return {
-        "users_total": str(response.users.total_users),
-        "users_active": str(response.users.status_counts.get("ACTIVE")),
-        "users_disabled": str(response.users.status_counts.get("DISABLED")),
-        "users_limited": str(response.users.status_counts.get("LIMITED")),
-        "users_expired": str(response.users.status_counts.get("EXPIRED")),
-        "online_last_day": str(response.online_stats.last_day),
-        "online_last_week": str(response.online_stats.last_week),
-        "online_never": str(response.online_stats.never_online),
-        "online_now": str(response.online_stats.online_now),
+        "users_total": str(result.users.total_users),
+        "users_active": str(result.users.status_counts.get("ACTIVE")),
+        "users_disabled": str(result.users.status_counts.get("DISABLED")),
+        "users_limited": str(result.users.status_counts.get("LIMITED")),
+        "users_expired": str(result.users.status_counts.get("EXPIRED")),
+        "online_last_day": str(result.online_stats.last_day),
+        "online_last_week": str(result.online_stats.last_week),
+        "online_never": str(result.online_stats.never_online),
+        "online_now": str(result.online_stats.online_now),
     }
 
 
@@ -84,13 +72,10 @@ async def hosts_getter(
         raise ValueError()
 
     current_page = await widget.get_page()
-    response = await remnawave.hosts.get_all_hosts()
+    result = await remnawave.hosts.get_all_hosts()
     hosts = []
 
-    if not isinstance(response, GetAllHostsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    for host in response:
+    for host in result:
         hosts.append(
             i18n.get(
                 "msg-remnawave-host-details",
@@ -122,13 +107,10 @@ async def nodes_getter(
         raise ValueError()
 
     current_page = await widget.get_page()
-    response = await remnawave.nodes.get_all_nodes()
+    result = await remnawave.nodes.get_all_nodes()
     nodes = []
 
-    if not isinstance(response, GetAllNodesResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    for node in response:
+    for node in result:
         kwargs_for_i18n = {
             "xray_uptime": i18n_format_seconds(node.xray_uptime),
             "traffic_used": i18n_format_bytes_to_unit(node.traffic_used_bytes),
@@ -174,13 +156,10 @@ async def inbounds_getter(
         raise ValueError()
 
     current_page = await widget.get_page()
-    response = await remnawave.inbounds.get_all_inbounds()
+    result = await remnawave.inbounds.get_all_inbounds()
     inbounds = []
 
-    if not isinstance(response, GetAllInboundsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    for inbound in response.inbounds:  # type: ignore[attr-defined]
+    for inbound in result.inbounds:  # type: ignore[attr-defined]
         inbounds.append(
             i18n.get(
                 "msg-remnawave-inbound-details",

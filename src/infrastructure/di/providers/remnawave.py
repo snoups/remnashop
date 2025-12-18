@@ -1,7 +1,7 @@
 from dishka import Provider, Scope, provide
 from httpx import AsyncClient, Timeout
 from loguru import logger
-from remnawave import RemnawaveSDK
+from remnapy import RemnawaveSDK
 
 from src.core.config import AppConfig
 

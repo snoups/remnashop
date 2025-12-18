@@ -122,7 +122,7 @@ async def show_reason(
         kwargs = {
             "status": subscription.get_status,
             "is_trial": subscription.is_trial,
-            "traffic_strategy": subscription.plan.traffic_limit_strategy,
+            "traffic_strategy": subscription.traffic_limit_strategy,
             "reset_time": subscription.get_expire_time,
         }
     else:

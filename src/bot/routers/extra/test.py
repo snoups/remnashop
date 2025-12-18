@@ -11,8 +11,8 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
 from loguru import logger
-from remnawave import RemnawaveSDK
-from remnawave.models import CreateUserRequestDto
+from remnapy import RemnawaveSDK
+from remnapy.models import CreateUserRequestDto
 
 from src.bot.filters import SuperDevFilter
 from src.core.config.app import AppConfig

@@ -1,7 +1,7 @@
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import Field, SecretStr
+from pydantic import ConfigDict, Field, SecretStr
 
 from src.core.enums import Currency, PaymentGatewayType, YookassaVatCode
 
@@ -25,6 +25,8 @@ class PaymentGatewayDto(TrackableDto):
 
 
 class GatewaySettingsDto(TrackableDto):
+    model_config = ConfigDict(validate_assignment=True)
+
     @property
     def is_configure(self) -> bool:
         for name, value in self.__dict__.items():
@@ -42,7 +44,7 @@ class GatewaySettingsDto(TrackableDto):
 
 
 class YookassaGatewaySettingsDto(GatewaySettingsDto):
-    type: PaymentGatewayType = PaymentGatewayType.YOOKASSA
+    type: Literal[PaymentGatewayType.YOOKASSA] = PaymentGatewayType.YOOKASSA
     shop_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     customer: Optional[str] = None
@@ -50,42 +52,45 @@ class YookassaGatewaySettingsDto(GatewaySettingsDto):
 
 
 class YoomoneyGatewaySettingsDto(GatewaySettingsDto):
-    type: PaymentGatewayType = PaymentGatewayType.YOOMONEY
+    type: Literal[PaymentGatewayType.YOOMONEY] = PaymentGatewayType.YOOMONEY
     wallet_id: Optional[str] = None
     secret_key: Optional[SecretStr] = None
 
 
 class CryptomusGatewaySettingsDto(GatewaySettingsDto):
-    type: PaymentGatewayType = PaymentGatewayType.CRYPTOMUS
+    type: Literal[PaymentGatewayType.CRYPTOMUS] = PaymentGatewayType.CRYPTOMUS
     merchant_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
 
 
 class HeleketGatewaySettingsDto(GatewaySettingsDto):
-    type: PaymentGatewayType = PaymentGatewayType.HELEKET
+    type: Literal[PaymentGatewayType.HELEKET] = PaymentGatewayType.HELEKET
     merchant_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
 
 
 class CryptopayGatewaySettingsDto(GatewaySettingsDto):
-    type: PaymentGatewayType = PaymentGatewayType.CRYPTOPAY
+    type: Literal[PaymentGatewayType.CRYPTOPAY] = PaymentGatewayType.CRYPTOPAY
     shop_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     secret_key: Optional[SecretStr] = None
 
 
 class RobokassaGatewaySettingsDto(GatewaySettingsDto):
-    type: PaymentGatewayType = PaymentGatewayType.ROBOKASSA
+    type: Literal[PaymentGatewayType.ROBOKASSA] = PaymentGatewayType.ROBOKASSA
     shop_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     secret_key: Optional[SecretStr] = None
 
 
-AnyGatewaySettingsDto = Union[
-    YookassaGatewaySettingsDto,
-    YoomoneyGatewaySettingsDto,
-    CryptomusGatewaySettingsDto,
-    HeleketGatewaySettingsDto,
-    CryptopayGatewaySettingsDto,
-    RobokassaGatewaySettingsDto,
+AnyGatewaySettingsDto = Annotated[
+    Union[
+        YookassaGatewaySettingsDto,
+        YoomoneyGatewaySettingsDto,
+        CryptomusGatewaySettingsDto,
+        HeleketGatewaySettingsDto,
+        CryptopayGatewaySettingsDto,
+        RobokassaGatewaySettingsDto,
+    ],
+    Field(discriminator="type"),
 ]

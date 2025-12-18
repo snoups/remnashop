@@ -1,6 +1,8 @@
 from typing import Any, Optional
 from uuid import UUID
 
+from sqlalchemy import update
+
 from src.infrastructure.database.models.sql import Broadcast, BroadcastMessage
 
 from .base import BaseRepository
@@ -40,3 +42,9 @@ class BroadcastRepository(BaseRepository):
             BroadcastMessage.user_id == user_id,
             **data,
         )
+
+    async def bulk_update_messages(self, data: list[dict]) -> None:
+        if not data:
+            return
+
+        await self.session.execute(update(BroadcastMessage), data)

@@ -4,9 +4,8 @@ from typing import Any, Optional
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
-from remnawave import RemnawaveSDK
-from remnawave.enums.users import TrafficLimitStrategy
-from remnawave.models import GetAllInternalSquadsResponseDto, GetExternalSquadsResponseDto
+from remnapy import RemnawaveSDK
+from remnapy.enums.users import TrafficLimitStrategy
 
 from src.core.enums import Currency, PlanAvailability, PlanType
 from src.core.utils.adapter import DialogDataAdapter
@@ -221,18 +220,12 @@ async def squads_getter(
         raise ValueError("PlanDto not found in dialog data")
 
     internal_response = await remnawave.internal_squads.get_internal_squads()
-    if not isinstance(internal_response, GetAllInternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave internal squads")
-
     internal_dict = {s.uuid: s.name for s in internal_response.internal_squads}
     internal_squads_names = ", ".join(
         internal_dict.get(squad, str(squad)) for squad in plan.internal_squads
     )
 
     external_response = await remnawave.external_squads.get_external_squads()
-    if not isinstance(external_response, GetExternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave external squads")
-
     external_dict = {s.uuid: s.name for s in external_response.external_squads}
     external_squad_name = external_dict.get(plan.external_squad) if plan.external_squad else False
 
@@ -254,12 +247,8 @@ async def internal_squads_getter(
     if not plan:
         raise ValueError("PlanDto not found in dialog data")
 
-    response = await remnawave.internal_squads.get_internal_squads()
-
-    if not isinstance(response, GetAllInternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    existing_squad_uuids = {squad.uuid for squad in response.internal_squads}
+    result = await remnawave.internal_squads.get_internal_squads()
+    existing_squad_uuids = {squad.uuid for squad in result.internal_squads}
 
     if plan.internal_squads:
         plan_squad_uuids_set = set(plan.internal_squads)
@@ -274,7 +263,7 @@ async def internal_squads_getter(
             "name": squad.name,
             "selected": True if squad.uuid in plan.internal_squads else False,
         }
-        for squad in response.internal_squads
+        for squad in result.internal_squads
     ]
 
     return {
@@ -294,12 +283,8 @@ async def external_squads_getter(
     if not plan:
         raise ValueError("PlanDto not found in dialog data")
 
-    response = await remnawave.external_squads.get_external_squads()
-
-    if not isinstance(response, GetExternalSquadsResponseDto):
-        raise ValueError("Wrong response from Remnawave")
-
-    existing_squad_uuids = {squad.uuid for squad in response.external_squads}
+    result = await remnawave.external_squads.get_external_squads()
+    existing_squad_uuids = {squad.uuid for squad in result.external_squads}
 
     if plan.external_squad and plan.external_squad not in existing_squad_uuids:
         plan.external_squad = None
@@ -312,7 +297,7 @@ async def external_squads_getter(
             "name": squad.name,
             "selected": True if squad.uuid == plan.external_squad else False,
         }
-        for squad in response.external_squads
+        for squad in result.external_squads
     ]
 
     return {

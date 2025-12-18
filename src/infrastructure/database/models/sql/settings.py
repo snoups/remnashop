@@ -34,6 +34,9 @@ class Settings(BaseSql):
         ),
         nullable=False,
     )
+    purchases_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    registration_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
     default_currency: Mapped[Currency] = mapped_column(
         Enum(
             Currency,

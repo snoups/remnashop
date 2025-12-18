@@ -14,6 +14,16 @@ FROM python:3.12-alpine AS final
 
 WORKDIR /opt/remnashop
 
+ARG BUILD_TIME
+ARG BUILD_BRANCH
+ARG BUILD_COMMIT
+ARG BUILD_TAG
+
+ENV BUILD_TIME=${BUILD_TIME}
+ENV BUILD_BRANCH=${BUILD_BRANCH}
+ENV BUILD_COMMIT=${BUILD_COMMIT}
+ENV BUILD_TAG=${BUILD_TAG}
+
 COPY --from=builder /opt/remnashop/.venv /opt/remnashop/.venv
 
 ENV PATH="/opt/remnashop/.venv/bin:$PATH"

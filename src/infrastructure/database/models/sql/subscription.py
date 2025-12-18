@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .user import User
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 from datetime import datetime
 from uuid import UUID
 
+from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy import ARRAY, JSON, BigInteger, Boolean, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,6 +46,17 @@ class Subscription(BaseSql, TimestampMixin):
 
     traffic_limit: Mapped[int] = mapped_column(Integer, nullable=False)
     device_limit: Mapped[int] = mapped_column(Integer, nullable=False)
+    traffic_limit_strategy: Mapped[TrafficLimitStrategy] = mapped_column(
+        Enum(
+            TrafficLimitStrategy,
+            name="traffic_limit_strategy",
+            create_constraint=True,
+            validate_strings=True,
+        ),
+        nullable=False,
+    )
+
+    tag: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     internal_squads: Mapped[list[UUID]] = mapped_column(ARRAY(PG_UUID), nullable=False)
     external_squad: Mapped[UUID] = mapped_column(PG_UUID, nullable=True)
 
