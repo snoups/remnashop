@@ -345,7 +345,7 @@ class PaymentGatewayService(BaseService):
             }
 
         i18n_kwargs = {
-            "payment_id": transaction.payment_id,
+            "payment_id": str(transaction.payment_id),
             "gateway_type": transaction.gateway_type,
             "final_amount": transaction.pricing.final_amount,
             "discount_percent": transaction.pricing.discount_percent,
