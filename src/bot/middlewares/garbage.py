@@ -20,10 +20,10 @@ class GarbageMiddleware(EventTypedMiddleware):
         data: dict[str, Any],
     ) -> Any:
         message = cast(Message, event)
-        user: UserDto = data[USER_KEY]
+        # user: UserDto = data[USER_KEY]
 
         if message.text != f"/{Command.START.value.command}":
             await message.delete()
-            logger.debug(f"Message '{message.content_type}' deleted from '{user.telegram_id}'")
+            # logger.debug(f"Message '{message.content_type}' deleted from '{user.telegram_id}'")
 
         return await handler(event, data)

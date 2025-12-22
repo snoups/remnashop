@@ -35,6 +35,10 @@ run-prod:
 	@docker compose -f docker-compose.prod.external.yml up --build
 	@docker compose logs -f
 
+.PHONY: run-preview
+run-preview:
+	aiogram-dialog-preview src.bot.dispatcher:get_dispatcher_preview
+
 # .PHONY: run-dev
 # run-dev:
 # 	@docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build

@@ -1,7 +1,6 @@
 from aiogram import Router
 
 from .private import PrivateFilter
-from .super_dev import SuperDevFilter
 
 __all__ = [
     "SuperDevFilter",

@@ -1,13 +1,7 @@
-from __future__ import annotations
+from typing import Optional
 
-from typing import TYPE_CHECKING, Optional
-
-if TYPE_CHECKING:
-    from .referral import Referral
-    from .subscription import Subscription
-
-from sqlalchemy import BigInteger, Boolean, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, Boolean, Enum, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.enums import Locale, UserRole
 
@@ -50,30 +44,3 @@ class User(BaseSql, TimestampMixin):
     is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False)
     is_bot_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False)
     is_rules_accepted: Mapped[bool] = mapped_column(Boolean, nullable=False)
-
-    current_subscription_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("subscriptions.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    current_subscription: Mapped[Optional["Subscription"]] = relationship(
-        "Subscription",
-        foreign_keys=[current_subscription_id],
-        lazy="selectin",
-    )
-
-    subscriptions: Mapped[list["Subscription"]] = relationship(
-        "Subscription",
-        back_populates="user",
-        primaryjoin="User.telegram_id==Subscription.user_telegram_id",
-        foreign_keys="[Subscription.user_telegram_id]",
-        lazy="selectin",
-    )
-
-    referral: Mapped[Optional["Referral"]] = relationship(
-        "Referral",
-        back_populates="referred",
-        primaryjoin="User.telegram_id==Referral.referred_telegram_id",
-        uselist=False,
-        lazy="selectin",
-    )

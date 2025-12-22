@@ -39,10 +39,10 @@ class EventTypedMiddleware(BaseMiddleware, ABC):
         for event_type in self.__event_types__:
             router.observers[event_type].outer_middleware(self)
 
-            logger.debug(
-                f"{self.__class__.__name__} set as OUTER for: "
-                f"{', '.join(t.value for t in self.__event_types__)}"
-            )
+        logger.debug(
+            f"{self.__class__.__name__} set as OUTER for: "
+            f"{', '.join(t.value for t in self.__event_types__)}"
+        )
 
     @abstractmethod
     async def middleware_logic(

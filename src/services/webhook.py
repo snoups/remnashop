@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import cast
 
 from aiogram.methods import SetWebhook
 from aiogram.types import WebhookInfo
@@ -6,6 +7,7 @@ from loguru import logger
 
 from src.core.security.crypto import get_webhook_hash
 from src.core.storage.keys import WebhookLockKey
+from src.core.utils import json_utils
 from src.core.utils.time import datetime_now
 
 from .base import BaseService
@@ -71,20 +73,20 @@ class WebhookService(BaseService):
 
     async def _is_set(self, bot_id: int, webhook_hash: str) -> bool:
         key: WebhookLockKey = WebhookLockKey(bot_id=bot_id, webhook_hash=webhook_hash)
-        return await self.redis_repository.exists(key)
+        return cast(bool, await self.redis.exists(key.pack()))
 
     async def _set(self, bot_id: int, webhook_hash: str) -> None:
         key: WebhookLockKey = WebhookLockKey(bot_id=bot_id, webhook_hash=webhook_hash)
-        await self.redis_repository.set(key, value=None)
+        await self.redis.set(name=key.pack(), value=json_utils.encode(None))
         logger.debug(f"Set webhook lock key '{key.pack()}' in Redis")
 
     async def _clear(self, bot_id: int) -> None:
         key: WebhookLockKey = WebhookLockKey(bot_id=bot_id, webhook_hash="*")
-        keys: list[bytes] = await self.redis_repository.client.keys(key.pack())
+        keys: list[bytes] = await self.redis.keys(key.pack())
 
         if not keys:
             logger.debug(f"No webhook lock keys to clear for bot '{bot_id}'")
             return
 
-        await self.redis_repository.client.delete(*keys)
+        await self.redis.delete(*keys)
         logger.debug(f"Cleared '{len(keys)}' webhook lock keys for bot '{bot_id}'")

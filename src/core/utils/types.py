@@ -9,10 +9,8 @@ from aiogram.types import (
     ReplyKeyboardRemove,
 )
 from pydantic import PlainValidator
-from remnapy.models import UserResponseDto
-from remnapy.models.webhook import UserDto as UserWebhookDto
 
-from src.core.enums import Locale, SystemNotificationType, UserNotificationType
+from src.core.enums import Locale
 
 if TYPE_CHECKING:
     ListStr: TypeAlias = list[str]
@@ -30,9 +28,6 @@ AnyKeyboard: TypeAlias = Union[
     ForceReply,
 ]
 
-AnyNotification: TypeAlias = Union[SystemNotificationType, UserNotificationType]
-
-RemnaUserDto: TypeAlias = Union[UserWebhookDto, UserResponseDto]  # UserWebhookDto without url
 
 StringList: TypeAlias = Annotated[
     ListStr, PlainValidator(lambda x: [s.strip() for s in x.split(",")])
