@@ -27,6 +27,7 @@ dependencies = [
     "cryptography>=46.0.3",
     "sqlalchemy[mypy]>=2.0.0",
     "qrcode[pil]>=8.2",
+    "pyjwt>=2.8.0",
 ]
 
 [project.urls]

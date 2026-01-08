@@ -15,6 +15,7 @@ from .build import BuildConfig
 from .database import DatabaseConfig
 from .redis import RedisConfig
 from .remnawave import RemnawaveConfig
+from .website import WebsiteConfig
 from .validators import validate_not_change_me
 
 
@@ -35,6 +36,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     build: BuildConfig = Field(default_factory=BuildConfig)
+    website: WebsiteConfig = Field(default_factory=WebsiteConfig)
 
     @property
     def banners_dir(self) -> Path:
