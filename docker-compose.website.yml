@@ -1,0 +1,102 @@
+services:
+  remnashop-db:
+    image: postgres:17
+    container_name: "remnashop-db"
+    hostname: remnashop-db
+    restart: unless-stopped
+
+    environment:
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+      - TZ=UTC
+
+    ports:
+      - "5433:5432"
+      
+    volumes:
+      - remnashop-db-data:/var/lib/postgresql/data
+
+    networks:
+      - remnashop-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: 3s
+      timeout: 10s
+      retries: 3
+    
+
+  remnashop-redis:
+    image: valkey/valkey:9-alpine
+    container_name: "remnashop-redis"
+    hostname: remnashop-redis
+    restart: unless-stopped
+
+    command: ["--requirepass", "${REDIS_PASSWORD}"]
+
+    volumes:
+      - remnashop-redis-data:/data
+
+    networks:
+      - remnashop-network
+
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 10s
+      retries: 3
+    
+
+  remnashop-website:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: "remnashop-website"
+    hostname: remnashop-website
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    depends_on:
+      remnashop-db:
+        condition: service_healthy
+      remnashop-redis:
+        condition: service_healthy
+
+    ports:
+      - "5001:5001"
+
+    volumes:
+      - ./src:/opt/remnashop/src
+      - ./logs:/opt/remnashop/logs
+      - ./assets:/opt/remnashop/assets
+
+    networks:
+      - remnashop-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:5001/docs\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+
+networks:
+  remnashop-network:
+    name: remnashop-network
+    driver: bridge
+    external: false
+
+volumes:
+  remnashop-db-data:
+    name: remnashop-db-data
+    driver: local
+    external: false
+    
+  remnashop-redis-data:
+    name: remnashop-redis-data
+    driver: local
+    external: false

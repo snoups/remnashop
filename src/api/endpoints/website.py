@@ -36,9 +36,10 @@ WEBSITE_API_PREFIX = API_V1 + "/website"
 router = APIRouter(prefix=WEBSITE_API_PREFIX, tags=["Website API"])
 
 
+@inject
 async def verify_api_key(
+    config: FromDishka[AppConfig],
     x_api_key: str = Header(..., alias="X-API-Key"),
-    config: AppConfig = Depends(),
 ) -> str:
     """Проверка API ключа для доступа к Website API."""
     if not config.website.is_enabled:
@@ -55,9 +56,10 @@ async def verify_api_key(
     return x_api_key
 
 
+@inject
 async def get_current_user_id(
+    config: FromDishka[AppConfig],
     authorization: str = Header(...),
-    config: AppConfig = Depends(),
 ) -> int:
     """Получение telegram_id из JWT токена."""
     if not authorization.startswith("Bearer "):
@@ -82,7 +84,7 @@ async def get_current_user_id(
 @inject
 async def get_plans(
     plan_service: FromDishka[PlanService],
-    _: str = Depends(verify_api_key),
+    api_key_auth: str = Depends(verify_api_key),
 ):
     """Получение списка активных тарифных планов."""
     plans = await plan_service.get_all()
@@ -126,7 +128,7 @@ async def get_plans(
 async def get_plan(
     plan_id: int,
     plan_service: FromDishka[PlanService],
-    _: str = Depends(verify_api_key),
+    api_key_auth: str = Depends(verify_api_key),
 ):
     """Получение информации о конкретном тарифном плане."""
     plan = await plan_service.get(plan_id)
@@ -172,7 +174,7 @@ async def authenticate_user(
     request: TelegramAuthRequest,
     config: FromDishka[AppConfig],
     user_service: FromDishka[UserService],
-    _: str = Depends(verify_api_key),
+    api_key_auth: str = Depends(verify_api_key),
 ):
     """Авторизация пользователя через Telegram Login Widget."""
     auth_data = request.model_dump()
@@ -224,7 +226,7 @@ async def get_current_user(
     user_service: FromDishka[UserService],
     subscription_service: FromDishka[SubscriptionService],
     telegram_id: int = Depends(get_current_user_id),
-    _: str = Depends(verify_api_key),
+    api_key_auth: str = Depends(verify_api_key),
 ):
     """Получение информации о текущем авторизованном пользователе."""
     user = await user_service.get(telegram_id)
@@ -275,7 +277,7 @@ async def get_current_user(
 @inject
 async def get_payment_gateways(
     payment_service: FromDishka[PaymentGatewayService],
-    _: str = Depends(verify_api_key),
+    api_key_auth: str = Depends(verify_api_key),
 ):
     """Получение списка доступных платёжных шлюзов."""
     gateways = await payment_service.get_all()
@@ -301,7 +303,7 @@ async def create_payment(
     plan_service: FromDishka[PlanService],
     payment_service: FromDishka[PaymentGatewayService],
     pricing_service: FromDishka[PricingService],
-    _: str = Depends(verify_api_key),
+    api_key_auth: str = Depends(verify_api_key),
 ):
     """Создание платежа для подписки."""
     user = await user_service.get(request.telegram_id)
@@ -371,15 +373,18 @@ async def create_payment(
 @inject
 async def get_public_settings(
     config: FromDishka[AppConfig],
-    _: str = Depends(verify_api_key),
+    api_key_auth: str = Depends(verify_api_key),
 ):
     """Получение публичных настроек для сайта."""
+    # Используем support_username как fallback для telegram_bot_username
+    bot_username = config.bot.support_username.get_secret_value()
+    
     return ApiResponse(
         success=True,
         data=SettingsResponse(
             default_currency="USD",
             supported_currencies=["USD", "RUB"],
-            telegram_bot_username=config.bot.username or "netivo_bot",
+            telegram_bot_username=bot_username,
             support_url=None
         )
     )
