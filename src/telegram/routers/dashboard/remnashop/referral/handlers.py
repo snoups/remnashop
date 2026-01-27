@@ -99,10 +99,10 @@ async def on_reward_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if not message.text:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     try:
-        await update_reward_config(actor=user, data=message.text)
+        await update_reward_config(user, message.text)
     except (ValueError, KeyError, IndexError):
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")

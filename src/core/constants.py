@@ -33,6 +33,7 @@ MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"
 CONFIG_KEY: Final[str] = "config"
 USER_KEY: Final[str] = "user"
+TARGET_TELEGRAM_ID: Final[str] = "target_telegram_id"
 
 TIMEZONE: Final[timezone] = timezone.utc
 DATETIME_FORMAT: Final[str] = "%d.%m.%Y %H:%M:%S"

@@ -9,12 +9,13 @@ from src.application.common import (
     Remnawave,
 )
 from src.application.services import (
+    BotService,
     CommandService,
     NotificationService,
     PricingService,
+    RemnaWebhookService,
     WebhookService,
 )
-from src.application.services.bot import BotService
 from src.infrastructure.services import (
     CryptographerImpl,
     EventBusImpl,
@@ -40,6 +41,7 @@ class ServicesProvider(Provider):
     webhook = provide(source=WebhookService)
 
     remnawave = provide(source=RemnawaveImpl, provides=Remnawave)
+    remna_webhook = provide(source=RemnaWebhookService, scope=Scope.REQUEST)
 
     notification_queue = provide(source=NotificationQueue)
     notification = provide(

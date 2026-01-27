@@ -4,8 +4,8 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
-from src.application.common import TranslatorRunner
 from src.application.common.dao import SettingsDao
+from src.application.common.translator import TranslatorRunner
 from src.core.enums import (
     ReferralAccrualStrategy,
     ReferralLevel,

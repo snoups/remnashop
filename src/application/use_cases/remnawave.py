@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from typing import Final
 
 from loguru import logger
+from remnapy import RemnawaveSDK
 
 from src.application.common import Cryptographer, Interactor, Remnawave
 from src.application.common.dao import SubscriptionDao, UserDao
@@ -22,7 +24,7 @@ class SyncRemnaUserDto:
 
 
 class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
-    required_permission: Permission = Permission.USER_SYNC
+    required_permission = Permission.USER_SYNC
 
     def __init__(
         self,
@@ -67,7 +69,7 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
                 logger.info(
                     f"No subscription found for user '{user.telegram_id}', importing from panel"
                 )
-                await self._import_subscription(remna_subscription)
+                await self._import_subscription(user.telegram_id, remna_subscription)
             else:
                 logger.info(f"Synchronizing existing subscription for user '{user.telegram_id}'")
                 await self._update_subscription(subscription, remna_subscription)
@@ -84,7 +86,11 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
             language=self.config.default_locale,
         )
 
-    async def _import_subscription(self, remna_subscription: RemnaSubscriptionDto) -> None:
+    async def _import_subscription(
+        self,
+        telegram_id: int,
+        remna_subscription: RemnaSubscriptionDto,
+    ) -> None:
         plan = PlanSnapshotDto(
             id=-1,
             name=IMPORTED_TAG,
@@ -120,7 +126,7 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
             plan_snapshot=plan,
         )
 
-        await self.subscription_dao.create(subscription)
+        subscription = await self.subscription_dao.create(subscription, telegram_id)
 
     async def _update_subscription(
         self,
@@ -129,3 +135,63 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
     ) -> None:
         subscription = self.remnawave.apply_sync(target, source)
         await self.subscription_dao.update(subscription)
+
+
+@dataclass(frozen=True)
+class DeleteUserDeviceDto:
+    telegram_id: int
+    hwid: str
+
+
+class DeleteUserDevice(Interactor[DeleteUserDeviceDto, bool]):
+    required_permission = Permission.USER_EDITOR
+
+    def __init__(self, subscription_dao: SubscriptionDao, remnawave: Remnawave):
+        self.subscription_dao = subscription_dao
+        self.remnawave = remnawave
+
+    async def _execute(self, actor: UserDto, data: DeleteUserDeviceDto) -> bool:
+        subscription = await self.subscription_dao.get_current(data.telegram_id)
+
+        if not subscription:
+            raise ValueError(f"Subscription for user '{data.telegram_id}' not found")
+
+        remaining_devices = await self.remnawave.delete_device(
+            subscription.user_remna_id,
+            data.hwid,
+        )
+
+        logger.info(f"{actor.log} Deleted device '{data.hwid}' for user '{data.telegram_id}'")
+        return bool(remaining_devices)
+
+
+class ResetUserTraffic(Interactor[int, None]):
+    required_permission = Permission.USER_EDITOR
+
+    def __init__(
+        self,
+        subscription_dao: SubscriptionDao,
+        remnawave_sdk: RemnawaveSDK,
+    ):
+        self.subscription_dao = subscription_dao
+        self.remnawave_sdk = remnawave_sdk
+
+    async def _execute(self, actor: UserDto, telegram_id: int) -> None:
+        subscription = await self.subscription_dao.get_current(telegram_id)
+        if not subscription:
+            raise ValueError(f"Subscription for user '{telegram_id}' not found")
+
+        try:
+            await self.remnawave_sdk.users.reset_user_traffic(subscription.user_remna_id)
+        except Exception as e:
+            logger.error(f"Failed to reset traffic in Remnawave for user '{telegram_id}': {e}")
+            raise
+
+        logger.info(f"{actor.log} Reset traffic for user '{telegram_id}'")
+
+
+REMNAWAVE_USE_CASES: Final[tuple[type[Interactor], ...]] = (
+    SyncRemnaUser,
+    DeleteUserDevice,
+    ResetUserTraffic,
+)

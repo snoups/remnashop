@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -15,18 +14,18 @@ from src.core.utils.time import datetime_now
 
 
 @dataclass(frozen=True)
-class LogFileDto:
+class GetLogsResultDto:
     path: Path
     display_name: str
 
 
-class GetLogs(Interactor[None, LogFileDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_LOGS
+class GetLogs(Interactor[None, GetLogsResultDto]):
+    required_permission = Permission.REMNASHOP_LOGS
 
     def __init__(self, config: AppConfig) -> None:
         self.config = config
 
-    async def _execute(self, actor: UserDto, data: None) -> LogFileDto:
+    async def _execute(self, actor: UserDto, data: None) -> GetLogsResultDto:
         if not self.config.log.to_file:
             logger.warning(f"User '{actor.telegram_id}' requested logs, but to_file is disabled")
             raise LogsToFileDisabledError
@@ -41,4 +40,4 @@ class GetLogs(Interactor[None, LogFileDto]):
         display_name = f"{timestamp}.log"
 
         logger.info(f"Log file '{log_path}' prepared for user '{actor.telegram_id}'")
-        return LogFileDto(path=log_path, display_name=display_name)
+        return GetLogsResultDto(path=log_path, display_name=display_name)

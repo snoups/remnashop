@@ -13,6 +13,7 @@ from src.core.constants import LOG_DIR, USER_KEY
 from src.core.enums import MediaType
 from src.core.exceptions import LogsToFileDisabledError
 from src.core.logger import LOG_FILENAME
+from src.telegram.routers.dashboard.users.user.handlers import start_user_window
 from src.telegram.utils import is_double_click
 
 
@@ -21,19 +22,14 @@ async def on_logs_request(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
-    get_logs: FromDishka[GetLogs],
     notifier: FromDishka[Notifier],
+    get_logs: FromDishka[GetLogs],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     try:
         log_file = await get_logs(user)
-
-        file = FSInputFile(
-            path=log_file.path,
-            filename=log_file.display_name,
-        )
-        logger.info(f"{user.log} Sending log file '{LOG_DIR / LOG_FILENAME}' as '{file.filename}'")
+        file = FSInputFile(path=log_file.path, filename=log_file.display_name)
 
         await notifier.notify_user(
             user=user,
@@ -47,10 +43,10 @@ async def on_logs_request(
         )
     except FileNotFoundError:
         logger.error(f"{user.log} Log file not found at '{LOG_DIR}/{LOG_FILENAME}'")
-        await notifier.notify_user(user=user, i18n_key="ntf-error.log-not-found")
+        await notifier.notify_user(user, i18n_key="ntf-error.log-not-found")
     except LogsToFileDisabledError:
         logger.debug(f"Logs request denied for '{user.telegram_id}': file logging is off")
-        await notifier.notify_user(user=user, i18n_key="ntf-error.logs-disabled")
+        await notifier.notify_user(user, i18n_key="ntf-error.logs-disabled")
 
 
 @inject
@@ -59,9 +55,8 @@ async def on_user_select(
     widget: Button,
     dialog_manager: DialogManager,
 ) -> None:
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
     target_telegram_id = int(dialog_manager.item_id)  # type: ignore[attr-defined]
-    # await start_user_window(manager=dialog_manager, target_telegram_id=target_telegram_id)
+    await start_user_window(manager=dialog_manager, target_telegram_id=target_telegram_id)
 
 
 @inject
@@ -82,7 +77,7 @@ async def on_role_revoke(
         key=f"role_confirm_{target_telegram_id}",
         cooldown=10,
     ):
-        await notifier.notify_user(user=user, i18n_key="ntf-common.double-click-confirm")
+        await notifier.notify_user(user, i18n_key="ntf-common.double-click-confirm")
         logger.debug(
             f"Waiting for double click confirmation to revoke role for '{target_telegram_id}'"
         )

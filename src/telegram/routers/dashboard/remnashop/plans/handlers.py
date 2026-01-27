@@ -71,7 +71,7 @@ async def on_import_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if not message.document:
-        await notifier.notify_user(user=user, i18n_key="ntf-plan.not-file")
+        await notifier.notify_user(user, i18n_key="ntf-plan.not-file")
         return
 
     file_in_memory = io.BytesIO()
@@ -133,11 +133,11 @@ async def on_export(
     selected_plans: list = dialog_manager.dialog_data.get("selected_plans", [])
 
     if not selected_plans:
-        await notifier.notify_user(user=user, i18n_key="ntf-plan.export-plans_not_selected")
+        await notifier.notify_user(user, i18n_key="ntf-plan.export-plans_not_selected")
         return
 
     try:
-        raw_json = await export_plans(actor=user, data=selected_plans)
+        raw_json = await export_plans(user, selected_plans)
         file = BufferedInputFile(file=raw_json.encode("utf-8"), filename="exported_plans.json")
 
         await notifier.notify_user(
@@ -208,11 +208,11 @@ async def on_plan_delete(
     if is_double_click(dialog_manager, key=f"delete_confirm_{plan.id}", cooldown=10):
         await delete_plan(user, plan.id)  # type: ignore[arg-type]
 
-        await notifier.notify_user(user=user, i18n_key="ntf-plan.deleted")
+        await notifier.notify_user(user, i18n_key="ntf-plan.deleted")
         await dialog_manager.start(state=RemnashopPlans.MAIN, mode=StartMode.RESET_STACK)
         return
 
-    await notifier.notify_user(user=user, i18n_key="ntf-common.double-click-confirm")
+    await notifier.notify_user(user, i18n_key="ntf-common.double-click-confirm")
     logger.debug(f"{user.log} Clicked delete for plan ID '{plan.id}' (awaiting confirmation)")
 
 
@@ -229,7 +229,7 @@ async def on_name_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if message.text is None:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     current_plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
@@ -240,7 +240,7 @@ async def on_name_input(
         await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -256,7 +256,7 @@ async def on_description_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if message.text is None:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     current_plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
@@ -271,7 +271,7 @@ async def on_description_input(
         await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -317,7 +317,7 @@ async def on_tag_input(
         await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -417,7 +417,7 @@ async def on_traffic_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if message.text is None:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     current_plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
@@ -431,7 +431,7 @@ async def on_traffic_input(
         await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -465,7 +465,7 @@ async def on_devices_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if message.text is None:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     current_plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
@@ -479,7 +479,7 @@ async def on_devices_input(
         await dialog_manager.switch_to(state=RemnashopPlans.CONFIGURATOR)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -521,7 +521,7 @@ async def on_duration_remove(
         logger.debug(f"{user.log} UI updated after duration removal")
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -537,7 +537,7 @@ async def on_duration_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if message.text is None:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     current_plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
@@ -548,7 +548,7 @@ async def on_duration_input(
         await dialog_manager.switch_to(state=RemnashopPlans.DURATIONS)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 async def on_currency_select(
@@ -576,7 +576,7 @@ async def on_price_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if not message.text:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     duration_days = dialog_manager.dialog_data.get("selected_duration")
@@ -602,7 +602,7 @@ async def on_price_input(
         await dialog_manager.switch_to(state=RemnashopPlans.PRICES)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -618,7 +618,7 @@ async def on_allowed_user_input(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if message.text is None:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     current_plan = retort.load(dialog_manager.dialog_data[PlanDto.__name__], PlanDto)
@@ -631,7 +631,7 @@ async def on_allowed_user_input(
         dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(updated_plan)
 
     except ValueError:
-        await notifier.notify_user(user=user, i18n_key="ntf-common.invalid-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject
@@ -666,7 +666,7 @@ async def on_squads(
 
     if not result.internal_squads:
         logger.warning(f"{user.log} Cancelled transition: squads list is empty")
-        await notifier.notify_user(user=user, i18n_key="ntf-common.squads-empty")
+        await notifier.notify_user(user, i18n_key="ntf-common.squads-empty")
         return
 
     await dialog_manager.switch_to(state=RemnashopPlans.SQUADS)
@@ -734,7 +734,7 @@ async def on_plan_confirm(
         else:
             i18n_key = "ntf-plan.updated"
 
-        await notifier.notify_user(user=user, i18n_key=i18n_key)
+        await notifier.notify_user(user, i18n_key=i18n_key)
         await dialog_manager.reset_stack()
         await dialog_manager.start(state=RemnashopPlans.MAIN)
 
@@ -747,4 +747,4 @@ async def on_plan_confirm(
 
         i18n_key = error_map.get(type(e), "ntf-error.unknown")
 
-        await notifier.notify_user(user=user, i18n_key=i18n_key)
+        await notifier.notify_user(user, i18n_key=i18n_key)

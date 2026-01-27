@@ -1,7 +1,7 @@
-from decimal import Decimal
+from datetime import datetime
 from typing import Any
 
-from adaptix import ExtraSkip, Retort, dumper, loader, name_mapping
+from adaptix import ExtraSkip, Retort, as_is_dumper, dumper, loader, name_mapping
 from adaptix._internal.provider.loc_stack_filtering import OriginSubclassLSC
 from adaptix.conversion import ConversionRetort, coercer
 from dishka import Provider, Scope, provide
@@ -14,6 +14,7 @@ from src.application.dto import (
     ReferralSettingsDto,
     RequirementSettingsDto,
 )
+from src.application.dto.transaction import PriceDetailsDto
 from src.core.enums import ReferralLevel, Role
 from src.infrastructure.redis.key_builder import StorageKey, serialize_storage_key
 
@@ -30,6 +31,7 @@ class RetortProvider(Provider):
 
         retort = Retort(
             recipe=[
+                as_is_dumper(datetime),
                 name_mapping(extra_in=ExtraSkip()),
                 #
                 loader(
@@ -60,6 +62,7 @@ class RetortProvider(Provider):
                 ),
                 coercer(dict, ReferralSettingsDto, retort.get_loader(ReferralSettingsDto)),
                 # coercer(SecretStr, str, lambda v: v.get_secret_value()),
+                coercer(dict, PriceDetailsDto, retort.get_loader(PriceDetailsDto)),
             ]
         )
         return conversion_retort

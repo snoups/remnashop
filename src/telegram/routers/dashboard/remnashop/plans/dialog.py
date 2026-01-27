@@ -475,7 +475,7 @@ durations = Window(
     ListGroup(
         Row(
             Button(
-                text=I18nFormat("btn-plans.duration", value=F["item"]["days"]),
+                text=I18nFormat("btn-common.duration", value=F["item"]["days"]),
                 id="duration_select",
                 on_click=on_duration_select,
             ),

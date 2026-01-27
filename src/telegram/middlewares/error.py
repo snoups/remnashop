@@ -15,7 +15,7 @@ from loguru import logger
 from src.application.common import EventPublisher, Notifier
 from src.application.dto import TempUserDto
 from src.application.events import ErrorEvent
-from src.application.use_cases.redirect import RedirectMenu, RedirectMenuDto
+from src.application.use_cases.redirect import RedirectMenu
 from src.core.config import AppConfig
 from src.core.constants import CONFIG_KEY, CONTAINER_KEY
 from src.core.enums import MiddlewareEventType
@@ -51,7 +51,7 @@ class ErrorMiddleware(EventTypedMiddleware):
                 return
 
             if not isinstance(event.exception, MenuRenderError):
-                await redirect_menu.system(RedirectMenuDto(aiogram_user.id))
+                await redirect_menu.system(aiogram_user.id)
 
         if isinstance(
             event.exception,

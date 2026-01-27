@@ -32,32 +32,8 @@ class CheckAccessDto:
         return self.temp_user.telegram_id
 
 
-@dataclass(frozen=True)
-class RulesStatusResultDto:
-    is_required: bool
-    is_accepted: bool
-    rules_link: Optional[str] = None
-
-
-@dataclass(frozen=True)
-class CheckChannelSubscriptionDto:
-    temp_user: TempUserDto
-
-    @property
-    def telegram_id(self) -> int:
-        return self.temp_user.telegram_id
-
-
-@dataclass(frozen=True)
-class ChannelSubscriptionResultDto:
-    is_subscribed: bool
-    status: Optional[ChatMemberStatus] = None
-    channel_url: Optional[str] = None
-    error_occurred: bool = False
-
-
 class CheckAccess(Interactor[CheckAccessDto, bool]):
-    required_permission: Optional[Permission] = None
+    required_permission = None
 
     def __init__(
         self,
@@ -85,7 +61,7 @@ class CheckAccess(Interactor[CheckAccessDto, bool]):
                 return True
 
         if settings.access.mode == AccessMode.RESTRICTED:
-            await self.notifier.notify_user(user=data.temp_user, i18n_key="ntf-access.maintenance")
+            await self.notifier.notify_user(data.temp_user, i18n_key="ntf-access.maintenance")
             logger.info(f"Access denied for user '{data.telegram_id}' due to restricted mode")
             return False
 
@@ -135,7 +111,7 @@ class CheckAccess(Interactor[CheckAccessDto, bool]):
 
 
 class AcceptRules(Interactor[None, None]):
-    required_permission: Permission = Permission.PUBLIC
+    required_permission = Permission.PUBLIC
 
     def __init__(
         self,
@@ -154,35 +130,50 @@ class AcceptRules(Interactor[None, None]):
         logger.info(f"{actor.log} Accepted rules")
 
 
-class CheckRules(Interactor[None, RulesStatusResultDto]):
-    required_permission: Permission = Permission.PUBLIC
+@dataclass(frozen=True)
+class CheckRulesResultDto:
+    is_required: bool
+    is_accepted: bool
+    rules_link: Optional[str] = None
+
+
+class CheckRules(Interactor[None, CheckRulesResultDto]):
+    required_permission = Permission.PUBLIC
 
     def __init__(self, settings_dao: SettingsDao) -> None:
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: None) -> RulesStatusResultDto:
+    async def _execute(self, actor: UserDto, data: None) -> CheckRulesResultDto:
         settings = await self.settings_dao.get()
 
         if actor.is_privileged:
             logger.debug(f"User '{actor.telegram_id}' skipped rules check due to privileges")
-            return RulesStatusResultDto(is_required=False, is_accepted=True)
+            return CheckRulesResultDto(is_required=False, is_accepted=True)
 
         if not settings.requirements.rules_required:
             logger.debug(f"Rules check skipped for '{actor.telegram_id}': requirement is disabled")
-            return RulesStatusResultDto(is_required=False, is_accepted=True)
+            return CheckRulesResultDto(is_required=False, is_accepted=True)
 
         rules_link = settings.requirements.rules_link.get_secret_value()
 
         if actor.is_rules_accepted:
             logger.debug(f"User '{actor.telegram_id}' has already accepted rules")
-            return RulesStatusResultDto(is_required=True, is_accepted=True, rules_link=rules_link)
+            return CheckRulesResultDto(is_required=True, is_accepted=True, rules_link=rules_link)
 
         logger.debug(f"User '{actor.telegram_id}' must accept rules before proceeding")
-        return RulesStatusResultDto(is_required=True, is_accepted=False, rules_link=rules_link)
+        return CheckRulesResultDto(is_required=True, is_accepted=False, rules_link=rules_link)
 
 
-class CheckChannelSubscription(Interactor[None, ChannelSubscriptionResultDto]):
-    required_permission: Permission = Permission.PUBLIC
+@dataclass(frozen=True)
+class CheckChannelSubscriptionResultDto:
+    is_subscribed: bool
+    status: Optional[ChatMemberStatus] = None
+    channel_url: Optional[str] = None
+    error_occurred: bool = False
+
+
+class CheckChannelSubscription(Interactor[None, CheckChannelSubscriptionResultDto]):
+    required_permission = Permission.PUBLIC
 
     def __init__(
         self,
@@ -196,20 +187,16 @@ class CheckChannelSubscription(Interactor[None, ChannelSubscriptionResultDto]):
         self.config = config
         self.event_publisher = event_publisher
 
-    async def _execute(
-        self,
-        actor: UserDto,
-        data: None,
-    ) -> ChannelSubscriptionResultDto:
+    async def _execute(self, actor: UserDto, data: None) -> CheckChannelSubscriptionResultDto:
         settings = await self.settings_dao.get()
 
         if not settings.requirements.channel_required:
             logger.debug("Channel check skipped: requirement is disabled in settings")
-            return ChannelSubscriptionResultDto(is_subscribed=True)
+            return CheckChannelSubscriptionResultDto(is_subscribed=True)
 
         if actor.is_privileged:
             logger.debug(f"User '{actor.telegram_id}' skipped channel check due to privileges")
-            return ChannelSubscriptionResultDto(is_subscribed=True)
+            return CheckChannelSubscriptionResultDto(is_subscribed=True)
 
         req = settings.requirements
         channel_link = req.channel_link.get_secret_value()
@@ -225,18 +212,13 @@ class CheckChannelSubscription(Interactor[None, ChannelSubscriptionResultDto]):
             logger.warning(
                 f"Channel check skipped for '{actor.telegram_id}': no valid chat_id or username"
             )
-            return ChannelSubscriptionResultDto(is_subscribed=True)
+            return CheckChannelSubscriptionResultDto(is_subscribed=True)
 
         try:
-            member = await self.bot.get_chat_member(
-                chat_id=chat_id,
-                user_id=actor.telegram_id,
-            )
+            member = await self.bot.get_chat_member(chat_id=chat_id, user_id=actor.telegram_id)
 
             is_subscribed = member.status in ALLOWED_STATUSES
-            return ChannelSubscriptionResultDto(
-                is_subscribed=is_subscribed, status=member.status, channel_url=channel_url
-            )
+            return CheckChannelSubscriptionResultDto(is_subscribed, member.status, channel_url)
 
         except Exception as e:
             logger.error(f"Failed to check channel for '{actor.telegram_id}': '{e}'")
@@ -252,7 +234,7 @@ class CheckChannelSubscription(Interactor[None, ChannelSubscriptionResultDto]):
             )
 
             await self.event_publisher.publish(error_event)
-            return ChannelSubscriptionResultDto(is_subscribed=True, error_occurred=True)
+            return CheckChannelSubscriptionResultDto(is_subscribed=True, error_occurred=True)
 
 
 ACCESS_USE_CASES: Final[tuple[type[Interactor], ...]] = (

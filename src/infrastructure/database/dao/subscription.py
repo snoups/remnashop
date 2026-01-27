@@ -32,9 +32,9 @@ class SubscriptionDaoImpl(SubscriptionDao):
             list[Subscription], list[SubscriptionDto]
         )
 
-    async def create(self, subscription: SubscriptionDto) -> SubscriptionDto:
+    async def create(self, subscription: SubscriptionDto, telegram_id: int) -> SubscriptionDto:
         subscription_data = self.retort.dump(subscription)
-        db_subscription = Subscription(**subscription_data)
+        db_subscription = Subscription(**subscription_data, user_telegram_id=telegram_id)
 
         self.session.add(db_subscription)
         await self.session.flush()
@@ -99,7 +99,6 @@ class SubscriptionDaoImpl(SubscriptionDao):
         stmt = (
             select(Subscription)
             .where(Subscription.user_telegram_id == telegram_id)
-            .where(Subscription.status == SubscriptionStatus.ACTIVE)
             .order_by(Subscription.created_at.desc())
             .limit(1)
         )

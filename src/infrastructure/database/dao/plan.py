@@ -4,7 +4,7 @@ from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
 from redis.asyncio import Redis
-from sqlalchemy import ColumnElement, and_, any_, case, delete, func, or_, select, update
+from sqlalchemy import ColumnElement, and_, any_, case, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -81,29 +81,18 @@ class PlanDaoImpl(PlanDao):
         logger.debug(f"Plan with name '{name}' not found")
         return None
 
-    async def get_available_for_user(
-        self,
-        telegram_id: int,
-        availability: PlanAvailability = PlanAvailability.ALL,
-    ) -> list[PlanDto]:
+    async def get_active_plans(self) -> list[PlanDto]:
         stmt = (
             select(Plan)
             .where(Plan.is_active == True)  # noqa: E712
-            .where(Plan.availability == availability)
-            .where(
-                or_(
-                    Plan.allowed_user_ids.any(telegram_id == Plan.allowed_user_ids.column_valued()),
-                    func.cardinality(Plan.allowed_user_ids) == 0,
-                )
-            )
             .options(selectinload(Plan.durations).selectinload(PlanDuration.prices))
             .order_by(Plan.order_index.asc())
         )
-        result = await self.session.scalars(stmt)
-        db_plans = list(result.all())
+        result = await self.session.execute(stmt)
+        db_plans = result.scalars().all()
 
-        logger.debug(f"Retrieved '{len(db_plans)}' plans available for user '{telegram_id}'")
-        return self._convert_to_dto_list(db_plans)
+        logger.info(f"Retrieved '{len(db_plans)}' active plans")
+        return self._convert_to_dto_list(list(db_plans))
 
     async def get_trial_available_for_user(self, telegram_id: int) -> Optional[PlanDto]:
         user_is_allowed = cast(ColumnElement[bool], telegram_id == any_(Plan.allowed_user_ids))
@@ -234,3 +223,35 @@ class PlanDaoImpl(PlanDao):
 
         logger.debug(f"Plan '{plan_id}' not found for deletion")
         return False
+
+    async def filter_by_availability(self, availability: PlanAvailability) -> list[PlanDto]:
+        stmt = (
+            select(Plan)
+            .where(Plan.availability == availability)
+            .options(selectinload(Plan.durations).selectinload(PlanDuration.prices))
+            .order_by(Plan.order_index.asc())
+        )
+
+        result = await self.session.execute(stmt)
+        db_plans = result.scalars().all()
+
+        logger.info(f"Retrieved '{len(db_plans)}' plans with availability '{availability}'")
+        return self._convert_to_dto_list(list(db_plans))
+
+    async def get_active_allowed_plans(self) -> list[PlanDto]:
+        stmt = (
+            select(Plan)
+            .where(Plan.availability == PlanAvailability.ALLOWED)
+            .where(Plan.is_active == True)  # noqa: E712
+            .options(selectinload(Plan.durations).selectinload(PlanDuration.prices))
+            .order_by(Plan.order_index.asc())
+        )
+
+        result = await self.session.execute(stmt)
+        db_plans = result.scalars().all()
+
+        logger.info(
+            f"Retrieved '{len(db_plans)}' active plans with "
+            f"availability '{PlanAvailability.ALLOWED}'"
+        )
+        return self._convert_to_dto_list(list(db_plans))

@@ -40,4 +40,4 @@ async def show_dev_popup(
     dialog_manager: DialogManager,
     i18n: FromDishka[TranslatorRunner],
 ) -> None:
-    await callback.answer(text=i18n.get("layout.development"), show_alert=True)
+    await callback.answer(text=i18n.get("development"), show_alert=True)

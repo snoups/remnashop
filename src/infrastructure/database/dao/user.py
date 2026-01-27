@@ -1,10 +1,3 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from src.infrastructure.database.models import Subscription, Transaction
-
 from typing import Optional
 
 from adaptix import Retort
@@ -18,7 +11,7 @@ from src.application.common.dao import UserDao
 from src.application.dto import UserDto
 from src.core.constants import TTL_1H, TTL_6H
 from src.core.enums import Role
-from src.infrastructure.database.models import User
+from src.infrastructure.database.models import Referral, Subscription, Transaction, User
 from src.infrastructure.redis.cache import invalidate_cache, provide_cache
 from src.infrastructure.redis.keys import (
     USER_COUNT_PREFIX,
@@ -199,3 +192,91 @@ class UserDaoImpl(UserDao):
         )
         await self.session.execute(stmt)
         logger.debug(f"Current subscription cleared for user '{telegram_id}'")
+
+    async def get_blocked_users(self) -> list[UserDto]:
+        stmt = select(User).where(User.is_blocked == True).order_by(User.id.desc())  # noqa: E712
+
+        result = await self.session.execute(stmt)
+        db_users = result.scalars().all()
+
+        logger.debug(f"Retrieved '{len(db_users)}' blocked users")
+        return self._convert_to_dto_list(list(db_users))
+
+    async def get_recent_activity_users(
+        self,
+        excluded_ids: Optional[list[int]] = None,
+    ) -> list[UserDto]:
+        stmt = select(User)
+
+        if excluded_ids:
+            stmt = stmt.where(User.telegram_id.not_in(excluded_ids))
+
+        stmt = stmt.order_by(User.updated_at.desc().nulls_last()).limit(10)
+        result = await self.session.execute(stmt)
+        db_users = result.scalars().all()
+
+        logger.debug(f"Retrieved '{len(db_users)}' users with recent activity")
+        return self._convert_to_dto_list(list(db_users))
+
+    async def get_recent_registered_users(self, limit: int = 5) -> list[UserDto]:
+        stmt = select(User).order_by(User.created_at.desc()).limit(limit)
+
+        result = await self.session.execute(stmt)
+        db_users = result.scalars().all()
+
+        logger.debug(f"Retrieved '{len(db_users)}' recently registered users")
+        return self._convert_to_dto_list(list(db_users))
+
+    async def unblock_all(self) -> None:
+        stmt = update(User).where(User.is_blocked == True).values(is_blocked=False)  # noqa: E712
+        await self.session.execute(stmt)
+        logger.debug("All users unblocked")
+
+    async def count_blocked(self) -> int:
+        stmt = select(func.count()).select_from(User).where(User.is_blocked == True)  # noqa: E712
+        result = await self.session.execute(stmt)
+        logger.debug(f"Retrieved '{result or 0}' blocked users")
+        return result.scalar() or 0
+
+    async def has_any_subscription(self, telegram_id: int) -> bool:
+        stmt = (
+            select(func.count())
+            .select_from(Subscription)
+            .where(Subscription.user_telegram_id == telegram_id)
+        )
+        result = await self.session.execute(stmt)
+        count = result.scalar() or 0
+
+        logger.debug(
+            f"Checked subscription status for user '{telegram_id}', found '{count}' active"
+        )
+        return count > 0
+
+    async def is_invited_user(self, telegram_id: int) -> bool:
+        stmt = (
+            select(func.count())
+            .select_from(Referral)
+            .where(Referral.referred_telegram_id == telegram_id)
+        )
+
+        result = await self.session.execute(stmt)
+        count = result.scalar() or 0
+
+        is_invited = count > 0
+        logger.debug(f"Checked invite status for user '{telegram_id}', result '{is_invited}'")
+        return is_invited
+
+    async def toggle_blocked_status(self, telegram_id: int) -> None:
+        stmt = (
+            update(User)
+            .where(User.telegram_id == telegram_id)
+            .values(is_blocked=~User.is_blocked)
+            .returning(User.is_blocked)
+        )
+
+        result = await self.session.execute(stmt)
+        new_status = result.scalar()
+
+        logger.debug(
+            f"Toggled blocked status for user '{telegram_id}', new status is '{new_status}'"
+        )

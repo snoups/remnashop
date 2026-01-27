@@ -523,9 +523,13 @@ msg-user-subscription-info =
     { frg-subscription-details }
 
     <blockquote>
-    • <b>Сквады</b>: { $squads -> 
+    • <b>Внутренние сквады</b>: { $internal_squads ->
     [0] { unknown }
-    *[HAS] { $squads }
+    *[HAS] { $internal_squads }
+    }
+    • <b>Внешний сквад</b>: { $external_squad ->
+    [0] { unknown }
+    *[HAS] { $external_squad }
     }
     • <b>Первое подключение</b>: { $first_connected_at -> 
     [0] { unknown }

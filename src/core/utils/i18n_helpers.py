@@ -13,7 +13,7 @@ def i18n_format_bytes_to_unit(
     round_up: bool = False,
     min_unit: ByteUnitKey = ByteUnitKey.GIGABYTE,
 ) -> tuple[str, dict[str, float]]:
-    if not value:
+    if value is None:
         return UtilKey.UNLIMITED, {}
 
     bytes_value = Decimal(value)

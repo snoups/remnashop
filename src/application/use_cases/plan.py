@@ -6,112 +6,42 @@ from typing import Final, Optional
 from adaptix import Retort
 from loguru import logger
 
-from src.application.common import Interactor
-from src.application.common.cryptography import Cryptographer
+from src.application.common import Cryptographer, Interactor
 from src.application.common.dao import PlanDao
 from src.application.common.policy import Permission
 from src.application.common.uow import UnitOfWork
-from src.application.dto import PlanDto, PlanDurationDto, PlanPriceDto, UserDto
+from src.application.dto import PlanDto, PlanDurationDto, PlanPriceDto, PlanSnapshotDto, UserDto
 from src.application.services import PricingService
 from src.core.constants import TAG_REGEX
 from src.core.enums import Currency, PlanAvailability, PlanType
 from src.core.exceptions import PlanNameAlreadyExistsError, SquadsEmptyError, TrialDurationError
 
 
-@dataclass(frozen=True)
-class UpdatePlanNameDto:
-    plan: PlanDto
-    input_name: str
-
-
-@dataclass(frozen=True)
-class UpdatePlanDescriptionDto:
-    plan: PlanDto
-    input_description: str
-
-
-@dataclass(frozen=True)
-class UpdatePlanTagDto:
-    plan: PlanDto
-    input_tag: str
-
-
-@dataclass(frozen=True)
-class UpdatePlanTypeDto:
-    plan: PlanDto
-    type: PlanType
-
-
-@dataclass(frozen=True)
-class UpdatePlanTrafficDto:
-    plan: PlanDto
-    input_traffic_limit: str
-
-
-@dataclass(frozen=True)
-class UpdatePlanDeviceDto:
-    plan: PlanDto
-    input_device_limit: str
-
-
-@dataclass(frozen=True)
-class RemovePlanDurationDto:
-    plan: PlanDto
-    duration: int
-
-
-@dataclass(frozen=True)
-class AddPlanDurationDto:
-    plan: PlanDto
-    input_duration: str
-
-
-@dataclass(frozen=True)
-class UpdatePlanPriceDto:
-    plan: PlanDto
-    duration: int
-    currency: Currency
-    input_price: str
-
-
-@dataclass(frozen=True)
-class AddAllowedUserToPlanDto:
-    plan: PlanDto
-    input_telegram_id: str
-
-
-@dataclass(frozen=True)
-class CommitResultDto:
-    plan: Optional[PlanDto] = None
-    is_created: bool = False
-    is_updated: bool = False
-
-
 class MovePlanUp(Interactor[int, None]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     def __init__(self, uow: UnitOfWork, plan_dao: PlanDao) -> None:
         self.uow = uow
         self.plan_dao = plan_dao
 
-    async def _execute(self, actor: UserDto, data: int) -> None:
+    async def _execute(self, actor: UserDto, plan_id: int) -> None:
         async with self.uow:
             plans = await self.plan_dao.get_all()
             plans.sort(key=lambda p: p.order_index)
 
-            index = next((i for i, p in enumerate(plans) if p.id == data), None)
+            index = next((i for i, p in enumerate(plans) if p.id == plan_id), None)
 
             if index is None:
-                logger.warning(f"Plan with ID '{data}' not found for move operation")
+                logger.warning(f"Plan with ID '{plan_id}' not found for move operation")
                 return
 
             if index == 0:
                 plan = plans.pop(0)
                 plans.append(plan)
-                logger.debug(f"Plan '{data}' moved from top to bottom")
+                logger.debug(f"Plan '{plan_id}' moved from top to bottom")
             else:
                 plans[index - 1], plans[index] = plans[index], plans[index - 1]
-                logger.debug(f"Plan '{data}' moved up one position")
+                logger.debug(f"Plan '{plan_id}' moved up one position")
 
             for i, p in enumerate(plans, start=1):
                 p.order_index = i
@@ -119,19 +49,19 @@ class MovePlanUp(Interactor[int, None]):
 
             await self.uow.commit()
 
-        logger.info(f"{actor.log} Moved plan '{data}' up successfully")
+        logger.info(f"{actor.log} Moved plan '{plan_id}' up successfully")
 
 
 class DeletePlan(Interactor[int, None]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     def __init__(self, uow: UnitOfWork, plan_dao: PlanDao) -> None:
         self.uow = uow
         self.plan_dao = plan_dao
 
-    async def _execute(self, actor: UserDto, data: int) -> None:
+    async def _execute(self, actor: UserDto, plan_id: int) -> None:
         async with self.uow:
-            await self.plan_dao.delete(data)
+            await self.plan_dao.delete(plan_id)
 
             plans = await self.plan_dao.get_all()
             plans.sort(key=lambda p: p.order_index)
@@ -143,11 +73,17 @@ class DeletePlan(Interactor[int, None]):
 
             await self.uow.commit()
 
-        logger.info(f"{actor.log} Deleted plan ID '{data}' and reordered remaining")
+        logger.info(f"{actor.log} Deleted plan ID '{plan_id}' and reordered remaining")
+
+
+@dataclass(frozen=True)
+class UpdatePlanNameDto:
+    plan: PlanDto
+    input_name: str
 
 
 class UpdatePlanName(Interactor[UpdatePlanNameDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     def __init__(self, plan_dao: PlanDao, cryptographer: Cryptographer) -> None:
         self.plan_dao = plan_dao
@@ -166,8 +102,14 @@ class UpdatePlanName(Interactor[UpdatePlanNameDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class UpdatePlanDescriptionDto:
+    plan: PlanDto
+    input_description: str
+
+
 class UpdatePlanDescription(Interactor[UpdatePlanDescriptionDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: UpdatePlanDescriptionDto) -> PlanDto:
         if len(data.input_description) > 1024:
@@ -181,8 +123,14 @@ class UpdatePlanDescription(Interactor[UpdatePlanDescriptionDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class UpdatePlanTagDto:
+    plan: PlanDto
+    input_tag: str
+
+
 class UpdatePlanTag(Interactor[UpdatePlanTagDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: UpdatePlanTagDto) -> PlanDto:
         tag = data.input_tag.strip()
@@ -196,8 +144,14 @@ class UpdatePlanTag(Interactor[UpdatePlanTagDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class UpdatePlanTypeDto:
+    plan: PlanDto
+    type: PlanType
+
+
 class UpdatePlanType(Interactor[UpdatePlanTypeDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: UpdatePlanTypeDto) -> PlanDto:
         if data.type == PlanType.DEVICES and data.plan.device_limit == 0:
@@ -216,8 +170,14 @@ class UpdatePlanType(Interactor[UpdatePlanTypeDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class UpdatePlanTrafficDto:
+    plan: PlanDto
+    input_traffic_limit: str
+
+
 class UpdatePlanTraffic(Interactor[UpdatePlanTrafficDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: UpdatePlanTrafficDto) -> PlanDto:
         if not (data.input_traffic_limit.isdigit() and int(data.input_traffic_limit) > 0):
@@ -233,8 +193,14 @@ class UpdatePlanTraffic(Interactor[UpdatePlanTrafficDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class UpdatePlanDeviceDto:
+    plan: PlanDto
+    input_device_limit: str
+
+
 class UpdatePlanDevice(Interactor[UpdatePlanDeviceDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: UpdatePlanDeviceDto) -> PlanDto:
         if not (data.input_device_limit.isdigit() and int(data.input_device_limit) > 0):
@@ -250,8 +216,14 @@ class UpdatePlanDevice(Interactor[UpdatePlanDeviceDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class RemovePlanDurationDto:
+    plan: PlanDto
+    duration: int
+
+
 class RemovePlanDuration(Interactor[RemovePlanDurationDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: RemovePlanDurationDto) -> PlanDto:
         if len(data.plan.durations) <= 1:
@@ -273,8 +245,14 @@ class RemovePlanDuration(Interactor[RemovePlanDurationDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class AddPlanDurationDto:
+    plan: PlanDto
+    input_duration: str
+
+
 class AddPlanDuration(Interactor[AddPlanDurationDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: AddPlanDurationDto) -> PlanDto:
         if not (data.input_duration.isdigit() and int(data.input_duration) >= 0):
@@ -297,8 +275,16 @@ class AddPlanDuration(Interactor[AddPlanDurationDto, PlanDto]):
         return data.plan
 
 
+@dataclass(frozen=True)
+class UpdatePlanPriceDto:
+    plan: PlanDto
+    duration: int
+    currency: Currency
+    input_price: str
+
+
 class UpdatePlanPrice(Interactor[UpdatePlanPriceDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     def __init__(self, pricing_service: PricingService) -> None:
         self.pricing_service = pricing_service
@@ -325,8 +311,14 @@ class UpdatePlanPrice(Interactor[UpdatePlanPriceDto, PlanDto]):
         raise ValueError("Target duration or currency not found in plan")
 
 
+@dataclass(frozen=True)
+class AddAllowedUserToPlanDto:
+    plan: PlanDto
+    input_telegram_id: str
+
+
 class AddAllowedUserToPlan(Interactor[AddAllowedUserToPlanDto, PlanDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: AddAllowedUserToPlanDto) -> PlanDto:
         if not data.input_telegram_id.isdigit():
@@ -347,15 +339,22 @@ class AddAllowedUserToPlan(Interactor[AddAllowedUserToPlanDto, PlanDto]):
         return data.plan
 
 
-class CommitPlan(Interactor[PlanDto, CommitResultDto]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+@dataclass(frozen=True)
+class CommitPlanResultDto:
+    plan: Optional[PlanDto] = None
+    is_created: bool = False
+    is_updated: bool = False
+
+
+class CommitPlan(Interactor[PlanDto, CommitPlanResultDto]):
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     def __init__(self, uow: UnitOfWork, plan_dao: PlanDao, cryptographer: Cryptographer) -> None:
         self.uow = uow
         self.plan_dao = plan_dao
         self.cryptographer = cryptographer
 
-    async def _execute(self, actor: UserDto, plan: PlanDto) -> CommitResultDto:
+    async def _execute(self, actor: UserDto, plan: PlanDto) -> CommitPlanResultDto:
         if not plan.internal_squads:
             logger.warning(f"{actor.log} Commit failed: squads list is empty")
             raise SquadsEmptyError()
@@ -382,7 +381,7 @@ class CommitPlan(Interactor[PlanDto, CommitResultDto]):
                 await self.plan_dao.update(plan.as_fully_changed())
                 logger.info(f"{actor.log} Updated existing plan '{plan.name}' with ID '{plan.id}'")
                 await self.uow.commit()
-                return CommitResultDto(plan, is_updated=True)
+                return CommitPlanResultDto(plan, is_updated=True)
 
             existing = await self.plan_dao.get_by_name(plan.name)
             if existing:
@@ -394,21 +393,21 @@ class CommitPlan(Interactor[PlanDto, CommitResultDto]):
             await self.uow.commit()
 
         logger.info(f"{actor.log} Created new plan '{new_plan.name}'")
-        return CommitResultDto(new_plan, is_created=True)
+        return CommitPlanResultDto(new_plan, is_created=True)
 
 
 class ParsePlansImport(Interactor[str, list[PlanDto]]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     def __init__(self, retort: Retort) -> None:
         self.retort = retort
 
-    async def _execute(self, actor: UserDto, data: str) -> list[PlanDto]:
+    async def _execute(self, actor: UserDto, raw_plans: str) -> list[PlanDto]:
         logger.debug(f"{actor.log} Parsing plans import file")
 
-        raw_data = json.loads(data)
-        if isinstance(raw_data, dict):
-            raw_data = [raw_data]
+        json_plans = json.loads(raw_plans)
+        if isinstance(json_plans, dict):
+            raw_data = [json_plans]
 
         plans = [self.retort.load(item, PlanDto) for item in raw_data]
 
@@ -432,17 +431,17 @@ class ParsePlansImport(Interactor[str, list[PlanDto]]):
 
 
 class ExportPlans(Interactor[list[int], str]):
-    required_permission: Optional[Permission] = Permission.REMNASHOP_PLANS
+    required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     def __init__(self, plan_dao: PlanDao, retort: Retort) -> None:
         self.plan_dao = plan_dao
         self.retort = retort
 
-    async def _execute(self, actor: UserDto, data: list[int]) -> str:
-        logger.debug(f"{actor.log} Exporting '{len(data)}' plans to JSON")
+    async def _execute(self, actor: UserDto, plan_ids: list[int]) -> str:
+        logger.debug(f"{actor.log} Exporting '{len(plan_ids)}' plans to JSON")
 
         exported_data = []
-        for plan_id in data:
+        for plan_id in plan_ids:
             plan = await self.plan_dao.get_by_id(plan_id)
 
             if plan:
@@ -459,10 +458,78 @@ class ExportPlans(Interactor[list[int], str]):
                 exported_data.append(self.retort.dump(plan))
 
         if not exported_data:
-            logger.warning(f"{actor.log} No plans found for export with IDs '{data}'")
+            logger.warning(f"{actor.log} No plans found for export with IDs '{plan_ids}'")
             raise ValueError("No plans available for export")
 
         return json.dumps(exported_data, indent=4, ensure_ascii=False)
+
+
+@dataclass(frozen=True)
+class MatchPlanDto:
+    snapshot: PlanSnapshotDto
+    plans: list[PlanDto]
+
+
+class MatchPlan(Interactor[MatchPlanDto, Optional[PlanDto]]):
+    required_permission = None
+
+    async def _execute(self, actor: UserDto, data: MatchPlanDto) -> Optional[PlanDto]:
+        snapshot = data.snapshot
+
+        for plan in data.plans:
+            if self._is_plan_equal(snapshot, plan):
+                return plan
+
+        logger.warning(f"{actor.log} No matching plan found for snapshot '{snapshot.id}'")
+        return None
+
+    def _is_plan_equal(self, snapshot: PlanSnapshotDto, plan: PlanDto) -> bool:
+        return (
+            snapshot.id == plan.id
+            and snapshot.tag == plan.tag
+            and snapshot.type == plan.type
+            and snapshot.traffic_limit == plan.traffic_limit
+            and snapshot.device_limit == plan.device_limit
+            and snapshot.traffic_limit_strategy == plan.traffic_limit_strategy
+            and sorted(snapshot.internal_squads) == sorted(plan.internal_squads)
+            and snapshot.external_squad == plan.external_squad
+        )
+
+
+@dataclass(frozen=True)
+class ToggleUserPlanAccessDto:
+    plan_id: int
+    telegram_id: int
+
+
+class ToggleUserPlanAccess(Interactor[ToggleUserPlanAccessDto, None]):
+    required_permission = Permission.USER_EDITOR
+
+    def __init__(self, uow: UnitOfWork, plan_dao: PlanDao):
+        self.uow = uow
+        self.plan_dao = plan_dao
+
+    async def _execute(self, actor: UserDto, data: ToggleUserPlanAccessDto) -> None:
+        async with self.uow:
+            plan = await self.plan_dao.get_by_id(data.plan_id)
+            if not plan:
+                raise ValueError(f"Plan '{data.plan_id}' not found")
+
+            allowed_ids = list(plan.allowed_user_ids)
+            if data.telegram_id not in allowed_ids:
+                allowed_ids.append(data.telegram_id)
+                action = "Granted"
+            else:
+                allowed_ids.remove(data.telegram_id)
+                action = "Revoked"
+
+            plan.allowed_user_ids = allowed_ids
+            await self.plan_dao.update(plan)
+            await self.uow.commit()
+
+        logger.info(
+            f"{actor.log} {action} access to plan '{data.plan_id}' for user '{data.telegram_id}'"
+        )
 
 
 PLAN_USE_CASES: Final[tuple[type[Interactor], ...]] = (
@@ -481,4 +548,6 @@ PLAN_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     UpdatePlanType,
     ParsePlansImport,
     ExportPlans,
+    MatchPlan,
+    ToggleUserPlanAccess,
 )

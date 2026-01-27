@@ -22,6 +22,7 @@ class Permission(UpperStrEnum):
     PUBLIC = auto()
     COMMAND_TEST = auto()
     USER_SEARCH = auto()
+    MANAGE_ADMINS = auto()
     #
     VIEW_DASHBOARD = auto()
     VIEW_STATISTICS = auto()
@@ -46,12 +47,16 @@ class Permission(UpperStrEnum):
     SETTINGS_REQUIREMENT = auto()
     SETTINGS_ACCESS = auto()
     #
-    REMNASHOP_PLANS = auto()
+    REMNASHOP_PLAN_EDITOR = auto()
     REMNASHOP_LOGS = auto()
     #
+    USER_EDITOR = auto()
+    USER_SUBSCRIPTION_EDITOR = auto()
     USER_SYNC = auto()
-    MANAGE_SUBSCRIPTIONS = auto()
+    #
+    ASSIGN_ROLE = auto()
     REVOKE_ROLE = auto()
+    UNBLOCK_ALL = auto()
 
 
 ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {

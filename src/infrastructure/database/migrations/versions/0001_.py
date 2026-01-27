@@ -179,7 +179,7 @@ def upgrade() -> None:
         ),
         sa.Column("tag", sa.String(), nullable=True),
         sa.Column("internal_squads", sa.ARRAY(sa.UUID()), nullable=False),
-        sa.Column("external_squad", sa.UUID(), nullable=False),
+        sa.Column("external_squad", sa.UUID(), nullable=True),
         sa.Column("expire_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("url", sa.String(), nullable=False),
         sa.Column("plan_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=False),

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Self
 from uuid import UUID
 
 from remnapy.enums.users import TrafficLimitStrategy
@@ -30,6 +30,24 @@ class PlanSnapshotDto:
 
     is_active: bool = False
     is_trial: bool = False
+
+    @classmethod
+    def from_plan(cls, plan: "PlanDto", duration: int) -> Self:
+        return cls(
+            id=plan.id,  # type: ignore[arg-type]
+            public_code=plan.public_code,
+            name=plan.name,
+            tag=plan.tag,
+            type=plan.type,
+            traffic_limit_strategy=plan.traffic_limit_strategy,
+            traffic_limit=plan.traffic_limit,
+            device_limit=plan.device_limit,
+            duration=duration,
+            internal_squads=plan.internal_squads,
+            external_squad=plan.external_squad,
+            is_active=plan.is_active,
+            is_trial=plan.is_trial,
+        )
 
 
 @dataclass(kw_only=True)

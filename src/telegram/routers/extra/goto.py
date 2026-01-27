@@ -4,7 +4,7 @@ from aiogram_dialog import DialogManager, ShowMode, StartMode
 from loguru import logger
 
 from src.application.dto import UserDto
-from src.core.constants import GOTO_PREFIX, PAYMENT_PREFIX
+from src.core.constants import GOTO_PREFIX, PAYMENT_PREFIX, TARGET_TELEGRAM_ID
 from src.telegram.states import DashboardUser, Subscription, state_from_string
 
 router = Router(name=__name__)
@@ -49,7 +49,7 @@ async def on_goto(callback: CallbackQuery, dialog_manager: DialogManager, user: 
             chat_id=user.telegram_id,
         ).start(
             state=DashboardUser.MAIN,
-            data={"target_telegram_id": target_telegram_id},
+            data={TARGET_TELEGRAM_ID: target_telegram_id},
             mode=StartMode.RESET_STACK,
             show_mode=ShowMode.DELETE_AND_SEND,
         )

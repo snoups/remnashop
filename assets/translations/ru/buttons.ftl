@@ -7,10 +7,16 @@ btn-back =
 btn-common =
     .notification-close = ❌ Закрыть
     .devices-empty = ⚠️ Нет привязанных устройств
+
     .squad-choice = { $selected -> 
     [1] 🔘
     *[0] ⚪
     } { $name }
+
+    .duration = ⌛ { $value ->
+    [0] { unlimited }
+    *[other] { unit-day }
+    }
 
 btn-remnashop-info =
     .release-latest = 👀 Посмотреть
@@ -356,10 +362,6 @@ btn-plans =
     *[0] ⚪ { traffic-strategy }
     }
 
-    .duration = ⌛ { $value ->
-    [0] { unlimited }
-    *[other] { unit-day }
-    }
     
 btn-remnawave =
     .users = 👥 Пользователи

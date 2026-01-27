@@ -3,6 +3,7 @@ from aiogram_dialog import BgManagerFactory, ShowMode, StartMode
 from loguru import logger
 
 from src.application.common import Redirect
+from src.core.constants import TARGET_TELEGRAM_ID
 from src.telegram.states import DashboardUser, MainMenu
 
 
@@ -38,7 +39,7 @@ class RedirectImpl(Redirect):
 
         await bg_manager.start(
             state=DashboardUser.MAIN,
-            data={"target_telegram_id": target_telegram_id},
+            data={TARGET_TELEGRAM_ID: target_telegram_id},
             mode=StartMode.RESET_STACK,
             show_mode=ShowMode.DELETE_AND_SEND,
         )

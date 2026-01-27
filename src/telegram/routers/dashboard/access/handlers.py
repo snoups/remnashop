@@ -8,15 +8,11 @@ from dishka.integrations.aiogram_dialog import inject
 from src.application.dto import UserDto
 from src.application.use_cases.settings import (
     ChangeAccessMode,
-    ChangeAccessModeDto,
     ToggleConditionRequirement,
-    ToggleConditionRequirementDto,
     TogglePayments,
     ToggleRegistration,
     UpdateChannelRequirement,
-    UpdateChannelRequirementDto,
     UpdateRulesRequirement,
-    UpdateRulesRequirementDto,
 )
 from src.core.constants import USER_KEY
 from src.core.enums import AccessMode, AccessRequirements
@@ -32,7 +28,7 @@ async def on_access_mode_select(
     change_access_mode: FromDishka[ChangeAccessMode],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    await change_access_mode(user, ChangeAccessModeDto(selected_mode))
+    await change_access_mode(user, selected_mode)
 
 
 @inject
@@ -65,9 +61,7 @@ async def on_condition_toggle(
     toggle_condition_requirement: FromDishka[ToggleConditionRequirement],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    await toggle_condition_requirement(
-        user, ToggleConditionRequirementDto(AccessRequirements(callback.data or ""))
-    )
+    await toggle_condition_requirement(user, AccessRequirements(callback.data or ""))
 
 
 @inject
@@ -80,7 +74,7 @@ async def on_rules_input(
     dialog_manager.show_mode = ShowMode.EDIT
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
-    if await update_rules_requirement(user, UpdateRulesRequirementDto(message.text or "")):
+    if await update_rules_requirement(user, message.text or ""):
         await dialog_manager.switch_to(state=DashboardAccess.CONDITIONS)
 
 
@@ -93,4 +87,4 @@ async def on_channel_input(
 ) -> None:
     dialog_manager.show_mode = ShowMode.EDIT
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    await update_channel_requirement(user, UpdateChannelRequirementDto(message.text or ""))
+    await update_channel_requirement(user, message.text or "")

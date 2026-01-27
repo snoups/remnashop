@@ -28,7 +28,6 @@ command =
 
 hdr-user = <b>👤 Пользователь:</b>
 hdr-user-profile = <b>👤 Профиль:</b>
-hdr-plan = <b>📦 План:</b>
 hdr-payment = <b>💰 Платеж:</b>
 hdr-error = <b>⚠️ Ошибка:</b>
 hdr-node = <b>🖥 Нода:</b>
@@ -37,6 +36,11 @@ hdr-hwid = <b>📱 Устройство:</b>
 hdr-subscription = { $is_trial ->
     [1] <b>🎁 Пробная подписка:</b>
     *[0] <b>💳 Подписка:</b>
+}
+
+hdr-plan = { $is_trial_plan ->
+    [1] <b>🎁 Пробный план:</b>
+    *[0] <b>📦 План:</b>
 }
 
 frg-user =
@@ -110,7 +114,7 @@ frg-payment-amount = { $final_amount }{ $currency } { $discount_percent ->
 frg-plan-snapshot =
     <blockquote>
     • <b>План</b>: <code>{ $plan_name }</code>
-    • <b>Тип</b>: { plan-type }
+    • <b>Тип</b>: { plan-type } 
     • <b>Лимит трафика</b>: { $plan_traffic_limit }
     • <b>Лимит устройств</b>: { $plan_device_limit }
     • <b>Длительность</b>: { $plan_duration }
@@ -182,10 +186,10 @@ role-admin = Администратор
 role-user = Пользователь
 role = 
     { $role ->
-    [OWNER] { role-root }
-    [DEV] { role-dev }
-    [ADMIN] { role-admin }
-    *[USER] { role-user }
+    [5] { role-owner }
+    [4] { role-dev }
+    [3] { role-admin }
+    *[1] { role-user }
 }
 
 unlimited = ∞

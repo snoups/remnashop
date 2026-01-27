@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Final, Optional
+from typing import Final
 
 from loguru import logger
 from pydantic import SecretStr
@@ -23,70 +22,45 @@ from src.core.utils.validators import is_valid_url, is_valid_username
 from src.infrastructure.taskiq.tasks.notifications import notify_payments_restored
 
 
-@dataclass(frozen=True)
-class ToggleNotificationDto:
-    notification_type: NotificationType
-
-
-@dataclass(frozen=True)
-class UpdateChannelRequirementDto:
-    input_text: str
-
-
-@dataclass(frozen=True)
-class UpdateRulesRequirementDto:
-    input_text: str
-
-
-@dataclass(frozen=True)
-class ToggleConditionRequirementDto:
-    condition_type: AccessRequirements
-
-
-@dataclass(frozen=True)
-class ChangeAccessModeDto:
-    mode: AccessMode
-
-
-class ToggleNotification(Interactor[ToggleNotificationDto, SettingsDto]):
-    required_permission: Optional[Permission] = Permission.SETTINGS_NOTIFICATIONS
+class ChangeAccessMode(Interactor[AccessMode, None]):
+    required_permission = Permission.SETTINGS_ACCESS
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: ToggleNotificationDto) -> SettingsDto:
+    async def _execute(self, actor: UserDto, new_mode: AccessMode) -> None:
         async with self.uow:
             settings = await self.settings_dao.get()
-            settings.notifications.toggle(data.notification_type)
+            old_mode = settings.access.mode
+            settings.access.mode = new_mode
+            await self.settings_dao.update(settings)
+            await self.uow.commit()
+
+        logger.info(f"{actor.log} Changed access mode from '{old_mode}' to '{new_mode}'")
+
+
+class ToggleNotification(Interactor[NotificationType, SettingsDto]):
+    required_permission = Permission.SETTINGS_NOTIFICATIONS
+
+    def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
+        self.uow = uow
+        self.settings_dao = settings_dao
+
+    async def _execute(self, actor: UserDto, notification_type: NotificationType) -> SettingsDto:
+        async with self.uow:
+            settings = await self.settings_dao.get()
+            settings.notifications.toggle(notification_type)
             updated = await self.settings_dao.update(settings)
 
             await self.uow.commit()
 
-        logger.info(f"{actor.log} Toggled notification '{data.notification_type}'")
+        logger.info(f"{actor.log} Toggled notification '{notification_type}'")
         return updated
 
 
-class ChangeAccessMode(Interactor[ChangeAccessModeDto, None]):
-    required_permission: Permission = Permission.SETTINGS_ACCESS
-
-    def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
-        self.uow = uow
-        self.settings_dao = settings_dao
-
-    async def _execute(self, actor: UserDto, data: ChangeAccessModeDto) -> None:
-        async with self.uow:
-            settings = await self.settings_dao.get()
-            old_mode = settings.access.mode
-            settings.access.mode = data.mode
-            await self.settings_dao.update(settings)
-            await self.uow.commit()
-
-        logger.info(f"{actor.log} Changed access mode from '{old_mode}' to '{data.mode}'")
-
-
 class TogglePayments(Interactor[None, None]):
-    required_permission: Permission = Permission.SETTINGS_ACCESS
+    required_permission = Permission.SETTINGS_ACCESS
 
     def __init__(
         self,
@@ -121,7 +95,7 @@ class TogglePayments(Interactor[None, None]):
 
 
 class ToggleRegistration(Interactor[None, None]):
-    required_permission: Permission = Permission.SETTINGS_ACCESS
+    required_permission = Permission.SETTINGS_ACCESS
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
@@ -139,45 +113,43 @@ class ToggleRegistration(Interactor[None, None]):
         logger.info(f"{actor.log} Toggled registration availability to '{new_state}'")
 
 
-class ToggleConditionRequirement(Interactor[ToggleConditionRequirementDto, None]):
-    required_permission: Permission = Permission.SETTINGS_REQUIREMENT
+class ToggleConditionRequirement(Interactor[AccessRequirements, None]):
+    required_permission = Permission.SETTINGS_REQUIREMENT
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: ToggleConditionRequirementDto) -> None:
+    async def _execute(self, actor: UserDto, condition_type: AccessRequirements) -> None:
         settings = await self.settings_dao.get()
 
-        if data.condition_type == AccessRequirements.RULES:
+        if condition_type == AccessRequirements.RULES:
             settings.requirements.rules_required = not settings.requirements.rules_required
             new_state = settings.requirements.rules_required
-        elif data.condition_type == AccessRequirements.CHANNEL:
+        elif condition_type == AccessRequirements.CHANNEL:
             settings.requirements.channel_required = not settings.requirements.channel_required
             new_state = settings.requirements.channel_required
         else:
-            logger.error(f"{actor.log} Tried to toggle unknown condition '{data.condition_type}'")
+            logger.error(f"{actor.log} Tried to toggle unknown condition '{condition_type}'")
             return
 
         async with self.uow:
             await self.settings_dao.update(settings)
             await self.uow.commit()
 
-        logger.info(
-            f"{actor.log} Toggled access requirement '{data.condition_type}' to '{new_state}'"
-        )
+        logger.info(f"{actor.log} Toggled access requirement '{condition_type}' to '{new_state}'")
 
 
-class UpdateRulesRequirement(Interactor[UpdateRulesRequirementDto, bool]):
-    required_permission: Permission = Permission.SETTINGS_REQUIREMENT
+class UpdateRulesRequirement(Interactor[str, bool]):
+    required_permission = Permission.SETTINGS_REQUIREMENT
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao, notifier: Notifier) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
         self.notifier = notifier
 
-    async def _execute(self, actor: UserDto, data: UpdateRulesRequirementDto) -> bool:
-        input_text = data.input_text.strip()
+    async def _execute(self, actor: UserDto, input_text: str) -> bool:
+        input_text = input_text.strip()
 
         if not is_valid_url(input_text):
             logger.warning(f"{actor.log} Provided invalid rules link format: '{input_text}'")
@@ -196,16 +168,16 @@ class UpdateRulesRequirement(Interactor[UpdateRulesRequirementDto, bool]):
         return True
 
 
-class UpdateChannelRequirement(Interactor[UpdateChannelRequirementDto, None]):
-    required_permission: Permission = Permission.SETTINGS_REQUIREMENT
+class UpdateChannelRequirement(Interactor[str, None]):
+    required_permission = Permission.SETTINGS_REQUIREMENT
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao, notifier: Notifier) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
         self.notifier = notifier
 
-    async def _execute(self, actor: UserDto, data: UpdateChannelRequirementDto) -> None:
-        input_text = data.input_text.strip()
+    async def _execute(self, actor: UserDto, input_text: str) -> None:
+        input_text = input_text.strip()
         settings = await self.settings_dao.get()
 
         if input_text.isdigit() or (input_text.startswith("-") and input_text[1:].isdigit()):
@@ -234,7 +206,7 @@ class UpdateChannelRequirement(Interactor[UpdateChannelRequirementDto, None]):
 
 
 class ToggleReferralSystem(Interactor[None, bool]):
-    required_permission: Optional[Permission] = Permission.SETTINGS_REFERRAL
+    required_permission = Permission.SETTINGS_REFERRAL
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
@@ -256,21 +228,20 @@ class ToggleReferralSystem(Interactor[None, bool]):
 
 
 class UpdateReferralLevel(Interactor[int, None]):
-    required_permission: Optional[Permission] = Permission.SETTINGS_REFERRAL
+    required_permission = Permission.SETTINGS_REFERRAL
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: int) -> None:
-        new_level = data
+    async def _execute(self, actor: UserDto, new_level: int) -> None:
         async with self.uow:
             settings = await self.settings_dao.get()
             old_level = settings.referral.level.value
             settings.referral.level = ReferralLevel(new_level)
 
             current_config = settings.referral.reward.config
-            new_config = {lvl: val for lvl, val in current_config.items() if lvl.value <= data}
+            new_config = {lvl: val for lvl, val in current_config.items() if lvl.value <= new_level}
 
             for level_enum in ReferralLevel:
                 if level_enum.value <= new_level and level_enum not in new_config:
@@ -285,14 +256,13 @@ class UpdateReferralLevel(Interactor[int, None]):
 
 
 class UpdateReferralRewardType(Interactor[ReferralRewardType, None]):
-    required_permission: Optional[Permission] = Permission.SETTINGS_REFERRAL
+    required_permission = Permission.SETTINGS_REFERRAL
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: ReferralRewardType) -> None:
-        new_reward_type = data
+    async def _execute(self, actor: UserDto, new_reward_type: ReferralRewardType) -> None:
         async with self.uow:
             settings = await self.settings_dao.get()
             old_type = settings.referral.reward.type
@@ -306,14 +276,13 @@ class UpdateReferralRewardType(Interactor[ReferralRewardType, None]):
 
 
 class UpdateReferralAccrualStrategy(Interactor[ReferralAccrualStrategy, None]):
-    required_permission: Optional[Permission] = Permission.SETTINGS_REFERRAL
+    required_permission = Permission.SETTINGS_REFERRAL
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: ReferralAccrualStrategy) -> None:
-        new_strategy = data
+    async def _execute(self, actor: UserDto, new_strategy: ReferralAccrualStrategy) -> None:
         async with self.uow:
             settings = await self.settings_dao.get()
             old_strategy = settings.referral.accrual_strategy
@@ -328,14 +297,13 @@ class UpdateReferralAccrualStrategy(Interactor[ReferralAccrualStrategy, None]):
 
 
 class UpdateReferralRewardStrategy(Interactor[ReferralRewardStrategy, None]):
-    required_permission: Optional[Permission] = Permission.SETTINGS_REFERRAL
+    required_permission = Permission.SETTINGS_REFERRAL
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: ReferralRewardStrategy) -> None:
-        new_strategy = data
+    async def _execute(self, actor: UserDto, new_strategy: ReferralRewardStrategy) -> None:
         async with self.uow:
             settings = await self.settings_dao.get()
             old_strategy = settings.referral.reward.strategy
@@ -350,28 +318,28 @@ class UpdateReferralRewardStrategy(Interactor[ReferralRewardStrategy, None]):
 
 
 class UpdateReferralRewardConfig(Interactor[str, None]):
-    required_permission: Optional[Permission] = Permission.SETTINGS_REFERRAL
+    required_permission = Permission.SETTINGS_REFERRAL
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, data: str) -> None:
+    async def _execute(self, actor: UserDto, input_text: str) -> None:
         async with self.uow:
             settings = await self.settings_dao.get()
             max_allowed_level = settings.referral.level
             new_config = settings.referral.reward.config.copy()
             old_config_str = str(new_config)
 
-            if data.isdigit():
-                value = int(data)
+            if input_text.isdigit():
+                value = int(input_text)
 
                 if value < 1:
                     raise ValueError(f"Reward value '{value}' cannot be negative")
 
                 new_config[ReferralLevel.FIRST] = value
             else:
-                for pair in data.split():
+                for pair in input_text.split():
                     level_str, value_str = pair.split("=")
                     level = ReferralLevel(int(level_str.strip()))
 

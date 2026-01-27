@@ -66,7 +66,6 @@ class BroadcastDaoImpl(BroadcastDao):
         broadcast_id = await self.session.scalar(broadcast_id_stmt)
 
         if not broadcast_id:
-            # Уровень error уместен, если это нарушает логику
             logger.error(f"Failed to add messages: broadcast task '{task_id}' not found")
             return
 
