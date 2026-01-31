@@ -11,7 +11,6 @@ from src.core.config import AppConfig
 from src.core.constants import (
     RECENT_ACTIVITY_MAX_COUNT,
     RECENT_REGISTERED_MAX_COUNT,
-    REMNASHOP_PREFIX,
     TIME_5M,
     TIME_10M,
 )
@@ -319,9 +318,13 @@ class UserService(BaseService):
                         f"Searched by Telegram ID '{target_telegram_id}', user not found"
                     )
 
-            elif search_query.startswith(REMNASHOP_PREFIX):  # TODO: any username from panel
+            elif search_query.startswith(
+                self.config.bot.remnawave_users_prefix
+            ):  # TODO: any username from panel
                 try:
-                    target_id = int(search_query.split("_", maxsplit=1)[1])
+                    target_id = int(
+                        search_query[len(self.config.bot.remnawave_users_prefix) :]
+                    )
                     single_user = await self.get(telegram_id=target_id)
                     if single_user:
                         found_users.append(single_user)

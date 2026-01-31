@@ -5,7 +5,6 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
 from remnapy import RemnawaveSDK
-from remnapy.exceptions import NotFoundError
 from remnapy.models import GetOneNodeResponseDto
 
 from src.core.config import AppConfig
@@ -544,6 +543,7 @@ async def sync_getter(  # noqa: C901
     user_service: FromDishka[UserService],
     subscription_service: FromDishka[SubscriptionService],
     remnawave: FromDishka[RemnawaveSDK],
+    remnawave_service: FromDishka[RemnawaveService],
     **kwargs: Any,
 ) -> dict[str, Any]:
     target_telegram_id = dialog_manager.dialog_data["target_telegram_id"]
@@ -556,10 +556,7 @@ async def sync_getter(  # noqa: C901
 
     remna_subscription: Optional[RemnaSubscriptionDto] = None
 
-    try:
-        result = await remnawave.users.get_users_by_telegram_id(telegram_id=str(target_telegram_id))
-    except NotFoundError:
-        result = None
+    result = await remnawave_service.get_users_by_telegram_id(target_telegram_id)
 
     if result:
         remna_user = result[0]

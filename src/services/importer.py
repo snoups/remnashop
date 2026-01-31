@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from src.core.constants import IMPORTED_TAG, REMNASHOP_PREFIX
+from src.core.constants import IMPORTED_TAG
 from src.core.enums import SubscriptionStatus
 from src.core.utils.time import datetime_now
 
@@ -56,8 +56,9 @@ class ImporterService(BaseService):
             else datetime(2099, 1, 1, tzinfo=timezone.utc)
         )
 
+        prefix = self.config.bot.remnawave_users_prefix
         return {
-            "username": f"{REMNASHOP_PREFIX}{telegram_id}",
+            "username": f"{prefix}{telegram_id}",
             "telegram_id": telegram_id,
             "status": SubscriptionStatus.ACTIVE,
             "expire_at": expire_at,

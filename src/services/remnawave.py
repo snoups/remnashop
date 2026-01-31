@@ -103,15 +103,16 @@ class RemnawaveService(BaseService):
     ) -> UserResponseDto:
         async def _do_create() -> CreateUserResponseDto:
             if subscription:
+                remna_name = self._remna_name(user.telegram_id)
                 logger.info(
-                    f"Creating RemnaUser '{user.remna_name}' "
+                    f"Creating RemnaUser '{remna_name}' "
                     f"from subscription '{subscription.plan.name}'"
                 )
                 return await self.remnawave.users.create_user(
                     CreateUserRequestDto(
                         uuid=subscription.user_remna_id,
                         expire_at=subscription.expire_at,
-                        username=user.remna_name,
+                        username=remna_name,
                         traffic_limit_bytes=format_gb_to_bytes(subscription.traffic_limit),
                         traffic_limit_strategy=subscription.traffic_limit_strategy,
                         description=user.remna_description,
@@ -124,11 +125,12 @@ class RemnawaveService(BaseService):
                 )
 
             if plan:
-                logger.info(f"Creating RemnaUser '{user.telegram_id}' from plan '{plan.name}'")
+                remna_name = self._remna_name(user.telegram_id)
+                logger.info(f"Creating RemnaUser '{remna_name}' from plan '{plan.name}'")
                 return await self.remnawave.users.create_user(
                     CreateUserRequestDto(
                         expire_at=format_days_to_datetime(plan.duration),
-                        username=user.remna_name,
+                        username=remna_name,
                         traffic_limit_bytes=format_gb_to_bytes(plan.traffic_limit),
                         traffic_limit_strategy=plan.traffic_limit_strategy,
                         description=user.remna_description,
@@ -149,12 +151,13 @@ class RemnawaveService(BaseService):
             if not force:
                 raise
 
+            remna_name = self._remna_name(user.telegram_id)
             logger.warning(
-                f"User '{user.remna_name}' already exists. Force flag enabled, "
+                f"User '{remna_name}' already exists. Force flag enabled, "
                 f"removing and recreating"
             )
 
-            old_remna_user = await self.remnawave.users.get_user_by_username(user.remna_name)
+            old_remna_user = await self.remnawave.users.get_user_by_username(remna_name)
             await self.remnawave.users.delete_user(old_remna_user.uuid)
             created = await _do_create()
 
@@ -222,15 +225,27 @@ class RemnawaveService(BaseService):
         logger.info(f"RemnaUser '{user.telegram_id}' updated successfully")
         return updated_user
 
+    async def get_users_by_telegram_id(
+        self, telegram_id: int
+    ) -> list[UserResponseDto]:
+        """Get Remnawave users by telegram_id, filtered by bot's username prefix."""
+        try:
+            users_result = await self.remnawave.users.get_users_by_telegram_id(
+                telegram_id=str(telegram_id)
+            )
+        except NotFoundError:
+            return []
+        users = getattr(users_result, "users", users_result)
+        prefix = self.config.bot.remnawave_users_prefix
+        return [u for u in users if (getattr(u, "username", None) or "").startswith(prefix)]
+
     async def delete_user(self, user: UserDto) -> bool:
         logger.info(f"Deleting RemnaUser '{user.telegram_id}'")
 
         if not user.current_subscription:
             logger.warning(f"No current subscription for user '{user.telegram_id}'")
 
-            users_result = await self.remnawave.users.get_users_by_telegram_id(
-                telegram_id=str(user.telegram_id)
-            )
+            users_result = await self.get_users_by_telegram_id(user.telegram_id)
 
             if not users_result:
                 return False
@@ -302,6 +317,13 @@ class RemnawaveService(BaseService):
         return remna_user.subscription_url
 
     async def sync_user(self, remna_user: RemnaUserDto, creating: bool = True) -> None:
+        if not self._is_our_user(remna_user):
+            logger.debug(
+                f"Skipping sync for RemnaUser '{getattr(remna_user, 'username', '')}': "
+                "username prefix does not match this bot instance"
+            )
+            return
+
         if not remna_user.telegram_id:
             logger.warning(f"Skipping sync for '{remna_user.username}', missing 'telegram_id'")
             return
@@ -371,6 +393,11 @@ class RemnawaveService(BaseService):
 
     #
 
+    def _is_our_user(self, remna_user: RemnaUserDto) -> bool:
+        """Check if Remnawave user belongs to this bot instance by username prefix."""
+        username = getattr(remna_user, "username", None) or ""
+        return username.startswith(self.config.bot.remnawave_users_prefix)
+
     async def handle_user_event(self, event: str, remna_user: RemnaUserDto) -> None:  # noqa: C901
         from src.infrastructure.taskiq.tasks.subscriptions import (  # noqa: PLC0415
             delete_current_subscription_task,
@@ -378,6 +405,13 @@ class RemnawaveService(BaseService):
         )
 
         logger.info(f"Received event '{event}' for RemnaUser '{remna_user.telegram_id}'")
+
+        if not self._is_our_user(remna_user):
+            logger.debug(
+                f"Skipping RemnaUser '{getattr(remna_user, 'username', '')}': "
+                "username prefix does not match this bot instance"
+            )
+            return
 
         if not remna_user.telegram_id:
             logger.debug(f"Skipping RemnaUser '{remna_user.username}': telegram_id is empty")
@@ -498,6 +532,9 @@ class RemnawaveService(BaseService):
         else:
             logger.warning(f"Unhandled user event '{event}' for '{remna_user.telegram_id}'")
 
+    def _remna_name(self, telegram_id: int) -> str:
+        return f"{self.config.bot.remnawave_users_prefix}{telegram_id}"
+    
     async def handle_device_event(
         self,
         event: str,
@@ -505,6 +542,13 @@ class RemnawaveService(BaseService):
         device: HwidUserDeviceDto,
     ) -> None:
         logger.info(f"Received device event '{event}' for RemnaUser '{remna_user.telegram_id}'")
+
+        if not self._is_our_user(remna_user):
+            logger.debug(
+                f"Skipping RemnaUser '{getattr(remna_user, 'username', '')}': "
+                "username prefix does not match this bot instance"
+            )
+            return
 
         if not remna_user.telegram_id:
             logger.debug(f"Skipping RemnaUser '{remna_user.username}': telegram_id is empty")

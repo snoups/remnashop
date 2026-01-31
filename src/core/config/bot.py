@@ -3,7 +3,7 @@ from typing import Union
 from pydantic import SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
-from src.core.constants import API_V1, BOT_WEBHOOK_PATH, URL_PATTERN
+from src.core.constants import API_V1, BOT_WEBHOOK_PATH, REMNASHOP_PREFIX, URL_PATTERN
 
 from .base import BaseConfig
 from .validators import validate_not_change_me, validate_username
@@ -15,6 +15,8 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
     dev_id: int
     support_username: SecretStr
     mini_app: Union[bool, SecretStr] = False
+
+    remnawave_users_prefix: str = REMNASHOP_PREFIX
 
     reset_webhook: bool = False
     drop_pending_updates: bool = False

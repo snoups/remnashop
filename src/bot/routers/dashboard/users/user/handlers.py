@@ -11,7 +11,6 @@ from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorRunner
 from loguru import logger
 from remnapy import RemnawaveSDK
-from remnapy.exceptions import NotFoundError
 
 from src.bot.keyboards import get_contact_support_keyboard
 from src.bot.states import DashboardUser
@@ -891,7 +890,7 @@ async def on_sync(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
-    remnawave: FromDishka[RemnawaveSDK],
+    remnawave_service: FromDishka[RemnawaveService],
     user_service: FromDishka[UserService],
     subscription_service: FromDishka[SubscriptionService],
     notification_service: FromDishka[NotificationService],
@@ -906,10 +905,7 @@ async def on_sync(
     bot_subscription = await subscription_service.get_current(target_telegram_id)
     remna_subscription: Optional[RemnaSubscriptionDto] = None
 
-    try:
-        result = await remnawave.users.get_users_by_telegram_id(telegram_id=str(target_telegram_id))
-    except NotFoundError:
-        result = None
+    result = await remnawave_service.get_users_by_telegram_id(target_telegram_id)
 
     if not result and not bot_subscription:
         await notification_service.notify_user(
@@ -936,7 +932,6 @@ async def on_sync_from_remnawave(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
-    remnawave: FromDishka[RemnawaveSDK],
     remnawave_service: FromDishka[RemnawaveService],
     subscription_service: FromDishka[SubscriptionService],
     user_service: FromDishka[UserService],
@@ -951,10 +946,7 @@ async def on_sync_from_remnawave(
 
     subscription = await subscription_service.get_current(target_telegram_id)
 
-    try:
-        result = await remnawave.users.get_users_by_telegram_id(telegram_id=str(target_telegram_id))
-    except NotFoundError:
-        result = None
+    result = await remnawave_service.get_users_by_telegram_id(target_telegram_id)
 
     if not result:
         if subscription:
