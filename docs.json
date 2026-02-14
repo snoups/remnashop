@@ -1,0 +1,110 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Remnashop",
+  "colors": {
+    "primary": "#9775fa",
+    "light": "#9775fa",
+    "dark": "#2d0a68"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting started",
+        "pages": []
+      },
+      {
+        "group": "Configuration",
+        "pages": []
+      },
+      {
+        "group": "Features",
+        "pages": []
+      },
+      {
+        "group": "Payment Systems",
+        "pages": []
+      },
+      {
+        "group": "Dashboard",
+        "pages": []
+      },
+      {
+        "group": "Troubleshooting",
+        "pages": []
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Telegram",
+        "href": "https://t.me/remnashop"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/snoups/remnashop"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://dashboard.mintlify.com"
+    }
+  },
+  "contextual": {
+    "options": [
+     "copy",
+     "view",
+     "chatgpt",
+     "claude",
+     "perplexity",
+     "mcp",
+     "cursor",
+     "vscode"
+   ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/snoups/remnashop"
+    }
+  },
+  "background": {
+    "color": {
+      "dark": "#161b22",
+      "light": "#161b22"
+    },
+    "decoration": "grid"
+  },
+  "appearance": {
+    "default": "dark",
+    "strict": true
+  },
+  "interaction": {
+    "drilldown": false
+  },
+  "banner": {
+    "dismissible": false,
+    "content": "link"
+  },
+  "thumbnails": {
+    "appearance": "dark",
+    "background": "/images/default 2.png"
+  },
+  "styling": {
+    "codeblocks": "dark"
+  },
+  "icons": {
+    "library": "tabler"
+  },
+  "api": {
+    "playground": {
+      "proxy": false
+    }
+  }
+}
