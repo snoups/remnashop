@@ -3,12 +3,12 @@ title: "Quick start"
 description: "Here is a quick guide to installing Remnashop Telegram Bot"
 ---
 <Tip>
- Check the requirements page to get started
+ Check the [requirements](/requirements) page to get started
 </Tip>
 ---
 Install Docker
 ---
-Install Docker if not installed yet.
+Install <Badge>Docker</Badge> if not installed yet.
 
 <Accordion title="Install Docker">
    ```
@@ -23,7 +23,7 @@ Step 1 – Download required files
 mkdir /opt/remnashop && cd /opt/remnashop
 ```
 </CodeGroup>
-Download docker-compose.yml compose-file and .env by running these commands
+Download <Badge>docker-compose.yml</Badge> compose-file and <Badge>.env</Badge> by running these commands
 <Tabs>
  <Tab title="The bot and panel are hosted on the same server">
 <CodeGroup>
@@ -64,4 +64,131 @@ sed -i "s|^APP_CRYPT_KEY=.*|APP_CRYPT_KEY=$(openssl rand -base64 32 | tr -d '\n'
 sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env && sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env
 ```
 </CodeGroup>
-Now, open the .env file and update the variables:
+Now, open the <Badge>.env</Badge> 
+<CodeGroup>
+```bash Editing .env file
+cd /opt/remnashop && nano .env
+```
+</CodeGroup>
+file and update the variables:<br />
+
+Replace <Badge>bot.domain.com</Badge> with your bot domain name.
+<CodeGroup>
+```bash .env file content
+APP_DOMAIN=bot.domain.com
+```
+</CodeGroup>
+<Tip>
+The domain used by Telegram and Remnawave to reach your bot
+</Tip>
+Replace <Badge>ID:SECRET</Badge> with your bot token.
+<CodeGroup>
+```bash .env file content
+BOT_TOKEN=ID:SECRET
+```
+</CodeGroup>
+<Tip>
+_Example: 123456789:ABCDefGhIjKLmNoPQRstUVwXyZ123456789_<br />
+Your bot token from @BotFather in Telegram
+</Tip>
+Replace <Badge>ID</Badge> with your Telegram ID.
+<CodeGroup>
+```bash .env file content
+BOT_DEV_ID=ID
+```
+</CodeGroup>
+<Tip>
+_Example: 123456789_<br/>
+Telegram ID of the main developer
+</Tip>
+Replace <Badge>user123</Badge> with your Telegram username.
+<CodeGroup>
+```bash .env file content
+BOT_SUPPORT_USERNAME=user123
+```
+</CodeGroup>
+<Tip>
+Telegram username of the support account used for deep-linking (without @)
+</Tip>
+Replace <Badge>remnawave</Badge> with your remnawave panel domain if you are using a bot on a separate server from the panel.
+<CodeGroup>
+```bash .env file content
+REMNAWAVE_HOST=remnawave
+```
+</CodeGroup>
+<Tip>
+_Example: REMNAWAVE_HOST=panel.domain.com_<br />
+Hostname or Docker service name for connecting to the Remnawave API
+</Tip>
+<Warning>Specify domain WITHOUT HTTP/HTTPS and WITHOUT trailing slash, or use the Docker container name.</Warning>
+Create API token in Remnawave dashboard. Remnawave Settings → API Tokens.<br />
+Replace <Badge>ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge> with your
+<CodeGroup>
+```bash .env file content
+REMNAWAVE_TOKEN=ey1234567890qwertyuiopasdfghjklzxcvbnm
+```
+</CodeGroup>
+<Tip>
+Remnawave API token, created in the panel.<br />
+</Tip>
+---
+ Webhook
+---
+<Danger>This step is critically important for the bot to receive events correctly.</Danger>
+<Warning>The bot requires a properly configured webhook to function.
+In the Remnawave Panel <Badge>.env</Badge> file, set: </Warning>
+<CodeGroup>
+```bash Editing .env file
+cd /opt/remnawave && nano .env
+```
+</CodeGroup>
+Change the <Badge>WEBHOOK_ENABLED</Badge>, <Badge>WEBHOOK_URL</Badge>
+<CodeGroup>
+```bash .env file content from panel
+WEBHOOK_ENABLED=true
+WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
+```
+</CodeGroup>
+<Tip>Replace <Badge>bot.domain.com</Badge> with your actual domain.</Tip>
+Find WEBHOOK_SECRET_HEADER= and copy your value after the = sign in the panel's .env file
+<CodeGroup>
+```bash .env file content from panel
+WEBHOOK_SECRET_HEADER=ey1234567890qwertyuiopasdfghjklzxcvbnm
+```
+</CodeGroup>
+<Tip>The value <Badge>ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge> serves as an example.</Tip>
+Restart the remnawave panel container to apply the changes
+<CodeGroup>
+```bash .env file content from panel
+cd /opt/remnawave/ && docker compose down && docker compose up -d && docker compose logs -f
+```
+</CodeGroup>
+Let's return to the <Badge>.env</Badge> file remnashop
+<CodeGroup>
+```bash Editing .env file from remnashop
+cd /opt/remnashop && nano .env
+```
+</CodeGroup>
+<Badge color="purple">Paste the copied value into REMNAWAVE_WEBHOOK_SECRET</Badge>
+<CodeGroup>
+```bash Editing .env file from remnashop
+REMNAWAVE_WEBHOOK_SECRET=ey1234567890qwertyuiopasdfghjklzxcvbnm
+```
+</CodeGroup>
+<Tip>The value <Badge>ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge> serves as an example.</Tip>
+<Warning> REMNAWAVE_WEBHOOK_SECRET Must match the value of WEBHOOK_SECRET_HEADER from .env the panel.</Warning>
+
+---
+Step 3 – Start the containers
+---
+Start the containers by running the following command:
+<CodeGroup>
+```bash Start the containers
+docker compose up -d && docker compose logs -f -t
+```
+</CodeGroup>
+After a few seconds, you should see output similar to this:
+
+---
+Next Steps
+---
