@@ -1,0 +1,33 @@
+<Warning> **Warning** <br /> Remnashop and its components does not support being server on a sub-path.<br /><br />
+(e.g.<Badge color="yellow">location /remnashop</Badge>, <Badge color="yellow">location /remnawave</Badge> ) <br /></Warning>
+<Note>**Note** <br /> **SSH Port Forwarding** is not supported. Use only with one of the reverse proxies below.</Note>
+<Tip> **Tip** <br />You need to have a registered domain name to continue.<br /></Tip>
+
+<Card 
+ title="📄️ Caddy"
+ icon="text-align-start"
+ href="/install/reverse-proxies/caddy"
+ arrow="true"
+ cta="Click here"
+ horizontal>
+  Lightweight reverse proxy with automatic SSL certificates and zero configuration
+</Card>
+
+<Columns cols={2}>
+  <Card
+  title="📄️ Nginx"
+  href="/install/reverse-proxies/nginx"
+  arrow="true"
+  cta="Click here"
+>
+  Popular reverse proxy with manual SSL certificates
+</Card>
+  <Card
+  title="📄️ Traefik"
+  href="/install/reverse-proxies/traefik"
+  arrow="true"
+  cta="Click here"
+>
+  Battle-tested reverse proxy
+</Card>
+</Columns>

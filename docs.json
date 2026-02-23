@@ -7,14 +7,23 @@
     "light": "#9775fa",
     "dark": "#2d0a68"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "null",
   "navigation": {
     "groups": [
       {
         "group": "Getting started",
         "pages": [
-          "test",
-          "requirements"
+          "install/requirements",
+          "install/quick-start"
+        ]
+      },
+            {
+        "group": "Reverse Proxies",
+        "root": "install/reverse-proxies",
+        "pages": [
+          "install/reverse-proxies/caddy",
+          "install/reverse-proxies/nginx",
+          "install/reverse-proxies/traefik"
         ]
       },
       {
@@ -40,8 +49,8 @@
     ]
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "null",
+    "dark": "null"
   },
   "navbar": {
     "links": [
@@ -93,7 +102,7 @@
   },
   "banner": {
     "dismissible": false,
-    "content": "link"
+    "content": "Remnashop"
   },
   "thumbnails": {
     "appearance": "dark",

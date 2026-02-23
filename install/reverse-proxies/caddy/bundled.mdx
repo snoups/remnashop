@@ -1,0 +1,53 @@
+---
+title: "Bundled"
+description: "Simple configuration"
+---
+In this guide, we will look at the configuration and setup of Caddy reverse proxy.
+<Warning> **Warning** <br />Bundled installation means that you will install Caddy on the same server as Remnawave Panel</Warning>
+<Danger>**Danger**<br /> Important! You must already have the Caddy reverse proxy installed and configured on your Remnawave Panel and other components.</Danger>
+## Prepare Caddyfile
+If you have already configured Caddy all you need to do is add a new site block to the Caddyfile
+<CodeGroup>
+```bash Editing Caddyfile
+cd /opt/remnawave/caddy && nano Caddyfile
+```
+</CodeGroup>
+<Warning> **Warning** <br />Please replace BOT_DOMAIN with your domain name.<br />Review the configuration below, look for highlighted lines.</Warning>
+<Danger>**Danger**<br />Do not fully replace the existing configuration, only add a new site block to the existing Caddyfile. </Danger>
+Add a new site block as shown in the example configuration file.<br />
+Note the highlighted lines—these are the ones you need to add.
+<CodeGroup>
+```javascript Caddyfile highlight={9-12}
+# PANEL
+https://REPLACE_WITH_YOUR_DOMAIN {
+        reverse_proxy * http://remnawave:3000
+}
+# SUBSCRIPTIONS PAGE
+https://SUBSCRIPTION_PAGE_DOMAIN {
+        reverse_proxy * http://remnawave-subscription-page:3010
+}
+# REMNASHOP (всё API v1 → remnashop:5000)
+https://BOT_DOMAIN {
+        reverse_proxy /api/v1/* http://remnashop:5000
+}
+# CATCH-ALL
+:443 {
+    tls internal
+    respond 204
+}
+```
+</CodeGroup>
+Now you need to restart Caddy container.
+<CodeGroup>
+```bash restart Caddy container
+cd /opt/remnawave/caddy && docker compose down && docker compose up -d && docker compose logs -f
+```
+</CodeGroup>
+And restart the Remnashop containers
+<CodeGroup>
+```bash
+cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
+```
+</CodeGroup>
+
+### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.

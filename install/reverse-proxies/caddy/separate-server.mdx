@@ -1,0 +1,74 @@
+---
+title: "Separate server"
+description: "Simple configuration"
+---
+<Warning>**Warning**<br />Installing on a separate server means that Caddy will be installed on a different server than the Remnawave Panel server and other components.<br /></Warning>
+<Danger>**Danger**<br />Important! There should be no reverse proxies installed on the server.</Danger>
+
+Create a file called Caddyfile in the /opt/remnawave/caddy directory.
+<CodeGroup>
+```bash Creating Caddyfile
+mkdir -p /opt/remnawave/caddy && cd /opt/remnawave/caddy && nano Caddyfile
+```
+</CodeGroup>
+Paste the following configuration.
+<Warning>**Warning**<br />Please, replace REPLACE_WITH_YOUR_DOMAIN with your domain name.<br />
+Review the configuration below, look for highlighted lines.</Warning>
+<CodeGroup>
+```bash Caddyfile highlight={1}
+https://REPLACE_WITH_YOUR_DOMAIN {
+        reverse_proxy /api/v1/* http://remnashop:5000
+}
+:443 {
+    tls internal
+    respond 204
+}
+```
+</CodeGroup>
+## Create docker-compose.yml
+Create a <Badge>docker-compose.yml</Badge> file in the <Badge>/opt/remnawave/caddy</Badge> directory.
+```bash
+cd /opt/remnawave/caddy && nano docker-compose.yml
+```
+Paste the following configuration.
+<CodeGroup>
+```bash docker-compose.yml
+services:
+    caddy:
+        image: caddy:2.9
+        container_name: 'caddy'
+        hostname: caddy
+        restart: always
+        ports:
+            - '0.0.0.0:443:443'
+            - '0.0.0.0:80:80'
+        networks:
+            - remnawave-network
+        volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile
+            - caddy-ssl-data:/data
+
+networks:
+    remnawave-network:
+        name: remnawave-network
+        driver: bridge
+        external: true
+
+volumes:
+    caddy-ssl-data:
+        driver: local
+        external: false
+        name: caddy-ssl-data
+```
+</CodeGroup>
+## Start the container
+```bash
+docker compose up -d && docker compose logs -f -t
+```
+Now you need to restart Remnashop containers
+<CodeGroup>
+```bash
+cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
+```
+</CodeGroup>
+### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.

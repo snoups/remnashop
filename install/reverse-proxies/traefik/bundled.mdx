@@ -1,0 +1,43 @@
+---
+title: "Bundled"
+description: "Simple configuration"
+---
+In this guide, we will look at the configuration and setup of Traefik reverse proxy.
+<Warning> **Warning** <br />Bundled installation means that you will install Traefik on the same server as Remnawave Panel</Warning>
+<Danger>**Danger**<br /> Important! You must already have the Traefik reverse proxy installed and configured on your Remnawave Panel and other components.</Danger>
+## Prepare new dynamic configuration file
+If you have already configured Traefik, you need to create a new dynamic configuration file called <Badge>remnashop.yml</Badge> in the <Badge>/opt/remnawave/traefik/config</Badge> directory.
+<CodeGroup>
+```bash Traefik configuration
+cd /opt/remnawave/traefik/config && nano remnashop.yml
+```
+</CodeGroup>
+Paste the following configuration.
+<Warning> **Warning** <br />Please replace REPLACE_WITH_YOUR_DOMAIN_BOT with your domain name.<br />Review the configuration below, look for highlighted lines.</Warning>
+<CodeGroup>
+```javascript remnashop.yml highlight={4}
+http:
+  routers:
+    remnashop:
+      rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
+      entrypoints:
+        - https
+      tls:
+        certResolver: letsencrypt
+      service: remnashop
+
+  services:
+    remnashop:
+      loadBalancer:
+        servers:
+          - url: "http://remnashop:5000"
+```
+</CodeGroup>
+Now you need to restart Remnashop containers
+<CodeGroup>
+```bash
+cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
+```
+</CodeGroup>
+
+### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.

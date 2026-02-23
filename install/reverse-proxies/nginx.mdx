@@ -1,0 +1,51 @@
+---
+title: "Nginx"
+---
+## Overview
+In this guide we will be using Nginx as a reverse proxy to access the Remnawave panel. We will point a domain name to our server, issue a SSL certificate and configure Nginx.
+<Warning> **Warning** <br /> You need to have a registered domain name to continue. </Warning><br />
+## Point domain to your server
+Check your server's IP address. It is better to use a static IPv4 address.<br />
+Now, you need to point your domain name to this IP address.<br />
+For example, it will be <Badge>my-super-panel.com</Badge> -> <Badge>193.122.122.122</Badge><br />
+There are two ways to do this:<br />
+1. Use a DNS provider (e.g. Cloudflare, Google Cloud, etc.)<br />
+2. Use a registrar (e.g. Namecheap, etc.)<br />
+## DNS provider
+If you are using Cloudflare, you need to add a A/AAAA record (for IPv4 and IPv6 respectively) to your DNS records.<br />
+Log in to your Cloudflare account [here](https://dash.cloudflare.com/login) and select the desired domain.<br />
+On the left side of the page, click on <Badge>DNS</Badge> and then click on <Badge>Records</Badge>. Click on <Badge>Create record</Badge>.<br />
+Set the <Badge>Type</Badge> to <Badge>A</Badge> and the <Badge>Name</Badge> to <Badge>@</Badge>.
+<Info>
+    **Info**<br />If you want to use subdomains, you should enter the subdomain name (e.g. <Badge>bot</Badge>) in the <Badge>Name</Badge> field.
+</Info>
+Enter your server's IP address in the <Badge>IPv4 address</Badge> field. and click on <Badge>Save</Badge>.<br />
+Now you need to wait a while for the DNS records to be updated.
+<Info>
+    **Info**<br />There is a big difference between yellow cloud (domain is proxied by Cloudflare) and grey cloud (domain is not proxied by Cloudflare) in the Cloudflare control panel.<br /><br />
+    If Cloudflare works fine in your region, it is better to proxy the domain through Cloudflare. (Yellow cloud)
+</Info>
+<Frame>
+  <img src="/images/cloudflare-dns.webp" />
+</Frame>
+Some DNS providers have a different interface, but the overall process is the same.
+## Nginx configuration
+You can set up Nginx on the same server as the Remnawave Panel or on a separate server. Select the appropriate guide below.
+<Columns cols={2}>
+  <Card
+  title="📄️ Bundled"
+  href="/install/reverse-proxies/nginx/bundled"
+  arrow="true"
+  cta="Click here"
+>
+  Bundled setup means you'll set up Nginx on the same server as the Remnawave panel.
+</Card>
+  <Card
+  title="📄️ Separate server"
+  href="/install/reverse-proxies/nginx/separate-server"
+  arrow="true"
+  cta="Click here"
+>
+  Installing on a separate server means that Nginx will be installed on a different server than the Remnawave Panel server and other components using a reverse proxy.
+</Card>
+</Columns>
