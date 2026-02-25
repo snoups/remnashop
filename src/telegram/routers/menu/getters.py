@@ -4,8 +4,8 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
-from src.application.common import TranslatorRunner
-from src.application.common.dao import ReferralDao, SettingsDao
+from src.application.common import Remnawave, TranslatorRunner
+from src.application.common.dao import ReferralDao, SettingsDao, SubscriptionDao
 from src.application.dto import UserDto
 from src.application.services import BotService
 from src.application.use_cases.menu import GetMenuData
@@ -92,6 +92,42 @@ async def menu_getter(
 
     except Exception as e:
         raise MenuRenderError(str(e)) from e
+
+
+@inject
+async def devices_getter(
+    dialog_manager: DialogManager,
+    user: UserDto,
+    subscription_dao: FromDishka[SubscriptionDao],
+    remnawave: FromDishka[Remnawave],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    current_subscription = await subscription_dao.get_current(user.telegram_id)
+
+    if not current_subscription:
+        raise ValueError(f"Current subscription for user '{user.telegram_id}' not found")
+
+    devices = await remnawave.get_devices(current_subscription.user_remna_id)
+
+    formatted_devices = [
+        {
+            "short_hwid": device.hwid[:32],
+            "hwid": device.hwid,
+            "platform": device.platform,
+            "device_model": device.device_model,
+            "user_agent": device.user_agent,
+        }
+        for device in devices
+    ]
+
+    dialog_manager.dialog_data["hwid_map"] = formatted_devices
+
+    return {
+        "current_count": len(devices),
+        "max_count": i18n_format_device_limit(current_subscription.device_limit),
+        "devices": formatted_devices,
+        "devices_empty": len(devices) == 0,
+    }
 
 
 @inject

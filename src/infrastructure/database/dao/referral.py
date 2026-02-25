@@ -135,11 +135,10 @@ class ReferralDaoImpl(ReferralDao):
         telegram_id: int,
         reward_type: ReferralRewardType,
     ) -> int:
-        stmt = (
-            select(func.sum(ReferralReward.amount))
-            .where(ReferralReward.user_telegram_id == telegram_id)
-            .where(ReferralReward.type == reward_type)
-            .where(ReferralReward.is_issued.is_(True))
+        stmt = select(func.sum(ReferralReward.amount)).where(
+            ReferralReward.user_telegram_id == telegram_id,
+            ReferralReward.type == reward_type,
+            ReferralReward.is_issued.is_(True),
         )
         total = await self.session.scalar(stmt) or 0
 

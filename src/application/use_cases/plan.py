@@ -512,7 +512,7 @@ class ExportPlans(Interactor[list[int], str]):
 
 @dataclass(frozen=True)
 class MatchPlanDto:
-    snapshot: PlanSnapshotDto
+    plan_snapshot: PlanSnapshotDto
     plans: list[PlanDto]
 
 
@@ -520,7 +520,7 @@ class MatchPlan(Interactor[MatchPlanDto, Optional[PlanDto]]):
     required_permission = None
 
     async def _execute(self, actor: UserDto, data: MatchPlanDto) -> Optional[PlanDto]:
-        snapshot = data.snapshot
+        snapshot = data.plan_snapshot
 
         for plan in data.plans:
             if self._is_plan_equal(snapshot, plan):

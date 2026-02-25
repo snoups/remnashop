@@ -370,6 +370,7 @@ async def transaction_getter(
 
     return {
         "is_test": transaction.is_test,
+        "is_trial_plan": transaction.plan_snapshot.is_trial,
         "payment_id": transaction.payment_id,
         "purchase_type": transaction.purchase_type,
         "transaction_status": transaction.status,
@@ -475,7 +476,7 @@ async def role_getter(
         for role in Role
         if role != target_user.role and role not in [Role.SYSTEM, Role.OWNER, Role.PREVIEW]
     ]
-    return {"roles": roles}
+    return {"roles": roles[::-1]}
 
 
 @inject

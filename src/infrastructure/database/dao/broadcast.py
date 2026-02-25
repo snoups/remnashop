@@ -103,8 +103,10 @@ class BroadcastDaoImpl(BroadcastDao):
 
         stmt = (
             update(BroadcastMessage)
-            .where(BroadcastMessage.broadcast_id == broadcast_id_stmt)
-            .where(BroadcastMessage.user_telegram_id == telegram_id)
+            .where(
+                BroadcastMessage.broadcast_id == broadcast_id_stmt,
+                BroadcastMessage.user_telegram_id == telegram_id,
+            )
             .values(status=status, message_id=message_id)
         )
         await self.session.execute(stmt)

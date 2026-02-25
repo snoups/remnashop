@@ -107,6 +107,9 @@ class PlanDurationDto(BaseDto, TrackableMixin):
     order_index: int = 0
     prices: list["PlanPriceDto"] = field(default_factory=list)
 
+    def get_price(self, currency: Currency) -> Decimal:
+        return next((p.price for p in self.prices if p.currency == currency))
+
 
 @dataclass(kw_only=True)
 class PlanPriceDto(BaseDto, TrackableMixin):

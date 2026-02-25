@@ -6,10 +6,7 @@ from dishka import FromDishka
 from loguru import logger
 
 from src.application.dto import UserDto
-from src.application.use_cases.payment_gateway import (
-    ProcessPayment,
-    ProcessPaymentDto,
-)
+from src.application.use_cases.payment_gateway import ProcessPayment, ProcessPaymentDto
 from src.core.enums import TransactionStatus
 
 router = Router(name=__name__)

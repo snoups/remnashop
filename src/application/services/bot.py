@@ -31,6 +31,6 @@ class BotService:
         return f"{base_url}{DEEPLINK_PREFIX}{PLAN_PREFIX}{public_code}"
 
     def get_support_url(self, text: Optional[str]) -> str:
-        base_url = f"{T_ME}{self.config.bot.support_username}"
+        base_url = f"{T_ME}{self.config.bot.support_username.get_secret_value()}"
         encoded_text = quote(text or "")
         return f"{base_url}?text={encoded_text}"

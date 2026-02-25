@@ -24,6 +24,7 @@ from src.telegram.window import Window
 
 from .getters import invite_about_getter, invite_getter, menu_getter
 from .handlers import (
+    on_get_trial,
     on_invite,
     on_show_qr,
     on_withdraw_points,
@@ -47,7 +48,7 @@ menu = Window(
         Button(
             text=I18nFormat("btn-menu.trial"),
             id="trial",
-            # on_click=on_get_trial,
+            on_click=on_get_trial,
             when=F["trial_available"],
         ),
     ),

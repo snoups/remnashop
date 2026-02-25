@@ -8,6 +8,7 @@ from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
 from src.application.common import Notifier
+from src.application.common.policy import Permission, PermissionPolicy
 from src.application.dto import UserDto
 from src.application.use_cases.user import SearchUsers, SearchUsersDto, UnblockAllUsers
 from src.core.constants import USER_KEY
@@ -28,6 +29,9 @@ async def on_user_search(
 ) -> None:
     dialog_manager.show_mode = ShowMode.EDIT
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
+
+    if not PermissionPolicy.has_permission(user, Permission.USER_SEARCH):
+        return
 
     search_data = SearchUsersDto(
         query=message.text,
@@ -77,11 +81,7 @@ async def on_unblock_all(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     if is_double_click(dialog_manager, key="unblock_all_confirm", cooldown=5):
-        count = await unblock_all(user)
-
-        if count > 0:
-            await notifier.notify_user(user, i18n_key="ntf-all-users-unblocked")
-
+        await unblock_all(user)
         await dialog_manager.start(state=DashboardUsers.BLACKLIST, mode=StartMode.RESET_STACK)
         return
 

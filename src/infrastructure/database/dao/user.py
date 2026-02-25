@@ -37,8 +37,8 @@ class UserDaoImpl(UserDao):
         self._convert_to_dto = self.conversion_retort.get_converter(User, UserDto)
         self._convert_to_dto_list = self.conversion_retort.get_converter(list[User], list[UserDto])
 
-    @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
-    @invalidate_cache(key_builder=UserCacheKey)
+    # @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
+    # @invalidate_cache(key_builder=UserCacheKey)
     async def create(self, user: UserDto) -> UserDto:
         user_data = self.retort.dump(user)
         db_user = User(**user_data)
@@ -49,7 +49,7 @@ class UserDaoImpl(UserDao):
         logger.debug(f"New user '{user.telegram_id}' created in database")
         return self._convert_to_dto(db_user)
 
-    @provide_cache(ttl=TTL_1H, key_builder=UserCacheKey)
+    # @provide_cache(ttl=TTL_1H, key_builder=UserCacheKey)
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[UserDto]:
         stmt = select(User).where(User.telegram_id == telegram_id)
         db_user = await self.session.scalar(stmt)
@@ -97,7 +97,7 @@ class UserDaoImpl(UserDao):
         logger.debug(f"User with referral code '{referral_code}' not found")
         return None
 
-    @provide_cache(prefix=USER_LIST_PREFIX, ttl=TTL_1H)
+    # @provide_cache(prefix=USER_LIST_PREFIX, ttl=TTL_1H)
     async def get_all(self, limit: int = 100, offset: int = 0) -> list[UserDto]:
         stmt = select(User).limit(limit).offset(offset)
         result = await self.session.scalars(stmt)
@@ -109,8 +109,8 @@ class UserDaoImpl(UserDao):
         )
         return self._convert_to_dto_list(db_users)
 
-    @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
-    @invalidate_cache(key_builder=UserCacheKey)
+    # @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
+    # @invalidate_cache(key_builder=UserCacheKey)
     async def update(self, user: UserDto) -> Optional[UserDto]:
         if not user.changed_data:
             logger.debug(f"No changes detected for user '{user.telegram_id}', skipping update")
@@ -133,8 +133,8 @@ class UserDaoImpl(UserDao):
         logger.warning(f"Failed to update user '{user.telegram_id}'")
         return None
 
-    @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
-    @invalidate_cache(key_builder=UserCacheKey)
+    # @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
+    # @invalidate_cache(key_builder=UserCacheKey)
     async def delete(self, telegram_id: int) -> bool:
         stmt = delete(User).where(User.telegram_id == telegram_id).returning(User.id)
         result = await self.session.execute(stmt)
@@ -154,7 +154,7 @@ class UserDaoImpl(UserDao):
         logger.debug(f"User '{telegram_id}' existence status is '{is_exists}'")
         return is_exists
 
-    @provide_cache(prefix=USER_COUNT_PREFIX, ttl=TTL_6H)
+    # @provide_cache(prefix=USER_COUNT_PREFIX, ttl=TTL_6H)
     async def count(self) -> int:
         stmt = select(func.count()).select_from(User)
         total = await self.session.scalar(stmt) or 0
@@ -162,7 +162,7 @@ class UserDaoImpl(UserDao):
         logger.debug(f"Total users count requested: '{total}'")
         return total
 
-    @provide_cache(ttl=TTL_1H, key_builder=RoleKey)
+    # @provide_cache(ttl=TTL_1H, key_builder=RoleKey)
     async def filter_by_role(self, role: list[Role]) -> list[UserDto]:
         stmt = select(User)
 
@@ -177,6 +177,21 @@ class UserDaoImpl(UserDao):
         logger.debug(f"Filtered '{len(db_users)}' users with role '{role}'")
         return self._convert_to_dto_list(db_users)
 
+    # @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
+    # @invalidate_cache(key_builder=UserCacheKey)
+    async def set_trial_available(self, telegram_id: int, is_trial_available: bool) -> None:
+        stmt = (
+            update(User)
+            .where(User.telegram_id == telegram_id)
+            .values(is_trial_available=is_trial_available)
+        )
+        await self.session.execute(stmt)
+        logger.debug(
+            f"Trial available status for user '{telegram_id}' set to '{is_trial_available}'"
+        )
+
+    # @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
+    # @invalidate_cache(key_builder=UserCacheKey)
     async def set_bot_blocked_status(self, telegram_id: int, is_bot_blocked: bool) -> None:
         stmt = (
             update(User)
@@ -186,6 +201,17 @@ class UserDaoImpl(UserDao):
         await self.session.execute(stmt)
         logger.debug(f"Bot blocked status for user '{telegram_id}' set to '{is_bot_blocked}'")
 
+    async def set_current_subscription(self, telegram_id: int, subscription_id: int) -> None:
+        stmt = (
+            update(User)
+            .where(User.telegram_id == telegram_id)
+            .values(current_subscription_id=subscription_id)
+        )
+        await self.session.execute(stmt)
+        logger.debug(f"Current subscription for user '{telegram_id}' set to '{subscription_id}'")
+
+    # @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
+    # @invalidate_cache(key_builder=UserCacheKey)
     async def clear_current_subscription(self, telegram_id: int) -> None:
         stmt = (
             update(User).where(User.telegram_id == telegram_id).values(current_subscription_id=None)

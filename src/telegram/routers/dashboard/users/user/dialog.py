@@ -538,7 +538,7 @@ transactions_list = Window(
     ScrollingGroup(
         Select(
             text=I18nFormat(
-                "btn-user-transaction",
+                "btn-user.transaction",
                 status=F["item"]["status"],
                 created_at=F["item"]["created_at"],
             ),

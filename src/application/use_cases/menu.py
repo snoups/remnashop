@@ -6,6 +6,7 @@ from src.application.common.dao import PlanDao, SettingsDao, SubscriptionDao
 from src.application.common.policy import Permission
 from src.application.dto import MenuButtonDto, PlanDto, SubscriptionDto, UserDto
 from src.application.services import BotService
+from src.application.use_cases.user import GetAvailableTrial
 
 
 @dataclass(frozen=True)
@@ -28,19 +29,21 @@ class GetMenuData(Interactor[None, GetMenuDataResultDto]):
         subscription_dao: SubscriptionDao,
         bot_service: BotService,
         i18n: TranslatorRunner,
+        get_available_trial: GetAvailableTrial,
     ) -> None:
         self.plan_dao = plan_dao
         self.settings_dao = settings_dao
         self.subscription_dao = subscription_dao
         self.bot_service = bot_service
         self.i18n = i18n
+        self.get_available_trial = get_available_trial
 
     async def _execute(self, actor: UserDto, data: None) -> GetMenuDataResultDto:
         current_subscription = await self.subscription_dao.get_current(actor.telegram_id)
 
         plan = None
         if actor.is_trial_available:
-            plan = await self.plan_dao.get_trial_available_for_user(actor.telegram_id)
+            plan = await self.get_available_trial.system(actor)
 
         settings = await self.settings_dao.get()
         is_referral_enabled = settings.referral.enable

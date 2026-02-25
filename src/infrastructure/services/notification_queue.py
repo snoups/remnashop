@@ -37,7 +37,7 @@ class NotificationQueue:
                 self._queue.clear()
 
             total = len(batch)
-            logger.info(f"Processing '{total}' queued notifications")
+            logger.debug(f"Processing '{total}' queued notifications")
 
             for i, chunk in enumerate(chunked(batch, BATCH_SIZE_10), start=1):
                 chunk_start = asyncio.get_running_loop().time()
@@ -52,7 +52,7 @@ class NotificationQueue:
 
                     elapsed = asyncio.get_running_loop().time() - chunk_start
 
-                    logger.info(
+                    logger.debug(
                         f"Chunk '{i}' processed: "
                         f"'{len(chunk) - errors}' success, '{errors}' errors "
                         f"in {elapsed:.2f}s"

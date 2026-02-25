@@ -56,7 +56,7 @@ class GetAdmins(Interactor[None, list[GetAdminsResultDto]]):
                 role=admin.role,
                 is_deletable=self._is_deletable(actor, admin),
             )
-            for admin in admins
+            for admin in admins[::-1]
         ]
 
     def _is_deletable(self, actor: UserDto, target: UserDto) -> bool:
@@ -641,6 +641,67 @@ class SendMessageToUser(Interactor[SendMessageToUserDto, bool]):
         return False
 
 
+class GetAvailableTrial(Interactor[UserDto, Optional[PlanDto]]):
+    required_permission = None
+
+    def __init__(self, user_dao: UserDao, plan_dao: PlanDao):
+        self.user_dao = user_dao
+        self.plan_dao = plan_dao
+
+    async def _execute(self, actor: UserDto, data: UserDto) -> Optional[PlanDto]:  # noqa: C901
+        active_trials = await self.plan_dao.get_active_trial_plans()
+
+        if not active_trials:
+            logger.info(f"{data.log} No active trial plans found")
+            return None
+
+        has_subscription = await self.user_dao.has_any_subscription(data.telegram_id)
+        is_invited = await self.user_dao.is_invited_user(data.telegram_id)
+
+        priority_map = {
+            PlanAvailability.ALLOWED: 4,
+            PlanAvailability.INVITED: 3,
+            PlanAvailability.NEW: 2,
+            PlanAvailability.ALL: 1,
+        }
+
+        eligible_plans: list[tuple[int, PlanDto]] = []
+
+        for plan in active_trials:
+            is_eligible = False
+
+            match plan.availability:
+                case PlanAvailability.ALLOWED:
+                    if data.telegram_id in (plan.allowed_user_ids or []):
+                        is_eligible = True
+                case PlanAvailability.INVITED:
+                    if is_invited:
+                        is_eligible = True
+                case PlanAvailability.NEW:
+                    if not has_subscription:
+                        is_eligible = True
+                case PlanAvailability.ALL:
+                    is_eligible = True
+
+            if is_eligible:
+                priority = priority_map.get(plan.availability, 0)
+                eligible_plans.append((priority, plan))
+
+        if not eligible_plans:
+            logger.info(f"{data.log} No eligible trial plans found for user")
+            return None
+
+        eligible_plans.sort(key=lambda x: (-x[0], x[1].order_index))
+
+        available_plan = eligible_plans[0][1]
+
+        logger.info(
+            f"{data.log} Selected available trial plan '{available_plan.id}' "
+            f"with availability '{available_plan.availability}'"
+        )
+        return available_plan
+
+
 USER_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     GetAdmins,
     GetOrCreateUser,
@@ -657,4 +718,5 @@ USER_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     SetUserPersonalDiscount,
     ChangeUserPoints,
     SendMessageToUser,
+    GetAvailableTrial,
 )

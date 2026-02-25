@@ -9,6 +9,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.common.dao import SubscriptionDao
+from src.application.common.dao.user import UserDao
 from src.application.dto import SubscriptionDto
 from src.core.enums import SubscriptionStatus
 from src.infrastructure.database.models import Subscription
@@ -22,11 +23,13 @@ class SubscriptionDaoImpl(SubscriptionDao):
         retort: Retort,
         conversion_retort: ConversionRetort,
         redis: Redis,
+        user_dao: UserDao,
     ) -> None:
         self.session = session
         self.retort = retort
         self.conversion_retort = conversion_retort
         self.redis = redis
+        self.user_dao = user_dao
 
         self._convert_to_dto = self.conversion_retort.get_converter(Subscription, SubscriptionDto)
         self._convert_to_dto_list = self.conversion_retort.get_converter(
@@ -39,6 +42,8 @@ class SubscriptionDaoImpl(SubscriptionDao):
 
         self.session.add(db_subscription)
         await self.session.flush()
+
+        await self.user_dao.set_current_subscription(telegram_id, db_subscription.id)
 
         logger.debug(
             f"Created new subscription '{db_subscription.id}' "
@@ -99,8 +104,8 @@ class SubscriptionDaoImpl(SubscriptionDao):
     async def get_current(self, telegram_id: int) -> Optional[SubscriptionDto]:
         stmt = (
             select(Subscription)
-            .where(Subscription.user_telegram_id == telegram_id)
-            .order_by(Subscription.created_at.desc())
+            .join(User, User.current_subscription_id == Subscription.id)
+            .where(User.telegram_id == telegram_id)
             .limit(1)
         )
         db_subscription = await self.session.scalar(stmt)

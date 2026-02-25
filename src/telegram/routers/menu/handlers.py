@@ -7,11 +7,16 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
-from src.application.common import Notifier, TranslatorRunner
+from src.application.common import Notifier, Remnawave, TranslatorRunner
 from src.application.common.dao import SettingsDao, SubscriptionDao
-from src.application.dto import MediaDescriptorDto, MessagePayloadDto, UserDto
+from src.application.dto import MediaDescriptorDto, MessagePayloadDto, PlanSnapshotDto, UserDto
 from src.application.services import BotService
 from src.application.use_cases.referral import GenerateReferralQr
+from src.application.use_cases.subscription import (
+    ActivateTrialSubscription,
+    ActivateTrialSubscriptionDto,
+)
+from src.application.use_cases.user import GetAvailableTrial
 from src.core.constants import USER_KEY
 from src.core.enums import MediaType
 from src.core.utils.i18n_helpers import i18n_format_expire_time
@@ -52,6 +57,63 @@ async def on_channel_confirm(
     dialog_manager: DialogManager,
 ) -> None:
     await on_start_dialog(user, dialog_manager)
+
+
+@inject
+async def on_get_trial(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    get_available_trial: FromDishka[GetAvailableTrial],
+    activate_trial_subscription: FromDishka[ActivateTrialSubscription],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    plan = await get_available_trial.system(user)
+
+    if not plan:
+        await notifier.notify_user(user=user, i18n_key="ntf-common.trial-unavailable")
+        raise ValueError("Trial plan not exist")
+
+    trial = PlanSnapshotDto.from_plan(plan, plan.durations[0].days)
+    await activate_trial_subscription.system(ActivateTrialSubscriptionDto(user, trial))
+
+
+@inject
+async def on_device_delete(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    subscription_dao: FromDishka[SubscriptionDao],
+    remnawave: FromDishka[Remnawave],
+) -> None:
+    selected_short_hwid = dialog_manager.item_id  # type: ignore[attr-defined]
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    hwid_map = dialog_manager.dialog_data.get("hwid_map")
+
+    if not hwid_map:
+        raise ValueError(f"Selected '{selected_short_hwid}' HWID, but 'hwid_map' is missing")
+
+    full_hwid = next((d["hwid"] for d in hwid_map if d["short_hwid"] == selected_short_hwid), None)
+
+    if not full_hwid:
+        raise ValueError(f"Full HWID not found for '{selected_short_hwid}'")
+
+    current_subscription = await subscription_dao.get_current(user.telegram_id)
+
+    if not (current_subscription and current_subscription.device_limit):
+        raise ValueError("User has no active subscription or device limit unlimited")
+
+    devices = await remnawave.delete_device(
+        user_uuid=current_subscription.user_remna_id,
+        hwid=full_hwid,
+    )
+    logger.info(f"{user.log} Deleted device '{full_hwid}'")
+
+    if devices:
+        return
+
+    await dialog_manager.switch_to(state=MainMenu.MAIN)
 
 
 @inject

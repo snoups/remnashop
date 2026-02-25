@@ -1,7 +1,7 @@
 from typing import Optional, Protocol, runtime_checkable
 
 from src.application.dto import PaymentGatewayDto
-from src.core.enums import Currency, PaymentGatewayType
+from src.core.enums import PaymentGatewayType
 
 
 @runtime_checkable
@@ -15,7 +15,7 @@ class PaymentGatewayDao(Protocol):
         gateway_type: PaymentGatewayType,
     ) -> Optional[PaymentGatewayDto]: ...
 
-    async def get_active_by_currency(self, currency: Currency) -> list[PaymentGatewayDto]: ...
+    async def get_active(self) -> list[PaymentGatewayDto]: ...
 
     async def get_all(
         self,

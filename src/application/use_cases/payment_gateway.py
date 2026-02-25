@@ -6,7 +6,7 @@ from uuid import UUID
 from loguru import logger
 from pydantic import SecretStr
 
-from src.application.common import EventPublisher, Interactor, TranslatorHub
+from src.application.common import EventPublisher, Interactor, Notifier, TranslatorHub
 from src.application.common.dao import (
     PaymentGatewayDao,
     ReferralDao,
@@ -14,7 +14,6 @@ from src.application.common.dao import (
     TransactionDao,
     UserDao,
 )
-from src.application.common.notifier import Notifier
 from src.application.common.policy import Permission
 from src.application.common.uow import UnitOfWork
 from src.application.dto import (
@@ -35,6 +34,7 @@ from src.application.dto.payment_gateway import (
 )
 from src.application.events import UserPurchaseEvent
 from src.application.use_cases.referral import AssignReferralRewards, AssignReferralRewardsDto
+from src.application.use_cases.subscription import PurchaseSubscription, PurchaseSubscriptionDto
 from src.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
 from src.core.exceptions import GatewayNotConfiguredError
 from src.core.utils.i18n_helpers import (
@@ -358,6 +358,7 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         event_publisher: EventPublisher,
         notifier: Notifier,
         assign_referral_rewards: AssignReferralRewards,
+        purchase_subscription: PurchaseSubscription,
     ) -> None:
         self.uow = uow
         self.user_dao = user_dao
@@ -367,6 +368,7 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         self.event_publisher = event_publisher
         self.notifier = notifier
         self.assign_referral_rewards = assign_referral_rewards
+        self.purchase_subscription = purchase_subscription
 
     async def _execute(self, actor: UserDto, data: ProcessPaymentDto) -> None:
         payment_id = data.payment_id
@@ -423,6 +425,7 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
             username=user.username,
             #
             purchase_type=transaction.purchase_type,
+            is_trial_plan=transaction.plan_snapshot.is_trial,
             payment_id=transaction.payment_id,
             gateway_type=transaction.gateway_type,
             final_amount=transaction.pricing.final_amount,
@@ -451,8 +454,9 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         )
 
         await self.event_publisher.publish(event)
-
-        # await purchase_subscription_task.kiq(transaction, subscription)
+        await self.purchase_subscription.system(
+            PurchaseSubscriptionDto(user, transaction, subscription)
+        )
 
         if not transaction.pricing.is_free:
             await self.assign_referral_rewards.system(AssignReferralRewardsDto(user, transaction))

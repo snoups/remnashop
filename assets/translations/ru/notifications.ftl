@@ -18,7 +18,7 @@ ntf-common =
 
     .invalid-value = ❌ <i>Некорректное значение.</i>
     .value-updated = ✅ <i>Параметр успешно обновлен.</i>
-
+    
     .connect-not-available =
     ⚠️ { $status ->
     [LIMITED]

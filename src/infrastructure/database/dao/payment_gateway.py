@@ -8,10 +8,10 @@ from redis.asyncio import Redis
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.common.cryptography import Cryptographer
+from src.application.common import Cryptographer
 from src.application.common.dao import PaymentGatewayDao
 from src.application.dto import PaymentGatewayDto
-from src.core.enums import Currency, PaymentGatewayType
+from src.core.enums import PaymentGatewayType
 from src.infrastructure.database.models import PaymentGateway
 
 
@@ -75,17 +75,16 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
         logger.debug(f"Payment gateway '{gateway_type}' not found")
         return None
 
-    async def get_active_by_currency(self, currency: Currency) -> list[PaymentGatewayDto]:
+    async def get_active(self) -> list[PaymentGatewayDto]:
         stmt = (
             select(PaymentGateway)
             .where(PaymentGateway.is_active.is_(True))
-            .where(PaymentGateway.currency == currency)
             .order_by(PaymentGateway.order_index.asc())
         )
         result = await self.session.scalars(stmt)
         db_gateways = cast(list, result.all())
 
-        logger.debug(f"Retrieved '{len(db_gateways)}' active gateways for currency '{currency}'")
+        logger.debug(f"Retrieved '{len(db_gateways)}' active gateways")
         return self._convert_to_dto_list(db_gateways)
 
     async def get_all(

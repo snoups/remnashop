@@ -290,6 +290,8 @@ class UserPurchaseEvent(UserEvent):
     )
 
     purchase_type: PurchaseType
+    is_trial_plan: bool
+
     payment_id: UUID
     gateway_type: PaymentGatewayType
     final_amount: Decimal
@@ -329,3 +331,33 @@ class UserPurchaseEvent(UserEvent):
                 return "event-subscription.renew"
             case PurchaseType.CHANGE:
                 return "event-subscription.change"
+
+
+@dataclass(frozen=True, kw_only=True)
+class TrialActivatedEvent(UserEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.TRIAL_ACTIVATED,
+        init=False,
+    )
+
+    is_trial_plan: bool = True
+    plan_name: str
+    plan_type: PlanType
+    plan_traffic_limit: Any
+    plan_device_limit: Any
+    plan_duration: Any
+
+    def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_user_keyboard  # noqa: PLC0415
+
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs={**asdict(self)},
+            reply_markup=get_user_keyboard(self.telegram_id),
+            disable_default_markup=False,
+            delete_after=None,
+        )
+
+    @property
+    def event_key(self) -> str:
+        return "event-subscription.trial"

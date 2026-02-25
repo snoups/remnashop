@@ -1,4 +1,4 @@
-# from .payments import router as payments_router
+from .payments import router as payments_router
 from .remnawave import router as remnawave_router
 from .telegram import TelegramWebhookEndpoint
 
