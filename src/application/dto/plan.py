@@ -14,7 +14,6 @@ from .base import BaseDto, TimestampMixin, TrackableMixin
 class PlanSnapshotDto:
     id: int
 
-    public_code: Optional[str] = None
     name: str
     tag: Optional[str] = None
 
@@ -28,14 +27,12 @@ class PlanSnapshotDto:
     internal_squads: list[UUID] = field(default_factory=list)
     external_squad: Optional[UUID] = None
 
-    is_active: bool = False
     is_trial: bool = False
 
     @classmethod
     def from_plan(cls, plan: "PlanDto", duration: int) -> Self:
         return cls(
             id=plan.id,  # type: ignore[arg-type]
-            public_code=plan.public_code,
             name=plan.name,
             tag=plan.tag,
             type=plan.type,
@@ -45,7 +42,6 @@ class PlanSnapshotDto:
             duration=duration,
             internal_squads=plan.internal_squads,
             external_squad=plan.external_squad,
-            is_active=plan.is_active,
             is_trial=plan.is_trial,
         )
 
@@ -56,9 +52,9 @@ class PlanSnapshotDto:
             name="test",
             tag=None,
             type=PlanType.UNLIMITED,
-            traffic_limit=-1,
-            device_limit=-1,
-            duration=-1,
+            traffic_limit=0,
+            device_limit=0,
+            duration=0,
             traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
             internal_squads=[],
             external_squad=None,

@@ -20,11 +20,15 @@ class AddPlanDuration(Interactor[AddPlanDurationDto, PlanDto]):
     required_permission = Permission.REMNASHOP_PLAN_EDITOR
 
     async def _execute(self, actor: UserDto, data: AddPlanDurationDto) -> PlanDto:
-        if not (data.input_duration.isdigit() and int(data.input_duration) >= 0):
+        if data.input_duration == "-1":
+            days = 0
+        elif data.input_duration.isdigit() and int(data.input_duration) >= 0:
+            days = int(data.input_duration)
+        else:
             logger.warning(f"{actor.log} Invalid duration input: '{data.input_duration}'")
-            raise ValueError(f"Duration must be a positive integer, got '{data.input_duration}'")
-
-        days = int(data.input_duration)
+            raise ValueError(
+                f"Duration must be a non-negative integer or -1, got '{data.input_duration}'"
+            )
 
         if any(d.days == days for d in data.plan.durations):
             logger.warning(f"{actor.log} Duration '{days}' already exists in plan")

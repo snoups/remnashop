@@ -36,6 +36,10 @@ async def payments_webhook(
             logger.warning(f"Webhook received for disabled payment gateway '{gateway_enum}'")
             return Response(status_code=status.HTTP_404_NOT_FOUND)
 
+        if not gateway.data.settings.is_configured:  # type: ignore[union-attr]
+            logger.warning(f"Webhook received for unconfigured payment gateway '{gateway_enum}'")
+            return Response(status_code=status.HTTP_404_NOT_FOUND)
+
         payment_id, payment_status = await gateway.handle_webhook(request)
         await handle_payment_transaction_task.kiq(payment_id, payment_status)  # type: ignore[call-overload]
         return Response(status_code=status.HTTP_200_OK)
@@ -46,4 +50,6 @@ async def payments_webhook(
         await event_publisher.publish(error_event)
 
     finally:
+        if gateway is not None:
+            return await gateway.build_webhook_response(request)
         return Response(status_code=status.HTTP_200_OK)

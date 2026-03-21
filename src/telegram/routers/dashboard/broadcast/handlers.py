@@ -19,10 +19,10 @@ from src.application.dto import MediaDescriptorDto, MessagePayloadDto, UserDto
 from src.application.services import BotService
 from src.application.use_cases.broadcast.commands.lifecycle import (
     CancelBroadcast,
+    DeleteBroadcast,
     StartBroadcast,
     StartBroadcastDto,
 )
-from src.application.use_cases.broadcast.commands.maintenance import DeleteBroadcast
 from src.application.use_cases.broadcast.queries.audience import (
     GetBroadcastAudienceCount,
     GetBroadcastAudienceCountDto,

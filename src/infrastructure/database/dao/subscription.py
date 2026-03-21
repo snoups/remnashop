@@ -15,8 +15,10 @@ from src.core.enums import SubscriptionStatus
 from src.core.utils.time import datetime_now
 from src.infrastructure.database.models import Subscription, User
 
+from .base import BaseDaoImpl
 
-class SubscriptionDaoImpl(SubscriptionDao):
+
+class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
     def __init__(
         self,
         session: AsyncSession,
@@ -128,10 +130,12 @@ class SubscriptionDaoImpl(SubscriptionDao):
             )
             return await self.get_by_id(subscription.id)
 
+        values_to_update = self._serialize_for_update(subscription, SubscriptionDto, Subscription)
+
         stmt = (
             update(Subscription)
             .where(Subscription.id == subscription.id)
-            .values(**subscription.changed_data)
+            .values(**values_to_update)
             .returning(Subscription)
         )
         db_subscription = await self.session.scalar(stmt)
@@ -139,7 +143,7 @@ class SubscriptionDaoImpl(SubscriptionDao):
         if db_subscription:
             logger.debug(
                 f"Subscription '{subscription.id}' updated successfully "
-                f"with data '{subscription.changed_data}'"
+                f"with data '{values_to_update}'"
             )
             return self._convert_to_dto(db_subscription)
 
@@ -300,8 +304,8 @@ class SubscriptionDaoImpl(SubscriptionDao):
             Subscription.expire_at <= week_later,
         )
         is_unlimited = or_(
-            Subscription.traffic_limit == -1,
-            Subscription.device_limit == -1,
+            Subscription.traffic_limit == 0,
+            Subscription.device_limit == 0,
         )
 
         counts_stmt = (
@@ -316,11 +320,11 @@ class SubscriptionDaoImpl(SubscriptionDao):
                     "total_unlimited"
                 ),
                 func.sum(
-                    case((and_(is_active, Subscription.traffic_limit != -1), 1), else_=0)
+                    case((and_(is_active, Subscription.traffic_limit != 0), 1), else_=0)
                 ).label("total_traffic"),
-                func.sum(
-                    case((and_(is_active, Subscription.device_limit != -1), 1), else_=0)
-                ).label("total_devices"),
+                func.sum(case((and_(is_active, Subscription.device_limit != 0), 1), else_=0)).label(
+                    "total_devices"
+                ),
             )
             .where(plan_id_expr.isnot(None))
             .group_by(plan_id_expr, plan_name_expr)

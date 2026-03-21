@@ -55,7 +55,7 @@ def setup_logger(config: AppConfig) -> None:
             format=LOG_FORMAT,
             rotation=config.log.rotation,
             retention=config.log.retention,
-            compression="zip",
+            compression=config.log.compression,
             encoding=LOG_ENCODING,
         )
 

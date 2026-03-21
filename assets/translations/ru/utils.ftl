@@ -2,9 +2,11 @@ space = {" "}
 empty = { "!empty!" }
 btn-test = Кнопка
 msg-test = Сообщение
-development = Временно недоступно!
+development = В разработке!
 test-payment = Тестовый платеж
 unknown = —
+
+development-promocode = Промокоды еще не реализованы, для мотивации и ускорения разработки можете закинуть монет.
 
 payment-invoice-description = { purchase-type } подписки { $name } на { $duration }
 

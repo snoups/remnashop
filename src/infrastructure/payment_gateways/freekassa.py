@@ -9,6 +9,7 @@ from uuid import UUID
 import orjson
 from aiogram import Bot
 from fastapi import Request
+from fastapi.responses import PlainTextResponse
 from httpx import AsyncClient, HTTPStatusError
 from loguru import logger
 
@@ -53,7 +54,7 @@ class FreeKassaGateway(BasePaymentGateway):
                 "email": self.data.settings.customer_email,  # type: ignore[union-attr]
                 "ip": self.data.settings.customer_ip,  # type: ignore[union-attr]
                 "amount": str(amount),
-                "currency": str(self.data.currency),
+                "currency": self.data.currency.value,
                 "success_url": await self._get_bot_redirect_url(),
                 "failure_url": await self._get_bot_redirect_url(),
                 "notification_url": self.config.get_webhook(self.data.type),
@@ -86,7 +87,6 @@ class FreeKassaGateway(BasePaymentGateway):
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")
 
-        # FreeKassa sends form-data, not JSON
         form = await request.form()
         webhook_data = dict(form)
 
@@ -94,18 +94,19 @@ class FreeKassaGateway(BasePaymentGateway):
             raise PermissionError("Webhook verification failed")
 
         payment_id_str = webhook_data.get("MERCHANT_ORDER_ID")
-        if not payment_id_str:
-            raise ValueError("Required field 'MERCHANT_ORDER_ID' is missing")
 
-        # FreeKassa only sends notifications for successful payments (status 1).
-        # There is no separate "cancelled" webhook — cancelled orders simply never arrive.
+        if not isinstance(payment_id_str, str):
+            raise ValueError("Required field 'MERCHANT_ORDER_ID' is missing or has unexpected type")
+
         payment_id = UUID(payment_id_str)
         return payment_id, TransactionStatus.COMPLETED
 
+    async def build_webhook_response(self, request: Request) -> PlainTextResponse:
+        return PlainTextResponse(content="YES")
+
     def _build_api_payload(self, extra: dict[str, Any]) -> dict[str, Any]:
-        settings = self.data.settings  # type: ignore[union-attr]
         data: dict[str, Any] = {
-            "shopId": settings.shop_id,  # type: ignore[union-attr]
+            "shopId": self.data.settings.shop_id,  # type: ignore[union-attr]
             "nonce": int(time.time() * 1000),  # must be strictly increasing
             **extra,
         }
@@ -113,7 +114,7 @@ class FreeKassaGateway(BasePaymentGateway):
         # Sort by key and join values with '|'
         sorted_values = "|".join(str(v) for _, v in sorted(data.items()))
         signature = hmac.new(
-            settings.api_key.get_secret_value().encode(),  # type: ignore[union-attr]
+            self.data.settings.api_key.get_secret_value().encode(),  # type: ignore[union-attr]
             sorted_values.encode(),
             hashlib.sha256,
         ).hexdigest()
@@ -139,17 +140,25 @@ class FreeKassaGateway(BasePaymentGateway):
             logger.warning("Webhook is missing 'SIGN' field")
             return False
 
-        settings = self.data.settings  # type: ignore[union-attr]
+        merchant_id = data.get("MERCHANT_ID")
+        if not merchant_id:
+            logger.warning("Webhook is missing 'MERCHANT_ID' field")
+            return False
+
+        if str(merchant_id) != str(self.data.settings.shop_id):  # type: ignore[union-attr]
+            logger.warning(f"Webhook MERCHANT_ID '{merchant_id}' does not match configured shop_id")
+            return False
+
         raw = (
-            f"{settings.shop_id}"  # type: ignore[union-attr]
+            f"{merchant_id}"
             f":{data.get('AMOUNT')}"
-            f":{settings.secret_word_2.get_secret_value()}"  # type: ignore[union-attr]
+            f":{self.data.settings.secret_word_2.get_secret_value()}"  # type: ignore[union-attr]
             f":{data.get('MERCHANT_ORDER_ID')}"
         )
         expected = hashlib.md5(raw.encode()).hexdigest()
 
         if not hmac.compare_digest(expected, sign):
-            logger.warning("Invalid FreeKassa webhook signature")
+            logger.warning("Invalid webhook signature")
             return False
 
         return True

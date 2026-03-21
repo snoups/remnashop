@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
@@ -14,8 +14,10 @@ from src.infrastructure.database.models import Settings
 from src.infrastructure.redis.cache import invalidate_cache, provide_cache
 from src.infrastructure.redis.keys import SETTINGS_PREFIX
 
+from .base import BaseDaoImpl
 
-class SettingsDaoImpl(SettingsDao):
+
+class SettingsDaoImpl(SettingsDao, BaseDaoImpl):
     def __init__(
         self,
         session: AsyncSession,
@@ -59,20 +61,7 @@ class SettingsDaoImpl(SettingsDao):
             logger.warning("No changes detected in settings, skipping update")
             return None
 
-        values_to_update = {}
-
-        for key, value in settings.changed_data.items():
-            column = getattr(Settings, key)
-            if isinstance(value, dict):
-                dumped = {}
-                for k, v in value.items():
-                    if isinstance(v, list):
-                        dumped[k] = [self.retort.dump(item) for item in v]
-                    else:
-                        dumped = {k: self.retort.dump(v, Any) for k, v in value.items()}
-                values_to_update[key] = column.concat(dumped)
-            else:
-                values_to_update[key] = self.retort.dump(value)
+        values_to_update = self._serialize_for_update(settings, SettingsDto, Settings)
 
         stmt = (
             update(Settings)

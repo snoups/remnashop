@@ -22,7 +22,7 @@ from src.core.enums import TransactionStatus
 from .base import BasePaymentGateway
 
 
-# https://yoomoney.ru/docs/wallet
+# https://yoomoney.ru/docs/
 class YoomoneyGateway(BasePaymentGateway):
     _client: AsyncClient
 

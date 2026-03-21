@@ -48,6 +48,8 @@ class I18nProvider(Provider):
             retort=retort,
         )
 
+
+class I18nAiogramProvider(Provider):
     @provide(scope=Scope.REQUEST)
     def get_translator(
         self,
@@ -57,10 +59,14 @@ class I18nProvider(Provider):
     ) -> TranslatorRunnerProtocol:
         user: Optional[UserDto] = middleware_data.get(USER_KEY)
         locale = user.language if user else config.default_locale
-
-        if user:
-            logger.debug(f"Translator for user '{user.telegram_id}' with locale '{locale}'")
-        else:
-            logger.debug(f"Translator for anonymous user with default locale '{locale}'")
-
         return translator_hub.get_translator_by_locale(locale=locale)
+
+
+class I18nTaskiqProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    def get_translator(
+        self,
+        config: AppConfig,
+        translator_hub: TranslatorHubProtocol,
+    ) -> TranslatorRunnerProtocol:
+        return translator_hub.get_translator_by_locale(locale=config.default_locale)

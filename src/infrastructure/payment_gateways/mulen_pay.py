@@ -46,7 +46,8 @@ class MulenPayGateway(BasePaymentGateway):
 
     async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
         order_uuid = str(uuid.uuid4())
-        payload = self._create_payment_payload(str(amount), details, order_uuid)
+        amount_str = f"{amount:.2f}"
+        payload = self._create_payment_payload(amount_str, details, order_uuid)
 
         try:
             response = await self._client.post("v2/payments", json=payload)
@@ -97,22 +98,23 @@ class MulenPayGateway(BasePaymentGateway):
         return payment_id, transaction_status
 
     def _create_payment_payload(self, amount: str, details: str, order_uuid: str) -> dict[str, Any]:
-        settings = self.data.settings  # type: ignore[union-attr]
-        currency = "rub"  # Only RUB is supported by MulenPay
-
         return {
-            "currency": currency,
+            "currency": self.data.currency,
             "amount": amount,
             "uuid": order_uuid,
-            "shopId": settings.shop_id,  # type: ignore[union-attr]
+            "shopId": self.data.settings.shop_id,  # type: ignore[union-attr]
             "description": details,
-            "sign": self._generate_signature(currency, amount, settings.shop_id),  # type: ignore[union-attr, arg-type]
+            "sign": self._generate_signature(
+                self.data.currency,
+                amount,
+                self.data.settings.shop_id,  # type: ignore[union-attr, arg-type]
+            ),
             "items": [
                 {
                     "description": details,
                     "quantity": 1,
                     "price": float(amount),
-                    "vat_code": settings.vat_code,  # type: ignore[union-attr]
+                    "vat_code": self.data.settings.vat_code,  # type: ignore[union-attr]
                     "payment_subject": self.DEFAULT_PAYMENT_SUBJECT,
                     "payment_mode": self.DEFAULT_PAYMENT_MODE,
                 }
@@ -120,8 +122,7 @@ class MulenPayGateway(BasePaymentGateway):
         }
 
     def _generate_signature(self, currency: str, amount: str, shop_id: int) -> str:
-        settings = self.data.settings  # type: ignore[union-attr]
-        raw = f"{currency}{amount}{shop_id}{settings.secret_key.get_secret_value()}"  # type: ignore[union-attr]
+        raw = f"{currency}{amount}{shop_id}{self.data.settings.secret_key.get_secret_value()}"  # type: ignore[union-attr]
         return hashlib.sha1(raw.encode()).hexdigest()
 
     def _get_payment_data(self, data: dict[str, Any], order_uuid: str) -> PaymentResultDto:
@@ -137,15 +138,20 @@ class MulenPayGateway(BasePaymentGateway):
             logger.warning("Webhook is missing 'sign' field")
             return False
 
-        settings = self.data.settings  # type: ignore[union-attr]
+        shop_id = self.data.settings.shop_id  # type: ignore[union-attr]
+        raw_amount = data.get("amount", "")
         currency = data.get("currency", "rub")
-        amount = data.get("amount", "")
-        shop_id = settings.shop_id  # type: ignore[union-attr]
 
-        expected = self._generate_signature(currency, str(amount), shop_id)  # type: ignore[union-attr, arg-type]
+        try:
+            amount = f"{Decimal(str(raw_amount)):.2f}"
+        except Exception:
+            logger.warning(f"Failed to parse webhook amount: {raw_amount!r}")
+            return False
+
+        expected = self._generate_signature(currency, amount, shop_id)  # type: ignore[arg-type]
 
         if not compare_digest(expected, sign):
-            logger.warning("Invalid MulenPay webhook signature")
+            logger.warning("Invalid MulenPay webhook signature.")
             return False
 
         return True

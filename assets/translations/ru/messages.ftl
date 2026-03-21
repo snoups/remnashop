@@ -169,20 +169,16 @@ msg-statistics-users =
 msg-statistics-subscriptions =
     { $plan_name ->
     [0] <b>💳 Статистика по подпискам</b>
-    *[HAS] <b>📦 Статистика { $plan_name }</b>
+    *[HAS] <b>📦 Статистика плана «{ $plan_name }»</b>
     }
 
     <blockquote>
     • <b>Всего</b>: { $total }
     • <b>Активные</b>: { $total_active }
     • <b>Истекшие</b>: { $total_expired }
-    { $plan_name ->
-    [0] • <b>Пробные</b>: { $active_trial }
-    *[HAS] { empty }
-    }
     • <b>Истекающие (7 дней)</b>: { $expiring_soon }
     { $plan_name ->
-    [0] { empty }
+    [0] • <b>Пробные</b>: { $active_trial }
     *[HAS] • <b>Популярная длительность</b>: { $popular_duration }
     }
     </blockquote>
@@ -267,9 +263,8 @@ msg-statistics-referrals =
 
     <blockquote>
     • <b>Выдано наград</b>: { $total_rewards_issued }
-    • <b>Ожидают выдачи</b>: { $total_rewards_pending }
-    • <b>Выдано поинтов</b>: { $total_points_issued } / { $total_points_pending }
-    • <b>Выдано дней</b>: { $total_days_issued } / { $total_days_pending }
+    • <b>Выдано баллов</b>: { $total_points_issued }
+    • <b>Выдано дней</b>: { $total_days_issued }
     </blockquote>
 
 
@@ -409,12 +404,12 @@ msg-user-statistics =
     }
     </blockquote>
 
-    <blockquote>
     { $payment_amounts ->
-    [0] { empty }
-    *[HAS] { $payment_amounts }
-    }
+    [0] { space }
+    *[HAS] <blockquote>
+    { $payment_amounts }
     </blockquote>
+    }
 
     <blockquote>
     • <b>Приглашен</b>: { $referrer_telegram_id ->

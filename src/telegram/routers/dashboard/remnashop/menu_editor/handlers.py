@@ -173,6 +173,7 @@ async def on_confirm(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     button = dialog_manager.dialog_data["button"]
     button = retort.load(button, MenuButtonDto)
+    logger.success(button)
     await confirm_menu_button_changes(user, button)
     await notifier.notify_user(user, i18n_key="ntf-menu-editor.button-saved")
     await dialog_manager.reset_stack()

@@ -1,3 +1,4 @@
+import dataclasses
 import hashlib
 import string
 from typing import Any, Final
@@ -24,6 +25,22 @@ class CryptographerImpl(Cryptographer):
         encrypted = ENCRYPTED_PREFIX + self.fernet.encrypt(data.encode()).decode()
         logger.debug(f"Data encrypted with prefix '{ENCRYPTED_PREFIX}'")
         return encrypted
+
+    def encrypt_recursive(self, value: Any) -> Any:
+        if isinstance(value, SecretStr):
+            return self.encrypt(value.get_secret_value())
+        if isinstance(value, list):
+            return [self.encrypt_recursive(v) for v in value]
+        if isinstance(value, dict):
+            return {k: self.encrypt_recursive(v) for k, v in value.items()}
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
+            encrypted_fields = {
+                f.name: self.encrypt_recursive(getattr(value, f.name))
+                for f in dataclasses.fields(value)
+                if f.init
+            }
+            return value.__class__(**encrypted_fields)
+        return value
 
     def decrypt(self, data: str) -> str:
         try:

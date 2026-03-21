@@ -53,11 +53,6 @@ class RetortProvider(Provider):
 
     @provide
     def get_retort(self) -> Retort:
-        def secret_dumper(value: Any) -> Any:
-            if isinstance(value, SecretStr):
-                return value.get_secret_value()
-            return value
-
         retort = Retort(
             recipe=[
                 loader(
@@ -78,8 +73,9 @@ class RetortProvider(Provider):
                 dumper(OriginSubclassLSC(StorageKey), serialize_storage_key),
                 #
                 loader(SecretStr, SecretStr),
-                dumper(SecretStr, lambda v: v.get_secret_value()),
-                dumper(Any, secret_dumper),
+                dumper(
+                    SecretStr, lambda v: v.get_secret_value() if isinstance(v, SecretStr) else v
+                ),
             ],
         )
 
@@ -147,7 +143,13 @@ class RetortProvider(Provider):
                         CryptomusGatewaySettingsDto,
                         HeleketGatewaySettingsDto,
                         CryptopayGatewaySettingsDto,
+                        FreeKassaGatewaySettingsDto,
+                        MulenPayGatewaySettingsDto,
+                        PayMasterGatewaySettingsDto,
+                        PlategaGatewaySettingsDto,
                         RobokassaGatewaySettingsDto,
+                        UrlPayGatewaySettingsDto,
+                        WataGatewaySettingsDto,
                     ]
                 ],
             ]

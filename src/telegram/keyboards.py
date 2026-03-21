@@ -234,3 +234,16 @@ def get_user_keyboard(
         )
 
     return builder.as_markup()
+
+
+def get_boosty_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(
+            text="⚡ BOOSTY",
+            url="https://boosty.to/snoups",
+        ),
+    )
+
+    return builder.as_markup()

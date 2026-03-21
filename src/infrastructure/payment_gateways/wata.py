@@ -1,5 +1,6 @@
 import uuid
 from base64 import b64decode
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
@@ -9,6 +10,7 @@ from aiogram import Bot
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from fastapi import Request
 from httpx import AsyncClient, HTTPStatusError
 from loguru import logger
@@ -21,13 +23,15 @@ from src.core.enums import TransactionStatus
 from .base import BasePaymentGateway
 
 
+# https://wata.pro/api/
 class WataGateway(BasePaymentGateway):
     _client: AsyncClient
 
     API_BASE: Final[str] = "https://api.wata.pro/api/h2h"
 
-    # Public key is fetched once and cached for the lifetime of the instance.
+    _PUBLIC_KEY_TTL_SECONDS: Final[int] = 6 * 60 * 60
     _public_key_pem: bytes | None = None
+    _public_key_loaded_at: datetime | None = None
 
     def __init__(self, gateway: PaymentGatewayDto, bot: Bot, config: AppConfig) -> None:
         super().__init__(gateway, bot, config)
@@ -73,15 +77,11 @@ class WataGateway(BasePaymentGateway):
         logger.debug(f"Received {self.__class__.__name__} webhook request")
 
         raw_body = await request.body()
-        webhook_data = orjson.loads(raw_body)
 
         if not await self._verify_webhook(request, raw_body):
             raise PermissionError("Webhook verification failed")
 
-        # Skip pre-payment (предоплатный) webhooks — we only act on post-payment.
-        kind = webhook_data.get("kind")
-        if kind != "Payment":
-            raise ValueError(f"Ignoring webhook kind: {kind!r}")
+        webhook_data = orjson.loads(raw_body)
 
         order_id_str = webhook_data.get("orderId")
         if not order_id_str:
@@ -101,40 +101,68 @@ class WataGateway(BasePaymentGateway):
         return payment_id, transaction_status
 
     async def _create_payment_payload(
-        self, amount: Decimal, details: str, order_id: str
+        self,
+        amount: Decimal,
+        details: str,
+        order_id: str,
     ) -> dict[str, Any]:
+        redirect_url = await self._get_bot_redirect_url()
         return {
             "type": "OneTime",
             "amount": float(amount),
             "currency": str(self.data.currency),
             "description": details,
             "orderId": order_id,
-            "successRedirectUrl": await self._get_bot_redirect_url(),
-            "failRedirectUrl": await self._get_bot_redirect_url(),
+            "successRedirectUrl": redirect_url,
+            "failRedirectUrl": redirect_url,
         }
 
     def _get_payment_data(self, data: dict[str, Any], order_id: str) -> PaymentResultDto:
         payment_url = data.get("url")
         if not payment_url:
-            raise KeyError("Invalid response from WATA API: missing 'url'")
+            raise KeyError("Invalid response from API: missing 'url'")
 
         return PaymentResultDto(id=UUID(order_id), url=str(payment_url))
 
-    async def _fetch_public_key(self) -> bytes:
-        if self._public_key_pem is not None:
-            return self._public_key_pem
+    async def _fetch_public_key(self, *, force_refresh: bool = False) -> bytes:
+        now = datetime.now(timezone.utc)
+        cache_valid = (
+            self._public_key_pem is not None
+            and self._public_key_loaded_at is not None
+            and (now - self._public_key_loaded_at).total_seconds() < self._PUBLIC_KEY_TTL_SECONDS
+        )
+        if cache_valid and not force_refresh:
+            return self._public_key_pem  # type: ignore[return-value]
 
         try:
-            # Use a plain client without auth for the public-key endpoint.
             response = await self._client.get("public-key")
             response.raise_for_status()
             data = orjson.loads(response.content)
             pem_str: str = data["value"]
             self._public_key_pem = pem_str.encode()
+            self._public_key_loaded_at = now
             return self._public_key_pem
         except Exception as e:
             logger.error(f"Failed to fetch WATA public key: {e}")
             raise
+
+    @staticmethod
+    def _verify_rsa_signature(
+        public_key_pem: bytes,
+        signature_bytes: bytes,
+        raw_body: bytes,
+    ) -> None:
+        public_key = serialization.load_pem_public_key(public_key_pem)
+
+        if not isinstance(public_key, RSAPublicKey):
+            raise ValueError(f"Expected RSAPublicKey, got {type(public_key).__name__}")
+
+        public_key.verify(
+            signature_bytes,
+            raw_body,
+            padding.PKCS1v15(),
+            hashes.SHA512(),
+        )
 
     async def _verify_webhook(self, request: Request, raw_body: bytes) -> bool:
         signature_b64 = request.headers.get("X-Signature")
@@ -142,22 +170,22 @@ class WataGateway(BasePaymentGateway):
             logger.warning("Webhook is missing 'X-Signature' header")
             return False
 
+        signature_bytes = b64decode(signature_b64)
+
         try:
             public_key_pem = await self._fetch_public_key()
-            public_key = serialization.load_pem_public_key(public_key_pem)
-            signature_bytes = b64decode(signature_b64)
-
-            public_key.verify(
-                signature_bytes,
-                raw_body,
-                padding.PKCS1v15(),
-                hashes.SHA512(),
-            )
+            self._verify_rsa_signature(public_key_pem, signature_bytes, raw_body)
             return True
 
         except InvalidSignature:
-            logger.warning("Invalid WATA webhook RSA signature")
-            return False
+            logger.warning("Invalid WATA webhook RSA signature, retrying with fresh public key")
+            try:
+                public_key_pem = await self._fetch_public_key(force_refresh=True)
+                self._verify_rsa_signature(public_key_pem, signature_bytes, raw_body)
+                return True
+            except InvalidSignature:
+                logger.warning("Invalid WATA webhook RSA signature after key refresh")
+                return False
         except Exception as e:
             logger.error(f"WATA webhook verification error: {e}")
             return False

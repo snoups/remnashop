@@ -17,7 +17,7 @@ from src.core.enums import TransactionStatus
 from .base import BasePaymentGateway
 
 
-# https://paymaster.ru/docs/en/api/
+# https://paymaster.ru/docs/
 class PayMasterGateway(BasePaymentGateway):
     _client: AsyncClient
 
@@ -41,15 +41,14 @@ class PayMasterGateway(BasePaymentGateway):
         )
 
     async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
-        order_id = str(uuid.uuid4())
-        payload = await self._create_payment_payload(str(amount), details, order_id)
-        headers = {"Idempotency-Key": order_id}
+        payload = await self._create_payment_payload(str(amount), details)
+        headers = {"Idempotency-Key": str(uuid.uuid4())}
 
         try:
             response = await self._client.post("invoices", json=payload, headers=headers)
             response.raise_for_status()
             data = orjson.loads(response.content)
-            return self._get_payment_data(data, order_id)
+            return self._get_payment_data(data)
 
         except HTTPStatusError as e:
             logger.error(
@@ -68,18 +67,13 @@ class PayMasterGateway(BasePaymentGateway):
         logger.debug(f"Received {self.__class__.__name__} webhook request")
 
         webhook_data = await self._get_webhook_data(request)
+        payment_id_str = webhook_data.get("id")
 
-        # PayMaster does not provide a webhook signature — use a secret path in callbackUrl
-        # (token embedded in the URL) as recommended in the docs.
-
-        invoice: dict = webhook_data.get("invoice", {})
-        order_id_str = invoice.get("orderNo")
-
-        if not order_id_str:
-            raise ValueError("Required field 'invoice.orderNo' is missing")
+        if not payment_id_str:
+            raise ValueError("Required field 'id' is missing")
 
         status = webhook_data.get("status")
-        payment_id = UUID(order_id_str)
+        payment_id = UUID(payment_id_str)
 
         match status:
             case "Settled" | "Authorized":
@@ -91,15 +85,11 @@ class PayMasterGateway(BasePaymentGateway):
 
         return payment_id, transaction_status
 
-    async def _create_payment_payload(
-        self, amount: str, details: str, order_id: str
-    ) -> dict[str, Any]:
-        settings = self.data.settings  # type: ignore[union-attr]
+    async def _create_payment_payload(self, amount: str, details: str) -> dict[str, Any]:
         return {
-            "merchantId": settings.merchant_id,  # type: ignore[union-attr]
+            "merchantId": self.data.settings.merchant_id,  # type: ignore[union-attr]
             "invoice": {
                 "description": details,
-                "orderNo": order_id,
             },
             "amount": {
                 "value": float(amount),
@@ -111,9 +101,13 @@ class PayMasterGateway(BasePaymentGateway):
             },
         }
 
-    def _get_payment_data(self, data: dict[str, Any], order_id: str) -> PaymentResultDto:
+    def _get_payment_data(self, data: dict[str, Any]) -> PaymentResultDto:
+        payment_id_str = data.get("paymentId")
+        if not payment_id_str:
+            raise KeyError("Invalid response from API: missing 'paymentId'")
+
         payment_url = data.get("url")
         if not payment_url:
-            raise KeyError("Invalid response from PayMaster API: missing 'url'")
+            raise KeyError("Invalid response from API: missing 'url'")
 
-        return PaymentResultDto(id=UUID(order_id), url=str(payment_url))
+        return PaymentResultDto(id=UUID(payment_id_str), url=str(payment_url))

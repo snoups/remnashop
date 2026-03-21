@@ -1,6 +1,4 @@
-import hashlib
 import hmac
-import uuid
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
@@ -25,9 +23,6 @@ class PlategaGateway(BasePaymentGateway):
 
     API_BASE: Final[str] = "https://app.platega.io"
 
-    # Platega does not publish a fixed IP allowlist.
-    NETWORKS = []
-
     def __init__(self, gateway: PaymentGatewayDto, bot: Bot, config: AppConfig) -> None:
         super().__init__(gateway, bot, config)
 
@@ -40,7 +35,7 @@ class PlategaGateway(BasePaymentGateway):
         self._client = self._make_client(
             base_url=self.API_BASE,
             headers={
-                "X-MerchantId": self.data.settings.merchant_id,  # type: ignore[union-attr, dict-item]
+                "X-MerchantId": self.data.settings.merchant_id,  # type: ignore[dict-item]
                 "X-Secret": self.data.settings.api_key.get_secret_value(),  # type: ignore[union-attr]
                 "Content-Type": "application/json",
                 "Accept": "application/json",
@@ -48,14 +43,13 @@ class PlategaGateway(BasePaymentGateway):
         )
 
     async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
-        order_id = uuid.uuid4()
-        payload = await self._create_payment_payload(amount, details, order_id)
+        payload = await self._create_payment_payload(amount, details)
 
         try:
-            response = await self._client.post("transactions", json=payload)
+            response = await self._client.post("transaction/process", json=payload)
             response.raise_for_status()
             data = orjson.loads(response.content)
-            return self._get_payment_data(data, order_id)
+            return self._get_payment_data(data)
 
         except HTTPStatusError as e:
             logger.error(
@@ -73,73 +67,73 @@ class PlategaGateway(BasePaymentGateway):
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")
 
+        if not self._verify_webhook(request):
+            raise PermissionError("Webhook verification failed")
+
         raw_body = await request.body()
         webhook_data = orjson.loads(raw_body)
 
-        if not self._verify_webhook(request, raw_body, webhook_data):
+        if not self._verify_webhook(request):
             raise PermissionError("Webhook verification failed")
 
-        transaction: dict = webhook_data.get("transaction", {})
-        order_id_str = transaction.get("id")
+        payment_id_str = webhook_data.get("id")
+        if not payment_id_str:
+            raise ValueError("Required field 'id' is missing")
 
-        if not order_id_str:
-            raise ValueError("Required field 'transaction.id' is missing")
-
-        status = webhook_data.get("status") or transaction.get("status")
-        payment_id = UUID(order_id_str)
+        status = webhook_data.get("status")
+        payment_id = UUID(payment_id_str)
 
         match status:
-            case "success" | "paid" | "completed":
+            case "CONFIRMED":
                 transaction_status = TransactionStatus.COMPLETED
-            case "cancel" | "cancelled" | "failed" | "expired":
+            case "CANCELED":
                 transaction_status = TransactionStatus.CANCELED
+            case "CHARGEBACKED":
+                transaction_status = TransactionStatus.REFUNDED
             case _:
-                raise ValueError(f"Unsupported payment status: {status}")
+                raise ValueError(f"Unsupported status: {status}")
 
         return payment_id, transaction_status
 
-    async def _create_payment_payload(
-        self, amount: Decimal, details: str, order_id: UUID
-    ) -> dict[str, Any]:
-        settings = self.data.settings  # type: ignore[union-attr]
+    async def _create_payment_payload(self, amount: Decimal, details: str) -> dict[str, Any]:
         return {
-            "id": str(order_id),
-            "paymentMethod": settings.payment_method,  # type: ignore[union-attr]
+            "paymentMethod": self.data.settings.payment_method,  # type: ignore[union-attr]
             "paymentDetails": {
                 "amount": float(amount),
-                "currency": str(self.data.currency),
+                "currency": self.data.currency.value,
             },
             "description": details,
-            "returnUrl": await self._get_bot_redirect_url(),
+            "return": await self._get_bot_redirect_url(),
             "failedUrl": await self._get_bot_redirect_url(),
-            "callbackUrl": self.config.get_webhook(self.data.type),
         }
 
-    def _get_payment_data(self, data: dict[str, Any], order_id: UUID) -> PaymentResultDto:
-        # Response fields: redirect (payment URL), transactionId
+    def _get_payment_data(self, data: dict[str, Any]) -> PaymentResultDto:
+        transaction_id_str = data.get("transactionId")
+        if not transaction_id_str:
+            raise KeyError("Invalid response from API: missing 'transactionId'")
+
         payment_url = data.get("redirect")
         if not payment_url:
-            raise KeyError("Invalid response from Platega API: missing 'redirect'")
+            raise KeyError("Invalid response from API: missing 'redirect'")
 
-        return PaymentResultDto(id=order_id, url=str(payment_url))
+        return PaymentResultDto(id=UUID(transaction_id_str), url=str(payment_url))
 
-    def _verify_webhook(self, request: Request, raw_body: bytes, data: dict) -> bool:
-        received_signature = data.get("signature")
-        if not received_signature:
-            logger.warning("Webhook is missing 'signature' field")
+    def _verify_webhook(self, request: Request) -> bool:
+        merchant_id = request.headers.get("X-MerchantId")
+        secret = request.headers.get("X-Secret")
+
+        expected_merchant_id: str = self.data.settings.merchant_id  # type: ignore[union-attr, assignment]
+        expected_secret: str = self.data.settings.api_key.get_secret_value()  # type: ignore[union-attr]
+
+        if not merchant_id or not secret:
+            logger.warning("Webhook is missing X-MerchantId or X-Secret headers")
             return False
 
-        secret = self.data.settings.api_key.get_secret_value().encode()  # type: ignore[union-attr]
+        merchant_id_ok = hmac.compare_digest(merchant_id, expected_merchant_id)
+        secret_ok = hmac.compare_digest(secret, expected_secret)
 
-        # Build the body for verification: the payload without the 'signature' field
-        # (as is standard — sign the payload fields, not the signature itself)
-        body_without_sign = {k: v for k, v in data.items() if k != "signature"}
-        body_to_verify = orjson.dumps(body_without_sign, option=orjson.OPT_SORT_KEYS)
-
-        expected = hmac.new(secret, body_to_verify, hashlib.sha256).hexdigest()
-
-        if not hmac.compare_digest(expected, received_signature):
-            logger.warning("Invalid Platega webhook signature")
+        if not merchant_id_ok or not secret_ok:
+            logger.warning("Invalid Platega webhook credentials")
             return False
 
         return True

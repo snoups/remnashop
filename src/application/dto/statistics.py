@@ -32,11 +32,8 @@ class ReferralStatisticsDto:
     level_2_count: int
     unique_referrers: int
     total_rewards_issued: int
-    total_rewards_pending: int
     total_points_issued: int
     total_days_issued: int
-    total_points_pending: int
-    total_days_pending: int
     top_referrer_referrals_count: int
     top_referrer_username: Optional[str] = None
     top_referrer_telegram_id: Optional[int] = None

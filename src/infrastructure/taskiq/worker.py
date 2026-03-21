@@ -7,7 +7,7 @@ from taskiq_redis import RedisStreamBroker
 from src.application.common import EventSubscriber
 from src.core.config import AppConfig
 from src.core.logger import setup_logger
-from src.infrastructure.di import create_container
+from src.infrastructure.di import create_taskiq_container
 from src.telegram.dispatcher import get_bg_manager_factory, get_dispatcher, setup_dispatcher
 
 from .broker import broker
@@ -22,7 +22,7 @@ def worker() -> RedisStreamBroker:
 
     setup_dispatcher(dispatcher)
 
-    container = create_container(config, bg_manager_factory)
+    container = create_taskiq_container(config, bg_manager_factory)
     broker.add_dependency_context({AsyncContainer: container})
 
     setup_taskiq_dishka(container, broker)

@@ -19,7 +19,7 @@ from src.core.enums import TransactionStatus
 from .base import BasePaymentGateway
 
 
-# https://urlpay.io/docs/api/
+# https://urlpay.io/docs/
 class UrlPayGateway(BasePaymentGateway):
     _client: AsyncClient
 
@@ -97,22 +97,23 @@ class UrlPayGateway(BasePaymentGateway):
         return payment_id, transaction_status
 
     def _create_payment_payload(self, amount: str, details: str, order_uuid: str) -> dict[str, Any]:
-        settings = self.data.settings  # type: ignore[union-attr]
-        currency = "rub"  # Only RUB is supported
-
         return {
-            "currency": currency,
+            "currency": self.data.currency,
             "amount": amount,
             "uuid": order_uuid,
-            "shopId": settings.shop_id,  # type: ignore[union-attr]
+            "shopId": self.data.settings.shop_id,  # type: ignore[union-attr]
             "description": details,
-            "sign": self._generate_signature(currency, amount, settings.shop_id),  # type: ignore[union-attr, arg-type]
+            "sign": self._generate_signature(
+                self.data.currency,
+                amount,
+                self.data.settings.shop_id,  # type: ignore[union-attr, arg-type]
+            ),
             "items": [
                 {
                     "description": details,
                     "quantity": 1,
                     "price": float(amount),
-                    "vat_code": settings.vat_code,  # type: ignore[union-attr]
+                    "vat_code": self.data.settings.vat_code,  # type: ignore[union-attr]
                     "payment_subject": self.DEFAULT_PAYMENT_SUBJECT,
                     "payment_mode": self.DEFAULT_PAYMENT_MODE,
                 }
@@ -120,12 +121,12 @@ class UrlPayGateway(BasePaymentGateway):
         }
 
     def _generate_signature(self, currency: str, amount: str, shop_id: int) -> str:
-        settings = self.data.settings  # type: ignore[union-attr]
-        raw = f"{currency}{amount}{shop_id}{settings.secret_key.get_secret_value()}"  # type: ignore[union-attr]
+        raw = f"{currency}{amount}{shop_id}{self.data.settings.secret_key.get_secret_value()}"  # type: ignore[union-attr]
         return hashlib.sha1(raw.encode()).hexdigest()
 
     def _get_payment_data(self, data: dict[str, Any], order_uuid: str) -> PaymentResultDto:
         payment_url = data.get("paymentUrl")
+
         if not payment_url:
             raise KeyError("Invalid response from UrlPay API: missing 'paymentUrl'")
 
@@ -137,11 +138,16 @@ class UrlPayGateway(BasePaymentGateway):
             logger.warning("Webhook is missing 'sign' field")
             return False
 
-        settings = self.data.settings  # type: ignore[union-attr]
-        currency = data.get("currency", "rub")
-        amount = str(data.get("amount", ""))
+        currency = data.get("currency", "rub").lower()
+        raw_amount = data.get("amount", "")
 
-        expected = self._generate_signature(currency, amount, settings.shop_id)  # type: ignore[union-attr,arg-type]
+        try:
+            amount = f"{Decimal(str(raw_amount)):.2f}"
+        except Exception:
+            logger.warning(f"Webhook has invalid 'amount' value: {raw_amount!r}")
+            return False
+
+        expected = self._generate_signature(currency, amount, self.data.settings.shop_id)  # type: ignore[union-attr,arg-type]
 
         if not hmac.compare_digest(expected, sign):
             logger.warning("Invalid UrlPay webhook signature")

@@ -22,10 +22,7 @@ async def menu_editor_getter(
     settings = await settings_dao.get()
     buttons = retort.dump(settings.menu.buttons, list[MenuButtonDto])
     dialog_manager.dialog_data["buttons"] = buttons
-
-    for button in buttons:
-        button["text"] = i18n.get(button["text"])
-    return {"buttons": buttons}
+    return {"buttons": [{**btn, "text": i18n.get(btn["text"])} for btn in buttons]}
 
 
 @inject
@@ -35,8 +32,7 @@ async def button_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     button = dialog_manager.dialog_data["button"]
-    button["text"] = i18n.get(button["text"])
-    return {**button}
+    return {**button, "text": i18n.get(button["text"])}
 
 
 async def availability_getter(

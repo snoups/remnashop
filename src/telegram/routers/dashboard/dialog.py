@@ -4,7 +4,6 @@ from aiogram_dialog.widgets.kbd import Button, Row, Start
 from src.application.common.policy import Permission
 from src.core.enums import BannerName
 from src.telegram.keyboards import back_main_menu_button
-from src.telegram.routers.extra.test import show_dev_popup
 from src.telegram.states import (
     Dashboard,
     DashboardAccess,
@@ -17,6 +16,8 @@ from src.telegram.states import (
 )
 from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
+
+from .handlers import show_dev_promocode
 
 dashboard = Window(
     Banner(BannerName.DASHBOARD),
@@ -47,7 +48,7 @@ dashboard = Window(
         Button(
             text=I18nFormat("btn-dashboard.promocodes"),
             id="promocodes",
-            on_click=show_dev_popup,
+            on_click=show_dev_promocode,
             # state=DashboardPromocodes.MAIN,
             # mode=StartMode.RESET_STACK,
             when=require_permission(Permission.VIEW_PROMOCODE),

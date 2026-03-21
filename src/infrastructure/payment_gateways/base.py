@@ -6,7 +6,7 @@ from uuid import UUID
 
 import orjson
 from aiogram import Bot
-from fastapi import Request
+from fastapi import Request, Response
 from httpx import AsyncClient, Timeout
 from loguru import logger
 from starlette.datastructures import Headers
@@ -42,6 +42,9 @@ class BasePaymentGateway(ABC):
 
     @abstractmethod
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]: ...
+
+    async def build_webhook_response(self, request: Request) -> Response:
+        return Response(status_code=200)
 
     async def _get_bot_redirect_url(self) -> str:
         if self._bot_username is None:

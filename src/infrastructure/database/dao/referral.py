@@ -186,9 +186,6 @@ class ReferralDaoImpl(ReferralDao):
             func.sum(case((ReferralReward.is_issued.is_(True), 1), else_=0)).label(
                 "total_rewards_issued"
             ),
-            func.sum(case((ReferralReward.is_issued.is_(False), 1), else_=0)).label(
-                "total_rewards_pending"
-            ),
             func.sum(
                 case(
                     (
@@ -213,30 +210,6 @@ class ReferralDaoImpl(ReferralDao):
                     else_=0,
                 )
             ).label("total_days_issued"),
-            func.sum(
-                case(
-                    (
-                        and_(
-                            ReferralReward.is_issued.is_(False),
-                            ReferralReward.type == ReferralRewardType.POINTS,
-                        ),
-                        ReferralReward.amount,
-                    ),
-                    else_=0,
-                )
-            ).label("total_points_pending"),
-            func.sum(
-                case(
-                    (
-                        and_(
-                            ReferralReward.is_issued.is_(False),
-                            ReferralReward.type == ReferralRewardType.EXTRA_DAYS,
-                        ),
-                        ReferralReward.amount,
-                    ),
-                    else_=0,
-                )
-            ).label("total_days_pending"),
         )
 
         top_referrer_stmt = (
@@ -260,11 +233,8 @@ class ReferralDaoImpl(ReferralDao):
             level_2_count=int(referral_row["level_2_count"] or 0),
             unique_referrers=int(referral_row["unique_referrers"] or 0),
             total_rewards_issued=int(reward_row["total_rewards_issued"] or 0),
-            total_rewards_pending=int(reward_row["total_rewards_pending"] or 0),
             total_points_issued=int(reward_row["total_points_issued"] or 0),
             total_days_issued=int(reward_row["total_days_issued"] or 0),
-            total_points_pending=int(reward_row["total_points_pending"] or 0),
-            total_days_pending=int(reward_row["total_days_pending"] or 0),
             top_referrer_referrals_count=int(top_referrer_row["referrals_count"])
             if top_referrer_row
             else 0,

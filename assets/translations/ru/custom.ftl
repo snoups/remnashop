@@ -10,8 +10,8 @@
 
 # пример-ключа = перевод
 
-custom-menu-link1 = 1️⃣ Первая кнопка
-custom-menu-link2 = 2️⃣ Вторая кнопка
+c-menu-link1 = 1️⃣ Первая кнопка
+c-menu-link2 = 2️⃣ Вторая кнопка
 
-custom-plan-name1 = 1️⃣ Первый план
-custom-plan-name2 = 2️⃣ Второй план
+c-plan-name1 = 1️⃣ Первый план
+c-plan-name2 = 2️⃣ Второй план

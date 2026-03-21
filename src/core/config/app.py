@@ -6,7 +6,7 @@ from pydantic import Field, SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from src.core.constants import API_V1, ASSETS_DIR, DOMAIN_REGEX, PAYMENTS_WEBHOOK_PATH
-from src.core.enums import Locale, LogLevel, PaymentGatewayType
+from src.core.enums import Locale, PaymentGatewayType
 from src.core.types import LocaleList, StringList
 
 from .base import BaseConfig
@@ -29,7 +29,6 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
 
     crypt_key: SecretStr
     assets_dir: Path = ASSETS_DIR
-    log_level: LogLevel = LogLevel.DEBUG
     origins: StringList = StringList("")
 
     bot: BotConfig = Field(default_factory=BotConfig)

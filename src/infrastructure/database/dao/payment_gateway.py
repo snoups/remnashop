@@ -1,9 +1,8 @@
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
-from pydantic import SecretStr
 from redis.asyncio import Redis
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +13,10 @@ from src.application.dto import PaymentGatewayDto
 from src.core.enums import PaymentGatewayType
 from src.infrastructure.database.models import PaymentGateway
 
+from .base import BaseDaoImpl
 
-class PaymentGatewayDaoImpl(PaymentGatewayDao):
+
+class PaymentGatewayDaoImpl(PaymentGatewayDao, BaseDaoImpl):
     def __init__(
         self,
         session: AsyncSession,
@@ -114,22 +115,12 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
             logger.warning("No changes detected in gateway, skipping update")
             return None
 
-        values_to_update = {}
-
-        for key, value in gateway.changed_data.items():
-            column = getattr(PaymentGateway, key)
-            if isinstance(value, dict):
-                dumped = {}
-                for k, v in value.items():
-                    if isinstance(v, SecretStr):
-                        dumped[k] = self.cryptographer.encrypt(v.get_secret_value())
-                    elif isinstance(v, list):
-                        dumped[k] = [self.retort.dump(item) for item in v]  # type: ignore[assignment]
-                    else:
-                        dumped = {k: self.retort.dump(v, Any) for k, v in value.items()}
-                values_to_update[key] = column.concat(dumped)
-            else:
-                values_to_update[key] = self.retort.dump(value)
+        values_to_update = self._serialize_for_update(
+            gateway,
+            PaymentGatewayDto,
+            PaymentGateway,
+            pre_process=self.cryptographer.encrypt_recursive,
+        )
 
         stmt = (
             update(PaymentGateway)

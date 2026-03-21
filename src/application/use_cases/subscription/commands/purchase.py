@@ -12,6 +12,7 @@ from src.application.events import TrialActivatedEvent
 from src.core.enums import PurchaseType, SubscriptionStatus, TransactionStatus
 from src.core.exceptions import PurchaseError, TrialError
 from src.core.types import RemnaUserDto
+from src.core.utils.converters import days_to_datetime
 from src.core.utils.i18n_helpers import (
     i18n_format_days,
     i18n_format_device_limit,
@@ -175,7 +176,14 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
                         )
 
                     base_date = max(subscription.expire_at, datetime_now())
-                    new_expire = base_date + timedelta(days=transaction.plan_snapshot.duration)
+                    duration = transaction.plan_snapshot.duration
+
+                    if duration == 0:
+                        new_expire = days_to_datetime(duration)  # unlimited
+                    else:
+                        base_date = max(subscription.expire_at, datetime_now())
+                        new_expire = base_date + timedelta(days=duration)
+
                     subscription.expire_at = new_expire
 
                     updated_user = await self.remnawave.update_user(

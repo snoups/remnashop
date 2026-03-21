@@ -180,7 +180,7 @@ class Role(IntEnum):
         return self >= other
 
     def get_subordinates(self) -> list["Role"]:
-        return [r for r in Role if self > r]
+        return [r for r in Role if self > r and r > Role.USER]
 
 
 class SystemNotificationType(UpperStrEnum):
