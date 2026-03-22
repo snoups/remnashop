@@ -1,0 +1,290 @@
+---
+title: "Установка"
+description: "Краткое руководство по установке Remnashop"
+---
+
+<Warning>
+  Перед началом ознакомьтесь со страницей [требований](/install/requirements)
+</Warning>
+
+---
+
+## Установка Docker
+
+Установите <Badge>Docker</Badge>, если он ещё не установлен.
+
+<Accordion title="Установка Docker">
+  ```text
+    sudo curl -fsSL https://get.docker.com | sh
+  ```
+</Accordion>
+
+---
+
+## Варианты установки
+
+Выберите способ установки в зависимости от вашей конфигурации:
+
+<Tabs>
+  <Tab title="Бот и панель размещены на одном сервере">
+    <p>Используйте этот способ, если бот будет работать на том же сервере, что и панель Remnawave. Бот подключается к Remnawave через внутреннюю Docker-сеть.</p>
+
+    #### Шаг 1: Создание директории проекта
+
+    <CodeGroup>
+
+    ```bash Создание директории проекта
+    mkdir /opt/remnashop && cd /opt/remnashop
+    ```
+
+    </CodeGroup>
+
+    #### Шаг 2: Загрузка необходимых файлов
+
+    Загрузите файл <Badge>docker-compose.yml</Badge> и <Badge>.env</Badge>, выполнив следующие команды:
+
+    <CodeGroup>
+
+    ```bash Получение файла .env
+    curl -o .env https://raw.githubusercontent.com/snoups/remnashop/refs/heads/main/.env.example
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup>
+
+    ```bash Получение файла docker-compose.yml (бот и панель на одном сервере)
+    curl -o docker-compose.yml https://raw.githubusercontent.com/snoups/remnashop/refs/heads/main/docker-compose.prod.internal.yml
+    ```
+
+    </CodeGroup>
+
+    #### Шаг 3: Генерация секретов
+
+    Сгенерируйте секретные ключи, выполнив следующие команды:
+
+    <CodeGroup>
+
+    ```bash Генерация секретных ключей
+    sed -i "s|^APP_CRYPT_KEY=.*|APP_CRYPT_KEY=$(openssl rand -base64 32 | tr -d '\n')|" .env && sed -i "s|^BOT_SECRET_TOKEN=.*|BOT_SECRET_TOKEN=$(openssl rand -hex 64 | tr -d '\n')|" .env
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup>
+
+    ```bash Генерация паролей
+    sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env && sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$(openssl rand -hex 24 | tr -d '\n')|" .env
+    ```
+
+    </CodeGroup>
+
+    #### Шаг 4: Настройка файла .env
+
+    <Tip>
+      Дополнительную информацию о переменных окружения можно найти на странице [Переменные окружения](https://remnashop.mintlify.app/install/environment-variables).
+    </Tip>
+
+    Откройте файл <Badge>.env</Badge>:
+
+    <CodeGroup>
+
+    ```bash Редактирование файла .env
+    cd /opt/remnashop && nano .env
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup>
+
+    ```bash Содержимое файла .env
+    # Домен, через который ваш бот доступен публично.
+    # Используется для получения вебхуков от сервисов (например, Telegram, платёжные системы).
+    # !!! ВНИМАНИЕ: Указывайте домен БЕЗ HTTP/HTTPS и БЕЗ завершающего слеша.
+    APP_DOMAIN=change_me
+    
+    # Ключ шифрования для защиты конфиденциальных данных (например, платёжных токенов) в базе данных.
+    # !!! КРИТИЧЕСКИ ВАЖНО: Никогда не передавайте этот токен третьим лицам.
+    APP_CRYPT_KEY=change_me # УЖЕ ДОЛЖЕН БЫТЬ ЗАДАН В 3 ШАГЕ
+    
+    # Токен Telegram Bot API. Получите его на https://t.me/BotFather/
+    # !!! КРИТИЧЕСКИ ВАЖНО: Никогда не передавайте этот токен третьим лицам. Он даёт полный контроль над вашим ботом.
+    BOT_TOKEN=change_me
+    
+    # Секретный токен для верификации вебхуков. Гарантирует, что запросы вебхука поступают от Telegram.
+    BOT_SECRET_TOKEN=change_me # УЖЕ ДОЛЖЕН БЫТЬ ЗАДАН В 3 ШАГЕ
+    
+    # Telegram ID владельца бота. Предоставляет расширенные права.
+    BOT_OWNER_ID=change_me
+    
+    # Telegram username аккаунта поддержки, используемый для deep-link (без @).
+    BOT_SUPPORT_USERNAME=change_me
+    
+    # Управляет поведением кнопки "подключить":
+    # - пусто или false  -> открывает страницу подписки в браузере
+    # - true             -> открывает страницу подписки в WebApp
+    # - URL (например, https://example.com/) -> открывает указанный URL в WebApp
+    # Для использования страницы подписки разверните remnawave-subscription-page:
+    #   https://docs.rw/docs/install/remnawave-subscription-page
+    # Для использования кастомной страницы подписки (Orion):
+    #   https://github.com/legiz-ru/Orion
+    # Для использования Mini App (Maposia):
+    #   https://github.com/maposia/remnawave-telegram-sub-mini-app
+    BOT_MINI_APP=false
+    
+    # Хост или имя Docker-сервиса для подключения к API Remnawave.
+    REMNAWAVE_HOST=remnawave
+    
+    # API-токен для аутентификации в сервисе Remnawave.
+    REMNAWAVE_TOKEN=change_me
+    
+    # Секретный токен для верификации входящих вебхуков от Remnawave.
+    # В панели Remnawave соответствует переменной WEBHOOK_SECRET_HEADER (env).
+    REMNAWAVE_WEBHOOK_SECRET=change_me
+    
+    # Пароль от базы данных.
+    DATABASE_PASSWORD=change_me # УЖЕ ДОЛЖЕН БЫТЬ ЗАДАН В 3 ШАГЕ
+    ```
+
+    </CodeGroup>
+
+    <Tip>
+      <Badge>REMNAWAVE_HOST=remnawave</Badge> использует имя контейнера из Docker-сети Remnawave.
+    </Tip>
+
+    <Tip>
+      В переменной <Badge>REMNAWAVE_TOKEN</Badge> должен быть установлен API-токен панели.
+
+      Создать токен можно в "Настройки Remnawave" → "API Токены" в панели Remnawave.
+    </Tip>
+
+    <Warning>
+      <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge> должен совпадать со значением <Badge>WEBHOOK_SECRET_HEADER</Badge> из <Badge>.env</Badge> панели.
+    </Warning>
+
+    <Warning>
+      Если вы используете Remnawave Reverse-Proxy от eGames, добавьте cookie для авторизации:
+
+      Пример: <Badge>REMNAWAVE_HEADERS=Cookie:rEmnaprx=aBCDefgh1</Badge>
+
+      Как получить cookie: [инструкция](https://wiki.egam.es/ru/troubleshooting/common-issues/#%D1%83%D1%82%D0%B5%D1%80%D1%8F%D0%BD%D0%BD%D1%8B%D0%B9-cookie-%D0%BF%D1%83%D1%82%D0%B8-%D0%BA-%D0%BF%D0%B0%D0%BD%D0%B5%D0%BB%D0%B8).
+    </Warning>
+
+    #### Шаг 5: Настройка вебхука от панели к боту
+    
+    <Danger>
+      Этот шаг критически важен для корректной работы бота.
+    </Danger>
+
+    Откройте файл <Badge>.env</Badge> панели Remnawave:
+
+    <CodeGroup>
+    ```bash Редактирование файла .env
+    cd /opt/remnawave && nano .env
+    ```
+    </CodeGroup>
+
+    Задайте <Badge>WEBHOOK_ENABLED=true</Badge> и установите <Badge>WEBHOOK_URL</Badge> на ваш реальный домен, который ведет на бота:
+
+    <CodeGroup>
+
+    ```bash Содержимое файла .env панели
+    WEBHOOK_ENABLED=true
+    WEBHOOK_URL=https://bot.domain.com/api/v1/remnawave
+    ```
+
+    </CodeGroup>
+
+    <Warning>
+      Замените <Badge>bot.domain.com</Badge> на ваш реальный домен.
+    </Warning>
+    
+    Найдите переменную <Badge>WEBHOOK_SECRET_HEADER</Badge> в этом же файле (<Badge>.env панели</Badge>) и скопируйте значение.
+  
+    <Badge>WEBHOOK_SECRET_HEADER=ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge>
+    
+    <Warning>
+    Значение <Badge>ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge> приведено в качестве примера.
+    </Warning>
+
+    Перезапустите контейнер панели Remnawave для применения изменений:
+
+    <CodeGroup>
+
+    ```bash Перезапуск контейнера Remnawave
+    docker compose up -d
+    ```
+
+    </CodeGroup>
+
+
+    Вернёмся к файлу <Badge>.env бота</Badge>:
+
+    <CodeGroup>
+
+    ```bash Редактирование файла .env Remnashop
+    cd /opt/remnashop && nano .env
+    ```
+
+    </CodeGroup>
+
+    <Badge color="red">Вставьте ранее скопированное значение в REMNAWAVE_WEBHOOK_SECRET:</Badge>
+
+    <CodeGroup>
+
+    ```bash Содержимое файла .env Remnashop
+    REMNAWAVE_WEBHOOK_SECRET=ey1234567890qwertyuiopasdfghjklzxcvbnm
+    ```
+
+    </CodeGroup>
+
+    <Tip>
+      Значение <Badge>ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge> приведено в качестве примера.
+    </Tip>
+
+    <Warning>
+      <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge> должен совпадать со значением <Badge>WEBHOOK_SECRET_HEADER</Badge> из файла <Badge>.env панели</Badge>.
+    </Warning>
+
+
+    #### Шаг 6: Запуск бота
+
+    <CodeGroup>
+
+    ```bash Запуск контейнеров
+    docker compose up -d && docker compose logs -f -t
+    ```
+
+    </CodeGroup>
+
+    <Tip>
+      Если все правильно настроено, то бот отправит только приветственное сообщение.
+    </Tip>
+
+    <Danger>
+      **ВНИМАНИЕ!**\
+      \
+      Для корректной работы Remnashop необходим обратный прокси.\
+      \
+      Не открывайте сервисы в публичный интернет напрямую. Используйте только 127.0.0.1 для сервисов Remnashop.
+    </Danger>
+
+    Теперь вы можете перейти к установке обратного прокси.
+
+    <Card title="Установка обратного прокси" href="/install/reverse-proxies" cta="Перейти">
+      Установка и настройка обратного прокси
+    </Card>
+
+  </Tab>
+  <Tab title="Бот и панель размещены на разных серверах">
+    <p>Используйте этот способ, если бот будет работать на другом сервере, отличном от панели Remnawave. Бот подключается к Remnawave через внешний HTTPS URL.</p>
+
+    <CodeGroup>
+
+    ```bash Получение файла docker-compose.yml
+    curl -o docker-compose.yml https://raw.githubusercontent.com/snoups/remnashop/refs/heads/main/docker-compose.prod.external.yml
+    ```
+
+    </CodeGroup>
+  </Tab>
+</Tabs>

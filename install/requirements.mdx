@@ -1,23 +1,28 @@
 ---
-title: "Requirements"
-description: "This page lists the hardware and software requirements for running Remnashop Telegram Bot "
+title: "Требования"
+description: "На этой странице перечислены аппаратные и программные требования для запуска Remnashop Telegram Bot"
 ---
-**Remnashop** -  is a Telegram bot for selling VPN subscriptions, integrated with Remnawave.
 
 ---
-Hardware
+
+#### Аппаратные
+
+- **ОС**: рекомендуется **Ubuntu** или **Debian**
+- **RAM**: минимум 2 ГБ, рекомендуется 4 ГБ
+- **CPU**: минимум 2 ядра, рекомендуется 4 ядра
+- **Хранилище**: 20 ГБ
+  <Tip>
+    Remnashop может работать с более низкими характеристиками, однако это не рекомендуется. Некоторые фоновые процессы могут быть ресурсоёмкими.
+  </Tip>
+
 ---
-* **OS**: Recommended **Ubuntu** or **Debian**
-* **RAM**: Minimum 2 GB, recommended 4 GB
-* **CPU**: Minimum 2 cores, recommended 4 cores
-* **Storage**: 20 GB, minimum and recommended
-<Tip>Remnashop can run with lower specifications, but this is not recommended. Some background processes can be resource-intensive.</Tip>
----
-Software
----
-Remnashop require Docker with the Docker Compose plugin.
-<Accordion title="Install Docker using official script">
-   ```
- sudo curl -fsSL https://get.docker.com | sh
+
+#### Программное обеспечение
+
+Remnashop требует наличия Docker с плагином Docker Compose.
+
+<Accordion title="Установка Docker с помощью официального скрипта" defaultOpen>
+  ```text
+    sudo curl -fsSL https://get.docker.com | sh
   ```
 </Accordion>
