@@ -1,7 +1,7 @@
 import hmac
 from decimal import Decimal
 from typing import Any, Final
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import orjson
 from aiogram import Bot
@@ -46,6 +46,7 @@ class PlategaGateway(BasePaymentGateway):
         payload = await self._create_payment_payload(amount, details)
 
         try:
+            logger.debug(f"Platega payload: {payload}")
             response = await self._client.post("transaction/process", json=payload)
             response.raise_for_status()
             data = orjson.loads(response.content)
@@ -97,7 +98,8 @@ class PlategaGateway(BasePaymentGateway):
 
     async def _create_payment_payload(self, amount: Decimal, details: str) -> dict[str, Any]:
         return {
-            "paymentMethod": self.data.settings.payment_method,  # type: ignore[union-attr]
+            "command": {},
+            "paymentMethod": int(self.data.settings.payment_method),
             "paymentDetails": {
                 "amount": float(amount),
                 "currency": self.data.currency.value,
