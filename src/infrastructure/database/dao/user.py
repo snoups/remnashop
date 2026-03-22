@@ -99,8 +99,8 @@ class UserDaoImpl(UserDao):
         return None
 
     # @provide_cache(prefix=USER_LIST_PREFIX, ttl=TTL_1H)
-    async def get_all(self, limit: int = 100, offset: int = 0) -> list[UserDto]:
-        stmt = select(User).limit(limit).offset(offset)
+    async def get_all(self, limit: Optional[int] = None, offset: int = 0) -> list[UserDto]:
+        stmt = select(User).limit(limit).offset(offset) if limit else select(User).offset(offset)
         result = await self.session.scalars(stmt)
         db_users = cast(list, result.all())
 

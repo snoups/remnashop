@@ -21,7 +21,7 @@ class SyncRemnaUserDto:
     creating: bool
 
 
-class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
+class SyncRemnaUser(Interactor[SyncRemnaUserDto, bool]):
     required_permission = Permission.USER_SYNC
 
     def __init__(
@@ -40,12 +40,12 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
         self.remnawave = remnawave
         self.cryptographer = cryptographer
 
-    async def _execute(self, actor: UserDto, data: SyncRemnaUserDto) -> None:
+    async def _execute(self, actor: UserDto, data: SyncRemnaUserDto) -> bool:
         remna_user = data.remna_user
 
         if not remna_user.telegram_id:
             logger.warning(f"Skipping sync for '{remna_user.username}': missing 'telegram_id'")
-            return
+            return False
 
         async with self.uow:
             user = await self.user_dao.get_by_telegram_id(int(remna_user.telegram_id))
@@ -58,7 +58,7 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
                 logger.warning(
                     f"Sync failed: user '{remna_user.telegram_id}' could not be found or created"
                 )
-                return None
+                return False
 
             subscription = await self.subscription_dao.get_current(user.telegram_id)
             remna_subscription = RemnaSubscriptionDto.from_remna_user(remna_user)
@@ -68,12 +68,15 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
                     f"No subscription found for user '{user.telegram_id}', importing from panel"
                 )
                 await self._import_subscription(user.telegram_id, remna_subscription)
+                await self.uow.commit()
+                logger.info(f"Sync completed for user '{remna_user.telegram_id}'")
+                return False
             else:
                 logger.info(f"Synchronizing existing subscription for user '{user.telegram_id}'")
-                await self._update_subscription(subscription, remna_subscription)
-
-            await self.uow.commit()
-            logger.info(f"Sync completed for user '{remna_user.telegram_id}'")
+                changed = await self._update_subscription(subscription, remna_subscription)
+                await self.uow.commit()
+                logger.info(f"Sync completed for user '{remna_user.telegram_id}'")
+                return changed
 
     def _create_user_dto(self, data: RemnaUserDto) -> UserDto:
         return UserDto(
@@ -130,6 +133,7 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, None]):
         self,
         target: SubscriptionDto,
         source: RemnaSubscriptionDto,
-    ) -> None:
+    ) -> bool:
         subscription = self.remnawave.apply_sync(target, source)
         await self.subscription_dao.update(subscription)
+        return bool(subscription.changed_data)

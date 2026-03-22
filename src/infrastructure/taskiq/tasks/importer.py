@@ -9,6 +9,7 @@ from remnapy.exceptions import BadRequestError
 from remnapy.models import CreateUserRequestDto, UserResponseDto
 
 from src.application.common.dao import SubscriptionDao, UserDao
+from src.application.dto.user import UserDto
 from src.application.use_cases.importer.dto import ExportedUserDto
 from src.application.use_cases.remnawave.commands.synchronization import (
     SyncRemnaUser,
@@ -50,7 +51,7 @@ async def import_exported_users_task(
 
 @broker.task
 @inject(patch_module=True)
-async def sync_all_users_from_panel_task(
+async def sync_all_users_from_panel_task(  # noqa: C901
     retort: FromDishka[Retort],
     redis: FromDishka[Redis],
     remnawave_sdk: FromDishka[RemnawaveSDK],
@@ -60,24 +61,31 @@ async def sync_all_users_from_panel_task(
 ) -> dict[str, int]:
     key = retort.dump(SyncRunningKey())
     all_remna_users: list[UserResponseDto] = []
-    start = 0
-    size = 50
+    limit = 50
+    offset = 0
 
-    stats = await remnawave_sdk.system.get_stats()
-    total_users = stats.users.total_users
-
-    for start in range(0, total_users, size):
-        response = await remnawave_sdk.users.get_all_users(start=start, size=size)
+    while True:
+        response = await remnawave_sdk.users.get_all_users(limit=limit, offset=offset)
         if not response.users:
             break
-
         all_remna_users.extend(response.users)
-        start += len(response.users)
-
-        if len(response.users) < size:
+        if len(response.users) < limit:
             break
+        offset += len(response.users)
 
-    bot_users = await user_dao.get_all()
+    bot_users: list[UserDto] = []
+    limit = 500
+    offset = 0
+
+    while True:
+        batch = await user_dao.get_all(limit=limit, offset=offset)
+        if not batch:
+            break
+        bot_users.extend(batch)
+        if len(batch) < limit:
+            break
+        offset += len(batch)
+
     bot_users_map = {user.telegram_id: user for user in bot_users}
 
     logger.info(f"Total users in panel: '{len(all_remna_users)}'")
@@ -107,8 +115,9 @@ async def sync_all_users_from_panel_task(
                         await sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
                         added_subscription += 1
                     else:
-                        await sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
-                        updated += 1
+                        changed = await sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
+                        if changed:
+                            updated += 1
 
             except Exception as exception:
                 logger.exception(
