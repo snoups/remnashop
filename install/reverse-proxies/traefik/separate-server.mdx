@@ -1,18 +1,30 @@
 ---
-title: "Separate server"
-description: "Simple configuration"
+title: "На отдельном сервере"
+description: "Простая конфигурация"
 ---
-<Warning>**Warning**<br />Installing on a separate server means that Traefik will be installed on a different server than the Remnawave Panel server and other components.<br /></Warning>
-<Danger>**Danger**<br />Important! There should be no reverse proxies installed on the server.</Danger>
 
-## Create docker-compose.yml
-Create a <Badge>docker-compose.yml</Badge> file in the <Badge>/opt/remnawave/traefik</Badge> directory.
+<Warning>
+  **Внимание**<br />
+  Установка на отдельном сервере означает, что Traefik будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
+</Warning>
+
+<Danger>
+  **Важно!**<br />
+  На этом сервере не должно быть установлено никаких обратных прокси.
+</Danger>
+
+## Создание docker-compose.yml
+
+Создайте файл <Badge>docker-compose.yml</Badge> в директории <Badge>/opt/remnawave/traefik</Badge>:
+
 <CodeGroup>
-```bash Creating docker-compose.yml
+```bash Создание docker-compose.yml
 mkdir -p /opt/remnawave/traefik && cd /opt/remnawave/traefik && nano docker-compose.yml
 ```
 </CodeGroup>
-Paste the following configuration.
+
+Вставьте следующую конфигурацию:
+
 <CodeGroup>
 ```bash docker-compose.yml
 services:
@@ -42,14 +54,25 @@ networks:
         external: true
 ```
 </CodeGroup>
-## Create static configuration file
-Creating a static configuration file called <Badge>traefik.yml</Badge> in the <Badge>/opt/remnawave/traefik</Badge> directory.
-```
+
+## Создание файла статической конфигурации
+
+Создайте файл статической конфигурации <Badge>traefik.yml</Badge> в директории <Badge>/opt/remnawave/traefik</Badge>:
+
+<CodeGroup>
+```bash Создание traefik.yml
 cd /opt/remnawave/traefik && nano traefik.yml
 ```
-Paste the following configuration.
-<Warning>**Warning**<br />Please, replace REPLACE_WITH_YOUR_EMAIL with your domain name.<br />
-Review the configuration below, look for highlighted lines.</Warning>
+</CodeGroup>
+
+Вставьте следующую конфигурацию.
+
+<Warning>
+  **Внимание**<br />
+  Замените REPLACE_WITH_YOUR_EMAIL на ваш адрес электронной почты.<br />
+  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+</Warning>
+
 <CodeGroup>
 ```bash traefik.yml highlight={23}
 api:
@@ -78,7 +101,6 @@ certificatesResolvers:
       storage: /letsencrypt/acme.json
       httpChallenge:
         entryPoint: http
-
 log:
   level: "INFO"
   filePath: "/var/log/traefik/traefik.log"
@@ -86,14 +108,25 @@ accessLog:
   filePath: "/var/log/traefik/access.log"
 ```
 </CodeGroup>
-## Create dynamic configuration file
-Create a file called<Badge>remnashop.yml</Badge> in the <Badge>/opt/remnawave/traefik/config</Badge> directory.
-```bash
+
+## Создание файла динамической конфигурации
+
+Создайте файл <Badge>remnashop.yml</Badge> в директории <Badge>/opt/remnawave/traefik/config</Badge>:
+
+<CodeGroup>
+```bash Создание remnashop.yml
 mkdir -p /opt/remnawave/traefik/config && cd /opt/remnawave/traefik/config && nano remnashop.yml
 ```
-Paste the following configuration.
-<Warning>**Warning**<br />Please, replace REPLACE_WITH_YOUR_DOMAIN_BOT with your domain name.<br />
-Review the configuration below, look for highlighted lines.</Warning>
+</CodeGroup>
+
+Вставьте следующую конфигурацию.
+
+<Warning>
+  **Внимание**<br />
+  Замените REPLACE_WITH_YOUR_DOMAIN_BOT на ваше доменное имя.<br />
+  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+</Warning>
+
 <CodeGroup>
 ```bash remnashop.yml highlight={4}
 http:
@@ -105,7 +138,6 @@ http:
       tls:
         certResolver: letsencrypt
       service: remnashop
-
   services:
     remnashop:
       loadBalancer:
@@ -113,14 +145,21 @@ http:
           - url: "http://remnashop:5000"
 ```
 </CodeGroup>
-## Start the container
-```bash
+
+## Запуск контейнера
+
+<CodeGroup>
+```bash Запуск контейнера
 docker compose up -d && docker compose logs -f -t
 ```
-Now you need to restart Remnashop containers
+</CodeGroup>
+
+Теперь перезапустите контейнеры Remnashop:
+
 <CodeGroup>
-```bash
+```bash Перезапуск контейнеров Remnashop
 cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
 ```
 </CodeGroup>
-### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.
+
+### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.

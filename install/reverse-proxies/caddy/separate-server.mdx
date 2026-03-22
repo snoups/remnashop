@@ -1,19 +1,34 @@
 ---
-title: "Separate server"
-description: "Simple configuration"
+title: "На отдельном сервере"
+description: "Простая конфигурация"
 ---
-<Warning>**Warning**<br />Installing on a separate server means that Caddy will be installed on a different server than the Remnawave Panel server and other components.<br /></Warning>
-<Danger>**Danger**<br />Important! There should be no reverse proxies installed on the server.</Danger>
 
-Create a file called Caddyfile in the /opt/remnawave/caddy directory.
+<Warning>
+  **Внимание**<br />
+  Установка на отдельном сервере означает, что Caddy будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
+</Warning>
+
+<Danger>
+  **Важно!**<br />
+  На этом сервере не должно быть установлено никаких обратных прокси.
+</Danger>
+
+Создайте файл Caddyfile в директории /opt/remnawave/caddy:
+
 <CodeGroup>
-```bash Creating Caddyfile
+```bash Создание Caddyfile
 mkdir -p /opt/remnawave/caddy && cd /opt/remnawave/caddy && nano Caddyfile
 ```
 </CodeGroup>
-Paste the following configuration.
-<Warning>**Warning**<br />Please, replace REPLACE_WITH_YOUR_DOMAIN with your domain name.<br />
-Review the configuration below, look for highlighted lines.</Warning>
+
+Вставьте следующую конфигурацию.
+
+<Warning>
+  **Внимание**<br />
+  Замените REPLACE_WITH_YOUR_DOMAIN на ваше доменное имя.<br />
+  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+</Warning>
+
 <CodeGroup>
 ```bash Caddyfile highlight={1}
 https://REPLACE_WITH_YOUR_DOMAIN {
@@ -25,12 +40,19 @@ https://REPLACE_WITH_YOUR_DOMAIN {
 }
 ```
 </CodeGroup>
-## Create docker-compose.yml
-Create a <Badge>docker-compose.yml</Badge> file in the <Badge>/opt/remnawave/caddy</Badge> directory.
-```bash
+
+## Создание docker-compose.yml
+
+Создайте файл <Badge>docker-compose.yml</Badge> в директории <Badge>/opt/remnawave/caddy</Badge>:
+
+<CodeGroup>
+```bash Создание docker-compose.yml
 cd /opt/remnawave/caddy && nano docker-compose.yml
 ```
-Paste the following configuration.
+</CodeGroup>
+
+Вставьте следующую конфигурацию:
+
 <CodeGroup>
 ```bash docker-compose.yml
 services:
@@ -47,13 +69,11 @@ services:
         volumes:
             - ./Caddyfile:/etc/caddy/Caddyfile
             - caddy-ssl-data:/data
-
 networks:
     remnawave-network:
         name: remnawave-network
         driver: bridge
         external: true
-
 volumes:
     caddy-ssl-data:
         driver: local
@@ -61,14 +81,21 @@ volumes:
         name: caddy-ssl-data
 ```
 </CodeGroup>
-## Start the container
-```bash
+
+## Запуск контейнера
+
+<CodeGroup>
+```bash Запуск контейнера
 docker compose up -d && docker compose logs -f -t
 ```
-Now you need to restart Remnashop containers
+</CodeGroup>
+
+Теперь перезапустите контейнеры Remnashop:
+
 <CodeGroup>
-```bash
+```bash Перезапуск контейнеров Remnashop
 cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
 ```
 </CodeGroup>
-### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.
+
+### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.

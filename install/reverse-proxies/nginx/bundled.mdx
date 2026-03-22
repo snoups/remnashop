@@ -1,25 +1,53 @@
 ---
-title: "Bundled"
-description: "Simple configuration"
+title: "На одном сервере"
+description: "Простая конфигурация"
 ---
-In this guide, we will look at the configuration and setup of Nginx reverse proxy.
-<Warning> **Warning** <br />Bundled installation means that you will install Nginx on the same server as Remnawave Panel</Warning>
-<Danger>**Danger**<br /> Important! You must already have the Nginx reverse proxy installed and configured on your Remnawave Panel and other components.</Danger>
-## Prepare Nginx configuration file
-If you have already configured Nginx, all you need to do is add a new location block to your configuration file.<br />
-Issue a certificate for the Remnashop domain name:
 
-```
+В этом руководстве мы рассмотрим настройку обратного прокси Nginx.
+
+<Warning>
+  **Внимание**<br />
+  Установка на одном сервере означает, что вы установите Nginx на тот же сервер, что и панель Remnawave.
+</Warning>
+
+<Danger>
+  **Важно!**<br />
+  У вас уже должен быть установлен и настроен обратный прокси Nginx на сервере с панелью Remnawave и остальными компонентами.
+</Danger>
+
+## Подготовка конфигурационного файла Nginx
+
+Если Nginx уже настроен, вам нужно лишь добавить новый блок location в ваш конфигурационный файл.
+
+Выпустите сертификат для доменного имени Remnashop:
+
+<CodeGroup>
+```bash Выпуск сертификата
 acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/botdomain_privkey.key --fullchain-file /opt/remnawave/nginx/botdomain_fullchain.pem --alpn --tlsport 8443
 ```
-Open Nginx configuration file:
-```
+</CodeGroup>
+
+Откройте конфигурационный файл Nginx:
+
+<CodeGroup>
+```bash Редактирование nginx.conf
 cd /opt/remnawave/nginx && nano nginx.conf
 ```
-<Warning> **Warning** <br />Please replace BOT_DOMAIN with your domain name.<br />Review the configuration below, look for highlighted lines.</Warning>
-<Danger>**Danger**<br />Do not fully replace the existing configuration, only add a new site block to the existing Nginx. </Danger>
-Add a new upstream block to the top of the configuration file.<br />
-Pay attention to the highlight lines, they are the ones you need to add.
+</CodeGroup>
+
+<Warning>
+  **Внимание**<br />
+  Замените BOT_DOMAIN на ваше доменное имя.<br />
+  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+</Warning>
+
+<Danger>
+  **Важно!**<br />
+  Не заменяйте существующую конфигурацию полностью — только добавьте новый блок в существующий файл Nginx.
+</Danger>
+
+Добавьте новый блок upstream в начало конфигурационного файла. Обратите внимание на выделенные строки — именно их нужно добавить.
+
 <CodeGroup>
 ```javascript nginx.conf highlight={9-11}
 upstream remnawave {
@@ -35,12 +63,14 @@ upstream remnashop {
 }
 ```
 </CodeGroup>
-Now add a new server block to the bottom of the configuration file.
+
+Теперь добавьте новый блок server в конец конфигурационного файла:
+
 <CodeGroup>
 ```bash nginx.conf highlight={2}
 server {
     server_name BOT_DOMAIN;
-   
+
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
@@ -59,7 +89,7 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # SSL Configuration (Mozilla Intermediate Guidelines)
+    # Конфигурация SSL (рекомендации Mozilla Intermediate)
     ssl_protocols          TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
 
@@ -75,7 +105,7 @@ server {
     resolver               1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 208.67.222.222 208.67.220.220 valid=60s;
     resolver_timeout       2s;
 
-    # Gzip Compression
+    # Сжатие Gzip
     gzip on;
     gzip_vary on;
     gzip_proxied any;
@@ -106,10 +136,15 @@ server {
 }
 ```
 </CodeGroup>
-Now lets modify the docker-compose.yml for Nginx to mount the new certificate files.
-```
+
+Теперь обновите файл docker-compose.yml для Nginx, чтобы подключить новые файлы сертификата:
+
+<CodeGroup>
+```bash Редактирование docker-compose.yml
 cd /opt/remnawave/nginx && nano docker-compose.yml
 ```
+</CodeGroup>
+
 <CodeGroup>
 ```javascript docker-compose.yml highlight={10-11}
 services:
@@ -136,12 +171,21 @@ networks:
         external: true
 ```
 </CodeGroup>
-Now you need to restart Nginx container.
-```
+
+Теперь перезапустите контейнер Nginx:
+
+<CodeGroup>
+```bash Перезапуск контейнера Nginx
 docker compose down && docker compose up -d && docker compose logs -f
 ```
-And restart the Remnashop containers
-```bash
+</CodeGroup>
+
+И перезапустите контейнеры Remnashop:
+
+<CodeGroup>
+```bash Перезапуск контейнеров Remnashop
 cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
 ```
-### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.
+</CodeGroup>
+
+### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.

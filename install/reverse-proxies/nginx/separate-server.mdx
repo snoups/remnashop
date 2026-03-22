@@ -1,48 +1,94 @@
 ---
-title: "Separate server"
-description: "Simple configuration"
+title: "На отдельном сервере"
+description: "Простая конфигурация"
 ---
-<Warning>**Warning**<br />Installing on a separate server means that Nginx will be installed on a different server than the Remnawave Panel server and other components.<br /></Warning>
-<Danger>**Danger**<br />Important! There should be no reverse proxies installed on the server.</Danger>
 
-## Issue an SSL certificate
-You need to issue an SSL certificate. The most easy way is to use [acme.sh](https://acme.sh/)<br />
-## Install dependencies
-```bash
+<Warning>
+  **Внимание**<br />
+  Установка на отдельном сервере означает, что Nginx будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
+</Warning>
+
+<Danger>
+  **Важно!**<br />
+  На этом сервере не должно быть установлено никаких обратных прокси.
+</Danger>
+
+## Выпуск SSL-сертификата
+
+Вам необходимо выпустить SSL-сертификат. Самый простой способ — использовать [acme.sh](https://acme.sh/).
+
+## Установка зависимостей
+
+<CodeGroup>
+```bash Установка зависимостей
 sudo apt-get install cron socat
 ```
+</CodeGroup>
+
 <Info>
-    **INFO**<br />You can use any email address to issue the certificate, but it is recommended to use a valid one.
+  **Информация**<br />
+  Вы можете использовать любой адрес электронной почты для выпуска сертификата, но рекомендуется использовать действующий.
 </Info>
-Replace <Badge>EMAIL</Badge> with your email address.
-```bash
+
+Замените <Badge>EMAIL</Badge> на ваш адрес электронной почты:
+
+<CodeGroup>
+```bash Установка acme.sh
 curl https://get.acme.sh | sh -s email=EMAIL && source ~/.bashrc
 ```
-## Create a folder for the certificates
-```bash
+</CodeGroup>
+
+## Создание папки для сертификатов
+
+<CodeGroup>
+```bash Создание директории
 mkdir -p /opt/remnawave/nginx && cd /opt/remnawave/nginx
 ```
-## Issue a certificate
-Replace <Badge>BOT_DOMAIN</Badge> with the domain name you want to issue a certificate for.
-<Warning>**Warning**<br />Do not use domain zones: .ru, .su, .рф. Currently ZeroSSL does not support these zones.</Warning>
-```bash
+</CodeGroup>
+
+## Выпуск сертификата
+
+Замените <Badge>BOT_DOMAIN</Badge> на доменное имя, для которого нужно выпустить сертификат.
+
+<Warning>
+  **Внимание**<br />
+  Не используйте доменные зоны: .ru, .su, .рф. В настоящее время ZeroSSL не поддерживает эти зоны.
+</Warning>
+
+<CodeGroup>
+```bash Выпуск сертификата
 acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/privkey.key --fullchain-file /opt/remnawave/nginx/fullchain.pem --alpn --tlsport 8443
 ```
+</CodeGroup>
+
 <Info>
-    **INFO**<br />Make sure that port <Badge>8443</Badge> is open on your server. It is required for certificate issuance.
+  **Информация**<br />
+  Убедитесь, что порт <Badge>8443</Badge> открыт на вашем сервере. Он необходим для выпуска сертификата.
 </Info>
+
 <Frame>
   <img src="/images/issue-cert.webp" />
 </Frame>
-This shows that the certificate is issued. <Badge>Acme.sh</Badge> will take care of automatically renewing the certificate every 60 days, just make sure that you have a 8443 port open (and not busy) on your server.
-## Nginx configuration
-Create a file called <Badge>nginx.conf</Badge> in the <Badge>/opt/remnawave/nginx</Badge> directory.
-```bash
+
+Это означает, что сертификат выпущен. <Badge>Acme.sh</Badge> будет автоматически обновлять сертификат каждые 60 дней — просто убедитесь, что порт 8443 открыт и не занят на вашем сервере.
+
+## Настройка Nginx
+
+Создайте файл <Badge>nginx.conf</Badge> в директории <Badge>/opt/remnawave/nginx</Badge>:
+
+<CodeGroup>
+```bash Создание nginx.conf
 cd /opt/remnawave/nginx && nano nginx.conf
 ```
-Paste the following configuration.
-<Warning>**Warning**<br />Please, replace <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN</Badge> with your domain name.<br /><br />Review the configuration below, look for highlighted lines. </Warning>
+</CodeGroup>
 
+Вставьте следующую конфигурацию.
+
+<Warning>
+  **Внимание**<br />
+  Замените <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN</Badge> на ваше доменное имя.<br /><br />
+  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+</Warning>
 
 <CodeGroup>
 ```bash nginx.conf highlight={6}
@@ -71,7 +117,7 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # SSL Configuration (Mozilla Intermediate Guidelines)
+    # Конфигурация SSL (рекомендации Mozilla Intermediate)
     ssl_protocols          TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
 
@@ -87,7 +133,7 @@ server {
     resolver               1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 208.67.222.222 208.67.220.220 valid=60s;
     resolver_timeout       2s;
 
-    # Gzip Compression
+    # Сжатие Gzip
     gzip on;
     gzip_vary on;
     gzip_proxied any;
@@ -126,12 +172,19 @@ server {
 }
 ```
 </CodeGroup>
-## Create docker-compose.yml
-Create a <Badge>docker-compose.yml</Badge> file in the <Badge>/opt/remnawave/nginx</Badge> directory.
-```bash
+
+## Создание docker-compose.yml
+
+Создайте файл <Badge>docker-compose.yml</Badge> в директории <Badge>/opt/remnawave/nginx</Badge>:
+
+<CodeGroup>
+```bash Создание docker-compose.yml
 cd /opt/remnawave/nginx && nano docker-compose.yml
 ```
-Paste the following configuration.
+</CodeGroup>
+
+Вставьте следующую конфигурацию:
+
 <CodeGroup>
 ```bash docker-compose.yml
 services:
@@ -156,12 +209,21 @@ networks:
         external: true
 ```
 </CodeGroup>
-## Start the container
-```bash
+
+## Запуск контейнера
+
+<CodeGroup>
+```bash Запуск контейнера
 docker compose up -d && docker compose logs -f -t
 ```
-And restart the Remnashop containers
-```bash
+</CodeGroup>
+
+И перезапустите контейнеры Remnashop:
+
+<CodeGroup>
+```bash Перезапуск контейнеров Remnashop
 cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
 ```
-### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.
+</CodeGroup>
+
+### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.

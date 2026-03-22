@@ -1,19 +1,38 @@
 ---
-title: "Bundled"
-description: "Simple configuration"
+title: "На одном сервере"
+description: "Простая конфигурация"
 ---
-In this guide, we will look at the configuration and setup of Traefik reverse proxy.
-<Warning> **Warning** <br />Bundled installation means that you will install Traefik on the same server as Remnawave Panel</Warning>
-<Danger>**Danger**<br /> Important! You must already have the Traefik reverse proxy installed and configured on your Remnawave Panel and other components.</Danger>
-## Prepare new dynamic configuration file
-If you have already configured Traefik, you need to create a new dynamic configuration file called <Badge>remnashop.yml</Badge> in the <Badge>/opt/remnawave/traefik/config</Badge> directory.
+
+В этом руководстве мы рассмотрим настройку обратного прокси Traefik.
+
+<Warning>
+  **Внимание**<br />
+  Установка на одном сервере означает, что вы установите Traefik на тот же сервер, что и панель Remnawave.
+</Warning>
+
+<Danger>
+  **Важно!**<br />
+  У вас уже должен быть установлен и настроен обратный прокси Traefik на сервере с панелью Remnawave и остальными компонентами.
+</Danger>
+
+## Подготовка нового файла динамической конфигурации
+
+Если Traefik уже настроен, вам нужно создать новый файл динамической конфигурации <Badge>remnashop.yml</Badge> в директории <Badge>/opt/remnawave/traefik/config</Badge>:
+
 <CodeGroup>
-```bash Traefik configuration
+```bash Конфигурация Traefik
 cd /opt/remnawave/traefik/config && nano remnashop.yml
 ```
 </CodeGroup>
-Paste the following configuration.
-<Warning> **Warning** <br />Please replace REPLACE_WITH_YOUR_DOMAIN_BOT with your domain name.<br />Review the configuration below, look for highlighted lines.</Warning>
+
+Вставьте следующую конфигурацию.
+
+<Warning>
+  **Внимание**<br />
+  Замените REPLACE_WITH_YOUR_DOMAIN_BOT на ваше доменное имя.<br />
+  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+</Warning>
+
 <CodeGroup>
 ```javascript remnashop.yml highlight={4}
 http:
@@ -33,11 +52,13 @@ http:
           - url: "http://remnashop:5000"
 ```
 </CodeGroup>
-Now you need to restart Remnashop containers
+
+Теперь перезапустите контейнеры Remnashop:
+
 <CodeGroup>
-```bash
+```bash Перезапуск контейнеров Remnashop
 cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
 ```
 </CodeGroup>
 
-### If you did everything correctly, Remnashop will notify the user of the successful launch via a telegram notification.
+### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.
