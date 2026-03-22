@@ -19,7 +19,7 @@
         ]
       },
       {
-        "group": "Reverse Proxies",
+        "group": "Реверс-прокси",
         "root": "install/reverse-proxies",
         "pages": [
           "install/reverse-proxies/caddy",
