@@ -49,10 +49,7 @@
       }
     ]
   },
-  "logo": {
-    "light": "null",
-    "dark": "null"
-  },
+  "logo": "/logo.svg",
   "navbar": {
     "links": [
       {
