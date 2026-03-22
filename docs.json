@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Remnashop",
   "colors": {
-    "primary": "#9775fa",
-    "light": "#9775fa",
-    "dark": "#2d0a68"
+    "primary": "#22D3EE",
+    "light": "#22D3EE",
+    "dark": "#161b22"
   },
   "navigation": {
     "groups": [
