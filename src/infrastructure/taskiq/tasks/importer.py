@@ -65,7 +65,7 @@ async def sync_all_users_from_panel_task(  # noqa: C901
     offset = 0
 
     while True:
-        response = await remnawave_sdk.users.get_all_users(limit=limit, offset=offset)
+        response = await remnawave_sdk.users.get_all_users(start=offset, size=limit)
         if not response.users:
             break
         all_remna_users.extend(response.users)

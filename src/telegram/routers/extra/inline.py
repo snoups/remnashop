@@ -1,6 +1,7 @@
 import hashlib
 
 from aiogram import F, Router
+from aiogram.enums import ButtonStyle
 from aiogram.types import (
     InlineKeyboardButton,
     InlineQuery,
@@ -44,7 +45,13 @@ async def handle_inline_query(
     bot_name = await bot_service.get_my_name()
 
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text=i18n.get("inline-invite.start"), url=referral_url))
+    builder.row(
+        InlineKeyboardButton(
+            text=i18n.get("inline-invite.start"),
+            style=ButtonStyle.SUCCESS,
+            url=referral_url,
+        )
+    )
 
     results: list[InlineQueryResultUnion] = [
         InlineQueryResultArticle(
