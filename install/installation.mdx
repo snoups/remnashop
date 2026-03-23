@@ -11,7 +11,7 @@ description: "Краткое руководство по установке Remn
 
 ## Установка Docker
 
-Установите <Badge>Docker</Badge>, если он ещё не установлен.
+Установите `Docker`, если он ещё не установлен.
 
 <Accordion title="Установка Docker">
 ```text
@@ -39,7 +39,7 @@ description: "Краткое руководство по установке Remn
 
     #### Шаг 2: Загрузка необходимых файлов
 
-    <p>Загрузите файл <Badge>docker-compose.yml</Badge> и <Badge>.env</Badge>, выполнив следующие команды:</p>
+    <p>Загрузите файл `docker-compose.yml` и `.env`, выполнив следующие команды:</p>
 
     <CodeGroup>
 ```bash Получение файла .env
@@ -75,7 +75,7 @@ description: "Краткое руководство по установке Remn
       Дополнительную информацию о переменных окружения можно найти на странице [Переменные окружения](https://remnashop.mintlify.app/install/environment-variables).
     </Tip>
 
-    <p>Откройте файл <Badge>.env</Badge>:</p>
+    <p>Откройте файл `.env`:</p>
 
     <CodeGroup>
 ```bash Редактирование файла .env
@@ -129,19 +129,19 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Tip>
-      <Badge>REMNAWAVE_HOST=remnawave</Badge> использует имя контейнера из Docker-сети Remnawave.
+      `REMNAWAVE_HOST=remnawave` использует имя контейнера из Docker-сети Remnawave.
     </Tip>
 
     <Tip>
-      В переменной <Badge>REMNAWAVE_TOKEN</Badge> должен быть установлен API-токен панели. Создать токен можно в "Настройки Remnawave" → "API Токены".
+      В переменной `REMNAWAVE_TOKEN` должен быть установлен API-токен панели. Создать токен можно в "Настройки Remnawave" → "API Токены".
     </Tip>
 
     <Warning>
-      <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge> должен совпадать со значением <Badge>WEBHOOK_SECRET_HEADER</Badge> из <Badge>.env</Badge> панели.
+      `REMNAWAVE_WEBHOOK_SECRET` должен совпадать со значением `WEBHOOK_SECRET_HEADER` из `.env` панели.
     </Warning>
 
     <Warning>
-      Если вы используете Remnawave Reverse-Proxy от eGames, добавьте cookie для авторизации. Пример: <Badge>REMNAWAVE_COOKIE=rEmnaprx=aBCDefgh1</Badge>. Как получить cookie: [инструкция](https://wiki.egam.es/ru/troubleshooting/common-issues/#%D1%83%D1%82%D0%B5%D1%80%D1%8F%D0%BD%D0%BD%D1%8B%D0%B9-cookie-%D0%BF%D1%83%D1%82%D0%B8-%D0%BA-%D0%BF%D0%B0%D0%BD%D0%B5%D0%BB%D0%B8).
+      Если вы используете Remnawave Reverse-Proxy от eGames, добавьте cookie для авторизации. Пример: `REMNAWAVE_COOKIE=rEmnaprx=aBCDefgh1`. Как получить cookie: [инструкция](https://wiki.egam.es/ru/troubleshooting/common-issues/#%D1%83%D1%82%D0%B5%D1%80%D1%8F%D0%BD%D0%BD%D1%8B%D0%B9-cookie-%D0%BF%D1%83%D1%82%D0%B8-%D0%BA-%D0%BF%D0%B0%D0%BD%D0%B5%D0%BB%D0%B8).
     </Warning>
 
     #### Шаг 5: Настройка вебхука от панели к боту
@@ -150,7 +150,7 @@ description: "Краткое руководство по установке Remn
       Этот шаг критически важен для корректной работы бота.
     </Danger>
 
-    <p>Откройте файл <Badge>.env</Badge> панели Remnawave:</p>
+    <p>Откройте файл `.env` панели Remnawave:</p>
 
     <CodeGroup>
 ```bash Редактирование файла .env панели
@@ -158,7 +158,7 @@ description: "Краткое руководство по установке Remn
 ```
     </CodeGroup>
 
-    <p>Задайте <Badge>WEBHOOK_ENABLED=true</Badge> и установите <Badge>WEBHOOK_URL</Badge> на ваш реальный домен бота:</p>
+    <p>Задайте `WEBHOOK_ENABLED=true` и установите `WEBHOOK_URL` на ваш реальный домен бота:</p>
 
     <CodeGroup>
 ```bash Содержимое файла .env панели
@@ -168,10 +168,10 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Warning>
-      Замените <Badge>bot.domain.com</Badge> на ваш реальный домен.
+      Замените `bot.domain.com` на ваш реальный домен.
     </Warning>
 
-    <p>Найдите переменную <Badge>WEBHOOK_SECRET_HEADER</Badge> в этом же файле и скопируйте её значение:</p>
+    <p>Найдите переменную `WEBHOOK_SECRET_HEADER` в этом же файле и скопируйте её значение:</p>
 
     <CodeGroup>
 ```bash Содержимое файла .env панели
@@ -180,7 +180,7 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Tip>
-      Значение <Badge>ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge> приведено в качестве примера.
+      Значение `ey1234567890qwertyuiopasdfghjklzxcvbnm` приведено в качестве примера.
     </Tip>
 
     <p>Перезапустите контейнер панели Remnawave для применения изменений:</p>
@@ -191,7 +191,7 @@ description: "Краткое руководство по установке Remn
 ```
     </CodeGroup>
 
-    <p>Вернитесь к файлу <Badge>.env</Badge> бота и вставьте скопированное значение в <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge>:</p>
+    <p>Вернитесь к файлу `.env` бота и вставьте скопированное значение в `REMNAWAVE_WEBHOOK_SECRET`:</p>
 
     <CodeGroup>
 ```bash Редактирование файла .env Remnashop
@@ -206,7 +206,7 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Warning>
-      <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge> должен совпадать со значением <Badge>WEBHOOK_SECRET_HEADER</Badge> из файла <Badge>.env панели</Badge>.
+      `REMNAWAVE_WEBHOOK_SECRET` должен совпадать со значением `WEBHOOK_SECRET_HEADER` из файла `.env панели`.
     </Warning>
 
     #### Шаг 6: Запуск бота
@@ -249,7 +249,7 @@ description: "Краткое руководство по установке Remn
 
     #### Шаг 2: Загрузка необходимых файлов
 
-    <p>Загрузите файл <Badge>docker-compose.yml</Badge> и <Badge>.env</Badge>, выполнив следующие команды:</p>
+    <p>Загрузите файл `docker-compose.yml` и `.env`, выполнив следующие команды:</p>
 
     <CodeGroup>
 ```bash Получение файла .env
@@ -285,7 +285,7 @@ description: "Краткое руководство по установке Remn
       Дополнительную информацию о переменных окружения можно найти на странице [Переменные окружения](https://remnashop.mintlify.app/install/environment-variables).
     </Tip>
 
-    <p>Откройте файл <Badge>.env</Badge>:</p>
+    <p>Откройте файл `.env`:</p>
 
     <CodeGroup>
 ```bash Редактирование файла .env
@@ -340,19 +340,19 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Tip>
-      В переменной <Badge>REMNAWAVE_HOST</Badge> укажите домен вашей панели Remnawave. Пример: <Badge>REMNAWAVE_HOST=panel.domain.com</Badge>
+      В переменной `REMNAWAVE_HOST` укажите домен вашей панели Remnawave. Пример: `REMNAWAVE_HOST=panel.domain.com`
     </Tip>
 
     <Tip>
-      В переменной <Badge>REMNAWAVE_TOKEN</Badge> должен быть установлен API-токен панели. Создать токен можно в "Настройки Remnawave" → "API Токены".
+      В переменной `REMNAWAVE_TOKEN` должен быть установлен API-токен панели. Создать токен можно в "Настройки Remnawave" → "API Токены".
     </Tip>
 
     <Warning>
-      <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge> должен совпадать со значением <Badge>WEBHOOK_SECRET_HEADER</Badge> из <Badge>.env</Badge> панели.
+      `REMNAWAVE_WEBHOOK_SECRET` должен совпадать со значением `WEBHOOK_SECRET_HEADER` из `.env` панели.
     </Warning>
 
     <Warning>
-      Если вы используете Remnawave Reverse-Proxy от eGames, добавьте cookie для авторизации. Пример: <Badge>REMNAWAVE_COOKIE=rEmnaprx=aBCDefgh1</Badge>. Как получить cookie: [инструкция](https://wiki.egam.es/ru/troubleshooting/common-issues/#%D1%83%D1%82%D0%B5%D1%80%D1%8F%D0%BD%D0%BD%D1%8B%D0%B9-cookie-%D0%BF%D1%83%D1%82%D0%B8-%D0%BA-%D0%BF%D0%B0%D0%BD%D0%B5%D0%BB%D0%B8).
+      Если вы используете Remnawave Reverse-Proxy от eGames, добавьте cookie для авторизации. Пример: `REMNAWAVE_COOKIE=rEmnaprx=aBCDefgh1`. Как получить cookie: [инструкция](https://wiki.egam.es/ru/troubleshooting/common-issues/#%D1%83%D1%82%D0%B5%D1%80%D1%8F%D0%BD%D0%BD%D1%8B%D0%B9-cookie-%D0%BF%D1%83%D1%82%D0%B8-%D0%BA-%D0%BF%D0%B0%D0%BD%D0%B5%D0%BB%D0%B8).
     </Warning>
 
     #### Шаг 5: Настройка вебхука от панели к боту
@@ -361,7 +361,7 @@ description: "Краткое руководство по установке Remn
       Этот шаг критически важен для корректной работы бота.
     </Danger>
 
-    <p>Откройте файл <Badge>.env</Badge> панели Remnawave:</p>
+    <p>Откройте файл `.env` панели Remnawave:</p>
 
     <CodeGroup>
 ```bash Редактирование файла .env панели
@@ -369,7 +369,7 @@ description: "Краткое руководство по установке Remn
 ```
     </CodeGroup>
 
-    <p>Задайте <Badge>WEBHOOK_ENABLED=true</Badge> и установите <Badge>WEBHOOK_URL</Badge> на ваш реальный домен бота:</p>
+    <p>Задайте `WEBHOOK_ENABLED=true` и установите `WEBHOOK_URL` на ваш реальный домен бота:</p>
 
     <CodeGroup>
 ```bash Содержимое файла .env панели
@@ -379,10 +379,10 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Warning>
-      Замените <Badge>bot.domain.com</Badge> на ваш реальный домен.
+      Замените `bot.domain.com` на ваш реальный домен.
     </Warning>
 
-    <p>Найдите переменную <Badge>WEBHOOK_SECRET_HEADER</Badge> в этом же файле и скопируйте её значение:</p>
+    <p>Найдите переменную `WEBHOOK_SECRET_HEADER` в этом же файле и скопируйте её значение:</p>
 
     <CodeGroup>
 ```bash Содержимое файла .env панели
@@ -391,7 +391,7 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Tip>
-      Значение <Badge>ey1234567890qwertyuiopasdfghjklzxcvbnm</Badge> приведено в качестве примера.
+      Значение `ey1234567890qwertyuiopasdfghjklzxcvbnm` приведено в качестве примера.
     </Tip>
 
     <p>Перезапустите контейнер панели Remnawave для применения изменений:</p>
@@ -402,7 +402,7 @@ description: "Краткое руководство по установке Remn
 ```
     </CodeGroup>
 
-    <p>Вернитесь к файлу <Badge>.env</Badge> бота и вставьте скопированное значение в <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge>:</p>
+    <p>Вернитесь к файлу `.env` бота и вставьте скопированное значение в `REMNAWAVE_WEBHOOK_SECRET`:</p>
 
     <CodeGroup>
 ```bash Редактирование файла .env Remnashop
@@ -417,7 +417,7 @@ description: "Краткое руководство по установке Remn
     </CodeGroup>
 
     <Warning>
-      <Badge>REMNAWAVE_WEBHOOK_SECRET</Badge> должен совпадать со значением <Badge>WEBHOOK_SECRET_HEADER</Badge> из файла <Badge>.env панели</Badge>.
+      `REMNAWAVE_WEBHOOK_SECRET` должен совпадать со значением `WEBHOOK_SECRET_HEADER` из файла `.env панели`.
     </Warning>
 
     #### Шаг 6: Запуск бота

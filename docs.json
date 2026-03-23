@@ -10,12 +10,20 @@
   "navigation": {
     "groups": [
       {
+        "group": "Обзор",
+        "pages": [
+          "introduction",
+          "install/releases"
+        ]
+      },
+      {
         "group": "Начало",
         "pages": [
-          "install/releases",
           "install/requirements",
           "install/installation",
-          "install/environment-variables"
+          "install/environment-variables",
+          "update",
+          "assety"
         ]
       },
       {
