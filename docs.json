@@ -111,8 +111,7 @@
     "content": "Remnashop"
   },
   "thumbnails": {
-    "appearance": "dark",
-    "background": "/images/default 2.png"
+    "appearance": "dark"
   },
   "styling": {
     "codeblocks": "dark"
