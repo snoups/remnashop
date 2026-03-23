@@ -1,33 +1,44 @@
-<Warning> **Warning** <br /> Remnashop and its components does not support being server on a sub-path.<br /><br />
-(e.g.<Badge color="yellow">location /remnashop</Badge>, <Badge color="yellow">location /remnawave</Badge> ) <br /></Warning>
-<Note>**Note** <br /> **SSH Port Forwarding** is not supported. Use only with one of the reverse proxies below.</Note>
-<Tip> **Tip** <br />You need to have a registered domain name to continue.<br /></Tip>
+<Warning>
+  **Внимание**<br />
+  Remnashop и его компоненты не поддерживают работу на суб-пути.<br /><br />
+  (например, <Badge color="yellow">location /remnashop</Badge>, <Badge color="yellow">location /remnawave</Badge>)
+</Warning>
 
-<Card 
- title="📄️ Caddy"
- icon="text-align-start"
- href="/install/reverse-proxies/caddy"
- arrow="true"
- cta="Click here"
- horizontal>
-  Lightweight reverse proxy with automatic SSL certificates and zero configuration
+<Note>
+  **Примечание**<br />
+  **SSH Port Forwarding** не поддерживается. Используйте только один из обратных прокси ниже.
+</Note>
+
+<Tip>
+  **Совет**<br />
+  Для продолжения вам необходимо иметь зарегистрированное доменное имя.
+</Tip>
+
+<Card
+  title="📄️ Caddy"
+  icon="text-align-start"
+  href="/docs/ru/reverse-proxies/caddy"
+  arrow="true"
+  cta="Перейти"
+  horizontal>
+  Лёгкий обратный прокси с автоматическими SSL-сертификатами и нулевой настройкой
 </Card>
 
 <Columns cols={2}>
   <Card
-  title="📄️ Nginx"
-  href="/docs/ru/reverse-proxies/nginx"
-  arrow="true"
-  cta="Click here"
->
-  Popular reverse proxy with manual SSL certificates
-</Card>
+    title="📄️ Nginx"
+    href="/docs/ru/reverse-proxies/nginx"
+    arrow="true"
+    cta="Перейти"
+  >
+    Популярный обратный прокси с ручной настройкой SSL-сертификатов
+  </Card>
   <Card
-  title="📄️ Traefik"
-  href="/docs/ru/reverse-proxies/traefik"
-  arrow="true"
-  cta="Click here"
->
-  Battle-tested reverse proxy
-</Card>
+    title="📄️ Traefik"
+    href="/docs/ru/reverse-proxies/traefik"
+    arrow="true"
+    cta="Перейти"
+  >
+    Проверенный временем обратный прокси
+  </Card>
 </Columns>
