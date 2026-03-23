@@ -6,7 +6,8 @@ btn-back =
 
 btn-common =
     .notification-close = ❌ Закрыть
-    .devices-empty = ⚠️ Нет привязанных устройств
+    .devices-empty = ✨ У вас нет подключённых устройств
+    .cancel = Отмена
 
     .squad-choice = { $selected -> 
     [1] 🔘
@@ -17,6 +18,25 @@ btn-common =
     [0] { unlimited }
     *[other] { unit-day }
     }
+
+btn-backup =
+    .toggle-enabled = { $enabled ->
+        [1] 🔴 Выключить автобэкап
+        *[0] 🟢 Включить автобэкап
+    }
+    .set-interval = ⏱ Интервал ({ $interval_hours }ч)
+    .set-max-files = 📁 Файлов ({ $max_files })
+    .toggle-send = { $send_to_chat ->
+        [1] 📨 Не отправлять в чат
+        *[0] 📩 Отправлять в чат
+    }
+    .backup-assets = 📦 Бэкап assets
+    .backup-db = 🗄 Бэкап базы данных
+    .delete-all = 🗑 Удалить все устройства
+    .reissue = 🔄 Перевыпустить подписку
+    .confirm-delete = ✅ Да, удалить
+    .confirm-reissue = ✅ Да, сбросить
+    .cancel-reissue = ❌ Нет
 
 btn-remnashop-info =
     .release-latest = 👀 Посмотреть
@@ -231,6 +251,9 @@ btn-remnashop =
     .notifications = 🔔 Уведомления
     .logs = 📄 Логи
     .menu-editor = 🎛 Доп. кнопки
+    .backup = 💾 Бэкап
+    .backup-assets = 📦 Бэкап assets
+    .backup-db = 🗄 Бэкап базы данных
 
 btn-menu-editor =
     .text = 🏷️ Текст

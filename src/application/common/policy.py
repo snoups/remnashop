@@ -43,6 +43,7 @@ class Permission(UpperStrEnum):
     VIEW_LOGS = auto()
     VIEW_AUDIT = auto()
     VIEW_MENU_EDITOR = auto()
+    VIEW_BACKUP = auto()
     #
     SETTINGS_REFERRAL = auto()
     SETTINGS_NOTIFICATIONS = auto()

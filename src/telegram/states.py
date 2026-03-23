@@ -6,6 +6,9 @@ from aiogram.fsm.state import State, StatesGroup
 class MainMenu(StatesGroup):
     MAIN = State()
     DEVICES = State()
+    DEVICE_CONFIRM_DELETE = State()
+    DEVICE_CONFIRM_DELETE_ALL = State()
+    DEVICE_CONFIRM_REISSUE = State()
     INVITE = State()
     INVITE_ABOUT = State()
 
@@ -106,6 +109,12 @@ class DashboardRemnashop(StatesGroup):
     MAIN = State()
     ADMINS = State()
     ADVERTISING = State()
+
+
+class RemnashopBackup(StatesGroup):
+    MAIN = State()
+    INTERVAL = State()
+    MAX_FILES = State()
 
 
 class RemnashopReferral(StatesGroup):
