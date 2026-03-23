@@ -30,13 +30,13 @@
               ]
             },
             {
-              "group": "Реверс-прокси",
-              "pages": [
-                "docs/ru/install/reverse-proxies",
-                "docs/ru/reverse-proxies/traefik",
-                "docs/ru/reverse-proxies/nginx",
-                "docs/ru/reverse-proxies/caddy"
-              ]
+            "group": "Реверс прокси",
+            "root": "docs/ru/reverse-proxies",
+            "pages": [
+              "docs/ru/reverse-proxies/caddy",
+              "docs/ru/reverse-proxies/nginx",
+              "docs/ru/reverse-proxies/traefik"
+            ]
             }
           ]
         },
@@ -61,9 +61,9 @@
               ]
             },
             {
-              "group": "Reverse Proxy",
+              "group": "Reverse Proxies",
+              "root": "docs/en/reverse-proxies",
               "pages": [
-                "docs/en/install/reverse-proxies",
                 "docs/en/reverse-proxies/caddy",
                 "docs/en/reverse-proxies/nginx",
                 "docs/en/reverse-proxies/traefik"
@@ -121,10 +121,6 @@
     },
     "interaction": {
         "drilldown": false
-    },
-    "banner": {
-        "dismissible": false,
-        "content": "Remnashop"
     },
     "thumbnails": {
         "appearance": "dark"
