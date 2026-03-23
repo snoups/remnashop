@@ -14,44 +14,47 @@
                 "groups": [
                     {
                         "group": "Обзор",
-                        "pages": ["ru/introduction", "ru/install/releases"]
+                        "pages": [
+                            "docs/ru/introduction",
+                            "docs/ru/install/releases"
+                        ]
                     },
                     {
                         "group": "Начало",
                         "pages": [
-                            "ru/install/requirements",
-                            "ru/install/installation",
-                            "ru/install/environment-variables",
-                            "ru/update",
-                            "ru/assets"
+                            "docs/ru/install/requirements",
+                            "docs/ru/install/installation",
+                            "docs/ru/install/environment-variables",
+                            "docs/ru/update",
+                            "docs/ru/assets"
                         ]
                     },
                     {
                         "group": "Реверс-прокси",
                         "pages": [
-                            "ru/install/reverse-proxies/index",
+                            "docs/ru/install/reverse-proxies/index",
                             {
                                 "group": "Caddy",
                                 "pages": [
-                                    "ru/install/reverse-proxies/caddy/index",
-                                    "ru/install/reverse-proxies/caddy/bundled",
-                                    "ru/install/reverse-proxies/caddy/separate-server"
+                                    "docs/ru/install/reverse-proxies/caddy/index",
+                                    "docs/ru/install/reverse-proxies/caddy/bundled",
+                                    "docs/ru/install/reverse-proxies/caddy/separate-server"
                                 ]
                             },
                             {
                                 "group": "Nginx",
                                 "pages": [
-                                    "ru/install/reverse-proxies/nginx/index",
-                                    "ru/install/reverse-proxies/nginx/bundled",
-                                    "ru/install/reverse-proxies/nginx/separate-server"
+                                    "docs/ru/install/reverse-proxies/nginx/index",
+                                    "docs/ru/install/reverse-proxies/nginx/bundled",
+                                    "docs/ru/install/reverse-proxies/nginx/separate-server"
                                 ]
                             },
                             {
                                 "group": "Traefik",
                                 "pages": [
-                                    "ru/install/reverse-proxies/traefik/index",
-                                    "ru/install/reverse-proxies/traefik/bundled",
-                                    "ru/install/reverse-proxies/traefik/separate-server"
+                                    "docs/ru/install/reverse-proxies/traefik/index",
+                                    "docs/ru/install/reverse-proxies/traefik/bundled",
+                                    "docs/ru/install/reverse-proxies/traefik/separate-server"
                                 ]
                             }
                         ]
@@ -63,44 +66,47 @@
                 "groups": [
                     {
                         "group": "Overview",
-                        "pages": ["en/introduction", "en/install/releases"]
+                        "pages": [
+                            "docs/en/introduction",
+                            "docs/en/install/releases"
+                        ]
                     },
                     {
                         "group": "Getting Started",
                         "pages": [
-                            "en/install/requirements",
-                            "en/install/installation",
-                            "en/install/environment-variables",
-                            "en/update",
-                            "en/assets"
+                            "docs/en/install/requirements",
+                            "docs/en/install/installation",
+                            "docs/en/install/environment-variables",
+                            "docs/en/update",
+                            "docs/en/assets"
                         ]
                     },
                     {
                         "group": "Reverse Proxy",
                         "pages": [
-                            "en/install/reverse-proxies/index",
+                            "docs/en/install/reverse-proxies/index",
                             {
                                 "group": "Caddy",
                                 "pages": [
-                                    "en/install/reverse-proxies/caddy/index",
-                                    "en/install/reverse-proxies/caddy/bundled",
-                                    "en/install/reverse-proxies/caddy/separate-server"
+                                    "docs/en/install/reverse-proxies/caddy/index",
+                                    "docs/en/install/reverse-proxies/caddy/bundled",
+                                    "docs/en/install/reverse-proxies/caddy/separate-server"
                                 ]
                             },
                             {
                                 "group": "Nginx",
                                 "pages": [
-                                    "en/install/reverse-proxies/nginx/index",
-                                    "en/install/reverse-proxies/nginx/bundled",
-                                    "en/install/reverse-proxies/nginx/separate-server"
+                                    "docs/en/install/reverse-proxies/nginx/index",
+                                    "docs/en/install/reverse-proxies/nginx/bundled",
+                                    "docs/en/install/reverse-proxies/nginx/separate-server"
                                 ]
                             },
                             {
                                 "group": "Traefik",
                                 "pages": [
-                                    "en/install/reverse-proxies/traefik/index",
-                                    "en/install/reverse-proxies/traefik/bundled",
-                                    "en/install/reverse-proxies/traefik/separate-server"
+                                    "docs/en/install/reverse-proxies/traefik/index",
+                                    "docs/en/install/reverse-proxies/traefik/bundled",
+                                    "docs/en/install/reverse-proxies/traefik/separate-server"
                                 ]
                             }
                         ]
