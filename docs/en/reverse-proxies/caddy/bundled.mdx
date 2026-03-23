@@ -6,15 +6,11 @@ description: "Simple configuration"
 In this guide, we will look at the configuration and setup of the Caddy reverse proxy.
 
 <Warning>
-    **Warning**
-    <br />
     Bundled installation means that you will install Caddy on the same server as
     the Remnawave panel.
 </Warning>
 
 <Danger>
-    **Important!**
-    <br />
     You must already have the Caddy reverse proxy installed and configured on
     your Remnawave panel server and other components.
 </Danger>
@@ -28,16 +24,12 @@ If Caddy is already configured, all you need to do is add a new site block to th
 </CodeGroup>
 
 <Warning>
-    **Warning**
-    <br />
     Replace BOT_DOMAIN with your domain name.
-    <br />
+    
     Review the configuration below and pay attention to the highlighted lines.
 </Warning>
 
 <Danger>
-    **Important!**
-    <br />
     Do not fully replace the existing configuration — only add a new site block
     to the existing Caddyfile.
 </Danger>
@@ -45,39 +37,41 @@ If Caddy is already configured, all you need to do is add a new site block to th
 Add a new site block as shown in the example configuration below. Note the highlighted lines — these are the ones you need to add.
 
 <CodeGroup>
-```javascript Caddyfile highlight={9-12}
-# PANEL
-https://REPLACE_WITH_YOUR_DOMAIN {
-        reverse_proxy * http://remnawave:3000
-}
-# SUBSCRIPTION PAGE
-https://SUBSCRIPTION_PAGE_DOMAIN {
-        reverse_proxy * http://remnawave-subscription-page:3010
-}
-# REMNASHOP (all API v1 → remnashop:5000)
-https://BOT_DOMAIN {
-        reverse_proxy /api/v1/* http://remnashop:5000
-}
-# CATCH-ALL
-:443 {
-    tls internal
-    respond 204
-}
-```
+    ```javascript Caddyfile highlight={9-12}
+    # PANEL
+    https://REPLACE_WITH_YOUR_DOMAIN {
+            reverse_proxy * http://remnawave:3000
+    }
+    # SUBSCRIPTION PAGE
+    https://SUBSCRIPTION_PAGE_DOMAIN {
+            reverse_proxy * http://remnawave-subscription-page:3010
+    }
+    # REMNASHOP (all API v1 → remnashop:5000)
+    https://BOT_DOMAIN {
+            reverse_proxy /api/v1/* http://remnashop:5000
+    }
+    # CATCH-ALL
+    :443 {
+        tls internal
+        respond 204
+    }
+    ```
 </CodeGroup>
 
 Now restart the Caddy container:
 
 <CodeGroup>
     ```bash Restart Caddy container cd /opt/remnawave/caddy && docker compose
-    down && docker compose up -d && docker compose logs -f ```
+    down && docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 And restart the Remnashop containers:
 
 <CodeGroup>
     ```bash Restart Remnashop containers cd /opt/remnashop && docker compose
-    down && docker compose up -d && docker compose logs -f ```
+    down && docker compose up -d && docker compose logs -f 
+    ```
 </CodeGroup>
 
 ### If everything is configured correctly, Remnashop will send a successful launch notification in Telegram.

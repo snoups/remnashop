@@ -5,8 +5,6 @@ title: "Traefik"
 In this guide we will be using Traefik as a reverse proxy to access Remnashop. We will point a domain name to our server and configure Traefik. Traefik will handle the issuance of SSL certificates by itself.
 
 <Warning>
-    **Warning**
-    <br />
     You need to have a registered domain name to continue.
 </Warning>
 
@@ -38,8 +36,6 @@ On the left side of the page, click on <Badge>DNS</Badge> and then click on <Bad
 Set the <Badge>Type</Badge> to <Badge>A</Badge> and the <Badge>Name</Badge> to <Badge>@</Badge>.
 
 <Info>
-    **Info**
-    <br />
     If you want to use subdomains, enter the subdomain name (e.g.{" "}
     <Badge>bot</Badge>) in the <Badge>Name</Badge> field.
 </Info>
@@ -49,13 +45,10 @@ Enter your server's IP address in the <Badge>IPv4 address</Badge> field and clic
 Now you need to wait a while for the DNS records to be updated.
 
 <Info>
-    **Info**
-    <br />
     There is an important difference between the yellow cloud (domain is proxied
     by Cloudflare) and the grey cloud (domain is not proxied by Cloudflare) in
     the Cloudflare control panel.
-    <br />
-    <br />
+
     If Cloudflare works fine in your region, it is recommended to proxy the
     domain through Cloudflare (yellow cloud).
 </Info>

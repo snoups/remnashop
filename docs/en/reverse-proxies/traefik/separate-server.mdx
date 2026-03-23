@@ -4,15 +4,11 @@ description: "Simple configuration"
 ---
 
 <Warning>
-    **Warning**
-    <br />
     Installing on a separate server means that Traefik will be installed on a
     different server than the Remnawave panel and other components.
 </Warning>
 
 <Danger>
-    **Important!**
-    <br />
     There should be no reverse proxies installed on this server.
 </Danger>
 
@@ -22,7 +18,8 @@ Create a <Badge>docker-compose.yml</Badge> file in the <Badge>/opt/remnawave/tra
 
 <CodeGroup>
     ```bash Create docker-compose.yml mkdir -p /opt/remnawave/traefik && cd
-    /opt/remnawave/traefik && nano docker-compose.yml ```
+    /opt/remnawave/traefik && nano docker-compose.yml
+    ```
 </CodeGroup>
 
 Paste the following configuration:
@@ -35,7 +32,8 @@ Paste the following configuration:
     /var/run/docker.sock:/var/run/docker.sock:ro - ./traefik.yml:/traefik.yml:ro
     - ./letsencrypt:/letsencrypt - ./config:/config:ro - ./logs:/var/log/traefik
     networks: remnawave-network: name: remnawave-network driver: bridge
-    external: true ```
+    external: true
+    ```
 </CodeGroup>
 
 ## Create the static configuration file
@@ -43,16 +41,15 @@ Paste the following configuration:
 Create a static configuration file <Badge>traefik.yml</Badge> in the <Badge>/opt/remnawave/traefik</Badge> directory:
 
 <CodeGroup>
-    ```bash Create traefik.yml cd /opt/remnawave/traefik && nano traefik.yml ```
+    ```bash Create traefik.yml cd /opt/remnawave/traefik && nano traefik.yml
+    ```
 </CodeGroup>
 
 Paste the following configuration.
 
 <Warning>
-    **Warning**
-    <br />
     Replace REPLACE_WITH_YOUR_EMAIL with your email address.
-    <br />
+    
     Review the configuration below and pay attention to the highlighted lines.
 </Warning>
 
@@ -64,7 +61,8 @@ Paste the following configuration.
     /config watch: true certificatesResolvers: letsencrypt: acme: email:
     REPLACE_WITH_YOUR_EMAIL storage: /letsencrypt/acme.json httpChallenge:
     entryPoint: http log: level: "INFO" filePath: "/var/log/traefik/traefik.log"
-    accessLog: filePath: "/var/log/traefik/access.log" ```
+    accessLog: filePath: "/var/log/traefik/access.log"
+    ```
 </CodeGroup>
 
 ## Create the dynamic configuration file
@@ -73,16 +71,15 @@ Create a <Badge>remnashop.yml</Badge> file in the <Badge>/opt/remnawave/traefik/
 
 <CodeGroup>
     ```bash Create remnashop.yml mkdir -p /opt/remnawave/traefik/config && cd
-    /opt/remnawave/traefik/config && nano remnashop.yml ```
+    /opt/remnawave/traefik/config && nano remnashop.yml
+    ```
 </CodeGroup>
 
 Paste the following configuration.
 
 <Warning>
-    **Warning**
-    <br />
     Replace REPLACE_WITH_YOUR_DOMAIN_BOT with your domain name.
-    <br />
+    
     Review the configuration below and pay attention to the highlighted lines.
 </Warning>
 
@@ -91,21 +88,24 @@ Paste the following configuration.
     http: routers: remnashop: rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) &&
     PathPrefix(`/api/v1`)" entrypoints: - https tls: certResolver: letsencrypt
     service: remnashop services: remnashop: loadBalancer: servers: - url:
-    "http://remnashop:5000" ```
+    "http://remnashop:5000"
+    ```
 </CodeGroup>
 
 ## Start the container
 
 <CodeGroup>
     ```bash Start the container docker compose up -d && docker compose logs -f
-    -t ```
+    -t
+    ```
 </CodeGroup>
 
 Now restart the Remnashop containers:
 
 <CodeGroup>
     ```bash Restart Remnashop containers cd /opt/remnashop && docker compose
-    down && docker compose up -d && docker compose logs -f ```
+    down && docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 ### If everything is configured correctly, Remnashop will send a successful launch notification in Telegram.
