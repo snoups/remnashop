@@ -49,7 +49,7 @@
       }
     ]
   },
-  "logo": "/дщпщ.svg",
+  "logo": "/logo.svg",
   "navbar": {
     "links": [
       {
@@ -69,15 +69,15 @@
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {
