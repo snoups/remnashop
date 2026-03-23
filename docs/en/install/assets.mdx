@@ -1,0 +1,30 @@
+---
+title: "Assets"
+description: "Configuring banners and translations for Remnashop"
+---
+
+## Banners
+
+The bot supports custom banners for each page category and locale: `menu`, `dashboard`, `subscription`, `promocode`, `referral`.
+
+To set a custom banner, name the file according to the target page and make sure it uses one of the supported formats: `jpg`, `jpeg`, `png`, `gif`, `webp`.
+
+Banners should be placed at: `/opt/remnashop/assets/banners/(locale)/`
+
+Example: `/opt/remnashop/assets/banners/en/menu.gif`
+
+<Warning>
+    Do not delete the `default.jpg` file — it is required for the bot to work
+    properly.
+</Warning>
+
+---
+
+## Translations
+
+You can edit any translation file located at: `/opt/remnashop/assets/translations/(locale)/`
+
+After making changes, restart the container for them to take effect.
+
+<CodeGroup>
+```bash Restart the container

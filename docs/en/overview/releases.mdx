@@ -1,0 +1,89 @@
+---
+title: "Changelog"
+description: "History of changes"
+---
+
+---
+
+#### 0.7.0 (N/A March 2026)
+
+Architecture & Infrastructure:
+
+- Restructured folder layout
+- Refactored all SQL and DTO models
+- Reworked all services and database interactions
+- Moved all business logic from the UI layer into UseCases
+- Refactored tasks and background jobs
+- Refactored and improved translations
+- Reworked Telegram middlewares
+- Updated aiogram and aiogram-dialog dependencies (style support added)
+- Made Redis password optional
+- Reduced log file size on rotation
+- Added environment variables for the logger
+- Improved logging
+
+Security & Access:
+
+- Improved security
+- Fixed bypass of registration and access checks when the bot is blocked
+- Fixed self-role removal bug
+- Changed roles (USER, PREVIEW, ADMIN, DEV, OWNER, SYSTEM)
+- Implemented role-based permissions
+- Added role change for the previous owner (former DEV) when OWNER_ID (former DEV_ID) is updated
+
+Performance:
+
+- Improved overall performance
+- Improved broadcast speed
+- Implemented a queue for notifications
+- Fixed repeated task execution on long-running tasks
+
+Payments:
+
+- Added payment gateways: FreeKassa, MulenPay, PayMaster, Platega, RoboKassa, UrlPay, WATA
+- Added configuration validation when receiving a payment gateway webhook
+- Added `build_webhook_response` method for customizing payment gateway responses
+- Fixed inability to extend a subscription to unlimited
+
+Plans & Subscriptions:
+
+- Added ability to create multiple trial plans
+- Added plan import and export
+- Implemented plan availability via link
+- Implemented translation support for plan names and descriptions
+- Implemented duration sorting in the plan editor
+- Fixed traffic reset on renewal (traffic is now reset on renewal)
+- Unlimited is now set as `0` instead of `-1` (both work, but stored as `0` in the database)
+- Fixed plan access validation
+
+Referral System:
+
+- Fixed reward being granted when the referral system is disabled
+- Fixed referral pinning notification when the referral system is disabled
+- Fixed message about inability to issue a reward without an active subscription
+- Implemented sending a referral link via `inline_query` with a "Join" button
+- Added an additional "Go to referrer" button for the registration event
+
+Broadcasts & Notifications:
+
+- Improved purchase availability broadcast (when purchases were restricted)
+- Implemented variable support in broadcasts (auto-substitution of user data; full list of variables coming soon)
+- Added maximum character limit for broadcasts
+
+Interface:
+
+- Fixed button grouping in the Remnawave dialog
+- Implemented an editor for additional main menu buttons (with translation support)
+- Added styles for certain buttons
+- Improved the statistics dialog
+- Improved statistics collection
+- Fixed redirect after an error when receiving a trial period
+
+Users:
+
+- Implemented user statistics
+- Implemented referral viewing in user statistics
+- Fixed search for users with hidden accounts
+- Fixed saving of `full_name` and `username` to the database on change
+
+---

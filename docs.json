@@ -1,128 +1,180 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Remnashop",
-  "colors": {
-    "primary": "#22D3EE",
-    "light": "#22D3EE",
-    "dark": "#161b22"
-  },
-  "navigation": {
-    "groups": [
-      {
-        "group": "Обзор",
-        "pages": [
-          "introduction",
-          "install/releases"
-        ]
-      },
-      {
-        "group": "Начало",
-        "pages": [
-          "install/requirements",
-          "install/installation",
-          "install/environment-variables",
-          "update",
-          "assety"
-        ]
-      },
-      {
-        "group": "Реверс-прокси",
-        "root": "install/reverse-proxies",
-        "pages": [
-          "install/reverse-proxies/caddy",
-          "install/reverse-proxies/nginx",
-          "install/reverse-proxies/traefik"
-        ]
-      },
-      {
-        "group": "Configuration",
-        "pages": []
-      },
-      {
-        "group": "Features",
-        "pages": []
-      },
-      {
-        "group": "Payment Systems",
-        "pages": []
-      },
-      {
-        "group": "Dashboard",
-        "pages": []
-      },
-      {
-        "group": "Troubleshooting",
-        "pages": []
-      }
-    ]
-  },
-  "logo": "/logo.svg",
-  "navbar": {
-    "links": [
-      {
-        "label": "Telegram",
-        "href": "https://t.me/remnashop"
-      },
-      {
-        "label": "GitHub",
-        "href": "https://github.com/snoups/remnashop"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/snoups/remnashop"
-    }
-  },
-  "background": {
-    "color": {
-      "dark": "#161b22",
-      "light": "#161b22"
+    "$schema": "https://mintlify.com/docs.json",
+    "theme": "mint",
+    "name": "Remnashop",
+    "colors": {
+        "primary": "#22D3EE",
+        "light": "#22D3EE",
+        "dark": "#161b22"
     },
-    "decoration": "grid"
-  },
-  "appearance": {
-    "default": "dark",
-    "strict": true
-  },
-  "interaction": {
-    "drilldown": false
-  },
-  "banner": {
-    "dismissible": false,
-    "content": "Remnashop"
-  },
-  "thumbnails": {
-    "appearance": "dark"
-  },
-  "styling": {
-    "codeblocks": "dark"
-  },
-  "icons": {
-    "library": "tabler"
-  },
-  "api": {
-    "playground": {
-      "proxy": false
-    }
-  },
-  "favicon": "/favicon.svg"
+    "navigation": {
+        "languages": [
+            {
+                "language": "ru",
+                "groups": [
+                    {
+                        "group": "Обзор",
+                        "pages": ["ru/introduction", "ru/install/releases"]
+                    },
+                    {
+                        "group": "Начало",
+                        "pages": [
+                            "ru/install/requirements",
+                            "ru/install/installation",
+                            "ru/install/environment-variables",
+                            "ru/update",
+                            "ru/assets"
+                        ]
+                    },
+                    {
+                        "group": "Реверс-прокси",
+                        "pages": [
+                            "ru/install/reverse-proxies/index",
+                            {
+                                "group": "Caddy",
+                                "pages": [
+                                    "ru/install/reverse-proxies/caddy/index",
+                                    "ru/install/reverse-proxies/caddy/bundled",
+                                    "ru/install/reverse-proxies/caddy/separate-server"
+                                ]
+                            },
+                            {
+                                "group": "Nginx",
+                                "pages": [
+                                    "ru/install/reverse-proxies/nginx/index",
+                                    "ru/install/reverse-proxies/nginx/bundled",
+                                    "ru/install/reverse-proxies/nginx/separate-server"
+                                ]
+                            },
+                            {
+                                "group": "Traefik",
+                                "pages": [
+                                    "ru/install/reverse-proxies/traefik/index",
+                                    "ru/install/reverse-proxies/traefik/bundled",
+                                    "ru/install/reverse-proxies/traefik/separate-server"
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "language": "en",
+                "groups": [
+                    {
+                        "group": "Overview",
+                        "pages": ["en/introduction", "en/install/releases"]
+                    },
+                    {
+                        "group": "Getting Started",
+                        "pages": [
+                            "en/install/requirements",
+                            "en/install/installation",
+                            "en/install/environment-variables",
+                            "en/update",
+                            "en/assets"
+                        ]
+                    },
+                    {
+                        "group": "Reverse Proxy",
+                        "pages": [
+                            "en/install/reverse-proxies/index",
+                            {
+                                "group": "Caddy",
+                                "pages": [
+                                    "en/install/reverse-proxies/caddy/index",
+                                    "en/install/reverse-proxies/caddy/bundled",
+                                    "en/install/reverse-proxies/caddy/separate-server"
+                                ]
+                            },
+                            {
+                                "group": "Nginx",
+                                "pages": [
+                                    "en/install/reverse-proxies/nginx/index",
+                                    "en/install/reverse-proxies/nginx/bundled",
+                                    "en/install/reverse-proxies/nginx/separate-server"
+                                ]
+                            },
+                            {
+                                "group": "Traefik",
+                                "pages": [
+                                    "en/install/reverse-proxies/traefik/index",
+                                    "en/install/reverse-proxies/traefik/bundled",
+                                    "en/install/reverse-proxies/traefik/separate-server"
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "logo": "/logo.svg",
+    "navbar": {
+        "links": [
+            {
+                "label": "Telegram",
+                "href": "https://t.me/remnashop"
+            },
+            {
+                "label": "GitHub",
+                "href": "https://github.com/snoups/remnashop"
+            }
+        ],
+        "primary": {
+            "type": "button",
+            "label": "Dashboard",
+            "href": "https://dashboard.mintlify.com"
+        }
+    },
+    "contextual": {
+        "options": [
+            "copy",
+            "view",
+            "chatgpt",
+            "claude",
+            "perplexity",
+            "mcp",
+            "cursor",
+            "vscode"
+        ]
+    },
+    "footer": {
+        "socials": {
+            "github": "https://github.com/snoups/remnashop"
+        }
+    },
+    "background": {
+        "color": {
+            "dark": "#161b22",
+            "light": "#161b22"
+        },
+        "decoration": "grid"
+    },
+    "appearance": {
+        "default": "dark",
+        "strict": true
+    },
+    "interaction": {
+        "drilldown": false
+    },
+    "banner": {
+        "dismissible": false,
+        "content": "Remnashop"
+    },
+    "thumbnails": {
+        "appearance": "dark"
+    },
+    "styling": {
+        "codeblocks": "dark"
+    },
+    "icons": {
+        "library": "tabler"
+    },
+    "api": {
+        "playground": {
+            "proxy": false
+        }
+    },
+    "favicon": "/favicon.svg"
 }

@@ -1,0 +1,23 @@
+---
+title: "Update"
+description: "How to update Remnashop to the latest version"
+---
+
+To update and restart the bot, run the following command:
+
+<CodeGroup>
+    ```bash Update the bot cd /opt/remnashop && docker compose pull && docker
+    compose down && RESET_ASSETS=true docker compose up -d && docker compose
+    logs -f ```
+</CodeGroup>
+
+When using `RESET_ASSETS=true`, the following actions are performed:
+
+- All current assets are backed up with a timestamp (`/opt/remnashop/assets/*.bak`).
+- New assets from the image are downloaded and unpacked.
+- After the update, the bot will use the latest asset files.
+
+<Warning>
+    If you do not use `RESET_ASSETS=true`, the old assets will remain unchanged.
+    This may cause the bot to work incorrectly after the update.
+</Warning>
