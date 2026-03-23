@@ -4,13 +4,11 @@ description: "Простая конфигурация"
 ---
 
 <Warning>
-  **Внимание**<br />
-  Установка на отдельном сервере означает, что Nginx будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
+    Установка на отдельном сервере означает, что Nginx будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
 </Warning>
 
 <Danger>
-  **Важно!**<br />
-  На этом сервере не должно быть установлено никаких обратных прокси.
+    На этом сервере не должно быть установлено никаких обратных прокси.
 </Danger>
 
 ## Выпуск SSL-сертификата
@@ -20,30 +18,29 @@ description: "Простая конфигурация"
 ## Установка зависимостей
 
 <CodeGroup>
-```bash Установка зависимостей
-sudo apt-get install cron socat
-```
+    ```bash Установка зависимостей
+    sudo apt-get install cron socat
+    ```
 </CodeGroup>
 
 <Info>
-  **Информация**<br />
-  Вы можете использовать любой адрес электронной почты для выпуска сертификата, но рекомендуется использовать действующий.
+    Вы можете использовать любой адрес электронной почты для выпуска сертификата, но рекомендуется использовать действующий.
 </Info>
 
 Замените <Badge>EMAIL</Badge> на ваш адрес электронной почты:
 
 <CodeGroup>
-```bash Установка acme.sh
-curl https://get.acme.sh | sh -s email=EMAIL && source ~/.bashrc
-```
+    ```bash Установка acme.sh
+    curl https://get.acme.sh | sh -s email=EMAIL && source ~/.bashrc
+    ```
 </CodeGroup>
 
 ## Создание папки для сертификатов
 
 <CodeGroup>
-```bash Создание директории
-mkdir -p /opt/remnawave/nginx && cd /opt/remnawave/nginx
-```
+    ```bash Создание директории
+    mkdir -p /opt/remnawave/nginx && cd /opt/remnawave/nginx
+    ```
 </CodeGroup>
 
 ## Выпуск сертификата
@@ -51,8 +48,7 @@ mkdir -p /opt/remnawave/nginx && cd /opt/remnawave/nginx
 Замените <Badge>BOT_DOMAIN</Badge> на доменное имя, для которого нужно выпустить сертификат.
 
 <Warning>
-  **Внимание**<br />
-  Не используйте доменные зоны: .ru, .su, .рф. В настоящее время ZeroSSL не поддерживает эти зоны.
+    Не используйте доменные зоны: .ru, .su, .рф. В настоящее время ZeroSSL не поддерживает эти зоны.
 </Warning>
 
 <CodeGroup>
@@ -62,12 +58,11 @@ acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/pri
 </CodeGroup>
 
 <Info>
-  **Информация**<br />
-  Убедитесь, что порт <Badge>8443</Badge> открыт на вашем сервере. Он необходим для выпуска сертификата.
+    Убедитесь, что порт <Badge>8443</Badge> открыт на вашем сервере. Он необходим для выпуска сертификата.
 </Info>
 
 <Frame>
-  <img src="/images/issue-cert.webp" />
+    <img src="/images/issue-cert.webp" />
 </Frame>
 
 Это означает, что сертификат выпущен. <Badge>Acme.sh</Badge> будет автоматически обновлять сертификат каждые 60 дней — просто убедитесь, что порт 8443 открыт и не занят на вашем сервере.
@@ -77,100 +72,99 @@ acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/pri
 Создайте файл <Badge>nginx.conf</Badge> в директории <Badge>/opt/remnawave/nginx</Badge>:
 
 <CodeGroup>
-```bash Создание nginx.conf
-cd /opt/remnawave/nginx && nano nginx.conf
-```
+    ```bash Создание nginx.conf
+    cd /opt/remnawave/nginx && nano nginx.conf
+    ```
 </CodeGroup>
 
 Вставьте следующую конфигурацию.
 
 <Warning>
-  **Внимание**<br />
-  Замените <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN</Badge> на ваше доменное имя.<br /><br />
-  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+    Замените <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN</Badge> на ваше доменное имя.
+    Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
 </Warning>
 
 <CodeGroup>
-```bash nginx.conf highlight={6}
-upstream remnashop {
-    server remnashop:5000;
-}
-
-server {
-    server_name REPLACE_WITH_YOUR_DOMAIN;
-
-    listen 443 ssl;
-    listen [::]:443 ssl reuseport;
-    http2 on;
-
-    location /api/v1 {
-        proxy_http_version 1.1;
-        proxy_pass http://remnashop;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+    ```bash nginx.conf highlight={6}
+    upstream remnashop {
+        server remnashop:5000;
     }
 
-    # Конфигурация SSL (рекомендации Mozilla Intermediate)
-    ssl_protocols          TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+    server {
+        server_name REPLACE_WITH_YOUR_DOMAIN;
 
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:MozSSL:10m;
-    ssl_session_tickets    off;
-    ssl_certificate "/etc/nginx/ssl/fullchain.pem";
-    ssl_certificate_key "/etc/nginx/ssl/privkey.key";
-    ssl_trusted_certificate "/etc/nginx/ssl/fullchain.pem";
+        listen 443 ssl;
+        listen [::]:443 ssl reuseport;
+        http2 on;
 
-    ssl_stapling           on;
-    ssl_stapling_verify    on;
-    resolver               1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 208.67.222.222 208.67.220.220 valid=60s;
-    resolver_timeout       2s;
+        location /api/v1 {
+            proxy_http_version 1.1;
+            proxy_pass http://remnashop;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port $server_port;
 
-    # Сжатие Gzip
-    gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_buffers 16 8k;
-    gzip_http_version 1.1;
-    gzip_min_length 256;
-    gzip_types
-        application/atom+xml
-        application/geo+json
-        application/javascript
-        application/x-javascript
-        application/json
-        application/ld+json
-        application/manifest+json
-        application/rdf+xml
-        application/rss+xml
-        application/xhtml+xml
-        application/xml
-        font/eot
-        font/otf
-        font/ttf
-        image/svg+xml
-        text/css
-        text/javascript
-        text/plain
-        text/xml;
-}
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+        }
 
-server {
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
-    server_name _;
+        # Конфигурация SSL (рекомендации Mozilla Intermediate)
+        ssl_protocols          TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
 
-    ssl_reject_handshake on;
-}
-```
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;
+        ssl_session_tickets    off;
+        ssl_certificate "/etc/nginx/ssl/fullchain.pem";
+        ssl_certificate_key "/etc/nginx/ssl/privkey.key";
+        ssl_trusted_certificate "/etc/nginx/ssl/fullchain.pem";
+
+        ssl_stapling           on;
+        ssl_stapling_verify    on;
+        resolver               1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 208.67.222.222 208.67.220.220 valid=60s;
+        resolver_timeout       2s;
+
+        # Сжатие Gzip
+        gzip on;
+        gzip_vary on;
+        gzip_proxied any;
+        gzip_comp_level 6;
+        gzip_buffers 16 8k;
+        gzip_http_version 1.1;
+        gzip_min_length 256;
+        gzip_types
+            application/atom+xml
+            application/geo+json
+            application/javascript
+            application/x-javascript
+            application/json
+            application/ld+json
+            application/manifest+json
+            application/rdf+xml
+            application/rss+xml
+            application/xhtml+xml
+            application/xml
+            font/eot
+            font/otf
+            font/ttf
+            image/svg+xml
+            text/css
+            text/javascript
+            text/plain
+            text/xml;
+    }
+
+    server {
+        listen 443 ssl default_server;
+        listen [::]:443 ssl default_server;
+        server_name _;
+
+        ssl_reject_handshake on;
+    }
+    ```
 </CodeGroup>
 
 ## Создание docker-compose.yml
@@ -178,52 +172,52 @@ server {
 Создайте файл <Badge>docker-compose.yml</Badge> в директории <Badge>/opt/remnawave/nginx</Badge>:
 
 <CodeGroup>
-```bash Создание docker-compose.yml
-cd /opt/remnawave/nginx && nano docker-compose.yml
-```
+    ```bash Создание docker-compose.yml
+    cd /opt/remnawave/nginx && nano docker-compose.yml
+    ```
 </CodeGroup>
 
 Вставьте следующую конфигурацию:
 
 <CodeGroup>
-```bash docker-compose.yml
-services:
-    remnawave-nginx:
-        image: nginx:1.28
-        container_name: remnawave-nginx
-        hostname: remnawave-nginx
-        volumes:
-            - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-            - ./fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
-            - ./privkey.key:/etc/nginx/ssl/privkey.key:ro
-        restart: always
-        ports:
-            - '0.0.0.0:443:443'
-        networks:
-            - remnawave-network
+    ```bash docker-compose.yml
+    services:
+        remnawave-nginx:
+            image: nginx:1.28
+            container_name: remnawave-nginx
+            hostname: remnawave-nginx
+            volumes:
+                - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                - ./fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+                - ./privkey.key:/etc/nginx/ssl/privkey.key:ro
+            restart: always
+            ports:
+                - '0.0.0.0:443:443'
+            networks:
+                - remnawave-network
 
-networks:
-    remnawave-network:
-        name: remnawave-network
-        driver: bridge
-        external: true
-```
+    networks:
+        remnawave-network:
+            name: remnawave-network
+            driver: bridge
+            external: true
+    ```
 </CodeGroup>
 
 ## Запуск контейнера
 
 <CodeGroup>
-```bash Запуск контейнера
-docker compose up -d && docker compose logs -f -t
-```
+    ```bash Запуск контейнера
+    docker compose up -d && docker compose logs -f -t
+    ```
 </CodeGroup>
 
 И перезапустите контейнеры Remnashop:
 
 <CodeGroup>
-```bash Перезапуск контейнеров Remnashop
-cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
-```
+    ```bash Перезапуск контейнеров Remnashop
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 ### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.

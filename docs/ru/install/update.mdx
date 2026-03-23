@@ -6,9 +6,9 @@ description: "Как обновить Remnashop до последней верс
 Для обновления и перезапуска бота выполните следующую команду:
 
 <CodeGroup>
-```bash Обновление бота
-cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=true docker compose up -d && docker compose logs -f
-```
+    ```bash Обновление бота
+    cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=true docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 При использовании `RESET_ASSETS=true` выполняются следующие действия:
@@ -18,5 +18,5 @@ cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=
 - После обновления бот будет использовать актуальные файлы ассетов.
 
 <Warning>
-  Если вы не используете `RESET_ASSETS=true`, старые ассеты останутся без изменений. Это может привести к некорректной работе бота после обновления.
+    Если вы не используете `RESET_ASSETS=true`, старые ассеты останутся без изменений. Это может привести к некорректной работе бота после обновления.
 </Warning>

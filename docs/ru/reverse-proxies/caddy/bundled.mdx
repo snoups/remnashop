@@ -6,13 +6,11 @@ description: "Простая конфигурация"
 В этом руководстве мы рассмотрим настройку обратного прокси Caddy.
 
 <Warning>
-  **Внимание**<br />
-  Установка на одном сервере означает, что вы установите Caddy на тот же сервер, что и панель Remnawave.
+    Установка на одном сервере означает, что вы установите Caddy на тот же сервер, что и панель Remnawave.
 </Warning>
 
 <Danger>
-  **Важно!**<br />
-  У вас уже должен быть установлен и настроен обратный прокси Caddy на сервере с панелью Remnawave и остальными компонентами.
+    У вас уже должен быть установлен и настроен обратный прокси Caddy на сервере с панелью Remnawave и остальными компонентами.
 </Danger>
 
 ## Подготовка Caddyfile
@@ -20,60 +18,58 @@ description: "Простая конфигурация"
 Если Caddy уже настроен, вам нужно лишь добавить новый блок сайта в Caddyfile:
 
 <CodeGroup>
-```bash Редактирование Caddyfile
-cd /opt/remnawave/caddy && nano Caddyfile
-```
+    ```bash Редактирование Caddyfile
+    cd /opt/remnawave/caddy && nano Caddyfile
+    ```
 </CodeGroup>
 
 <Warning>
-  **Внимание**<br />
-  Замените BOT_DOMAIN на ваше доменное имя.<br />
-  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+    Замените BOT_DOMAIN на ваше доменное имя.
+    Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
 </Warning>
 
 <Danger>
-  **Важно!**<br />
-  Не заменяйте существующую конфигурацию полностью — только добавьте новый блок сайта в существующий Caddyfile.
+    Не заменяйте существующую конфигурацию полностью — только добавьте новый блок сайта в существующий Caddyfile.
 </Danger>
 
 Добавьте новый блок сайта, как показано в примере конфигурации ниже. Обратите внимание на выделенные строки — именно их нужно добавить.
 
 <CodeGroup>
-```javascript Caddyfile highlight={9-12}
-# ПАНЕЛЬ
-https://REPLACE_WITH_YOUR_DOMAIN {
-        reverse_proxy * http://remnawave:3000
-}
-# СТРАНИЦА ПОДПИСОК
-https://SUBSCRIPTION_PAGE_DOMAIN {
-        reverse_proxy * http://remnawave-subscription-page:3010
-}
-# REMNASHOP (всё API v1 → remnashop:5000)
-https://BOT_DOMAIN {
-        reverse_proxy /api/v1/* http://remnashop:5000
-}
-# CATCH-ALL
-:443 {
-    tls internal
-    respond 204
-}
-```
+    ```javascript Caddyfile highlight={9-12}
+    # ПАНЕЛЬ
+    https://REPLACE_WITH_YOUR_DOMAIN {
+            reverse_proxy * http://remnawave:3000
+    }
+    # СТРАНИЦА ПОДПИСОК
+    https://SUBSCRIPTION_PAGE_DOMAIN {
+            reverse_proxy * http://remnawave-subscription-page:3010
+    }
+    # REMNASHOP (всё API v1 → remnashop:5000)
+    https://BOT_DOMAIN {
+            reverse_proxy /api/v1/* http://remnashop:5000
+    }
+    # CATCH-ALL
+    :443 {
+        tls internal
+        respond 204
+    }
+    ```
 </CodeGroup>
 
 Теперь перезапустите контейнер Caddy:
 
 <CodeGroup>
-```bash Перезапуск контейнера Caddy
-cd /opt/remnawave/caddy && docker compose down && docker compose up -d && docker compose logs -f
-```
+    ```bash Перезапуск контейнера Caddy
+    cd /opt/remnawave/caddy && docker compose down && docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 И перезапустите контейнеры Remnashop:
 
 <CodeGroup>
-```bash Перезапуск контейнеров Remnashop
-cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
-```
+    ```bash Перезапуск контейнеров Remnashop
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 ### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.

@@ -14,7 +14,7 @@ description: "Настройка баннеров и переводов Remnasho
 Пример: `/opt/remnashop/assets/banners/en/menu.gif`
 
 <Warning>
-  Не удаляйте файл `default.jpg` — он необходим для корректной работы бота.
+    Не удаляйте файл `default.jpg` — он необходим для корректной работы бота.
 </Warning>
 
 ---
@@ -26,11 +26,11 @@ description: "Настройка баннеров и переводов Remnasho
 После внесения изменений необходимо перезапустить контейнер, чтобы они вступили в силу.
 
 <CodeGroup>
-```bash Перезапуск контейнера
-cd /opt/remnashop && docker compose down && docker compose up -d
-```
+    ```bash Перезапуск контейнера
+    cd /opt/remnashop && docker compose down && docker compose up -d
+    ```
 </CodeGroup>
 
 <Warning>
-  В настоящее время сохранение переводов при обновлении бота не поддерживается. При обновлении ваши предыдущие ассеты будут заархивированы по пути: `/opt/remnashop/assets/*.bak`
+    В настоящее время сохранение переводов при обновлении бота не поддерживается. При обновлении ваши предыдущие ассеты будут заархивированы по пути: `/opt/remnashop/assets/*.bak`
 </Warning>

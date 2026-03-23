@@ -5,8 +5,7 @@ title: "Traefik"
 В этом руководстве мы будем использовать Traefik в качестве обратного прокси для доступа к боту Remnashop. Мы направим доменное имя на наш сервер и настроим Traefik. Traefik самостоятельно выпустит SSL-сертификаты.
 
 <Warning>
-  **Внимание**<br />
-  Для продолжения вам необходимо иметь зарегистрированное доменное имя.
+    Для продолжения вам необходимо иметь зарегистрированное доменное имя.
 </Warning>
 
 ---
@@ -37,8 +36,7 @@ title: "Traefik"
 Установите <Badge>Type</Badge> в значение <Badge>A</Badge>, а <Badge>Name</Badge> в значение <Badge>@</Badge>.
 
 <Info>
-  **Информация**<br />
-  Если вы хотите использовать поддомены, введите имя поддомена (например, <Badge>bot</Badge>) в поле <Badge>Name</Badge>.
+    Если вы хотите использовать поддомены, введите имя поддомена (например, <Badge>bot</Badge>) в поле <Badge>Name</Badge>.
 </Info>
 
 Введите IP-адрес вашего сервера в поле <Badge>IPv4 address</Badge> и нажмите <Badge>Save</Badge>.
@@ -46,13 +44,12 @@ title: "Traefik"
 Теперь нужно подождать некоторое время, пока DNS-записи обновятся.
 
 <Info>
-  **Информация**<br />
-  В панели управления Cloudflare есть важное различие между жёлтым облаком (домен проксируется через Cloudflare) и серым облаком (домен не проксируется через Cloudflare).<br /><br />
-  Если Cloudflare хорошо работает в вашем регионе, рекомендуется проксировать домен через Cloudflare (жёлтое облако).
+    В панели управления Cloudflare есть важное различие между жёлтым облаком (домен проксируется через Cloudflare) и серым облаком (домен не проксируется через Cloudflare).
+    Если Cloudflare хорошо работает в вашем регионе, рекомендуется проксировать домен через Cloudflare (жёлтое облако).
 </Info>
 
 <Frame>
-  <img src="/images/cloudflare-dns.webp" />
+    <img src="/images/cloudflare-dns.webp" />
 </Frame>
 
 У некоторых DNS-провайдеров интерфейс отличается, но общий процесс одинаков.
@@ -64,20 +61,20 @@ title: "Traefik"
 Вы можете установить Traefik на том же сервере, что и панель Remnawave, или на отдельном сервере. Выберите подходящий вариант ниже.
 
 <Columns cols={2}>
-  <Card
-    title="📄️ На одном сервере"
-    href="/docs/ru/reverse-proxies/traefik/bundled"
-    arrow="true"
-    cta="Перейти"
-  >
+    <Card
+        title="📄️ На одном сервере"
+        href="/docs/ru/reverse-proxies/traefik/bundled"
+        arrow="true"
+        cta="Перейти"
+    >
     Установка на одном сервере означает, что Traefik будет настроен на том же сервере, что и панель Remnawave.
-  </Card>
-  <Card
-    title="📄️ На отдельном сервере"
-    href="/docs/ru/reverse-proxies/traefik/separate-server"
-    arrow="true"
-    cta="Перейти"
-  >
+    </Card>
+    <Card
+        title="📄️ На отдельном сервере"
+        href="/docs/ru/reverse-proxies/traefik/separate-server"
+        arrow="true"
+        cta="Перейти"
+    >
     Установка на отдельном сервере означает, что Traefik будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
-  </Card>
+    </Card>
 </Columns>

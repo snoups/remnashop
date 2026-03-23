@@ -4,13 +4,11 @@ description: "Простая конфигурация"
 ---
 
 <Warning>
-  **Внимание**<br />
-  Установка на отдельном сервере означает, что Traefik будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
+    Установка на отдельном сервере означает, что Traefik будет установлен на другом сервере, отличном от сервера с панелью Remnawave и остальными компонентами.
 </Warning>
 
 <Danger>
-  **Важно!**<br />
-  На этом сервере не должно быть установлено никаких обратных прокси.
+    На этом сервере не должно быть установлено никаких обратных прокси.
 </Danger>
 
 ## Создание docker-compose.yml
@@ -18,41 +16,41 @@ description: "Простая конфигурация"
 Создайте файл <Badge>docker-compose.yml</Badge> в директории <Badge>/opt/remnawave/traefik</Badge>:
 
 <CodeGroup>
-```bash Создание docker-compose.yml
-mkdir -p /opt/remnawave/traefik && cd /opt/remnawave/traefik && nano docker-compose.yml
-```
+    ```bash Создание docker-compose.yml
+    mkdir -p /opt/remnawave/traefik && cd /opt/remnawave/traefik && nano docker-compose.yml
+    ```
 </CodeGroup>
 
 Вставьте следующую конфигурацию:
 
 <CodeGroup>
-```bash docker-compose.yml
-services:
-    traefik:
-        image: traefik:latest
-        container_name: traefik
-        restart: unless-stopped
-        security_opt:
-            - no-new-privileges:true
-        networks:
-            - remnawave-network
-        ports:
-            - '0.0.0.0:80:80'
-            - '0.0.0.0:443:443'
-        environment:
-            - TZ=UTC
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock:ro
-            - ./traefik.yml:/traefik.yml:ro
-            - ./letsencrypt:/letsencrypt
-            - ./config:/config:ro
-            - ./logs:/var/log/traefik
-networks:
-    remnawave-network:
-        name: remnawave-network
-        driver: bridge
-        external: true
-```
+    ```bash docker-compose.yml
+    services:
+        traefik:
+            image: traefik:latest
+            container_name: traefik
+            restart: unless-stopped
+            security_opt:
+                - no-new-privileges:true
+            networks:
+                - remnawave-network
+            ports:
+                - '0.0.0.0:80:80'
+                - '0.0.0.0:443:443'
+            environment:
+                - TZ=UTC
+            volumes:
+                - /var/run/docker.sock:/var/run/docker.sock:ro
+                - ./traefik.yml:/traefik.yml:ro
+                - ./letsencrypt:/letsencrypt
+                - ./config:/config:ro
+                - ./logs:/var/log/traefik
+    networks:
+        remnawave-network:
+            name: remnawave-network
+            driver: bridge
+            external: true
+    ```
 </CodeGroup>
 
 ## Создание файла статической конфигурации
@@ -60,53 +58,52 @@ networks:
 Создайте файл статической конфигурации <Badge>traefik.yml</Badge> в директории <Badge>/opt/remnawave/traefik</Badge>:
 
 <CodeGroup>
-```bash Создание traefik.yml
-cd /opt/remnawave/traefik && nano traefik.yml
-```
+    ```bash Создание traefik.yml
+    cd /opt/remnawave/traefik && nano traefik.yml
+    ```
 </CodeGroup>
 
 Вставьте следующую конфигурацию.
 
 <Warning>
-  **Внимание**<br />
-  Замените REPLACE_WITH_YOUR_EMAIL на ваш адрес электронной почты.<br />
-  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+    Замените REPLACE_WITH_YOUR_EMAIL на ваш адрес электронной почты.
+    Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
 </Warning>
 
 <CodeGroup>
-```bash traefik.yml highlight={23}
-api:
-  dashboard: true
-  debug: true
-entryPoints:
-  http:
-    address: ":80"
+    ```bash traefik.yml highlight={23}
+    api:
+    dashboard: true
+    debug: true
+    entryPoints:
     http:
-      redirections:
-        entryPoint:
-          to: https
-          scheme: https
-  https:
-    address: ":443"
-serversTransport:
-  insecureSkipVerify: true
-providers:
-  file:
-    directory: /config
-    watch: true
-certificatesResolvers:
-  letsencrypt:
-    acme:
-      email: REPLACE_WITH_YOUR_EMAIL
-      storage: /letsencrypt/acme.json
-      httpChallenge:
-        entryPoint: http
-log:
-  level: "INFO"
-  filePath: "/var/log/traefik/traefik.log"
-accessLog:
-  filePath: "/var/log/traefik/access.log"
-```
+        address: ":80"
+        http:
+        redirections:
+            entryPoint:
+            to: https
+            scheme: https
+    https:
+        address: ":443"
+    serversTransport:
+    insecureSkipVerify: true
+    providers:
+    file:
+        directory: /config
+        watch: true
+    certificatesResolvers:
+    letsencrypt:
+        acme:
+        email: REPLACE_WITH_YOUR_EMAIL
+        storage: /letsencrypt/acme.json
+        httpChallenge:
+            entryPoint: http
+    log:
+    level: "INFO"
+    filePath: "/var/log/traefik/traefik.log"
+    accessLog:
+    filePath: "/var/log/traefik/access.log"
+    ```
 </CodeGroup>
 
 ## Создание файла динамической конфигурации
@@ -114,52 +111,51 @@ accessLog:
 Создайте файл <Badge>remnashop.yml</Badge> в директории <Badge>/opt/remnawave/traefik/config</Badge>:
 
 <CodeGroup>
-```bash Создание remnashop.yml
-mkdir -p /opt/remnawave/traefik/config && cd /opt/remnawave/traefik/config && nano remnashop.yml
-```
+    ```bash Создание remnashop.yml
+    mkdir -p /opt/remnawave/traefik/config && cd /opt/remnawave/traefik/config && nano remnashop.yml
+    ```
 </CodeGroup>
 
 Вставьте следующую конфигурацию.
 
 <Warning>
-  **Внимание**<br />
-  Замените REPLACE_WITH_YOUR_DOMAIN_BOT на ваше доменное имя.<br />
-  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+    Замените REPLACE_WITH_YOUR_DOMAIN_BOT на ваше доменное имя.
+    Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
 </Warning>
 
 <CodeGroup>
-```bash remnashop.yml highlight={4}
-http:
-  routers:
-    remnashop:
-      rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
-      entrypoints:
-        - https
-      tls:
-        certResolver: letsencrypt
-      service: remnashop
-  services:
-    remnashop:
-      loadBalancer:
-        servers:
-          - url: "http://remnashop:5000"
-```
+    ```bash remnashop.yml highlight={4}
+    http:
+    routers:
+        remnashop:
+        rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
+        entrypoints:
+            - https
+        tls:
+            certResolver: letsencrypt
+        service: remnashop
+    services:
+        remnashop:
+        loadBalancer:
+            servers:
+            - url: "http://remnashop:5000"
+    ```
 </CodeGroup>
 
 ## Запуск контейнера
 
 <CodeGroup>
-```bash Запуск контейнера
-docker compose up -d && docker compose logs -f -t
-```
+    ```bash Запуск контейнера
+    docker compose up -d && docker compose logs -f -t
+    ```
 </CodeGroup>
 
 Теперь перезапустите контейнеры Remnashop:
 
 <CodeGroup>
-```bash Перезапуск контейнеров Remnashop
-cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
-```
+    ```bash Перезапуск контейнеров Remnashop
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 ### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.

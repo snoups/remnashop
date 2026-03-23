@@ -6,13 +6,11 @@ description: "Простая конфигурация"
 В этом руководстве мы рассмотрим настройку обратного прокси Traefik.
 
 <Warning>
-  **Внимание**<br />
-  Установка на одном сервере означает, что вы установите Traefik на тот же сервер, что и панель Remnawave.
+    Установка на одном сервере означает, что вы установите Traefik на тот же сервер, что и панель Remnawave.
 </Warning>
 
 <Danger>
-  **Важно!**<br />
-  У вас уже должен быть установлен и настроен обратный прокси Traefik на сервере с панелью Remnawave и остальными компонентами.
+    У вас уже должен быть установлен и настроен обратный прокси Traefik на сервере с панелью Remnawave и остальными компонентами.
 </Danger>
 
 ## Подготовка нового файла динамической конфигурации
@@ -20,45 +18,44 @@ description: "Простая конфигурация"
 Если Traefik уже настроен, вам нужно создать новый файл динамической конфигурации <Badge>remnashop.yml</Badge> в директории <Badge>/opt/remnawave/traefik/config</Badge>:
 
 <CodeGroup>
-```bash Конфигурация Traefik
-cd /opt/remnawave/traefik/config && nano remnashop.yml
-```
+    ```bash Конфигурация Traefik
+    cd /opt/remnawave/traefik/config && nano remnashop.yml
+    ```
 </CodeGroup>
 
 Вставьте следующую конфигурацию.
 
 <Warning>
-  **Внимание**<br />
-  Замените REPLACE_WITH_YOUR_DOMAIN_BOT на ваше доменное имя.<br />
-  Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
+    Замените REPLACE_WITH_YOUR_DOMAIN_BOT на ваше доменное имя.
+    Ознакомьтесь с конфигурацией ниже и обратите внимание на выделенные строки.
 </Warning>
 
 <CodeGroup>
-```javascript remnashop.yml highlight={4}
-http:
-  routers:
-    remnashop:
-      rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
-      entrypoints:
-        - https
-      tls:
-        certResolver: letsencrypt
-      service: remnashop
+    ```javascript remnashop.yml highlight={4}
+    http:
+    routers:
+        remnashop:
+        rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
+        entrypoints:
+            - https
+        tls:
+            certResolver: letsencrypt
+        service: remnashop
 
-  services:
-    remnashop:
-      loadBalancer:
-        servers:
-          - url: "http://remnashop:5000"
-```
+    services:
+        remnashop:
+        loadBalancer:
+            servers:
+            - url: "http://remnashop:5000"
+    ```
 </CodeGroup>
 
 Теперь перезапустите контейнеры Remnashop:
 
 <CodeGroup>
-```bash Перезапуск контейнеров Remnashop
-cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
-```
+    ```bash Перезапуск контейнеров Remnashop
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
+    ```
 </CodeGroup>
 
 ### Если всё настроено правильно, Remnashop отправит уведомление об успешном запуске в Telegram.
