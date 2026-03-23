@@ -32,27 +32,6 @@
             {
               "group": "Реверс-прокси",
               "pages": [
-                {
-                  "group": "Caddy",
-                  "pages": [
-                    "docs/ru/reverse-proxies/caddy/bundled",
-                    "docs/ru/reverse-proxies/caddy/separate-server"
-                  ]
-                },
-                {
-                  "group": "Nginx",
-                  "pages": [
-                    "docs/ru/reverse-proxies/nginx/bundled",
-                    "docs/ru/reverse-proxies/nginx/separate-server"
-                  ]
-                },
-                {
-                  "group": "Traefik",
-                  "pages": [
-                    "docs/ru/reverse-proxies/traefik/bundled",
-                    "docs/ru/reverse-proxies/traefik/separate-server"
-                  ]
-                },
                 "docs/ru/install/reverse-proxies",
                 "docs/ru/reverse-proxies/traefik",
                 "docs/ru/reverse-proxies/nginx",
@@ -84,27 +63,6 @@
             {
               "group": "Reverse Proxy",
               "pages": [
-                {
-                  "group": "Caddy",
-                  "pages": [
-                    "docs/en/reverse-proxies/caddy/bundled",
-                    "docs/en/reverse-proxies/caddy/separate-server"
-                  ]
-                },
-                {
-                  "group": "Nginx",
-                  "pages": [
-                    "docs/en/reverse-proxies/nginx/bundled",
-                    "docs/en/reverse-proxies/nginx/separate-server"
-                  ]
-                },
-                {
-                  "group": "Traefik",
-                  "pages": [
-                    "docs/en/reverse-proxies/traefik/bundled",
-                    "docs/en/reverse-proxies/traefik/separate-server"
-                  ]
-                },
                 "docs/en/install/reverse-proxies",
                 "docs/en/reverse-proxies/caddy",
                 "docs/en/reverse-proxies/nginx",
