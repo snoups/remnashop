@@ -14,8 +14,7 @@ Banners should be placed at: `/opt/remnashop/assets/banners/(locale)/`
 Example: `/opt/remnashop/assets/banners/en/menu.gif`
 
 <Warning>
-    Do not delete the `default.jpg` file — it is required for the bot to work
-    properly.
+    Do not delete the `default.jpg` file — it is required for the bot to work properly.
 </Warning>
 
 ---
@@ -27,4 +26,11 @@ You can edit any translation file located at: `/opt/remnashop/assets/translation
 After making changes, restart the container for them to take effect.
 
 <CodeGroup>
-```bash Restart the container
+    ```bash Restart the container
+    cd /opt/remnashop && docker compose down && docker compose up -d
+    ```
+</CodeGroup>
+
+<Warning>
+    Translation persistence across bot updates is not currently supported. When updating, your previous assets will be archived at: `/opt/remnashop/assets/*.bak`
+</Warning>
