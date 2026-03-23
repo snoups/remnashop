@@ -13,6 +13,18 @@ from .commands.referral import (
     UpdateReferralRewardStrategy,
     UpdateReferralRewardType,
 )
+from .commands.backup import (
+    ToggleBackupEnabled,
+    ToggleBackupSendToChat,
+    UpdateBackupInterval,
+    UpdateBackupMaxFiles,
+)
+from .commands.backup import (
+    ToggleBackupEnabled,
+    ToggleBackupSendToChat,
+    UpdateBackupInterval,
+    UpdateBackupMaxFiles,
+)
 from .commands.requirements import (
     ToggleConditionRequirement,
     UpdateChannelRequirement,
@@ -34,4 +46,8 @@ SETTINGS_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     UpdateReferralRewardType,
     UpdateRulesRequirement,
     UpdateDefaultCurrency,
+    ToggleBackupEnabled,
+    ToggleBackupSendToChat,
+    UpdateBackupInterval,
+    UpdateBackupMaxFiles,
 )

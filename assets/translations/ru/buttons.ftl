@@ -19,7 +19,19 @@ btn-common =
     *[other] { unit-day }
     }
 
-btn-devices =
+btn-backup =
+    .toggle-enabled = { $enabled ->
+        [1] 🔴 Выключить автобэкап
+        *[0] 🟢 Включить автобэкап
+    }
+    .set-interval = ⏱ Интервал ({ $interval_hours }ч)
+    .set-max-files = 📁 Файлов ({ $max_files })
+    .toggle-send = { $send_to_chat ->
+        [1] 📨 Не отправлять в чат
+        *[0] 📩 Отправлять в чат
+    }
+    .backup-assets = 📦 Бэкап assets
+    .backup-db = 🗄 Бэкап базы данных
     .delete-all = 🗑 Удалить все устройства
     .reissue = 🔄 Перевыпустить подписку
     .confirm-delete = ✅ Да, удалить

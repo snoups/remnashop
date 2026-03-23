@@ -20,3 +20,4 @@ class Settings(BaseSql, TimestampMixin):
     notifications: Mapped[dict[str, Any]]
     referral: Mapped[dict[str, Any]]
     menu: Mapped[dict[str, Any]]
+    backup: Mapped[dict[str, Any]]

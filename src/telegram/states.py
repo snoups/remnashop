@@ -109,7 +109,12 @@ class DashboardRemnashop(StatesGroup):
     MAIN = State()
     ADMINS = State()
     ADVERTISING = State()
-    BACKUP = State()
+
+
+class RemnashopBackup(StatesGroup):
+    MAIN = State()
+    INTERVAL = State()
+    MAX_FILES = State()
 
 
 class RemnashopReferral(StatesGroup):
