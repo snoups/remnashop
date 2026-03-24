@@ -11,6 +11,12 @@
     You need to have a registered domain name to continue.
 </Tip>
 
+<Tip>
+    Reverse proxy should point to the bot container at the internal address `remnashop:5000` — this is the Docker service name from `docker-compose.yml`, accessible only within the container network.
+
+    Route: `https://your-domain/api/v1` → `http://remnashop:5000`
+</Tip>
+
 <Card
     title="📄️ Caddy"
     icon="text-align-start"
