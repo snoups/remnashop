@@ -6,7 +6,6 @@ from remnapy.enums.users import TrafficLimitStrategy
 from src.application.dto.message_payload import MessagePayloadDto
 from src.core.enums import MessageEffectId, ReferralRewardType, UserNotificationType
 from src.core.types import NotificationType
-from src.telegram.keyboards import get_buy_keyboard, get_renew_keyboard
 
 from .base import UserEvent
 
@@ -27,6 +26,8 @@ class SubscriptionLimitedEvent(UserEvent):
         return "event-subscription.limited"
 
     def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_buy_keyboard, get_renew_keyboard  # noqa: PLC0415
+
         keyboard = get_buy_keyboard() if self.is_trial else get_renew_keyboard()
 
         return MessagePayloadDto(
@@ -52,6 +53,8 @@ class SubscriptionExpiredEvent(UserEvent):
         return "event-subscription.expired"
 
     def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_buy_keyboard, get_renew_keyboard  # noqa: PLC0415
+
         keyboard = get_buy_keyboard() if self.is_trial else get_renew_keyboard()
 
         return MessagePayloadDto(
@@ -78,6 +81,8 @@ class SubscriptionExpiresEvent(UserEvent):
         return "event-subscription.expiring"
 
     def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_buy_keyboard, get_renew_keyboard  # noqa: PLC0415
+
         keyboard = get_buy_keyboard() if self.is_trial else get_renew_keyboard()
 
         return MessagePayloadDto(

@@ -35,19 +35,19 @@ services:
     <<: [*common, *logging, *env]
 
     environment:
-      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_USER=${DATABASE_USER:-remnashop}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_DB=${DATABASE_NAME:-remnashop}
       - TZ=UTC
 
     ports:
-      - 127.0.0.1:6767:${DATABASE_PORT:-5432}
+      - 127.0.0.1:5001:${DATABASE_PORT:-5432}
 
     volumes:
       - remnashop-db-data:/var/lib/postgresql/data
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${DATABASE_USER:-remnashop} -d $${DATABASE_NAME:-remnashop}"]
       interval: 3s
       timeout: 10s
       retries: 3
@@ -60,13 +60,19 @@ services:
     <<: [*common, *logging, *env]
 
     command: >
-      --requirepass ${REDIS_PASSWORD}
+      sh -c '
+      ARGS="--save \"\" --appendonly no --maxmemory-policy noeviction --loglevel warning";
+      if [ -n "$${REDIS_PASSWORD}" ]; then
+        exec valkey-server $${ARGS} --requirepass "$${REDIS_PASSWORD}";
+      else
+        exec valkey-server $${ARGS};
+      fi'
 
     volumes:
       - remnashop-redis-data:/data
 
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD-SHELL", "valkey-cli $${REDIS_PASSWORD:+-a \"$REDIS_PASSWORD\"} ping | grep PONG"]
       interval: 3s
       timeout: 10s
       retries: 3
