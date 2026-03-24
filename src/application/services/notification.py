@@ -90,7 +90,7 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self.notify_admins(event.as_payload(), roles=[Role.OWNER, Role.DEV])
+        await self._notify_system(event.as_payload(), roles=[Role.OWNER, Role.DEV])
 
     @on_event(UserEvent)
     async def on_user_event(self, event: UserEvent) -> None:
@@ -112,7 +112,7 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self.notify_admins(event.as_payload())
+        await self._notify_system(event.as_payload())
 
     @on_event(ErrorEvent)
     async def on_error_event(self, event: ErrorEvent) -> None:
@@ -135,10 +135,64 @@ class NotificationService(Notifier):
             filename=f"error_{event.event_id}.txt",
         )
 
-        await self.notify_admins(
+        await self._notify_system(
             event.as_payload(media, error_type, error_message),
             roles=[Role.OWNER, Role.DEV],
         )
+
+    async def _notify_system(
+        self,
+        payload: MessagePayloadDto,
+        roles: list[Role] = [Role.OWNER, Role.DEV, Role.ADMIN],
+    ) -> None:
+        """Route system notification: to group/topic if configured, else to admin personal chats."""
+        if self.config.bot.system_notify_topic_mode:
+            await self._send_to_topic(payload)
+        else:
+            await self.notify_admins(payload, roles=roles)
+
+    async def _send_to_topic(self, payload: MessagePayloadDto) -> None:
+        """Send a system notification to the configured group chat / topic."""
+        chat_id = self.config.bot.system_notify_chat_id
+        raw_thread_id = self.config.bot.system_notify_thread_id
+        # thread_id=1 is General topic — Telegram API rejects it, use None instead
+        thread_id = None if raw_thread_id == 1 else raw_thread_id
+
+        locale = self.config.default_locale
+        text = self._get_translated_text(
+            locale=locale,
+            i18n_key=payload.i18n_key,
+            i18n_kwargs=payload.i18n_kwargs,
+        )
+
+        try:
+            if payload.is_text:
+                await self.bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    message_thread_id=thread_id,
+                    disable_web_page_preview=True,
+                    disable_notification=payload.disable_notification,
+                )
+            elif payload.media:
+                method = self._get_media_method(payload)
+                if not method:
+                    logger.warning(f"Unknown media type for topic payload '{payload}'")
+                    return
+                media = self._build_media(payload.media)
+                await method(
+                    chat_id,
+                    media,
+                    caption=text,
+                    message_thread_id=thread_id,
+                    disable_notification=payload.disable_notification,
+                )
+            else:
+                logger.error("Topic payload must contain text or media")
+
+        except Exception as e:
+            logger.error(f"Failed to send system notification to topic {chat_id}/{thread_id}: {e}")
+            await self._send_topic_config_error(str(e))
 
     async def delete_notification(self, chat_id: int, message_id: int) -> None:
         try:
@@ -241,6 +295,30 @@ class NotificationService(Notifier):
         except Exception as e:
             logger.exception(f"Failed to send notification to '{user.telegram_id}': {e}")
             raise
+
+    async def _send_topic_config_error(self, reason: str) -> None:
+        """Fallback: notify owner in personal chat when topic delivery fails."""
+        chat_id = self.config.bot.system_notify_chat_id
+        raw_thread_id = self.config.bot.system_notify_thread_id
+        # thread_id=1 is General topic — Telegram API rejects it, use None instead
+        thread_id = None if raw_thread_id == 1 else raw_thread_id
+        target = f"chat_id={chat_id}" + (f", thread_id={thread_id}" if thread_id else "")
+        error_text = (
+            f"⚠️ <b>System notification delivery failed</b>\n\n"
+            f"<b>Target:</b> <code>{target}</code>\n"
+            f"<b>Reason:</b> <code>{reason[:300]}</code>\n\n"
+            f"Check <code>BOT_SYSTEM_NOTIFY_CHAT_ID</code> / "
+            f"<code>BOT_SYSTEM_NOTIFY_THREAD_ID</code> and make sure "
+            f"the bot is a member of the group with send-message permissions."
+        )
+        try:
+            await self.bot.send_message(
+                chat_id=self.config.bot.owner_id,
+                text=error_text,
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            logger.error(f"Failed to deliver topic config error to owner: {e}")
 
     def _get_media_method(self, payload: MessagePayloadDto) -> Optional[Callable[..., Any]]:
         if payload.is_photo:
