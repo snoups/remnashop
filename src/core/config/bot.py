@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Union
 
 from pydantic import SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
@@ -20,18 +20,6 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
     drop_pending_updates: bool = False
     setup_commands: bool = True
     use_banners: bool = True
-
-    # System notifications target.
-    # If system_notify_chat_id is set — system events are sent to that chat/group
-    # instead of owner/admin personal chats.
-    # system_notify_thread_id is optional: set it to route into a specific topic.
-    system_notify_chat_id: Optional[int] = None
-    system_notify_thread_id: Optional[int] = None
-
-    @property
-    def system_notify_topic_mode(self) -> bool:
-        """True when system notifications should be sent to a group/topic."""
-        return self.system_notify_chat_id is not None
 
     @property
     def webhook_path(self) -> str:

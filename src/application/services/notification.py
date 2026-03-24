@@ -29,6 +29,7 @@ from src.application.dto import (
     UserDto,
 )
 from src.application.dto.message_payload import MediaDescriptorDto
+from src.application.dto.settings import SystemNotifyRouteDto
 from src.application.events import ErrorEvent, SystemEvent
 from src.application.events.base import UserEvent
 from src.application.events.system import RemnashopWelcomeEvent
@@ -90,7 +91,7 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self._notify_system(event.as_payload(), roles=[Role.OWNER, Role.DEV])
+        await self._notify_system(event.as_payload(), roles=[Role.OWNER, Role.DEV], notification_type=event.notification_type)
 
     @on_event(UserEvent)
     async def on_user_event(self, event: UserEvent) -> None:
@@ -112,7 +113,7 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self._notify_system(event.as_payload())
+        await self._notify_system(event.as_payload(), notification_type=event.notification_type)
 
     @on_event(ErrorEvent)
     async def on_error_event(self, event: ErrorEvent) -> None:
@@ -138,25 +139,30 @@ class NotificationService(Notifier):
         await self._notify_system(
             event.as_payload(media, error_type, error_message),
             roles=[Role.OWNER, Role.DEV],
+            notification_type=event.notification_type,
         )
 
     async def _notify_system(
         self,
         payload: MessagePayloadDto,
         roles: list[Role] = [Role.OWNER, Role.DEV, Role.ADMIN],
+        notification_type: Optional[str] = None,
     ) -> None:
-        """Route system notification: to group/topic if configured, else to admin personal chats."""
-        if self.config.bot.system_notify_topic_mode:
-            await self._send_to_topic(payload)
+        """Route system notification: to group/topic if configured in settings, else to admin chats."""
+        route = None
+        if notification_type:
+            settings: SettingsDto = await self.settings_dao.get()
+            route = settings.notifications.get_route(notification_type)
+
+        if route:
+            await self._send_to_topic(payload, route)
         else:
             await self.notify_admins(payload, roles=roles)
 
-    async def _send_to_topic(self, payload: MessagePayloadDto) -> None:
+    async def _send_to_topic(self, payload: MessagePayloadDto, route: SystemNotifyRouteDto) -> None:
         """Send a system notification to the configured group chat / topic."""
-        chat_id = self.config.bot.system_notify_chat_id
-        raw_thread_id = self.config.bot.system_notify_thread_id
-        # thread_id=1 is General topic — Telegram API rejects it, use None instead
-        thread_id = None if raw_thread_id == 1 else raw_thread_id
+        chat_id = route.chat_id
+        thread_id = route.effective_thread_id
 
         locale = self.config.default_locale
         text = self._get_translated_text(
@@ -192,7 +198,7 @@ class NotificationService(Notifier):
 
         except Exception as e:
             logger.error(f"Failed to send system notification to topic {chat_id}/{thread_id}: {e}")
-            await self._send_topic_config_error(str(e))
+            await self._send_topic_config_error(chat_id, thread_id, str(e))
 
     async def delete_notification(self, chat_id: int, message_id: int) -> None:
         try:
@@ -296,19 +302,16 @@ class NotificationService(Notifier):
             logger.exception(f"Failed to send notification to '{user.telegram_id}': {e}")
             raise
 
-    async def _send_topic_config_error(self, reason: str) -> None:
+    async def _send_topic_config_error(
+        self, chat_id: Optional[int], thread_id: Optional[int], reason: str
+    ) -> None:
         """Fallback: notify owner in personal chat when topic delivery fails."""
-        chat_id = self.config.bot.system_notify_chat_id
-        raw_thread_id = self.config.bot.system_notify_thread_id
-        # thread_id=1 is General topic — Telegram API rejects it, use None instead
-        thread_id = None if raw_thread_id == 1 else raw_thread_id
         target = f"chat_id={chat_id}" + (f", thread_id={thread_id}" if thread_id else "")
         error_text = (
             f"⚠️ <b>System notification delivery failed</b>\n\n"
             f"<b>Target:</b> <code>{target}</code>\n"
             f"<b>Reason:</b> <code>{reason[:300]}</code>\n\n"
-            f"Check <code>BOT_SYSTEM_NOTIFY_CHAT_ID</code> / "
-            f"<code>BOT_SYSTEM_NOTIFY_THREAD_ID</code> and make sure "
+            f"Check the notification route in the dashboard and make sure "
             f"the bot is a member of the group with send-message permissions."
         )
         try:

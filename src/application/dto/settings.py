@@ -28,6 +28,19 @@ def get_default_notifications() -> dict[str, bool]:
 
 
 @dataclass(kw_only=True)
+class SystemNotifyRouteDto:
+    """Routing target for a specific system notification type."""
+
+    chat_id: int
+    thread_id: Optional[int] = None
+
+    @property
+    def effective_thread_id(self) -> Optional[int]:
+        """thread_id=1 is the General topic — treat as no-topic."""
+        return None if self.thread_id == 1 else self.thread_id
+
+
+@dataclass(kw_only=True)
 class AccessSettingsDto(TrackableMixin):
     mode: AccessMode = AccessMode.PUBLIC
     registration_allowed: bool = True
@@ -67,6 +80,7 @@ class RequirementSettingsDto(TrackableMixin):
 @dataclass(kw_only=True)
 class NotificationsSettingsDto(TrackableMixin):
     settings: dict[str, bool] = field(default_factory=get_default_notifications)
+    routes: dict[str, SystemNotifyRouteDto] = field(default_factory=dict)
 
     def is_enabled(self, ntf_type: NotificationType) -> bool:
         return self.settings.get(ntf_type, True)
@@ -75,6 +89,19 @@ class NotificationsSettingsDto(TrackableMixin):
         new_settings = self.settings.copy()
         new_settings[ntf_type] = not self.is_enabled(ntf_type)
         self.settings = new_settings
+
+    def get_route(self, ntf_type: NotificationType) -> Optional[SystemNotifyRouteDto]:
+        return self.routes.get(str(ntf_type))
+
+    def set_route(self, ntf_type: NotificationType, chat_id: int, thread_id: Optional[int]) -> None:
+        new_routes = self.routes.copy()
+        new_routes[str(ntf_type)] = SystemNotifyRouteDto(chat_id=chat_id, thread_id=thread_id)
+        self.routes = new_routes
+
+    def clear_route(self, ntf_type: NotificationType) -> None:
+        new_routes = self.routes.copy()
+        new_routes.pop(str(ntf_type), None)
+        self.routes = new_routes
 
     @property
     def system(self) -> list[tuple[str, bool]]:

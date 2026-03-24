@@ -4,7 +4,7 @@ from src.application.common import Interactor
 
 from .commands.access import ChangeAccessMode, TogglePayments, ToggleRegistration
 from .commands.currency import UpdateDefaultCurrency
-from .commands.notifications import ToggleNotification
+from .commands.notifications import ClearSystemNotifyRoute, ToggleNotification, UpdateSystemNotifyRoute
 from .commands.referral import (
     ToggleReferralSystem,
     UpdateReferralAccrualStrategy,
@@ -21,6 +21,7 @@ from .commands.requirements import (
 
 SETTINGS_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     ChangeAccessMode,
+    ClearSystemNotifyRoute,
     ToggleConditionRequirement,
     ToggleNotification,
     TogglePayments,
@@ -34,4 +35,5 @@ SETTINGS_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     UpdateReferralRewardType,
     UpdateRulesRequirement,
     UpdateDefaultCurrency,
+    UpdateSystemNotifyRoute,
 )
