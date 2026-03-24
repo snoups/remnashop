@@ -27,7 +27,7 @@ description: "Простая конфигурация"
     Вы можете использовать любой адрес электронной почты для выпуска сертификата, но рекомендуется использовать действующий.
 </Info>
 
-Замените <Badge>EMAIL</Badge> на ваш адрес электронной почты:
+Замените `EMAIL` на ваш адрес электронной почты:
 
 <CodeGroup>
     ```bash Установка acme.sh
@@ -45,7 +45,7 @@ description: "Простая конфигурация"
 
 ## Выпуск сертификата
 
-Замените <Badge>BOT_DOMAIN</Badge> на доменное имя, для которого нужно выпустить сертификат.
+Замените `BOT_DOMAIN` на доменное имя, для которого нужно выпустить сертификат.
 
 <Warning>
     Не используйте доменные зоны: .ru, .su, .рф. В настоящее время ZeroSSL не поддерживает эти зоны.
@@ -58,18 +58,18 @@ acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/pri
 </CodeGroup>
 
 <Info>
-    Убедитесь, что порт <Badge>8443</Badge> открыт на вашем сервере. Он необходим для выпуска сертификата.
+    Убедитесь, что порт `8443` открыт на вашем сервере. Он необходим для выпуска сертификата.
 </Info>
 
 <Frame>
     <img src="/images/issue-cert.webp" />
 </Frame>
 
-Это означает, что сертификат выпущен. <Badge>Acme.sh</Badge> будет автоматически обновлять сертификат каждые 60 дней — просто убедитесь, что порт 8443 открыт и не занят на вашем сервере.
+Это означает, что сертификат выпущен. `Acme.sh` будет автоматически обновлять сертификат каждые 60 дней — просто убедитесь, что порт 8443 открыт и не занят на вашем сервере.
 
 ## Настройка Nginx
 
-Создайте файл <Badge>nginx.conf</Badge> в директории <Badge>/opt/remnawave/nginx</Badge>:
+Создайте файл `nginx.conf` в директории `/opt/remnawave/nginx`:
 
 <CodeGroup>
     ```bash Создание nginx.conf
@@ -169,7 +169,7 @@ acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/pri
 
 ## Создание docker-compose.yml
 
-Создайте файл <Badge>docker-compose.yml</Badge> в директории <Badge>/opt/remnawave/nginx</Badge>:
+Создайте файл `docker-compose.yml` в директории `/opt/remnawave/nginx`:
 
 <CodeGroup>
     ```bash Создание docker-compose.yml

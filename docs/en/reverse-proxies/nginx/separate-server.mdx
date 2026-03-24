@@ -28,7 +28,7 @@ You need to issue an SSL certificate. The easiest way is to use [acme.sh](https:
     recommended to use a valid one.
 </Info>
 
-Replace <Badge>EMAIL</Badge> with your email address:
+Replace `EMAIL` with your email address:
 
 <CodeGroup>
     ```bash Install acme.sh curl https://get.acme.sh | sh -s email=EMAIL &&
@@ -46,7 +46,7 @@ Replace <Badge>EMAIL</Badge> with your email address:
 
 ## Issue a certificate
 
-Replace <Badge>BOT_DOMAIN</Badge> with the domain name you want to issue a certificate for.
+Replace `BOT_DOMAIN` with the domain name you want to issue a certificate for.
 
 <Warning>
     Do not use domain zones: .ru, .su, .рф. ZeroSSL does not currently support
@@ -61,7 +61,7 @@ Replace <Badge>BOT_DOMAIN</Badge> with the domain name you want to issue a certi
 </CodeGroup>
 
 <Info>
-    Make sure that port <Badge>8443</Badge> is open on your server. It is
+    Make sure that port `8443` is open on your server. It is
     required for certificate issuance.
 </Info>
 
@@ -69,11 +69,11 @@ Replace <Badge>BOT_DOMAIN</Badge> with the domain name you want to issue a certi
     <img src="/images/issue-cert.webp" />
 </Frame>
 
-This confirms that the certificate has been issued. <Badge>Acme.sh</Badge> will automatically renew the certificate every 60 days — just make sure that port 8443 is open and not in use on your server.
+This confirms that the certificate has been issued. `Acme.sh` will automatically renew the certificate every 60 days — just make sure that port 8443 is open and not in use on your server.
 
 ## Nginx configuration
 
-Create a <Badge>nginx.conf</Badge> file in the <Badge>/opt/remnawave/nginx</Badge> directory:
+Create a `nginx.conf` file in the `/opt/remnawave/nginx` directory:
 
 <CodeGroup>
     ```bash Create nginx.conf cd /opt/remnawave/nginx && nano nginx.conf
@@ -83,7 +83,7 @@ Create a <Badge>nginx.conf</Badge> file in the <Badge>/opt/remnawave/nginx</Badg
 Paste the following configuration.
 
 <Warning>
-    Replace <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN</Badge> with your
+    Replace <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN` with your
     domain name.
     
     Review the configuration below and pay attention to the highlighted lines.
@@ -177,7 +177,7 @@ Paste the following configuration.
 
 ## Create docker-compose.yml
 
-Create a <Badge>docker-compose.yml</Badge> file in the <Badge>/opt/remnawave/nginx</Badge> directory:
+Create a `docker-compose.yml` file in the `/opt/remnawave/nginx` directory:
 
 <CodeGroup>
     ```bash Create docker-compose.yml
