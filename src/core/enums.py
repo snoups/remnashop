@@ -278,22 +278,6 @@ class Command(Enum):
     HELP = BotCommand(command="help", description="command.help")
 
 
-# https://yookassa.ru/developers/payment-acceptance/receipts/54fz/yoomoney/parameters-values#vat-codes
-class YookassaVatCode(IntEnum):
-    VAT_CODE_01 = auto()  # Without VAT
-    VAT_CODE_02 = auto()  # VAT at 0% rate
-    VAT_CODE_03 = auto()  # VAT at 10% rate
-    VAT_CODE_04 = auto()  # VAT at 20% rate
-    VAT_CODE_05 = auto()  # VAT at calculated rate 10/110
-    VAT_CODE_06 = auto()  # VAT at calculated rate 20/120
-    VAT_CODE_07 = auto()  # VAT at 5% rate
-    VAT_CODE_08 = auto()  # VAT at 7% rate
-    VAT_CODE_09 = auto()  # VAT at calculated rate 5/105
-    VAT_CODE_10 = auto()  # VAT at calculated rate 7/107
-    VAT_CODE_11 = auto()  # VAT at 22% rate
-    VAT_CODE_12 = auto()  # VAT at calculated rate 22/122
-
-
 # https://docs.aiogram.dev/en/latest/api/types/update.html
 class MiddlewareEventType(StrEnum):
     AIOGD_UPDATE = auto()  # AIOGRAM DIALOGS

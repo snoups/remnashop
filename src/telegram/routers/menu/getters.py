@@ -5,10 +5,8 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
-from src.application.common import TranslatorRunner
-from src.application.common.dao import ReferralDao, SettingsDao
-from src.application.common.dao.subscription import SubscriptionDao
-from src.application.common.remnawave import Remnawave
+from src.application.common import Remnawave, TranslatorRunner
+from src.application.common.dao import ReferralDao, SettingsDao, SubscriptionDao
 from src.application.dto import UserDto
 from src.application.services import BotService
 from src.application.use_cases.misc.queries.menu import GetMenuData
@@ -76,6 +74,7 @@ async def menu_getter(
             {
                 "has_subscription": True,
                 "is_trial": subscription.is_trial,
+                "traffic_strategy": subscription.traffic_limit_strategy,
                 "status": subscription.current_status,
                 "subscription_type": subscription.limit_type,
                 "traffic_limit": i18n_format_traffic_limit(subscription.traffic_limit),
@@ -177,10 +176,7 @@ async def invite_getter(
 ) -> dict[str, Any]:
     settings = await settings_dao.get()
     referrals = await referral_dao.get_referrals_count(user.telegram_id)
-    payments = await referral_dao.get_total_rewards_amount(
-        user.telegram_id,
-        settings.referral.reward.type,
-    )
+    payments = await referral_dao.get_referrals_with_payment_count(user.telegram_id)
     referral_url = await bot_service.get_referral_url(user.referral_code)
     support_url = bot_service.get_support_url(text=i18n.get("message.withdraw-points"))
 

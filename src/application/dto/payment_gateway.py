@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import SecretStr
 
-from src.core.enums import Currency, PaymentGatewayType, YookassaVatCode
+from src.core.enums import Currency, PaymentGatewayType
 
 from .base import BaseDto, TrackableMixin
 
@@ -31,7 +31,6 @@ class PaymentGatewayDto(BaseDto, TrackableMixin):
             PaymentGatewayType.HELEKET,
             PaymentGatewayType.FREEKASSA,
             PaymentGatewayType.PAYMASTER,
-            PaymentGatewayType.PLATEGA,
         }
 
 
@@ -58,10 +57,10 @@ class GatewaySettingsDto(TrackableMixin):
 @dataclass(kw_only=True)
 class YookassaGatewaySettingsDto(GatewaySettingsDto):
     type: Literal[PaymentGatewayType.YOOKASSA] = PaymentGatewayType.YOOKASSA
-    shop_id: Optional[int] = None
+    shop_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     customer: Optional[str] = None
-    vat_code: Optional[YookassaVatCode] = None
+    vat_code: Optional[int] = None
 
 
 @dataclass(kw_only=True)

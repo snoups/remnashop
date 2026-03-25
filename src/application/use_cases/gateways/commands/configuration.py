@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from typing import Any
 
+from adaptix import Retort
 from loguru import logger
-from pydantic import SecretStr
 
 from src.application.common import Interactor
 from src.application.common.dao import PaymentGatewayDao
@@ -93,9 +92,10 @@ class UpdatePaymentGatewaySettingsDto:
 class UpdatePaymentGatewaySettings(Interactor[UpdatePaymentGatewaySettingsDto, None]):
     required_permission = Permission.REMNASHOP_GATEWAYS
 
-    def __init__(self, uow: UnitOfWork, gateway_dao: PaymentGatewayDao) -> None:
+    def __init__(self, uow: UnitOfWork, gateway_dao: PaymentGatewayDao, retort: Retort) -> None:
         self.uow = uow
         self.gateway_dao = gateway_dao
+        self.retort = retort
 
     async def _execute(self, actor: UserDto, data: UpdatePaymentGatewaySettingsDto) -> None:
         async with self.uow:
@@ -103,11 +103,17 @@ class UpdatePaymentGatewaySettings(Interactor[UpdatePaymentGatewaySettingsDto, N
 
             if not gateway or not gateway.settings:
                 raise GatewayNotConfiguredError(f"Gateway '{data.gateway_id}' is not configured")
-            try:
-                new_value: Any = data.value
-                if data.field_name in ["api_key", "secret_key"] and isinstance(new_value, str):
-                    new_value = SecretStr(new_value)
 
+            try:
+                settings_type = type(gateway.settings)
+                field_type = settings_type.__annotations__.get(data.field_name)
+
+                if not field_type:
+                    raise ValueError(
+                        f"Field '{data.field_name}' not found in {settings_type.__name__}"
+                    )
+
+                new_value = self.retort.load(data.value, field_type)
                 setattr(gateway.settings, data.field_name, new_value)
 
                 await self.gateway_dao.update(gateway)

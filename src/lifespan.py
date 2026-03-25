@@ -1,8 +1,8 @@
 import asyncio
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
-from aiogram import Bot, Dispatcher
+from aiogram import Dispatcher
 from aiogram.types import WebhookInfo
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
@@ -18,6 +18,7 @@ from src.application.events import (
 )
 from src.application.events.system import RemnashopWelcomeEvent
 from src.application.services import CommandService, WebhookService
+from src.application.services.bot import BotService
 from src.application.use_cases.gateways.commands.payment import CreateDefaultPaymentGateway
 from src.core.config import AppConfig
 from src.core.utils.i18n_helpers import i18n_format_seconds
@@ -38,12 +39,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     async with container(scope=Scope.REQUEST) as startup_container:
         config = await startup_container.get(AppConfig)
+        bot_service = await startup_container.get(BotService)
         settings_dao = await startup_container.get(SettingsDao)
         webhook_service = await startup_container.get(WebhookService)
         command_service = await startup_container.get(CommandService)
         remnawave_service = await startup_container.get(Remnawave)
         create_default_payment_gateway = await startup_container.get(CreateDefaultPaymentGateway)
 
+        if not await bot_service.is_inline_enabled():
+            logger.warning(
+                "Bot is not enabled for inline mode. "
+                "Please set BOT_INLINE_MODE to True for correct work of some features"
+            )
+
+        states = await bot_service.get_bot_states()
         await create_default_payment_gateway.system()
         settings = await settings_dao.get()
         allowed_updates = dispatcher.resolve_used_update_types()
@@ -60,10 +69,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await telegram_webhook_endpoint.startup()
 
-    bot = await container.get(Bot)
-    bot_info = await bot.get_me()
-    states: dict[Optional[bool], str] = {True: "Enabled", False: "Disabled", None: "Unknown"}
-
     logger.opt(colors=True).info(
         rf"""
     <cyan> _____                                _                 </>
@@ -79,9 +84,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         <green>Branch: {config.build.branch} ({config.build.tag})</>
         <green>Commit: {config.build.commit}</>
         <cyan>------------------------</>
-        Groups Mode  - {states[bot_info.can_join_groups]}
-        Privacy Mode - {states[not bot_info.can_read_all_group_messages]}
-        Inline Mode  - {states[bot_info.supports_inline_queries]}
+        Groups Mode  - {states["groups_mode"]}"
+        Privacy Mode - {states["privacy_mode"]}"
+        Inline Mode  - {states["inline_mode"]}"
         <cyan>------------------------</>
         <yellow>Bot in access mode: '{settings.access.mode}'</>
         <yellow>Payments allowed: '{settings.access.payments_allowed}'</>

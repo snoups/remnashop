@@ -12,11 +12,40 @@ class BotService:
         self.bot = bot
         self.config = config
         self._bot_username: Optional[str] = None
+        self._can_join_groups: Optional[bool] = None
+        self._can_read_all_group_messages: Optional[bool] = None
+        self._supports_inline: Optional[bool] = None
+
+    async def _update_bot_info(self) -> None:
+        if self._bot_username is None:
+            me = await self.bot.get_me()
+            self._bot_username = me.username
+            self._can_join_groups = me.can_join_groups
+            self._can_read_all_group_messages = me.can_read_all_group_messages
+            self._supports_inline = me.supports_inline_queries
 
     async def _get_bot_redirect_url(self) -> str:
-        if self._bot_username is None:
-            self._bot_username = (await self.bot.get_me()).username
+        await self._update_bot_info()
         return f"{T_ME}{self._bot_username}"
+
+    async def is_inline_enabled(self) -> bool:
+        await self._update_bot_info()
+        return self._supports_inline or False
+
+    async def get_bot_states(self) -> dict[str, str]:
+        bot_info = await self.bot.get_me()
+
+        status_map: dict[Optional[bool], str] = {
+            True: "Enabled",
+            False: "Disabled",
+            None: "Unknown",
+        }
+
+        return {
+            "groups_mode": status_map[bot_info.can_join_groups],
+            "privacy_mode": status_map[not bot_info.can_read_all_group_messages],
+            "inline_mode": status_map[bot_info.supports_inline_queries],
+        }
 
     async def get_my_name(self) -> str:
         result = await self.bot.get_my_name()

@@ -18,7 +18,7 @@ class DeleteUserDeviceDto:
 
 
 class DeleteUserDevice(Interactor[DeleteUserDeviceDto, bool]):
-    required_permission = Permission.USER_EDITOR
+    required_permission = Permission.PUBLIC
 
     def __init__(self, subscription_dao: SubscriptionDao, remnawave: Remnawave):
         self.subscription_dao = subscription_dao

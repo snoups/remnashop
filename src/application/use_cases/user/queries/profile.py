@@ -121,7 +121,7 @@ class GetUserProfileSubscription(Interactor[int, GetUserProfileSubscriptionResul
 
         if remna_user.external_squad_uuid:
             external_squad = await self.remnawave_sdk.external_squads.get_external_squad_by_uuid(
-                remna_user.external_squad_uuid
+                uuid=remna_user.external_squad_uuid
             )
 
         return GetUserProfileSubscriptionResultDto(

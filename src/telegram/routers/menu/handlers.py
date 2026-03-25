@@ -217,9 +217,10 @@ async def on_withdraw_points(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
-    i18n: FromDishka[TranslatorRunner],
+    notifier: FromDishka[Notifier],
 ) -> None:
-    await callback.answer(text=i18n.get("ntf-common.withdraw-points"), show_alert=True)
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    await notifier.notify_user(user=user, i18n_key="ntf-common.withdraw-points")
 
 
 @inject
