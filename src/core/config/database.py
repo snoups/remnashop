@@ -17,7 +17,7 @@ class DatabaseConfig(BaseConfig, env_prefix="DATABASE_"):
     pool_size: int = 30
     max_overflow: int = 30
     pool_timeout: int = 10
-    pool_recycle: int = 3600
+    pool_recycle: int = 1800
 
     @property
     def dsn(self) -> str:
