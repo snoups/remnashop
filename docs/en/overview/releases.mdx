@@ -9,31 +9,31 @@ description: "History of changes"
 
 Infrastructure:
 
-- update .env.example with detailed descriptions of all optional variables and documentation links
-- centralize bot state management (inline mode, privacy, group access) in BotService
-- implement startup inline mode check: the system now issues a warning if it is not enabled in BotFather
+- Update .env.example with detailed descriptions of all optional variables and documentation links
+- Centralize bot state management (inline mode, privacy, group access) in BotService
+- Implement startup inline mode check: the system now issues a warning if it is not enabled in BotFather
 
 Payments:
 
-- fix gateway configuration using Retort for dynamic type casting
-- adjust data types for Yookassa: shop_id changed to string, vat_code to integer
-- add "Copy webhook" button for the Platega payment system
+- Fix gateway configuration using Retort for dynamic type casting
+- Adjust data types for Yookassa: shop_id changed to string, vat_code to integer
+- Add "Copy webhook" button for the Platega payment system
 
 Referral System:
 
-- implement get_referrals_with_payment_count for accurate display of invited users' payment statistics
+- Implement get_referrals_with_payment_count for accurate display of invited users' payment statistics
 
 Users & Access:
 
-- change DeleteUserDevice permission to PUBLIC for correct profile operation
-- add localization for the subscription reset notification
-- migrate point withdrawal notification logic to the Notifier service
+- Change DeleteUserDevice permission to PUBLIC for correct profile operation
+- Add localization for the subscription reset notification
+- Migrate point withdrawal notification logic to the Notifier service
 
 Fixes:
 
-- fix critical errors in SDK and interactor calls (added missing keyword arguments)
-- optimize and simplify LocaleList validation
-- fix version display formatting in the main menu
+- Fix critical errors in SDK and interactor calls (added missing keyword arguments)
+- Optimize and simplify LocaleList validation
+- Fix version display formatting in the main menu
 
 ---
 
