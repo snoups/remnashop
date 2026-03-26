@@ -5,34 +5,59 @@ description: "History of changes"
 
 ---
 
+#### v0.7.2 (March 27, 2026)
+
+Bug Fixes:
+- Fixed currency serialization via `.value` in MulenPay, UrlPay, Wata, PayMaster, CryptoPay
+- Fixed amount formatting in MulenPay
+- Fixed subscription getter: null check for `raw_plan` before `retort.load`
+- Fixed `has_device_limit`: now accounts for `device_limit == 0` (devices button is shown when device limit is unlimited)
+- Fixed broadcast preview check for empty content
+- Fixed error middleware: handle `TelegramForbiddenError` and show unknown error notification
+- Fixed translation key for plan-based broadcast
+- Fixed duplicate update available notification
+- Fixed `UserFirstConnected` event translation key and added user redirect button
+- Fixed CryptoPay settings: removed redundant `secret_key` field
+- Fixed owner role assignment for user with `owner_id`
+- Fixed `SubscriptionExpiredAgo` event
+- Fixed subscription expiring soon events
+
+New:
+- Added deep link for redirecting to the `INVITE` dialog
+- Added URL validation in main menu extra buttons editor
+- Added current values display for access conditions in access mode dialog
+- Added back-to-plans button on payment method and confirm screens
+
+---
+
 #### 0.7.1 (March 25, 2026)
 
 Infrastructure:
 
-- Update .env.example with detailed descriptions of all optional variables and documentation links
-- Centralize bot state management (inline mode, privacy, group access) in BotService
+- Update `.env.example` with detailed descriptions of all optional variables and documentation links
+- Centralize bot state management (inline mode, privacy, group access) in `BotService`
 - Implement startup inline mode check: the system now issues a warning if it is not enabled in BotFather
 
 Payments:
 
-- Fix gateway configuration using Retort for dynamic type casting
-- Adjust data types for Yookassa: shop_id changed to string, vat_code to integer
+- Fix gateway configuration using `Retort` for dynamic type casting
+- Adjust data types for Yookassa: `shop_id` changed to string, `vat_code` to integer
 - Add "Copy webhook" button for the Platega payment system
 
 Referral System:
 
-- Implement get_referrals_with_payment_count for accurate display of invited users' payment statistics
+- Implement `get_referrals_with_payment_count` for accurate display of invited users' payment statistics
 
 Users & Access:
 
-- The permission to delete user devices (DeleteUserDevice) has been changed to PUBLIC to ensure proper functionality of the device management dialog
+- The permission to delete user devices (`DeleteUserDevice`) has been changed to `PUBLIC` to ensure proper functionality of the device management dialog
 - Add localization for the subscription reset notification
-- Migrate point withdrawal notification logic to the Notifier service
+- Migrate point withdrawal notification logic to the `Notifier` service
 
 Fixes:
 
 - Fix critical errors in SDK and interactor calls (added missing keyword arguments)
-- Optimize and simplify LocaleList validation
+- Optimize and simplify `LocaleList` validation
 - Fixed formatting of the Remnashop version display in the corresponding menu
 
 ---
