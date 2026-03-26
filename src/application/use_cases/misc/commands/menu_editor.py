@@ -8,7 +8,9 @@ from src.application.common.dao import SettingsDao
 from src.application.common.policy import Permission
 from src.application.common.uow import UnitOfWork
 from src.application.dto import MenuButtonDto, UserDto
+from src.core.constants import URL_PATTERN
 from src.core.enums import ButtonType
+from src.core.exceptions import MenuEditorInvalidPayloadError
 
 
 @dataclass(frozen=True)
@@ -51,7 +53,7 @@ class UpdateMenuButtonPayload(Interactor[UpdateMenuButtonPayloadDto, MenuButtonD
         button = data.button
         new_payload = data.input_payload.strip()
 
-        if button.type == ButtonType.URL:
+        if button.type in [ButtonType.URL, ButtonType.WEB_APP]:
             if not re.compile(r"^https://.*$").match(new_payload):
                 raise ValueError(f"Invalid URL format for payload '{new_payload}'")
 
@@ -74,6 +76,12 @@ class ConfirmMenuButtonChanges(Interactor[MenuButtonDto, None]):
         self.settings_dao = settings_dao
 
     async def _execute(self, actor: UserDto, button: MenuButtonDto) -> None:
+        if button.type in (ButtonType.URL, ButtonType.WEB_APP):
+            if button.payload and not URL_PATTERN.match(button.payload):
+                raise MenuEditorInvalidPayloadError(
+                    f"Invalid URL format for payload '{button.payload}'"
+                )
+
         settings = await self.settings_dao.get()
 
         async with self.uow:

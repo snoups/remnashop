@@ -29,18 +29,18 @@ from src.application.dto import (
 )
 from src.application.dto.payment_gateway import (
     CryptomusGatewaySettingsDto,
-    CryptopayGatewaySettingsDto,
+    CryptoPayGatewaySettingsDto,
     FreeKassaGatewaySettingsDto,
     HeleketGatewaySettingsDto,
     MulenPayGatewaySettingsDto,
     PayMasterGatewaySettingsDto,
     PaymentGatewayDto,
     PlategaGatewaySettingsDto,
-    RobokassaGatewaySettingsDto,
+    RoboKassaGatewaySettingsDto,
     UrlPayGatewaySettingsDto,
     WataGatewaySettingsDto,
-    YookassaGatewaySettingsDto,
-    YoomoneyGatewaySettingsDto,
+    YooKassaGatewaySettingsDto,
+    YooMoneyGatewaySettingsDto,
 )
 from src.application.events import UserPurchaseEvent
 from src.application.use_cases.gateways.queries.providers import GetPaymentGatewayInstance
@@ -76,16 +76,16 @@ class CreateDefaultPaymentGateway(Interactor[None, None]):
                 is_active = gateway_type == PaymentGatewayType.TELEGRAM_STARS
 
                 settings_map = {
-                    PaymentGatewayType.YOOKASSA: YookassaGatewaySettingsDto,
-                    PaymentGatewayType.YOOMONEY: YoomoneyGatewaySettingsDto,
+                    PaymentGatewayType.YOOKASSA: YooKassaGatewaySettingsDto,
+                    PaymentGatewayType.YOOMONEY: YooMoneyGatewaySettingsDto,
                     PaymentGatewayType.CRYPTOMUS: CryptomusGatewaySettingsDto,
                     PaymentGatewayType.HELEKET: HeleketGatewaySettingsDto,
-                    PaymentGatewayType.CRYPTOPAY: CryptopayGatewaySettingsDto,
+                    PaymentGatewayType.CRYPTOPAY: CryptoPayGatewaySettingsDto,
                     PaymentGatewayType.FREEKASSA: FreeKassaGatewaySettingsDto,
                     PaymentGatewayType.MULENPAY: MulenPayGatewaySettingsDto,
                     PaymentGatewayType.PAYMASTER: PayMasterGatewaySettingsDto,
                     PaymentGatewayType.PLATEGA: PlategaGatewaySettingsDto,
-                    PaymentGatewayType.ROBOKASSA: RobokassaGatewaySettingsDto,
+                    PaymentGatewayType.ROBOKASSA: RoboKassaGatewaySettingsDto,
                     PaymentGatewayType.URLPAY: UrlPayGatewaySettingsDto,
                     PaymentGatewayType.WATA: WataGatewaySettingsDto,
                 }

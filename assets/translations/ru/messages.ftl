@@ -311,11 +311,30 @@ msg-access-conditions =
 msg-access-rules =
     <b>✳️ Изменить ссылку на правила</b>
 
+    { $rules_url ->
+    [0] { space }
+    *[HAS]
+    <blockquote>
+    { $rules_url }
+    </blockquote>
+    }
+
     Введите ссылку (в формате https://telegram.org/tos).
 
 msg-access-channel =
     <b>❇️ Изменить ссылку на канал/группу</b>
 
+    { $channel_url ->
+    [0] { space }
+    *[HAS]
+    <blockquote>
+    { $channel_url } { $channel_id -> 
+        [0] { empty } 
+        *[HAS] (ID: { $channel_id }) 
+        }
+    </blockquote>
+    }
+    
     Если ваша группа не имеет @username, отправьте ID группы и ссылку-приглашение отдельными сообщениями.
     
     Если у вас публичный канал/группа, введите только @username.

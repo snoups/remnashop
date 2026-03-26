@@ -10,7 +10,7 @@ LOG_DIR: Final[Path] = BASE_DIR / "logs"
 
 DOMAIN_REGEX: Pattern[str] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
 TAG_REGEX: Pattern[str] = re.compile(r"^[A-Z0-9_]{1,16}$")
-URL_PATTERN: Pattern[str] = re.compile(r"^https?://.*$")
+URL_PATTERN: Pattern[str] = re.compile(r"^https://\S+$")
 USERNAME_PATTERN: Pattern[str] = re.compile(r"^@[a-zA-Z0-9_]{5,32}$")
 
 REPOSITORY: Final[str] = "https://github.com/snoups/remnashop"

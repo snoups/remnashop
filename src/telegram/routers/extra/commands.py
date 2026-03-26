@@ -32,7 +32,8 @@ async def on_paysupport_command(
         payload=MessagePayloadDto(
             i18n_key="ntf-command.paysupport",
             reply_markup=get_contact_support_keyboard(support_url),
-            delete_after=False,
+            disable_default_markup=False,
+            delete_after=None,
         ),
     )
 
@@ -53,7 +54,8 @@ async def on_rules_command(
         payload=MessagePayloadDto(
             i18n_key="ntf-command.rules",
             i18n_kwargs={"url": settings.requirements.rules_url},
-            delete_after=False,
+            disable_default_markup=False,
+            delete_after=None,
         ),
     )
 
@@ -75,6 +77,7 @@ async def on_help_command(
         payload=MessagePayloadDto(
             i18n_key="ntf-command.help",
             reply_markup=get_contact_support_keyboard(support_url),
-            delete_after=False,
+            disable_default_markup=False,
+            delete_after=None,
         ),
     )

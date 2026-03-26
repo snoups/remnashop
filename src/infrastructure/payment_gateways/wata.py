@@ -111,7 +111,7 @@ class WataGateway(BasePaymentGateway):
         return {
             "type": "OneTime",
             "amount": float(amount),
-            "currency": str(self.data.currency),
+            "currency": self.data.currency.value,
             "description": details,
             "orderId": order_id,
             "successRedirectUrl": redirect_url,

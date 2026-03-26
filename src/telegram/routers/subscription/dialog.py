@@ -173,6 +173,14 @@ payment_method = Window(
             when=~F["only_single_duration"],
         ),
     ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-subscription.back-plans"),
+            id=f"{PAYMENT_PREFIX}back_plans",
+            state=Subscription.PLANS,
+            when=~F["only_single_plan"],
+        ),
+    ),
     *back_main_menu_button,
     IgnoreUpdate(),
     state=Subscription.PAYMENT_METHOD,
@@ -209,6 +217,14 @@ confirm = Window(
             id=f"{PAYMENT_PREFIX}back_duration",
             state=Subscription.DURATION,
             when=F["only_single_gateway"] & ~F["only_single_duration"] | F["is_free"],
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-subscription.back-plans"),
+            id=f"{PAYMENT_PREFIX}back_plans",
+            state=Subscription.PLANS,
+            when=~F["only_single_plan"],
         ),
     ),
     *back_main_menu_button,

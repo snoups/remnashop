@@ -94,7 +94,7 @@ class PayMasterGateway(BasePaymentGateway):
             },
             "amount": {
                 "value": float(amount),
-                "currency": str(self.data.currency),
+                "currency": self.data.currency.value,
             },
             "protocol": {
                 "returnUrl": await self._get_bot_redirect_url(),

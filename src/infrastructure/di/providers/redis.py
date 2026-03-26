@@ -14,7 +14,7 @@ class RedisProvider(Provider):
     async def get_redis(self, config: AppConfig) -> AsyncGenerator[Redis, None]:
         logger.debug("Connecting to Redis")
         connection_pool = ConnectionPool.from_url(url=config.redis.dsn)
-        client = Redis(connection_pool=connection_pool)
+        client = Redis(connection_pool=connection_pool, decode_responses=True)
 
         try:
             await client.ping()  # type: ignore[misc]

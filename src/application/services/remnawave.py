@@ -8,8 +8,7 @@ from remnapy.models.webhook import HwidUserDeviceDto, NodeDto
 from src.application.common import EventPublisher
 from src.application.common.dao import SubscriptionDao, UserDao
 from src.application.common.uow import UnitOfWork
-from src.application.dto import UserDto
-from src.application.dto.subscription import SubscriptionDto
+from src.application.dto import SubscriptionDto, UserDto
 from src.application.events import (
     NodeConnectionLostEvent,
     NodeConnectionRestoredEvent,
@@ -22,12 +21,13 @@ from src.application.events import (
     UserFirstConnectionEvent,
 )
 from src.application.events.system import SubscriptionRevokedEvent
+from src.application.events.user import SubscriptionExpiredAgoEvent
 from src.application.use_cases.remnawave.commands.synchronization import (
     SyncRemnaUser,
     SyncRemnaUserDto,
 )
 from src.core.constants import DATETIME_FORMAT, IMPORTED_TAG
-from src.core.enums import SubscriptionStatus, UserNotificationType
+from src.core.enums import SubscriptionStatus
 from src.core.types import RemnaUserDto
 from src.core.utils.converters import country_code_to_flag
 from src.core.utils.i18n_helpers import (
@@ -98,10 +98,10 @@ class RemnaWebhookService:
 
         elif event == RemnaUserEvent.EXPIRED_24_HOURS_AGO:
             await self.event_bus.publish(
-                SubscriptionExpiredEvent(
-                    notification_type=UserNotificationType.EXPIRED_1_DAY_AGO,
+                SubscriptionExpiredAgoEvent(
                     user=user,
                     is_trial=current_subscription.is_trial,
+                    day=1,
                 )
             )
 

@@ -142,6 +142,9 @@ class GetAvailablePlanByCode(Interactor[str, Optional[PlanDto]]):
         return plan
 
     async def _check_availability(self, user: UserDto, plan: PlanDto) -> bool:
+        if plan.is_trial and not user.is_trial_available:
+            return False
+
         has_subscription = await self.user_dao.has_any_subscription(
             user.telegram_id,
             include_trial=False,

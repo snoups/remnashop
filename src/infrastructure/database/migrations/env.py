@@ -50,6 +50,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         process_revision_directives=process_revision_directives,
         crypt_key=app_config.crypt_key.get_secret_value(),
+        owner_id=app_config.bot.owner_id,
     )
 
     with context.begin_transaction():
@@ -62,6 +63,7 @@ def do_run_migrations(connection: Connection) -> None:
         target_metadata=target_metadata,
         process_revision_directives=process_revision_directives,
         crypt_key=app_config.crypt_key.get_secret_value(),
+        owner_id=app_config.bot.owner_id,
     )
 
     with context.begin_transaction():

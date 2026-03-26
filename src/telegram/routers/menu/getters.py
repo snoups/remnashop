@@ -84,7 +84,9 @@ async def menu_getter(
                     get_traffic_reset_delta(subscription.traffic_limit_strategy)
                 ),
                 "connectable": subscription.is_active,
-                "has_device_limit": subscription.has_devices_limit
+                "has_device_limit": (
+                    subscription.has_devices_limit or subscription.device_limit == 0
+                )
                 if subscription.is_active
                 else False,
                 "connection_url": config.bot.mini_app_url

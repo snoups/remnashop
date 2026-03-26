@@ -99,13 +99,13 @@ class UrlPayGateway(BasePaymentGateway):
 
     def _create_payment_payload(self, amount: str, details: str, order_uuid: str) -> dict[str, Any]:
         return {
-            "currency": self.data.currency,
+            "currency": self.data.currency.value,
             "amount": amount,
             "uuid": order_uuid,
             "shopId": self.data.settings.shop_id,  # type: ignore[union-attr]
             "description": details,
             "sign": self._generate_signature(
-                self.data.currency,
+                self.data.currency.value,
                 amount,
                 self.data.settings.shop_id,  # type: ignore[union-attr, arg-type]
             ),

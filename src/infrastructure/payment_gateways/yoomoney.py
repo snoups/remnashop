@@ -15,7 +15,7 @@ from src.application.dto import (
     PaymentGatewayDto,
     PaymentResultDto,
 )
-from src.application.dto.payment_gateway import YoomoneyGatewaySettingsDto
+from src.application.dto.payment_gateway import YooMoneyGatewaySettingsDto
 from src.core.config import AppConfig
 from src.core.enums import TransactionStatus
 
@@ -33,9 +33,9 @@ class YoomoneyGateway(BasePaymentGateway):
     def __init__(self, gateway: PaymentGatewayDto, bot: Bot, config: AppConfig) -> None:
         super().__init__(gateway, bot, config)
 
-        if not isinstance(self.data.settings, YoomoneyGatewaySettingsDto):
+        if not isinstance(self.data.settings, YooMoneyGatewaySettingsDto):
             raise TypeError(
-                f"Invalid settings type: expected {YoomoneyGatewaySettingsDto.__name__}, "
+                f"Invalid settings type: expected {YooMoneyGatewaySettingsDto.__name__}, "
                 f"got {type(self.data.settings).__name__}"
             )
 

@@ -38,3 +38,32 @@ async def conditions_getter(
         "rules": settings.requirements.rules_required,
         "channel": settings.requirements.channel_required,
     }
+
+
+@inject
+async def rules_getter(
+    dialog_manager: DialogManager,
+    settings_dao: FromDishka[SettingsDao],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    settings = await settings_dao.get()
+
+    return {
+        "rules_url": settings.requirements.rules_url,
+    }
+
+
+@inject
+async def channel_getter(
+    dialog_manager: DialogManager,
+    settings_dao: FromDishka[SettingsDao],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    settings = await settings_dao.get()
+
+    return {
+        "channel_url": settings.requirements.channel_url,
+        "channel_id": settings.requirements.channel_id or False
+        if not settings.requirements.channel_has_username
+        else False,
+    }

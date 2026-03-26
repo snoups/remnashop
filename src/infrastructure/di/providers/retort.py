@@ -30,17 +30,17 @@ from src.application.dto import (
 )
 from src.application.dto.payment_gateway import (
     CryptomusGatewaySettingsDto,
-    CryptopayGatewaySettingsDto,
+    CryptoPayGatewaySettingsDto,
     FreeKassaGatewaySettingsDto,
     HeleketGatewaySettingsDto,
     MulenPayGatewaySettingsDto,
     PayMasterGatewaySettingsDto,
     PlategaGatewaySettingsDto,
-    RobokassaGatewaySettingsDto,
+    RoboKassaGatewaySettingsDto,
     UrlPayGatewaySettingsDto,
     WataGatewaySettingsDto,
-    YookassaGatewaySettingsDto,
-    YoomoneyGatewaySettingsDto,
+    YooKassaGatewaySettingsDto,
+    YooMoneyGatewaySettingsDto,
 )
 from src.core.enums import MediaType, PaymentGatewayType, ReferralLevel, Role
 from src.core.types import AnyKeyboard
@@ -90,16 +90,16 @@ class RetortProvider(Provider):
     ) -> ConversionRetort:
         def get_settings_dto(pg_type: PaymentGatewayType, settings_dict: dict) -> Any:
             type_mapping = {
-                PaymentGatewayType.YOOKASSA: YookassaGatewaySettingsDto,
-                PaymentGatewayType.YOOMONEY: YoomoneyGatewaySettingsDto,
+                PaymentGatewayType.YOOKASSA: YooKassaGatewaySettingsDto,
+                PaymentGatewayType.YOOMONEY: YooMoneyGatewaySettingsDto,
                 PaymentGatewayType.CRYPTOMUS: CryptomusGatewaySettingsDto,
                 PaymentGatewayType.HELEKET: HeleketGatewaySettingsDto,
-                PaymentGatewayType.CRYPTOPAY: CryptopayGatewaySettingsDto,
+                PaymentGatewayType.CRYPTOPAY: CryptoPayGatewaySettingsDto,
                 PaymentGatewayType.FREEKASSA: FreeKassaGatewaySettingsDto,
                 PaymentGatewayType.MULENPAY: MulenPayGatewaySettingsDto,
                 PaymentGatewayType.PAYMASTER: PayMasterGatewaySettingsDto,
                 PaymentGatewayType.PLATEGA: PlategaGatewaySettingsDto,
-                PaymentGatewayType.ROBOKASSA: RobokassaGatewaySettingsDto,
+                PaymentGatewayType.ROBOKASSA: RoboKassaGatewaySettingsDto,
                 PaymentGatewayType.URLPAY: UrlPayGatewaySettingsDto,
                 PaymentGatewayType.WATA: WataGatewaySettingsDto,
             }
@@ -139,16 +139,16 @@ class RetortProvider(Provider):
                 *[
                     coercer(dict, dto_class, retort.get_loader(dto_class))
                     for dto_class in [
-                        YookassaGatewaySettingsDto,
-                        YoomoneyGatewaySettingsDto,
+                        YooKassaGatewaySettingsDto,
+                        YooMoneyGatewaySettingsDto,
                         CryptomusGatewaySettingsDto,
                         HeleketGatewaySettingsDto,
-                        CryptopayGatewaySettingsDto,
+                        CryptoPayGatewaySettingsDto,
                         FreeKassaGatewaySettingsDto,
                         MulenPayGatewaySettingsDto,
                         PayMasterGatewaySettingsDto,
                         PlategaGatewaySettingsDto,
-                        RobokassaGatewaySettingsDto,
+                        RoboKassaGatewaySettingsDto,
                         UrlPayGatewaySettingsDto,
                         WataGatewaySettingsDto,
                     ]

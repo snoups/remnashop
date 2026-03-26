@@ -8,7 +8,7 @@ from src.telegram.keyboards import main_menu_button
 from src.telegram.states import Dashboard, DashboardAccess
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
-from .getters import access_getter, conditions_getter
+from .getters import access_getter, channel_getter, conditions_getter, rules_getter
 from .handlers import (
     on_access_mode_select,
     on_channel_input,
@@ -115,6 +115,7 @@ rules = Window(
     MessageInput(func=on_rules_input),
     IgnoreUpdate(),
     state=DashboardAccess.RULES,
+    getter=rules_getter,
 )
 
 channel = Window(
@@ -130,6 +131,7 @@ channel = Window(
     MessageInput(func=on_channel_input),
     IgnoreUpdate(),
     state=DashboardAccess.CHANNEL,
+    getter=channel_getter,
 )
 
 router = Dialog(

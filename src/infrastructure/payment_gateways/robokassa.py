@@ -12,7 +12,7 @@ from fastapi.responses import PlainTextResponse
 from loguru import logger
 
 from src.application.dto import PaymentGatewayDto, PaymentResultDto
-from src.application.dto.payment_gateway import RobokassaGatewaySettingsDto
+from src.application.dto.payment_gateway import RoboKassaGatewaySettingsDto
 from src.core.config import AppConfig
 from src.core.enums import TransactionStatus
 
@@ -28,9 +28,9 @@ class RobokassaGateway(BasePaymentGateway):
     def __init__(self, gateway: PaymentGatewayDto, bot: Bot, config: AppConfig) -> None:
         super().__init__(gateway, bot, config)
 
-        if not isinstance(self.data.settings, RobokassaGatewaySettingsDto):
+        if not isinstance(self.data.settings, RoboKassaGatewaySettingsDto):
             raise TypeError(
-                f"Invalid settings type: expected {RobokassaGatewaySettingsDto.__name__}, "
+                f"Invalid settings type: expected {RoboKassaGatewaySettingsDto.__name__}, "
                 f"got {type(self.data.settings).__name__}"
             )
 

@@ -22,13 +22,13 @@ from loguru import logger
 from src.application.common import Notifier, TranslatorHub
 from src.application.common.dao import SettingsDao, UserDao
 from src.application.dto import (
+    MediaDescriptorDto,
     MessagePayloadDto,
     NotificationTaskDto,
     SettingsDto,
     TempUserDto,
     UserDto,
 )
-from src.application.dto.message_payload import MediaDescriptorDto
 from src.application.events import ErrorEvent, SystemEvent
 from src.application.events.base import UserEvent
 from src.application.events.system import RemnashopWelcomeEvent

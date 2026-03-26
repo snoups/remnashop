@@ -9,7 +9,7 @@ from remnapy.exceptions import BadRequestError
 from remnapy.models import CreateUserRequestDto, UserResponseDto
 
 from src.application.common.dao import SubscriptionDao, UserDao
-from src.application.dto.user import UserDto
+from src.application.dto import UserDto
 from src.application.use_cases.importer.dto import ExportedUserDto
 from src.application.use_cases.remnawave.commands.synchronization import (
     SyncRemnaUser,

@@ -280,6 +280,7 @@ async def on_plan_select(
         await on_duration_select(callback, widget, dialog_manager, plan.durations[0].days)  # type:ignore[no-untyped-call]
         return
 
+    dialog_manager.dialog_data["only_single_duration"] = False
     await dialog_manager.switch_to(state=Subscription.DURATION)
 
 

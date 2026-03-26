@@ -2,8 +2,7 @@ from typing import Optional, Protocol, Union, runtime_checkable
 
 from aiogram.types import Message
 
-from src.application.dto import MessagePayloadDto, UserDto
-from src.application.dto.user import TempUserDto
+from src.application.dto import MessagePayloadDto, TempUserDto, UserDto
 from src.core.enums import Role
 
 

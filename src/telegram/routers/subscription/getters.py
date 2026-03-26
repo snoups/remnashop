@@ -113,11 +113,11 @@ async def duration_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
-    plan = retort.load(raw_plan, PlanDto)
 
-    if not plan:
+    if not raw_plan:
         raise ValueError("PlanDto not found in dialog data")
 
+    plan = retort.load(raw_plan, PlanDto)
     settings = await settings_dao.get()
     currency = settings.default_currency
     only_single_plan = dialog_manager.dialog_data.get("only_single_plan", False)
@@ -161,11 +161,11 @@ async def payment_method_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
-    plan = retort.load(raw_plan, PlanDto)
 
-    if not plan:
+    if not raw_plan:
         raise ValueError("PlanDto not found in dialog data")
 
+    plan = retort.load(raw_plan, PlanDto)
     gateways = await payment_gateway_dao.get_active()
     selected_duration = dialog_manager.dialog_data["selected_duration"]
     only_single_duration = dialog_manager.dialog_data.get("only_single_duration", False)
@@ -209,11 +209,11 @@ async def confirm_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
-    plan = retort.load(raw_plan, PlanDto)
 
-    if not plan:
+    if not raw_plan:
         raise ValueError("PlanDto not found in dialog data")
 
+    plan = retort.load(raw_plan, PlanDto)
     selected_duration = dialog_manager.dialog_data["selected_duration"]
     only_single_duration = dialog_manager.dialog_data.get("only_single_duration", False)
     is_free = dialog_manager.dialog_data.get("is_free", False)

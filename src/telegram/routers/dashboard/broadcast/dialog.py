@@ -180,7 +180,7 @@ plan = Window(
     Column(
         Select(
             text=I18nFormat(
-                "btn-plan",
+                "btn-broadcast.plan-title",
                 name=F["item"]["name"],
                 is_active=F["item"]["is_active"],
             ),

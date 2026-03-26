@@ -46,7 +46,7 @@ class MulenPayGateway(BasePaymentGateway):
 
     async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
         order_uuid = str(uuid.uuid4())
-        payload = self._create_payment_payload(str(amount), details, order_uuid)
+        payload = self._create_payment_payload(amount, details, order_uuid)
         logger.debug(f"Creating payment payload: {payload}")
 
         try:
@@ -97,23 +97,29 @@ class MulenPayGateway(BasePaymentGateway):
 
         return payment_id, transaction_status
 
-    def _create_payment_payload(self, amount: str, details: str, order_uuid: str) -> dict[str, Any]:
+    def _create_payment_payload(
+        self,
+        amount: Decimal,
+        details: str,
+        order_uuid: str,
+    ) -> dict[str, Any]:
+        price = str(amount.quantize(Decimal("0.01")))
         return {
-            "currency": self.data.currency,
-            "amount": amount,
+            "currency": self.data.currency.value.lower(),
+            "amount": price,
             "uuid": order_uuid,
             "shopId": self.data.settings.shop_id,  # type: ignore[union-attr]
             "description": details,
             "sign": self._generate_signature(
-                self.data.currency,
-                amount,
+                self.data.currency.value.lower(),
+                price,
                 self.data.settings.shop_id,  # type: ignore[union-attr, arg-type]
             ),
             "items": [
                 {
                     "description": details,
                     "quantity": 1,
-                    "price": float(amount),
+                    "price": price,
                     "vat_code": self.data.settings.vat_code,  # type: ignore[union-attr]
                     "payment_subject": self.DEFAULT_PAYMENT_SUBJECT,
                     "payment_mode": self.DEFAULT_PAYMENT_MODE,

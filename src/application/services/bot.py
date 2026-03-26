@@ -59,7 +59,7 @@ class BotService:
         base_url = await self._get_bot_redirect_url()
         return f"{base_url}{DEEPLINK_PREFIX}{PLAN_PREFIX}{public_code}"
 
-    def get_support_url(self, text: Optional[str]) -> str:
+    def get_support_url(self, text: Optional[str] = None) -> str:
         base_url = f"{T_ME}{self.config.bot.support_username.get_secret_value()}"
         encoded_text = quote(text or "")
         return f"{base_url}?text={encoded_text}"

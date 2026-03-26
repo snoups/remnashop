@@ -55,7 +55,7 @@ class GatewaySettingsDto(TrackableMixin):
 
 
 @dataclass(kw_only=True)
-class YookassaGatewaySettingsDto(GatewaySettingsDto):
+class YooKassaGatewaySettingsDto(GatewaySettingsDto):
     type: Literal[PaymentGatewayType.YOOKASSA] = PaymentGatewayType.YOOKASSA
     shop_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
@@ -64,7 +64,7 @@ class YookassaGatewaySettingsDto(GatewaySettingsDto):
 
 
 @dataclass(kw_only=True)
-class YoomoneyGatewaySettingsDto(GatewaySettingsDto):
+class YooMoneyGatewaySettingsDto(GatewaySettingsDto):
     type: Literal[PaymentGatewayType.YOOMONEY] = PaymentGatewayType.YOOMONEY
     wallet_id: Optional[str] = None
     secret_key: Optional[SecretStr] = None
@@ -85,11 +85,10 @@ class HeleketGatewaySettingsDto(GatewaySettingsDto):
 
 
 @dataclass(kw_only=True)
-class CryptopayGatewaySettingsDto(GatewaySettingsDto):
+class CryptoPayGatewaySettingsDto(GatewaySettingsDto):
     type: Literal[PaymentGatewayType.CRYPTOPAY] = PaymentGatewayType.CRYPTOPAY
     shop_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
-    secret_key: Optional[SecretStr] = None
 
 
 @dataclass(kw_only=True)
@@ -128,7 +127,7 @@ class PlategaGatewaySettingsDto(GatewaySettingsDto):
 
 
 @dataclass(kw_only=True)
-class RobokassaGatewaySettingsDto(GatewaySettingsDto):
+class RoboKassaGatewaySettingsDto(GatewaySettingsDto):
     type: Literal[PaymentGatewayType.ROBOKASSA] = PaymentGatewayType.ROBOKASSA
     merchant_login: Optional[str] = None
     password1: Optional[SecretStr] = None
@@ -151,16 +150,16 @@ class WataGatewaySettingsDto(GatewaySettingsDto):
 
 
 AnyGatewaySettingsDto = Union[
-    YookassaGatewaySettingsDto,
-    YoomoneyGatewaySettingsDto,
+    YooKassaGatewaySettingsDto,
+    YooMoneyGatewaySettingsDto,
     CryptomusGatewaySettingsDto,
     HeleketGatewaySettingsDto,
-    CryptopayGatewaySettingsDto,
+    CryptoPayGatewaySettingsDto,
     FreeKassaGatewaySettingsDto,
     MulenPayGatewaySettingsDto,
     PayMasterGatewaySettingsDto,
     PlategaGatewaySettingsDto,
-    RobokassaGatewaySettingsDto,
+    RoboKassaGatewaySettingsDto,
     UrlPayGatewaySettingsDto,
     WataGatewaySettingsDto,
 ]

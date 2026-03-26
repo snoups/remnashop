@@ -178,6 +178,11 @@ btn-broadcast =
     .viewing = 👀 Просмотр
     .cancel = ⛔ Остановить рассылку
     .delete = ❌ Удалить отправленное
+
+    .plan-title = { $is_active ->
+    [1] 🟢
+    *[0] 🔴 
+    } { $name }
     
     .button-choice = { $selected ->
     [1] 🔘

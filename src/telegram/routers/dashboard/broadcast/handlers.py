@@ -248,7 +248,7 @@ async def on_preview(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     payload = dialog_manager.dialog_data.get("payload")
 
-    if not payload:
+    if not payload or not payload["i18n_kwargs"].get("content") and not payload.get("media"):
         await notifier.notify_user(user, i18n_key="ntf-broadcast.content-empty")
         return
 

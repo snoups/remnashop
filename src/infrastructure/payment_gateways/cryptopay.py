@@ -12,7 +12,7 @@ from httpx import AsyncClient, HTTPStatusError
 from loguru import logger
 
 from src.application.dto import PaymentGatewayDto, PaymentResultDto
-from src.application.dto.payment_gateway import CryptopayGatewaySettingsDto
+from src.application.dto.payment_gateway import CryptoPayGatewaySettingsDto
 from src.core.config import AppConfig
 from src.core.enums import TransactionStatus
 
@@ -28,9 +28,9 @@ class CryptoPayGateway(BasePaymentGateway):
     def __init__(self, gateway: PaymentGatewayDto, bot: Bot, config: AppConfig) -> None:
         super().__init__(gateway, bot, config)
 
-        if not isinstance(self.data.settings, CryptopayGatewaySettingsDto):
+        if not isinstance(self.data.settings, CryptoPayGatewaySettingsDto):
             raise TypeError(
-                f"Invalid settings type: expected {CryptopayGatewaySettingsDto.__name__}, "
+                f"Invalid settings type: expected {CryptoPayGatewaySettingsDto.__name__}, "
                 f"got {type(self.data.settings).__name__}"
             )
 
@@ -102,7 +102,7 @@ class CryptoPayGateway(BasePaymentGateway):
         order_id = str(uuid.uuid4())
         return {
             "currency_type": "fiat",
-            "fiat": str(self.data.currency),
+            "fiat": self.data.currency.value,
             "amount": amount,
             "description": details,
             "payload": order_id,

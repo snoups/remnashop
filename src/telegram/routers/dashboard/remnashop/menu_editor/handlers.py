@@ -18,6 +18,7 @@ from src.application.use_cases.misc.commands.menu_editor import (
 )
 from src.core.constants import USER_KEY
 from src.core.enums import ButtonType, Role
+from src.core.exceptions import MenuEditorInvalidPayloadError
 from src.telegram.states import RemnashopMenuEditor
 
 
@@ -173,8 +174,12 @@ async def on_confirm(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     button = dialog_manager.dialog_data["button"]
     button = retort.load(button, MenuButtonDto)
-    logger.success(button)
-    await confirm_menu_button_changes(user, button)
+
+    try:
+        await confirm_menu_button_changes(user, button)
+    except MenuEditorInvalidPayloadError:
+        await notifier.notify_user(user, i18n_key="ntf-menu-editor.invalid-payload")
+
     await notifier.notify_user(user, i18n_key="ntf-menu-editor.button-saved")
     await dialog_manager.reset_stack()
     await dialog_manager.start(state=RemnashopMenuEditor.MAIN)
