@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Annotated, Any, List, NewType, TypeAlias, Union
+from typing import TYPE_CHECKING, Annotated, NewType, TypeAlias, Union
 
 from aiogram.types import (
     ForceReply,
@@ -34,21 +34,9 @@ RemnaUserDto: TypeAlias = Union[UserWebhookDto, UserResponseDto]
 StringList: TypeAlias = Annotated[
     ListStr, PlainValidator(lambda x: [s.strip() for s in x.split(",")])
 ]
-
-
-def _validate_locale_list(x: Any) -> List[Locale]:
-    if isinstance(x, list):
-        return [v if isinstance(v, Locale) else Locale(str(v).strip()) for v in x]
-
-    if isinstance(x, str):
-        if not x.strip():
-            return []
-        return [Locale(loc.strip()) for loc in x.split(",")]
-
-    raise ValueError(f"Expected list or str, got {type(x)}")
-
-
 LocaleList: TypeAlias = Annotated[
-    List[Locale],
-    PlainValidator(_validate_locale_list),
+    ListLocale,
+    PlainValidator(
+        func=lambda x: [Locale(loc.strip()) for loc in x.split(",")] if isinstance(x, str) else x
+    ),
 ]

@@ -294,3 +294,17 @@ class ReferralDaoImpl(ReferralDao):
             "reward_points": int(rewards_row["reward_points"] or 0),
             "reward_days": int(rewards_row["reward_days"] or 0),
         }
+
+    async def get_referrals_with_payment_count(self, telegram_id: int) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(ReferralReward)
+            .where(
+                ReferralReward.user_telegram_id == telegram_id,
+                ReferralReward.is_issued.is_(True),
+            )
+        )
+        count = await self.session.scalar(stmt) or 0
+
+        logger.debug(f"User '{telegram_id}' has '{count}' payments from referrals")
+        return int(count)

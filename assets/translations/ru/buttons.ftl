@@ -345,6 +345,7 @@ btn-notifications =
     [NODE_TRAFFIC_REACHED] Трафик узла
     [USER_FIRST_CONNECTION] Первое подключение
     [USER_DEVICES_UPDATED] Устройства пользователя
+    [USER_REVOKED_SUBSCRIPTION] Сброс подписки
     *[OTHER] { $type }
     }
 

@@ -77,6 +77,7 @@ class RetortProvider(Provider):
                     SecretStr, lambda v: v.get_secret_value() if isinstance(v, SecretStr) else v
                 ),
             ],
+            strict_coercion=False,
         )
 
         return retort

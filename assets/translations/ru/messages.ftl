@@ -748,7 +748,7 @@ msg-remnawave-inbounds =
 # RemnaShop
 msg-remnashop-main = <b>🛍 RemnaShop { $version ->
 [0] { space }
-*[HAS] v{ $version }
+*[HAS] { $version }
 }</b>
 
 msg-admins-main = <b>👮‍♂️ Администраторы</b>

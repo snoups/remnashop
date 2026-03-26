@@ -477,7 +477,9 @@ async def on_plan_select(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     logger.info(f"{user.log} Selected plan '{selected_plan_id}'")
     target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
-    await toggle_access(user, ToggleUserPlanAccessDto(target_telegram_id, selected_plan_id))
+    await toggle_access(
+        user, ToggleUserPlanAccessDto(plan_id=selected_plan_id, telegram_id=target_telegram_id)
+    )
 
 
 @inject
