@@ -87,7 +87,7 @@ class SubscriptionExpiresEvent(UserEvent):
 
         return MessagePayloadDto(
             i18n_key=self.event_key,
-            i18n_kwargs={**asdict(self)},
+            i18n_kwargs={**asdict(self), "value": self.day},
             reply_markup=keyboard,
             disable_default_markup=False,
             delete_after=None,
