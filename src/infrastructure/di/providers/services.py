@@ -43,10 +43,12 @@ class ServicesProvider(Provider):
 
     remnawave = provide(source=RemnawaveImpl, provides=Remnawave)
     remna_webhook = provide(source=RemnaWebhookService, scope=Scope.REQUEST)
-
-    topic_notification_config = provide(source=TopicNotificationConfig.get)
-    topic_notification_module = provide(source=TopicNotificationModule, scope=Scope.REQUEST)
-
+    
+    # подключения модуля топиков
+    topic_config = provide(source=TopicNotificationConfig.get)
+    topic_module = provide(source=TopicNotificationModule, scope=Scope.REQUEST)
+    # подключения модуля топиков
+    
     notification_queue = provide(source=NotificationQueue)
     notification = provide(
         NotificationService,

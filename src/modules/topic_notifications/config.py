@@ -6,11 +6,10 @@ from pydantic import model_validator
 from src.core.config.base import BaseConfig
 
 
-class TopicNotificationConfig(BaseConfig, env_prefix="TOPIC_NOTIFIER_"):
-    enabled: bool = False
-    chat_id: Optional[int] = None
-    default_thread_id: Optional[int] = None
-    suppress_admin_dms: bool = True
+class TopicNotificationConfig(BaseConfig, env_prefix="TELEGRAM_TOPICS_"):
+    mode: int = 0
+    group_id: Optional[int] = None
+    default_topic_id: Optional[int] = None
     routes: str = ""
 
     @classmethod
@@ -19,14 +18,16 @@ class TopicNotificationConfig(BaseConfig, env_prefix="TOPIC_NOTIFIER_"):
 
     @property
     def is_configured(self) -> bool:
-        return self.enabled and self.chat_id is not None
+        return self.mode in (1, 2) and self.group_id is not None
 
     @cached_property
     def route_map(self) -> dict[str, int]:
+        # Один раз разбираем строку маршрутов из .env в словарь.
+        # Дальше по этому словарю быстро ищется topic id для каждого события.
         if not self.routes.strip():
             return {}
 
-        parsed: dict[str, int] = {}
+        route_map: dict[str, int] = {}
         for chunk in self.routes.split(","):
             item = chunk.strip()
             if not item:
@@ -35,29 +36,36 @@ class TopicNotificationConfig(BaseConfig, env_prefix="TOPIC_NOTIFIER_"):
             key, sep, value = item.partition(":")
             if sep != ":":
                 raise ValueError(
-                    "TOPIC_NOTIFIER_ROUTES must use 'KEY:THREAD_ID' pairs separated by commas"
+                    "TELEGRAM_TOPICS_ROUTES must use 'KEY:TOPIC_ID' pairs separated by commas"
                 )
 
             normalized_key = key.strip().upper()
             if not normalized_key:
-                raise ValueError("TOPIC_NOTIFIER_ROUTES contains an empty route key")
+                raise ValueError("TELEGRAM_TOPICS_ROUTES contains an empty route key")
 
             try:
-                parsed[normalized_key] = int(value.strip())
+                route_map[normalized_key] = int(value.strip())
             except ValueError as exc:
                 raise ValueError(
-                    f"TOPIC_NOTIFIER_ROUTES contains invalid thread id for key '{normalized_key}'"
+                    f"TELEGRAM_TOPICS_ROUTES contains invalid topic id for key '{normalized_key}'"
                 ) from exc
 
-        return parsed
+        return route_map
 
     @model_validator(mode="after")
     def validate_enabled_settings(self) -> "TopicNotificationConfig":
-        if not self.enabled:
+        if self.mode not in (0, 1, 2):
+            raise ValueError("TELEGRAM_TOPICS_MODE must be 0, 1 or 2")
+
+        if self.mode == 0:
             return self
 
-        if self.chat_id is None:
-            raise ValueError("TOPIC_NOTIFIER_CHAT_ID is required when TOPIC_NOTIFIER_ENABLED=true")
+        if self.group_id is None:
+            raise ValueError(
+                "TELEGRAM_TOPICS_GROUP_ID is required when TELEGRAM_TOPICS_MODE is 1 or 2"
+            )
 
+        # Если функционал включен, валидируем маршруты уже на старте.
+        # Так ошибки в конфиге ловятся сразу, а не в момент отправки уведомления.
         _ = self.route_map
         return self

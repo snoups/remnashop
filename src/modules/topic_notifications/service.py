@@ -31,70 +31,75 @@ class TopicNotificationModule:
     def __init__(
         self,
         bot: Bot,
-        app_config: AppConfig,
-        topic_notification_config: TopicNotificationConfig,
+        config: AppConfig,
+        topic_config: TopicNotificationConfig,
         translator_hub: TranslatorHub,
     ) -> None:
         self.bot = bot
-        self.app_config = app_config
-        self.config = topic_notification_config
+        self.app_config = config
+        self.config = topic_config
         self.translator_hub = translator_hub
 
     @property
     def suppress_admin_dms(self) -> bool:
-        return self.config.is_configured and self.config.suppress_admin_dms
+        return self.config.is_configured and self.config.mode == 1
 
     async def notify_event(self, event: BaseEvent, payload: MessagePayloadDto) -> bool:
-        if not self.config.is_configured or self.config.chat_id is None:
+        # Если темы не включены или не настроены, модуль ничего не делает
+        # и старый механизм отправки продолжает работать без изменений.
+        if not self.config.is_configured or self.config.group_id is None:
             return False
 
-        thread_id = self._resolve_thread_id(event)
-        if thread_id is None:
+        topic_id = self._resolve_topic_id(event)
+        if topic_id is None:
             return False
 
         try:
             await self._send_payload(
-                chat_id=self.config.chat_id,
-                thread_id=thread_id,
+                chat_id=self.config.group_id,
+                topic_id=topic_id,
                 payload=payload,
             )
         except Exception as e:
             logger.exception(
                 f"Failed to route event '{type(event).__name__}' "
-                f"to topic '{thread_id}' in chat '{self.config.chat_id}': {e}"
+                f"to topic '{topic_id}' in chat '{self.config.group_id}': {e}"
             )
             return False
 
         logger.info(
-            f"Routed event '{type(event).__name__}' to topic '{thread_id}' "
-            f"in chat '{self.config.chat_id}'"
+            f"Routed event '{type(event).__name__}' to topic '{topic_id}' "
+            f"in chat '{self.config.group_id}'"
         )
         return True
 
-    def _resolve_thread_id(self, event: BaseEvent) -> Optional[int]:
-        route_map = self.config.route_map
+    def _resolve_topic_id(self, event: BaseEvent) -> Optional[int]:
+        routes = self.config.route_map
 
+        # Ищем тему по нескольким ключам, чтобы конфиг можно было писать
+        # либо по имени класса события, либо по типу уведомления, либо по event key.
         for key in self._get_route_keys(event):
-            thread_id = route_map.get(key)
-            if thread_id is not None:
-                return thread_id
+            topic_id = routes.get(key)
+            if topic_id is not None:
+                return topic_id
 
-        return self.config.default_thread_id
+        # Если точного маршрута нет, используем тему по умолчанию.
+        return self.config.default_topic_id
 
     def _get_route_keys(self, event: BaseEvent) -> list[str]:
-        keys = [
+        route_keys = [
             self._normalize_key(type(event).__name__),
             getattr(event.notification_type, "value", str(event.notification_type)).upper(),
             event.event_key.removeprefix("event-").replace("-", "_").replace(".", "_").upper(),
             "*",
         ]
 
-        unique_keys: list[str] = []
-        for key in keys:
-            if key not in unique_keys:
-                unique_keys.append(key)
+        unique_route_keys: list[str] = []
+        for key in route_keys:
+            if key not in unique_route_keys:
+                unique_route_keys.append(key)
 
-        return unique_keys
+        return unique_route_keys
 
     def _normalize_key(self, value: str) -> str:
         normalized = re.sub(r"(?<!^)(?=[A-Z])", "_", value).upper()
@@ -105,7 +110,7 @@ class TopicNotificationModule:
     async def _send_payload(
         self,
         chat_id: int,
-        thread_id: Optional[int],
+        topic_id: Optional[int],
         payload: MessagePayloadDto,
     ) -> Optional[Message]:
         locale = self.app_config.default_locale
@@ -122,7 +127,9 @@ class TopicNotificationModule:
             "disable_notification": payload.disable_notification,
             "message_effect_id": payload.message_effect,
             "reply_markup": reply_markup,
-            "message_thread_id": thread_id,
+            # В Telegram topics используется поле message_thread_id.
+            # По сути это и есть id конкретной темы внутри группы.
+            "message_thread_id": topic_id,
         }
 
         if payload.is_text:
@@ -172,17 +179,17 @@ class TopicNotificationModule:
         self,
         locale: Locale,
         i18n_key: str,
-        i18n_kwargs: dict[str, Any] = {},
+        i18n_data: dict[str, Any] = {},
     ) -> str:
         if not i18n_key:
             return ""
 
         i18n = self.translator_hub.get_translator_by_locale(locale)
-        translated_text = i18n.get(i18n_key, **i18n_kwargs)
+        translated_text = i18n.get(i18n_key, **i18n_data)
 
-        if i18n_key == "ntf-broadcast.message" and "$" in translated_text and i18n_kwargs:
+        if i18n_key == "ntf-broadcast.message" and "$" in translated_text and i18n_data:
             template = string.Template(translated_text)
-            return template.safe_substitute(i18n_kwargs)
+            return template.safe_substitute(i18n_data)
 
         return translated_text
 
@@ -200,6 +207,8 @@ class TopicNotificationModule:
                 return self._get_default_keyboard(close_button)
             return None
 
+        # Здесь специально сохраняем ту же механику клавиатур, что и в обычных уведомлениях:
+        # переводим текст кнопок и при необходимости добавляем кнопку закрытия.
         translated_markup = self._translate_keyboard_text(reply_markup, locale)
 
         if disable_default_markup or delete_after is not None:

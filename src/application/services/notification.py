@@ -50,7 +50,7 @@ class NotificationService(Notifier):
         user_dao: UserDao,
         settings_dao: SettingsDao,
         queue: NotificationQueue,
-        topic_notification_module: TopicNotificationModule,
+        topic_module: TopicNotificationModule,
     ) -> None:
         self.bot = bot
         self.config = config
@@ -58,7 +58,7 @@ class NotificationService(Notifier):
         self.user_dao = user_dao
         self.settings_dao = settings_dao
         self.queue = queue
-        self.topic_notification_module = topic_notification_module
+        self.topic_module = topic_module
         self.queue.start(self._process_task)
 
     async def notify_user(
@@ -157,11 +157,13 @@ class NotificationService(Notifier):
         event: BaseEvent,
         payload: MessagePayloadDto,
     ) -> bool:
-        handled = await self.topic_notification_module.notify_event(event, payload)
+        # сначала пытаемся отправить уведомление в тему группы. если модуль выключен или маршрут для события не найден, метод вернет False, и дальше сработает обычная отправка в бота
+        handled = await self.topic_module.notify_event(event, payload)
         if not handled:
             return False
 
-        if self.topic_notification_module.suppress_admin_dms:
+        # если дубли отключены, на этом считаем задачу выполненной, иначе шлем в бота
+        if self.topic_module.suppress_admin_dms:
             logger.info(
                 f"Admin DMs suppressed for event '{event.event_type}' "
                 f"because topic routing handled the notification"
