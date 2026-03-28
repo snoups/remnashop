@@ -1,8 +1,9 @@
 from typing import Optional, TypedDict, cast
 
 from adaptix import Retort
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
@@ -10,7 +11,7 @@ from loguru import logger
 
 from src.application.common import Notifier
 from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
-from src.application.dto import PlanDto, PlanSnapshotDto, UserDto
+from src.application.dto import MessagePayloadDto, PlanDto, PlanSnapshotDto, UserDto
 from src.application.services import PricingService
 from src.application.use_cases.gateways.commands.payment import (
     CreatePayment,
@@ -19,8 +20,10 @@ from src.application.use_cases.gateways.commands.payment import (
     ProcessPaymentDto,
 )
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
+from src.application.use_cases.user.commands.promocode import ActivatePromocode, ActivatePromocodeDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
+from src.core.exceptions import PromocodeError
 from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from src.telegram.states import Subscription
 
@@ -49,6 +52,19 @@ def _save_payment_data(dialog_manager: DialogManager, payment_data: CachedPaymen
     dialog_manager.dialog_data["payment_id"] = payment_data["payment_id"]
     dialog_manager.dialog_data["payment_url"] = payment_data["payment_url"]
     dialog_manager.dialog_data["final_pricing"] = payment_data["final_pricing"]
+
+
+def _clear_payment_context(dialog_manager: DialogManager) -> None:
+    for key in (
+        PAYMENT_CACHE_KEY,
+        CURRENT_DURATION_KEY,
+        CURRENT_METHOD_KEY,
+        "payment_id",
+        "payment_url",
+        "final_pricing",
+        "is_free",
+    ):
+        dialog_manager.dialog_data.pop(key, None)
 
 
 async def _create_payment_and_get_data(
@@ -113,7 +129,7 @@ async def on_purchase_type_select(
     plans: list[PlanDto] = await get_available_plans.system(user)
     gateways = await payment_gateway_dao.get_active()
     dialog_manager.dialog_data["purchase_type"] = purchase_type
-    dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
+    _clear_payment_context(dialog_manager)
 
     if not plans:
         logger.warning(f"{user.log} No available subscription plans")
@@ -179,7 +195,7 @@ async def on_subscription_plans(  # noqa: C901
     purchase_type = PurchaseType(callback.data.removeprefix(PAYMENT_PREFIX))
     dialog_manager.dialog_data["purchase_type"] = purchase_type
 
-    dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
+    _clear_payment_context(dialog_manager)
 
     if not plans:
         logger.warning(f"{user.log} No available subscription plans")
@@ -270,9 +286,7 @@ async def on_plan_select(
     logger.info(f"{user.log} Selected plan '{plan.id}'")
 
     dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(plan)
-    dialog_manager.dialog_data.pop(PAYMENT_CACHE_KEY, None)
-    dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
-    dialog_manager.dialog_data.pop(CURRENT_METHOD_KEY, None)
+    _clear_payment_context(dialog_manager)
 
     if len(plan.durations) == 1:
         logger.info(f"{user.log} Auto-selected single duration '{plan.durations[0].days}'")
@@ -418,3 +432,41 @@ async def on_get_subscription(
     payment_id = dialog_manager.dialog_data["payment_id"]
     logger.info(f"{user.log} Getted free subscription '{payment_id}'")
     await process_payment.system(ProcessPaymentDto(payment_id, TransactionStatus.COMPLETED))
+
+
+@inject
+async def on_promocode_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    activate_promocode: FromDishka[ActivatePromocode],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    code = (message.text or "").strip()
+
+    if not code:
+        await notifier.notify_user(user, i18n_key="ntf-promocode.empty")
+        return
+
+    try:
+        result = await activate_promocode(user, ActivatePromocodeDto(code=code))
+    except PromocodeError as error:
+        await notifier.notify_user(user, i18n_key=error.i18n_key)
+        return
+
+    _clear_payment_context(dialog_manager)
+
+    await notifier.notify_user(
+        result.user,
+        MessagePayloadDto(
+            i18n_key="ntf-promocode.activated",
+            i18n_kwargs={
+                "code": result.code,
+                "promocode_type": result.promocode_type,
+                "reward": result.reward,
+                "applied_discount": result.applied_discount,
+            },
+        ),
+    )
+    await dialog_manager.switch_to(Subscription.MAIN)

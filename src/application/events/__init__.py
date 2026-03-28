@@ -7,6 +7,7 @@ from .system import (
     NodeConnectionLostEvent,
     NodeConnectionRestoredEvent,
     NodeTrafficReachedEvent,
+    PromocodeActivatedEvent,
     RemnawaveErrorEvent,
     TrialActivatedEvent,
     UserDeviceAddedEvent,
@@ -40,6 +41,7 @@ __all__ = [
     "NodeConnectionLostEvent",
     "NodeConnectionRestoredEvent",
     "NodeTrafficReachedEvent",
+    "PromocodeActivatedEvent",
     #
     "UserDeviceAddedEvent",
     "UserDeviceDeletedEvent",

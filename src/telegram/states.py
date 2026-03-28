@@ -61,6 +61,7 @@ class DashboardPromocodes(StatesGroup):
     AVAILABILITY = State()
     REWARD = State()
     LIFETIME = State()
+    MAX_ACTIVATIONS = State()
     ALLOWED = State()
 
 

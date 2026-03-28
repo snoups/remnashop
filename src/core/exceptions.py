@@ -50,4 +50,13 @@ class PurchaseError(Exception): ...
 class TrialError(Exception): ...
 
 
+class PromocodeError(PurchaseError):
+    def __init__(self, i18n_key: str, message: str) -> None:
+        self.i18n_key = i18n_key
+        super().__init__(message)
+
+
+class PromocodeCodeAlreadyExistsError(Exception): ...
+
+
 class MenuEditorInvalidPayloadError(Exception): ...

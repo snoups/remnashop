@@ -1,6 +1,7 @@
 from .broadcast import BroadcastDao
 from .payment_gateway import PaymentGatewayDao
 from .plan import PlanDao
+from .promocode import PromocodeDao
 from .referral import ReferralDao
 from .settings import SettingsDao
 from .subscription import SubscriptionDao
@@ -13,6 +14,7 @@ __all__ = [
     "BroadcastDao",
     "PaymentGatewayDao",
     "PlanDao",
+    "PromocodeDao",
     "ReferralDao",
     "SettingsDao",
     "SubscriptionDao",

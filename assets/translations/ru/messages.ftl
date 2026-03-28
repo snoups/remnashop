@@ -1130,6 +1130,13 @@ msg-subscription-payment-method =
 
     { msg-subscription-details }
 
+msg-subscription-promocode =
+    <b>🎟 Активация промокода</b>
+
+    Отправьте промокод следующим сообщением.
+
+    Если промокод подойдет, скидка сразу применится к следующим расчетам стоимости.
+
 msg-subscription-confirm =
     <b>🛒 Подтверждение { $purchase_type ->
     [RENEW] продления
@@ -1230,14 +1237,19 @@ msg-importer-sync-completed =
 
 
 # Promocodes
-msg-promocodes-main = <b>🎟 Промокоды</b>
+msg-promocodes-main =
+    <b>🎟 Промокоды</b>
+
+    Выберите существующий промокод для редактирования или создайте новый.
+
+msg-promocodes-empty =
+    <i>Промокодов пока нет. Создайте первый промокод кнопкой ниже.</i>
 msg-promocode-configurator =
     <b>🎟 Конфигуратор промокода</b>
 
     <blockquote>
     • <b>Код</b>: { $code }
     • <b>Тип</b>: { promocode-type }
-    • <b>Доступ</b>: { availability-type }
     • <b>Статус</b>: { $is_active -> 
         [1] 🟢 Включен
         *[0] 🔴 Выключен
@@ -1246,16 +1258,41 @@ msg-promocode-configurator =
 
     <blockquote>
     { $promocode_type ->
-    [DURATION] • <b>Длительность</b>: { $reward }
-    [TRAFFIC] • <b>Трафик</b>: { $reward }
-    [DEVICES] • <b>Устройства</b>: { $reward }
-    [SUBSCRIPTION] • <b>Подписка</b>: { frg-plan-snapshot }
-    [PERSONAL_DISCOUNT] • <b>Персональная скидка</b>: { $reward }%
-    [PURCHASE_DISCOUNT] • <b>Скидка на покупку</b>: { $reward }%
+    [PERSONAL_DISCOUNT] • <b>Персональная скидка</b>: { $reward_display }
+    [PURCHASE_DISCOUNT] • <b>Скидка на покупку</b>: { $reward_display }
     *[OTHER] { $promocode_type }
     }
-    • <b>Срок действия</b>: { $lifetime }
-    • <b>Лимит активаций</b>: { $max_activations }
+    • <b>Срок действия</b>: { $lifetime_display }
+    • <b>Лимит активаций</b>: { $max_activations_display }
     </blockquote>
 
     Выберите пункт для изменения.
+
+msg-promocode-code =
+    <b>🏷 Код промокода</b>
+
+    Отправьте код следующим сообщением.
+
+    Рекомендуемый формат: только латиница, цифры, `_` или `-`.
+
+msg-promocode-type =
+    <b>🔖 Тип награды</b>
+
+    Выберите тип промокода.
+
+msg-promocode-reward =
+    <b>🎁 Размер скидки</b>
+
+    Отправьте значение скидки в процентах от 1 до 100.
+
+msg-promocode-lifetime =
+    <b>⌛ Срок действия</b>
+
+    Отправьте количество дней жизни промокода.
+    Если ограничение не нужно, отправьте <code>0</code>.
+
+msg-promocode-max-activations =
+    <b>👥 Лимит активаций</b>
+
+    Отправьте максимальное количество активаций.
+    Если лимит не нужен, отправьте <code>0</code>.
