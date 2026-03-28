@@ -213,6 +213,10 @@ btn-promocodes =
     .create = 🆕 Создать
     .delete = 🗑️ Удалить
     .edit = ✏️ Редактировать
+    .title = { $is_active ->
+    [1] 🟢
+    *[0] 🔴
+    } { $code }
 
 btn-access =
     .mode = { access-mode }
@@ -466,8 +470,10 @@ btn-promocode =
     .availability = ✴️ Доступ
     .reward = 🎁 Награда
     .lifetime = ⌛ Время жизни
+    .max-activations = 👥 Лимит активаций
     .allowed = 👥 Разрешенные пользователи
     .confirm = ✅ Подтвердить
+    .save = ✅ Сохранить
     
     .active = { $is_active -> 
     [1] 🟢

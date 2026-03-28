@@ -21,7 +21,7 @@ class PricingService:
                 final_amount=Decimal(0),
             )
 
-        discount_percent = min(user.purchase_discount or user.personal_discount or 0, 100)
+        discount_percent = min(max(user.purchase_discount, user.personal_discount, 0), 100)
 
         if discount_percent >= 100:
             logger.info(f"100% discount applied, price is free for user '{user.telegram_id}'")

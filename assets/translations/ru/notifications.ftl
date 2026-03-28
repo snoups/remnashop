@@ -115,6 +115,27 @@ ntf-subscription =
     .renew-plan-unavailable = ❌ <i>Текущий план устарел и недоступен для продления.</i>
     .payment-creation-failed = ❌ <i>Ошибка при создании платежа. Попробуйте позже.</i>
 
+ntf-promocode =
+    .empty = ⚠️ <i>Отправьте промокод следующим сообщением.</i>
+    .not-found = ❌ <i>Промокод не найден или сейчас недоступен.</i>
+    .already-activated = ⚠️ <i>Вы уже активировали этот промокод.</i>
+    .limit-reached = ⚠️ <i>Лимит активаций этого промокода уже исчерпан.</i>
+    .unsupported = ⚠️ <i>Этот тип промокода пока не поддерживается.</i>
+    .invalid-reward = ⚠️ <i>У этого промокода задано некорректное значение награды.</i>
+    .expired = ⚠️ <i>Срок действия этого промокода уже истек.</i>
+    .created = ✅ <i>Промокод успешно создан.</i>
+    .updated = ✅ <i>Промокод успешно обновлен.</i>
+    .deleted = ✅ <i>Промокод успешно удален.</i>
+    .code-already-exists = ❌ <i>Промокод с таким кодом уже существует.</i>
+    .activated =
+        ✅ <b>Промокод активирован!</b>
+
+        <blockquote>
+        • <b>Код</b>: <code>{ $code }</code>
+        • <b>Тип</b>: { promocode-type }
+        • <b>Скидка</b>: { $applied_discount }%
+        </blockquote>
+
 ntf-broadcast =
     .message = { $content }
     .text-too-long = ❌ Превышено максимальное кол-во символов ({ max_limit }).

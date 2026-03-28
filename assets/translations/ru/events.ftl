@@ -253,6 +253,23 @@ event-subscription =
     { frg-subscription-details }
 
 
+event-promocode =
+    .activated =
+    #PromocodeActivatedEvent
+
+    <b>🎟 Событие: Пользователь активировал промокод!</b>
+
+    { hdr-user }
+    { frg-user-info }
+
+    <b>🎁 Промокод:</b>
+    <blockquote>
+    • <b>Код</b>: <code>{ $code }</code>
+    • <b>Тип</b>: { promocode-type }
+    • <b>Скидка</b>: { $applied_discount }%
+    </blockquote>
+
+
 event-node =
     .connection-lost =
     #NodeConnectionLostEvent
