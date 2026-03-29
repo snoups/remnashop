@@ -7,6 +7,10 @@ from src.core.config.base import BaseConfig
 
 
 class TopicNotificationConfig(BaseConfig, env_prefix="TELEGRAM_TOPICS_"):
+    # Если отдельный маршрут не задан, уведомления об активации промокода
+    # по умолчанию уходят в рабочий тред промокодов.
+    DEFAULT_PROMOCODE_TOPIC_ID = 47
+
     mode: int = 0
     group_id: Optional[int] = None
     default_topic_id: Optional[int] = None
@@ -23,7 +27,7 @@ class TopicNotificationConfig(BaseConfig, env_prefix="TELEGRAM_TOPICS_"):
     @cached_property
     def route_map(self) -> dict[str, int]:
         if not self.routes.strip():
-            return {"PROMOCODE_ACTIVATED": 47}
+            return {"PROMOCODE_ACTIVATED": self.DEFAULT_PROMOCODE_TOPIC_ID}
 
         route_map: dict[str, int] = {}
         for chunk in self.routes.split(","):
@@ -48,7 +52,7 @@ class TopicNotificationConfig(BaseConfig, env_prefix="TELEGRAM_TOPICS_"):
                     f"TELEGRAM_TOPICS_ROUTES contains invalid topic id for key '{normalized_key}'"
                 ) from exc
 
-        route_map.setdefault("PROMOCODE_ACTIVATED", 47)
+        route_map.setdefault("PROMOCODE_ACTIVATED", self.DEFAULT_PROMOCODE_TOPIC_ID)
         return route_map
 
     @model_validator(mode="after")

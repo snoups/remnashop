@@ -15,7 +15,11 @@ from src.application.common.uow import UnitOfWork
 from src.application.dto import PromocodeDto, UserDto
 from src.application.use_cases.promocode.commands.commit import CommitPromocode
 from src.application.use_cases.promocode.commands.delete import DeletePromocode
-from src.application.use_cases.promocode.utils import get_promocode_runtime_state
+from src.application.use_cases.promocode.utils import (
+    build_default_promocode,
+    get_promocode_runtime_state,
+    is_valid_promocode_reward,
+)
 from src.core.constants import USER_KEY
 from src.core.enums import PromocodeRewardType
 from src.core.exceptions import PromocodeCodeAlreadyExistsError
@@ -23,32 +27,20 @@ from src.core.utils.time import datetime_now
 from src.telegram.states import DashboardPromocodes
 from src.telegram.utils import is_double_click
 
-
 PROMOCODE_CODE_RE = re.compile(r"^[A-Z0-9_-]{3,32}$")
+PROMOCODE_DIALOG_DATA_KEY = PromocodeDto.__name__
 
 
-def _build_default_promocode() -> PromocodeDto:
-    return PromocodeDto(
-        code="",
-        is_active=True,
-        reward_type=PromocodeRewardType.PURCHASE_DISCOUNT,
-        reward=10,
-        lifetime=None,
-        max_activations=None,
-    )
+def _load_promocode(dialog_manager: DialogManager, retort: Retort) -> PromocodeDto:
+    return retort.load(dialog_manager.dialog_data[PROMOCODE_DIALOG_DATA_KEY], PromocodeDto)
 
 
-def _is_valid_reward(reward_type: PromocodeRewardType, reward: int) -> bool:
-    if reward < 1:
-        return False
-
-    if reward_type in {
-        PromocodeRewardType.PERSONAL_DISCOUNT,
-        PromocodeRewardType.PURCHASE_DISCOUNT,
-    }:
-        return reward <= 100
-
-    return True
+def _store_promocode(
+    dialog_manager: DialogManager,
+    retort: Retort,
+    promocode: PromocodeDto,
+) -> None:
+    dialog_manager.dialog_data[PROMOCODE_DIALOG_DATA_KEY] = retort.dump(promocode)
 
 
 @inject
@@ -59,9 +51,9 @@ async def on_promocode_create(
     retort: FromDishka[Retort],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    promocode = _build_default_promocode()
+    promocode = build_default_promocode()
 
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
     dialog_manager.dialog_data["is_edit"] = False
 
     logger.info(f"{user.log} Started promocode creation")
@@ -95,7 +87,7 @@ async def on_promocode_select(
                 promocode = await promocode_dao.update(promocode.as_fully_changed()) or promocode
                 await uow.commit()
 
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
     dialog_manager.dialog_data["is_edit"] = True
 
     logger.info(f"{user.log} Selected promocode '{promocode.code}'")
@@ -110,7 +102,7 @@ async def on_active_toggle(
     retort: FromDishka[Retort],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode = _load_promocode(dialog_manager, retort)
 
     if not promocode.is_active:
         runtime_state = get_promocode_runtime_state(promocode, 0)
@@ -118,7 +110,7 @@ async def on_active_toggle(
             promocode.created_at = datetime_now()
 
     promocode.is_active = not promocode.is_active
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
 
     logger.info(f"{user.log} Toggled promocode active status to '{promocode.is_active}'")
 
@@ -143,9 +135,9 @@ async def on_code_input(
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode = _load_promocode(dialog_manager, retort)
     promocode.code = code
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
 
     logger.info(f"{user.log} Updated promocode code to '{code}'")
     await dialog_manager.switch_to(DashboardPromocodes.CONFIGURATOR)
@@ -160,10 +152,10 @@ async def on_type_select(
     retort: FromDishka[Retort],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode = _load_promocode(dialog_manager, retort)
 
     promocode.reward_type = selected_type
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
 
     logger.info(f"{user.log} Updated promocode reward type to '{selected_type.name}'")
     await dialog_manager.switch_to(DashboardPromocodes.CONFIGURATOR)
@@ -190,13 +182,13 @@ async def on_reward_input(
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
-    if not _is_valid_reward(promocode.reward_type, reward):
+    promocode = _load_promocode(dialog_manager, retort)
+    if not is_valid_promocode_reward(promocode.reward_type, reward):
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     promocode.reward = reward
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
 
     logger.info(f"{user.log} Updated promocode reward to '{reward}'")
     await dialog_manager.switch_to(DashboardPromocodes.CONFIGURATOR)
@@ -227,9 +219,9 @@ async def on_lifetime_input(
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode = _load_promocode(dialog_manager, retort)
     promocode.lifetime = None if lifetime == 0 else lifetime
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
 
     logger.info(f"{user.log} Updated promocode lifetime to '{promocode.lifetime}'")
     await dialog_manager.switch_to(DashboardPromocodes.CONFIGURATOR)
@@ -260,9 +252,9 @@ async def on_max_activations_input(
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode = _load_promocode(dialog_manager, retort)
     promocode.max_activations = None if max_activations == 0 else max_activations
-    dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
+    _store_promocode(dialog_manager, retort, promocode)
 
     logger.info(
         f"{user.log} Updated promocode max activations to '{promocode.max_activations}'"
@@ -280,7 +272,7 @@ async def on_promocode_confirm(
     commit_promocode: FromDishka[CommitPromocode],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode = _load_promocode(dialog_manager, retort)
 
     try:
         result = await commit_promocode(user, promocode)
@@ -308,7 +300,7 @@ async def on_promocode_delete(
     delete_promocode: FromDishka[DeletePromocode],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    promocode = _load_promocode(dialog_manager, retort)
 
     if promocode.id is None:
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")

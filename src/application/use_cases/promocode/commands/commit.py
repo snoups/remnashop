@@ -7,7 +7,10 @@ from src.application.common.dao import PromocodeDao
 from src.application.common.policy import Permission
 from src.application.common.uow import UnitOfWork
 from src.application.dto import PromocodeDto, UserDto
-from src.core.enums import PromocodeRewardType
+from src.application.use_cases.promocode.utils import (
+    SUPPORTED_PROMOCODE_REWARD_TYPES,
+    is_valid_promocode_reward,
+)
 from src.core.exceptions import PromocodeCodeAlreadyExistsError
 
 
@@ -57,26 +60,14 @@ class CommitPromocode(Interactor[PromocodeDto, CommitPromocodeResultDto]):
         if len(promocode.code) < 3:
             raise ValueError("Promocode length must be at least 3 characters")
 
-        if promocode.reward_type not in {
-            PromocodeRewardType.PERSONAL_DISCOUNT,
-            PromocodeRewardType.PURCHASE_DISCOUNT,
-            PromocodeRewardType.DURATION,
-            PromocodeRewardType.TRAFFIC,
-        }:
+        if promocode.reward_type not in SUPPORTED_PROMOCODE_REWARD_TYPES:
             raise ValueError(f"Unsupported promocode type '{promocode.reward_type}'")
 
-        if promocode.reward is None or promocode.reward < 1:
-            raise ValueError(f"Invalid promocode reward '{promocode.reward}'")
-
-        if (
-            promocode.reward_type
-            in {
-                PromocodeRewardType.PERSONAL_DISCOUNT,
-                PromocodeRewardType.PURCHASE_DISCOUNT,
-            }
-            and promocode.reward > 100
+        if promocode.reward is None or not is_valid_promocode_reward(
+            promocode.reward_type,
+            promocode.reward,
         ):
-            raise ValueError(f"Invalid discount reward '{promocode.reward}'")
+            raise ValueError(f"Invalid promocode reward '{promocode.reward}'")
 
         if promocode.lifetime is not None and promocode.lifetime < 1:
             raise ValueError(f"Invalid promocode lifetime '{promocode.lifetime}'")

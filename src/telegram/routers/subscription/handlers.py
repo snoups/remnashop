@@ -2,7 +2,7 @@ from typing import Optional, TypedDict, cast
 
 from adaptix import Retort
 from aiogram.types import CallbackQuery, Message
-from aiogram_dialog import DialogManager, ShowMode
+from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
@@ -25,12 +25,13 @@ from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
 from src.core.exceptions import PromocodeError
 from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
-from src.telegram.states import Subscription
+from src.telegram.states import Subscription, state_from_string
 
 PAYMENT_CACHE_KEY = "payment_cache"
 CURRENT_DURATION_KEY = "selected_duration"
 CURRENT_METHOD_KEY = "selected_payment_method"
 PROMOCODE_FEEDBACK_KEY = "promocode_feedback_text"
+PROMOCODE_RETURN_STATE_KEY = "promocode_return_state"
 
 
 class CachedPaymentData(TypedDict):
@@ -502,3 +503,32 @@ async def on_promocode_input(
     )
     await _delete_user_message(message)
     await dialog_manager.switch_to(Subscription.PROMOCODE_RESULT)
+
+
+async def on_promocode_back(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+) -> None:
+    start_data = dialog_manager.start_data if isinstance(dialog_manager.start_data, dict) else {}
+    return_state_raw = start_data.get(PROMOCODE_RETURN_STATE_KEY)
+
+    if isinstance(return_state_raw, str):
+        return_state = state_from_string(return_state_raw)
+        if return_state is not None:
+            # При открытии промокода из другого диалога возвращаем пользователя
+            # в исходную точку входа, а не в Subscription.MAIN.
+            await dialog_manager.start(
+                state=return_state,
+                mode=StartMode.RESET_STACK,
+                show_mode=ShowMode.EDIT,
+            )
+            return
+
+        logger.warning(f"Unknown promocode return state '{return_state_raw}'")
+
+    if dialog_manager.current_context().state == Subscription.PROMOCODE.state:
+        await dialog_manager.switch_to(Subscription.MAIN)
+        return
+
+    await dialog_manager.back()
