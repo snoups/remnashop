@@ -1,7 +1,7 @@
 from aiogram.enums import ButtonStyle
 from aiogram_dialog import Dialog, Window
 from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Button, Column, Group, Row, Select, SwitchTo, Url
+from aiogram_dialog.widgets.kbd import Back, Button, Column, Group, Row, Select, SwitchTo, Url
 from aiogram_dialog.widgets.style import Style
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
@@ -72,10 +72,9 @@ promocode = Window(
     I18nFormat("msg-subscription-promocode"),
     MessageInput(func=on_promocode_input),
     Row(
-        SwitchTo(
+        Back(
             text=I18nFormat("btn-back.general"),
             id=f"{PAYMENT_PREFIX}back_promocode",
-            state=Subscription.MAIN,
         ),
     ),
     *back_main_menu_button,
@@ -87,10 +86,9 @@ promocode_result = Window(
     Banner(BannerName.PROMOCODE),
     Format("{promocode_feedback_text}"),
     Row(
-        SwitchTo(
+        Back(
             text=I18nFormat("btn-back.general"),
             id=f"{PAYMENT_PREFIX}back_promocode_result",
-            state=Subscription.MAIN,
         ),
     ),
     *back_main_menu_button,

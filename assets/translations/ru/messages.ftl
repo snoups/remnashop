@@ -1131,15 +1131,13 @@ msg-subscription-payment-method =
     { msg-subscription-details }
 
 msg-subscription-promocode =
-    <b>🎟 Активация промокода</b>
+    <b>🎟 Промокод</b>
 
-    Отправьте промокод следующим сообщением.
-
-    После проверки сообщение с кодом будет удалено, а результат появится здесь.
+    Введите промокод, чтобы активировать скидку или бонус.
 
 msg-subscription-promocode-success =
     <blockquote>
-    ✅ <b>Промокод активирован</b>
+    ✅ <b>Промокод применен</b>
 
     • <b>Код</b>: <code>{ $code }</code>
     • <b>Тип</b>: { promocode-type }
@@ -1156,7 +1154,7 @@ msg-subscription-promocode-success =
 
 msg-subscription-promocode-error =
     <blockquote>
-    ⚠️ <b>Промокод не применен</b>
+    ⚠️ <b>Не удалось применить промокод</b>
 
     { $error }
     </blockquote>
