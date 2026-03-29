@@ -12,7 +12,7 @@ from loguru import logger
 from starlette.datastructures import Headers
 
 from src.application.dto import PaymentGatewayDto, PaymentResultDto
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import T_ME
 from src.core.enums import TransactionStatus
 

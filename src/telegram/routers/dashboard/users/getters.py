@@ -31,7 +31,7 @@ async def recent_registered_getter(
     user_dao: FromDishka[UserDao],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    users = await user_dao.get_recent_registered_users()
+    users = await user_dao.get_recent_registered_users(limit=50)
     return {"recent_registered_users": users}
 
 

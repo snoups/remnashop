@@ -147,7 +147,7 @@ ntf-promocode =
 
 ntf-broadcast =
     .message = { $content }
-    .text-too-long = ❌ Превышено максимальное кол-во символов ({ max_limit }).
+    .text-too-long = ❌ Превышено максимальное кол-во символов ({ $max_limit }).
     .list-empty = ❌ <i>Список рассылок пуст.</i>
     .plans-unavailable = ❌ <i>Нет доступных планов.</i>
     .audience-unavailable = ❌ <i>Нет пользователей для выбранной аудитории.</i>

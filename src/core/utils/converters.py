@@ -28,6 +28,7 @@ def user_name_clean(name: Optional[str], telegram_id: int) -> str:
 
     text = _HTML_RE.sub("", text)
     text = _URL_RE.sub("", text)
+    text = text.replace("<", "").replace(">", "").replace("&", "")
 
     allowed_prefixes = {"L", "N"}
     allowed_symbols = {"$", "_", "-", "."}

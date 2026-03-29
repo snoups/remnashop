@@ -43,6 +43,8 @@ class ReferralStatisticsDto:
 class SubscriptionStatsDto:
     total: int
     total_active: int
+    total_disabled: int
+    total_limited: int
     total_expired: int
     active_trial: int
     expiring_soon: int
@@ -55,9 +57,11 @@ class SubscriptionStatsDto:
 class PlanSubStatsDto:
     plan_id: int
     plan_name: str
-    total_subs: int
-    active_subs: int
-    expired_subs: int
+    total: int
+    total_active: int
+    total_disabled: int
+    total_limited: int
+    total_expired: int
     expiring_soon: int
     total_unlimited: int
     total_traffic: int

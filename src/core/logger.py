@@ -5,7 +5,7 @@ from typing import Final, Union
 
 from loguru import logger
 
-from src.core.config.app import AppConfig
+from src.core.config import AppConfig
 from src.core.constants import LOG_DIR
 
 LOG_FILENAME: Final[str] = "bot.log"
