@@ -208,7 +208,7 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
                     # Deactivate old subscription
                     await self.subscription_dao.update_status(
                         subscription_id=subscription.id,  # type: ignore[arg-type]
-                        status=SubscriptionStatus.DISABLED,
+                        status=SubscriptionStatus.DELETED,
                     )
 
                     updated_user = await self.remnawave.update_user(
@@ -267,6 +267,6 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
             internal_squads=plan.internal_squads,
             external_squad=plan.external_squad,
             expire_at=remna_user.expire_at,
-            url=remna_user.subscription_url,  # type: ignore[arg-type]
+            url=remna_user.subscription_url,
             plan_snapshot=plan,
         )

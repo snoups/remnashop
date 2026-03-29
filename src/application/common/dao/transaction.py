@@ -2,8 +2,7 @@ from datetime import datetime
 from typing import Optional, Protocol, runtime_checkable
 from uuid import UUID
 
-from src.application.dto import GatewayStatsDto, PlanIncomeDto, TransactionDto
-from src.application.dto.statistics import UserPaymentStatsDto
+from src.application.dto import GatewayStatsDto, PlanIncomeDto, TransactionDto, UserPaymentStatsDto
 from src.core.enums import TransactionStatus
 
 

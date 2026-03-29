@@ -168,16 +168,9 @@ async def subscriptions_getter(
         "pages": total_pages,
         "current_page": current_page + 1,
         "pager_pages": pager_pages,
-        "plan_name": plan.plan_name,
-        "total": plan.total_subs,
-        "total_active": plan.active_subs,
-        "total_expired": plan.expired_subs,
-        "expiring_soon": plan.expiring_soon,
-        "total_unlimited": plan.total_unlimited,
-        "total_traffic": plan.total_traffic,
-        "total_devices": plan.total_devices,
         "popular_duration": i18n.get(key, **kw),
         "all_income": all_income,
+        **asdict(plan),
     }
 
 

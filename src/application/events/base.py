@@ -3,8 +3,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from src.application.dto import MessagePayloadDto
-from src.application.dto.user import UserDto
+from src.application.dto import MessagePayloadDto, UserDto
 from src.core.types import NotificationType
 from src.core.utils.time import datetime_now
 

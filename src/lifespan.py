@@ -17,8 +17,7 @@ from src.application.events import (
     WebhookErrorEvent,
 )
 from src.application.events.system import RemnashopWelcomeEvent
-from src.application.services import CommandService, WebhookService
-from src.application.services.bot import BotService
+from src.application.services import BotService, CommandService, WebhookService
 from src.application.use_cases.gateways.commands.payment import CreateDefaultPaymentGateway
 from src.core.config import AppConfig
 from src.core.utils.i18n_helpers import i18n_format_seconds

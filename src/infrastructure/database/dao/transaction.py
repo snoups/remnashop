@@ -11,8 +11,7 @@ from sqlalchemy import and_, case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.common.dao import TransactionDao
-from src.application.dto import GatewayStatsDto, PlanIncomeDto, TransactionDto
-from src.application.dto.statistics import UserPaymentStatsDto
+from src.application.dto import GatewayStatsDto, PlanIncomeDto, TransactionDto, UserPaymentStatsDto
 from src.core.enums import TransactionStatus
 from src.core.utils.time import datetime_now
 from src.infrastructure.database.models import Transaction

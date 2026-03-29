@@ -4,10 +4,10 @@ from adaptix import Retort
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
+from loguru import logger
 
 from src.application.common import TranslatorRunner
-from src.application.common.dao import PaymentGatewayDao, SettingsDao, SubscriptionDao
-from src.application.common.dao.plan import PlanDao
+from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
 from src.application.dto import PlanDto, PriceDetailsDto, UserDto
 from src.application.services import PricingService
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
@@ -20,6 +20,7 @@ from src.core.utils.i18n_helpers import (
     i18n_format_expire_time,
     i18n_format_traffic_limit,
 )
+from src.telegram.states import Subscription
 
 
 @inject
@@ -115,7 +116,8 @@ async def duration_getter(
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
 
     if not raw_plan:
-        raise ValueError("PlanDto not found in dialog data")
+        logger.debug("PlanDto not found in dialog data")
+        await dialog_manager.start(state=Subscription.MAIN)
 
     plan = retort.load(raw_plan, PlanDto)
     settings = await settings_dao.get()
@@ -163,7 +165,8 @@ async def payment_method_getter(
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
 
     if not raw_plan:
-        raise ValueError("PlanDto not found in dialog data")
+        logger.error("PlanDto not found in dialog data")
+        await dialog_manager.start(state=Subscription.MAIN)
 
     plan = retort.load(raw_plan, PlanDto)
     gateways = await payment_gateway_dao.get_active()
@@ -211,7 +214,8 @@ async def confirm_getter(
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
 
     if not raw_plan:
-        raise ValueError("PlanDto not found in dialog data")
+        logger.debug("PlanDto not found in dialog data")
+        await dialog_manager.start(state=Subscription.MAIN)
 
     plan = retort.load(raw_plan, PlanDto)
     selected_duration = dialog_manager.dialog_data["selected_duration"]

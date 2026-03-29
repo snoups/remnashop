@@ -265,7 +265,9 @@ async def on_plan_select(
     plan = await plan_dao.get_by_id(plan_id=selected_plan)
 
     if not plan:
-        raise ValueError(f"Selected plan '{selected_plan}' not found")
+        logger.error(f"{user.log} Selected plan with id '{selected_plan}', but it was not found")
+        await dialog_manager.start(state=Subscription.MAIN)
+        return
 
     logger.info(f"{user.log} Selected plan '{plan.id}'")
 
@@ -302,11 +304,12 @@ async def on_duration_select(
     dialog_manager.dialog_data[CURRENT_DURATION_KEY] = selected_duration
 
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
+
+    if not raw_plan:
+        logger.error("PlanDto not found in dialog data")
+        await dialog_manager.start(state=Subscription.MAIN)
+
     plan = retort.load(raw_plan, PlanDto)
-
-    if not plan:
-        raise ValueError("PlanDto not found in dialog data")
-
     settings = await settings_dao.get()
     gateways = await payment_gateway_dao.get_active()
     currency = settings.default_currency
@@ -383,10 +386,12 @@ async def on_payment_method_select(
     logger.info(f"{user.log} New combination. Creating new payment")
 
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
-    plan = retort.load(raw_plan, PlanDto)
 
-    if not plan:
-        raise ValueError("PlanDto not found in dialog data")
+    if not raw_plan:
+        logger.error("PlanDto not found in dialog data")
+        await dialog_manager.start(state=Subscription.MAIN)
+
+    plan = retort.load(raw_plan, PlanDto)
 
     payment_data = await _create_payment_and_get_data(
         dialog_manager=dialog_manager,
