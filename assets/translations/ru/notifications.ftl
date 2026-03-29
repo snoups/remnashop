@@ -123,6 +123,9 @@ ntf-promocode =
     .unsupported = ⚠️ <i>Этот тип промокода пока не поддерживается.</i>
     .invalid-reward = ⚠️ <i>У этого промокода задано некорректное значение награды.</i>
     .expired = ⚠️ <i>Срок действия этого промокода уже истек.</i>
+    .subscription-required = ⚠️ <i>Этот промокод можно активировать только при наличии текущей подписки.</i>
+    .duration-unlimited = ⚠️ <i>Промокод на дополнительные дни нельзя применить к безлимитной подписке.</i>
+    .traffic-unlimited = ⚠️ <i>Промокод на дополнительный трафик нельзя применить к безлимитному тарифу.</i>
     .created = ✅ <i>Промокод успешно создан.</i>
     .updated = ✅ <i>Промокод успешно обновлен.</i>
     .deleted = ✅ <i>Промокод успешно удален.</i>
@@ -133,7 +136,13 @@ ntf-promocode =
         <blockquote>
         • <b>Код</b>: <code>{ $code }</code>
         • <b>Тип</b>: { promocode-type }
-        • <b>Скидка</b>: { $applied_discount }%
+        { $promocode_type ->
+        [PERSONAL_DISCOUNT] • <b>Итоговая персональная скидка</b>: { $applied_discount }%
+        [PURCHASE_DISCOUNT] • <b>Итоговая скидка на следующую покупку</b>: { $applied_discount }%
+        [DURATION] • <b>Начислено</b>: { $reward } дн.
+        [TRAFFIC] • <b>Начислено</b>: { $reward } ГБ
+        *[OTHER] • <b>Награда</b>: { $reward }
+        }
         </blockquote>
 
 ntf-broadcast =

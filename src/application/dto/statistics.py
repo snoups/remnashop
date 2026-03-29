@@ -84,3 +84,14 @@ class GatewayStatsDto:
     total_transactions: int
     completed_transactions: int
     free_transactions: int
+
+
+@dataclass(frozen=True)
+class PromocodeStatisticsDto:
+    total_promo_activations: int
+    most_popular_promo: Optional[str]
+    total_promo_days: int
+    total_promo_traffic: int
+    total_promo_subscriptions: int
+    total_promo_personal_discounts: int
+    total_promo_purchase_discounts: int

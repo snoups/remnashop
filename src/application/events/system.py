@@ -416,6 +416,10 @@ class PromocodeActivatedEvent(UserEvent):
     promocode_type: PromocodeRewardType
     reward: int
     applied_discount: int
+    has_activation_limit: bool
+    remaining_activations: Optional[int] = None
+    has_lifetime_limit: bool = False
+    remaining_lifetime_days: Optional[int] = None
 
     def as_payload(self) -> "MessagePayloadDto":
         from src.telegram.keyboards import get_user_keyboard  # noqa: PLC0415

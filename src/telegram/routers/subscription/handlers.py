@@ -2,16 +2,16 @@ from typing import Optional, TypedDict, cast
 
 from adaptix import Retort
 from aiogram.types import CallbackQuery, Message
-from aiogram_dialog import DialogManager
+from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
-from src.application.common import Notifier
+from src.application.common import Notifier, TranslatorRunner
 from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
-from src.application.dto import MessagePayloadDto, PlanDto, PlanSnapshotDto, UserDto
+from src.application.dto import PlanDto, PlanSnapshotDto, UserDto
 from src.application.services import PricingService
 from src.application.use_cases.gateways.commands.payment import (
     CreatePayment,
@@ -30,6 +30,7 @@ from src.telegram.states import Subscription
 PAYMENT_CACHE_KEY = "payment_cache"
 CURRENT_DURATION_KEY = "selected_duration"
 CURRENT_METHOD_KEY = "selected_payment_method"
+PROMOCODE_FEEDBACK_KEY = "promocode_feedback_text"
 
 
 class CachedPaymentData(TypedDict):
@@ -65,6 +66,17 @@ def _clear_payment_context(dialog_manager: DialogManager) -> None:
         "is_free",
     ):
         dialog_manager.dialog_data.pop(key, None)
+
+
+def _set_promocode_feedback(dialog_manager: DialogManager, text: str) -> None:
+    dialog_manager.dialog_data[PROMOCODE_FEEDBACK_KEY] = text
+
+
+async def _delete_user_message(message: Message) -> None:
+    try:
+        await message.delete()
+    except Exception as error:
+        logger.debug(f"Failed to delete promocode input message '{message.message_id}': {error}")
 
 
 async def _create_payment_and_get_data(
@@ -439,34 +451,53 @@ async def on_promocode_input(
     message: Message,
     widget: MessageInput,
     dialog_manager: DialogManager,
-    notifier: FromDishka[Notifier],
+    i18n: FromDishka[TranslatorRunner],
     activate_promocode: FromDishka[ActivatePromocode],
 ) -> None:
+    dialog_manager.show_mode = ShowMode.EDIT
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     code = (message.text or "").strip()
 
     if not code:
-        await notifier.notify_user(user, i18n_key="ntf-promocode.empty")
+        _set_promocode_feedback(
+            dialog_manager,
+            i18n.get(
+                "msg-subscription-promocode-error",
+                error=i18n.get("ntf-promocode.empty"),
+            ),
+        )
+        await _delete_user_message(message)
+        await dialog_manager.switch_to(Subscription.MAIN)
         return
 
     try:
         result = await activate_promocode(user, ActivatePromocodeDto(code=code))
     except PromocodeError as error:
-        await notifier.notify_user(user, i18n_key=error.i18n_key)
+        _set_promocode_feedback(
+            dialog_manager,
+            i18n.get(
+                "msg-subscription-promocode-error",
+                error=i18n.get(error.i18n_key),
+            ),
+        )
+        await _delete_user_message(message)
+        await dialog_manager.switch_to(Subscription.MAIN)
         return
 
     _clear_payment_context(dialog_manager)
-
-    await notifier.notify_user(
-        result.user,
-        MessagePayloadDto(
-            i18n_key="ntf-promocode.activated",
-            i18n_kwargs={
-                "code": result.code,
-                "promocode_type": result.promocode_type,
-                "reward": result.reward,
-                "applied_discount": result.applied_discount,
-            },
+    _set_promocode_feedback(
+        dialog_manager,
+        i18n.get(
+            "msg-subscription-promocode-success",
+            code=result.code,
+            promocode_type=result.promocode_type,
+            reward=result.reward,
+            applied_discount=result.applied_discount,
+            has_activation_limit=int(result.has_activation_limit),
+            remaining_activations=result.remaining_activations or 0,
+            has_lifetime_limit=int(result.has_lifetime_limit),
+            remaining_lifetime_days=result.remaining_lifetime_days or 0,
         ),
     )
+    await _delete_user_message(message)
     await dialog_manager.switch_to(Subscription.MAIN)

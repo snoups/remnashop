@@ -3,11 +3,12 @@ from typing import Optional
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.common.dao import PromocodeDao
-from src.application.dto import PromocodeActivationDto, PromocodeDto
+from src.application.dto import PromocodeActivationDto, PromocodeDto, PromocodeStatisticsDto
+from src.core.enums import PromocodeRewardType
 from src.infrastructure.database.models import Promocode, PromocodeActivation
 
 
@@ -122,6 +123,89 @@ class PromocodeDaoImpl(PromocodeDao):
         activations = await self.session.scalar(stmt) or 0
         logger.debug(f"Promocode '{promocode_id}' has '{activations}' activation(s)")
         return activations
+
+    async def get_activation_counts(self) -> dict[int, int]:
+        stmt = select(
+            PromocodeActivation.promocode_id,
+            func.count(PromocodeActivation.id).label("activation_count"),
+        ).group_by(PromocodeActivation.promocode_id)
+
+        result = (await self.session.execute(stmt)).mappings()
+        counts = {
+            int(row["promocode_id"]): int(row["activation_count"] or 0)
+            for row in result
+        }
+        logger.debug(f"Loaded activation counters for '{len(counts)}' promocode(s)")
+        return counts
+
+    async def get_statistics(self) -> PromocodeStatisticsDto:
+        activation_stats_stmt = select(
+            func.count(PromocodeActivation.id).label("total_promo_activations"),
+            func.sum(
+                case(
+                    (Promocode.reward_type == PromocodeRewardType.DURATION, Promocode.reward),
+                    else_=0,
+                )
+            ).label("total_promo_days"),
+            func.sum(
+                case(
+                    (Promocode.reward_type == PromocodeRewardType.TRAFFIC, Promocode.reward),
+                    else_=0,
+                )
+            ).label("total_promo_traffic"),
+            func.sum(
+                case(
+                    (Promocode.reward_type == PromocodeRewardType.SUBSCRIPTION, 1),
+                    else_=0,
+                )
+            ).label("total_promo_subscriptions"),
+            func.sum(
+                case(
+                    (Promocode.reward_type == PromocodeRewardType.PERSONAL_DISCOUNT, 1),
+                    else_=0,
+                )
+            ).label("total_promo_personal_discounts"),
+            func.sum(
+                case(
+                    (Promocode.reward_type == PromocodeRewardType.PURCHASE_DISCOUNT, 1),
+                    else_=0,
+                )
+            ).label("total_promo_purchase_discounts"),
+        ).select_from(PromocodeActivation).join(
+            Promocode,
+            Promocode.id == PromocodeActivation.promocode_id,
+        )
+
+        popular_stmt = (
+            select(
+                Promocode.code,
+                func.count(PromocodeActivation.id).label("activation_count"),
+            )
+            .select_from(PromocodeActivation)
+            .join(Promocode, Promocode.id == PromocodeActivation.promocode_id)
+            .group_by(Promocode.id, Promocode.code)
+            .order_by(func.count(PromocodeActivation.id).desc(), Promocode.code.asc())
+            .limit(1)
+        )
+
+        activation_stats = (await self.session.execute(activation_stats_stmt)).mappings().one()
+        popular_row = (await self.session.execute(popular_stmt)).mappings().first()
+
+        logger.debug("Promocode statistics fetched")
+
+        return PromocodeStatisticsDto(
+            total_promo_activations=int(activation_stats["total_promo_activations"] or 0),
+            most_popular_promo=popular_row["code"] if popular_row else None,
+            total_promo_days=int(activation_stats["total_promo_days"] or 0),
+            total_promo_traffic=int(activation_stats["total_promo_traffic"] or 0),
+            total_promo_subscriptions=int(activation_stats["total_promo_subscriptions"] or 0),
+            total_promo_personal_discounts=int(
+                activation_stats["total_promo_personal_discounts"] or 0
+            ),
+            total_promo_purchase_discounts=int(
+                activation_stats["total_promo_purchase_discounts"] or 0
+            ),
+        )
 
     async def is_activated_by_user(self, promocode_id: int, user_telegram_id: int) -> bool:
         stmt = select(

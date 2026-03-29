@@ -34,3 +34,7 @@ class ActivatePromocodeResultDto:
     promocode_type: PromocodeRewardType
     reward: int
     applied_discount: int
+    has_activation_limit: bool
+    remaining_activations: Optional[int] = None
+    has_lifetime_limit: bool = False
+    remaining_lifetime_days: Optional[int] = None

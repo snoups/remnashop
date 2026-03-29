@@ -11,9 +11,11 @@ from loguru import logger
 
 from src.application.common import Notifier
 from src.application.common.dao import PromocodeDao
+from src.application.common.uow import UnitOfWork
 from src.application.dto import PromocodeDto, UserDto
 from src.application.use_cases.promocode.commands.commit import CommitPromocode
 from src.application.use_cases.promocode.commands.delete import DeletePromocode
+from src.application.use_cases.promocode.utils import get_promocode_runtime_state
 from src.core.constants import USER_KEY
 from src.core.enums import PromocodeRewardType
 from src.core.exceptions import PromocodeCodeAlreadyExistsError
@@ -33,6 +35,19 @@ def _build_default_promocode() -> PromocodeDto:
         lifetime=None,
         max_activations=None,
     )
+
+
+def _is_valid_reward(reward_type: PromocodeRewardType, reward: int) -> bool:
+    if reward < 1:
+        return False
+
+    if reward_type in {
+        PromocodeRewardType.PERSONAL_DISCOUNT,
+        PromocodeRewardType.PURCHASE_DISCOUNT,
+    }:
+        return reward <= 100
+
+    return True
 
 
 @inject
@@ -59,13 +74,25 @@ async def on_promocode_select(
     dialog_manager: DialogManager,
     retort: FromDishka[Retort],
     promocode_dao: FromDishka[PromocodeDao],
+    uow: FromDishka[UnitOfWork],
 ) -> None:
     promocode_id = int(dialog_manager.item_id)  # type: ignore[attr-defined]
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    promocode = await promocode_dao.get_by_id(promocode_id)
 
-    if not promocode:
-        raise ValueError(f"Attempted to select non-existent promocode '{promocode_id}'")
+    async with uow:
+        promocode = await promocode_dao.get_by_id(promocode_id)
+
+        if not promocode:
+            raise ValueError(f"Attempted to select non-existent promocode '{promocode_id}'")
+
+        if promocode.id is not None:
+            activations = await promocode_dao.count_activations(promocode.id)
+            runtime_state = get_promocode_runtime_state(promocode, activations)
+
+            if promocode.is_active and runtime_state.should_disable:
+                promocode.is_active = False
+                promocode = await promocode_dao.update(promocode.as_fully_changed()) or promocode
+                await uow.commit()
 
     dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
     dialog_manager.dialog_data["is_edit"] = True
@@ -157,11 +184,11 @@ async def on_reward_input(
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
-    if not 1 <= reward <= 100:
+    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+    if not _is_valid_reward(promocode.reward_type, reward):
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
-    promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
     promocode.reward = reward
     dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)
 

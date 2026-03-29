@@ -259,7 +259,7 @@ msg-statistics-promocodes =
     *[HAS] { $most_popular_promo }
     }
     • <b>Выдано дней</b>: { $total_promo_days }
-    • <b>Выдано трафика</b>: { $total_promo_days }
+    • <b>Выдано трафика</b>: { $total_promo_traffic }
     • <b>Выдано подписок</b>: { $total_promo_subscriptions }
     • <b>Выдано личных скидок</b>: { $total_promo_personal_discounts }
     • <b>Выдано одноразовых скидок</b>: { $total_promo_purchase_discounts }
@@ -1135,7 +1135,39 @@ msg-subscription-promocode =
 
     Отправьте промокод следующим сообщением.
 
-    Если промокод подойдет, скидка сразу применится к следующим расчетам стоимости.
+    После проверки сообщение с кодом будет удалено, а результат появится на экране подписки.
+
+msg-subscription-promocode-success =
+    <blockquote>
+    ✅ <b>Промокод активирован</b>
+
+    • <b>Код</b>: <code>{ $code }</code>
+    • <b>Тип</b>: { promocode-type }
+    { $promocode_type ->
+    [PERSONAL_DISCOUNT] • <b>Награда</b>: { $reward }%
+    • <b>Итоговая персональная скидка</b>: { $applied_discount }%
+    [PURCHASE_DISCOUNT] • <b>Награда</b>: { $reward }%
+    • <b>Итоговая скидка на следующую покупку</b>: { $applied_discount }%
+    [DURATION] • <b>Начислено</b>: { $reward } дн.
+    [TRAFFIC] • <b>Начислено</b>: { $reward } ГБ
+    *[OTHER] • <b>Награда</b>: { $reward }
+    }
+    • <b>Осталось использований</b>: { $has_activation_limit ->
+    [1] { $remaining_activations }
+    *[0] { unlimited }
+    }
+    • <b>Осталось времени жизни</b>: { $has_lifetime_limit ->
+    [1] { $remaining_lifetime_days } дн.
+    *[0] { unlimited }
+    }
+    </blockquote>
+
+msg-subscription-promocode-error =
+    <blockquote>
+    ⚠️ <b>Промокод не применен</b>
+
+    { $error }
+    </blockquote>
 
 msg-subscription-confirm =
     <b>🛒 Подтверждение { $purchase_type ->
@@ -1260,6 +1292,8 @@ msg-promocode-configurator =
     { $promocode_type ->
     [PERSONAL_DISCOUNT] • <b>Персональная скидка</b>: { $reward_display }
     [PURCHASE_DISCOUNT] • <b>Скидка на покупку</b>: { $reward_display }
+    [DURATION] • <b>Дополнительные дни</b>: { $reward_display }
+    [TRAFFIC] • <b>Дополнительный трафик</b>: { $reward_display }
     *[OTHER] { $promocode_type }
     }
     • <b>Срок действия</b>: { $lifetime_display }
@@ -1281,9 +1315,12 @@ msg-promocode-type =
     Выберите тип промокода.
 
 msg-promocode-reward =
-    <b>🎁 Размер скидки</b>
+    <b>🎁 Значение награды</b>
 
-    Отправьте значение скидки в процентах от 1 до 100.
+    Отправьте значение награды:
+    • для скидок — процент от 1 до 100
+    • для дополнительных дней — количество дней
+    • для дополнительного трафика — количество ГБ
 
 msg-promocode-lifetime =
     <b>⌛ Срок действия</b>

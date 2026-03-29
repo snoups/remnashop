@@ -44,6 +44,7 @@ btn-menu =
     .connect = 🚀 Подключиться
     .devices = 📱 Мои устройства
     .subscription = 💳 Подписка
+    .promocode = 🎟 Ввести промокод
     .invite = 👥 Пригласить
     .support = 🆘 Поддержка
     .dashboard = 🛠 Панель управления
