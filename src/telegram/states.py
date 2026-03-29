@@ -56,15 +56,12 @@ class DashboardBroadcast(StatesGroup):
 
 class DashboardPromocodes(StatesGroup):
     MAIN = State()
-    LIST = State()
     CONFIGURATOR = State()
     CODE = State()
     TYPE = State()
-    AVAILABILITY = State()
     REWARD = State()
     LIFETIME = State()
     MAX_ACTIVATIONS = State()
-    ALLOWED = State()
 
 
 class DashboardAccess(StatesGroup):

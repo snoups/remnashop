@@ -28,7 +28,8 @@ from src.core.enums import MediaType
 from src.core.utils.i18n_helpers import i18n_format_expire_time
 from src.core.utils.time import get_traffic_reset_delta
 from src.telegram.keyboards import CALLBACK_CHANNEL_CONFIRM, CALLBACK_RULES_ACCEPT
-from src.telegram.states import MainMenu
+from src.telegram.routers.subscription.handlers import PROMOCODE_RETURN_STATE_KEY
+from src.telegram.states import MainMenu, Subscription
 
 router = Router(name=__name__)
 
@@ -234,3 +235,18 @@ async def on_invite(
     if settings.referral.enable:
         await dialog_manager.switch_to(state=MainMenu.INVITE)
     return
+
+
+async def on_promocode_open(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+) -> None:
+    # Сохраняем точку возврата, чтобы "Назад" из промокода возвращал
+    # пользователя обратно в главное меню, а не в окно подписки.
+    await dialog_manager.start(
+        state=Subscription.PROMOCODE,
+        data={PROMOCODE_RETURN_STATE_KEY: MainMenu.MAIN.state},
+        mode=StartMode.RESET_STACK,
+        show_mode=ShowMode.EDIT,
+    )

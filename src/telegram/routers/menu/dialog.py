@@ -38,6 +38,7 @@ from .handlers import (
     on_device_delete_request,
     on_get_trial,
     on_invite,
+    on_promocode_open,
     on_reissue_subscription_confirm,
     on_show_qr,
     on_withdraw_points,
@@ -80,10 +81,10 @@ menu = Window(
         ),
     ),
     Row(
-        Start(
+        Button(
             text=I18nFormat("btn-menu.promocode"),
             id="promocode",
-            state=Subscription.PROMOCODE,
+            on_click=on_promocode_open,
         ),
     ),
     Row(

@@ -45,7 +45,7 @@ class ServicesProvider(Provider):
     remna_webhook = provide(source=RemnaWebhookService, scope=Scope.REQUEST)
 
     topic_config = provide(source=TopicNotificationConfig.get)
-    topic_module = provide(source=TopicNotificationModule, scope=Scope.REQUEST)
+    topic_module = provide(source=TopicNotificationModule)
 
     notification_queue = provide(source=NotificationQueue)
     notification = provide(

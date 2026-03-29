@@ -35,7 +35,6 @@ async def subscription_getter(
     return {
         "has_active_subscription": has_active,
         "is_not_unlimited": not is_unlimited,
-        "has_promocode_feedback": bool(dialog_manager.dialog_data.get("promocode_feedback_text")),
         "promocode_feedback_text": dialog_manager.dialog_data.get("promocode_feedback_text", ""),
     }
 
