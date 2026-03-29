@@ -1135,7 +1135,7 @@ msg-subscription-promocode =
 
     Отправьте промокод следующим сообщением.
 
-    После проверки сообщение с кодом будет удалено, а результат появится на экране подписки.
+    После проверки сообщение с кодом будет удалено, а результат появится здесь.
 
 msg-subscription-promocode-success =
     <blockquote>
@@ -1151,14 +1151,6 @@ msg-subscription-promocode-success =
     [DURATION] • <b>Начислено</b>: { $reward } дн.
     [TRAFFIC] • <b>Начислено</b>: { $reward } ГБ
     *[OTHER] • <b>Награда</b>: { $reward }
-    }
-    • <b>Осталось использований</b>: { $has_activation_limit ->
-    [1] { $remaining_activations }
-    *[0] { unlimited }
-    }
-    • <b>Осталось времени жизни</b>: { $has_lifetime_limit ->
-    [1] { $remaining_lifetime_days } дн.
-    *[0] { unlimited }
     }
     </blockquote>
 
