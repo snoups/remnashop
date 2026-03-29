@@ -34,6 +34,7 @@ from .handlers import (
 subscription = Window(
     Banner(BannerName.SUBSCRIPTION),
     I18nFormat("msg-subscription-main"),
+    Format("{promocode_feedback_text}", when=F["has_promocode_feedback"]),
     Row(
         Button(
             text=I18nFormat("btn-subscription.new"),

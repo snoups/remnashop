@@ -7,7 +7,9 @@ from dishka.integrations.aiogram_dialog import inject
 
 from src.application.common import TranslatorRunner
 from src.application.common.dao import PromocodeDao
+from src.application.common.uow import UnitOfWork
 from src.application.dto import PromocodeDto
+from src.application.use_cases.promocode.utils import get_promocode_runtime_state
 from src.core.enums import PromocodeRewardType
 
 
@@ -22,13 +24,47 @@ def _build_default_promocode() -> PromocodeDto:
     )
 
 
+def _format_reward(promocode: PromocodeDto) -> str:
+    reward = promocode.reward or 0
+
+    match promocode.reward_type:
+        case PromocodeRewardType.PERSONAL_DISCOUNT | PromocodeRewardType.PURCHASE_DISCOUNT:
+            return f"{reward}%"
+        case PromocodeRewardType.DURATION:
+            return f"{reward} дн."
+        case PromocodeRewardType.TRAFFIC:
+            return f"{reward} ГБ"
+        case _:
+            return str(reward)
+
+
 @inject
 async def promocodes_getter(
     dialog_manager: DialogManager,
     promocode_dao: FromDishka[PromocodeDao],
+    uow: FromDishka[UnitOfWork],
     **kwargs: Any,
 ) -> dict[str, Any]:
-    promocodes = await promocode_dao.get_all()
+    async with uow:
+        promocodes = await promocode_dao.get_all()
+        activation_counts = await promocode_dao.get_activation_counts()
+        has_updates = False
+
+        for promocode in promocodes:
+            if promocode.id is None:
+                continue
+
+            runtime_state = get_promocode_runtime_state(
+                promocode,
+                activation_counts.get(promocode.id, 0),
+            )
+            if promocode.is_active and runtime_state.should_disable:
+                promocode.is_active = False
+                await promocode_dao.update(promocode.as_fully_changed())
+                has_updates = True
+
+        if has_updates:
+            await uow.commit()
 
     return {
         "has_promocodes": bool(promocodes),
@@ -64,7 +100,7 @@ async def configurator_getter(
         {
             "is_edit": dialog_manager.dialog_data.get("is_edit", False),
             "promocode_type": promocode.reward_type,
-            "reward_display": f"{promocode.reward or 0}%",
+            "reward_display": _format_reward(promocode),
             "lifetime_display": i18n.get("unlimited")
             if promocode.lifetime is None
             else f"{promocode.lifetime} дн.",
@@ -81,5 +117,7 @@ async def type_getter(dialog_manager: DialogManager, **kwargs: Any) -> dict[str,
         "types": [
             PromocodeRewardType.PERSONAL_DISCOUNT,
             PromocodeRewardType.PURCHASE_DISCOUNT,
+            PromocodeRewardType.DURATION,
+            PromocodeRewardType.TRAFFIC,
         ]
     }

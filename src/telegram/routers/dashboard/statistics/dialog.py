@@ -7,7 +7,13 @@ from src.telegram.keyboards import main_menu_button
 from src.telegram.states import Dashboard, DashboardStatistics
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
-from .getters import referrals_getter, subscriptions_getter, transactions_getter, users_getter
+from .getters import (
+    promocodes_getter,
+    referrals_getter,
+    subscriptions_getter,
+    transactions_getter,
+    users_getter,
+)
 from .handlers import on_gateway_select, on_plan_select
 
 statistics = Window(
@@ -28,6 +34,11 @@ statistics = Window(
             text=I18nFormat("btn-statistics.transactions"),
             id="transactions",
             state=DashboardStatistics.TRANSACTIONS,
+        ),
+        SwitchTo(
+            text=I18nFormat("btn-statistics.promocodes"),
+            id="promocodes",
+            state=DashboardStatistics.PROMOCODES,
         ),
         SwitchTo(
             text=I18nFormat("btn-statistics.referrals"),
@@ -129,6 +140,22 @@ transactions = Window(
     preview_data=transactions_getter,
 )
 
+promocodes = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-statistics-promocodes"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardStatistics.MAIN,
+        ),
+        *main_menu_button,
+    ),
+    IgnoreUpdate(),
+    state=DashboardStatistics.PROMOCODES,
+    getter=promocodes_getter,
+)
+
 referrals = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-statistics-referrals"),
@@ -150,5 +177,6 @@ router = Dialog(
     users,
     subscriptions,
     transactions,
+    promocodes,
     referrals,
 )

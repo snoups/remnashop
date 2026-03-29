@@ -60,11 +60,23 @@ class CommitPromocode(Interactor[PromocodeDto, CommitPromocodeResultDto]):
         if promocode.reward_type not in {
             PromocodeRewardType.PERSONAL_DISCOUNT,
             PromocodeRewardType.PURCHASE_DISCOUNT,
+            PromocodeRewardType.DURATION,
+            PromocodeRewardType.TRAFFIC,
         }:
             raise ValueError(f"Unsupported promocode type '{promocode.reward_type}'")
 
-        if promocode.reward is None or not 1 <= promocode.reward <= 100:
+        if promocode.reward is None or promocode.reward < 1:
             raise ValueError(f"Invalid promocode reward '{promocode.reward}'")
+
+        if (
+            promocode.reward_type
+            in {
+                PromocodeRewardType.PERSONAL_DISCOUNT,
+                PromocodeRewardType.PURCHASE_DISCOUNT,
+            }
+            and promocode.reward > 100
+        ):
+            raise ValueError(f"Invalid discount reward '{promocode.reward}'")
 
         if promocode.lifetime is not None and promocode.lifetime < 1:
             raise ValueError(f"Invalid promocode lifetime '{promocode.lifetime}'")
