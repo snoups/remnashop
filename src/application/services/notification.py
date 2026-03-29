@@ -31,7 +31,8 @@ from src.application.dto import (
 )
 from src.application.events import ErrorEvent, SystemEvent
 from src.application.events.base import UserEvent
-from src.application.events.system import RemnashopWelcomeEvent
+from src.application.events.system import BotLifecycleEvent, NodeEvent, RemnashopWelcomeEvent
+from src.application.events.system import UserEvent as SystemUserEvent
 from src.core.config import AppConfig
 from src.core.enums import Locale, Role
 from src.core.types import AnyKeyboard
@@ -79,6 +80,11 @@ class NotificationService(Notifier):
         payload: MessagePayloadDto,
         roles: list[Role] = [Role.OWNER, Role.DEV, Role.ADMIN],
     ) -> None:
+        if self.config.bot.notifications_chat_id:
+            await self._send_message(
+                UserDto(name="", telegram_id=self.config.bot.notifications_chat_id), payload
+            )
+            return
         await self.queue.enqueue(NotificationTaskDto(payload=payload, roles=roles))
 
     @on_event(RemnashopWelcomeEvent)
@@ -112,7 +118,16 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self.notify_admins(event.as_payload())
+        payload = event.as_payload()
+        event_type = type(event)
+        if issubclass(event_type, SystemUserEvent):
+            payload.thread_id = self.config.bot.notifications_user_thread_id
+        elif issubclass(event_type, NodeEvent):
+            payload.thread_id = self.config.bot.notifications_node_thread_id
+        elif issubclass(event_type, BotLifecycleEvent):
+            payload.thread_id = self.config.bot.notifications_bot_thread_id
+
+        await self.notify_admins(payload)
 
     @on_event(ErrorEvent)
     async def on_error_event(self, event: ErrorEvent) -> None:
@@ -201,6 +216,7 @@ class NotificationService(Notifier):
             "disable_notification": payload.disable_notification,
             "message_effect_id": payload.message_effect,
             "reply_markup": reply_markup,
+            "message_thread_id": payload.thread_id,
         }
 
         try:

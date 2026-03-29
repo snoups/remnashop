@@ -24,6 +24,7 @@ class MessagePayloadDto:
     disable_default_markup: bool = True
 
     delete_after: Optional[int] = 5
+    thread_id: Optional[int] = None
     message_effect: Optional[MessageEffectId] = None
     disable_notification: bool = False
 
