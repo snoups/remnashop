@@ -34,7 +34,6 @@ from .handlers import (
 subscription = Window(
     Banner(BannerName.SUBSCRIPTION),
     I18nFormat("msg-subscription-main"),
-    Format("{promocode_feedback_text}", when=F["has_promocode_feedback"]),
     Row(
         Button(
             text=I18nFormat("btn-subscription.new"),
@@ -82,6 +81,22 @@ promocode = Window(
     *back_main_menu_button,
     IgnoreUpdate(),
     state=Subscription.PROMOCODE,
+)
+
+promocode_result = Window(
+    Banner(BannerName.PROMOCODE),
+    Format("{promocode_feedback_text}"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id=f"{PAYMENT_PREFIX}back_promocode_result",
+            state=Subscription.MAIN,
+        ),
+    ),
+    *back_main_menu_button,
+    IgnoreUpdate(),
+    state=Subscription.PROMOCODE_RESULT,
+    getter=subscription_getter,
 )
 
 plan = Window(
@@ -286,6 +301,7 @@ failed = Window(
 router = Dialog(
     subscription,
     promocode,
+    promocode_result,
     plan,
     plans,
     duration,

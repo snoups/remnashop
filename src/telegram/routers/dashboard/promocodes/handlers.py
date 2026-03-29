@@ -19,6 +19,7 @@ from src.application.use_cases.promocode.utils import get_promocode_runtime_stat
 from src.core.constants import USER_KEY
 from src.core.enums import PromocodeRewardType
 from src.core.exceptions import PromocodeCodeAlreadyExistsError
+from src.core.utils.time import datetime_now
 from src.telegram.states import DashboardPromocodes
 from src.telegram.utils import is_double_click
 
@@ -110,6 +111,11 @@ async def on_active_toggle(
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     promocode = retort.load(dialog_manager.dialog_data[PromocodeDto.__name__], PromocodeDto)
+
+    if not promocode.is_active:
+        runtime_state = get_promocode_runtime_state(promocode, 0)
+        if runtime_state.is_expired and promocode.lifetime is not None:
+            promocode.created_at = datetime_now()
 
     promocode.is_active = not promocode.is_active
     dialog_manager.dialog_data[PromocodeDto.__name__] = retort.dump(promocode)

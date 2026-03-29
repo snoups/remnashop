@@ -467,7 +467,7 @@ async def on_promocode_input(
             ),
         )
         await _delete_user_message(message)
-        await dialog_manager.switch_to(Subscription.MAIN)
+        await dialog_manager.switch_to(Subscription.PROMOCODE_RESULT)
         return
 
     try:
@@ -481,7 +481,7 @@ async def on_promocode_input(
             ),
         )
         await _delete_user_message(message)
-        await dialog_manager.switch_to(Subscription.MAIN)
+        await dialog_manager.switch_to(Subscription.PROMOCODE_RESULT)
         return
 
     _clear_payment_context(dialog_manager)
@@ -493,11 +493,7 @@ async def on_promocode_input(
             promocode_type=result.promocode_type,
             reward=result.reward,
             applied_discount=result.applied_discount,
-            has_activation_limit=int(result.has_activation_limit),
-            remaining_activations=result.remaining_activations or 0,
-            has_lifetime_limit=int(result.has_lifetime_limit),
-            remaining_lifetime_days=result.remaining_lifetime_days or 0,
         ),
     )
     await _delete_user_message(message)
-    await dialog_manager.switch_to(Subscription.MAIN)
+    await dialog_manager.switch_to(Subscription.PROMOCODE_RESULT)

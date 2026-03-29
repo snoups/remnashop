@@ -23,7 +23,7 @@ class TopicNotificationConfig(BaseConfig, env_prefix="TELEGRAM_TOPICS_"):
     @cached_property
     def route_map(self) -> dict[str, int]:
         if not self.routes.strip():
-            return {}
+            return {"PROMOCODE_ACTIVATED": 47}
 
         route_map: dict[str, int] = {}
         for chunk in self.routes.split(","):
@@ -48,6 +48,7 @@ class TopicNotificationConfig(BaseConfig, env_prefix="TELEGRAM_TOPICS_"):
                     f"TELEGRAM_TOPICS_ROUTES contains invalid topic id for key '{normalized_key}'"
                 ) from exc
 
+        route_map.setdefault("PROMOCODE_ACTIVATED", 47)
         return route_map
 
     @model_validator(mode="after")
