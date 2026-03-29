@@ -261,7 +261,7 @@ msg-statistics-promocodes =
     *[HAS] { $most_popular_promo }
     }
     • <b>Выдано дней</b>: { $total_promo_days }
-    • <b>Выдано трафика</b>: { $total_promo_days }
+    • <b>Выдано трафика</b>: { $total_promo_traffic }
     • <b>Выдано подписок</b>: { $total_promo_subscriptions }
     • <b>Выдано личных скидок</b>: { $total_promo_personal_discounts }
     • <b>Выдано одноразовых скидок</b>: { $total_promo_purchase_discounts }
@@ -1132,6 +1132,35 @@ msg-subscription-payment-method =
 
     { msg-subscription-details }
 
+msg-subscription-promocode =
+    <b>🎟 Промокод</b>
+
+    Введите промокод, чтобы активировать скидку или бонус.
+
+msg-subscription-promocode-success =
+    <blockquote>
+    ✅ <b>Промокод применен</b>
+
+    • <b>Код</b>: <code>{ $code }</code>
+    • <b>Тип</b>: { promocode-type }
+    { $promocode_type ->
+    [PERSONAL_DISCOUNT] • <b>Награда</b>: { $reward }%
+    • <b>Итоговая персональная скидка</b>: { $applied_discount }%
+    [PURCHASE_DISCOUNT] • <b>Награда</b>: { $reward }%
+    • <b>Итоговая скидка на следующую покупку</b>: { $applied_discount }%
+    [DURATION] • <b>Начислено</b>: { $reward } дн.
+    [TRAFFIC] • <b>Начислено</b>: { $reward } ГБ
+    *[OTHER] • <b>Награда</b>: { $reward }
+    }
+    </blockquote>
+
+msg-subscription-promocode-error =
+    <blockquote>
+    ⚠️ <b>Не удалось применить промокод</b>
+
+    { $error }
+    </blockquote>
+
 msg-subscription-confirm =
     <b>🛒 Подтверждение { $purchase_type ->
     [RENEW] продления
@@ -1232,14 +1261,19 @@ msg-importer-sync-completed =
 
 
 # Promocodes
-msg-promocodes-main = <b>🎟 Промокоды</b>
+msg-promocodes-main =
+    <b>🎟 Промокоды</b>
+
+    Выберите существующий промокод для редактирования или создайте новый.
+
+msg-promocodes-empty =
+    <i>Промокодов пока нет. Создайте первый промокод кнопкой ниже.</i>
 msg-promocode-configurator =
     <b>🎟 Конфигуратор промокода</b>
 
     <blockquote>
     • <b>Код</b>: { $code }
     • <b>Тип</b>: { promocode-type }
-    • <b>Доступ</b>: { availability-type }
     • <b>Статус</b>: { $is_active -> 
         [1] 🟢 Включен
         *[0] 🔴 Выключен
@@ -1248,16 +1282,46 @@ msg-promocode-configurator =
 
     <blockquote>
     { $promocode_type ->
-    [DURATION] • <b>Длительность</b>: { $reward }
-    [TRAFFIC] • <b>Трафик</b>: { $reward }
-    [DEVICES] • <b>Устройства</b>: { $reward }
-    [SUBSCRIPTION] • <b>Подписка</b>: { frg-plan-snapshot }
-    [PERSONAL_DISCOUNT] • <b>Персональная скидка</b>: { $reward }%
-    [PURCHASE_DISCOUNT] • <b>Скидка на покупку</b>: { $reward }%
+    [PERSONAL_DISCOUNT] • <b>Персональная скидка</b>: { $reward_display }
+    [PURCHASE_DISCOUNT] • <b>Скидка на покупку</b>: { $reward_display }
+    [DURATION] • <b>Дополнительные дни</b>: { $reward_display }
+    [TRAFFIC] • <b>Дополнительный трафик</b>: { $reward_display }
     *[OTHER] { $promocode_type }
     }
-    • <b>Срок действия</b>: { $lifetime }
-    • <b>Лимит активаций</b>: { $max_activations }
+    • <b>Срок действия</b>: { $lifetime_display }
+    • <b>Лимит активаций</b>: { $max_activations_display }
     </blockquote>
 
     Выберите пункт для изменения.
+
+msg-promocode-code =
+    <b>🏷 Код промокода</b>
+
+    Отправьте код следующим сообщением.
+
+    Рекомендуемый формат: только латиница, цифры, `_` или `-`.
+
+msg-promocode-type =
+    <b>🔖 Тип награды</b>
+
+    Выберите тип промокода.
+
+msg-promocode-reward =
+    <b>🎁 Значение награды</b>
+
+    Отправьте значение награды:
+    • для скидок — процент от 1 до 100
+    • для дополнительных дней — количество дней
+    • для дополнительного трафика — количество ГБ
+
+msg-promocode-lifetime =
+    <b>⌛ Срок действия</b>
+
+    Отправьте количество дней жизни промокода.
+    Если ограничение не нужно, отправьте <code>0</code>.
+
+msg-promocode-max-activations =
+    <b>👥 Лимит активаций</b>
+
+    Отправьте максимальное количество активаций.
+    Если лимит не нужен, отправьте <code>0</code>.

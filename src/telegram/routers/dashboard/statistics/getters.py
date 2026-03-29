@@ -7,6 +7,7 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
 from src.application.common import TranslatorRunner
+from src.application.use_cases.statistics.queries.promocodes import GetPromocodeStatistics
 from src.application.use_cases.statistics.queries.plans import GetPlanStatistics
 from src.application.use_cases.statistics.queries.referrals import GetReferralStatistics
 from src.application.use_cases.statistics.queries.subscriptions import GetSubscriptionStatistics
@@ -93,6 +94,18 @@ async def transactions_getter(
         "total_discounts": gateway.total_discounts,
         "currency": Currency.from_gateway_type(gateway.gateway_type).symbol,
     }
+
+
+@inject
+async def promocodes_getter(
+    dialog_manager: DialogManager,
+    get_promocode_statistics: FromDishka[GetPromocodeStatistics],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    data = await get_promocode_statistics.system()
+    result = asdict(data)
+    result["most_popular_promo"] = data.most_popular_promo or False
+    return result
 
 
 @inject

@@ -23,6 +23,7 @@ from src.infrastructure.services import (
     RedirectImpl,
     RemnawaveImpl,
 )
+from src.modules.topic_notifications import TopicNotificationConfig, TopicNotificationModule
 
 
 class ServicesProvider(Provider):
@@ -42,6 +43,9 @@ class ServicesProvider(Provider):
 
     remnawave = provide(source=RemnawaveImpl, provides=Remnawave)
     remna_webhook = provide(source=RemnaWebhookService, scope=Scope.REQUEST)
+
+    topic_config = provide(source=TopicNotificationConfig.get)
+    topic_module = provide(source=TopicNotificationModule)
 
     notification_queue = provide(source=NotificationQueue)
     notification = provide(

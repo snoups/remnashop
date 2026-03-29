@@ -20,6 +20,7 @@ class Notification(StatesGroup):
 class Subscription(StatesGroup):
     MAIN = State()
     PROMOCODE = State()
+    PROMOCODE_RESULT = State()
     PLAN = State()
     PLANS = State()
     DURATION = State()
@@ -39,6 +40,7 @@ class DashboardStatistics(StatesGroup):
     USERS = State()
     SUBSCRIPTIONS = State()
     TRANSACTIONS = State()
+    PROMOCODES = State()
     REFERRALS = State()
 
 
@@ -54,14 +56,12 @@ class DashboardBroadcast(StatesGroup):
 
 class DashboardPromocodes(StatesGroup):
     MAIN = State()
-    LIST = State()
     CONFIGURATOR = State()
     CODE = State()
     TYPE = State()
-    AVAILABILITY = State()
     REWARD = State()
     LIFETIME = State()
-    ALLOWED = State()
+    MAX_ACTIVATIONS = State()
 
 
 class DashboardAccess(StatesGroup):

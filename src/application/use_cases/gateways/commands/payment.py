@@ -347,3 +347,8 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
 
         if not transaction.pricing.is_free:
             await self.assign_referral_rewards.system(AssignReferralRewardsDto(user, transaction))
+
+        if user.purchase_discount > 0:
+            user.purchase_discount = 0
+            await self.user_dao.update(user)
+            logger.info(f"Reset purchase discount for user '{user.telegram_id}' after payment")

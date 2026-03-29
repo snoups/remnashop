@@ -22,14 +22,14 @@ from loguru import logger
 from src.application.common import Notifier, TranslatorHub
 from src.application.common.dao import SettingsDao, UserDao
 from src.application.dto import (
-    MediaDescriptorDto,
     MessagePayloadDto,
     NotificationTaskDto,
     SettingsDto,
     TempUserDto,
     UserDto,
 )
-from src.application.events import ErrorEvent, SystemEvent
+from src.application.dto.message_payload import MediaDescriptorDto
+from src.application.events import BaseEvent, ErrorEvent, SystemEvent
 from src.application.events.base import UserEvent
 from src.application.events.system import RemnashopWelcomeEvent
 from src.core.config import AppConfig
@@ -37,6 +37,7 @@ from src.core.enums import Locale, Role
 from src.core.types import AnyKeyboard
 from src.infrastructure.services import NotificationQueue
 from src.infrastructure.services.event_bus import on_event
+from src.modules.topic_notifications import TopicNotificationModule
 from src.telegram.states import Notification
 
 
@@ -49,6 +50,7 @@ class NotificationService(Notifier):
         user_dao: UserDao,
         settings_dao: SettingsDao,
         queue: NotificationQueue,
+        topic_module: TopicNotificationModule,
     ) -> None:
         self.bot = bot
         self.config = config
@@ -56,6 +58,7 @@ class NotificationService(Notifier):
         self.user_dao = user_dao
         self.settings_dao = settings_dao
         self.queue = queue
+        self.topic_module = topic_module
         self.queue.start(self._process_task)
 
     async def notify_user(
@@ -90,7 +93,11 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self.notify_admins(event.as_payload(), roles=[Role.OWNER, Role.DEV])
+        payload = event.as_payload()
+        if await self._notify_admin_channel(event, payload):
+            return
+
+        await self.notify_admins(payload, roles=[Role.OWNER, Role.DEV])
 
     @on_event(UserEvent)
     async def on_user_event(self, event: UserEvent) -> None:
@@ -112,7 +119,11 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self.notify_admins(event.as_payload())
+        payload = event.as_payload()
+        if await self._notify_admin_channel(event, payload):
+            return
+
+        await self.notify_admins(payload)
 
     @on_event(ErrorEvent)
     async def on_error_event(self, event: ErrorEvent) -> None:
@@ -135,10 +146,29 @@ class NotificationService(Notifier):
             filename=f"error_{event.event_id}.txt",
         )
 
-        await self.notify_admins(
-            event.as_payload(media, error_type, error_message),
-            roles=[Role.OWNER, Role.DEV],
-        )
+        payload = event.as_payload(media, error_type, error_message)
+        if await self._notify_admin_channel(event, payload):
+            return
+
+        await self.notify_admins(payload, roles=[Role.OWNER, Role.DEV])
+
+    async def _notify_admin_channel(
+        self,
+        event: BaseEvent,
+        payload: MessagePayloadDto,
+    ) -> bool:
+        handled = await self.topic_module.notify_event(event, payload)
+        if not handled:
+            return False
+
+        if self.topic_module.suppress_admin_dms:
+            logger.info(
+                f"Admin DMs suppressed for event '{event.event_type}' "
+                f"because topic routing handled the notification"
+            )
+            return True
+
+        return False
 
     async def delete_notification(self, chat_id: int, message_id: int) -> None:
         try:

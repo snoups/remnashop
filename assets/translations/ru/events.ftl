@@ -253,6 +253,39 @@ event-subscription =
     { frg-subscription-details }
 
 
+event-promocode =
+    .activated =
+    #PromocodeActivatedEvent
+
+    <b>🎟 Событие: Пользователь активировал промокод!</b>
+
+    { hdr-user }
+    { frg-user-info }
+
+    <b>🎁 Промокод:</b>
+    <blockquote>
+    • <b>Код</b>: <code>{ $code }</code>
+    • <b>Тип</b>: { promocode-type }
+    { $promocode_type ->
+    [PERSONAL_DISCOUNT] • <b>Награда</b>: { $reward }%
+    • <b>Итоговая персональная скидка</b>: { $applied_discount }%
+    [PURCHASE_DISCOUNT] • <b>Награда</b>: { $reward }%
+    • <b>Итоговая скидка на следующую покупку</b>: { $applied_discount }%
+    [DURATION] • <b>Начислено дней</b>: { $reward }
+    [TRAFFIC] • <b>Начислено трафика</b>: { $reward } ГБ
+    *[OTHER] • <b>Награда</b>: { $reward }
+    }
+    • <b>Осталось использований</b>: { $has_activation_limit ->
+    [1] { $remaining_activations }
+    *[0] { unlimited }
+    }
+    • <b>Осталось времени жизни</b>: { $has_lifetime_limit ->
+    [1] { $remaining_lifetime_days } дн.
+    *[0] { unlimited }
+    }
+    </blockquote>
+
+
 event-node =
     .connection-lost =
     #NodeConnectionLostEvent

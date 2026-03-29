@@ -13,6 +13,7 @@ from src.core.enums import (
     MediaType,
     PaymentGatewayType,
     PlanType,
+    PromocodeRewardType,
     PurchaseType,
     SubscriptionStatus,
     SystemNotificationType,
@@ -402,6 +403,38 @@ class TrialActivatedEvent(UserEvent):
     @property
     def event_key(self) -> str:
         return "event-subscription.trial"
+
+
+@dataclass(frozen=True, kw_only=True)
+class PromocodeActivatedEvent(UserEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.PROMOCODE_ACTIVATED,
+        init=False,
+    )
+
+    code: str
+    promocode_type: PromocodeRewardType
+    reward: int
+    applied_discount: int
+    has_activation_limit: bool
+    remaining_activations: Optional[int] = None
+    has_lifetime_limit: bool = False
+    remaining_lifetime_days: Optional[int] = None
+
+    def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_user_keyboard  # noqa: PLC0415
+
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs={**asdict(self)},
+            reply_markup=get_user_keyboard(self.telegram_id),
+            disable_default_markup=False,
+            delete_after=None,
+        )
+
+    @property
+    def event_key(self) -> str:
+        return "event-promocode.activated"
 
 
 @dataclass(frozen=True, kw_only=True)

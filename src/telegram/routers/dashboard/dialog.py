@@ -1,5 +1,5 @@
 from aiogram_dialog import Dialog, StartMode, Window
-from aiogram_dialog.widgets.kbd import Button, Row, Start
+from aiogram_dialog.widgets.kbd import Row, Start
 
 from src.application.common.policy import Permission
 from src.core.enums import BannerName
@@ -9,6 +9,7 @@ from src.telegram.states import (
     DashboardAccess,
     DashboardBroadcast,
     DashboardImporter,
+    DashboardPromocodes,
     DashboardRemnashop,
     DashboardRemnawave,
     DashboardStatistics,
@@ -16,8 +17,6 @@ from src.telegram.states import (
 )
 from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
-
-from .handlers import show_dev_promocode
 
 dashboard = Window(
     Banner(BannerName.DASHBOARD),
@@ -45,12 +44,11 @@ dashboard = Window(
             mode=StartMode.RESET_STACK,
             when=require_permission(Permission.VIEW_BROADCAST),
         ),
-        Button(
+        Start(
             text=I18nFormat("btn-dashboard.promocodes"),
             id="promocodes",
-            on_click=show_dev_promocode,
-            # state=DashboardPromocodes.MAIN,
-            # mode=StartMode.RESET_STACK,
+            state=DashboardPromocodes.MAIN,
+            mode=StartMode.RESET_STACK,
             when=require_permission(Permission.VIEW_PROMOCODE),
         ),
     ),

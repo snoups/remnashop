@@ -121,6 +121,14 @@ class ReferralRewardType(UpperStrEnum):
     EXTRA_DAYS = auto()
 
 
+class PromocodeRewardType(UpperStrEnum):
+    DURATION = auto()
+    TRAFFIC = auto()
+    SUBSCRIPTION = auto()
+    PERSONAL_DISCOUNT = auto()
+    PURCHASE_DISCOUNT = auto()
+
+
 class ReferralLevel(IntEnum):
     FIRST = auto()
     SECOND = auto()

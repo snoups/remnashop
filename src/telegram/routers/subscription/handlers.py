@@ -1,14 +1,15 @@
 from typing import Optional, TypedDict, cast
 
 from adaptix import Retort
-from aiogram.types import CallbackQuery
-from aiogram_dialog import DialogManager
+from aiogram.types import CallbackQuery, Message
+from aiogram_dialog import DialogManager, ShowMode, StartMode
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
-from src.application.common import Notifier
+from src.application.common import Notifier, TranslatorRunner
 from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
 from src.application.dto import PlanDto, PlanSnapshotDto, UserDto
 from src.application.services import PricingService
@@ -19,14 +20,18 @@ from src.application.use_cases.gateways.commands.payment import (
     ProcessPaymentDto,
 )
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
+from src.application.use_cases.user.commands.promocode import ActivatePromocode, ActivatePromocodeDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
+from src.core.exceptions import PromocodeError
 from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
-from src.telegram.states import Subscription
+from src.telegram.states import Subscription, state_from_string
 
 PAYMENT_CACHE_KEY = "payment_cache"
 CURRENT_DURATION_KEY = "selected_duration"
 CURRENT_METHOD_KEY = "selected_payment_method"
+PROMOCODE_FEEDBACK_KEY = "promocode_feedback_text"
+PROMOCODE_RETURN_STATE_KEY = "promocode_return_state"
 
 
 class CachedPaymentData(TypedDict):
@@ -49,6 +54,30 @@ def _save_payment_data(dialog_manager: DialogManager, payment_data: CachedPaymen
     dialog_manager.dialog_data["payment_id"] = payment_data["payment_id"]
     dialog_manager.dialog_data["payment_url"] = payment_data["payment_url"]
     dialog_manager.dialog_data["final_pricing"] = payment_data["final_pricing"]
+
+
+def _clear_payment_context(dialog_manager: DialogManager) -> None:
+    for key in (
+        PAYMENT_CACHE_KEY,
+        CURRENT_DURATION_KEY,
+        CURRENT_METHOD_KEY,
+        "payment_id",
+        "payment_url",
+        "final_pricing",
+        "is_free",
+    ):
+        dialog_manager.dialog_data.pop(key, None)
+
+
+def _set_promocode_feedback(dialog_manager: DialogManager, text: str) -> None:
+    dialog_manager.dialog_data[PROMOCODE_FEEDBACK_KEY] = text
+
+
+async def _delete_user_message(message: Message) -> None:
+    try:
+        await message.delete()
+    except Exception as error:
+        logger.debug(f"Failed to delete promocode input message '{message.message_id}': {error}")
 
 
 async def _create_payment_and_get_data(
@@ -113,7 +142,7 @@ async def on_purchase_type_select(
     plans: list[PlanDto] = await get_available_plans.system(user)
     gateways = await payment_gateway_dao.get_active()
     dialog_manager.dialog_data["purchase_type"] = purchase_type
-    dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
+    _clear_payment_context(dialog_manager)
 
     if not plans:
         logger.warning(f"{user.log} No available subscription plans")
@@ -179,7 +208,7 @@ async def on_subscription_plans(  # noqa: C901
     purchase_type = PurchaseType(callback.data.removeprefix(PAYMENT_PREFIX))
     dialog_manager.dialog_data["purchase_type"] = purchase_type
 
-    dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
+    _clear_payment_context(dialog_manager)
 
     if not plans:
         logger.warning(f"{user.log} No available subscription plans")
@@ -272,9 +301,7 @@ async def on_plan_select(
     logger.info(f"{user.log} Selected plan '{plan.id}'")
 
     dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(plan)
-    dialog_manager.dialog_data.pop(PAYMENT_CACHE_KEY, None)
-    dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
-    dialog_manager.dialog_data.pop(CURRENT_METHOD_KEY, None)
+    _clear_payment_context(dialog_manager)
 
     if len(plan.durations) == 1:
         logger.info(f"{user.log} Auto-selected single duration '{plan.durations[0].days}'")
@@ -423,3 +450,85 @@ async def on_get_subscription(
     payment_id = dialog_manager.dialog_data["payment_id"]
     logger.info(f"{user.log} Getted free subscription '{payment_id}'")
     await process_payment.system(ProcessPaymentDto(payment_id, TransactionStatus.COMPLETED))
+
+
+@inject
+async def on_promocode_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    i18n: FromDishka[TranslatorRunner],
+    activate_promocode: FromDishka[ActivatePromocode],
+) -> None:
+    dialog_manager.show_mode = ShowMode.EDIT
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    code = (message.text or "").strip()
+
+    if not code:
+        _set_promocode_feedback(
+            dialog_manager,
+            i18n.get(
+                "msg-subscription-promocode-error",
+                error=i18n.get("ntf-promocode.empty"),
+            ),
+        )
+        await _delete_user_message(message)
+        await dialog_manager.switch_to(Subscription.PROMOCODE_RESULT)
+        return
+
+    try:
+        result = await activate_promocode(user, ActivatePromocodeDto(code=code))
+    except PromocodeError as error:
+        _set_promocode_feedback(
+            dialog_manager,
+            i18n.get(
+                "msg-subscription-promocode-error",
+                error=i18n.get(error.i18n_key),
+            ),
+        )
+        await _delete_user_message(message)
+        await dialog_manager.switch_to(Subscription.PROMOCODE_RESULT)
+        return
+
+    _clear_payment_context(dialog_manager)
+    _set_promocode_feedback(
+        dialog_manager,
+        i18n.get(
+            "msg-subscription-promocode-success",
+            code=result.code,
+            promocode_type=result.promocode_type,
+            reward=result.reward,
+            applied_discount=result.applied_discount,
+        ),
+    )
+    await _delete_user_message(message)
+    await dialog_manager.switch_to(Subscription.PROMOCODE_RESULT)
+
+
+async def on_promocode_back(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+) -> None:
+    start_data = dialog_manager.start_data if isinstance(dialog_manager.start_data, dict) else {}
+    return_state_raw = start_data.get(PROMOCODE_RETURN_STATE_KEY)
+
+    if isinstance(return_state_raw, str):
+        return_state = state_from_string(return_state_raw)
+        if return_state is not None:
+            # При открытии промокода из другого диалога возвращаем пользователя
+            # в исходную точку входа, а не в Subscription.MAIN.
+            await dialog_manager.start(
+                state=return_state,
+                mode=StartMode.RESET_STACK,
+                show_mode=ShowMode.EDIT,
+            )
+            return
+
+        logger.warning(f"Unknown promocode return state '{return_state_raw}'")
+
+    if dialog_manager.current_context().state == Subscription.PROMOCODE.state:
+        await dialog_manager.switch_to(Subscription.MAIN)
+        return
+
+    await dialog_manager.back()
