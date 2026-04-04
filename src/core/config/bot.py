@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 
 from pydantic import SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
@@ -20,6 +20,8 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
     drop_pending_updates: bool = False
     setup_commands: bool = True
     use_banners: bool = True
+
+    proxy_url: Optional[SecretStr] = None
 
     @property
     def webhook_path(self) -> str:
