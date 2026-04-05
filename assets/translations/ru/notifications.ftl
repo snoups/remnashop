@@ -20,6 +20,15 @@ ntf-common =
     .value-updated = ✅ <i>Параметр успешно обновлен.</i>
 
     .plan-not-found = ❌ <i>План не найден или недоступен.</i>
+    .web-cabinet-credentials =
+    ✅ <b>Доступ в веб ЛК сформирован</b>
+
+    <blockquote>
+    <b>Логин:</b> <code>{ $login }</code>
+    <b>Пароль:</b> <code>{ $password }</code>
+    </blockquote>
+
+    🌐 <a href="{ $url }">Перейти в веб ЛК</a>
 
     .connect-not-available =
     ⚠️ { $status ->

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional, Self
 
 from aiogram.types import User as AiogramUser
@@ -32,6 +33,14 @@ class TempUserDto:
 @dataclass(kw_only=True)
 class UserDto(BaseDto, TrackableMixin, TimestampMixin):
     telegram_id: int
+
+    login: Optional[str] = None
+    email: Optional[str] = None
+    password_hash: Optional[str] = None
+    is_email_verified: bool = False
+    pending_email: Optional[str] = None
+    email_verification_code_hash: Optional[str] = None
+    email_verification_expires_at: Optional[datetime] = None
 
     username: Optional[str] = None
     referral_code: str = ""
@@ -78,5 +87,7 @@ class UserDto(BaseDto, TrackableMixin, TimestampMixin):
 
         if self.username:
             description += f"\nusername: {self.username}"
+        if self.email:
+            description += f"\nemail: {self.email}"
 
         return description

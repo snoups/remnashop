@@ -62,6 +62,28 @@ class UserDaoImpl(UserDao):
         logger.debug(f"User '{telegram_id}' not found")
         return None
 
+    async def get_by_login(self, login: str) -> Optional[UserDto]:
+        stmt = select(User).where(User.login == login)
+        db_user = await self.session.scalar(stmt)
+
+        if db_user:
+            logger.debug(f"User with login '{login}' found in database")
+            return self._convert_to_dto(db_user)
+
+        logger.debug(f"User with login '{login}' not found")
+        return None
+
+    async def get_by_email(self, email: str) -> Optional[UserDto]:
+        stmt = select(User).where(User.email == email)
+        db_user = await self.session.scalar(stmt)
+
+        if db_user:
+            logger.debug(f"User with email '{email}' found in database")
+            return self._convert_to_dto(db_user)
+
+        logger.debug(f"User with email '{email}' not found")
+        return None
+
     async def get_by_telegram_ids(self, telegram_ids: list[int]) -> list[UserDto]:
         if not telegram_ids:
             return []

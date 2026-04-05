@@ -6,28 +6,31 @@ from starlette.middleware.cors import CORSMiddleware
 from src.core.config import AppConfig
 from src.lifespan import lifespan
 
-from .endpoints import TelegramWebhookEndpoint, payments_router, remnawave_router
+from .endpoints import TelegramWebhookEndpoint, payments_router, public_router, remnawave_router
 
 
 def get_app(config: AppConfig, dispatcher: Dispatcher) -> FastAPI:
     app: FastAPI = FastAPI(
         lifespan=lifespan,
-        docs_url=None,
-        redoc_url=None,
-        openapi_url=None,
-        include_in_schema=False,
+        # docs_url=None,
+        # redoc_url=None,
+        # openapi_url=None,
+        # include_in_schema=False,
     )
-
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=config.origins,
+        allow_origins=['*'],
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=["*"],
+        allow_headers=[
+            "*"
+        ],
     )
 
     app.include_router(payments_router)
     app.include_router(remnawave_router)
+    if config.web_enabled:
+        app.include_router(public_router)
 
     telegram_webhook_endpoint = TelegramWebhookEndpoint(
         dispatcher=dispatcher,

@@ -35,6 +35,7 @@ from .getters import (
 from .handlers import (
     on_device_delete_all_confirm,
     on_device_delete_confirm,
+    on_generate_web_credentials,
     on_device_delete_request,
     on_get_trial,
     on_invite,
@@ -100,6 +101,15 @@ menu = Window(
             id="support",
             url=Format("{support_url}"),
         ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-menu.web-cabinet"),
+            id="web_cabinet",
+            on_click=on_generate_web_credentials,
+            style=Style(ButtonStyle.PRIMARY),
+        ),
+        when=F["web_enabled"],
     ),
     *custom_buttons,
     Row(

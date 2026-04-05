@@ -46,6 +46,7 @@ btn-menu =
     .subscription = 💳 Подписка
     .invite = 👥 Пригласить
     .support = 🆘 Поддержка
+    .web-cabinet = 🌐 Доступ в веб ЛК
     .dashboard = 🛠 Панель управления
 
     .connect-not-available =
