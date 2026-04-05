@@ -42,6 +42,7 @@ async def menu_getter(
             # ui / config
             "is_mini_app": config.bot.is_mini_app,
             "support_url": support_url,
+            "web_enabled": config.web_enabled,
             # referral
             "referral_enabled": menu_data.is_referral_enabled,
             # defaults

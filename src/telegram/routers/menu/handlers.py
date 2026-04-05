@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import secrets
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
@@ -8,7 +11,8 @@ from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
 from src.application.common import Notifier, TranslatorRunner
-from src.application.common.dao import SettingsDao, SubscriptionDao
+from src.application.common.dao import SettingsDao, SubscriptionDao, UserDao
+from src.application.common.uow import UnitOfWork
 from src.application.dto import MediaDescriptorDto, MessagePayloadDto, PlanSnapshotDto, UserDto
 from src.application.services import BotService
 from src.application.use_cases.referral.queries.code import GenerateReferralQr
@@ -23,6 +27,7 @@ from src.application.use_cases.subscription.commands.purchase import (
     ActivateTrialSubscriptionDto,
 )
 from src.application.use_cases.user.queries.plans import GetAvailableTrial
+from src.core.config import AppConfig
 from src.core.constants import USER_KEY
 from src.core.enums import MediaType
 from src.core.utils.i18n_helpers import i18n_format_expire_time
@@ -31,6 +36,37 @@ from src.telegram.keyboards import CALLBACK_CHANNEL_CONFIRM, CALLBACK_RULES_ACCE
 from src.telegram.states import MainMenu
 
 router = Router(name=__name__)
+
+_PASSWORD_SCRYPT_N = 2**14
+_PASSWORD_SCRYPT_R = 8
+_PASSWORD_SCRYPT_P = 1
+_PASSWORD_SCRYPT_DKLEN = 64
+_WEB_PASSWORD_LEN = 8
+_WEB_PASSWORD_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+
+def _b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _hash_password(password: str, key: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.scrypt(
+        password=f"{password}:{key}".encode("utf-8"),
+        salt=salt,
+        n=_PASSWORD_SCRYPT_N,
+        r=_PASSWORD_SCRYPT_R,
+        p=_PASSWORD_SCRYPT_P,
+        dklen=_PASSWORD_SCRYPT_DKLEN,
+    )
+    return (
+        f"scrypt${_PASSWORD_SCRYPT_N}${_PASSWORD_SCRYPT_R}${_PASSWORD_SCRYPT_P}"
+        f"${_b64url_encode(salt)}${_b64url_encode(digest)}"
+    )
+
+
+def _generate_web_password() -> str:
+    return "".join(secrets.choice(_WEB_PASSWORD_ALPHABET) for _ in range(_WEB_PASSWORD_LEN))
 
 
 async def on_start_dialog(user: UserDto, dialog_manager: DialogManager) -> None:
@@ -234,3 +270,50 @@ async def on_invite(
     if settings.referral.enable:
         await dialog_manager.switch_to(state=MainMenu.INVITE)
     return
+
+
+@inject
+async def on_generate_web_credentials(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    config: FromDishka[AppConfig],
+    uow: FromDishka[UnitOfWork],
+    user_dao: FromDishka[UserDao],
+    notifier: FromDishka[Notifier],
+) -> None:
+    if not config.web_enabled:
+        raise ValueError("WEB_ENABLED is disabled")
+
+    web_cabinet_url = config.web_cabinet_url.strip()
+    if not web_cabinet_url:
+        raise ValueError("WEB_CABINET_URL is not configured")
+
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    db_user = await user_dao.get_by_telegram_id(user.telegram_id)
+    if not db_user:
+        raise ValueError(f"User '{user.telegram_id}' not found")
+
+    plain_password = _generate_web_password()
+    db_user.login = db_user.remna_name
+    db_user.password_hash = _hash_password(plain_password, config.crypt_key.get_secret_value())
+
+    async with uow:
+        updated = await user_dao.update(db_user)
+        if not updated:
+            raise ValueError(f"Failed to update user '{user.telegram_id}'")
+        await uow.commit()
+
+    await notifier.notify_user(
+        user=updated,
+        payload=MessagePayloadDto(
+            i18n_key="ntf-common.web-cabinet-credentials",
+            i18n_kwargs={
+                "login": updated.login,
+                "password": plain_password,
+                "url": web_cabinet_url,
+            },
+            delete_after=None,
+            disable_default_markup=False,
+        ),
+    )

@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, ForeignKey, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.enums import Locale, Role
@@ -14,6 +15,16 @@ class User(BaseSql, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     telegram_id: Mapped[int] = mapped_column(BigInteger, index=True, unique=True)
+
+    login: Mapped[Optional[str]] = mapped_column(String(64), index=True, unique=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), index=True, unique=True)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(512))
+    is_email_verified: Mapped[bool] = mapped_column(default=False)
+    pending_email: Mapped[Optional[str]] = mapped_column(String(255))
+    email_verification_code_hash: Mapped[Optional[str]] = mapped_column(String(128))
+    email_verification_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     username: Mapped[Optional[str]] = mapped_column(String(32), index=True)
     referral_code: Mapped[str] = mapped_column(String(64), index=True, unique=True)
