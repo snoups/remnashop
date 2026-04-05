@@ -30,7 +30,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
 
     crypt_key: SecretStr
     assets_dir: Path = ASSETS_DIR
-    origins: StringList = StringList("*")
+    origins: StringList = StringList("")
     web_enabled: bool = Field(default=False, validation_alias="WEB_ENABLED")
     web_cabinet_url: str = Field(default="", validation_alias="WEB_CABINET_URL")
 
