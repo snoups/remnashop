@@ -5,6 +5,36 @@ description: "History of changes"
 
 ---
 
+#### 0.7.4 (April 7, 2026)
+
+New:
+- Added support for **Remnawave 2.7.x**
+- Added **MONTH_ROLLING** traffic reset strategy: traffic resets based on the subscription creation date rather than a fixed calendar day
+- Added optional **SOCKS5 proxy** support for Telegram API access (configurable via `BOT_PROXY_URL` in env)
+- Added **Remnawave version compatibility check**: the bot warns if the connected panel version is outdated or unsupported
+- Added **one-time purchase discount** management: separate personal and one-time discounts per user, with the higher value applied automatically
+- Added **trial availability toggle** in the user editor
+- Added **discount type indicator** on subscription screens showing whether the active discount is personal or one-time
+- Increased maximum length for menu button labels and plan names from **16 to 32 characters**
+- Improved YooKassa payment creation: added retry logic on connection errors
+- Added permission checks when changing user roles: preventing self-demotion, protecting the Owner role, and enforcing role hierarchy
+
+Fixes:
+- Fixed role hierarchy comparison in admin list: edit access is now correctly calculated based on actor vs. target role
+- Fixed role deletion button visibility in the Administrators dialog
+- Fixed subscription statistics: counts now correctly reflect only active (current) subscriptions per user
+- Fixed trial statistics: now counts distinct users instead of total trial subscriptions
+- Fixed discount calculation: the effective discount is now the maximum of personal and one-time discounts
+- Fixed purchase discount reset after a successful payment
+- Fixed amount formatting in payments
+- Fixed `/delete_commands` not being called when `setup_commands` is disabled
+- Fixed update check notification incorrectly triggering in some cases
+- Fixed Redis connection configuration
+- Fixed translator leaving blank lines after removing optional placeholders
+- Transactions in user history are now sorted by creation date (newest first)
+
+---
+
 #### 0.7.3 (March 29, 2026)
 
 Fixes:

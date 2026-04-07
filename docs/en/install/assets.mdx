@@ -1,27 +1,66 @@
 ---
 title: "Assets"
-description: "Configuring banners and translations for Remnashop"
+description: "Configuring banners, translations and QR code logo for Remnashop"
 ---
 
 ## Banners
 
-The bot supports custom banners for each page category and locale: `menu`, `dashboard`, `subscription`, `promocode`, `referral`.
+The bot supports custom banners for each page and locale. Supported page names: `menu`, `dashboard`, `subscription`, `promocode`, `referral`, `default`.
 
-To set a custom banner, name the file according to the target page and make sure it uses one of the supported formats: `jpg`, `jpeg`, `png`, `gif`, `webp`.
+Supported formats: `jpg`, `jpeg`, `png`, `gif`, `webp`.
 
-Banners should be placed at: `/opt/remnashop/assets/banners/(locale)/`
+Banners should be placed at: `/opt/remnashop/assets/banners/`
 
-Example: `/opt/remnashop/assets/banners/en/menu.gif`
+### Fallback chain
+
+When loading a banner, the system searches in the following order:
+
+1. `banners/{user_locale}/{page}` — page-specific banner for the user's locale
+2. `banners/{user_locale}/default` — default banner for the user's locale
+3. `banners/{default_locale}/{page}` — page-specific banner for the default locale
+4. `banners/{default_locale}/default` — default banner for the default locale
+5. `banners/default` — global fallback
+
+### Usage examples
+
+- **One image for everything** — place a single `banners/default.jpg`
+- **One image per locale** — place `banners/{locale}/default.jpg` for each locale
+- **Per-page images** — place `banners/{locale}/{page}.jpg` for each page and locale
+
+### File structure example
+
+```
+banners/
+├── default.jpg             ← global fallback for all pages and locales
+├── ru/
+│   ├── default.jpg         ← default for all pages in ru locale
+│   ├── menu.jpg
+│   └── subscription.jpg
+└── en/
+    ├── default.jpg
+    └── menu.jpg
+```
 
 <Warning>
-    Do not delete the `default.jpg` file — it is required for the bot to work properly.
+    The `banners/default.jpg` file is the global fallback and is required for the bot to work properly. Do not delete it.
 </Warning>
 
 ---
 
 ## Translations
 
-You can edit any translation file located at: `/opt/remnashop/assets/translations/(locale)/`
+Translation files are located at: `/opt/remnashop/assets/translations/{locale}/`
+
+| File                | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| `buttons.ftl`       | Button labels                                        |
+| `messages.ftl`      | Messages and dialog texts                            |
+| `notifications.ftl` | Notification texts                                   |
+| `events.ftl`        | Event-triggered messages                             |
+| `utils.ftl`         | Utility strings (statuses, labels, etc.)             |
+| `custom.ftl`        | Custom translations for plan names, menu buttons, etc. |
+
+The `custom.ftl` file is intended for user-defined keys — for example, translated plan names or extra menu button labels. Add your keys here instead of editing the main files.
 
 After making changes, restart the container for them to take effect.
 
@@ -34,3 +73,14 @@ After making changes, restart the container for them to take effect.
 <Warning>
     Translation persistence across bot updates is not currently supported. When updating, your previous assets will be archived at: `/opt/remnashop/assets/*.bak`
 </Warning>
+
+---
+
+## QR Code Logo
+
+You can add a custom logo to the center of generated invite QR codes.
+
+- **Path:** `assets/logo.png`
+- **Format:** PNG, preferably with a transparent background
+
+If the file exists, it will automatically be overlaid in the center of every generated QR code.
