@@ -113,7 +113,7 @@ admins = Window(
                 text=Format("❌"),
                 id="role_revoke",
                 on_click=on_role_revoke,
-                when=F["item"]["deletable"],
+                when=F["item"]["is_deletable"],
             ),
         ),
         id="admins_list",
