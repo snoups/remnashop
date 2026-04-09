@@ -134,6 +134,10 @@ class RemnashopNotifications(StatesGroup):
     MAIN = State()
     USER = State()
     SYSTEM = State()
+    SYSTEM_TYPE = State()
+    SYSTEM_ROUTE = State()
+    SYSTEM_ROUTE_CHAT_ID = State()
+    SYSTEM_ROUTE_THREAD_ID = State()
 
 
 class RemnashopPlans(StatesGroup):
