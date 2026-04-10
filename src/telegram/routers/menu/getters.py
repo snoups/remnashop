@@ -28,6 +28,7 @@ async def menu_getter(
     bot_service: FromDishka[BotService],
     i18n: FromDishka[TranslatorRunner],
     get_menu_data: FromDishka[GetMenuData],
+    settings_dao: FromDishka[SettingsDao],
     **kwargs: Any,
 ) -> dict[str, Any]:
     try:
@@ -56,6 +57,8 @@ async def menu_getter(
             "has_subscription": False,
             "connectable": False,
             "trial_available": False,
+            "trial_is_free": True,
+            "trial_price": "",
             "has_device_limit": False,
             "is_trial": False,
             # subscription-related (nullable)
@@ -73,7 +76,18 @@ async def menu_getter(
 
         if not menu_data.current_subscription:
             logger.debug(f"User {user.telegram_id} has no active subscription")
+            trial_plan = menu_data.available_trial
+            trial_is_free = True
+            trial_price_str = ""
+            if trial_plan and menu_data.is_trial_available:
+                settings = await settings_dao.get()
+                currency = settings.default_currency
+                raw_price = trial_plan.durations[0].get_price(currency)
+                trial_is_free = raw_price == 0
+                trial_price_str = f"{raw_price.normalize()} {currency.symbol}" if not trial_is_free else ""
             data["trial_available"] = menu_data.is_trial_available and menu_data.available_trial
+            data["trial_is_free"] = trial_is_free
+            data["trial_price"] = trial_price_str
             return data
 
         subscription = menu_data.current_subscription
