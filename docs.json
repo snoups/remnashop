@@ -16,7 +16,8 @@
               "group": "Обзор",
               "pages": [
                 "docs/ru/overview/releases",
-                "docs/ru/overview/introduction"
+                "docs/ru/overview/introduction",
+                "docs/ru/overview/support"
               ]
             },
             {
@@ -47,7 +48,8 @@
               "group": "Overview",
               "pages": [
                 "docs/en/overview/releases",
-                "docs/en/overview/introduction"
+                "docs/en/overview/introduction",
+                "docs/en/overview/support"
               ]
             },
             {
