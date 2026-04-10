@@ -1,3 +1,4 @@
+from adaptix import Retort
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
@@ -28,7 +29,7 @@ from src.core.enums import MediaType
 from src.core.utils.i18n_helpers import i18n_format_expire_time
 from src.core.utils.time import get_traffic_reset_delta
 from src.telegram.keyboards import CALLBACK_CHANNEL_CONFIRM, CALLBACK_RULES_ACCEPT
-from src.telegram.states import MainMenu
+from src.telegram.states import MainMenu, Subscription
 
 router = Router(name=__name__)
 
@@ -71,8 +72,10 @@ async def on_get_trial(
     widget: Button,
     dialog_manager: DialogManager,
     notifier: FromDishka[Notifier],
+    retort: FromDishka[Retort],
     get_available_trial: FromDishka[GetAvailableTrial],
     activate_trial_subscription: FromDishka[ActivateTrialSubscription],
+    settings_dao: FromDishka[SettingsDao],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     plan = await get_available_trial.system(user)
@@ -81,8 +84,22 @@ async def on_get_trial(
         await notifier.notify_user(user=user, i18n_key="ntf-common.trial-unavailable")
         raise ValueError("Trial plan not exist")
 
-    trial = PlanSnapshotDto.from_plan(plan, plan.durations[0].days)
-    await activate_trial_subscription.system(ActivateTrialSubscriptionDto(user, trial))
+    settings = await settings_dao.get()
+    currency = settings.default_currency
+    raw_price = plan.durations[0].get_price(currency)
+
+    if raw_price == 0:
+        trial = PlanSnapshotDto.from_plan(plan, plan.durations[0].days)
+        await activate_trial_subscription.system(ActivateTrialSubscriptionDto(user, trial))
+        return
+
+    await dialog_manager.start(
+        state=Subscription.MAIN,
+        data={
+            "trial_plan": retort.dump(plan),
+            "trial_duration": plan.durations[0].days,
+        },
+    )
 
 
 @inject
