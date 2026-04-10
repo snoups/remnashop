@@ -106,6 +106,17 @@ event-bot =
     }
     </blockquote>
 
+    .inline-mode-disabled =
+    #BotInlineModeDisabledEvent
+
+    <b>⚠️ Событие: Inline-режим отключён в BotFather!</b>
+
+    <blockquote>
+    Бот не настроен для работы в inline-режиме. Некоторые функции бота могут работать некорректно.
+
+    Включите Inline Mode в BotFather: <b>@BotFather → /mybots → Bot Settings → Inline Mode → Enable</b>
+    </blockquote>
+
     .shutdown =
     #BotShutdownEvent
 

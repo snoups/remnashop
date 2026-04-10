@@ -1,5 +1,6 @@
 from .base import BaseEvent, SystemEvent, UserEvent
 from .system import (
+    BotInlineModeDisabledEvent,
     BotShutdownEvent,
     BotStartupEvent,
     BotUpdateEvent,
@@ -36,6 +37,7 @@ __all__ = [
     "ErrorEvent",
     "NotificationErrorEvent",
     "WebhookErrorEvent",
+    "BotInlineModeDisabledEvent",
     "RemnawaveErrorEvent",
     "RemnawaveVersionWarningEvent",
     #

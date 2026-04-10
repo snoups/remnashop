@@ -123,6 +123,25 @@ class RemnawaveVersionWarningEvent(SystemEvent, BuildInfoDto):
 
 
 @dataclass(frozen=True, kw_only=True)
+class BotInlineModeDisabledEvent(SystemEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    @property
+    def event_key(self) -> str:
+        return "event-bot.inline-mode-disabled"
+
+    def as_payload(self) -> "MessagePayloadDto":
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            disable_default_markup=False,
+            delete_after=None,
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
 class WebhookErrorEvent(SystemEvent):
     notification_type: NotificationType = field(
         default=SystemNotificationType.SYSTEM,

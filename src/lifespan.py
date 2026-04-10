@@ -13,6 +13,7 @@ from redis.asyncio import Redis
 from src.application.common import Remnawave
 from src.application.common.dao import SettingsDao
 from src.application.events import (
+    BotInlineModeDisabledEvent,
     BotShutdownEvent,
     BotStartupEvent,
     RemnawaveErrorEvent,
@@ -55,8 +56,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if not await bot_service.is_inline_enabled():
             logger.warning(
                 "Bot is not enabled for inline mode. "
-                "Please set BOT_INLINE_MODE to True for correct work of some features"
+                "Please enable Inline Mode in BotFather for correct work of some features"
             )
+            await event_bus.publish(BotInlineModeDisabledEvent())
 
         states = await bot_service.get_bot_states()
         await create_default_payment_gateway.system()
