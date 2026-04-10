@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if not await bot_service.is_inline_enabled():
             logger.warning(
                 "Bot is not enabled for inline mode. "
-                "Please set BOT_INLINE_MODE to True for correct work of some features"
+                "Please enable Inline Mode in BotFather for correct work of some features"
             )
 
         states = await bot_service.get_bot_states()
