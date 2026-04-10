@@ -8,7 +8,7 @@ description: "History of changes"
 #### 0.7.5 (April 10, 2026)
 
 New:
-- Added a "Close notification" button in the broadcast editor
+- Added a **"Close notification"** button in the broadcast editor
 
 Fixes:
 - Fixed proxy support for Telegram API
@@ -55,11 +55,11 @@ Fixes:
 #### 0.7.3 (March 29, 2026)
 
 Fixes:
-- Fixed subscription statistics display: added "Disabled" and "Limited" fields
+- Fixed subscription statistics display: added **"Disabled"** and **"Limited"** fields
 - Fixed unlimited subscription count in statistics
 - Deleted subscriptions are no longer counted in statistics
 - Fixed redirect to the main subscriptions window when plan data is lost
-- Fixed migration 0019: proper transaction handling and auto-correction of invalid URLs in menu buttons
+- Fixed migration **0019**: proper transaction handling and auto-correction of invalid URLs in menu buttons
 - Fixed variable in the text length exceeded notification for broadcasts
 - Fixed sanitization of usernames from HTML special characters
 - Fixed old subscription status when purchasing a new one: now marked as deleted
@@ -70,8 +70,8 @@ Fixes:
 #### 0.7.2 (March 27, 2026)
 
 New:
-- Added deep link for redirecting to the `INVITE` dialog
-- Added URL validation in main menu extra buttons editor
+- Added **deep link** for redirecting to the `INVITE` dialog
+- Added **URL validation** in main menu extra buttons editor
 - Added current values display for access conditions in access mode dialog
 - Added back-to-plans button on payment method and confirm screens
 
@@ -97,12 +97,12 @@ Fixes:
 Infrastructure:
 - Updated `.env.example` with detailed descriptions of all optional variables and documentation links
 - Centralized bot state management (inline mode, privacy, group access) in `BotService`
-- Added startup inline mode check: the system now issues a warning if it is not enabled in BotFather
+- Added startup inline mode check: the system now issues a warning if it is not enabled in **BotFather**
 
 Payments:
 - Fixed gateway configuration using `Retort` for dynamic type casting
-- Adjusted data types for YooKassa: `shop_id` changed to string, `vat_code` to integer
-- Added "Copy webhook" button for the Platega payment system
+- Adjusted data types for **YooKassa**: `shop_id` changed to string, `vat_code` to integer
+- Added "Copy webhook" button for **Platega**
 
 Referral System:
 - Added `get_referrals_with_payment_count` for accurate display of invited users' payment statistics
@@ -139,7 +139,7 @@ Security & Access:
 - Improved security
 - Fixed bypass of registration and access checks when the bot is blocked
 - Fixed self-role removal bug
-- Changed roles (USER, PREVIEW, ADMIN, DEV, OWNER, SYSTEM)
+- Changed roles (**USER, PREVIEW, ADMIN, DEV, OWNER, SYSTEM**)
 - Implemented role-based permissions
 - Added role change for the previous owner (former DEV) when OWNER\_ID (former DEV\_ID) is updated
 - Implemented subscription link reset (device management) for users
@@ -151,7 +151,7 @@ Performance:
 - Fixed repeated task execution on long-running tasks
 
 Payments:
-- Added payment gateways: FreeKassa, MulenPay, PayMaster, Platega, RoboKassa, UrlPay, WATA
+- Added payment gateways: **FreeKassa, MulenPay, PayMaster, Platega, RoboKassa, UrlPay, WATA**
 - Added configuration validation when receiving a payment gateway webhook
 - Added `build_webhook_response` method for customizing payment gateway responses
 - Fixed inability to extend a subscription to unlimited
