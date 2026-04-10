@@ -780,6 +780,44 @@ msg-remnashop-main = <b>🛍 RemnaShop { $version ->
 *[HAS] { $version }
 }</b>
 
+
+# Backup
+msg-remnashop-backup =
+    <b>💾 Бэкап</b>
+
+    Выберите что хотите сохранить.
+    Файл будет отправлен вам в чат.
+
+    📦 <b>Assets</b> — баннеры, переводы, конфиги
+    🗄 <b>База данных</b> — полный дамп PostgreSQL
+
+msg-backup-main =
+    <b>💾 Автобэкап базы данных</b>
+
+    Статус: { $enabled ->
+        [1] 🟢 Включён
+        *[0] 🔴 Выключен
+    }
+    Интервал: <b>каждые { $interval_hours } ч.</b>
+    Хранить файлов: <b>{ $max_files }</b>
+    Отправлять в чат: { $send_to_chat ->
+        [1] ✅ Да
+        *[0] ❌ Нет
+    }
+
+msg-backup-set-interval =
+    <b>⏱ Интервал бэкапа</b>
+
+    Введите частоту бэкапа в часах (от 1 до 720).
+    Текущее значение: <b>{ $interval_hours } ч.</b>
+
+msg-backup-set-max-files =
+    <b>📁 Количество файлов</b>
+
+    Введите сколько файлов бэкапа хранить (от 1 до 30).
+    Старые файлы будут удаляться автоматически.
+    Текущее значение: <b>{ $max_files }</b>
+
 msg-admins-main = <b>👮‍♂️ Администраторы</b>
 
 
@@ -825,7 +863,6 @@ msg-menu-editor-button-payload =
     <b>📄 Изменить данные кнопки</b>
 
     Введите данные кнопки (для ссылок использовать https).
-
 
 
 # Gateways
@@ -921,6 +958,7 @@ msg-referral-reward =
         }
         *[OTHER] { $reward_strategy_type }
     } (в формате: уровень=значение)
+
 
 # Plans
 msg-plans-main = <b>📦 Планы</b>
@@ -1128,6 +1166,7 @@ msg-notifications-system-route-thread-id =
     <b>📁 Изменить Тред ID</b>
 
     Введите ID треда (введите <code>0</code> чтобы сбросить).
+
 
 # Subscription
 msg-subscription-main = <b>💳 Подписка</b>

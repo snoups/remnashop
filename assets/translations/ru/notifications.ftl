@@ -153,9 +153,16 @@ ntf-sync =
 
 ntf-menu-editor =
     .button-saved = ✅ <i>Кнопка успешно сохранена.</i>
-    .invalid-payload = ❌ <i>Недопустимый формат URL для payload.</i>
+    .invalid-payload = ❌ <i>Недопустимый формат URL.</i>
 
 ntf-devices =
     .deleted = ✅ <i>Устройство удалено.</i>
     .all-deleted = ✅ <i>Все устройства удалены.</i>
     .reissued = ✅ <i>Подписка успешно перевыпущена.</i>
+
+ntf-backup =
+    .assets-started = ⏳ <i>Создаю бэкап assets...</i>
+    .db-started = ⏳ <i>Создаю бэкап базы данных...</i>
+    .error = ❌ <i>Ошибка при создании бэкапа</i>
+    .invalid-interval = ❌ <i>Введите число от 1 до 720</i>
+    .invalid-max-files = ❌ <i>Введите число от 1 до 30</i>

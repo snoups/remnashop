@@ -12,6 +12,7 @@ from .payment_gateway import (
 from .plan import PlanDto, PlanDurationDto, PlanPriceDto, PlanSnapshotDto
 from .referral import ReferralDto, ReferralRewardDto
 from .settings import (
+    BackupSettingsDto,
     AccessSettingsDto,
     MenuButtonDto,
     MenuSettingsDto,

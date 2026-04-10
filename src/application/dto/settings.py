@@ -175,6 +175,14 @@ class MenuSettingsDto(TrackableMixin):
 
 
 @dataclass(kw_only=True)
+class BackupSettingsDto(TrackableMixin):
+    enabled: bool = False
+    interval_hours: int = 24
+    max_files: int = 7
+    send_to_chat: bool = True
+
+
+@dataclass(kw_only=True)
 class SettingsDto(BaseDto, TrackableMixin, TimestampMixin):
     default_currency: Currency = Currency.XTR
     access: AccessSettingsDto = field(default_factory=AccessSettingsDto)
@@ -182,3 +190,4 @@ class SettingsDto(BaseDto, TrackableMixin, TimestampMixin):
     notifications: NotificationsSettingsDto = field(default_factory=NotificationsSettingsDto)
     referral: ReferralSettingsDto = field(default_factory=ReferralSettingsDto)
     menu: MenuSettingsDto = field(default_factory=MenuSettingsDto)
+    backup: BackupSettingsDto = field(default_factory=BackupSettingsDto)

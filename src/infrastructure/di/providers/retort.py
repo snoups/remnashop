@@ -25,6 +25,7 @@ from src.application.dto import (
     NotificationsSettingsDto,
     PlanSnapshotDto,
     PriceDetailsDto,
+    BackupSettingsDto,
     ReferralSettingsDto,
     RequirementSettingsDto,
 )
@@ -130,6 +131,7 @@ class RetortProvider(Provider):
                     dict, NotificationsSettingsDto, retort.get_loader(NotificationsSettingsDto)
                 ),
                 coercer(dict, ReferralSettingsDto, retort.get_loader(ReferralSettingsDto)),
+                coercer(dict, BackupSettingsDto, retort.get_loader(BackupSettingsDto)),
                 coercer(dict, MenuSettingsDto, retort.get_loader(MenuSettingsDto)),
                 coercer(dict, MenuButtonDto, retort.get_loader(MenuButtonDto)),
                 #

@@ -101,6 +101,10 @@ services:
     hostname: remnashop-taskiq-worker
     <<: [*build, *common, *logging, *env]
 
+    volumes:
+      - ./assets:/opt/remnashop/assets
+      - ./backups:/opt/remnashop/backups
+
     command: >
         taskiq worker src.infrastructure.taskiq.worker:worker
         --ack-type when_received --tasks-pattern src/infrastructure/taskiq/tasks/*.py -fsd
@@ -116,6 +120,10 @@ services:
     container_name: "remnashop-taskiq-scheduler"
     hostname: remnashop-taskiq-scheduler
     <<: [*build, *common, *logging, *env]
+
+    volumes:
+      - ./assets:/opt/remnashop/assets
+      - ./backups:/opt/remnashop/backups
 
     command: >
         taskiq scheduler src.infrastructure.taskiq.scheduler:scheduler
