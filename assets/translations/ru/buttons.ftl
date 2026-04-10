@@ -41,8 +41,9 @@ btn-requirement =
 
 btn-menu =
     .trial = 🎁 ПОПРОБОВАТЬ БЕСПЛАТНО
+    .trial-paid = 🚀 ПОПРОБОВАТЬ ЗА { $trial_price }
     .connect = 🚀 Подключиться
-    .devices = 📱 Устройства
+    .devices = 📱 Мои устройства
     .subscription = 💳 Подписка
     .invite = 👥 Пригласить
     .support = 🆘 Поддержка
