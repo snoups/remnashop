@@ -1083,6 +1083,51 @@ msg-notifications-main = <b>🔔 Настройка уведомлений</b>
 msg-notifications-user = <b>👥 Пользовательские уведомления</b>
 msg-notifications-system = <b>⚙️ Системные уведомления</b>
 
+msg-notifications-system-type = 
+    <b>🔔 { notification-type }</b>
+
+    <blockquote>
+    • <b>Статус</b>: { $is_active -> 
+    [1] 🟢 Включено
+    *[0] 🔴 Выключено
+    }
+    • <b>Маршрут</b>: { $has_route -> 
+    [0] { unknown }
+    *[HAS] { NUMBER($chat_id, useGrouping: 0) }{ $thread_id ->
+        [0] { space }
+        *[HAS] :{ NUMBER($thread_id, useGrouping: 0) }
+        }
+    }
+    </blockquote>
+
+msg-notifications-system-route = 
+    <b>📡 Маршрут: { notification-type }</b>
+
+    <blockquote>
+    • <b>Чат ID</b>: { $chat_id ->
+        [0] { unknown }
+        *[HAS] <code>{ NUMBER($chat_id, useGrouping: 0) }</code>
+        }
+    • <b>Тред ID</b>: { $thread_id ->
+        [0] { unknown }
+        *[HAS] <code>{ NUMBER($thread_id, useGrouping: 0) }</code>
+        }
+    </blockquote>
+
+    Если чат ID не задан — уведомление будет отправлено в Личные сообщения.
+    
+    Если тред ID не задан — уведомление будет отправлено в чат.
+
+
+msg-notifications-system-route-chat-id =
+    <b>💬 Изменить Чат ID</b>
+
+    Введите ID группы (например: <code>-1001234567891</code>).
+
+msg-notifications-system-route-thread-id =
+    <b>📁 Изменить Тред ID</b>
+
+    Введите ID треда (введите <code>0</code> чтобы сбросить).
 
 # Subscription
 msg-subscription-main = <b>💳 Подписка</b>

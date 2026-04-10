@@ -398,6 +398,30 @@ button-type = { $button_type ->
     *[OTHER] { $button_type }
 }
 
+notification-type = { $notification_type ->
+    [SYSTEM] Система
+    [EXPIRES_IN_3_DAYS] Подписка истекает (3 дня)
+    [EXPIRES_IN_2_DAYS] Подписка истекает (2 дня)
+    [EXPIRES_IN_1_DAY] Подписка истекает (1 день)
+    [EXPIRED] Подписка истекла
+    [EXPIRED_1_DAY_AGO] Подписка истекла (1 день)
+    [LIMITED] Трафик исчерпан
+    [REFERRAL_ATTACHED] Реферал закреплен
+    [REFERRAL_REWARD_RECEIVED] Вознаграждение за реферала
+    [BOT_LIFECYCLE] Жизненный цикл бота
+    [BOT_UPDATE] Обновления бота
+    [USER_REGISTERED] Регистрация пользователя
+    [SUBSCRIPTION] Оформление подписки
+    [PROMOCODE_ACTIVATED] Активация промокода
+    [TRIAL_ACTIVATED] Активация пробника
+    [NODE_STATUS_CHANGED] Статус узла
+    [NODE_TRAFFIC_REACHED] Трафик узла
+    [USER_FIRST_CONNECTION] Первое подключение
+    [USER_DEVICES_UPDATED] Устройства пользователя
+    [USER_REVOKED_SUBSCRIPTION] Сброс подписки
+    *[OTHER] { $notification_type }
+    }
+
 language = { $language ->
     [ar] Арабский
     [az] Азербайджанский

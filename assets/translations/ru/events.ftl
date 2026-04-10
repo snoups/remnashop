@@ -55,6 +55,35 @@ event-error =
     { $error }
     </blockquote>
 
+    .channel-check =
+    #ChannelCheckErrorEvent
+
+    <b>⚠️ Событие: Ошибка проверки подписки на канал/группу!</b>
+
+    { hdr-user }
+    { frg-user-info }
+
+    <blockquote>
+    • <b>Причина</b>: <code>{ $reason }</code>
+    </blockquote>
+    
+    Проверьте, что бот является администратором канала/группы с правом просмотра участников.
+
+    .notification =
+    #NotificationErrorEvent
+
+    <b>⚠️ Событие: Ошибка доставки системного уведомления!</b>
+
+    <blockquote>
+    • <b>Маршрут</b>: { NUMBER($chat_id, useGrouping: 0) }{ $thread_id ->
+        [0] { space }
+        *[HAS] :{ NUMBER($thread_id, useGrouping: 0) }
+    }
+    • <b>Причина</b>: <code>{ $reason }</code>
+    </blockquote>
+
+    Проверьте маршрут уведомлений и убедитесь, что бот является участником группы с правами на отправку сообщений.
+
 
 event-bot =
     .startup =
@@ -343,6 +372,8 @@ event-referral =
 event-remnashop-welcome =
     <b>💎 Remnashop v{ $version }</b>
 
-    Данный проект был создан и поддерживается всего одним <strike>разработчиком</strike> электриком. Поскольку бот полностью БЕСПЛАТНЫЙ и с открытым исходным кодом, он существует только благодаря вашей поддержке.
+    Проект создан и поддерживается всего одним <strike>разработчиком</strike> электриком. Поскольку бот полностью БЕСПЛАТНЫЙ и имеет открытый исходный код, он существует только благодаря вашей поддержке.
 
-    ⭐ <i>Поставьте звездочку на <a href="{ $repository }">GitHub</a> и присоединяйтесь к нашему <a href="https://t.me/@remna_shop">сообществу</a>.</i>
+    ⭐ <i>Поставьте звёздочку на <a href="{ $repository }">GitHub</a> и присоединяйтесь к нашему <a href="https://t.me/@remna_shop">сообществу</a>.</i>
+
+    🎁 <i>Также есть <a href="https://boosty.to/snoups/purchase/3778398?ssource=DIRECT&share=subscription_link">приватный чат</a> для донатеров.</i>

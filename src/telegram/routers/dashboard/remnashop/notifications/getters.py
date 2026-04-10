@@ -4,9 +4,10 @@ from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 
-from src.application.common.dao import SettingsDao
 from src.application.common import TranslatorRunner
+from src.application.common.dao import SettingsDao
 from src.core.enums import SystemNotificationType
+from src.core.types import NotificationType
 
 
 @inject
@@ -19,7 +20,7 @@ async def user_types_getter(
 
     types = [
         {
-            "type": field.upper(),
+            "notification_type": field.upper(),
             "enabled": value,
         }
         for field, value in settings.notifications.user
@@ -39,18 +40,17 @@ async def system_types_getter(
 
     types = []
     for field, value in settings.notifications.system:
-        if field == SystemNotificationType.SYSTEM:
-            continue
         has_route = settings.notifications.get_route(field) is not None
-        label = i18n.get("btn-notifications.system-choice", type=field.upper(), enabled=value)
-        if has_route:
-            label = label + " 📡"
-        types.append({
-            "type": field.upper(),
-            "enabled": value,
-            "has_route": has_route,
-            "label": label,
-        })
+        is_system = field == SystemNotificationType.SYSTEM
+
+        types.append(
+            {
+                "notification_type": field.upper(),
+                "enabled": True if is_system else value,
+                "has_route": has_route,
+                "can_toggle": not is_system,
+            }
+        )
 
     return {"types": types}
 
@@ -63,27 +63,19 @@ async def system_type_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     settings = await settings_dao.get()
-    ntf_type = dialog_manager.dialog_data.get("route_ntf_type", "")
-    enabled = settings.notifications.is_enabled(ntf_type)
-    route = settings.notifications.get_route(ntf_type)
+    notification_type = dialog_manager.dialog_data["notification_type"]
+    enabled = settings.notifications.is_enabled(notification_type)
+    route = settings.notifications.get_route(notification_type)
 
-    ntf_label = i18n.get(
-        "btn-notifications.system-choice",
-        type=ntf_type.upper(),
-        enabled=enabled,
-    )
-
-    route_info = "не задан (личка админам)"
-    if route:
-        route_info = f"chat={route.chat_id}"
-        if route.thread_id:
-            route_info += f", thread={route.thread_id}"
+    is_system = notification_type == SystemNotificationType.SYSTEM
 
     return {
-        "ntf_type": ntf_label,
-        "status": "🟢 Включено" if enabled else "🔴 Выключено",
-        "toggle_btn": "🔴 Выключить" if enabled else "🟢 Включить",
-        "route_info": route_info,
+        "notification_type": notification_type,
+        "is_active": True if is_system else enabled,
+        "can_toggle": not is_system,
+        "has_route": route.is_configured if route else False,
+        "chat_id": route.chat_id or False if route else False,
+        "thread_id": route.thread_id or False if route else False,
     }
 
 
@@ -95,19 +87,12 @@ async def system_route_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     settings = await settings_dao.get()
-    ntf_type = dialog_manager.dialog_data.get("route_ntf_type", "")
-    route = settings.notifications.get_route(ntf_type)
-    enabled = settings.notifications.is_enabled(ntf_type)
-
-    ntf_label = i18n.get(
-        "btn-notifications.system-choice",
-        type=ntf_type.upper(),
-        enabled=enabled,
-    )
+    notification_type: NotificationType = dialog_manager.dialog_data["notification_type"]
+    route = settings.notifications.get_route(notification_type)
 
     return {
-        "ntf_type": ntf_label,
-        "has_route": route is not None,
-        "chat_id": route.chat_id if route else "—",
-        "thread_id": route.thread_id if (route and route.thread_id) else "—",
+        "notification_type": notification_type,
+        "has_route": route.chat_id or route.thread_id if route else False,
+        "chat_id": route.chat_id or False if route else False,
+        "thread_id": route.thread_id or False if route else False,
     }

@@ -1,7 +1,6 @@
 from aiogram_dialog import Dialog, Window
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Column, Row, Select, Start, SwitchTo
-from aiogram_dialog.widgets.input import TextInput
-from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.core.enums import BannerName, SystemNotificationType, UserNotificationType
@@ -11,14 +10,11 @@ from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
 from .getters import system_route_getter, system_type_getter, system_types_getter, user_types_getter
 from .handlers import (
-    on_chat_id_entered,
-    on_invalid_int,
+    on_route_chat_id_input,
     on_route_clear,
-    on_system_route_edit_chat,
-    on_system_route_edit_thread,
+    on_route_thread_id_input,
     on_system_type_select,
     on_system_type_toggle,
-    on_thread_id_entered,
     on_user_type_select,
 )
 
@@ -58,11 +54,11 @@ user = Window(
         Select(
             text=I18nFormat(
                 "btn-notifications.user-choice",
-                type=F["item"]["type"],
+                notification_type=F["item"]["notification_type"],
                 enabled=F["item"]["enabled"],
             ),
             id="type_select",
-            item_id_getter=lambda item: item["type"],
+            item_id_getter=lambda item: item["notification_type"],
             items="types",
             type_factory=UserNotificationType,
             on_click=on_user_type_select,
@@ -80,16 +76,21 @@ user = Window(
     getter=user_types_getter,
 )
 
-# Список системных типов — клик открывает подменю типа
 system = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-notifications-system"),
     Column(
         Select(
-            text=Format("{item[label]}"),
+            text=I18nFormat(
+                "btn-notifications.system-choice",
+                notification_type=F["item"]["notification_type"],
+                enabled=F["item"]["enabled"],
+                has_route=F["item"]["has_route"],
+            ),
             id="type_select",
-            item_id_getter=lambda item: item["type"],
+            item_id_getter=lambda item: item["notification_type"],
             items="types",
+            type_factory=SystemNotificationType,
             on_click=on_system_type_select,
         ),
     ),
@@ -105,22 +106,18 @@ system = Window(
     getter=system_types_getter,
 )
 
-# Подменю конкретного типа: тоггл + маршрут
 system_type = Window(
     Banner(BannerName.DASHBOARD),
-    Format(
-        "<b>{ntf_type}</b>\n\n"
-        "Статус: {status}\n"
-        "Маршрут: {route_info}"
-    ),
+    I18nFormat("msg-notifications-system-type"),
     Row(
         Button(
-            text=Format("{toggle_btn}"),
+            text=I18nFormat("btn-notifications.active-toggle"),
             id="toggle",
             on_click=on_system_type_toggle,
+            when=F["can_toggle"],
         ),
         SwitchTo(
-            text=Format("📡 Маршрут"),
+            text=I18nFormat("btn-notifications.route"),
             id="route",
             state=RemnashopNotifications.SYSTEM_ROUTE,
         ),
@@ -137,30 +134,24 @@ system_type = Window(
     getter=system_type_getter,
 )
 
-# Настройка маршрута
 system_route = Window(
     Banner(BannerName.DASHBOARD),
-    Format(
-        "📡 <b>Маршрут: {ntf_type}</b>\n\n"
-        "Chat ID: <code>{chat_id}</code>\n"
-        "Thread ID: <code>{thread_id}</code>\n\n"
-        "<i>Если маршрут не задан — уведомление идёт в личку админам</i>"
-    ),
+    I18nFormat("msg-notifications-system-route"),
     Row(
-        Button(
-            text=Format("✏️ Chat ID"),
+        SwitchTo(
+            text=I18nFormat("btn-notifications.chat-id"),
             id="edit_chat",
-            on_click=on_system_route_edit_chat,
+            state=RemnashopNotifications.SYSTEM_ROUTE_CHAT_ID,
         ),
-        Button(
-            text=Format("✏️ Thread ID"),
+        SwitchTo(
+            text=I18nFormat("btn-notifications.thread-id"),
             id="edit_thread",
-            on_click=on_system_route_edit_thread,
+            state=RemnashopNotifications.SYSTEM_ROUTE_THREAD_ID,
         ),
     ),
     Row(
         Button(
-            text=Format("🗑 Удалить маршрут"),
+            text=I18nFormat("btn-notifications.route-clear"),
             id="clear_route",
             on_click=on_route_clear,
             when=F["has_route"],
@@ -180,16 +171,7 @@ system_route = Window(
 
 system_route_chat_id = Window(
     Banner(BannerName.DASHBOARD),
-    Format(
-        "Введи <b>Chat ID</b> группы\n"
-        "(отрицательное число, например <code>-1001234567890</code>):"
-    ),
-    TextInput(
-        id="chat_id_input",
-        type_factory=int,
-        on_success=on_chat_id_entered,
-        on_error=on_invalid_int,
-    ),
+    I18nFormat("msg-notifications-system-route-chat-id"),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back.general"),
@@ -197,22 +179,15 @@ system_route_chat_id = Window(
             state=RemnashopNotifications.SYSTEM_ROUTE,
         ),
     ),
+    MessageInput(func=on_route_chat_id_input),
+    IgnoreUpdate(),
     state=RemnashopNotifications.SYSTEM_ROUTE_CHAT_ID,
     getter=system_route_getter,
 )
 
 system_route_thread_id = Window(
     Banner(BannerName.DASHBOARD),
-    Format(
-        "Введи <b>Thread ID</b> топика\n"
-        "(число, введи <code>0</code> чтобы сбросить):"
-    ),
-    TextInput(
-        id="thread_id_input",
-        type_factory=int,
-        on_success=on_thread_id_entered,
-        on_error=on_invalid_int,
-    ),
+    I18nFormat("msg-notifications-system-route-thread-id"),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back.general"),
@@ -220,6 +195,8 @@ system_route_thread_id = Window(
             state=RemnashopNotifications.SYSTEM_ROUTE,
         ),
     ),
+    MessageInput(func=on_route_thread_id_input),
+    IgnoreUpdate(),
     state=RemnashopNotifications.SYSTEM_ROUTE_THREAD_ID,
     getter=system_route_getter,
 )

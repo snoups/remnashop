@@ -20,6 +20,7 @@ from .settings import (
     ReferralSettingsDto,
     RequirementSettingsDto,
     SettingsDto,
+    SystemNotificationRouteDto,
 )
 from .statistics import (
     GatewayStatsDto,
@@ -69,6 +70,7 @@ __all__ = [
     "ReferralSettingsDto",
     "RequirementSettingsDto",
     "SettingsDto",
+    "SystemNotificationRouteDto",
     "RemnaSubscriptionDto",
     "SubscriptionDto",
     "PriceDetailsDto",

@@ -100,7 +100,7 @@ class RemnawaveErrorEvent(ErrorEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class RemnawaveVersionWarningEvent(BaseEvent, BuildInfoDto):
+class RemnawaveVersionWarningEvent(SystemEvent, BuildInfoDto):
     notification_type: NotificationType = field(
         default=SystemNotificationType.SYSTEM,
         init=False,
@@ -123,7 +123,7 @@ class RemnawaveVersionWarningEvent(BaseEvent, BuildInfoDto):
 
 
 @dataclass(frozen=True, kw_only=True)
-class WebhookErrorEvent(BaseEvent):
+class WebhookErrorEvent(SystemEvent):
     notification_type: NotificationType = field(
         default=SystemNotificationType.SYSTEM,
         init=False,
@@ -149,6 +149,39 @@ class WebhookErrorEvent(BaseEvent):
             media_type=MediaType.DOCUMENT,
             delete_after=None,
         )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ChannelCheckErrorEvent(SystemEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    telegram_id: int
+    username: Optional[str]
+    name: str
+    reason: str
+
+    @property
+    def event_key(self) -> str:
+        return "event-error.channel-check"
+
+
+@dataclass(frozen=True, kw_only=True)
+class NotificationErrorEvent(SystemEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    chat_id: Optional[int]
+    thread_id: Optional[int]
+    reason: str
+
+    @property
+    def event_key(self) -> str:
+        return "event-error.notification"
 
 
 @dataclass(frozen=True, kw_only=True)

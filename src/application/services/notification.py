@@ -19,24 +19,23 @@ from aiogram.utils.formatting import Text
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 
-from src.application.common import Notifier, TranslatorHub
+from src.application.common import EventPublisher, Notifier, TranslatorHub
 from src.application.common.dao import SettingsDao, UserDao
 from src.application.dto import (
     MediaDescriptorDto,
     MessagePayloadDto,
     NotificationTaskDto,
     SettingsDto,
+    SystemNotificationRouteDto,
     TempUserDto,
     UserDto,
 )
-from src.application.dto.message_payload import MediaDescriptorDto
-from src.application.dto.settings import SystemNotifyRouteDto
-from src.application.events import ErrorEvent, RemnawaveVersionWarningEvent, SystemEvent
+from src.application.events import ErrorEvent, NotificationErrorEvent, SystemEvent
 from src.application.events.base import UserEvent
 from src.application.events.system import RemnashopWelcomeEvent
 from src.core.config import AppConfig
 from src.core.enums import Locale, Role
-from src.core.types import AnyKeyboard
+from src.core.types import AnyKeyboard, NotificationType
 from src.infrastructure.services import NotificationQueue
 from src.infrastructure.services.event_bus import on_event
 from src.telegram.keyboards import get_close_notification_button
@@ -51,6 +50,7 @@ class NotificationService(Notifier):
         user_dao: UserDao,
         settings_dao: SettingsDao,
         queue: NotificationQueue,
+        event_publisher: EventPublisher,
     ) -> None:
         self.bot = bot
         self.config = config
@@ -58,6 +58,7 @@ class NotificationService(Notifier):
         self.user_dao = user_dao
         self.settings_dao = settings_dao
         self.queue = queue
+        self.event_publisher = event_publisher
         self.queue.start(self._process_task)
 
     async def notify_user(
@@ -83,31 +84,15 @@ class NotificationService(Notifier):
     ) -> None:
         await self.queue.enqueue(NotificationTaskDto(payload=payload, roles=roles))
 
-    @on_event(RemnawaveVersionWarningEvent)
-    async def on_remnawave_version_warning_event(self, event: RemnawaveVersionWarningEvent) -> None:
-        logger.info(f"Received '{event.event_type}' event")
-
-        settings: SettingsDto = await self.settings_dao.get()
-        if not settings.notifications.is_enabled(event.notification_type):
-            logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
-            return
-
-        await self.notify_admins(event.as_payload(), roles=[Role.OWNER, Role.DEV])
-
     @on_event(RemnashopWelcomeEvent)
     async def on_remnashop_welcome_event(self, event: RemnashopWelcomeEvent) -> None:
         logger.info(f"Received '{event.event_type}' event")
+        await self.notify_admins(event.as_payload(), roles=[Role.OWNER, Role.DEV])
 
-        settings: SettingsDto = await self.settings_dao.get()
-        if not settings.notifications.is_enabled(event.notification_type):
-            logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
-            return
-
-        await self._notify_system(
-            event.as_payload(),
-            roles=[Role.OWNER, Role.DEV],
-            notification_type=event.notification_type,
-        )
+    @on_event(NotificationErrorEvent)
+    async def on_notification_error_event(self, event: NotificationErrorEvent) -> None:
+        logger.info(f"Received '{event.event_type}' event")
+        await self.notify_admins(event.as_payload(), roles=[Role.OWNER, Role.DEV])
 
     @on_event(UserEvent)
     async def on_user_event(self, event: UserEvent) -> None:
@@ -162,21 +147,23 @@ class NotificationService(Notifier):
         self,
         payload: MessagePayloadDto,
         roles: list[Role] = [Role.OWNER, Role.DEV, Role.ADMIN],
-        notification_type: Optional[str] = None,
+        notification_type: Optional[NotificationType] = None,
     ) -> None:
-        """Route system notification: to group/topic if configured in settings, else to admin chats."""
         route = None
         if notification_type:
             settings: SettingsDto = await self.settings_dao.get()
             route = settings.notifications.get_route(notification_type)
 
-        if route:
-            await self._send_to_topic(payload, route)
+        if route and route.is_configured:
+            await self._send_to_route(payload, route)
         else:
             await self.notify_admins(payload, roles=roles)
 
-    async def _send_to_topic(self, payload: MessagePayloadDto, route: SystemNotifyRouteDto) -> None:
-        """Send a system notification to the configured group chat / topic."""
+    async def _send_to_route(
+        self,
+        payload: MessagePayloadDto,
+        route: SystemNotificationRouteDto,
+    ) -> None:
         chat_id = route.chat_id
         thread_id = route.effective_thread_id
 
@@ -190,7 +177,7 @@ class NotificationService(Notifier):
         try:
             if payload.is_text:
                 await self.bot.send_message(
-                    chat_id=chat_id,
+                    chat_id=chat_id,  # type:ignore[arg-type]
                     text=text,
                     message_thread_id=thread_id,
                     disable_web_page_preview=True,
@@ -199,7 +186,7 @@ class NotificationService(Notifier):
             elif payload.media:
                 method = self._get_media_method(payload)
                 if not method:
-                    logger.warning(f"Unknown media type for topic payload '{payload}'")
+                    logger.warning(f"Unknown media type for payload '{payload}'")
                     return
                 media = self._build_media(payload.media)
                 await method(
@@ -210,11 +197,17 @@ class NotificationService(Notifier):
                     disable_notification=payload.disable_notification,
                 )
             else:
-                logger.error("Topic payload must contain text or media")
+                logger.error(f"Payload must contain text or media for route {chat_id}:{thread_id}")
 
         except Exception as e:
-            logger.error(f"Failed to send system notification to topic {chat_id}/{thread_id}: {e}")
-            await self._send_topic_config_error(chat_id, thread_id, str(e))
+            logger.error(f"Failed to send system notification to route {chat_id}:{thread_id}: {e}")
+            await self.event_publisher.publish(
+                NotificationErrorEvent(
+                    chat_id=chat_id,
+                    thread_id=thread_id,
+                    reason=str(e),
+                )
+            )
 
     async def delete_notification(self, chat_id: int, message_id: int) -> None:
         try:
@@ -317,27 +310,6 @@ class NotificationService(Notifier):
         except Exception as e:
             logger.exception(f"Failed to send notification to '{user.telegram_id}': {e}")
             raise
-
-    async def _send_topic_config_error(
-        self, chat_id: Optional[int], thread_id: Optional[int], reason: str
-    ) -> None:
-        """Fallback: notify owner in personal chat when topic delivery fails."""
-        target = f"chat_id={chat_id}" + (f", thread_id={thread_id}" if thread_id else "")
-        error_text = (
-            f"⚠️ <b>System notification delivery failed</b>\n\n"
-            f"<b>Target:</b> <code>{target}</code>\n"
-            f"<b>Reason:</b> <code>{reason[:300]}</code>\n\n"
-            f"Check the notification route in the dashboard and make sure "
-            f"the bot is a member of the group with send-message permissions."
-        )
-        try:
-            await self.bot.send_message(
-                chat_id=self.config.bot.owner_id,
-                text=error_text,
-                disable_web_page_preview=True,
-            )
-        except Exception as e:
-            logger.error(f"Failed to deliver topic config error to owner: {e}")
 
     def _get_media_method(self, payload: MessagePayloadDto) -> Optional[Callable[..., Any]]:
         if payload.is_photo:

@@ -36,7 +36,14 @@ async def check_bot_update(
         return
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)) as client:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(
+                connect=10.0,
+                read=30.0,
+                write=10.0,
+                pool=5.0,
+            )
+        ) as client:
             headers = {"Accept": "application/vnd.github.v3+json"}
             response = await client.get(GITHUB_RELEASE_URL, headers=headers)
             response.raise_for_status()

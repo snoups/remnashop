@@ -34,6 +34,11 @@ class LatestNotifiedVersionKey(StorageKey, prefix="latest_notified_version"):
     version: str
 
 
+@dataclass(frozen=True)
+class WelcomedVersionKey(StorageKey, prefix="welcomed_version"):
+    version: str
+
+
 class PaymentWaitlistKey(StorageKey, prefix="payment_waitlist"): ...
 
 
