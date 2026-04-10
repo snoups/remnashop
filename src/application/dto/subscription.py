@@ -51,6 +51,7 @@ class SubscriptionDto(BaseDto, TrackableMixin, TimestampMixin):
 
     status: SubscriptionStatus = SubscriptionStatus.ACTIVE
     is_trial: bool = False
+    disabled_by_channel_leave: bool = False
 
     traffic_limit: int
     device_limit: int

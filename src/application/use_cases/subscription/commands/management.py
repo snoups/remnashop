@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Optional
 from uuid import UUID
 
 from loguru import logger
 from remnapy import RemnawaveSDK
 
 from src.application.common import Interactor, Remnawave
-from src.application.common.dao import SubscriptionDao, UserDao
+from src.application.common.dao import SettingsDao, SubscriptionDao, UserDao
 from src.application.common.policy import Permission
 from src.application.common.uow import UnitOfWork
 from src.application.dto import UserDto
@@ -333,3 +334,171 @@ class AddSubscriptionDuration(Interactor[AddSubscriptionDurationDto, None]):
             f"{actor.log} {'Added' if data.days > 0 else 'Subtracted'} '{abs(data.days)}' "
             f"days to subscription for '{data.telegram_id}'"
         )
+
+
+@dataclass(frozen=True)
+class ChannelMemberEventDto:
+    telegram_id: int
+    chat_id: int
+    chat_username: Optional[str] = None
+
+
+class DisableTrialSubscription(Interactor[ChannelMemberEventDto, Optional[UserDto]]):
+    """Disables an active trial subscription when the user leaves the required channel.
+
+    Returns the affected UserDto if the trial was disabled, None otherwise.
+    """
+
+    required_permission = None  # system-only
+
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        settings_dao: SettingsDao,
+        user_dao: UserDao,
+        subscription_dao: SubscriptionDao,
+        remnawave_sdk: RemnawaveSDK,
+    ) -> None:
+        self.uow = uow
+        self.settings_dao = settings_dao
+        self.user_dao = user_dao
+        self.subscription_dao = subscription_dao
+        self.remnawave_sdk = remnawave_sdk
+
+    async def _execute(
+        self, actor: UserDto, data: ChannelMemberEventDto
+    ) -> Optional[UserDto]:
+        settings = await self.settings_dao.get()
+        req = settings.requirements
+
+        if not req.channel_required:
+            return None
+
+        if not self._is_our_channel(req, data):
+            return None
+
+        user = await self.user_dao.get_by_telegram_id(data.telegram_id)
+        if not user:
+            return None
+
+        subscription = await self.subscription_dao.get_current(data.telegram_id)
+        if not subscription:
+            return None
+
+        if not subscription.is_trial:
+            return None
+
+        if subscription.current_status != SubscriptionStatus.ACTIVE:
+            return None
+
+        async with self.uow:
+            try:
+                await self.remnawave_sdk.users.disable_user(subscription.user_remna_id)
+            except Exception as e:
+                logger.error(
+                    f"Failed to disable trial in remnawave for user '{data.telegram_id}': {e}"
+                )
+                raise
+
+            subscription.status = SubscriptionStatus.DISABLED
+            subscription.disabled_by_channel_leave = True
+            await self.subscription_dao.update(subscription)
+            await self.uow.commit()
+
+        logger.info(
+            f"{actor.log} Disabled trial subscription for user '{data.telegram_id}' "
+            f"due to channel leave"
+        )
+        return user
+
+    @staticmethod
+    def _is_our_channel(req: object, data: "ChannelMemberEventDto") -> bool:
+        channel_link: str = req.channel_link.get_secret_value()  # type: ignore[attr-defined]
+        if req.channel_has_username:  # type: ignore[attr-defined]
+            username = channel_link.lstrip("@")
+            return data.chat_username == username
+        if req.channel_id:  # type: ignore[attr-defined]
+            return data.chat_id == req.channel_id
+        return False
+
+
+class EnableTrialSubscription(Interactor[ChannelMemberEventDto, Optional[UserDto]]):
+    """Re-enables a trial subscription when the user rejoins the required channel,
+    but only if it was disabled by this system (disabled_by_channel_leave=True)
+    and has not yet expired.
+
+    Returns the affected UserDto if the trial was re-enabled, None otherwise.
+    """
+
+    required_permission = None  # system-only
+
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        settings_dao: SettingsDao,
+        user_dao: UserDao,
+        subscription_dao: SubscriptionDao,
+        remnawave_sdk: RemnawaveSDK,
+    ) -> None:
+        self.uow = uow
+        self.settings_dao = settings_dao
+        self.user_dao = user_dao
+        self.subscription_dao = subscription_dao
+        self.remnawave_sdk = remnawave_sdk
+
+    async def _execute(
+        self, actor: UserDto, data: ChannelMemberEventDto
+    ) -> Optional[UserDto]:
+        settings = await self.settings_dao.get()
+        req = settings.requirements
+
+        if not req.channel_required:
+            return None
+
+        if not DisableTrialSubscription._is_our_channel(req, data):
+            return None
+
+        user = await self.user_dao.get_by_telegram_id(data.telegram_id)
+        if not user:
+            return None
+
+        subscription = await self.subscription_dao.get_current(data.telegram_id)
+        if not subscription:
+            return None
+
+        if not subscription.is_trial:
+            return None
+
+        # Only restore what we disabled
+        if not subscription.disabled_by_channel_leave:
+            return None
+
+        # Don't restore if expired while the user was away
+        if subscription.status != SubscriptionStatus.DISABLED:
+            return None
+
+        if datetime_now() > subscription.expire_at:
+            logger.debug(
+                f"Trial for user '{data.telegram_id}' expired while channel-disabled, skipping restore"
+            )
+            return None
+
+        async with self.uow:
+            try:
+                await self.remnawave_sdk.users.enable_user(subscription.user_remna_id)
+            except Exception as e:
+                logger.error(
+                    f"Failed to enable trial in remnawave for user '{data.telegram_id}': {e}"
+                )
+                raise
+
+            subscription.status = SubscriptionStatus.ACTIVE
+            subscription.disabled_by_channel_leave = False
+            await self.subscription_dao.update(subscription)
+            await self.uow.commit()
+
+        logger.info(
+            f"{actor.log} Re-enabled trial subscription for user '{data.telegram_id}' "
+            f"after channel rejoin"
+        )
+        return user
