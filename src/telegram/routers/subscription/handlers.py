@@ -1,4 +1,4 @@
-from typing import Optional, TypedDict, cast
+from typing import Any, Optional, TypedDict, cast
 
 from adaptix import Retort
 from aiogram.types import CallbackQuery
@@ -23,6 +23,22 @@ from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
 from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from src.telegram.states import Subscription
+
+
+async def on_subscription_start(start_data: Any, manager: DialogManager) -> None:
+    """Handle dialog start with pre-selected trial plan (paid trial flow)."""
+    if not start_data or "trial_plan" not in start_data:
+        return
+
+    manager.dialog_data[PlanDto.__name__] = start_data["trial_plan"]
+    manager.dialog_data["purchase_type"] = PurchaseType.NEW
+    manager.dialog_data["selected_duration"] = start_data["trial_duration"]
+    manager.dialog_data["only_single_plan"] = True
+    manager.dialog_data["only_single_duration"] = True
+    manager.dialog_data["is_free"] = False
+
+    await manager.switch_to(Subscription.PAYMENT_METHOD)
+
 
 PAYMENT_CACHE_KEY = "payment_cache"
 CURRENT_DURATION_KEY = "selected_duration"

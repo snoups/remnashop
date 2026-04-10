@@ -60,9 +60,16 @@ menu = Window(
     Row(
         Button(
             text=I18nFormat("btn-menu.trial"),
-            id="trial",
+            id="trial_free",
             on_click=on_get_trial,
-            when=F["trial_available"],
+            when=F["trial_available"] & F["trial_is_free"],
+            style=Style(ButtonStyle.SUCCESS),
+        ),
+        Button(
+            text=I18nFormat("btn-menu.trial-paid"),
+            id="trial_paid",
+            on_click=on_get_trial,
+            when=F["trial_available"] & ~F["trial_is_free"],
             style=Style(ButtonStyle.SUCCESS),
         ),
     ),
