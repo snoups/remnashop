@@ -4,7 +4,10 @@ from src.application.common import Interactor
 
 from .commands.management import (
     AddSubscriptionDuration,
+    ChannelMemberEventDto,
     DeleteSubscription,
+    DisableTrialSubscription,
+    EnableTrialSubscription,
     ToggleExternalSquad,
     ToggleInternalSquad,
     ToggleSubscriptionStatus,
@@ -28,6 +31,8 @@ SUBSCRIPTION_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     ToggleInternalSquad,
     ToggleExternalSquad,
     AddSubscriptionDuration,
+    DisableTrialSubscription,
+    EnableTrialSubscription,
     MatchSubscription,
     CheckSubscriptionSyncState,
     SyncSubscriptionFromRemnawave,
