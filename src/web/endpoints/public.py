@@ -46,11 +46,19 @@ from src.application.use_cases.referral.commands.attachment import (
 from src.application.use_cases.remnawave.commands.management import (
     DeleteUserDevice,
     DeleteUserDeviceDto,
-    ReissueSubscription,
 )
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.config import AppConfig
-from src.core.constants import API_V1
+from src.core.constants import (
+    API_V1, 
+    PASSWORD_SCRYPT_DKLEN,
+    PASSWORD_SCRYPT_N,
+    PASSWORD_SCRYPT_P,
+    PASSWORD_SCRYPT_R,
+    PUBLIC_LANDING_PLANS_CACHE_TTL_SECONDS,
+    EMAIL_VERIFICATION_CODE_LENGTH,
+    ACCESS_TOKEN_TTL_SECONDS
+)
 from src.core.enums import (
     Currency,
     PaymentGatewayType,
@@ -64,14 +72,6 @@ from src.core.utils.converters import days_to_datetime
 from src.core.utils.time import datetime_now
 
 router = APIRouter(prefix=API_V1 + "/public", tags=['Public'])
-
-_PASSWORD_SCRYPT_N = 2**14
-_PASSWORD_SCRYPT_R = 8
-_PASSWORD_SCRYPT_P = 1
-_PASSWORD_SCRYPT_DKLEN = 64
-_ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24
-_PUBLIC_LANDING_PLANS_CACHE_TTL_SECONDS = 60 * 60 * 6
-_EMAIL_VERIFICATION_CODE_LENGTH = 6
 
 _public_landing_plans_cache: Optional["PublicPlanLandingListResponse"] = None
 _public_landing_plans_cache_expires_at: Optional[datetime] = None
@@ -227,8 +227,8 @@ class RequestEmailVerificationCodeResponse(BaseModel):
 
 class ConfirmEmailVerificationRequest(BaseModel):
     code: str = Field(
-        min_length=_EMAIL_VERIFICATION_CODE_LENGTH,
-        max_length=_EMAIL_VERIFICATION_CODE_LENGTH,
+        min_length=EMAIL_VERIFICATION_CODE_LENGTH,
+        max_length=EMAIL_VERIFICATION_CODE_LENGTH,
         pattern=r"^\d{6}$",
     )
 
@@ -355,13 +355,13 @@ def _hash_password(password: str, key: str) -> str:
     digest = hashlib.scrypt(
         password=f"{password}:{key}".encode("utf-8"),
         salt=salt,
-        n=_PASSWORD_SCRYPT_N,
-        r=_PASSWORD_SCRYPT_R,
-        p=_PASSWORD_SCRYPT_P,
-        dklen=_PASSWORD_SCRYPT_DKLEN,
+        n=PASSWORD_SCRYPT_N,
+        r=PASSWORD_SCRYPT_R,
+        p=PASSWORD_SCRYPT_P,
+        dklen=PASSWORD_SCRYPT_DKLEN,
     )
     return (
-        f"scrypt${_PASSWORD_SCRYPT_N}${_PASSWORD_SCRYPT_R}${_PASSWORD_SCRYPT_P}"
+        f"scrypt${PASSWORD_SCRYPT_N}${PASSWORD_SCRYPT_R}${PASSWORD_SCRYPT_P}"
         f"${_b64url_encode(salt)}${_b64url_encode(digest)}"
     )
 
@@ -387,8 +387,8 @@ def _verify_password(password: str, password_hash: str, key: str) -> bool:
 
 
 def _generate_email_verification_code() -> str:
-    lower = 10 ** (_EMAIL_VERIFICATION_CODE_LENGTH - 1)
-    upper = (10**_EMAIL_VERIFICATION_CODE_LENGTH) - 1
+    lower = 10 ** (EMAIL_VERIFICATION_CODE_LENGTH - 1)
+    upper = (10**EMAIL_VERIFICATION_CODE_LENGTH) - 1
     return str(secrets.randbelow(upper - lower + 1) + lower)
 
 
@@ -468,7 +468,7 @@ async def _send_email_verification_code(
 def _generate_access_token(subject: int, key: str) -> tuple[str, datetime]:
     header = _b64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode("utf-8"))
     issued_at = int(time.time())
-    expires_at = issued_at + _ACCESS_TOKEN_TTL_SECONDS
+    expires_at = issued_at + ACCESS_TOKEN_TTL_SECONDS
     payload = _b64url_encode(
         json.dumps({"sub": subject, "iat": issued_at, "exp": expires_at}).encode("utf-8")
     )
@@ -784,7 +784,7 @@ async def get_public_landing_plans(
     payload = PublicPlanLandingListResponse(plans=result)
     _public_landing_plans_cache = payload
     _public_landing_plans_cache_expires_at = now + timedelta(
-        seconds=_PUBLIC_LANDING_PLANS_CACHE_TTL_SECONDS
+        seconds=PUBLIC_LANDING_PLANS_CACHE_TTL_SECONDS
     )
     return payload
 
@@ -1130,71 +1130,6 @@ async def confirm_email_verification(
         success=True,
         email=verified_email,
     )
-
-
-# @router.post("/auth/migrate-telegram", response_model=AuthResponse)
-# @inject
-# async def migrate_telegram_user(
-#     body: MigrateTelegramRequest,
-#     config: FromDishka[AppConfig],
-#     uow: FromDishka[UnitOfWork],
-#     user_dao: FromDishka[UserDao],
-#     remnawave: FromDishka[Remnawave],
-# ) -> AuthResponse:
-#     if await user_dao.get_by_login(body.login):
-#         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Login already exists")
-#     if await user_dao.get_by_email(body.email):
-#         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
-
-#     remna_users = await remnawave.get_user_by_email(body.email)
-#     if not remna_users:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail="Remnawave user with this email not found",
-#         )
-
-#     telegram_candidates = [u for u in remna_users if u.telegram_id is not None]
-#     if not telegram_candidates:
-#         raise HTTPException(
-#             status_code=status.HTTP_409_CONFLICT,
-#             detail="No Telegram user found for this email in Remnawave",
-#         )
-
-#     local_user: Optional[UserDto] = None
-#     for remna_user in telegram_candidates:
-#         local_user = await user_dao.get_by_telegram_id(int(remna_user.telegram_id))
-#         if local_user:
-#             break
-
-#     if not local_user:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail="Local Telegram user for this email not found",
-#         )
-
-#     if local_user.password_hash or local_user.login or local_user.email:
-#         raise HTTPException(
-#             status_code=status.HTTP_409_CONFLICT,
-#             detail="User is already migrated to web auth",
-#         )
-
-#     local_user.login = body.login
-#     local_user.email = body.email
-#     local_user.password_hash = _hash_password(body.password, config.crypt_key.get_secret_value())
-#     if body.name:
-#         local_user.name = body.name
-
-#     async with uow:
-#         updated = await user_dao.update(local_user)
-#         if not updated:
-#             raise HTTPException(
-#                 status_code=status.HTTP_404_NOT_FOUND,
-#                 detail="User not found during migration",
-#             )
-#         await uow.commit()
-
-#     return await _build_auth_response(updated, config)
-
 
 @router.get("/subscription/current", response_model=SubscriptionInfoResponse)
 @inject

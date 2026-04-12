@@ -28,7 +28,7 @@ from src.application.use_cases.subscription.commands.purchase import (
 )
 from src.application.use_cases.user.queries.plans import GetAvailableTrial
 from src.core.config import AppConfig
-from src.core.constants import USER_KEY
+from src.core.constants import USER_KEY, PASSWORD_SCRYPT_DKLEN, PASSWORD_SCRYPT_N, PASSWORD_SCRYPT_P, PASSWORD_SCRYPT_R, WEB_PASSWORD_ALPHABET, WEB_PASSWORD_LEN
 from src.core.enums import MediaType
 from src.core.utils.i18n_helpers import i18n_format_expire_time
 from src.core.utils.time import get_traffic_reset_delta
@@ -36,13 +36,6 @@ from src.telegram.keyboards import CALLBACK_CHANNEL_CONFIRM, CALLBACK_RULES_ACCE
 from src.telegram.states import MainMenu
 
 router = Router(name=__name__)
-
-_PASSWORD_SCRYPT_N = 2**14
-_PASSWORD_SCRYPT_R = 8
-_PASSWORD_SCRYPT_P = 1
-_PASSWORD_SCRYPT_DKLEN = 64
-_WEB_PASSWORD_LEN = 8
-_WEB_PASSWORD_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -54,19 +47,19 @@ def _hash_password(password: str, key: str) -> str:
     digest = hashlib.scrypt(
         password=f"{password}:{key}".encode("utf-8"),
         salt=salt,
-        n=_PASSWORD_SCRYPT_N,
-        r=_PASSWORD_SCRYPT_R,
-        p=_PASSWORD_SCRYPT_P,
-        dklen=_PASSWORD_SCRYPT_DKLEN,
+        n=PASSWORD_SCRYPT_N,
+        r=PASSWORD_SCRYPT_R,
+        p=PASSWORD_SCRYPT_P,
+        dklen=PASSWORD_SCRYPT_DKLEN,
     )
     return (
-        f"scrypt${_PASSWORD_SCRYPT_N}${_PASSWORD_SCRYPT_R}${_PASSWORD_SCRYPT_P}"
+        f"scrypt${PASSWORD_SCRYPT_N}${PASSWORD_SCRYPT_R}${PASSWORD_SCRYPT_P}"
         f"${_b64url_encode(salt)}${_b64url_encode(digest)}"
     )
 
 
 def _generate_web_password() -> str:
-    return "".join(secrets.choice(_WEB_PASSWORD_ALPHABET) for _ in range(_WEB_PASSWORD_LEN))
+    return "".join(secrets.choice(WEB_PASSWORD_ALPHABET) for _ in range(WEB_PASSWORD_LEN))
 
 
 async def on_start_dialog(user: UserDto, dialog_manager: DialogManager) -> None:
