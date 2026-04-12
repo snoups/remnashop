@@ -1,6 +1,6 @@
-from typing import Any, Awaitable, Callable, Optional, cast
+from typing import Any, Awaitable, Callable, Final, Optional, cast
 
-from aiogram.exceptions import TelegramForbiddenError
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import ErrorEvent as AiogramErrorEvent
 from aiogram.types import TelegramObject
 from aiogram.types import User as AiogramUser
@@ -26,11 +26,20 @@ from src.telegram.keyboards import get_contact_support_keyboard
 
 from .base import EventTypedMiddleware
 
+_IGNORED_BAD_REQUESTS: Final[tuple[str, ...]] = (
+    "message is not modified",
+    "message to delete not found",
+    "message can't be deleted",
+    "query is too old and response timeout expired",
+    "MESSAGE_ID_INVALID",
+    "Bad Request: message to forward not found",
+)
+
 
 class ErrorMiddleware(EventTypedMiddleware):
     __event_types__ = [MiddlewareEventType.ERROR]
 
-    async def middleware_logic(
+    async def middleware_logic(  # noqa: C901
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,
@@ -45,6 +54,24 @@ class ErrorMiddleware(EventTypedMiddleware):
         event_publisher = await container.get(EventPublisher)
         notifier = await container.get(Notifier)
         redirect_menu = await container.get(RedirectMenu)
+
+        is_context_loss = isinstance(
+            event.exception,
+            (
+                InvalidStackIdError,
+                OutdatedIntent,
+                UnknownIntent,
+                UnknownState,
+            ),
+        )
+
+        if isinstance(event.exception, TelegramBadRequest):
+            error_text = str(event.exception)
+            if any(msg in error_text for msg in _IGNORED_BAD_REQUESTS):
+                logger.warning(f"Ignored expected TelegramBadRequest: {event.exception}")
+                if aiogram_user:
+                    await redirect_menu.system(aiogram_user.id)
+                return
 
         if aiogram_user:
             if isinstance(event.exception, TelegramForbiddenError):
@@ -66,23 +93,18 @@ class ErrorMiddleware(EventTypedMiddleware):
                 if not is_start_command:
                     await redirect_menu.system(aiogram_user.id)
 
-                await notifier.notify_user(
-                    user=TempUserDto.from_aiogram(aiogram_user),
-                    payload=MessagePayloadDto(
-                        i18n_key="ntf-error.unknown",
-                        reply_markup=get_contact_support_keyboard(bot_service.get_support_url()),
-                    ),
-                )
+                if not is_context_loss:
+                    await notifier.notify_user(
+                        user=TempUserDto.from_aiogram(aiogram_user),
+                        payload=MessagePayloadDto(
+                            i18n_key="ntf-error.unknown",
+                            reply_markup=get_contact_support_keyboard(
+                                bot_service.get_support_url()
+                            ),
+                        ),
+                    )
 
-        if isinstance(
-            event.exception,
-            (
-                InvalidStackIdError,
-                OutdatedIntent,
-                UnknownIntent,
-                UnknownState,
-            ),
-        ):
+        if is_context_loss:
             return await handler(event, data)
 
         error_event = ErrorEvent(

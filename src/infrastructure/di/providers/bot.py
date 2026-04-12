@@ -12,6 +12,14 @@ from loguru import logger
 from src.core.config import AppConfig
 
 
+def _build_proxy_connector(url: str) -> ProxyConnector:
+    if url.startswith("socks5h://"):
+        return ProxyConnector.from_url(url.replace("socks5h://", "socks5://", 1), rdns=True)
+    if url.startswith("socks4a://"):
+        return ProxyConnector.from_url(url.replace("socks4a://", "socks4://", 1), rdns=True)
+    return ProxyConnector.from_url(url)
+
+
 class BotProvider(Provider):
     scope = Scope.APP
 
@@ -25,7 +33,7 @@ class BotProvider(Provider):
         if config.bot.proxy_url:
             proxy = config.bot.proxy_url.get_secret_value()
             logger.info("Using SOCKS5 proxy for Telegram")
-            connector = ProxyConnector.from_url(proxy)
+            connector = _build_proxy_connector(proxy)
             session = AiohttpSession(connector=connector)
 
         async with Bot(

@@ -27,18 +27,18 @@ btn-devices =
     .cancel-reissue = ❌ Нет
 
 btn-backup =
-    .toggle-enabled = { $enabled ->
-        [1] 🔴 Выключить автобэкап
-        *[0] 🟢 Включить автобэкап
+    .active-toggle = { $enabled ->
+        [1] 🟢 Включен
+        *[0] 🔴 Выключен
     }
-    .set-interval = ⏱ Интервал ({ $interval_hours }ч)
-    .set-max-files = 📁 Файлов ({ $max_files })
-    .toggle-send = { $send_to_chat ->
-        [1] 📨 Не отправлять в чат
-        *[0] 📩 Отправлять в чат
+    .set-interval = 🕐 Интервал
+    .set-max-files = 📁 Кол-во файлов
+    .send-toggle = { $send_to_chat ->
+        [1] ✅ Отправка в чат: включена
+        *[0] ❌ Отправка в чат: выключена
     }
-    .backup-assets = 📦 Бэкап assets
-    .backup-db = 🗄 Бэкап базы данных
+    .backup-assets = 📦 Запустить бэкап ассетов
+    .backup-db = 🗄 Запустить бэкап базы данных
     
 btn-remnashop-info =
     .release-latest = 👀 Посмотреть
@@ -171,7 +171,7 @@ btn-user =
     [REFUNDED] 💸
     [FAILED] ⚠️
     *[OTHER] { $status }
-    } { $created_at }
+    } { $created_at } · { gateway-type }
     
     .trial-toggle = { $is_trial_available ->
     [1] 🧪 Пробник: доступен
@@ -264,7 +264,7 @@ btn-remnashop =
     .plans = 📦 Планы
     .notifications = 🔔 Уведомления
     .logs = 📄 Логи
-    .menu-editor = 🎛 Доп. кнопки
+    .menu-editor = 🎛 Редактор главного меню
     .backup = 💾 Бэкап
 
 btn-menu-editor =
@@ -279,7 +279,7 @@ btn-menu-editor =
         *[0] 🔴 
     } { $text }
     
-    .active = { $is_active -> 
+    .active-toggle = { $is_active -> 
         [1] 🟢 Включена
         *[0] 🔴 Выключена
     }
@@ -292,7 +292,7 @@ btn-gateway =
     .default-currency = 💸 Валюта по умолчанию
     .placement = 🔢 Изменить позиционирование
 
-    .active = { $is_active ->
+    .active-toggle = { $is_active ->
     [1] 🟢 Включено
     *[0] 🔴 Выключено
     }
@@ -309,7 +309,7 @@ btn-referral =
     .reward-strategy = ⚖️ Форма начисления
     .reward = 🎁 Награда
     
-    .enable = { $is_enable -> 
+    .active-toggle = { $is_enable -> 
     [1] 🟢 Включена
     *[0] 🔴 Выключена
     }
@@ -361,13 +361,12 @@ btn-notifications =
     } { notification-type }
 
     .active-toggle = { $is_active ->
-    [1] 🔴 Выключить
-    *[0] 🟢 Включить
+    [1] 🟢 Включено
+    *[0] 🔴 Выключено
     }
 
 btn-plans =
     .statistics = 📊 Статистика
-    .create = 🆕 Создать
     .save = ✅ Сохранить
     .create = ✅ Создать план
     .delete = ❌ Удалить
@@ -409,7 +408,7 @@ btn-plans =
     *[0] 🔴 
     } { $name }
 
-    .active = { $is_active -> 
+    .active-toggle = { $is_active -> 
     [1] 🟢 Включен
     *[0] 🔴 Выключен
     }
@@ -483,7 +482,7 @@ btn-promocode =
     .allowed = 👥 Разрешенные пользователи
     .confirm = ✅ Подтвердить
     
-    .active = { $is_active -> 
+    .active-toggle = { $is_active -> 
     [1] 🟢
     *[0] 🔴
     } Статус

@@ -6,7 +6,7 @@ from dataclasses import asdict
 from typing import Any, Callable, Optional, Sequence, Union
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramForbiddenError
+from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
 from aiogram.types import (
     BufferedInputFile,
     FSInputFile,
@@ -199,7 +199,7 @@ class NotificationService(Notifier):
             else:
                 logger.error(f"Payload must contain text or media for route {chat_id}:{thread_id}")
 
-        except Exception as e:
+        except TelegramAPIError as e:
             logger.error(f"Failed to send system notification to route {chat_id}:{thread_id}: {e}")
             await self.event_publisher.publish(
                 NotificationErrorEvent(

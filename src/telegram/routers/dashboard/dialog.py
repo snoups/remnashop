@@ -1,4 +1,5 @@
 from aiogram_dialog import Dialog, StartMode, Window
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Row, Start
 
 from src.application.common.policy import Permission
@@ -17,7 +18,7 @@ from src.telegram.states import (
 from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
-from .handlers import show_dev_promocode
+from .handlers import on_smart_search, show_dev_promocode
 
 dashboard = Window(
     Banner(BannerName.DASHBOARD),
@@ -88,6 +89,7 @@ dashboard = Window(
         when=require_permission(Permission.VIEW_IMPORTER),
     ),
     *back_main_menu_button,
+    MessageInput(func=on_smart_search),
     IgnoreUpdate(),
     state=Dashboard.MAIN,
 )

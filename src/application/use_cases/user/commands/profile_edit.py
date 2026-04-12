@@ -18,7 +18,7 @@ class SetUserPersonalDiscountDto:
 class SetUserPersonalDiscount(Interactor[SetUserPersonalDiscountDto, None]):
     required_permission = Permission.USER_EDITOR
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 
@@ -49,7 +49,7 @@ class SetUserPurchaseDiscountDto:
 class SetUserPurchaseDiscount(Interactor[SetUserPurchaseDiscountDto, None]):
     required_permission = Permission.USER_EDITOR
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 
@@ -74,7 +74,7 @@ class SetUserPurchaseDiscount(Interactor[SetUserPurchaseDiscountDto, None]):
 class ToggleUserTrialAvailable(Interactor[int, None]):
     required_permission = Permission.USER_EDITOR
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 
@@ -100,7 +100,7 @@ class ChangeUserPointsDto:
 class ChangeUserPoints(Interactor[ChangeUserPointsDto, None]):
     required_permission = Permission.USER_EDITOR
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 

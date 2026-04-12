@@ -71,7 +71,7 @@ class UpdateMenuButtonPayload(Interactor[UpdateMenuButtonPayloadDto, MenuButtonD
 class ConfirmMenuButtonChanges(Interactor[MenuButtonDto, None]):
     required_permission = Permission.SETTINGS_MENU
 
-    def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao):
+    def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 

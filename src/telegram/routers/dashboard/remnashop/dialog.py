@@ -80,18 +80,18 @@ remnashop = Window(
             when=require_permission(Permission.VIEW_LOGS),
         ),
         Start(
-            text=I18nFormat("btn-remnashop.menu-editor"),
-            id="menu_editor",
-            state=RemnashopMenuEditor.MAIN,
-            when=require_permission(Permission.VIEW_MENU_EDITOR),
-        ),
-    ),
-    Row(
-        Start(
             text=I18nFormat("btn-remnashop.backup"),
             id="backup",
             state=RemnashopBackup.MAIN,
             when=require_permission(Permission.VIEW_BACKUP),
+        ),
+    ),
+    Row(
+        Start(
+            text=I18nFormat("btn-remnashop.menu-editor"),
+            id="menu_editor",
+            state=RemnashopMenuEditor.MAIN,
+            when=require_permission(Permission.VIEW_MENU_EDITOR),
         ),
     ),
     Row(

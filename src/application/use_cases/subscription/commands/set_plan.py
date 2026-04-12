@@ -27,7 +27,7 @@ class SetUserSubscription(Interactor[SetUserSubscriptionDto, None]):
         plan_dao: PlanDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.plan_dao = plan_dao

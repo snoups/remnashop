@@ -47,7 +47,7 @@ class ToggleUserPlanAccessDto:
 class ToggleUserPlanAccess(Interactor[ToggleUserPlanAccessDto, None]):
     required_permission = Permission.USER_EDITOR
 
-    def __init__(self, uow: UnitOfWork, plan_dao: PlanDao):
+    def __init__(self, uow: UnitOfWork, plan_dao: PlanDao) -> None:
         self.uow = uow
         self.plan_dao = plan_dao
 

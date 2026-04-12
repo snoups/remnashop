@@ -8,9 +8,10 @@ from .commands.management import (
     ReissueSubscription,
     ResetUserTraffic,
 )
-from .commands.synchronization import SyncRemnaUser
+from .commands.synchronization import SyncAllUsersFromPanel, SyncRemnaUser
 
 REMNAWAVE_USE_CASES: Final[tuple[type[Interactor], ...]] = (
+    SyncAllUsersFromPanel,
     SyncRemnaUser,
     DeleteUserDevice,
     DeleteUserAllDevices,

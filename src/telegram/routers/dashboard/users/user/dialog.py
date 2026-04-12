@@ -605,6 +605,7 @@ transactions_list = Window(
                 "btn-user.transaction",
                 status=F["item"]["status"],
                 created_at=F["item"]["created_at"],
+                gateway_type=F["item"]["gateway_type"],
             ),
             id="transaction_select",
             item_id_getter=lambda item: item["payment_id"],

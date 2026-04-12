@@ -7,7 +7,7 @@ from src.application.common import Interactor
 from src.application.common.policy import Permission
 from src.application.dto import UserDto
 from src.core.config import AppConfig
-from src.core.constants import LOG_DIR
+from src.core.constants import DATETIME_FILE_FORMAT, LOG_DIR
 from src.core.exceptions import FileNotFoundError, LogsToFileDisabledError
 from src.core.logger import LOG_FILENAME
 from src.core.utils.time import datetime_now
@@ -36,7 +36,7 @@ class GetLogs(Interactor[None, GetLogsResultDto]):
             logger.error(f"Log file not found at '{log_path}'")
             raise FileNotFoundError()
 
-        timestamp = datetime_now().strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = datetime_now().strftime(DATETIME_FILE_FORMAT)
         display_name = f"{timestamp}.log"
 
         logger.info(f"Log file '{log_path}' prepared for user '{actor.telegram_id}'")

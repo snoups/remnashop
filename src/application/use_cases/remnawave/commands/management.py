@@ -20,7 +20,7 @@ class DeleteUserDeviceDto:
 class DeleteUserDevice(Interactor[DeleteUserDeviceDto, bool]):
     required_permission = Permission.PUBLIC
 
-    def __init__(self, subscription_dao: SubscriptionDao, remnawave: Remnawave):
+    def __init__(self, subscription_dao: SubscriptionDao, remnawave: Remnawave) -> None:
         self.subscription_dao = subscription_dao
         self.remnawave = remnawave
 
@@ -68,7 +68,7 @@ class ResetUserTraffic(Interactor[int, None]):
         self,
         subscription_dao: SubscriptionDao,
         remnawave_sdk: RemnawaveSDK,
-    ):
+    ) -> None:
         self.subscription_dao = subscription_dao
         self.remnawave_sdk = remnawave_sdk
 

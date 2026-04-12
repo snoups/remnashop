@@ -6,7 +6,6 @@ from loguru import logger
 
 from src.application.common import Notifier
 from src.application.common.dao import UserDao
-from src.application.common.uow import UnitOfWork
 from src.application.dto import MessagePayloadDto
 from src.core.constants import BATCH_DELAY, BATCH_SIZE_20
 from src.core.utils.iterables import chunked
@@ -17,7 +16,6 @@ from src.infrastructure.taskiq.broker import broker
 @inject(patch_module=True)
 async def notify_payments_restored(
     waiting_user_ids: list[int],
-    uow: FromDishka[UnitOfWork],
     user_dao: FromDishka[UserDao],
     notifier: FromDishka[Notifier],
 ) -> None:

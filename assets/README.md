@@ -1,5 +1,3 @@
-#TODO: add custom
-
 # `Banners`
 
 The `banners` folder contains all banner images.
@@ -112,7 +110,8 @@ All translation keys must follow a unified structure:
     - ❌ msg-plan-success-deleted
 3. Actions — past tense verbs (created, updated, deleted, canceled, failed).
 4. States — adjectives (empty, invalid, not-found, expired, not-available).
-5. Limit to 5 segments maximum.
+5. Limit to 5 segments maximum (recommended).
+6. Keep the total key length under 32 characters (recommended).
 
 ## Examples keys
 
@@ -123,6 +122,49 @@ All translation keys must follow a unified structure:
 | Button: confirm deletion              | `btn-plan-confirm-delete`         |
 | Message: plan created successfully    | `msg-plan-created-success`        |
 | Notification: gateway test failed     | `ntf-gateway-test-payment-failed` |
+
+
+## `custom.ftl`
+
+Each locale folder may contain a `custom.ftl` file (e.g. `translations/ru/custom.ftl`). This file is intended for user-defined translations that are not part of the standard set — such as custom menu buttons, plan names, and similar entries.
+
+### Usage
+
+Add key-value pairs to the file using the standard Fluent syntax:
+
+```
+key-name = Translation text
+```
+
+Then use the key wherever text is expected (e.g. in a plan name or menu link). The system will resolve it to the translated string at runtime.
+
+### Constraints
+
+| Context      | Max length      |
+| ------------ | --------------- |
+| Buttons      | 32 characters   |
+| Messages     | 1024 characters |
+
+### Key naming
+
+Keys must be **unique** and should follow the general naming convention described above. To avoid collisions with built-in keys, prefix custom keys with `custom-`:
+
+```
+custom-menu-link1 = 1️⃣ First button
+custom-plan-name1 = Basic plan
+```
+
+### Example file
+
+```ftl
+# Custom menu buttons
+custom-menu-link1 = 1️⃣ First button
+custom-menu-link2 = 2️⃣ Second button
+
+# Custom plan names
+custom-plan-name1 = 1️⃣ Basic plan
+custom-plan-name2 = 2️⃣ Premium plan
+```
 
 
 # `QR Code Logo`

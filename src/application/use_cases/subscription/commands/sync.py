@@ -27,7 +27,7 @@ class CheckSubscriptionSyncState(Interactor[int, bool]):
         subscription_dao: SubscriptionDao,
         remnawave_sdk: RemnawaveSDK,
         match_subscription: MatchSubscription,
-    ):
+    ) -> None:
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
         self.remnawave_sdk = remnawave_sdk
@@ -72,7 +72,7 @@ class SyncSubscriptionFromRemnawave(Interactor[int, None]):
         remnawave_sdk: RemnawaveSDK,
         remnawave: Remnawave,
         sync_remna_user: SyncRemnaUser,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
@@ -123,7 +123,7 @@ class SyncSubscriptionFromRemnashop(Interactor[int, None]):
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
         sync_remna_user: SyncRemnaUser,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao

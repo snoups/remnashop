@@ -142,6 +142,11 @@ class RemnawaveImpl(Remnawave):
         logger.debug(f"Fetched {len(response.root)} RemnaUsers for telegram_id '{telegram_id}'")
         return response.root
 
+    async def get_all_users(self, limit: int, offset: int) -> list[UserResponseDto]:
+        response = await self.sdk.users.get_all_users(start=offset, size=limit)
+        logger.debug(f"Fetched {len(response.users)} RemnaUsers (limit={limit}, offset={offset})")
+        return response.users
+
     async def get_devices(self, user_uuid: UUID) -> list[HwidDeviceDto]:
         response = await self.sdk.hwid.get_hwid_user(user_uuid)
         logger.debug(f"Fetched {response.total} devices for RemnaUser '{user_uuid}'")

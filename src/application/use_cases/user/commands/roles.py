@@ -101,7 +101,7 @@ class SetUserRoleDto:
 class SetUserRole(Interactor[SetUserRoleDto, None]):
     required_permission = Permission.ASSIGN_ROLE
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 
@@ -119,9 +119,7 @@ class SetUserRole(Interactor[SetUserRoleDto, None]):
             raise PermissionDeniedError()
 
         if target_user.role == Role.OWNER:
-            logger.warning(
-                f"{actor.log} Attempted to change role of OWNER '{data.telegram_id}'"
-            )
+            logger.warning(f"{actor.log} Attempted to change role of OWNER '{data.telegram_id}'")
             raise PermissionDeniedError()
 
         if not actor.role > data.role:

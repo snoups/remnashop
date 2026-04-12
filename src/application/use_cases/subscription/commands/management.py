@@ -22,7 +22,7 @@ class ToggleSubscriptionStatus(Interactor[int, SubscriptionStatus]):
         uow: UnitOfWork,
         subscription_dao: SubscriptionDao,
         remnawave_sdk: RemnawaveSDK,
-    ):
+    ) -> None:
         self.uow = uow
         self.subscription_dao = subscription_dao
         self.remnawave_sdk = remnawave_sdk
@@ -67,7 +67,7 @@ class DeleteSubscription(Interactor[int, None]):
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         remnawave_sdk: RemnawaveSDK,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
@@ -109,7 +109,7 @@ class UpdateTrafficLimit(Interactor[UpdateTrafficLimitDto, None]):
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
@@ -155,7 +155,7 @@ class UpdateDeviceLimit(Interactor[UpdateDeviceLimitDto, None]):
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
@@ -200,7 +200,7 @@ class ToggleInternalSquad(Interactor[ToggleInternalSquadDto, None]):
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
@@ -250,7 +250,7 @@ class ToggleExternalSquad(Interactor[ToggleExternalSquadDto, None]):
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
@@ -300,7 +300,7 @@ class AddSubscriptionDuration(Interactor[AddSubscriptionDurationDto, None]):
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
-    ):
+    ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao

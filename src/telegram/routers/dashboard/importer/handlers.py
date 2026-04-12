@@ -117,7 +117,7 @@ async def on_import_all_xui(
     dialog_manager.dialog_data["has_started"] = True
     notification = await notifier.notify_user(
         user,
-        payload=MessagePayloadDto(i18n_key="ntf-importer.import-started", delete_after=None),
+        payload=MessagePayloadDto(i18n_key="ntf-importer.started", delete_after=None),
     )
 
     task = await import_exported_users_task.kiq(users["all"], selected_squads)  # type: ignore[call-overload]

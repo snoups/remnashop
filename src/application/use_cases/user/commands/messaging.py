@@ -25,7 +25,7 @@ class SendMessageToUser(Interactor[SendMessageToUserDto, bool]):
         notifier: Notifier,
         bot_service: BotService,
         i18n: TranslatorRunner,
-    ):
+    ) -> None:
         self.user_dao = user_dao
         self.notifier = notifier
         self.bot_service = bot_service

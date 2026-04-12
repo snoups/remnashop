@@ -56,8 +56,8 @@ button = Window(
     I18nFormat("msg-menu-editor-button", button_type=F["type"], role=F["required_role"]),
     Row(
         Button(
-            text=I18nFormat("btn-menu-editor.active", is_active=F["is_active"]),
-            id="toggle_active",
+            text=I18nFormat("btn-menu-editor.active-toggle", is_active=F["is_active"]),
+            id="active_toggle",
             on_click=on_active_toggle,
         ),
     ),

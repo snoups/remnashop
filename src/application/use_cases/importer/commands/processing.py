@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from aiogram import Bot
 from aiogram.types import Document
@@ -22,14 +21,14 @@ class ProcessImportFileResultDto:
 
 
 class ProcessImportFile(Interactor[Document, ProcessImportFileResultDto]):
-    required_permission: Optional[Permission] = Permission.IMPORTER
+    required_permission = Permission.IMPORTER
 
     def __init__(
         self,
         export_users_from_xui: ExportUsersFromXui,
         split_exported_users: SplitExportedUsers,
         bot: Bot,
-    ):
+    ) -> None:
         self.export_users_from_xui = export_users_from_xui
         self.split_exported_users = split_exported_users
         self.bot = bot

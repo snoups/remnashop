@@ -12,8 +12,8 @@ from .payment_gateway import (
 from .plan import PlanDto, PlanDurationDto, PlanPriceDto, PlanSnapshotDto
 from .referral import ReferralDto, ReferralRewardDto
 from .settings import (
-    BackupSettingsDto,
     AccessSettingsDto,
+    BackupSettingsDto,
     MenuButtonDto,
     MenuSettingsDto,
     NotificationsSettingsDto,
@@ -64,6 +64,7 @@ __all__ = [
     "ReferralDto",
     "ReferralRewardDto",
     "AccessSettingsDto",
+    "BackupSettingsDto",
     "MenuButtonDto",
     "MenuSettingsDto",
     "NotificationsSettingsDto",

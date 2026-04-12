@@ -54,7 +54,7 @@ gateways = Window(
                     on_click=on_gateway_test,
                 ),
                 Button(
-                    text=I18nFormat("btn-gateway.active", is_active=F["item"]["is_active"]),
+                    text=I18nFormat("btn-gateway.active-toggle", is_active=F["item"]["is_active"]),
                     id="active_toggle",
                     on_click=on_active_toggle,
                 ),

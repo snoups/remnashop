@@ -51,6 +51,7 @@ class Permission(UpperStrEnum):
     SETTINGS_ACCESS = auto()
     SETTINGS_MENU = auto()
     SETTINGS_CURRENCY = auto()
+    SETTINGS_BACKUP = auto()
     #
     REMNASHOP_GATEWAYS = auto()
     REMNASHOP_PLAN_EDITOR = auto()

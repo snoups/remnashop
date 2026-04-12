@@ -4,8 +4,8 @@ __all__ = [
     "backup",
     "dialog",
     "gateways",
-    "referral",
+    "menu_editor",
     "notifications",
     "plans",
-    "menu_editor",
+    "referral",
 ]

@@ -143,7 +143,7 @@ async def on_export(
     selected_plans: list = dialog_manager.dialog_data.get("selected_plans", [])
 
     if not selected_plans:
-        await notifier.notify_user(user, i18n_key="ntf-plan.export-plans_not_selected")
+        await notifier.notify_user(user, i18n_key="ntf-plan.export-plans-not-selected")
         return
 
     try:

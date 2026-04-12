@@ -195,8 +195,8 @@ configurator = Window(
     I18nFormat("msg-plan-configurator"),
     Row(
         Button(
-            text=I18nFormat("btn-plans.active", is_active=F["is_active"]),
-            id="toggle_active",
+            text=I18nFormat("btn-plans.active-toggle", is_active=F["is_active"]),
+            id="active_toggle",
             on_click=on_active_toggle,
         ),
     ),

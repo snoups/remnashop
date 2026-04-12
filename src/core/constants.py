@@ -8,6 +8,7 @@ from packaging.version import Version
 
 BASE_DIR: Final[Path] = Path(__file__).resolve().parents[2]
 ASSETS_DIR: Final[Path] = BASE_DIR / "assets"
+BACKUP_DIR: Final[Path] = BASE_DIR / "backups"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
 
 DOMAIN_REGEX: Pattern[str] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
@@ -40,7 +41,8 @@ USER_KEY: Final[str] = "user"
 TARGET_TELEGRAM_ID: Final[str] = "target_telegram_id"
 
 TIMEZONE: Final[timezone] = timezone.utc
-DATETIME_FORMAT: Final[str] = "%d.%m.%Y %H:%M:%S"
+DATETIME_VIEW_FORMAT: Final[str] = "%d.%m.%y %H:%M:%S"
+DATETIME_FILE_FORMAT: Final[str] = "%Y-%m-%d_%H-%M-%S"
 
 TIME_1M: Final[int] = 60
 TIME_1H: Final[int] = TIME_1M * 60

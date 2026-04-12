@@ -14,11 +14,10 @@ async def backup_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     settings = await settings_dao.get()
-    backup = settings.backup
 
     return {
-        "enabled": backup.enabled,
-        "interval_hours": backup.interval_hours,
-        "max_files": backup.max_files,
-        "send_to_chat": backup.send_to_chat,
+        "enabled": settings.backup.enabled,
+        "interval_hours": settings.backup.interval_hours,
+        "max_files": settings.backup.max_files,
+        "send_to_chat": settings.backup.send_to_chat,
     }

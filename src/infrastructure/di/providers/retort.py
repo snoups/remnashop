@@ -19,13 +19,13 @@ from pydantic import SecretStr, TypeAdapter
 from src.application.common import Cryptographer
 from src.application.dto import (
     AccessSettingsDto,
+    BackupSettingsDto,
     MenuButtonDto,
     MenuSettingsDto,
     MessagePayloadDto,
     NotificationsSettingsDto,
     PlanSnapshotDto,
     PriceDetailsDto,
-    BackupSettingsDto,
     ReferralSettingsDto,
     RequirementSettingsDto,
 )

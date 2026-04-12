@@ -1,8 +1,8 @@
-from aiogram_dialog import Dialog, ShowMode, StartMode, Window
-from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Button, Row, SwitchTo, Start
-from aiogram_dialog.widgets.style import Style
 from aiogram.enums import ButtonStyle
+from aiogram_dialog import Dialog, StartMode, Window
+from aiogram_dialog.widgets.input import MessageInput
+from aiogram_dialog.widgets.kbd import Button, Row, Start, SwitchTo
+from aiogram_dialog.widgets.style import Style
 
 from src.core.enums import BannerName
 from src.telegram.states import DashboardRemnashop, RemnashopBackup
@@ -10,13 +10,11 @@ from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
 from .getters import backup_getter
 from .handlers import (
+    on_active_toggle,
     on_backup_assets,
     on_backup_database,
     on_interval_input,
     on_max_files_input,
-    on_set_interval,
-    on_set_max_files,
-    on_toggle_enabled,
     on_toggle_send_to_chat,
 )
 
@@ -25,28 +23,28 @@ main = Window(
     I18nFormat("msg-backup-main"),
     Row(
         Button(
-            text=I18nFormat("btn-backup.toggle-enabled"),
-            id="toggle_enabled",
-            on_click=on_toggle_enabled,
+            text=I18nFormat("btn-backup.active-toggle"),
+            id="active_toggle",
+            on_click=on_active_toggle,
         ),
     ),
     Row(
         Button(
-            text=I18nFormat("btn-backup.set-interval"),
-            id="set_interval",
-            on_click=on_set_interval,
-        ),
-        Button(
-            text=I18nFormat("btn-backup.set-max-files"),
-            id="set_max_files",
-            on_click=on_set_max_files,
-        ),
-    ),
-    Row(
-        Button(
-            text=I18nFormat("btn-backup.toggle-send"),
-            id="toggle_send",
+            text=I18nFormat("btn-backup.send-toggle"),
+            id="send_toggle",
             on_click=on_toggle_send_to_chat,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-backup.set-interval"),
+            id="interval",
+            state=RemnashopBackup.INTERVAL,
+        ),
+        SwitchTo(
+            text=I18nFormat("btn-backup.set-max-files"),
+            id="max_files",
+            state=RemnashopBackup.MAX_FILES,
         ),
     ),
     Row(
@@ -80,7 +78,6 @@ main = Window(
 interval = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-backup-set-interval"),
-    MessageInput(func=on_interval_input),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back.general"),
@@ -88,6 +85,7 @@ interval = Window(
             state=RemnashopBackup.MAIN,
         ),
     ),
+    MessageInput(func=on_interval_input),
     IgnoreUpdate(),
     state=RemnashopBackup.INTERVAL,
     getter=backup_getter,
@@ -96,7 +94,6 @@ interval = Window(
 max_files = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-backup-set-max-files"),
-    MessageInput(func=on_max_files_input),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back.general"),
@@ -104,9 +101,14 @@ max_files = Window(
             state=RemnashopBackup.MAIN,
         ),
     ),
+    MessageInput(func=on_max_files_input),
     IgnoreUpdate(),
     state=RemnashopBackup.MAX_FILES,
     getter=backup_getter,
 )
 
-router = Dialog(main, interval, max_files)
+router = Dialog(
+    main,
+    interval,
+    max_files,
+)

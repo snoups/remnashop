@@ -32,7 +32,7 @@ class GetUserProfile(Interactor[int, GetUserProfileResultDto]):
         settings_dao: SettingsDao,
         subscription_dao: SubscriptionDao,
         config: AppConfig,
-    ):
+    ) -> None:
         self.user_dao = user_dao
         self.settings_dao = settings_dao
         self.subscription_dao = subscription_dao
@@ -90,7 +90,7 @@ class GetUserProfileSubscription(Interactor[int, GetUserProfileSubscriptionResul
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
         remnawave_sdk: RemnawaveSDK,
-    ):
+    ) -> None:
         self.subscription_dao = subscription_dao
         self.remnawave = remnawave
         self.remnawave_sdk = remnawave_sdk
@@ -148,7 +148,7 @@ class GetUserDevices(Interactor[int, GetUserDevicesResultDto]):
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         remnawave: Remnawave,
-    ):
+    ) -> None:
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
         self.remnawave = remnawave

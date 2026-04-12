@@ -6,15 +6,10 @@ from loguru import logger
 from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 from remnapy.exceptions import BadRequestError
-from remnapy.models import CreateUserRequestDto, UserResponseDto
+from remnapy.models import CreateUserRequestDto
 
-from src.application.common.dao import SubscriptionDao, UserDao
-from src.application.dto import UserDto
 from src.application.use_cases.importer.dto import ExportedUserDto
-from src.application.use_cases.remnawave.commands.synchronization import (
-    SyncRemnaUser,
-    SyncRemnaUserDto,
-)
+from src.application.use_cases.remnawave.commands.synchronization import SyncAllUsersFromPanel
 from src.infrastructure.redis.keys import SyncRunningKey
 from src.infrastructure.taskiq.broker import broker
 
@@ -51,91 +46,13 @@ async def import_exported_users_task(
 
 @broker.task
 @inject(patch_module=True)
-async def sync_all_users_from_panel_task(  # noqa: C901
+async def sync_all_users_from_panel_task(
     retort: FromDishka[Retort],
     redis: FromDishka[Redis],
-    remnawave_sdk: FromDishka[RemnawaveSDK],
-    user_dao: FromDishka[UserDao],
-    subscription_dao: FromDishka[SubscriptionDao],
-    sync_remna_user: FromDishka[SyncRemnaUser],
+    sync_all_users: FromDishka[SyncAllUsersFromPanel],
 ) -> dict[str, int]:
     key = retort.dump(SyncRunningKey())
-    all_remna_users: list[UserResponseDto] = []
-    limit = 50
-    offset = 0
-
-    while True:
-        response = await remnawave_sdk.users.get_all_users(start=offset, size=limit)
-        if not response.users:
-            break
-        all_remna_users.extend(response.users)
-        if len(response.users) < limit:
-            break
-        offset += len(response.users)
-
-    bot_users: list[UserDto] = []
-    limit = 500
-    offset = 0
-
-    while True:
-        batch = await user_dao.get_all(limit=limit, offset=offset)
-        if not batch:
-            break
-        bot_users.extend(batch)
-        if len(batch) < limit:
-            break
-        offset += len(batch)
-
-    bot_users_map = {user.telegram_id: user for user in bot_users}
-
-    logger.info(f"Total users in panel: '{len(all_remna_users)}'")
-    logger.info(f"Total users in bot: '{len(bot_users)}'")
-
-    added_users = 0
-    added_subscription = 0
-    updated = 0
-    errors = 0
-    missing_telegram = 0
-
     try:
-        for remna_user in all_remna_users:
-            try:
-                if not remna_user.telegram_id:
-                    missing_telegram += 1
-                    continue
-
-                user = bot_users_map.get(remna_user.telegram_id)
-
-                if not user:
-                    await sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
-                    added_users += 1
-                else:
-                    current_subscription = await subscription_dao.get_current(user.telegram_id)
-                    if not current_subscription:
-                        await sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
-                        added_subscription += 1
-                    else:
-                        changed = await sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
-                        if changed:
-                            updated += 1
-
-            except Exception as exception:
-                logger.exception(
-                    f"Error syncing RemnaUser '{remna_user.telegram_id}' exception: {exception}"
-                )
-                errors += 1
-
-        result = {
-            "total_panel_users": len(all_remna_users),
-            "total_bot_users": len(bot_users),
-            "added_users": added_users,
-            "added_subscription": added_subscription,
-            "updated": updated,
-            "errors": errors,
-            "missing_telegram": missing_telegram,
-        }
-
-        logger.info(f"Sync users summary: '{result}'")
-        return result
+        return await sync_all_users.system()
     finally:
         await redis.delete(key)

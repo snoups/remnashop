@@ -75,7 +75,22 @@ async def start_user_window(
 ) -> None:
     await manager.start(
         state=DashboardUser.MAIN,
-        data={"target_telegram_id": target_telegram_id},
+        data={TARGET_TELEGRAM_ID: target_telegram_id},
+        mode=StartMode.RESET_STACK,
+    )
+
+
+async def start_user_transaction_window(
+    manager: DialogManager,
+    target_telegram_id: int,
+    selected_transaction: UUID,
+) -> None:
+    await manager.start(
+        state=DashboardUser.TRANSACTION,
+        data={
+            TARGET_TELEGRAM_ID: target_telegram_id,
+            "selected_transaction": str(selected_transaction),
+        },
         mode=StartMode.RESET_STACK,
     )
 

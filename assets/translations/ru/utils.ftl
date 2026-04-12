@@ -104,6 +104,14 @@ frg-subscription =
     • <b>Осталось</b>: { $expire_time }
     </blockquote>
 
+frg-subscription-user-editor =
+    <blockquote>
+    • <b>План</b>: { $plan_name }
+    • <b>Лимит трафика</b>: { $traffic_limit }
+    • <b>Лимит устройств</b>: { $device_limit }
+    • <b>Осталось</b>: { $expire_time }
+    </blockquote>
+
 frg-subscription-details =
     <blockquote>
     • <b>ID</b>: <code>{ $subscription_id }</code>
