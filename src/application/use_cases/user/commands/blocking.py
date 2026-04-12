@@ -48,7 +48,7 @@ class ToggleUserBlockedStatus(Interactor[int, None]):
 class UnblockAllUsers(Interactor[None, int]):
     required_permission = Permission.UNBLOCK_ALL
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 

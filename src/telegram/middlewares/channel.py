@@ -34,7 +34,7 @@ class ChannelMiddleware(EventTypedMiddleware):
 
         if result.is_subscribed:
             if self._is_click_confirm(event):
-                logger.info(f"{user.log} Cofirmed join channel")
+                logger.info(f"{user.log} Confirmed join channel")
                 await self._delete_previous_message(event)
 
             if not result.error_occurred:

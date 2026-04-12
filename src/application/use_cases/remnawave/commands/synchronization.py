@@ -137,3 +137,107 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, bool]):
         subscription = self.remnawave.apply_sync(target, source)
         await self.subscription_dao.update(subscription)
         return bool(subscription.changed_data)
+
+
+class SyncAllUsersFromPanel(Interactor[None, dict[str, int]]):
+    required_permission = None
+
+    def __init__(
+        self,
+        remnawave: Remnawave,
+        user_dao: UserDao,
+        subscription_dao: SubscriptionDao,
+        sync_remna_user: SyncRemnaUser,
+    ) -> None:
+        self.remnawave = remnawave
+        self.user_dao = user_dao
+        self.subscription_dao = subscription_dao
+        self.sync_remna_user = sync_remna_user
+
+    async def _execute(self, actor: UserDto, data: None) -> dict[str, int]:
+        panel_users = await self._fetch_all_panel_users()
+        bot_users = await self._fetch_all_bot_users()
+        bot_users_map = {user.telegram_id: user for user in bot_users}
+
+        logger.info(f"Total users in panel: '{len(panel_users)}'")
+        logger.info(f"Total users in bot: '{len(bot_users)}'")
+
+        added_users = 0
+        added_subscription = 0
+        updated = 0
+        errors = 0
+        missing_telegram = 0
+
+        for remna_user in panel_users:
+            try:
+                if not remna_user.telegram_id:
+                    missing_telegram += 1
+                    continue
+
+                user = bot_users_map.get(remna_user.telegram_id)
+
+                if not user:
+                    await self.sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
+                    added_users += 1
+                else:
+                    current_subscription = await self.subscription_dao.get_current(user.telegram_id)
+                    if not current_subscription:
+                        await self.sync_remna_user.system(SyncRemnaUserDto(remna_user, True))
+                        added_subscription += 1
+                    else:
+                        changed = await self.sync_remna_user.system(
+                            SyncRemnaUserDto(remna_user, True)
+                        )
+                        if changed:
+                            updated += 1
+
+            except Exception as exception:
+                logger.exception(
+                    f"Error syncing RemnaUser '{remna_user.telegram_id}' exception: {exception}"
+                )
+                errors += 1
+
+        result = {
+            "total_panel_users": len(panel_users),
+            "total_bot_users": len(bot_users),
+            "added_users": added_users,
+            "added_subscription": added_subscription,
+            "updated": updated,
+            "errors": errors,
+            "missing_telegram": missing_telegram,
+        }
+
+        logger.info(f"Sync users summary: '{result}'")
+        return result
+
+    async def _fetch_all_panel_users(self) -> list[RemnaUserDto]:
+        all_users: list[RemnaUserDto] = []
+        limit = 50
+        offset = 0
+
+        while True:
+            batch = await self.remnawave.get_all_users(limit=limit, offset=offset)
+            if not batch:
+                break
+            all_users.extend(batch)
+            if len(batch) < limit:
+                break
+            offset += len(batch)
+
+        return all_users
+
+    async def _fetch_all_bot_users(self) -> list[UserDto]:
+        all_users: list[UserDto] = []
+        limit = 500
+        offset = 0
+
+        while True:
+            batch = await self.user_dao.get_all(limit=limit, offset=offset)
+            if not batch:
+                break
+            all_users.extend(batch)
+            if len(batch) < limit:
+                break
+            offset += len(batch)
+
+        return all_users

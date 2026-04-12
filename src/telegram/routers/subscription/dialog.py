@@ -155,7 +155,9 @@ payment_method = Window(
             text=I18nFormat(
                 "btn-subscription.payment-method",
                 gateway_type=F["item"]["gateway_type"],
-                price=F["item"]["price"],
+                final_amount=F["item"]["final_amount"],
+                original_amount=F["item"]["original_amount"],
+                discount_percent=F["item"]["discount_percent"],
                 currency=F["item"]["currency"],
             ),
             id=f"{PAYMENT_PREFIX}select_payment_method",

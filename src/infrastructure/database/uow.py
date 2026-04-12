@@ -21,8 +21,11 @@ class UnitOfWorkImpl(UnitOfWork):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        if exc_type:
-            await self.rollback()
+        try:
+            if exc_type:
+                await self.rollback()
+        finally:
+            await self.session.close()
 
     async def commit(self) -> None:
         await self.session.commit()

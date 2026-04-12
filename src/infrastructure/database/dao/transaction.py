@@ -58,7 +58,11 @@ class TransactionDaoImpl(TransactionDao):
         return None
 
     async def get_by_user(self, telegram_id: int) -> list[TransactionDto]:
-        stmt = select(Transaction).where(Transaction.user_telegram_id == telegram_id)
+        stmt = (
+            select(Transaction)
+            .where(Transaction.user_telegram_id == telegram_id)
+            .order_by(Transaction.created_at.desc())
+        )
         result = await self.session.scalars(stmt)
         db_transactions = cast(list, result.all())
 

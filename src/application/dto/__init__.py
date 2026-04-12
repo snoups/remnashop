@@ -13,6 +13,7 @@ from .plan import PlanDto, PlanDurationDto, PlanPriceDto, PlanSnapshotDto
 from .referral import ReferralDto, ReferralRewardDto
 from .settings import (
     AccessSettingsDto,
+    BackupSettingsDto,
     MenuButtonDto,
     MenuSettingsDto,
     NotificationsSettingsDto,
@@ -20,6 +21,7 @@ from .settings import (
     ReferralSettingsDto,
     RequirementSettingsDto,
     SettingsDto,
+    SystemNotificationRouteDto,
 )
 from .statistics import (
     GatewayStatsDto,
@@ -62,6 +64,7 @@ __all__ = [
     "ReferralDto",
     "ReferralRewardDto",
     "AccessSettingsDto",
+    "BackupSettingsDto",
     "MenuButtonDto",
     "MenuSettingsDto",
     "NotificationsSettingsDto",
@@ -69,6 +72,7 @@ __all__ = [
     "ReferralSettingsDto",
     "RequirementSettingsDto",
     "SettingsDto",
+    "SystemNotificationRouteDto",
     "RemnaSubscriptionDto",
     "SubscriptionDto",
     "PriceDetailsDto",

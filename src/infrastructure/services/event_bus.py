@@ -9,6 +9,8 @@ from loguru import logger
 
 from src.application.common import EventPublisher, EventSubscriber
 from src.application.events import BaseEvent
+from src.application.events.system import ErrorEvent
+from src.core.config import AppConfig
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -22,7 +24,8 @@ def on_event(*event_types: Type[BaseEvent]) -> Callable[[F], F]:
 
 
 class EventBusImpl(EventPublisher, EventSubscriber):
-    def __init__(self) -> None:
+    def __init__(self, config: AppConfig) -> None:
+        self._config = config
         self._listeners: dict[Type[BaseEvent], list[tuple[Type[Any], Callable]]] = defaultdict(list)
         self._container_factory: Optional[Callable[[], AsyncContainer]] = None
         self._registered_classes: set[Type[Any]] = set()
@@ -86,6 +89,8 @@ class EventBusImpl(EventPublisher, EventSubscriber):
                     f"Error handling event '{type(event).__name__}' "
                     f"in '{service_class.__name__}': '{e}'"
                 )
+                if not isinstance(event, ErrorEvent):
+                    await self.publish(ErrorEvent(**self._config.build.data, exception=e))
                 raise
 
     def autodiscover(self) -> None:

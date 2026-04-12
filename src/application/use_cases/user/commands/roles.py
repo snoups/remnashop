@@ -45,7 +45,7 @@ class GetAdmins(Interactor[None, list[GetAdminsResultDto]]):
         return (
             target.telegram_id != actor.telegram_id
             and target.role != Role.OWNER
-            and target.role > actor.role
+            and actor.role > target.role
         )
 
 
@@ -101,7 +101,7 @@ class SetUserRoleDto:
 class SetUserRole(Interactor[SetUserRoleDto, None]):
     required_permission = Permission.ASSIGN_ROLE
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 
@@ -112,7 +112,29 @@ class SetUserRole(Interactor[SetUserRoleDto, None]):
             logger.warning(
                 f"{actor.log} Attempted to change role for non-existent user '{data.telegram_id}'"
             )
-            raise ValueError(f"User '{data.telegram_id}' not found")
+            raise UserNotFoundError(data.telegram_id)
+
+        if actor.telegram_id == target_user.telegram_id:
+            logger.warning(f"{actor.log} Attempted to change their own role")
+            raise PermissionDeniedError()
+
+        if target_user.role == Role.OWNER:
+            logger.warning(f"{actor.log} Attempted to change role of OWNER '{data.telegram_id}'")
+            raise PermissionDeniedError()
+
+        if not actor.role > data.role:
+            logger.warning(
+                f"{actor.log} Attempted to assign role '{data.role}' "
+                f"which is >= their own role '{actor.role}'"
+            )
+            raise PermissionDeniedError()
+
+        if not actor.role > target_user.role:
+            logger.warning(
+                f"{actor.log} Attempted to change role of '{data.telegram_id}' "
+                f"({target_user.role}) which is >= their own role '{actor.role}'"
+            )
+            raise PermissionDeniedError()
 
         async with self.uow:
             target_user.role = data.role

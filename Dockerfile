@@ -1,19 +1,11 @@
 FROM ghcr.io/astral-sh/uv:python3.12-alpine AS builder
-
 WORKDIR /opt/remnashop
-
 RUN apk add --no-cache git
-
 COPY pyproject.toml uv.lock ./
-
 RUN uv sync --locked --no-dev --no-cache --compile-bytecode \
-    && find .venv -type d -name "__pycache__" -exec rm -rf {} + \
-    && rm -rf .venv/lib/python3.12/site-packages/pip* \
-    && rm -rf .venv/lib/python3.12/site-packages/setuptools* \
-    && rm -rf .venv/lib/python3.12/site-packages/wheel*
+    && rm -rf .venv/lib/python3.12/site-packages/{pip,setuptools,wheel}*
 
 FROM python:3.12-alpine AS final
-
 WORKDIR /opt/remnashop
 
 ARG BUILD_TIME
@@ -26,16 +18,16 @@ ENV BUILD_BRANCH=${BUILD_BRANCH}
 ENV BUILD_COMMIT=${BUILD_COMMIT}
 ENV BUILD_TAG=${BUILD_TAG}
 
-COPY --from=builder /opt/remnashop/.venv /opt/remnashop/.venv
+RUN apk add --no-cache postgresql-client
 
+COPY --from=builder /opt/remnashop/.venv /opt/remnashop/.venv
 ENV PATH="/opt/remnashop/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/opt/remnashop
 
 COPY ./src ./src
 COPY ./assets /opt/remnashop/assets.default
+
 COPY ./docker-entrypoint.sh ./docker-entrypoint.sh
-
 RUN chmod +x ./docker-entrypoint.sh
-
 CMD ["./docker-entrypoint.sh"]

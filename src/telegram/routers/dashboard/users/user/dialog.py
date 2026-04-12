@@ -53,17 +53,19 @@ from .handlers import (
     on_device_limit_input,
     on_device_limit_select,
     on_devices,
-    on_discount_input,
-    on_discount_select,
     on_duration_input,
     on_duration_select,
     on_external_squad_select,
     on_give_access,
     on_give_subscription,
     on_internal_squad_select,
+    on_personal_discount_input,
+    on_personal_discount_select,
     on_plan_select,
     on_points_input,
     on_points_select,
+    on_purchase_discount_input,
+    on_purchase_discount_select,
     on_reset_traffic,
     on_role_select,
     on_send,
@@ -77,6 +79,7 @@ from .handlers import (
     on_traffic_limit_select,
     on_transaction_select,
     on_transactions,
+    on_trial_toggle,
     on_user_select,
 )
 
@@ -129,6 +132,12 @@ user = Window(
     ),
     Row(
         SwitchTo(
+            text=I18nFormat("btn-user.role"),
+            id="role",
+            state=DashboardUser.ROLE,
+            when=F["is_not_self"] & F["can_edit"],
+        ),
+        SwitchTo(
             text=I18nFormat("btn-user.discount"),
             id="discount",
             state=DashboardUser.DISCOUNT,
@@ -141,14 +150,15 @@ user = Window(
         ),
     ),
     Row(
-        SwitchTo(
-            text=I18nFormat("btn-user.role"),
-            id="role",
-            state=DashboardUser.ROLE,
-            when=F["is_not_self"] & F["can_edit"],
-        ),
         Button(
-            text=I18nFormat("btn-user.block", is_blocked=F["is_blocked"]),
+            text=I18nFormat("btn-user.trial-toggle"),
+            id="trial_toggle",
+            on_click=on_trial_toggle,
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-user.block"),
             id="block",
             on_click=on_block_toggle,
             when=F["is_not_self"] & F["can_edit"],
@@ -595,6 +605,7 @@ transactions_list = Window(
                 "btn-user.transaction",
                 status=F["item"]["status"],
                 created_at=F["item"]["created_at"],
+                gateway_type=F["item"]["gateway_type"],
             ),
             id="transaction_select",
             item_id_getter=lambda item: item["payment_id"],
@@ -666,16 +677,19 @@ message = Window(
 discount = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-user-discount"),
-    Group(
-        Select(
-            text=Format("{item}%"),
-            id="discount_select",
-            item_id_getter=lambda item: item,
-            items="percentages",
-            type_factory=int,
-            on_click=on_discount_select,
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-user.discount-personal"),
+            id="discount_personal",
+            state=DashboardUser.PERSONAL_DISCOUNT,
         ),
-        width=3,
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-user.discount-purchase"),
+            id="discount_purchase",
+            state=DashboardUser.PURCHASE_DISCOUNT,
+        ),
     ),
     Row(
         SwitchTo(
@@ -684,9 +698,61 @@ discount = Window(
             state=DashboardUser.MAIN,
         ),
     ),
-    MessageInput(func=on_discount_input),
     IgnoreUpdate(),
     state=DashboardUser.DISCOUNT,
+)
+
+personal_discount = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-user-discount-personal"),
+    Group(
+        Select(
+            text=Format("{item}%"),
+            id="personal_discount_select",
+            item_id_getter=lambda item: item,
+            items="percentages",
+            type_factory=int,
+            on_click=on_personal_discount_select,
+        ),
+        width=3,
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardUser.DISCOUNT,
+        ),
+    ),
+    MessageInput(func=on_personal_discount_input),
+    IgnoreUpdate(),
+    state=DashboardUser.PERSONAL_DISCOUNT,
+    getter=discount_getter,
+)
+
+purchase_discount = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-user-discount-purchase"),
+    Group(
+        Select(
+            text=Format("{item}%"),
+            id="purchase_discount_select",
+            item_id_getter=lambda item: item,
+            items="percentages",
+            type_factory=int,
+            on_click=on_purchase_discount_select,
+        ),
+        width=3,
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardUser.DISCOUNT,
+        ),
+    ),
+    MessageInput(func=on_purchase_discount_input),
+    IgnoreUpdate(),
+    state=DashboardUser.PURCHASE_DISCOUNT,
     getter=discount_getter,
 )
 
@@ -791,6 +857,8 @@ router = Dialog(
     transaction,
     message,
     discount,
+    personal_discount,
+    purchase_discount,
     points,
     give_access,
     role,

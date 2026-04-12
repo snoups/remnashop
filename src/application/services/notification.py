@@ -6,7 +6,7 @@ from dataclasses import asdict
 from typing import Any, Callable, Optional, Sequence, Union
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramForbiddenError
+from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
 from aiogram.types import (
     BufferedInputFile,
     FSInputFile,
@@ -19,25 +19,26 @@ from aiogram.utils.formatting import Text
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 
-from src.application.common import Notifier, TranslatorHub
+from src.application.common import EventPublisher, Notifier, TranslatorHub
 from src.application.common.dao import SettingsDao, UserDao
 from src.application.dto import (
     MediaDescriptorDto,
     MessagePayloadDto,
     NotificationTaskDto,
     SettingsDto,
+    SystemNotificationRouteDto,
     TempUserDto,
     UserDto,
 )
-from src.application.events import ErrorEvent, SystemEvent
+from src.application.events import ErrorEvent, NotificationErrorEvent, SystemEvent
 from src.application.events.base import UserEvent
 from src.application.events.system import RemnashopWelcomeEvent
 from src.core.config import AppConfig
 from src.core.enums import Locale, Role
-from src.core.types import AnyKeyboard
+from src.core.types import AnyKeyboard, NotificationType
 from src.infrastructure.services import NotificationQueue
 from src.infrastructure.services.event_bus import on_event
-from src.telegram.states import Notification
+from src.telegram.keyboards import get_close_notification_button
 
 
 class NotificationService(Notifier):
@@ -49,6 +50,7 @@ class NotificationService(Notifier):
         user_dao: UserDao,
         settings_dao: SettingsDao,
         queue: NotificationQueue,
+        event_publisher: EventPublisher,
     ) -> None:
         self.bot = bot
         self.config = config
@@ -56,6 +58,7 @@ class NotificationService(Notifier):
         self.user_dao = user_dao
         self.settings_dao = settings_dao
         self.queue = queue
+        self.event_publisher = event_publisher
         self.queue.start(self._process_task)
 
     async def notify_user(
@@ -84,12 +87,11 @@ class NotificationService(Notifier):
     @on_event(RemnashopWelcomeEvent)
     async def on_remnashop_welcome_event(self, event: RemnashopWelcomeEvent) -> None:
         logger.info(f"Received '{event.event_type}' event")
+        await self.notify_admins(event.as_payload(), roles=[Role.OWNER, Role.DEV])
 
-        settings: SettingsDto = await self.settings_dao.get()
-        if not settings.notifications.is_enabled(event.notification_type):
-            logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
-            return
-
+    @on_event(NotificationErrorEvent)
+    async def on_notification_error_event(self, event: NotificationErrorEvent) -> None:
+        logger.info(f"Received '{event.event_type}' event")
         await self.notify_admins(event.as_payload(), roles=[Role.OWNER, Role.DEV])
 
     @on_event(UserEvent)
@@ -112,7 +114,7 @@ class NotificationService(Notifier):
             logger.info(f"Notification for '{event.notification_type}' is disabled, skipping")
             return
 
-        await self.notify_admins(event.as_payload())
+        await self._notify_system(event.as_payload(), notification_type=event.notification_type)
 
     @on_event(ErrorEvent)
     async def on_error_event(self, event: ErrorEvent) -> None:
@@ -135,10 +137,77 @@ class NotificationService(Notifier):
             filename=f"error_{event.event_id}.txt",
         )
 
-        await self.notify_admins(
+        await self._notify_system(
             event.as_payload(media, error_type, error_message),
             roles=[Role.OWNER, Role.DEV],
+            notification_type=event.notification_type,
         )
+
+    async def _notify_system(
+        self,
+        payload: MessagePayloadDto,
+        roles: list[Role] = [Role.OWNER, Role.DEV, Role.ADMIN],
+        notification_type: Optional[NotificationType] = None,
+    ) -> None:
+        route = None
+        if notification_type:
+            settings: SettingsDto = await self.settings_dao.get()
+            route = settings.notifications.get_route(notification_type)
+
+        if route and route.is_configured:
+            await self._send_to_route(payload, route)
+        else:
+            await self.notify_admins(payload, roles=roles)
+
+    async def _send_to_route(
+        self,
+        payload: MessagePayloadDto,
+        route: SystemNotificationRouteDto,
+    ) -> None:
+        chat_id = route.chat_id
+        thread_id = route.effective_thread_id
+
+        locale = self.config.default_locale
+        text = self._get_translated_text(
+            locale=locale,
+            i18n_key=payload.i18n_key,
+            i18n_kwargs=payload.i18n_kwargs,
+        )
+
+        try:
+            if payload.is_text:
+                await self.bot.send_message(
+                    chat_id=chat_id,  # type:ignore[arg-type]
+                    text=text,
+                    message_thread_id=thread_id,
+                    disable_web_page_preview=True,
+                    disable_notification=payload.disable_notification,
+                )
+            elif payload.media:
+                method = self._get_media_method(payload)
+                if not method:
+                    logger.warning(f"Unknown media type for payload '{payload}'")
+                    return
+                media = self._build_media(payload.media)
+                await method(
+                    chat_id,
+                    media,
+                    caption=text,
+                    message_thread_id=thread_id,
+                    disable_notification=payload.disable_notification,
+                )
+            else:
+                logger.error(f"Payload must contain text or media for route {chat_id}:{thread_id}")
+
+        except TelegramAPIError as e:
+            logger.error(f"Failed to send system notification to route {chat_id}:{thread_id}: {e}")
+            await self.event_publisher.publish(
+                NotificationErrorEvent(
+                    chat_id=chat_id,
+                    thread_id=thread_id,
+                    reason=str(e),
+                )
+            )
 
     async def delete_notification(self, chat_id: int, message_id: int) -> None:
         try:
@@ -281,10 +350,11 @@ class NotificationService(Notifier):
         locale: Locale,
         chat_id: int,
     ) -> Optional[AnyKeyboard]:
+        close_keyboard = self._get_default_keyboard(get_close_notification_button())
+
         if reply_markup is None:
             if not disable_default_markup and delete_after is None:
-                close_button = self._get_close_notification_button(locale=locale)
-                return self._get_default_keyboard(close_button)
+                return self._translate_keyboard_text(close_keyboard, locale)
             return None
 
         translated_markup = self._translate_keyboard_text(reply_markup, locale)
@@ -294,18 +364,14 @@ class NotificationService(Notifier):
 
         if isinstance(translated_markup, InlineKeyboardMarkup):
             builder = InlineKeyboardBuilder.from_markup(translated_markup)
-            builder.row(self._get_close_notification_button(locale))
-            return builder.as_markup()
+            builder.row(get_close_notification_button())
+            return self._translate_keyboard_text(builder.as_markup(), locale)
 
         logger.warning(
             f"Unsupported reply_markup type '{type(reply_markup).__name__}' "
             f"for chat '{chat_id}', close button skipped"
         )
         return translated_markup
-
-    def _get_close_notification_button(self, locale: Locale) -> InlineKeyboardButton:
-        text = self._get_translated_text(locale, "btn-common.notification-close")
-        return InlineKeyboardButton(text=text, callback_data=Notification.CLOSE.state)
 
     def _get_default_keyboard(self, button: InlineKeyboardButton) -> InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder([[button]])

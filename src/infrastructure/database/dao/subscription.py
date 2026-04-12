@@ -222,7 +222,9 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
         return squads
 
     async def count_total_trials(self) -> int:
-        stmt = select(func.count()).select_from(Subscription).where(Subscription.is_trial.is_(True))
+        stmt = select(func.count(func.distinct(Subscription.user_telegram_id))).where(
+            Subscription.is_trial.is_(True),
+        )
         return await self.session.scalar(stmt) or 0
 
     async def count_converted_from_trial(self) -> int:
@@ -259,24 +261,30 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
             Subscription.device_limit == 0,
         )
 
-        stmt = select(
-            func.count().label("total"),
-            func.sum(case((is_active, 1), else_=0)).label("total_active"),
-            func.sum(case((is_disabled, 1), else_=0)).label("total_disabled"),
-            func.sum(case((is_limited, 1), else_=0)).label("total_limited"),
-            func.sum(case((is_expired, 1), else_=0)).label("total_expired"),
-            func.sum(case((and_(is_active, Subscription.is_trial.is_(True)), 1), else_=0)).label(
-                "active_trial"
-            ),
-            func.sum(case((is_expiring, 1), else_=0)).label("expiring_soon"),
-            func.sum(case((and_(is_active, is_unlimited), 1), else_=0)).label("total_unlimited"),
-            func.sum(case((and_(is_active, Subscription.traffic_limit != 0), 1), else_=0)).label(
-                "total_traffic"
-            ),
-            func.sum(case((and_(is_active, Subscription.device_limit != 0), 1), else_=0)).label(
-                "total_devices"
-            ),
-        ).where(Subscription.status != SubscriptionStatus.DELETED)
+        stmt = (
+            select(
+                func.count().label("total"),
+                func.sum(case((is_active, 1), else_=0)).label("total_active"),
+                func.sum(case((is_disabled, 1), else_=0)).label("total_disabled"),
+                func.sum(case((is_limited, 1), else_=0)).label("total_limited"),
+                func.sum(case((is_expired, 1), else_=0)).label("total_expired"),
+                func.sum(
+                    case((and_(is_active, Subscription.is_trial.is_(True)), 1), else_=0)
+                ).label("active_trial"),
+                func.sum(case((is_expiring, 1), else_=0)).label("expiring_soon"),
+                func.sum(case((and_(is_active, is_unlimited), 1), else_=0)).label(
+                    "total_unlimited"
+                ),
+                func.sum(
+                    case((and_(is_active, Subscription.traffic_limit != 0), 1), else_=0)
+                ).label("total_traffic"),
+                func.sum(case((and_(is_active, Subscription.device_limit != 0), 1), else_=0)).label(
+                    "total_devices"
+                ),
+            )
+            .join(User, User.current_subscription_id == Subscription.id)
+            .where(Subscription.status != SubscriptionStatus.DELETED)
+        )
 
         row = (await self.session.execute(stmt)).mappings().one()
         logger.debug("Subscription stats fetched")
@@ -338,6 +346,7 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
                     "total_devices"
                 ),
             )
+            .join(User, User.current_subscription_id == Subscription.id)
             .where(
                 plan_id_expr.isnot(None),
                 Subscription.status != SubscriptionStatus.DELETED,
@@ -356,6 +365,7 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
                 )
                 .label("rn"),
             )
+            .join(User, User.current_subscription_id == Subscription.id)
             .where(
                 plan_id_expr.isnot(None),
                 Subscription.status != SubscriptionStatus.DELETED,

@@ -4,7 +4,7 @@ import unicodedata
 from calendar import monthrange
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Final, Optional
+from typing import Final, Optional, Union
 
 from src.core.enums import PlanType
 from src.core.utils.time import datetime_now
@@ -80,7 +80,7 @@ def bytes_to_gb(value: Optional[int]) -> int:
     return _round_decimal(Decimal(value) / _GB_FACTOR)
 
 
-def percent(part: int, whole: int) -> float:
+def percent(part: Union[int, float], whole: Union[int, float]) -> float:
     if whole == 0:
         return 0
 

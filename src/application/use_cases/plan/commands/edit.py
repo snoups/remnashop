@@ -31,8 +31,8 @@ class UpdatePlanName(Interactor[UpdatePlanNameDto, PlanDto]):
             logger.warning(f"{actor.log} Tried to set duplicate plan name '{data.input_name}'")
             raise ValueError()
 
-        if len(data.input_name) > 16:
-            logger.warning(f"Plan name '{data.input_name}' exceeds 16 characters")
+        if len(data.input_name) > 32:
+            logger.warning(f"Plan name '{data.input_name}' exceeds 32 characters")
             raise ValueError()
 
         data.plan.name = data.input_name

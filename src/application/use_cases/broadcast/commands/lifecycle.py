@@ -31,7 +31,7 @@ class StartBroadcast(Interactor[StartBroadcastDto, UUID]):
         uow: UnitOfWork,
         broadcast_dao: BroadcastDao,
         get_broadcast_audience_count: GetBroadcastAudienceCount,
-    ):
+    ) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
         self.get_broadcast_audience_count = get_broadcast_audience_count
@@ -82,7 +82,7 @@ class DeleteBroadcast(Interactor[UUID, DeleteBroadcastResultDto]):
         self,
         uow: UnitOfWork,
         broadcast_dao: BroadcastDao,
-    ):
+    ) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
 
@@ -119,7 +119,7 @@ class DeleteBroadcast(Interactor[UUID, DeleteBroadcastResultDto]):
 class CancelBroadcast(Interactor[UUID, None]):
     required_permission = Permission.BROADCAST
 
-    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao):
+    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
 
@@ -153,7 +153,7 @@ class FinishBroadcastDto:
 class FinishBroadcast(Interactor[FinishBroadcastDto, None]):
     required_permission = None
 
-    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao):
+    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
 

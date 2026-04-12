@@ -26,6 +26,20 @@ btn-devices =
     .confirm-reissue = ✅ Да, сбросить
     .cancel-reissue = ❌ Нет
 
+btn-backup =
+    .active-toggle = { $enabled ->
+        [1] 🟢 Включен
+        *[0] 🔴 Выключен
+    }
+    .set-interval = 🕐 Интервал
+    .set-max-files = 📁 Кол-во файлов
+    .send-toggle = { $send_to_chat ->
+        [1] ✅ Отправка в чат: включена
+        *[0] ❌ Отправка в чат: выключена
+    }
+    .backup-assets = 📦 Запустить бэкап ассетов
+    .backup-db = 🗄 Запустить бэкап базы данных
+    
 btn-remnashop-info =
     .release-latest = 👀 Посмотреть
     .how-upgrade = ❓ Как обновить
@@ -42,7 +56,7 @@ btn-requirement =
 btn-menu =
     .trial = 🎁 ПОПРОБОВАТЬ БЕСПЛАТНО
     .connect = 🚀 Подключиться
-    .devices = 📱 Мои устройства
+    .devices = 📱 Устройства
     .subscription = 💳 Подписка
     .invite = 👥 Пригласить
     .support = 🆘 Поддержка
@@ -112,12 +126,14 @@ btn-users =
     .unblock-all = 🔓 Разблокировать всех
 
 btn-user =
-    .discount = 💸 Изменить скидку
-    .points = 💎 Изменить баллы
+    .discount = 💸 Скидка
+    .discount-personal = 👤 Персональная скидка
+    .discount-purchase = 🎟 На следующую покупку
+    .points = 💎 Баллы
     .statistics = 📊 Статистика
     .referrals = 👪 Рефералы
     .message = 📩 Сообщение
-    .role = 👮‍♂️ Изменить роль
+    .role = 👮‍♂️ Роль
     .transactions = 🧾 Транзакции
     .give-access = 🔑 Доступ к планам
     .current-subscription = 💳 Текущая подписка
@@ -156,8 +172,13 @@ btn-user =
     [REFUNDED] 💸
     [FAILED] ⚠️
     *[OTHER] { $status }
-    } { $created_at }
+    } { $created_at } · { gateway-type }
     
+    .trial-toggle = { $is_trial_available ->
+    [1] 🧪 Пробник: доступен
+    *[0] 🧪 Пробник: не доступен
+    }
+
     .block = { $is_blocked ->
     [1] 🔓 Разблокировать
     *[0] 🔒 Заблокировать
@@ -244,7 +265,8 @@ btn-remnashop =
     .plans = 📦 Планы
     .notifications = 🔔 Уведомления
     .logs = 📄 Логи
-    .menu-editor = 🎛 Доп. кнопки
+    .menu-editor = 🎛 Редактор главного меню
+    .backup = 💾 Бэкап
 
 btn-menu-editor =
     .text = 🏷️ Текст
@@ -258,7 +280,7 @@ btn-menu-editor =
         *[0] 🔴 
     } { $text }
     
-    .active = { $is_active -> 
+    .active-toggle = { $is_active -> 
         [1] 🟢 Включена
         *[0] 🔴 Выключена
     }
@@ -271,7 +293,7 @@ btn-gateway =
     .default-currency = 💸 Валюта по умолчанию
     .placement = 🔢 Изменить позиционирование
 
-    .active = { $is_active ->
+    .active-toggle = { $is_active ->
     [1] 🟢 Включено
     *[0] 🔴 Выключено
     }
@@ -288,7 +310,7 @@ btn-referral =
     .reward-strategy = ⚖️ Форма начисления
     .reward = 🎁 Награда
     
-    .enable = { $is_enable -> 
+    .active-toggle = { $is_enable -> 
     [1] 🟢 Включена
     *[0] 🔴 Выключена
     }
@@ -321,43 +343,31 @@ btn-referral =
 btn-notifications =
     .user = 👥 Пользовательские
     .system = ⚙️ Системные
+    .route = 📡 Маршрут
+    .chat-id = 💬 Изменить чат
+    .thread-id = 📁 Изменить тред
+    .route-clear = ❌ Удалить маршрут
     
     .user-choice = { $enabled ->
     [1] 🔘
     *[0] ⚪
-    } { $type ->
-    [EXPIRES_IN_3_DAYS] Подписка истекает (3 дня)
-    [EXPIRES_IN_2_DAYS] Подписка истекает (2 дня)
-    [EXPIRES_IN_1_DAY] Подписка истекает (1 день)
-    [EXPIRED] Подписка истекла
-    [EXPIRED_1_DAY_AGO] Подписка истекла (1 день)
-    [LIMITED] Трафик исчерпан
-    [REFERRAL_ATTACHED] Реферал закреплен
-    [REFERRAL_REWARD_RECEIVED] Вознаграждение за реферала
-    *[OTHER] { $type }
-    }
+    } { notification-type }
 
     .system-choice = { $enabled -> 
     [1] 🔘
     *[0] ⚪
-    } { $type ->
-    [BOT_LIFECYCLE] Жизненный цикл бота
-    [BOT_UPDATE] Обновления бота
-    [USER_REGISTERED] Регистрация пользователя
-    [SUBSCRIPTION] Оформление подписки
-    [PROMOCODE_ACTIVATED] Активация промокода
-    [TRIAL_ACTIVATED] Активация пробника
-    [NODE_STATUS_CHANGED] Статус узла
-    [NODE_TRAFFIC_REACHED] Трафик узла
-    [USER_FIRST_CONNECTION] Первое подключение
-    [USER_DEVICES_UPDATED] Устройства пользователя
-    [USER_REVOKED_SUBSCRIPTION] Сброс подписки
-    *[OTHER] { $type }
+    } { $has_route ->
+    [1] 📡
+    *[0] { space }
+    } { notification-type }
+
+    .active-toggle = { $is_active ->
+    [1] 🟢 Включено
+    *[0] 🔴 Выключено
     }
 
 btn-plans =
     .statistics = 📊 Статистика
-    .create = 🆕 Создать
     .save = ✅ Сохранить
     .create = ✅ Создать план
     .delete = ❌ Удалить
@@ -399,7 +409,7 @@ btn-plans =
     *[0] 🔴 
     } { $name }
 
-    .active = { $is_active -> 
+    .active-toggle = { $is_active -> 
     [1] 🟢 Включен
     *[0] 🔴 Выключен
     }
@@ -448,7 +458,10 @@ btn-subscription =
     .renew = 🔄 Продлить
     .change = 🔃 Изменить
     .promocode = 🎟 Активировать промокод
-    .payment-method = { gateway-type } | { $price } { $currency }
+    .payment-method = { gateway-type } | { $final_amount ->
+    [0] 🎁
+    *[HAS] { $final_amount }{ $currency }
+    }
     .pay = 💳 Оплатить
     .get = 🎁 Получить бесплатно
     .back-plans = ⬅️ Назад к выбору плана
@@ -470,7 +483,7 @@ btn-promocode =
     .allowed = 👥 Разрешенные пользователи
     .confirm = ✅ Подтвердить
     
-    .active = { $is_active -> 
+    .active-toggle = { $is_active -> 
     [1] 🟢
     *[0] 🔴
     } Статус

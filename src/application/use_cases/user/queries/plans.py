@@ -12,7 +12,7 @@ from src.core.enums import PlanAvailability
 class GetAvailablePlans(Interactor[UserDto, list[PlanDto]]):
     required_permission = None
 
-    def __init__(self, user_dao: UserDao, plan_dao: PlanDao):
+    def __init__(self, user_dao: UserDao, plan_dao: PlanDao) -> None:
         self.user_dao = user_dao
         self.plan_dao = plan_dao
 
@@ -58,7 +58,7 @@ class GetAvailablePlans(Interactor[UserDto, list[PlanDto]]):
 class GetAvailableTrial(Interactor[UserDto, Optional[PlanDto]]):
     required_permission = None
 
-    def __init__(self, user_dao: UserDao, plan_dao: PlanDao):
+    def __init__(self, user_dao: UserDao, plan_dao: PlanDao) -> None:
         self.user_dao = user_dao
         self.plan_dao = plan_dao
 
@@ -122,7 +122,7 @@ class GetAvailableTrial(Interactor[UserDto, Optional[PlanDto]]):
 class GetAvailablePlanByCode(Interactor[str, Optional[PlanDto]]):
     required_permission = Permission.PUBLIC
 
-    def __init__(self, plan_dao: PlanDao, user_dao: UserDao):
+    def __init__(self, plan_dao: PlanDao, user_dao: UserDao) -> None:
         self.plan_dao = plan_dao
         self.user_dao = user_dao
 

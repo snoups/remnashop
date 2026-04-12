@@ -6,6 +6,7 @@ from aiogram.types import Document
 from loguru import logger
 
 from src.application.common import Interactor
+from src.application.common.policy import Permission
 from src.application.dto import UserDto
 from src.application.use_cases.importer.dto import ExportedUserDto
 from src.application.use_cases.importer.queries.filters import SplitExportedUsers
@@ -20,12 +21,14 @@ class ProcessImportFileResultDto:
 
 
 class ProcessImportFile(Interactor[Document, ProcessImportFileResultDto]):
+    required_permission = Permission.IMPORTER
+
     def __init__(
         self,
         export_users_from_xui: ExportUsersFromXui,
         split_exported_users: SplitExportedUsers,
         bot: Bot,
-    ):
+    ) -> None:
         self.export_users_from_xui = export_users_from_xui
         self.split_exported_users = split_exported_users
         self.bot = bot

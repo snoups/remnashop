@@ -7,6 +7,20 @@ from src.core.enums import Currency
 
 
 class PricingService:
+    def is_largest_discount_personal(self, user: UserDto) -> bool:
+        personal = user.personal_discount or 0
+        purchase = user.purchase_discount or 0
+        return personal > 0 and personal > purchase
+
+    def get_effective_discount(self, user: UserDto) -> int:
+        discount_percent = min(max(user.purchase_discount or 0, user.personal_discount or 0), 100)
+        logger.debug(
+            f"Calculated effective discount percent '{discount_percent}' for user "
+            f"'{user.telegram_id}' (purchase_discount='{user.purchase_discount}', "
+            f"personal_discount='{user.personal_discount}')"
+        )
+        return discount_percent
+
     def calculate(self, user: UserDto, price: Decimal, currency: Currency) -> PriceDetailsDto:
         logger.debug(
             f"Calculating price for amount '{price}' and currency "
@@ -21,7 +35,7 @@ class PricingService:
                 final_amount=Decimal(0),
             )
 
-        discount_percent = min(user.purchase_discount or user.personal_discount or 0, 100)
+        discount_percent = self.get_effective_discount(user)
 
         if discount_percent >= 100:
             logger.info(f"100% discount applied, price is free for user '{user.telegram_id}'")
@@ -73,7 +87,8 @@ class PricingService:
                 amount = amount.to_integral_value(rounding=ROUND_DOWN)
                 min_amount = Decimal(1)
             case _:
-                amount = amount.quantize(Decimal("0.01")).normalize()
+                amount = amount.quantize(Decimal("0.01"))
+                amount = Decimal(f"{amount.normalize():f}")
                 min_amount = Decimal("0.01")
 
         if amount < min_amount:

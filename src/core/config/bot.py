@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 
 from pydantic import SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
@@ -15,6 +15,7 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
     owner_id: int
     support_username: SecretStr
     mini_app: Union[bool, SecretStr] = False
+    proxy_url: Optional[SecretStr] = None
 
     reset_webhook: bool = False
     drop_pending_updates: bool = False

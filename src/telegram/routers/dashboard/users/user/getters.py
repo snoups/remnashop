@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, Optional, Union
+from uuid import UUID
 
 from adaptix import Retort
 from aiogram_dialog import DialogManager
@@ -24,7 +25,7 @@ from src.application.use_cases.user.queries.profile import (
     GetUserProfile,
     GetUserProfileSubscription,
 )
-from src.core.constants import DATETIME_FORMAT, TARGET_TELEGRAM_ID
+from src.core.constants import DATETIME_VIEW_FORMAT, TARGET_TELEGRAM_ID
 from src.core.enums import PlanAvailability, Role
 from src.core.types import RemnaUserDto
 from src.core.utils.i18n_helpers import (
@@ -60,6 +61,8 @@ async def user_getter(
         "personal_discount": profile.target_user.personal_discount,
         "purchase_discount": profile.target_user.purchase_discount,
         "is_blocked": profile.target_user.is_blocked,
+        "is_bot_blocked": profile.target_user.is_bot_blocked,
+        "is_trial_available": profile.target_user.is_trial_available,
         "is_not_self": profile.target_user.telegram_id != user.telegram_id,
         "can_edit": profile.can_edit,
         "status": None,
@@ -72,6 +75,7 @@ async def user_getter(
             {
                 "status": profile.subscription.current_status,
                 "is_trial": profile.subscription.is_trial,
+                "plan_name": profile.subscription.plan_snapshot.name,
                 "traffic_limit": i18n_format_traffic_limit(profile.subscription.traffic_limit),
                 "device_limit": i18n_format_device_limit(profile.subscription.device_limit),
                 "expire_time": i18n_format_expire_time(profile.subscription.expire_at),
@@ -115,12 +119,12 @@ async def subscription_getter(
         "internal_squads": user_profile_subscription.formatted_internal_squads or False,
         "external_squad": user_profile_subscription.formatted_external_squad or False,
         "first_connected_at": (
-            remna_user.first_connected_at.strftime(DATETIME_FORMAT)
+            remna_user.first_connected_at.strftime(DATETIME_VIEW_FORMAT)
             if remna_user.first_connected_at
             else False
         ),
         "last_connected_at": (
-            remna_user.user_traffic.online_at.strftime(DATETIME_FORMAT)
+            remna_user.user_traffic.online_at.strftime(DATETIME_VIEW_FORMAT)
             if remna_user.user_traffic.online_at
             else False
         ),
@@ -408,12 +412,13 @@ async def transactions_getter(
         {
             "payment_id": transaction.payment_id,
             "status": transaction.status,
-            "created_at": transaction.created_at.strftime(DATETIME_FORMAT),  # type: ignore[union-attr]
+            "created_at": transaction.created_at.strftime(DATETIME_VIEW_FORMAT),  # type: ignore[union-attr]
+            "gateway_type": transaction.gateway_type,
         }
         for transaction in transactions
     ]
 
-    return {"transactions": list(reversed(formatted_transactions))}
+    return {"transactions": formatted_transactions}
 
 
 @inject
@@ -422,6 +427,15 @@ async def transaction_getter(
     transaction_dao: FromDishka[TransactionDao],
     **kwargs: Any,
 ) -> dict[str, Any]:
+    if TARGET_TELEGRAM_ID not in dialog_manager.dialog_data:
+        dialog_manager.dialog_data[TARGET_TELEGRAM_ID] = dialog_manager.start_data.get(  # type: ignore[union-attr]
+            TARGET_TELEGRAM_ID
+        )
+    if "selected_transaction" not in dialog_manager.dialog_data:
+        dialog_manager.dialog_data["selected_transaction"] = UUID(
+            dialog_manager.start_data.get("selected_transaction")  # type: ignore[union-attr]
+        )
+
     target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
     selected_transaction = dialog_manager.dialog_data["selected_transaction"]
     transaction = await transaction_dao.get_by_payment_id(selected_transaction)
@@ -442,7 +456,7 @@ async def transaction_getter(
         "currency": transaction.currency.symbol,
         "discount_percent": transaction.pricing.discount_percent,
         "original_amount": transaction.pricing.original_amount,
-        "created_at": transaction.created_at.strftime(DATETIME_FORMAT),  # type: ignore[union-attr]
+        "created_at": transaction.created_at.strftime(DATETIME_VIEW_FORMAT),  # type: ignore[union-attr]
         "plan_name": transaction.plan_snapshot.name,
         "plan_type": transaction.plan_snapshot.type,
         "plan_traffic_limit": i18n_format_traffic_limit(transaction.plan_snapshot.traffic_limit),
@@ -583,7 +597,7 @@ async def sync_getter(  # noqa: C901
 
         squad_names = ", ".join(squads_map.get(s, str(s)) for s in sub.internal_squads)
 
-        kwargs = {
+        kw = {
             "id": sub_id,
             "status": sub.status,
             "url": sub.url,
@@ -595,7 +609,7 @@ async def sync_getter(  # noqa: C901
             "traffic_limit_strategy": sub.traffic_limit_strategy or False,
             "tag": sub.tag or False,
         }
-        return i18n.get("msg-user-sync-subscription", **kwargs)
+        return i18n.get("msg-user-sync-subscription", **kw)
 
     bot_version_key = "UNKNOWN"
     remna_version_key = "UNKNOWN"

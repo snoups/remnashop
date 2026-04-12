@@ -9,7 +9,7 @@ from src.application.dto import UserDto
 class CancelOldTransactions(Interactor[None, None]):
     required_permission = None
 
-    def __init__(self, uow: UnitOfWork, transaction_dao: TransactionDao):
+    def __init__(self, uow: UnitOfWork, transaction_dao: TransactionDao) -> None:
         self.uow = uow
         self.transaction_dao = transaction_dao
 
@@ -24,7 +24,7 @@ class CancelOldTransactions(Interactor[None, None]):
 class ClearOldBroadcasts(Interactor[None, None]):
     required_permission = None
 
-    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao):
+    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
 

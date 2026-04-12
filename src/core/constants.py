@@ -4,8 +4,11 @@ from pathlib import Path
 from re import Pattern
 from typing import Final
 
+from packaging.version import Version
+
 BASE_DIR: Final[Path] = Path(__file__).resolve().parents[2]
 ASSETS_DIR: Final[Path] = BASE_DIR / "assets"
+BACKUP_DIR: Final[Path] = BASE_DIR / "backups"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
 
 DOMAIN_REGEX: Pattern[str] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
@@ -13,7 +16,11 @@ TAG_REGEX: Pattern[str] = re.compile(r"^[A-Z0-9_]{1,16}$")
 URL_PATTERN: Pattern[str] = re.compile(r"^https://\S+$")
 USERNAME_PATTERN: Pattern[str] = re.compile(r"^@[a-zA-Z0-9_]{5,32}$")
 
+REMNAWAVE_MIN_VERSION: Final[Version] = Version("2.7.0")
+REMNAWAVE_MAX_VERSION: Final[Version] = Version("2.8.0")
+
 REPOSITORY: Final[str] = "https://github.com/snoups/remnashop"
+DOCS: Final[str] = "https://remnashop.mintlify.app"
 T_ME: Final[str] = "https://t.me/"
 API_V1: Final[str] = "/api/v1"
 BOT_WEBHOOK_PATH: Final[str] = "/telegram"
@@ -34,7 +41,8 @@ USER_KEY: Final[str] = "user"
 TARGET_TELEGRAM_ID: Final[str] = "target_telegram_id"
 
 TIMEZONE: Final[timezone] = timezone.utc
-DATETIME_FORMAT: Final[str] = "%d.%m.%Y %H:%M:%S"
+DATETIME_VIEW_FORMAT: Final[str] = "%d.%m.%y %H:%M:%S"
+DATETIME_FILE_FORMAT: Final[str] = "%Y-%m-%d_%H-%M-%S"
 
 TIME_1M: Final[int] = 60
 TIME_1H: Final[int] = TIME_1M * 60

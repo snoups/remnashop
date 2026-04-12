@@ -36,31 +36,30 @@ class NotificationQueue:
                 batch = list(self._queue)
                 self._queue.clear()
 
-            total = len(batch)
-            logger.debug(f"Processing '{total}' queued notifications")
+            logger.debug(f"Processing '{len(batch)}' queued notifications")
 
             for i, chunk in enumerate(chunked(batch, BATCH_SIZE_10), start=1):
                 chunk_start = asyncio.get_running_loop().time()
 
-                try:
-                    results = await asyncio.gather(
-                        *(sender(task) for task in chunk),
-                        return_exceptions=True,
-                    )
+                results = []
+                for task in chunk:
+                    try:
+                        result = await sender(task)
+                        results.append(result)
+                    except Exception as e:
+                        results.append(e)
+                        logger.error(
+                            f"Notification task failed: {type(e).__name__}: {e}",
+                            exc_info=e,
+                        )
 
-                    errors = sum(1 for r in results if isinstance(r, Exception))
+                elapsed = asyncio.get_running_loop().time() - chunk_start
+                errors = sum(1 for r in results if isinstance(r, Exception))
+                logger.debug(
+                    f"Chunk '{i}': {len(results) - errors} success, "
+                    f"{errors} errors in {elapsed:.2f}s"
+                )
 
-                    elapsed = asyncio.get_running_loop().time() - chunk_start
-
-                    logger.debug(
-                        f"Chunk '{i}' processed: "
-                        f"'{len(chunk) - errors}' success, '{errors}' errors "
-                        f"in {elapsed:.2f}s"
-                    )
-
-                    wait_time = BATCH_DELAY - elapsed
-                    if wait_time > 0:
-                        await asyncio.sleep(wait_time)
-
-                except Exception as e:
-                    logger.error(f"Failed to process notification chunk: '{e}'")
+                wait_time = BATCH_DELAY - elapsed
+                if wait_time > 0:
+                    await asyncio.sleep(wait_time)

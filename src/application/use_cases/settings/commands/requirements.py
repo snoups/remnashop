@@ -19,19 +19,19 @@ class ToggleConditionRequirement(Interactor[AccessRequirements, None]):
         self.settings_dao = settings_dao
 
     async def _execute(self, actor: UserDto, condition_type: AccessRequirements) -> None:
-        settings = await self.settings_dao.get()
-
-        if condition_type == AccessRequirements.RULES:
-            settings.requirements.rules_required = not settings.requirements.rules_required
-            new_state = settings.requirements.rules_required
-        elif condition_type == AccessRequirements.CHANNEL:
-            settings.requirements.channel_required = not settings.requirements.channel_required
-            new_state = settings.requirements.channel_required
-        else:
-            logger.error(f"{actor.log} Tried to toggle unknown condition '{condition_type}'")
-            return
-
         async with self.uow:
+            settings = await self.settings_dao.get()
+
+            if condition_type == AccessRequirements.RULES:
+                settings.requirements.rules_required = not settings.requirements.rules_required
+                new_state = settings.requirements.rules_required
+            elif condition_type == AccessRequirements.CHANNEL:
+                settings.requirements.channel_required = not settings.requirements.channel_required
+                new_state = settings.requirements.channel_required
+            else:
+                logger.error(f"{actor.log} Tried to toggle unknown condition '{condition_type}'")
+                return
+
             await self.settings_dao.update(settings)
             await self.uow.commit()
 
@@ -76,20 +76,20 @@ class UpdateChannelRequirement(Interactor[str, None]):
 
     async def _execute(self, actor: UserDto, input_text: str) -> None:
         input_text = input_text.strip()
-        settings = await self.settings_dao.get()
-
-        if input_text.isdigit() or (input_text.startswith("-") and input_text[1:].isdigit()):
-            await self._handle_id_input(input_text, settings)
-            await self.notifier.notify_user(actor, i18n_key="ntf-common.value-updated")
-        elif is_valid_username(input_text) or input_text.startswith(T_ME):
-            settings.requirements.channel_link = SecretStr(input_text)
-            await self.notifier.notify_user(actor, i18n_key="ntf-common.value-updated")
-
-        else:
-            logger.warning(f"{actor.log} Provided invalid channel format: '{input_text}'")
-            await self.notifier.notify_user(actor, i18n_key="ntf-common.invalid-value")
 
         async with self.uow:
+            settings = await self.settings_dao.get()
+
+            if input_text.isdigit() or (input_text.startswith("-") and input_text[1:].isdigit()):
+                await self._handle_id_input(input_text, settings)
+                await self.notifier.notify_user(actor, i18n_key="ntf-common.value-updated")
+            elif is_valid_username(input_text) or input_text.startswith(T_ME):
+                settings.requirements.channel_link = SecretStr(input_text)
+                await self.notifier.notify_user(actor, i18n_key="ntf-common.value-updated")
+            else:
+                logger.warning(f"{actor.log} Provided invalid channel format: '{input_text}'")
+                await self.notifier.notify_user(actor, i18n_key="ntf-common.invalid-value")
+
             await self.settings_dao.update(settings)
             await self.uow.commit()
 

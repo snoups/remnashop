@@ -55,6 +55,9 @@ from src.application.use_cases.user.commands.profile_edit import (
     ChangeUserPointsDto,
     SetUserPersonalDiscount,
     SetUserPersonalDiscountDto,
+    SetUserPurchaseDiscount,
+    SetUserPurchaseDiscountDto,
+    ToggleUserTrialAvailable,
 )
 from src.application.use_cases.user.commands.roles import SetUserRole, SetUserRoleDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
@@ -72,7 +75,22 @@ async def start_user_window(
 ) -> None:
     await manager.start(
         state=DashboardUser.MAIN,
-        data={"target_telegram_id": target_telegram_id},
+        data={TARGET_TELEGRAM_ID: target_telegram_id},
+        mode=StartMode.RESET_STACK,
+    )
+
+
+async def start_user_transaction_window(
+    manager: DialogManager,
+    target_telegram_id: int,
+    selected_transaction: UUID,
+) -> None:
+    await manager.start(
+        state=DashboardUser.TRANSACTION,
+        data={
+            TARGET_TELEGRAM_ID: target_telegram_id,
+            "selected_transaction": str(selected_transaction),
+        },
         mode=StartMode.RESET_STACK,
     )
 
@@ -100,6 +118,18 @@ async def on_block_toggle(
     target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
     await toggle_user_blocked_status(user, target_telegram_id)
     await redirect.to_main_menu(target_telegram_id)
+
+
+@inject
+async def on_trial_toggle(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    toggle_user_trial_available: FromDishka[ToggleUserTrialAvailable],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
+    await toggle_user_trial_available(user, target_telegram_id)
 
 
 @inject
@@ -227,7 +257,7 @@ async def on_reset_traffic(
 
 
 @inject
-async def on_discount_select(
+async def on_personal_discount_select(
     callback: CallbackQuery,
     widget: Select,
     dialog_manager: DialogManager,
@@ -242,11 +272,11 @@ async def on_discount_select(
         SetUserPersonalDiscountDto(target_telegram_id, selected_discount),
     )
 
-    await dialog_manager.switch_to(state=DashboardUser.MAIN)
+    await dialog_manager.switch_to(state=DashboardUser.DISCOUNT)
 
 
 @inject
-async def on_discount_input(
+async def on_personal_discount_input(
     message: Message,
     widget: MessageInput,
     dialog_manager: DialogManager,
@@ -266,7 +296,52 @@ async def on_discount_input(
             user,
             SetUserPersonalDiscountDto(target_telegram_id, discount=int(message.text)),
         )
-        await dialog_manager.switch_to(state=DashboardUser.MAIN)
+        await dialog_manager.switch_to(state=DashboardUser.DISCOUNT)
+    except ValueError:
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+
+
+@inject
+async def on_purchase_discount_select(
+    callback: CallbackQuery,
+    widget: Select,
+    dialog_manager: DialogManager,
+    selected_discount: int,
+    set_user_purchase_discount: FromDishka[SetUserPurchaseDiscount],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
+
+    await set_user_purchase_discount(
+        user,
+        SetUserPurchaseDiscountDto(target_telegram_id, selected_discount),
+    )
+
+    await dialog_manager.switch_to(state=DashboardUser.DISCOUNT)
+
+
+@inject
+async def on_purchase_discount_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    set_user_purchase_discount: FromDishka[SetUserPurchaseDiscount],
+) -> None:
+    dialog_manager.show_mode = ShowMode.EDIT
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
+
+    if not message.text or not message.text.isdigit():
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+        return
+
+    try:
+        await set_user_purchase_discount(
+            user,
+            SetUserPurchaseDiscountDto(target_telegram_id, discount=int(message.text)),
+        )
+        await dialog_manager.switch_to(state=DashboardUser.DISCOUNT)
     except ValueError:
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 

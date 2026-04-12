@@ -3,8 +3,14 @@ from typing import Final
 from src.application.common import Interactor
 
 from .commands.access import ChangeAccessMode, TogglePayments, ToggleRegistration
+from .commands.backup import (
+    ToggleBackupEnabled,
+    ToggleBackupSendToChat,
+    UpdateBackupInterval,
+    UpdateBackupMaxFiles,
+)
 from .commands.currency import UpdateDefaultCurrency
-from .commands.notifications import ToggleNotification
+from .commands.notifications import ToggleNotification, UpdateSystemNotificationRoute
 from .commands.referral import (
     ToggleReferralSystem,
     UpdateReferralAccrualStrategy,
@@ -34,4 +40,9 @@ SETTINGS_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     UpdateReferralRewardType,
     UpdateRulesRequirement,
     UpdateDefaultCurrency,
+    UpdateSystemNotificationRoute,
+    ToggleBackupEnabled,
+    ToggleBackupSendToChat,
+    UpdateBackupInterval,
+    UpdateBackupMaxFiles,
 )

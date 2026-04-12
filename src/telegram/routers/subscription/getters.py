@@ -151,15 +151,19 @@ async def duration_getter(
         "final_amount": 0,
         "currency": "",
         "only_single_plan": only_single_plan,
+        "discount_percent": pricing_service.get_effective_discount(user),
+        "is_personal_discount": pricing_service.is_largest_discount_personal(user),
     }
 
 
 @inject
 async def payment_method_getter(
     dialog_manager: DialogManager,
+    user: UserDto,
     retort: FromDishka[Retort],
     i18n: FromDishka[TranslatorRunner],
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    pricing_service: FromDishka[PricingService],
     **kwargs: Any,
 ) -> dict[str, Any]:
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
@@ -179,10 +183,14 @@ async def payment_method_getter(
 
     payment_methods = []
     for gateway in gateways:
+        raw_price = duration.get_price(gateway.currency)
+        price = pricing_service.calculate(user, raw_price, gateway.currency)
         payment_methods.append(
             {
                 "gateway_type": gateway.type,
-                "price": duration.get_price(gateway.currency),
+                "final_amount": price.final_amount,
+                "original_amount": price.original_amount,
+                "discount_percent": price.discount_percent,
                 "currency": gateway.currency.symbol,
             }
         )
@@ -200,15 +208,19 @@ async def payment_method_getter(
         "final_amount": 0,
         "currency": "",
         "only_single_duration": only_single_duration,
+        "discount_percent": pricing_service.get_effective_discount(user),
+        "is_personal_discount": pricing_service.is_largest_discount_personal(user),
     }
 
 
 @inject
 async def confirm_getter(
     dialog_manager: DialogManager,
+    user: UserDto,
     retort: FromDishka[Retort],
     i18n: FromDishka[TranslatorRunner],
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    pricing_service: FromDishka[PricingService],
     **kwargs: Any,
 ) -> dict[str, Any]:
     raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
@@ -251,6 +263,7 @@ async def confirm_getter(
         "final_amount": pricing.final_amount,
         "discount_percent": pricing.discount_percent,
         "original_amount": pricing.original_amount,
+        "is_personal_discount": pricing_service.is_largest_discount_personal(user),
         "currency": payment_gateway.currency.symbol,
         "url": result_url,
         "only_single_gateway": len(gateways) == 1,

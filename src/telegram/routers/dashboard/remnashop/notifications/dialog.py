@@ -1,5 +1,6 @@
 from aiogram_dialog import Dialog, Window
-from aiogram_dialog.widgets.kbd import Column, Row, Select, Start, SwitchTo
+from aiogram_dialog.widgets.input import MessageInput
+from aiogram_dialog.widgets.kbd import Button, Column, Row, Select, Start, SwitchTo
 from magic_filter import F
 
 from src.core.enums import BannerName, SystemNotificationType, UserNotificationType
@@ -7,8 +8,15 @@ from src.telegram.keyboards import main_menu_button
 from src.telegram.states import DashboardRemnashop, RemnashopNotifications
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
-from .getters import system_types_getter, user_types_getter
-from .handlers import on_system_type_select, on_user_type_select
+from .getters import system_route_getter, system_type_getter, system_types_getter, user_types_getter
+from .handlers import (
+    on_route_chat_id_input,
+    on_route_clear,
+    on_route_thread_id_input,
+    on_system_type_select,
+    on_system_type_toggle,
+    on_user_type_select,
+)
 
 notifications = Window(
     Banner(BannerName.DASHBOARD),
@@ -46,11 +54,11 @@ user = Window(
         Select(
             text=I18nFormat(
                 "btn-notifications.user-choice",
-                type=F["item"]["type"],
+                notification_type=F["item"]["notification_type"],
                 enabled=F["item"]["enabled"],
             ),
             id="type_select",
-            item_id_getter=lambda item: item["type"],
+            item_id_getter=lambda item: item["notification_type"],
             items="types",
             type_factory=UserNotificationType,
             on_click=on_user_type_select,
@@ -75,11 +83,12 @@ system = Window(
         Select(
             text=I18nFormat(
                 "btn-notifications.system-choice",
-                type=F["item"]["type"],
+                notification_type=F["item"]["notification_type"],
                 enabled=F["item"]["enabled"],
+                has_route=F["item"]["has_route"],
             ),
             id="type_select",
-            item_id_getter=lambda item: item["type"],
+            item_id_getter=lambda item: item["notification_type"],
             items="types",
             type_factory=SystemNotificationType,
             on_click=on_system_type_select,
@@ -97,8 +106,107 @@ system = Window(
     getter=system_types_getter,
 )
 
+system_type = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-notifications-system-type"),
+    Row(
+        Button(
+            text=I18nFormat("btn-notifications.active-toggle"),
+            id="toggle",
+            on_click=on_system_type_toggle,
+            when=F["can_toggle"],
+        ),
+        SwitchTo(
+            text=I18nFormat("btn-notifications.route"),
+            id="route",
+            state=RemnashopNotifications.SYSTEM_ROUTE,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=RemnashopNotifications.SYSTEM,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=RemnashopNotifications.SYSTEM_TYPE,
+    getter=system_type_getter,
+)
+
+system_route = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-notifications-system-route"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-notifications.chat-id"),
+            id="edit_chat",
+            state=RemnashopNotifications.SYSTEM_ROUTE_CHAT_ID,
+        ),
+        SwitchTo(
+            text=I18nFormat("btn-notifications.thread-id"),
+            id="edit_thread",
+            state=RemnashopNotifications.SYSTEM_ROUTE_THREAD_ID,
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-notifications.route-clear"),
+            id="clear_route",
+            on_click=on_route_clear,
+            when=F["has_route"],
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=RemnashopNotifications.SYSTEM_TYPE,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=RemnashopNotifications.SYSTEM_ROUTE,
+    getter=system_route_getter,
+)
+
+system_route_chat_id = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-notifications-system-route-chat-id"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=RemnashopNotifications.SYSTEM_ROUTE,
+        ),
+    ),
+    MessageInput(func=on_route_chat_id_input),
+    IgnoreUpdate(),
+    state=RemnashopNotifications.SYSTEM_ROUTE_CHAT_ID,
+    getter=system_route_getter,
+)
+
+system_route_thread_id = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-notifications-system-route-thread-id"),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=RemnashopNotifications.SYSTEM_ROUTE,
+        ),
+    ),
+    MessageInput(func=on_route_thread_id_input),
+    IgnoreUpdate(),
+    state=RemnashopNotifications.SYSTEM_ROUTE_THREAD_ID,
+    getter=system_route_getter,
+)
+
 router = Dialog(
     notifications,
     user,
     system,
+    system_type,
+    system_route,
+    system_route_chat_id,
+    system_route_thread_id,
 )

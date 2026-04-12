@@ -41,11 +41,10 @@ class TogglePayments(Interactor[None, None]):
         self.waitlist_dao = waitlist_dao
 
     async def _execute(self, actor: UserDto, data: None) -> None:
-        settings = await self.settings_dao.get()
-        new_state = not settings.access.payments_allowed
-        settings.access.payments_allowed = new_state
-
         async with self.uow:
+            settings = await self.settings_dao.get()
+            new_state = not settings.access.payments_allowed
+            settings.access.payments_allowed = new_state
             await self.settings_dao.update(settings)
             await self.uow.commit()
 
@@ -70,11 +69,10 @@ class ToggleRegistration(Interactor[None, None]):
         self.settings_dao = settings_dao
 
     async def _execute(self, actor: UserDto, data: None) -> None:
-        settings = await self.settings_dao.get()
-        new_state = not settings.access.registration_allowed
-        settings.access.registration_allowed = new_state
-
         async with self.uow:
+            settings = await self.settings_dao.get()
+            new_state = not settings.access.registration_allowed
+            settings.access.registration_allowed = new_state
             await self.settings_dao.update(settings)
             await self.uow.commit()
 

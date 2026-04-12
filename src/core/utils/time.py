@@ -1,5 +1,6 @@
 import time
 from datetime import datetime, timedelta
+from typing import Optional
 
 from remnapy.enums.users import TrafficLimitStrategy
 
@@ -17,7 +18,10 @@ def get_uptime() -> int:
     return uptime_seconds
 
 
-def get_traffic_reset_delta(strategy: TrafficLimitStrategy) -> timedelta:
+def get_traffic_reset_delta(  # noqa: C901
+    strategy: TrafficLimitStrategy,
+    subscription_created_at: Optional[datetime] = None,
+) -> timedelta:
     now = datetime_now()
 
     if strategy == TrafficLimitStrategy.NO_RESET:
@@ -44,6 +48,27 @@ def get_traffic_reset_delta(strategy: TrafficLimitStrategy) -> timedelta:
             year += 1
             month = 1
         reset_at = datetime(year, month, 1, 0, 10, 0, tzinfo=TIMEZONE)
+        return reset_at - now
+
+    if strategy == TrafficLimitStrategy.MONTH_ROLLING:
+        if subscription_created_at is None:
+            raise ValueError("subscription_created_at is required for MONTH_ROLLING strategy")
+        reset_day = subscription_created_at.day
+        year = now.year
+        month = now.month
+        if now.day >= reset_day:
+            month += 1
+            if month == 13:
+                year += 1
+                month = 1
+        try:
+            reset_at = datetime(year, month, reset_day, 0, 10, 0, tzinfo=TIMEZONE)
+        except ValueError:
+            month += 1
+            if month == 13:
+                year += 1
+                month = 1
+            reset_at = datetime(year, month, 1, 0, 10, 0, tzinfo=TIMEZONE)
         return reset_at - now
 
     raise ValueError("Unsupported strategy")

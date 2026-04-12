@@ -10,6 +10,7 @@ from src.telegram.routers.extra.test import show_dev_popup
 from src.telegram.states import (
     Dashboard,
     DashboardRemnashop,
+    RemnashopBackup,
     RemnashopGateways,
     RemnashopMenuEditor,
     RemnashopNotifications,
@@ -79,6 +80,14 @@ remnashop = Window(
             when=require_permission(Permission.VIEW_LOGS),
         ),
         Start(
+            text=I18nFormat("btn-remnashop.backup"),
+            id="backup",
+            state=RemnashopBackup.MAIN,
+            when=require_permission(Permission.VIEW_BACKUP),
+        ),
+    ),
+    Row(
+        Start(
             text=I18nFormat("btn-remnashop.menu-editor"),
             id="menu_editor",
             state=RemnashopMenuEditor.MAIN,
@@ -113,7 +122,7 @@ admins = Window(
                 text=Format("❌"),
                 id="role_revoke",
                 on_click=on_role_revoke,
-                when=F["item"]["deletable"],
+                when=F["item"]["is_deletable"],
             ),
         ),
         id="admins_list",

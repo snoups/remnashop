@@ -19,7 +19,12 @@ class GetBroadcastAudienceCountDto:
 class GetBroadcastAudienceCount(Interactor[GetBroadcastAudienceCountDto, int]):
     required_permission = Permission.BROADCAST
 
-    def __init__(self, user_dao: UserDao, plan_dao: PlanDao, subscription_dao: SubscriptionDao):
+    def __init__(
+        self,
+        user_dao: UserDao,
+        plan_dao: PlanDao,
+        subscription_dao: SubscriptionDao,
+    ) -> None:
         self.user_dao = user_dao
         self.plan_dao = plan_dao
         self.subscription_dao = subscription_dao
@@ -66,7 +71,7 @@ class GetBroadcastAudienceUsersDto:
 class GetBroadcastAudienceUsers(Interactor[GetBroadcastAudienceUsersDto, list[UserDto]]):
     required_permission = Permission.BROADCAST
 
-    def __init__(self, user_dao: UserDao):
+    def __init__(self, user_dao: UserDao) -> None:
         self.user_dao = user_dao
 
     async def _execute(self, actor: UserDto, data: GetBroadcastAudienceUsersDto) -> list[UserDto]:

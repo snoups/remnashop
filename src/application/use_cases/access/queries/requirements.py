@@ -3,14 +3,14 @@ from typing import Final, Optional, Union
 
 from aiogram import Bot
 from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramBadRequest
 from loguru import logger
 
 from src.application.common import EventPublisher, Interactor
 from src.application.common.dao import SettingsDao
 from src.application.common.policy import Permission
 from src.application.dto import UserDto
-from src.application.events import ErrorEvent
-from src.core.config import AppConfig
+from src.application.events import ChannelCheckErrorEvent
 
 ALLOWED_STATUSES: Final[tuple[ChatMemberStatus, ...]] = (
     ChatMemberStatus.CREATOR,
@@ -68,12 +68,10 @@ class CheckChannelSubscription(Interactor[None, CheckChannelSubscriptionResultDt
         self,
         settings_dao: SettingsDao,
         bot: Bot,
-        config: AppConfig,
         event_publisher: EventPublisher,
     ) -> None:
         self.settings_dao = settings_dao
         self.bot = bot
-        self.config = config
         self.event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: None) -> CheckChannelSubscriptionResultDto:
@@ -109,18 +107,15 @@ class CheckChannelSubscription(Interactor[None, CheckChannelSubscriptionResultDt
             is_subscribed = member.status in ALLOWED_STATUSES
             return CheckChannelSubscriptionResultDto(is_subscribed, member.status, channel_url)
 
-        except Exception as e:
+        except TelegramBadRequest as e:
             logger.error(f"Failed to check channel for '{actor.telegram_id}': '{e}'")
 
-            error_event = ErrorEvent(
-                **self.config.build.data,
-                #
-                telegram_id=actor.telegram_id,
-                username=actor.username,
-                name=actor.name,
-                #
-                exception=e,
+            await self.event_publisher.publish(
+                ChannelCheckErrorEvent(
+                    telegram_id=actor.telegram_id,
+                    username=actor.username,
+                    name=actor.name,
+                    reason=str(e),
+                )
             )
-
-            await self.event_publisher.publish(error_event)
             return CheckChannelSubscriptionResultDto(is_subscribed=True, error_occurred=True)

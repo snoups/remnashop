@@ -1,6 +1,7 @@
 from typing import List, Optional, Protocol, TypeVar, Union
 from uuid import UUID
 
+from packaging.version import Version
 from remnapy.models import UserResponseDto
 from remnapy.models.hwid import HwidDeviceDto
 
@@ -10,9 +11,7 @@ T = TypeVar("T", SubscriptionDto, RemnaSubscriptionDto)
 
 
 class Remnawave(Protocol):
-    async def try_connection(self) -> None: ...
-
-    async def create_public_user(self, user: UserDto) -> UserResponseDto: ...
+    async def try_connection(self) -> Version: ...
 
     async def create_user(
         self,
@@ -37,6 +36,7 @@ class Remnawave(Protocol):
     async def get_user_by_telegram_id(self, telegram_id: int) -> List[UserResponseDto]: ...
 
     async def get_user_by_email(self, email: str) -> List[UserResponseDto]: ...
+    async def get_all_users(self, limit: int, offset: int) -> List[UserResponseDto]: ...
 
     async def get_devices(self, uuid: UUID) -> List[HwidDeviceDto]: ...
 

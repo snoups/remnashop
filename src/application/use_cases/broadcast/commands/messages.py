@@ -21,7 +21,7 @@ class InitializeBroadcastMessages(
 ):
     required_permission = None
 
-    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao):
+    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
 
@@ -47,7 +47,7 @@ class UpdateBroadcastMessageStatusDto:
 class UpdateBroadcastMessageStatus(Interactor[UpdateBroadcastMessageStatusDto, None]):
     required_permission = None
 
-    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao):
+    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
 
@@ -68,7 +68,7 @@ class UpdateBroadcastMessageStatus(Interactor[UpdateBroadcastMessageStatusDto, N
 class BulkUpdateBroadcastMessages(Interactor[list[BroadcastMessageDto], None]):
     required_permission = None
 
-    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao):
+    def __init__(self, uow: UnitOfWork, broadcast_dao: BroadcastDao) -> None:
         self.uow = uow
         self.broadcast_dao = broadcast_dao
 

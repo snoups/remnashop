@@ -9,8 +9,8 @@ from src.application.common import TranslatorRunner
 from src.application.common.dao import BroadcastDao, PlanDao, SettingsDao
 from src.application.dto import PlanDto
 from src.application.services import BotService
-from src.core.constants import DATETIME_FORMAT
-from src.telegram.keyboards import get_goto_buttons
+from src.core.constants import DATETIME_VIEW_FORMAT
+from src.telegram.keyboards import CLOSE_BUTTON_ID, get_broadcast_buttons
 
 
 @inject
@@ -61,18 +61,17 @@ async def buttons_getter(
     settings = await settings_dao.get()
 
     if not buttons:
+        all_buttons = get_broadcast_buttons(
+            support_url=bot_service.get_support_url(text=i18n.get("message.help")),
+            is_referral_enable=settings.referral.enable,
+        )
         buttons = [
             {
-                "id": index,
-                "text": goto_button.text,
-                "selected": False,
+                "id": CLOSE_BUTTON_ID if index == len(all_buttons) - 1 else index,
+                "text": btn.text,
+                "selected": index == len(all_buttons) - 1,
             }
-            for index, goto_button in enumerate(
-                get_goto_buttons(
-                    support_url=bot_service.get_support_url(text=i18n.get("message.help")),
-                    is_referral_enable=settings.referral.enable,
-                )
-            )
+            for index, btn in enumerate(all_buttons)
         ]
         dialog_manager.dialog_data["buttons"] = buttons
 
@@ -93,7 +92,7 @@ async def list_getter(
         {
             "task_id": broadcast.task_id,
             "status": broadcast.status,
-            "created_at": broadcast.created_at.strftime(DATETIME_FORMAT),  # type: ignore[union-attr]
+            "created_at": broadcast.created_at.strftime(DATETIME_VIEW_FORMAT),  # type: ignore[union-attr]
         }
         for broadcast in broadcasts
     ]
@@ -124,7 +123,7 @@ async def view_getter(
         "broadcast_id": str(broadcast.task_id),
         "broadcast_status": broadcast.status,
         "audience_type": broadcast.audience,
-        "created_at": broadcast.created_at.strftime(DATETIME_FORMAT),  # type: ignore[union-attr]
+        "created_at": broadcast.created_at.strftime(DATETIME_VIEW_FORMAT),  # type: ignore[union-attr]
         "total_count": broadcast.total_count,
         "success_count": broadcast.success_count,
         "failed_count": broadcast.failed_count,

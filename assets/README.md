@@ -1,5 +1,3 @@
-#TODO: add custom
-
 # `Banners`
 
 The `banners` folder contains all banner images.
@@ -12,16 +10,24 @@ You can configure how banners are displayed in the bot using an environment vari
 
 ## Locale support
 
-The banner system supports **localized versions**. A banner corresponding to the user's **locale** will be loaded for each user.
+The banner system supports **localized versions**. A banner corresponding to the user's **locale** will be loaded for each user. Available locales are defined by the `APP_LOCALES` environment variable.
 
 ### How it works:
 
-When loading a banner, the system performs the following search steps:
-1.  **User's locale:** The system first attempts to find a banner in the folder corresponding to the current user's locale (e.g., `en`). Available locales are defined by the `APP_LOCALES` environment variable.
-2.  **Default (inside user’s locale):** If the specific banner is not found, the system checks for `default.{format}` inside the same locale folder.
-3.  **Fallback (default locale):** If neither the banner nor `default.{format}` exists in the user’s locale (or if the locale folder itself is missing), the system searches for the banner in the default locale specified
-by the `APP_DEFAULT_LOCALE` environment variable.
-4.  **Placeholder banner:** If a banner is not found in either the user's locale or the default locale, a placeholder banner named `default.jpg` will be used. This file must be located directly in the root `banners` directory.
+When loading a banner, the system searches in the following order:
+
+1. `banners/{user_locale}/{page}` — page-specific banner for the user’s locale
+2. `banners/{user_locale}/default` — default banner for the user’s locale
+3. `banners/{default_locale}/{page}` — page-specific banner for the default locale (`APP_DEFAULT_LOCALE`)
+4. `banners/{default_locale}/default` — default banner for the default locale
+5. `banners/default` — global fallback
+
+Steps 3–4 handle the case where a user’s locale is not supported — the system falls back to the default locale’s banners before using the global default.
+
+This means:
+- To use **one image everywhere** — place a single `banners/default.jpg`.
+- To use **one image per locale** — place `banners/{locale}/default.jpg` for each locale.
+- To use **per-page images** — place `banners/{locale}/{page}.jpg` for each page and locale.
 
 This ensures that even if a specific banner or locale is not found, some banner will always be displayed, preventing empty or missing images.
 
@@ -49,13 +55,14 @@ Banner filenames must correspond to the following predefined names, specified in
 
 ```
 banners/
-├── en/
-│   ├── menu.jpg
-│   └── dashboard.jpg
+├── default.jpg       ← global default (used for all pages and locales as last fallback)
 ├── ru/
-│   ├── menu.gif
-│   └── dashboard.gif
-└── default.jpg
+│   ├── default.jpg   ← default for all pages in ru locale
+│   ├── menu.jpg      ← page-specific banner for ru locale
+│   └── subscription.jpg
+└── en/
+    ├── default.jpg   ← default for all pages in en locale
+    └── menu.jpg
 ```
 
 
@@ -103,7 +110,8 @@ All translation keys must follow a unified structure:
     - ❌ msg-plan-success-deleted
 3. Actions — past tense verbs (created, updated, deleted, canceled, failed).
 4. States — adjectives (empty, invalid, not-found, expired, not-available).
-5. Limit to 5 segments maximum.
+5. Limit to 5 segments maximum (recommended).
+6. Keep the total key length under 32 characters (recommended).
 
 ## Examples keys
 
@@ -114,6 +122,49 @@ All translation keys must follow a unified structure:
 | Button: confirm deletion              | `btn-plan-confirm-delete`         |
 | Message: plan created successfully    | `msg-plan-created-success`        |
 | Notification: gateway test failed     | `ntf-gateway-test-payment-failed` |
+
+
+## `custom.ftl`
+
+Each locale folder may contain a `custom.ftl` file (e.g. `translations/ru/custom.ftl`). This file is intended for user-defined translations that are not part of the standard set — such as custom menu buttons, plan names, and similar entries.
+
+### Usage
+
+Add key-value pairs to the file using the standard Fluent syntax:
+
+```
+key-name = Translation text
+```
+
+Then use the key wherever text is expected (e.g. in a plan name or menu link). The system will resolve it to the translated string at runtime.
+
+### Constraints
+
+| Context      | Max length      |
+| ------------ | --------------- |
+| Buttons      | 32 characters   |
+| Messages     | 1024 characters |
+
+### Key naming
+
+Keys must be **unique** and should follow the general naming convention described above. To avoid collisions with built-in keys, prefix custom keys with `custom-`:
+
+```
+custom-menu-link1 = 1️⃣ First button
+custom-plan-name1 = Basic plan
+```
+
+### Example file
+
+```ftl
+# Custom menu buttons
+custom-menu-link1 = 1️⃣ First button
+custom-menu-link2 = 2️⃣ Second button
+
+# Custom plan names
+custom-plan-name1 = 1️⃣ Basic plan
+custom-plan-name2 = 2️⃣ Premium plan
+```
 
 
 # `QR Code Logo`

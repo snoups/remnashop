@@ -91,6 +91,8 @@ class DashboardUser(StatesGroup):
     EXTERNAL_SQUADS = State()
     DEVICES_LIST = State()
     DISCOUNT = State()
+    PERSONAL_DISCOUNT = State()
+    PURCHASE_DISCOUNT = State()
     POINTS = State()
     STATISTICS = State()
     REFERRALS = State()
@@ -109,6 +111,12 @@ class DashboardRemnashop(StatesGroup):
     MAIN = State()
     ADMINS = State()
     ADVERTISING = State()
+
+
+class RemnashopBackup(StatesGroup):
+    MAIN = State()
+    INTERVAL = State()
+    MAX_FILES = State()
 
 
 class RemnashopReferral(StatesGroup):
@@ -132,6 +140,10 @@ class RemnashopNotifications(StatesGroup):
     MAIN = State()
     USER = State()
     SYSTEM = State()
+    SYSTEM_TYPE = State()
+    SYSTEM_ROUTE = State()
+    SYSTEM_ROUTE_CHAT_ID = State()
+    SYSTEM_ROUTE_THREAD_ID = State()
 
 
 class RemnashopPlans(StatesGroup):

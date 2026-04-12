@@ -4,6 +4,7 @@ x-build: &build
   volumes:
       - ./logs:/opt/remnashop/logs
       - ./assets:/opt/remnashop/assets
+      - ./backups:/opt/remnashop/backups
 
 x-common: &common
   ulimits:

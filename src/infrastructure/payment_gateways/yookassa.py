@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from decimal import Decimal
 from typing import Any, Final
@@ -6,7 +7,7 @@ from uuid import UUID
 import orjson
 from aiogram import Bot
 from fastapi import Request
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient, ConnectError, HTTPStatusError
 from loguru import logger
 
 from src.application.dto import (
@@ -27,6 +28,9 @@ class YookassaGateway(BasePaymentGateway):
     API_BASE: Final[str] = "https://api.yookassa.ru"
     PAYMENT_SUBJECT: Final[str] = "service"
     PAYMENT_MODE: Final[str] = "full_payment"
+
+    CONNECT_RETRIES: Final[int] = 3
+    CONNECT_RETRY_DELAY: Final[float] = 1.0
 
     NETWORKS = [
         "77.75.153.0/25",
@@ -63,24 +67,42 @@ class YookassaGateway(BasePaymentGateway):
         headers = {"Idempotence-Key": str(uuid.uuid4())}
         logger.debug(f"Creating payment payload: {payload}")
 
-        try:
-            response = await self._client.post("v3/payments", json=payload, headers=headers)
-            response.raise_for_status()
-            data = orjson.loads(response.content)
-            return self._get_payment_data(data)
+        last_connect_error: ConnectError | None = None
 
-        except HTTPStatusError as e:
-            logger.error(
-                f"HTTP error creating payment. "
-                f"Status: '{e.response.status_code}', Body: {e.response.text}"
-            )
-            raise
-        except (KeyError, orjson.JSONDecodeError) as e:
-            logger.error(f"Failed to parse response. Error: {e}")
-            raise
-        except Exception as e:
-            logger.exception(f"An unexpected error occurred while creating payment: {e}")
-            raise
+        for attempt in range(1, self.CONNECT_RETRIES + 1):
+            try:
+                response = await self._client.post("v3/payments", json=payload, headers=headers)
+                response.raise_for_status()
+                data = orjson.loads(response.content)
+                return self._get_payment_data(data)
+
+            except ConnectError as e:
+                last_connect_error = e
+                logger.warning(
+                    f"ConnectError on attempt {attempt}/{self.CONNECT_RETRIES} "
+                    f"while creating payment: {e}"
+                )
+                if attempt < self.CONNECT_RETRIES:
+                    await asyncio.sleep(self.CONNECT_RETRY_DELAY * attempt)
+
+            except HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error creating payment. "
+                    f"Status: '{e.response.status_code}', Body: {e.response.text}"
+                )
+                raise
+            except (KeyError, orjson.JSONDecodeError) as e:
+                logger.error(f"Failed to parse response. Error: {e}")
+                raise
+            except Exception as e:
+                logger.exception(f"An unexpected error occurred while creating payment: {e}")
+                raise
+
+        logger.error(
+            f"All {self.CONNECT_RETRIES} attempts to connect to YooKassa failed. "
+            f"Last error: {last_connect_error}"
+        )
+        raise last_connect_error  # type: ignore[misc]
 
     async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
         logger.debug("Received YooKassa webhook request")

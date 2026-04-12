@@ -23,6 +23,7 @@ class CommandService:
     async def setup_commands(self) -> None:
         if not self.config.bot.setup_commands:
             logger.debug("Bot commands setup is disabled")
+            await self.delete_commands()
             return
 
         locales: list[Optional[Locale]] = list(self.config.locales) + [None]
@@ -57,10 +58,6 @@ class CommandService:
                 logger.error(f"Failed to set commands for language '{display_lang}'")
 
     async def delete_commands(self) -> None:
-        if not self.config.bot.setup_commands:
-            logger.debug("Bot commands deletion is disabled")
-            return
-
         locales: list[Optional[str]] = list(self.config.locales) + [None]
 
         for lang in locales:

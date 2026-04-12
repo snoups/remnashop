@@ -1,6 +1,7 @@
 from dishka import Provider, Scope, provide_all
 
 from src.application.use_cases.access import ACCESS_USE_CASES
+from src.application.use_cases.backup import BACKUP_USE_CASES
 from src.application.use_cases.broadcast import BROADCAST_USE_CASES
 from src.application.use_cases.gateways import GATEWAYS_USE_CASES
 from src.application.use_cases.importer import IMPORTER_USE_CASES
@@ -19,6 +20,7 @@ class UseCasesProvider(Provider):
 
     use_cases = provide_all(
         *ACCESS_USE_CASES,
+        *BACKUP_USE_CASES,
         *BROADCAST_USE_CASES,
         *GATEWAYS_USE_CASES,
         *IMPORTER_USE_CASES,

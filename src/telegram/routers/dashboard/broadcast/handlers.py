@@ -29,7 +29,7 @@ from src.application.use_cases.broadcast.queries.audience import (
 )
 from src.core.constants import USER_KEY
 from src.core.enums import BroadcastAudience, MediaType
-from src.telegram.keyboards import get_goto_buttons
+from src.telegram.keyboards import CLOSE_BUTTON_ID, get_broadcast_buttons
 from src.telegram.states import DashboardBroadcast
 from src.telegram.utils import is_double_click
 
@@ -223,17 +223,22 @@ async def on_button_select(
 
     settings = await settings_dao.get()
 
-    goto_buttons = get_goto_buttons(
+    all_buttons = get_broadcast_buttons(
         support_url=bot_service.get_support_url(text=i18n.get("message.help")),
         is_referral_enable=settings.referral.enable,
     )
+    goto_buttons = all_buttons[:-1]
 
-    builder = InlineKeyboardBuilder()
-    for button in buttons:
-        if button.get("selected"):
-            builder.row(goto_buttons[int(button["id"])])
+    if selected_id == CLOSE_BUTTON_ID:
+        close_selected = next((b["selected"] for b in buttons if b["id"] == CLOSE_BUTTON_ID), True)
+        _update_payload(dialog_manager, retort, disable_default_markup=not close_selected)
+    else:
+        builder = InlineKeyboardBuilder()
+        for button in buttons:
+            if button.get("selected") and button["id"] != CLOSE_BUTTON_ID:
+                builder.row(goto_buttons[int(button["id"])])
+        _update_payload(dialog_manager, retort, reply_markup=builder.as_markup().model_dump())
 
-    _update_payload(dialog_manager, retort, reply_markup=builder.as_markup().model_dump())
     logger.debug(f"{user.log} Updated payload keyboard: {buttons}")
 
 

@@ -62,11 +62,11 @@ msg-menu-devices =
 msg-menu-devices-confirm-reissue =
     🔄 <b>Перевыпуск подписки</b>
 
-    ⚠️ После сброса старая ссылка <b>перестанет работать</b>.
+    ⚠️ После сброса старая ссылка <b>перестанет работать</b> и все устройства придется заново переподключать.
 
     Вам потребуется:
     • Удалить старую подписку из приложения
-    • Добавить новую ссылку из раздела «Подключение»
+    • Добавить новую ссылку из раздела «Подключиться»
 
     Вы уверены, что хотите сбросить ссылку?
 
@@ -385,9 +385,10 @@ msg-user-devices = <b>📱 Устройства пользователя ({ $cur
 msg-user-give-access = <b>🔑 Предоставить доступ к плану</b>
 
 msg-users-search =
-    <b>🔍 Поиск пользователя</b>
+    <b>🔍 Умный поиск</b>
 
     Введите ID пользователя, часть имени или перешлите любое его сообщение.
+    Чтобы найти транзакцию, введите её UUID.
 
 msg-users-search-results =
     <b>🔍 Поиск пользователя</b>
@@ -416,7 +417,7 @@ msg-user-main =
     { hdr-subscription }
     { $status ->
     [ACTIVE]
-    { frg-subscription }
+    { frg-subscription-user-editor }
     [EXPIRED]
     <blockquote>
     • Срок действия истек.
@@ -527,6 +528,7 @@ msg-user-sync-subscription =
     [DAY] Каждый день
     [WEEK] Каждую неделю
     [MONTH] Каждый месяц
+    [MONTH_ROLLING] Каждый месяц (по дате создания)
     *[OTHER] { $traffic_limit_strategy }
     }
     • Тег: { $tag -> 
@@ -550,9 +552,20 @@ msg-user-give-subscription-duration =
     Выберите длительность выдаваемой подписки.
 
 msg-user-discount =
-    <b>💸 Изменить персональную скидку</b>
+    <b>💸 Изменить скидку</b>
+
+    Выберите тип скидки для изменения.
+
+msg-user-discount-personal =
+    <b>👤 Персональная скидка</b>
 
     Выберите по кнопке или введите свой вариант.
+
+msg-user-discount-purchase =
+    <b>🎟 Скидка на следующую покупку</b>
+
+    Выберите по кнопке или введите свой вариант.
+    Скидка будет применена один раз и сброшена после любого платежа.
 
 msg-user-points =
     <b>💎 Изменить баллы реферальной системы</b>
@@ -675,10 +688,6 @@ msg-remnawave-main =
     [one] ядро
     [few] ядра
     *[more] ядер
-    } { $cpu_threads } { $cpu_threads ->
-    [one] поток
-    [few] потока
-    *[more] потоков
     }
     • <b>ОЗУ</b>: { $ram_used } / { $ram_total } ({ $ram_used_percent }%)
     • <b>Аптайм</b>: { $uptime }
@@ -772,6 +781,41 @@ msg-remnashop-main = <b>🛍 RemnaShop { $version ->
 *[HAS] { $version }
 }</b>
 
+
+# Backup
+msg-backup-main =
+    <b>💾 Авто-бэкап базы данных</b>
+
+    <blockquote>
+    • <b>Статус</b>: { $enabled ->
+        [1] 🟢 Включен
+        *[0] 🔴 Выключен
+    }
+    • <b>Отправка в чат</b>: { $send_to_chat ->
+        [1] ✅ Включена
+        *[0] ❌ Выключена
+    }
+    • <b>Интервал</b>:  { $interval_hours ->
+    [one] каждый
+    *[other] каждые
+    } { $interval_hours } ч.
+    • <b>Кол-во файлов</b>: { $max_files }
+    </blockquote>
+
+msg-backup-set-interval =
+    <b>🕐 Интервал бэкапа</b>
+
+    Текущее значение: <b>{ $interval_hours } ч.</b>
+
+    Введите интервал бэкапа в часах (от 1 до 720).
+
+msg-backup-set-max-files =
+    <b>📁 Количество файлов</b>
+
+    Текущее значение: <b>{ $max_files }</b>
+
+    Введите сколько файлов бэкапа хранить (от 1 до 30). Старые файлы будут удаляться автоматически.
+
 msg-admins-main = <b>👮‍♂️ Администраторы</b>
 
 
@@ -801,7 +845,7 @@ msg-menu-editor-button =
 msg-menu-editor-button-text =
     <b>🏷️ Изменить текст кнопки</b>
 
-    Введите текст кнопки (маскимум 16 символов) или ключ перевода.
+    Введите текст кнопки (максимум 32 символа) или ключ перевода.
 
 msg-menu-editor-button-availability =
     <b>✴️ Изменить доступ к кнопке</b>
@@ -817,7 +861,6 @@ msg-menu-editor-button-payload =
     <b>📄 Изменить данные кнопки</b>
 
     Введите данные кнопки (для ссылок использовать https).
-
 
 
 # Gateways
@@ -914,6 +957,7 @@ msg-referral-reward =
         *[OTHER] { $reward_strategy_type }
     } (в формате: уровень=значение)
 
+
 # Plans
 msg-plans-main = <b>📦 Планы</b>
 
@@ -967,7 +1011,7 @@ msg-plan-name =
     </blockquote>
     }
 
-    Введите уникальное название плана или ключ перевода (максимум 16 символов).
+    Введите уникальное название плана или ключ перевода (максимум 32 символа).
 
 msg-plan-description =
     <b>💬 Изменить описание</b>
@@ -1075,6 +1119,52 @@ msg-notifications-main = <b>🔔 Настройка уведомлений</b>
 msg-notifications-user = <b>👥 Пользовательские уведомления</b>
 msg-notifications-system = <b>⚙️ Системные уведомления</b>
 
+msg-notifications-system-type = 
+    <b>🔔 { notification-type }</b>
+
+    <blockquote>
+    • <b>Статус</b>: { $is_active -> 
+    [1] 🟢 Включено
+    *[0] 🔴 Выключено
+    }
+    • <b>Маршрут</b>: { $has_route -> 
+    [0] { unknown }
+    *[HAS] { NUMBER($chat_id, useGrouping: 0) }{ $thread_id ->
+        [0] { space }
+        *[HAS] :{ NUMBER($thread_id, useGrouping: 0) }
+        }
+    }
+    </blockquote>
+
+msg-notifications-system-route = 
+    <b>📡 Маршрут: { notification-type }</b>
+
+    <blockquote>
+    • <b>Чат ID</b>: { $chat_id ->
+        [0] { unknown }
+        *[HAS] <code>{ NUMBER($chat_id, useGrouping: 0) }</code>
+        }
+    • <b>Тред ID</b>: { $thread_id ->
+        [0] { unknown }
+        *[HAS] <code>{ NUMBER($thread_id, useGrouping: 0) }</code>
+        }
+    </blockquote>
+
+    Если чат ID не задан — уведомление будет отправлено в Личные сообщения.
+    
+    Если тред ID не задан — уведомление будет отправлено в чат.
+
+
+msg-notifications-system-route-chat-id =
+    <b>💬 Изменить Чат ID</b>
+
+    Введите ID группы (например: <code>-1001234567891</code>).
+
+msg-notifications-system-route-thread-id =
+    <b>📁 Изменить Тред ID</b>
+
+    Введите ID треда (введите <code>0</code> чтобы сбросить).
+
 
 # Subscription
 msg-subscription-main = <b>💳 Подписка</b>
@@ -1119,6 +1209,17 @@ msg-subscription-details =
     { $final_amount ->
     [0] { empty }
     *[HAS] • <b>Стоимость</b>: { frg-payment-amount }
+    }
+    </blockquote>
+    
+    <blockquote>
+    { $discount_percent ->
+    [0] { empty }
+    *[HAS] <i>Цены указаны с учетом { $is_personal_discount ->
+        [1] вашей персональной скидки { $discount_percent }%
+        *[0] разовой скидки { $discount_percent }%
+        }
+        </i>
     }
     </blockquote>
 

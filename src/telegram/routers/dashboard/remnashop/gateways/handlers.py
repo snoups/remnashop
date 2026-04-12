@@ -133,7 +133,7 @@ async def on_field_input(
 
     if not message.text:
         logger.warning(f"{user.log} Empty input for field '{selected_field}'")
-        await notifier.notify_user(user, i18n_key="ntf-gateway.field-wrong-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     try:
@@ -147,7 +147,7 @@ async def on_field_input(
         )
         await dialog_manager.switch_to(state=RemnashopGateways.SETTINGS)
     except ValueError:
-        await notifier.notify_user(user, i18n_key="ntf-gateway.field-wrong-value")
+        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
 
 
 @inject

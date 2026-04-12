@@ -34,11 +34,19 @@ async def menu_getter(
         menu_data = await get_menu_data(user)
         support_url = bot_service.get_support_url(text=i18n.get("message.help"))
 
+        purchase_discount = user.purchase_discount or 0
+        personal_discount = user.personal_discount or 0
+        show_purchase_discount = purchase_discount > 0 and purchase_discount >= personal_discount
+        show_personal_discount = personal_discount > 0 and not show_purchase_discount
+
         data: dict[str, Any] = {
             # user
             "telegram_id": user.telegram_id,
             "name": user.name,
-            "personal_discount": user.personal_discount,
+            "personal_discount": personal_discount,
+            "show_personal_discount": show_personal_discount,
+            "purchase_discount": purchase_discount,
+            "show_purchase_discount": show_purchase_discount,
             # ui / config
             "is_mini_app": config.bot.is_mini_app,
             "support_url": support_url,
@@ -82,7 +90,10 @@ async def menu_getter(
                 "device_limit": i18n_format_device_limit(subscription.device_limit),
                 "expire_time": i18n_format_expire_time(subscription.expire_at),
                 "reset_time": i18n_format_expire_time(
-                    get_traffic_reset_delta(subscription.traffic_limit_strategy)
+                    get_traffic_reset_delta(
+                        subscription.traffic_limit_strategy,
+                        subscription.created_at,
+                    )
                 ),
                 "connectable": subscription.is_active,
                 "has_device_limit": (

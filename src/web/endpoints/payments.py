@@ -29,6 +29,7 @@ async def payments_webhook(
         logger.exception(f"Invalid gateway type received: '{gateway_type}'")
         return Response(status_code=status.HTTP_404_NOT_FOUND)
 
+    gateway = None
     try:
         gateway = await get_payment_gateway_instance.system(gateway_enum)
 
@@ -42,14 +43,12 @@ async def payments_webhook(
 
         payment_id, payment_status = await gateway.handle_webhook(request)
         await handle_payment_transaction_task.kiq(payment_id, payment_status)  # type: ignore[call-overload]
-        return Response(status_code=status.HTTP_200_OK)
 
     except Exception as e:
         logger.exception(f"Error processing webhook for '{gateway_type}': {e}")
         error_event = ErrorEvent(**config.build.data, exception=e)
         await event_publisher.publish(error_event)
 
-    finally:
-        if gateway is not None:
-            return await gateway.build_webhook_response(request)
-        return Response(status_code=status.HTTP_200_OK)
+    if gateway is not None:
+        return await gateway.build_webhook_response(request)
+    return Response(status_code=status.HTTP_200_OK)

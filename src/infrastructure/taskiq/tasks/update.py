@@ -35,17 +35,34 @@ async def check_bot_update(
         logger.warning("Local version tag is missing in config, skipping update check")
         return
 
-    async with httpx.AsyncClient() as client:
-        headers = {"Accept": "application/vnd.github.v3+json"}
-        response = await client.get(GITHUB_RELEASE_URL, headers=headers)
-        response.raise_for_status()
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(
+                connect=10.0,
+                read=30.0,
+                write=10.0,
+                pool=5.0,
+            )
+        ) as client:
+            headers = {"Accept": "application/vnd.github.v3+json"}
+            response = await client.get(GITHUB_RELEASE_URL, headers=headers)
+            response.raise_for_status()
 
-        data = orjson.loads(response.content)
-        remote_version = data.get("tag_name", "").replace("v", "")
+            data = orjson.loads(response.content)
+            remote_version = data.get("tag_name", "").replace("v", "")
 
-        if not remote_version:
-            logger.error("Remote version tag not found in GitHub API response")
-            return
+            if not remote_version:
+                logger.error("Remote version tag not found in GitHub API response")
+                return
+    except httpx.ConnectError as e:
+        logger.warning(f"Failed to reach GitHub API (network issue): '{e}'")
+        return
+    except httpx.TimeoutException as e:
+        logger.warning(f"GitHub API request timed out: '{e}'")
+        return
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"GitHub API returned error status: '{e}'")
+        return
 
     lv = Version(local_version)
     rv = Version(remote_version)
@@ -56,9 +73,13 @@ async def check_bot_update(
         return
 
     key = retort.dump(LatestNotifiedVersionKey(version="*"))
-    last_cached_version = await redis.get(key)
+    last_notified_version = await redis.get(key)
 
-    if last_cached_version and last_cached_version == remote_version:
+    logger.debug(
+        f"Update check: key='{key}', cached={last_notified_version!r}, remote={remote_version!r}"
+    )
+
+    if last_notified_version == remote_version:
         logger.debug(f"Version '{remote_version}' already notified")
         return
 

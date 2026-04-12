@@ -7,7 +7,7 @@ from aiogram.utils.formatting import Text
 
 from src.__version__ import __version__
 from src.application.dto import BuildInfoDto, MediaDescriptorDto, MessagePayloadDto
-from src.core.constants import REPOSITORY
+from src.core.constants import REMNAWAVE_MAX_VERSION, REPOSITORY
 from src.core.enums import (
     AccessMode,
     MediaType,
@@ -100,7 +100,49 @@ class RemnawaveErrorEvent(ErrorEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class WebhookErrorEvent(BaseEvent):
+class RemnawaveVersionWarningEvent(SystemEvent, BuildInfoDto):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    panel_version: str
+    max_version: str = str(REMNAWAVE_MAX_VERSION)
+
+    @property
+    def event_key(self) -> str:
+        return "event-error.remnawave-version"
+
+    def as_payload(self) -> "MessagePayloadDto":
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs={**asdict(self)},
+            disable_default_markup=False,
+            delete_after=None,
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
+class BotInlineModeDisabledEvent(SystemEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    @property
+    def event_key(self) -> str:
+        return "event-bot.inline-mode-disabled"
+
+    def as_payload(self) -> "MessagePayloadDto":
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            disable_default_markup=False,
+            delete_after=None,
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
+class WebhookErrorEvent(SystemEvent):
     notification_type: NotificationType = field(
         default=SystemNotificationType.SYSTEM,
         init=False,
@@ -126,6 +168,39 @@ class WebhookErrorEvent(BaseEvent):
             media_type=MediaType.DOCUMENT,
             delete_after=None,
         )
+
+
+@dataclass(frozen=True, kw_only=True)
+class ChannelCheckErrorEvent(SystemEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    telegram_id: int
+    username: Optional[str]
+    name: str
+    reason: str
+
+    @property
+    def event_key(self) -> str:
+        return "event-error.channel-check"
+
+
+@dataclass(frozen=True, kw_only=True)
+class NotificationErrorEvent(SystemEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    chat_id: Optional[int]
+    thread_id: Optional[int]
+    reason: str
+
+    @property
+    def event_key(self) -> str:
+        return "event-error.notification"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -259,6 +334,17 @@ class UserDevicesUpdatedEvent(UserEvent):
     device_model: Optional[str]
     os_version: Optional[str]
     user_agent: Optional[str]
+
+    def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_user_keyboard  # noqa: PLC0415
+
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs={**asdict(self)},
+            reply_markup=get_user_keyboard(self.telegram_id),
+            disable_default_markup=False,
+            delete_after=None,
+        )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -418,6 +504,17 @@ class SubscriptionRevokedEvent(UserEvent):
     traffic_limit: Any
     device_limit: Any
     expire_time: Any
+
+    def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_user_keyboard  # noqa: PLC0415
+
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs={**asdict(self)},
+            reply_markup=get_user_keyboard(self.telegram_id),
+            disable_default_markup=False,
+            delete_after=None,
+        )
 
     @property
     def event_key(self) -> str:

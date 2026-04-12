@@ -130,7 +130,7 @@ class UpdateUserFromTelegramDto:
 class UpdateUserFromTelegram(Interactor[UpdateUserFromTelegramDto, UserDto]):
     required_permission = None
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao, config: AppConfig):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao, config: AppConfig) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.config = config

@@ -64,6 +64,7 @@ ntf-requirement =
     
 ntf-user =
     .not-found = <i>❌ Пользователь не найден.</i>
+    .transaction-not-found = ❌ <i>Транзакция не найдена.</i>
     .transactions-empty = ❌ <i>Список транзакций пуст.</i>
     .subscription-empty = ❌ <i>Активная подписка не найдена.</i>
     .subscription-deleted = ✅ <i>Подписка успешно удалена.</i>
@@ -98,7 +99,7 @@ ntf-plan =
     .not-file = ⚠️ <i>Отправьте планы в виде json файла.</i>
     .import-failed = ❌ <i>Не удалось импортировать.</i>
     .import-success = ✅ <i>Успешно импотированно.</i>
-    .export-plans_not_selected =  ❌ <i>Выберите хотя бы один план для экспорта.</i>
+    .export-plans-not-selected = ❌ <i>Выберите хотя бы один план для экспорта.</i>
     .export-failed = ❌ <i>Не удалось экспортировать.</i>
     .export-success = ✅ <i>Выбранные планы экспортированы.</i>
     .trial-single-duration = ❌ <i>Пробный план может иметь только одну длительность.</i>
@@ -113,7 +114,6 @@ ntf-plan =
 ntf-gateway =
     .not-configured = ❌ <i>Платежный шлюз не настроен.</i>
     .not-configurable = ❌ <i>У платежного шлюза отсутствуют настройки.</i>
-
     .test-payment-created = ✅ <i><a href="{ $url }">Тестовый платеж</a> успешно создан.</i>
     .test-payment-error = ❌ <i>Ошибка при создании тестового платежа.</i>
     .test-payment-confirmed = ✅ <i>Тестовый платеж успешно обработан.</i>
@@ -162,9 +162,14 @@ ntf-sync =
 
 ntf-menu-editor =
     .button-saved = ✅ <i>Кнопка успешно сохранена.</i>
-    .invalid-payload = ❌ <i>Недопустимый формат URL для payload.</i>
+    .invalid-payload = ❌ <i>Недопустимый формат URL.</i>
 
 ntf-devices =
     .deleted = ✅ <i>Устройство удалено.</i>
     .all-deleted = ✅ <i>Все устройства удалены.</i>
     .reissued = ✅ <i>Подписка успешно перевыпущена.</i>
+
+ntf-backup =
+    .assets-started = ⏳ <i>Создаю бэкап ассетов...</i>
+    .db-started = ⏳ <i>Создаю бэкап базы данных...</i>
+    .error = ❌ <i>Ошибка при создании бэкапа</i>

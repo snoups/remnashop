@@ -18,7 +18,7 @@ class SetUserPersonalDiscountDto:
 class SetUserPersonalDiscount(Interactor[SetUserPersonalDiscountDto, None]):
     required_permission = Permission.USER_EDITOR
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 
@@ -41,6 +41,57 @@ class SetUserPersonalDiscount(Interactor[SetUserPersonalDiscountDto, None]):
 
 
 @dataclass(frozen=True)
+class SetUserPurchaseDiscountDto:
+    telegram_id: int
+    discount: int
+
+
+class SetUserPurchaseDiscount(Interactor[SetUserPurchaseDiscountDto, None]):
+    required_permission = Permission.USER_EDITOR
+
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
+        self.uow = uow
+        self.user_dao = user_dao
+
+    async def _execute(self, actor: UserDto, data: SetUserPurchaseDiscountDto) -> None:
+        if not (0 <= data.discount <= 100):
+            raise ValueError(f"Invalid discount value '{data.discount}'")
+
+        async with self.uow:
+            target_user = await self.user_dao.get_by_telegram_id(data.telegram_id)
+            if not target_user:
+                raise ValueError(f"User '{data.telegram_id}' not found")
+
+            target_user.purchase_discount = data.discount
+            await self.user_dao.update(target_user)
+            await self.uow.commit()
+
+        logger.info(
+            f"{actor.log} Set purchase discount to '{data.discount}' for user '{data.telegram_id}'"
+        )
+
+
+class ToggleUserTrialAvailable(Interactor[int, None]):
+    required_permission = Permission.USER_EDITOR
+
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
+        self.uow = uow
+        self.user_dao = user_dao
+
+    async def _execute(self, actor: UserDto, data: int) -> None:
+        async with self.uow:
+            target_user = await self.user_dao.get_by_telegram_id(data)
+            if not target_user:
+                raise ValueError(f"User '{data}' not found")
+
+            new_value = not target_user.is_trial_available
+            await self.user_dao.set_trial_available(data, new_value)
+            await self.uow.commit()
+
+        logger.info(f"{actor.log} Set trial available to '{new_value}' for user '{data}'")
+
+
+@dataclass(frozen=True)
 class ChangeUserPointsDto:
     telegram_id: int
     amount: int
@@ -49,7 +100,7 @@ class ChangeUserPointsDto:
 class ChangeUserPoints(Interactor[ChangeUserPointsDto, None]):
     required_permission = Permission.USER_EDITOR
 
-    def __init__(self, uow: UnitOfWork, user_dao: UserDao):
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao) -> None:
         self.uow = uow
         self.user_dao = user_dao
 

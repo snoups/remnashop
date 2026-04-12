@@ -53,9 +53,13 @@ frg-user =
     <blockquote>
     • <b>ID</b>: <code>{ NUMBER($telegram_id, useGrouping: 0) }</code>
     • <b>Имя</b>: { $name }
-    { $personal_discount ->
-    [0] { empty }
-    *[HAS] • <b>Ваша скидка</b>: { $personal_discount }%
+    { $show_personal_discount ->
+    [1] • <b>Персональная скидка</b>: { $personal_discount }%
+    *[0] { empty }
+    }
+    { $show_purchase_discount ->
+    [1] • <b>Скидка на покупку</b>: { $purchase_discount }%
+    *[0] { empty }
     }
     </blockquote>
 
@@ -77,6 +81,10 @@ frg-user-details =
     }
     • <b>Роль</b>: { role }
     • <b>Язык</b>: { language }
+    • <b>Бот заблокирован</b>: { $is_bot_blocked ->
+        [1] Да
+        *[0] Нет
+    }
     { $show_points ->
     [1] • <b>Баллы</b>: { $points }
     *[0] { empty }
@@ -91,6 +99,14 @@ frg-user-discounts-details =
 
 frg-subscription =
     <blockquote>
+    • <b>Лимит трафика</b>: { $traffic_limit }
+    • <b>Лимит устройств</b>: { $device_limit }
+    • <b>Осталось</b>: { $expire_time }
+    </blockquote>
+
+frg-subscription-user-editor =
+    <blockquote>
+    • <b>План</b>: { $plan_name }
     • <b>Лимит трафика</b>: { $traffic_limit }
     • <b>Лимит устройств</b>: { $device_limit }
     • <b>Осталось</b>: { $expire_time }
@@ -361,6 +377,7 @@ traffic-strategy = { $strategy_type ->
     [DAY] Каждый день
     [WEEK] Каждую неделю
     [MONTH] Каждый месяц
+    [MONTH_ROLLING] Каждый месяц (по дате создания)
     *[OTHER] { $strategy_type }
     }
 
@@ -388,6 +405,30 @@ button-type = { $button_type ->
     [WEB_APP] Открыть веб-приложение
     *[OTHER] { $button_type }
 }
+
+notification-type = { $notification_type ->
+    [SYSTEM] Система
+    [EXPIRES_IN_3_DAYS] Подписка истекает (3 дня)
+    [EXPIRES_IN_2_DAYS] Подписка истекает (2 дня)
+    [EXPIRES_IN_1_DAY] Подписка истекает (1 день)
+    [EXPIRED] Подписка истекла
+    [EXPIRED_1_DAY_AGO] Подписка истекла (1 день)
+    [LIMITED] Трафик исчерпан
+    [REFERRAL_ATTACHED] Реферал закреплен
+    [REFERRAL_REWARD_RECEIVED] Вознаграждение за реферала
+    [BOT_LIFECYCLE] Жизненный цикл бота
+    [BOT_UPDATE] Обновления бота
+    [USER_REGISTERED] Регистрация пользователя
+    [SUBSCRIPTION] Оформление подписки
+    [PROMOCODE_ACTIVATED] Активация промокода
+    [TRIAL_ACTIVATED] Активация пробника
+    [NODE_STATUS_CHANGED] Статус узла
+    [NODE_TRAFFIC_REACHED] Трафик узла
+    [USER_FIRST_CONNECTION] Первое подключение
+    [USER_DEVICES_UPDATED] Устройства пользователя
+    [USER_REVOKED_SUBSCRIPTION] Сброс подписки
+    *[OTHER] { $notification_type }
+    }
 
 language = { $language ->
     [ar] Арабский

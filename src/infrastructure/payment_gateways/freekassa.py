@@ -96,13 +96,13 @@ class FreeKassaGateway(BasePaymentGateway):
     async def _create_payment_payload(self, amount: str, order_id: str) -> dict[str, Any]:
         data: dict[str, Any] = {
             "shopId": self.data.settings.shop_id,  # type: ignore[union-attr]
-            "nonce": int(time.time() * 1000),  # must be strictly increasing
+            "nonce": time.time_ns(),  # must be strictly increasing
             "paymentId": order_id,
             "i": self.data.settings.payment_system_id,  # type: ignore[union-attr]
             "email": self.data.settings.customer_email,  # type: ignore[union-attr]
             "ip": self.data.settings.customer_ip,  # type: ignore[union-attr]
             "amount": str(amount),
-            "currency": self.data.currency.value,
+            "currency": self.data.currency.upper(),
             "success_url": await self._get_bot_redirect_url(),
             "failure_url": await self._get_bot_redirect_url(),
             "notification_url": self.config.get_webhook(self.data.type),

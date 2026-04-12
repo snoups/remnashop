@@ -102,7 +102,9 @@ class TranslatorRunnerImpl(TranslatorRunner):
 
         max_newlines = "\n" * self.collapse_level
         pattern = rf"(?:\n[ \t]*){{{self.collapse_level + 1},}}"
+
         text = re.sub(pattern, max_newlines, text)
+        text = re.sub(r"(?<=\n)[ \t]*!empty![ \t]*\n", "", text)
 
         return re.sub(r"\s*!empty!\s*", "", text)
 

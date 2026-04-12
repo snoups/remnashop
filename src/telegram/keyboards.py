@@ -9,9 +9,9 @@ from aiogram_dialog.widgets.style import Style
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
-from src.core.constants import GOTO_PREFIX, PAYMENT_PREFIX, REPOSITORY, T_ME
+from src.core.constants import DOCS, GOTO_PREFIX, PAYMENT_PREFIX, REPOSITORY, T_ME
 from src.core.enums import ButtonType, PurchaseType
-from src.telegram.states import DashboardUser, MainMenu, Subscription
+from src.telegram.states import DashboardUser, MainMenu, Notification, Subscription
 from src.telegram.widgets import I18nFormat
 
 CALLBACK_CHANNEL_CONFIRM: Final[str] = "channel_confirm"
@@ -89,7 +89,17 @@ back_main_menu_button = (
 )
 
 
-def get_goto_buttons(support_url: str, is_referral_enable: bool) -> list[InlineKeyboardButton]:
+CLOSE_BUTTON_ID: Final[int] = -1
+
+
+def get_close_notification_button() -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        text="btn-common.notification-close",
+        callback_data=Notification.CLOSE.state,
+    )
+
+
+def get_broadcast_buttons(support_url: str, is_referral_enable: bool) -> list[InlineKeyboardButton]:
     buttons = [
         InlineKeyboardButton(
             text="btn-goto.contact-support",
@@ -112,6 +122,8 @@ def get_goto_buttons(support_url: str, is_referral_enable: bool) -> list[InlineK
                 callback_data=f"{GOTO_PREFIX}{MainMenu.INVITE.state}",
             )
         )
+
+    buttons.append(get_close_notification_button())
 
     return buttons
 
@@ -199,12 +211,12 @@ def get_remnashop_update_keyboard() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(
             text="btn-remnashop-info.release-latest",
-            url=f"{REPOSITORY}/releases/latest",
+            url=DOCS,
             style=ButtonStyle.PRIMARY,
         ),
         InlineKeyboardButton(
             text="btn-remnashop-info.how-upgrade",
-            url=f"{REPOSITORY}?tab=readme-ov-file#step-5--how-to-upgrade",
+            url=f"{DOCS}/docs/ru/install/update",
             style=ButtonStyle.PRIMARY,
         ),
     )

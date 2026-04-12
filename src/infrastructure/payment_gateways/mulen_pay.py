@@ -157,7 +157,7 @@ class MulenPayGateway(BasePaymentGateway):
         expected = self._generate_signature(currency, amount, shop_id)  # type: ignore[arg-type]
 
         if not compare_digest(expected, sign):
-            logger.warning("Invalid MulenPay webhook signature.")
+            logger.warning("Invalid MulenPay webhook signature")
             return False
 
         return True

@@ -26,7 +26,7 @@ from src.application.use_cases.remnawave.commands.synchronization import (
     SyncRemnaUser,
     SyncRemnaUserDto,
 )
-from src.core.constants import DATETIME_FORMAT, IMPORTED_TAG
+from src.core.constants import DATETIME_VIEW_FORMAT, IMPORTED_TAG
 from src.core.enums import SubscriptionStatus
 from src.core.types import RemnaUserDto
 from src.core.utils.converters import country_code_to_flag
@@ -202,9 +202,9 @@ class RemnaWebhookService:
                     address=node.address,
                     port=node.port,
                     traffic_used=i18n_format_bytes_to_unit(node.traffic_used_bytes),
-                    traffic_limit=i18n_format_bytes_to_unit(node.traffic_limit_bytes),
+                    traffic_limit=i18n_format_bytes_to_unit(node.traffic_limit_bytes or None),
                     last_status_message=node.last_status_message,
-                    last_status_change=node.last_status_change.strftime(DATETIME_FORMAT)
+                    last_status_change=node.last_status_change.strftime(DATETIME_VIEW_FORMAT)
                     if node.last_status_change
                     else None,
                 )
@@ -217,9 +217,9 @@ class RemnaWebhookService:
                     address=node.address,
                     port=node.port,
                     traffic_used=i18n_format_bytes_to_unit(node.traffic_used_bytes),
-                    traffic_limit=i18n_format_bytes_to_unit(node.traffic_limit_bytes),
+                    traffic_limit=i18n_format_bytes_to_unit(node.traffic_limit_bytes or None),
                     last_status_message=node.last_status_message,
-                    last_status_change=node.last_status_change.strftime(DATETIME_FORMAT)
+                    last_status_change=node.last_status_change.strftime(DATETIME_VIEW_FORMAT)
                     if node.last_status_change
                     else None,
                 )
@@ -232,9 +232,9 @@ class RemnaWebhookService:
                     address=node.address,
                     port=node.port,
                     traffic_used=i18n_format_bytes_to_unit(node.traffic_used_bytes),
-                    traffic_limit=i18n_format_bytes_to_unit(node.traffic_limit_bytes),
+                    traffic_limit=i18n_format_bytes_to_unit(node.traffic_limit_bytes or None),
                     last_status_message=node.last_status_message,
-                    last_status_change=node.last_status_change.strftime(DATETIME_FORMAT)
+                    last_status_change=node.last_status_change.strftime(DATETIME_VIEW_FORMAT)
                     if node.last_status_change
                     else None,
                 )
@@ -296,7 +296,10 @@ class RemnaWebhookService:
                     is_trial=current_subscription.is_trial,
                     traffic_strategy=current_subscription.traffic_limit_strategy,
                     reset_time=i18n_format_expire_time(
-                        get_traffic_reset_delta(current_subscription.traffic_limit_strategy)
+                        get_traffic_reset_delta(
+                            current_subscription.traffic_limit_strategy,
+                            current_subscription.created_at,
+                        )
                     ),
                 )
             )
