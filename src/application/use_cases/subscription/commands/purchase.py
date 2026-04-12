@@ -154,7 +154,16 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
             try:
                 # 1. NEW PURCHASE (NOT TRIAL)
                 if purchase_type == PurchaseType.NEW and not has_trial:
-                    created_user = await self.remnawave.create_user(user, plan=plan)
+                    remna_user = await self._find_existing_remna_user_for_web(user)
+                    if remna_user:
+                        created_user = await self.remnawave.update_user(
+                            user=user,
+                            uuid=remna_user.uuid,
+                            plan=plan,
+                            reset_traffic=True,
+                        )
+                    else:
+                        created_user = await self.remnawave.create_user(user, plan=plan)
                     new_sub = self._build_subscription_dto(created_user, plan)
 
                     await self.subscription_dao.create(
@@ -260,6 +269,24 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
 
                 await self.redirect.to_failed_payment(user.telegram_id)
                 raise PurchaseError(e)
+
+    async def _find_existing_remna_user_for_web(self, user: UserDto) -> Optional[RemnaUserDto]:
+        if user.telegram_id >= 0 or not user.email:
+            return None
+
+        users = await self.remnawave.get_user_by_email(user.email)
+        if not users:
+            return None
+
+        if user.login:
+            exact_login_match = next(
+                (candidate for candidate in users if candidate.username == user.login),
+                None,
+            )
+            if exact_login_match:
+                return exact_login_match
+
+        return users[0]
 
     def _build_subscription_dto(
         self,

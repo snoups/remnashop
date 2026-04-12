@@ -36,7 +36,7 @@ class DeleteUserDevice(Interactor[DeleteUserDeviceDto, bool]):
         )
 
         logger.info(f"{actor.log} Deleted device '{data.hwid}' for user '{data.telegram_id}'")
-        return bool(remaining_devices)
+        return remaining_devices is not None
 
 
 class DeleteUserAllDevices(Interactor[None, None]):

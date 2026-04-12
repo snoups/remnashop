@@ -33,3 +33,5 @@ dist/
 site/
 *.egg-info/
 *.egg
+frontend/node_modules/
+frontend/.env
