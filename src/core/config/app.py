@@ -13,6 +13,7 @@ from .base import BaseConfig
 from .bot import BotConfig
 from .build import BuildConfig
 from .database import DatabaseConfig
+from .email import EmailConfig
 from .log import LogConfig
 from .redis import RedisConfig
 from .remnawave import RemnawaveConfig
@@ -30,11 +31,14 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     crypt_key: SecretStr
     assets_dir: Path = ASSETS_DIR
     origins: StringList = StringList("")
+    web_enabled: bool = Field(default=False, validation_alias="WEB_ENABLED")
+    web_cabinet_url: str = Field(default="", validation_alias="WEB_CABINET_URL")
 
     bot: BotConfig = Field(default_factory=BotConfig)
     remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
     build: BuildConfig = Field(default_factory=BuildConfig)
     log: LogConfig = Field(default_factory=LogConfig)
 
