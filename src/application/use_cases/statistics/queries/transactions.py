@@ -3,6 +3,7 @@ from typing import Optional
 
 from src.application.common import Interactor
 from src.application.common.dao import TransactionDao
+from src.application.common.policy import Permission
 from src.application.dto import GatewayStatsDto, UserDto
 
 
@@ -16,7 +17,7 @@ class TransactionStatisticsDto:
 
 
 class GetTransactionStatistics(Interactor[None, TransactionStatisticsDto]):
-    required_permission = None
+    required_permission = Permission.VIEW_STATISTICS
 
     def __init__(self, transaction_dao: TransactionDao) -> None:
         self.transaction_dao = transaction_dao

@@ -1,10 +1,11 @@
 from src.application.common import Interactor
 from src.application.common.dao import SubscriptionDao
+from src.application.common.policy import Permission
 from src.application.dto import SubscriptionStatsDto, UserDto
 
 
 class GetSubscriptionStatistics(Interactor[None, SubscriptionStatsDto]):
-    required_permission = None
+    required_permission = Permission.VIEW_STATISTICS
 
     def __init__(self, subscription_dao: SubscriptionDao) -> None:
         self.subscription_dao = subscription_dao

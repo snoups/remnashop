@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from src.application.common import Interactor, TranslatorRunner
 from src.application.common.dao import SubscriptionDao, TransactionDao
+from src.application.common.policy import Permission
 from src.application.dto import PlanIncomeDto, PlanSubStatsDto, UserDto
 
 
@@ -12,7 +13,7 @@ class PlansStatisticsDto:
 
 
 class GetPlanStatistics(Interactor[None, PlansStatisticsDto]):
-    required_permission = None
+    required_permission = Permission.VIEW_STATISTICS
 
     def __init__(
         self,

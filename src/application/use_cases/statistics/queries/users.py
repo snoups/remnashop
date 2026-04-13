@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from src.application.common import Interactor
 from src.application.common.dao import ReferralDao, SubscriptionDao, TransactionDao, UserDao
+from src.application.common.policy import Permission
 from src.application.dto import UserDto, UserStatisticsDto
 from src.core.utils.converters import percent
 
@@ -22,7 +23,7 @@ class UsersStatisticsDto:
 
 
 class GetUsersStatistics(Interactor[None, UsersStatisticsDto]):
-    required_permission = None
+    required_permission = Permission.VIEW_STATISTICS
 
     def __init__(
         self,
@@ -64,7 +65,7 @@ class GetUsersStatistics(Interactor[None, UsersStatisticsDto]):
 
 
 class GetUserStatistics(Interactor[int, UserStatisticsDto]):
-    required_permission = None
+    required_permission = Permission.USER_EDITOR
 
     def __init__(
         self,
