@@ -24,6 +24,7 @@ class Subscription(StatesGroup):
     PLANS = State()
     DURATION = State()
     PAYMENT_METHOD = State()
+    YOOKASSA_EMAIL = State()
     CONFIRM = State()
     SUCCESS = State()
     FAILED = State()

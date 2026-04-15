@@ -114,6 +114,7 @@ ntf-subscription =
     .gateways-unavailable = ❌ <i>В данный момент нет доступных платежных систем.</i>
     .renew-plan-unavailable = ❌ <i>Текущий план устарел и недоступен для продления.</i>
     .payment-creation-failed = ❌ <i>Ошибка при создании платежа. Попробуйте позже.</i>
+    .email-invalid = ❌ <i>Введена некорректная почта</i>
 
 ntf-broadcast =
     .message = { $content }

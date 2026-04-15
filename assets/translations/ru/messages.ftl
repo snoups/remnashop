@@ -1151,6 +1151,11 @@ msg-subscription-payment-method =
 
     { msg-subscription-details }
 
+msg-subscription-yookassa-email =
+    <b>✉️ Укажите почту для чека</b>
+
+    { msg-subscription-details }
+
 msg-subscription-confirm =
     <b>🛒 Подтверждение { $purchase_type ->
     [RENEW] продления

@@ -13,7 +13,7 @@ from src.application.services import PricingService
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.config import AppConfig
-from src.core.enums import PurchaseType
+from src.core.enums import PaymentGatewayType, PurchaseType
 from src.core.utils.i18n_helpers import (
     i18n_format_days,
     i18n_format_device_limit,
@@ -216,6 +216,65 @@ async def payment_method_getter(
 
 
 @inject
+async def yookassa_email_getter(
+    dialog_manager: DialogManager,
+    user: UserDto,
+    retort: FromDishka[Retort],
+    i18n: FromDishka[TranslatorRunner],
+    payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    pricing_service: FromDishka[PricingService],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
+
+    if not raw_plan:
+        logger.debug("PlanDto not found in dialog data")
+        await dialog_manager.start(state=Subscription.MAIN)
+        return {}
+
+    plan = retort.load(raw_plan, PlanDto)
+    selected_duration = dialog_manager.dialog_data["selected_duration"]
+    duration = plan.get_duration(selected_duration)
+
+    if not duration:
+        raise ValueError(f"Duration '{selected_duration}' not found in plan '{plan.name}'")
+
+    key, kw = i18n_format_days(duration.days)
+    gateways = await payment_gateway_dao.get_active()
+
+    selected_method = dialog_manager.dialog_data.get(
+        "selected_payment_method", PaymentGatewayType.YOOKASSA
+    )
+    gateway = await payment_gateway_dao.get_by_type(selected_method)
+    if not gateway:
+        gateway = await payment_gateway_dao.get_by_type(PaymentGatewayType.YOOKASSA)
+    if not gateway:
+        logger.error("YooKassa gateway not found for email step")
+        await dialog_manager.start(state=Subscription.MAIN)
+        return {}
+
+    raw_price = duration.get_price(gateway.currency)
+    price = pricing_service.calculate(user, raw_price, gateway.currency)
+
+    return {
+        "plan": i18n.get(plan.name),
+        "description": i18n.get(plan.description) if plan.description else False,
+        "type": plan.type,
+        "devices": i18n_format_device_limit(plan.device_limit),
+        "traffic": i18n_format_traffic_limit(plan.traffic_limit),
+        "period": i18n.get(key, **kw),
+        "final_amount": price.final_amount,
+        "original_amount": price.original_amount,
+        "currency": gateway.currency.symbol,
+        "discount_percent": price.discount_percent,
+        "is_personal_discount": int(pricing_service.is_largest_discount_personal(user)),
+        "only_single_gateway": len(gateways) == 1,
+        "only_single_plan": dialog_manager.dialog_data.get("only_single_plan", False),
+        "only_single_duration": dialog_manager.dialog_data.get("only_single_duration", False),
+    }
+
+
+@inject
 async def confirm_getter(
     dialog_manager: DialogManager,
     user: UserDto,
@@ -254,6 +313,8 @@ async def confirm_getter(
     key, kw = i18n_format_days(duration.days)
     gateways = await payment_gateway_dao.get_active()
 
+    only_single_plan = dialog_manager.dialog_data.get("only_single_plan", False)
+
     return {
         "purchase_type": purchase_type,
         "plan": i18n.get(plan.name),
@@ -270,8 +331,10 @@ async def confirm_getter(
         "currency": payment_gateway.currency.symbol,
         "url": result_url,
         "only_single_gateway": len(gateways) == 1,
+        "only_single_plan": only_single_plan,
         "only_single_duration": only_single_duration,
         "is_free": is_free,
+        "yookassa_email_flow": dialog_manager.dialog_data.get("yookassa_email_flow", False),
     }
 
 

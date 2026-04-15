@@ -1,8 +1,9 @@
-from typing import Optional, TypedDict, cast
+from typing import Optional, TypedDict, Union, cast
 
 from adaptix import Retort
-from aiogram.types import CallbackQuery
-from aiogram_dialog import DialogManager
+from aiogram.types import CallbackQuery, Message
+from aiogram_dialog import DialogManager, ShowMode
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
@@ -10,7 +11,8 @@ from loguru import logger
 
 from src.application.common import Notifier
 from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
-from src.application.dto import PlanDto, PlanSnapshotDto, UserDto
+from src.application.dto import PaymentGatewayDto, PlanDto, PlanSnapshotDto, UserDto
+from src.application.dto.payment_gateway import YooKassaGatewaySettingsDto
 from src.application.services import PricingService
 from src.application.use_cases.gateways.commands.payment import (
     CreatePayment,
@@ -22,11 +24,21 @@ from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
 from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
+from src.core.utils.email import is_valid_email
 from src.telegram.states import Subscription
 
 PAYMENT_CACHE_KEY = "payment_cache"
 CURRENT_DURATION_KEY = "selected_duration"
 CURRENT_METHOD_KEY = "selected_payment_method"
+YOOKASSA_EMAIL_FLOW_KEY = "yookassa_email_flow"
+
+
+def _yookassa_requests_email_step(gateway: PaymentGatewayDto | None) -> bool:
+    if not gateway or gateway.type != PaymentGatewayType.YOOKASSA:
+        return False
+    if not isinstance(gateway.settings, YooKassaGatewaySettingsDto):
+        return False
+    return bool(gateway.settings.request_email)
 
 
 class CachedPaymentData(TypedDict):
@@ -35,8 +47,22 @@ class CachedPaymentData(TypedDict):
     final_pricing: str
 
 
-def _get_cache_key(duration: int, gateway_type: PaymentGatewayType) -> str:
-    return f"{duration}:{gateway_type.value}"
+def _normalize_gateway_type(value: Union[PaymentGatewayType, str]) -> PaymentGatewayType:
+    if isinstance(value, PaymentGatewayType):
+        return value
+    return PaymentGatewayType(value)
+
+
+def _get_cache_key(
+    duration: int,
+    gateway_type: Union[PaymentGatewayType, str],
+    receipt_email: Optional[str] = None,
+) -> str:
+    gw = _normalize_gateway_type(gateway_type)
+    base = f"{duration}:{gw.value}"
+    if receipt_email is not None:
+        return f"{base}:{receipt_email}"
+    return base
 
 
 def _load_payment_data(dialog_manager: DialogManager) -> dict[str, CachedPaymentData]:
@@ -55,14 +81,16 @@ async def _create_payment_and_get_data(
     dialog_manager: DialogManager,
     plan: PlanDto,
     duration_days: int,
-    gateway_type: PaymentGatewayType,
+    gateway_type: Union[PaymentGatewayType, str],
     retort: Retort,
     payment_gateway_dao: PaymentGatewayDao,
     notifier: Notifier,
     pricing_service: PricingService,
     create_payment: CreatePayment,
+    receipt_email: Optional[str] = None,
 ) -> Optional[CachedPaymentData]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    gateway_type = _normalize_gateway_type(gateway_type)
     duration = plan.get_duration(duration_days)
     payment_gateway = await payment_gateway_dao.get_by_type(gateway_type)
     purchase_type: PurchaseType = dialog_manager.dialog_data["purchase_type"]
@@ -83,6 +111,7 @@ async def _create_payment_and_get_data(
                 pricing=pricing,
                 purchase_type=purchase_type,
                 gateway_type=gateway_type,
+                receipt_email=receipt_email,
             ),
         )
 
@@ -96,6 +125,53 @@ async def _create_payment_and_get_data(
         logger.error(f"{user.log} Failed to create paymen")
         await notifier.notify_user(user, i18n_key="ntf-subscription.payment-creation-failed")
         raise
+
+
+async def _finalize_yookassa_payment_with_receipt_email(
+    dialog_manager: DialogManager,
+    *,
+    receipt_email: str,
+    retort: Retort,
+    payment_gateway_dao: PaymentGatewayDao,
+    notifier: Notifier,
+    pricing_service: PricingService,
+    create_payment: CreatePayment,
+) -> bool:
+    raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
+    if not raw_plan:
+        logger.error("PlanDto not found for YooKassa email step")
+        return False
+
+    plan = retort.load(raw_plan, PlanDto)
+    selected_duration = dialog_manager.dialog_data[CURRENT_DURATION_KEY]
+    selected_payment_method = dialog_manager.dialog_data[CURRENT_METHOD_KEY]
+    cache = _load_payment_data(dialog_manager)
+    cache_key = _get_cache_key(selected_duration, selected_payment_method, receipt_email)
+
+    if cache_key in cache:
+        logger.info("Reusing cached payment for YooKassa receipt email")
+        _save_payment_data(dialog_manager, cache[cache_key])
+        return True
+
+    payment_data = await _create_payment_and_get_data(
+        dialog_manager=dialog_manager,
+        plan=plan,
+        duration_days=selected_duration,
+        gateway_type=selected_payment_method,
+        retort=retort,
+        payment_gateway_dao=payment_gateway_dao,
+        notifier=notifier,
+        pricing_service=pricing_service,
+        create_payment=create_payment,
+        receipt_email=receipt_email,
+    )
+
+    if payment_data:
+        cache[cache_key] = payment_data
+        _save_payment_data(dialog_manager, payment_data)
+        return True
+
+    return False
 
 
 @inject
@@ -166,6 +242,7 @@ async def on_subscription_plans(  # noqa: C901
     match_plan: FromDishka[MatchPlan],
     get_available_plans: FromDishka[GetAvailablePlans],
     create_payment: FromDishka[CreatePayment],
+    settings_dao: FromDishka[SettingsDao],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     logger.info(f"{user.log} Opened subscription plans menu")
@@ -219,15 +296,32 @@ async def on_subscription_plans(  # noqa: C901
             dialog_manager.dialog_data["only_single_duration"] = True
 
             if len(gateways) == 1:
-                logger.info(f"{user.log} Auto-selected payment method '{gateways[0].type}'")
-                dialog_manager.dialog_data["selected_payment_method"] = gateways[0].type
+                gw0 = gateways[0]
+                logger.info(f"{user.log} Auto-selected payment method '{gw0.type}'")
+                dialog_manager.dialog_data["selected_payment_method"] = gw0.type
+                dialog_manager.dialog_data[CURRENT_METHOD_KEY] = gw0.type
                 dialog_manager.dialog_data["only_single_payment_method"] = True
+
+                settings = await settings_dao.get()
+                currency = settings.default_currency
+                ddays = plans[0].durations[0].days
+                price = pricing_service.calculate(
+                    user,
+                    plans[0].get_duration(ddays).get_price(currency),  # type: ignore[union-attr]
+                    currency,
+                )
+                dialog_manager.dialog_data["is_free"] = price.is_free
+
+                if _yookassa_requests_email_step(gw0) and not price.is_free:
+                    dialog_manager.dialog_data[YOOKASSA_EMAIL_FLOW_KEY] = True
+                    await dialog_manager.switch_to(state=Subscription.YOOKASSA_EMAIL)
+                    return
 
                 payment_data = await _create_payment_and_get_data(
                     dialog_manager=dialog_manager,
                     plan=plans[0],
-                    duration_days=plans[0].durations[0].days,
-                    gateway_type=gateways[0].type,
+                    duration_days=ddays,
+                    gateway_type=gw0.type,
                     retort=retort,
                     payment_gateway_dao=payment_gateway_dao,
                     notifier=notifier,
@@ -275,6 +369,7 @@ async def on_plan_select(
     dialog_manager.dialog_data.pop(PAYMENT_CACHE_KEY, None)
     dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
     dialog_manager.dialog_data.pop(CURRENT_METHOD_KEY, None)
+    dialog_manager.dialog_data.pop(YOOKASSA_EMAIL_FLOW_KEY, None)
 
     if len(plan.durations) == 1:
         logger.info(f"{user.log} Auto-selected single duration '{plan.durations[0].days}'")
@@ -324,6 +419,11 @@ async def on_duration_select(
     if len(gateways) == 1 or price.is_free:
         selected_payment_method = gateways[0].type
         dialog_manager.dialog_data[CURRENT_METHOD_KEY] = selected_payment_method
+
+        if _yookassa_requests_email_step(gateways[0]) and not price.is_free:
+            dialog_manager.dialog_data[YOOKASSA_EMAIL_FLOW_KEY] = True
+            await dialog_manager.switch_to(state=Subscription.YOOKASSA_EMAIL)
+            return
 
         cache = _load_payment_data(dialog_manager)
         cache_key = _get_cache_key(selected_duration, selected_payment_method)
@@ -375,6 +475,24 @@ async def on_payment_method_select(
 
     selected_duration = dialog_manager.dialog_data[CURRENT_DURATION_KEY]
     dialog_manager.dialog_data[CURRENT_METHOD_KEY] = selected_payment_method
+
+    gateway = await payment_gateway_dao.get_by_type(selected_payment_method)
+    if gateway and _yookassa_requests_email_step(gateway):
+        raw_plan_for_price = dialog_manager.dialog_data.get(PlanDto.__name__)
+        if raw_plan_for_price:
+            plan_for_price = retort.load(raw_plan_for_price, PlanDto)
+            du = plan_for_price.get_duration(selected_duration)
+            if du:
+                price_m = pricing_service.calculate(
+                    user, du.get_price(gateway.currency), gateway.currency
+                )
+                if not price_m.is_free:
+                    dialog_manager.dialog_data[YOOKASSA_EMAIL_FLOW_KEY] = True
+                    await dialog_manager.switch_to(state=Subscription.YOOKASSA_EMAIL)
+                    return
+
+    dialog_manager.dialog_data[YOOKASSA_EMAIL_FLOW_KEY] = False
+
     cache = _load_payment_data(dialog_manager)
     cache_key = _get_cache_key(selected_duration, selected_payment_method)
 
@@ -412,6 +530,76 @@ async def on_payment_method_select(
         _save_payment_data(dialog_manager, payment_data)
 
     await dialog_manager.switch_to(state=Subscription.CONFIRM)
+
+
+@inject
+async def on_yookassa_email_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    retort: FromDishka[Retort],
+    payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    pricing_service: FromDishka[PricingService],
+    create_payment: FromDishka[CreatePayment],
+) -> None:
+    dialog_manager.show_mode = ShowMode.EDIT
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    text = (message.text or "").strip()
+
+    if not is_valid_email(text):
+        await notifier.notify_user(user, i18n_key="ntf-subscription.email-invalid")
+        return
+
+    ok = await _finalize_yookassa_payment_with_receipt_email(
+        dialog_manager,
+        receipt_email=text,
+        retort=retort,
+        payment_gateway_dao=payment_gateway_dao,
+        notifier=notifier,
+        pricing_service=pricing_service,
+        create_payment=create_payment,
+    )
+
+    if ok:
+        await dialog_manager.switch_to(state=Subscription.CONFIRM)
+
+
+@inject
+async def on_yookassa_email_skip(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    retort: FromDishka[Retort],
+    payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    pricing_service: FromDishka[PricingService],
+    create_payment: FromDishka[CreatePayment],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    gateway = await payment_gateway_dao.get_by_type(PaymentGatewayType.YOOKASSA)
+
+    if not gateway or not isinstance(gateway.settings, YooKassaGatewaySettingsDto):
+        await notifier.notify_user(user, i18n_key="ntf-subscription.payment-creation-failed")
+        return
+
+    default_email = gateway.settings.customer
+    if not default_email:
+        await notifier.notify_user(user, i18n_key="ntf-gateway.not-configured")
+        return
+
+    ok = await _finalize_yookassa_payment_with_receipt_email(
+        dialog_manager,
+        receipt_email=default_email,
+        retort=retort,
+        payment_gateway_dao=payment_gateway_dao,
+        notifier=notifier,
+        pricing_service=pricing_service,
+        create_payment=create_payment,
+    )
+
+    if ok:
+        await dialog_manager.switch_to(state=Subscription.CONFIRM)
 
 
 @inject

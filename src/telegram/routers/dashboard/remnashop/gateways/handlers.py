@@ -12,6 +12,7 @@ from src.application.dto import MessagePayloadDto, UserDto
 from src.application.use_cases.gateways.commands.configuration import (
     MovePaymentGatewayUp,
     TogglePaymentGatewayActive,
+    ToggleYooKassaRequestEmail,
     UpdatePaymentGatewaySettings,
     UpdatePaymentGatewaySettingsDto,
 )
@@ -104,6 +105,18 @@ async def on_active_toggle(
         await toggle_payment_gateway_active(user, gateway_id)
     except GatewayNotConfiguredError:
         await notifier.notify_user(user, i18n_key="ntf-gateway.not-configured")
+
+
+@inject
+async def on_yookassa_request_email_toggle(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    toggle_yookassa_request_email: FromDishka[ToggleYooKassaRequestEmail],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    gateway_id = dialog_manager.dialog_data["gateway_id"]
+    await toggle_yookassa_request_email(user, gateway_id)
 
 
 async def on_field_select(

@@ -1,5 +1,6 @@
 from aiogram.enums import ButtonStyle
 from aiogram_dialog import Dialog, Window
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Column, Group, Row, Select, SwitchTo, Url
 from aiogram_dialog.widgets.style import Style
 from aiogram_dialog.widgets.text import Format
@@ -20,6 +21,7 @@ from .getters import (
     plans_getter,
     subscription_getter,
     success_payment_getter,
+    yookassa_email_getter,
 )
 from .handlers import (
     on_duration_select,
@@ -27,6 +29,8 @@ from .handlers import (
     on_payment_method_select,
     on_plan_select,
     on_subscription_plans,
+    on_yookassa_email_input,
+    on_yookassa_email_skip,
 )
 
 subscription = Window(
@@ -189,6 +193,39 @@ payment_method = Window(
     getter=payment_method_getter,
 )
 
+yookassa_email = Window(
+    Banner(BannerName.SUBSCRIPTION),
+    I18nFormat("msg-subscription-yookassa-email"),
+    Row(
+        Button(
+            text=I18nFormat("btn-subscription.skip-email"),
+            id=f"{PAYMENT_PREFIX}yookassa_skip_email",
+            on_click=on_yookassa_email_skip,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-subscription.back-payment-method"),
+            id=f"{PAYMENT_PREFIX}yookassa_change_method",
+            state=Subscription.PAYMENT_METHOD,
+            when=~F["only_single_gateway"],
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-subscription.back-plans"),
+            id=f"{PAYMENT_PREFIX}yookassa_back_plans",
+            state=Subscription.PLANS,
+            when=~F["only_single_plan"],
+        ),
+    ),
+    *back_main_menu_button,
+    MessageInput(func=on_yookassa_email_input),
+    IgnoreUpdate(),
+    state=Subscription.YOOKASSA_EMAIL,
+    getter=yookassa_email_getter,
+)
+
 confirm = Window(
     Banner(BannerName.SUBSCRIPTION),
     I18nFormat("msg-subscription-confirm"),
@@ -209,16 +246,31 @@ confirm = Window(
     ),
     Row(
         SwitchTo(
+            text=I18nFormat("btn-subscription.back-yookassa-email"),
+            id=f"{PAYMENT_PREFIX}back_yookassa_email",
+            state=Subscription.YOOKASSA_EMAIL,
+            when=F["yookassa_email_flow"] & ~F["is_free"],
+        ),
+        SwitchTo(
             text=I18nFormat("btn-subscription.back-payment-method"),
             id=f"{PAYMENT_PREFIX}back_payment_method",
             state=Subscription.PAYMENT_METHOD,
-            when=~F["only_single_gateway"] & ~F["is_free"],
+            when=~F["yookassa_email_flow"] & ~F["only_single_gateway"] & ~F["is_free"],
         ),
         SwitchTo(
             text=I18nFormat("btn-subscription.back-duration"),
             id=f"{PAYMENT_PREFIX}back_duration",
             state=Subscription.DURATION,
-            when=F["only_single_gateway"] & ~F["only_single_duration"] | F["is_free"],
+            when=(
+                ~F["yookassa_email_flow"]
+                & ((F["only_single_gateway"] & ~F["only_single_duration"]) | F["is_free"])
+            )
+            | (
+                F["yookassa_email_flow"]
+                & F["only_single_gateway"]
+                & ~F["only_single_duration"]
+                & ~F["is_free"]
+            ),
         ),
     ),
     Row(
@@ -273,6 +325,7 @@ router = Dialog(
     plans,
     duration,
     payment_method,
+    yookassa_email,
     confirm,
     success_payment,
     success_trial,
