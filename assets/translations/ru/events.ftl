@@ -109,7 +109,7 @@ event-bot =
     .inline-mode-disabled =
     #BotInlineModeDisabledEvent
 
-    <b>⚠️ Событие: Inline-режим отключён в BotFather!</b>
+    <b>⚠️ Событие: Inline-режим отключен в BotFather!</b>
 
     <blockquote>
     Бот не настроен для работы в inline-режиме. Некоторые функции бота могут работать некорректно.
@@ -342,20 +342,20 @@ event-referral =
     <b>💰 Вам начислена награда!</b>
     
     <blockquote>
-    Пользователь <b>{ $name }</b> совершил платеж. Вы получили <b>{ $value } { $reward_type ->
-    [POINTS] { $value -> 
+    Пользователь <b>{ $name }</b> совершил платеж. Вы получили { $reward_type ->
+    [POINTS] <b>{ $value } { $value -> 
         [one] балл
         [few] балла
         *[more] баллов 
-        }
+        }</b>
 
     <i>Для использования баллов перейдите в раздел "Пригласить" в боте, чтобы узнать о доступных наградах и способах их использования.</i>
-    [EXTRA_DAYS] доп. { $value -> 
+    [EXTRA_DAYS] <b>{ $value } доп. { $value -> 
         [one] день
         [few] дня
         *[more] дней
-        } </b> к вашей подписке!
-    *[OTHER] { $reward_type }
+        }</b> к вашей подписке!
+    *[OTHER] <b>{ $value } { $reward_type }</b>
     }
     </blockquote>
 
@@ -385,6 +385,6 @@ event-remnashop-welcome =
 
     Проект создан и поддерживается всего одним <strike>разработчиком</strike> электриком. Поскольку бот полностью БЕСПЛАТНЫЙ и имеет открытый исходный код, он существует только благодаря вашей поддержке.
 
-    ⭐ <i>Поставьте звёздочку на <a href="{ $repository }">GitHub</a> и присоединяйтесь к нашему <a href="https://t.me/@remna_shop">сообществу</a>.</i>
+    ⭐ <i>Поставьте звездочку на <a href="{ $repository }">GitHub</a> и присоединяйтесь к нашему <a href="https://t.me/@remna_shop">сообществу</a>.</i>
 
-    🎁 <i>Также есть <a href="https://boosty.to/snoups/purchase/3778398?ssource=DIRECT&share=subscription_link">приватный чат</a> для донатеров.</i>
+    🎁 <i>Также есть <a href="https://boosty.to/snoups/purchase/3778398?ssource=DIRECT&amp;share=subscription_link">приватный чат</a> для донатеров.</i>

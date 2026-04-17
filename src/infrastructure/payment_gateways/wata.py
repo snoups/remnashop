@@ -2,7 +2,7 @@ import uuid
 from base64 import b64decode
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Union
 from uuid import UUID
 
 import orjson
@@ -74,7 +74,7 @@ class WataGateway(BasePaymentGateway):
             logger.exception(f"An unexpected error occurred while creating payment: {e}")
             raise
 
-    async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
+    async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")
 
         raw_body = await request.body()

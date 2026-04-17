@@ -29,7 +29,6 @@ class MatchPlan(Interactor[MatchPlanDto, Optional[PlanDto]]):
     def _is_plan_equal(self, snapshot: PlanSnapshotDto, plan: PlanDto) -> bool:
         return (
             snapshot.id == plan.id
-            and snapshot.tag == plan.tag
             and snapshot.type == plan.type
             and snapshot.traffic_limit == plan.traffic_limit
             and snapshot.device_limit == plan.device_limit

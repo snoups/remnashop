@@ -10,6 +10,7 @@ logs/*
 !logs/.gitkeep
 .history
 .claude
+CLAUDE.md
 
 # Environment
 .venv/
@@ -25,6 +26,17 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .coverage/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# Logs
+*.log
 
 # Build
 build/

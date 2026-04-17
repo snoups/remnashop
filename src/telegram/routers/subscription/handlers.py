@@ -135,9 +135,22 @@ async def on_purchase_type_select(
             if matched_plan:
                 dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(matched_plan)
                 dialog_manager.dialog_data["only_single_plan"] = True
+                dialog_manager.dialog_data["plan_is_modified"] = False
                 await dialog_manager.switch_to(state=Subscription.DURATION)
                 return
             else:
+                snapshot_id = current_subscription.plan_snapshot.id
+                modified_plan = next((p for p in plans if p.id == snapshot_id), None)
+                if modified_plan:
+                    logger.info(
+                        f"{user.log} Plan '{snapshot_id}' was modified, "
+                        f"allowing renewal with updated data"
+                    )
+                    dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(modified_plan)
+                    dialog_manager.dialog_data["only_single_plan"] = True
+                    dialog_manager.dialog_data["plan_is_modified"] = True
+                    await dialog_manager.switch_to(state=Subscription.DURATION)
+                    return
                 logger.warning(f"{user.log} Tried to renew, but no matching plan found")
                 await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-unavailable")
                 return
@@ -201,9 +214,22 @@ async def on_subscription_plans(  # noqa: C901
             if matched_plan:
                 dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(matched_plan)
                 dialog_manager.dialog_data["only_single_plan"] = True
+                dialog_manager.dialog_data["plan_is_modified"] = False
                 await dialog_manager.switch_to(state=Subscription.DURATION)
                 return
             else:
+                snapshot_id = current_subscription.plan_snapshot.id
+                modified_plan = next((p for p in plans if p.id == snapshot_id), None)
+                if modified_plan:
+                    logger.info(
+                        f"{user.log} Plan '{snapshot_id}' was modified, "
+                        f"allowing renewal with updated data"
+                    )
+                    dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(modified_plan)
+                    dialog_manager.dialog_data["only_single_plan"] = True
+                    dialog_manager.dialog_data["plan_is_modified"] = True
+                    await dialog_manager.switch_to(state=Subscription.DURATION)
+                    return
                 logger.warning(f"{user.log} Tried to renew, but no matching plan found")
                 await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-unavailable")
                 return

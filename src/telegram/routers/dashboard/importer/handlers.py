@@ -14,13 +14,13 @@ from src.application.common import Notifier
 from src.application.dto import MessagePayloadDto, UserDto
 from src.application.use_cases.importer.commands.processing import ProcessImportFile
 from src.core.constants import USER_KEY
-from src.infrastructure.redis.keys import ImportRunningKey, SyncRunningKey
+from src.infrastructure.redis.keys import ImportRunningKey, SyncBotRunningKey, SyncPanelRunningKey
 from src.infrastructure.taskiq.tasks.importer import (
     import_exported_users_task,
+    sync_all_users_from_bot_task,
     sync_all_users_from_panel_task,
 )
 from src.telegram.states import DashboardImporter
-from src.telegram.utils import is_double_click
 
 
 @inject
@@ -187,7 +187,7 @@ async def on_import_active_xui(
 
 
 @inject
-async def on_sync(
+async def on_sync_from_panel(
     callback: CallbackQuery,
     widget: Button,
     dialog_manager: DialogManager,
@@ -198,38 +198,70 @@ async def on_sync(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
     # TODO: before check squads subscription_dao.get_all_active_internal_squads()
-    key = retort.dump(SyncRunningKey())
+    key = retort.dump(SyncPanelRunningKey())
 
     if await redis.get(key):
         await notifier.notify_user(user, i18n_key="ntf-sync.already-running")
         return
 
-    if is_double_click(
-        dialog_manager,
-        key="sync_confirm",
-        cooldown=10,
-    ):
-        await redis.set(key, value=1, ex=600)
+    await redis.set(key, value=1, ex=600)
 
-        notification = await notifier.notify_user(
-            user,
-            payload=MessagePayloadDto(i18n_key="ntf-sync.started", delete_after=None),
-        )
+    notification = await notifier.notify_user(
+        user,
+        payload=MessagePayloadDto(i18n_key="ntf-sync.from-panel-started", delete_after=None),
+    )
 
-        task = await sync_all_users_from_panel_task.kiq()  # type: ignore[call-overload]
-        result = await task.wait_result()
-        result = result.return_value
+    task = await sync_all_users_from_panel_task.kiq()  # type: ignore[call-overload]
+    result = await task.wait_result()
+    result = result.return_value
 
-        if not result:
-            await notifier.notify_user(user, i18n_key="ntf-sync.users-not-found")
-            return
-
-        dialog_manager.dialog_data["completed"] = result
-
-        if notification:
-            await notification.delete()
-
-        await dialog_manager.switch_to(state=DashboardImporter.SYNC_COMPLETED)
+    if not result:
+        await notifier.notify_user(user, i18n_key="ntf-sync.users-not-found")
         return
 
-    await notifier.notify_user(user, i18n_key="ntf-common.double-click-confirm")
+    dialog_manager.dialog_data["completed"] = result
+
+    if notification:
+        await notification.delete()
+
+    await dialog_manager.switch_to(state=DashboardImporter.SYNC_PANEL_COMPLETED)
+
+
+@inject
+async def on_sync_from_bot(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    redis: FromDishka[Redis],
+    notifier: FromDishka[Notifier],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+
+    key = retort.dump(SyncBotRunningKey())
+
+    if await redis.get(key):
+        await notifier.notify_user(user, i18n_key="ntf-sync.already-running")
+        return
+
+    await redis.set(key, value=1, ex=600)
+
+    notification = await notifier.notify_user(
+        user,
+        payload=MessagePayloadDto(i18n_key="ntf-sync.from-bot-started", delete_after=None),
+    )
+
+    task = await sync_all_users_from_bot_task.kiq()  # type: ignore[call-overload]
+    result = await task.wait_result()
+    result = result.return_value
+
+    if not result:
+        await notifier.notify_user(user, i18n_key="ntf-sync.users-not-found")
+        return
+
+    dialog_manager.dialog_data["completed"] = result
+
+    if notification:
+        await notification.delete()
+
+    await dialog_manager.switch_to(state=DashboardImporter.SYNC_BOT_COMPLETED)

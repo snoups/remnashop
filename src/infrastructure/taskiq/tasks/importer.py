@@ -9,8 +9,11 @@ from remnapy.exceptions import BadRequestError
 from remnapy.models import CreateUserRequestDto
 
 from src.application.use_cases.importer.dto import ExportedUserDto
-from src.application.use_cases.remnawave.commands.synchronization import SyncAllUsersFromPanel
-from src.infrastructure.redis.keys import SyncRunningKey
+from src.application.use_cases.remnawave.commands.synchronization import (
+    SyncAllUsersFromBot,
+    SyncAllUsersFromPanel,
+)
+from src.infrastructure.redis.keys import SyncBotRunningKey, SyncPanelRunningKey
 from src.infrastructure.taskiq.broker import broker
 
 
@@ -51,7 +54,21 @@ async def sync_all_users_from_panel_task(
     redis: FromDishka[Redis],
     sync_all_users: FromDishka[SyncAllUsersFromPanel],
 ) -> dict[str, int]:
-    key = retort.dump(SyncRunningKey())
+    key = retort.dump(SyncPanelRunningKey())
+    try:
+        return await sync_all_users.system()
+    finally:
+        await redis.delete(key)
+
+
+@broker.task
+@inject(patch_module=True)
+async def sync_all_users_from_bot_task(
+    retort: FromDishka[Retort],
+    redis: FromDishka[Redis],
+    sync_all_users: FromDishka[SyncAllUsersFromBot],
+) -> dict[str, int]:
+    key = retort.dump(SyncBotRunningKey())
     try:
         return await sync_all_users.system()
     finally:

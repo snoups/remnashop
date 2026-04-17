@@ -35,6 +35,7 @@ class ButtonType(UpperStrEnum):
     URL = auto()
     COPY = auto()
     WEB_APP = auto()
+    TEXT = auto()
 
 
 class BroadcastStatus(UpperStrEnum):

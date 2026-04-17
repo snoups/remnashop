@@ -31,6 +31,17 @@ class DatabaseProvider(Provider):
             pool_timeout=config.database.pool_timeout,
             pool_recycle=config.database.pool_recycle,
             pool_pre_ping=True,
+            pool_reset_on_return="rollback",
+            query_cache_size=500,
+            connect_args={
+                "server_settings": {
+                    "jit": "on",
+                    "statement_timeout": "60000",
+                    "idle_in_transaction_session_timeout": "300000",
+                },
+                "command_timeout": 30,
+                "timeout": 10,
+            },
         )
         yield engine
         logger.debug("Disposing AsyncEngine")
@@ -38,7 +49,7 @@ class DatabaseProvider(Provider):
 
     @provide
     def get_session_maker(self, engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
-        session_maker = async_sessionmaker(bind=engine, expire_on_commit=False)
+        session_maker = async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
         logger.debug("Created session maker")
         return session_maker
 

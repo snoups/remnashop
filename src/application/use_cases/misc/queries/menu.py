@@ -52,8 +52,7 @@ class GetMenuData(Interactor[None, GetMenuDataResultDto]):
         custom_buttons = []
         for button in settings.menu.buttons:
             if button.is_active and actor.role.value >= button.required_role.value:
-                translated_text = self.i18n.get(button.text)
-                button.text = translated_text
+                button.text = self.i18n.get(button.text)
                 custom_buttons.append(button)
 
         return GetMenuDataResultDto(

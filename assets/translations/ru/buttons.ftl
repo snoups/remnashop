@@ -6,7 +6,7 @@ btn-back =
 
 btn-common =
     .notification-close = ❌ Закрыть
-    .devices-empty = ⚠️ У вас нет подключённых устройств
+    .devices-empty = ⚠️ У вас нет подключенных устройств
     .cancel = Отмена
 
     .squad-choice = { $selected -> 
@@ -16,7 +16,7 @@ btn-common =
 
     .duration = ⌛ { $value ->
     [0] { unlimited }
-    *[other] { unit-day }
+    *[OTHER] { unit-day }
     }
 
 btn-devices =
@@ -25,6 +25,11 @@ btn-devices =
     .confirm-delete = ✅ Да, удалить
     .confirm-reissue = ✅ Да, сбросить
     .cancel-reissue = ❌ Нет
+
+    .item = { $platform_icon } { $platform } { $device_model -> 
+    [0] { space }
+    *[HAS] ({ $device_model }){ space }
+    }— { $created_at }
 
 btn-backup =
     .active-toggle = { $enabled ->
@@ -99,7 +104,7 @@ btn-statistics =
             [1] [ Общая статистика ]
             *[0] Общая статистика
         }
-        *[other] { $is_current ->
+        *[OTHER] { $is_current ->
             [1] [ { $plan_name } ]
             *[0] { $plan_name }
         }
@@ -111,7 +116,7 @@ btn-statistics =
             [1] [ Общая статистика ]
             *[0] Общая статистика
         }
-        *[other] { $is_current ->
+        *[OTHER] { $is_current ->
             [1] [ { gateway-type } ]
             *[0] { gateway-type }
         }
@@ -145,6 +150,7 @@ btn-user =
     .subscription-url = 📋 Скопировать ссылку
     .subscription-set = ✅ Установить подписку
     .subscription-delete = ❌ Удалить
+    .subscription-reissue = ♻️ Перевыпустить
     .message-preview = 👀 Предпросмотр
     .message-confirm = ✅ Отправить
     .sync = 🌀 Синхронизировать
@@ -272,18 +278,23 @@ btn-menu-editor =
     .availability = ✴️ Доступ
     .type = 🔖 Тип
     .payload = 📄 Данные
+    .color = 🎨 Цвет
     .confirm = ✅ Сохранить
+    .color-default = Без цвета
+    .color-primary = Основной
+    .color-success = Зеленый
+    .color-danger = Красный
 
-    .button = { $is_active -> 
-        [1] 🟢 
-        *[0] 🔴 
+    .button = { $is_active ->
+        [1] 🟢
+        *[0] 🔴
     } { $text }
-    
-    .active-toggle = { $is_active -> 
+
+    .active-toggle = { $is_active ->
         [1] 🟢 Включена
         *[0] 🔴 Выключена
     }
-    
+
 btn-gateway =
     .title = { gateway-type }
     .setting = { $field }
@@ -446,7 +457,9 @@ btn-remnawave =
 btn-importer =
     .from-xui = 💩 Импорт из панели 3X-UI
     .from-xui-shop = 🛒 Бот 3xui-shop
-    .sync = 🌀 Запустить синхронизацию
+    .sync-from-panel = 🌀 Синхронизация: панель → бот
+    .sync-from-bot = 🤖 Синхронизация: бот → панель
+    .sync-start = ▶️ Синхронизировать
     .squads = 🔗 Внутренние сквады
     .import-all = ✅ Импортировать всех
     .import-active = ❇️ Импортировать активных

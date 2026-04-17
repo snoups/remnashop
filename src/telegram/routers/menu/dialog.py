@@ -18,7 +18,7 @@ from magic_filter import F
 from src.application.common.policy import Permission
 from src.core.constants import INLINE_QUERY_INVITE, PAYMENT_PREFIX
 from src.core.enums import BannerName
-from src.telegram.keyboards import connect_buttons, custom_buttons
+from src.telegram.keyboards import build_buttons_row, connect_buttons
 from src.telegram.routers.dashboard.handlers import on_smart_search
 from src.telegram.states import Dashboard, MainMenu, Subscription
 from src.telegram.utils import require_permission
@@ -40,8 +40,15 @@ from .handlers import (
     on_invite,
     on_reissue_subscription_confirm,
     on_show_qr,
+    on_text_button_click,
     on_withdraw_points,
     show_reason,
+)
+
+custom_buttons = (
+    build_buttons_row(1, text_on_click=on_text_button_click),
+    build_buttons_row(2, text_on_click=on_text_button_click),
+    build_buttons_row(3, text_on_click=on_text_button_click),
 )
 
 menu = Window(

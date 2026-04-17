@@ -20,6 +20,7 @@ from src.application.use_cases.plan.commands.access import (
 from src.application.use_cases.remnawave.commands.management import (
     DeleteUserDevice,
     DeleteUserDeviceDto,
+    ReissueUserSubscription,
     ResetUserTraffic,
 )
 from src.application.use_cases.subscription.commands.management import (
@@ -254,6 +255,25 @@ async def on_reset_traffic(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
     await reset_user_traffic(user, target_telegram_id)
+
+
+@inject
+async def on_reissue_subscription(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    reissue_user_subscription: FromDishka[ReissueUserSubscription],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
+
+    if is_double_click(dialog_manager, key="reissue_subscription_confirm", cooldown=10):
+        await reissue_user_subscription(user, target_telegram_id)
+        await notifier.notify_user(user, i18n_key="ntf-devices.reissued")
+        return
+
+    await notifier.notify_user(user, i18n_key="ntf-common.double-click-confirm")
 
 
 @inject

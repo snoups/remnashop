@@ -2,7 +2,7 @@ import hashlib
 import uuid
 from decimal import Decimal
 from hmac import compare_digest
-from typing import Any, Final
+from typing import Any, Final, Union
 from urllib.parse import parse_qs, urlencode
 from uuid import UUID
 
@@ -51,7 +51,7 @@ class RobokassaGateway(BasePaymentGateway):
 
         return PaymentResultDto(id=order_id, url=payment_url)
 
-    async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
+    async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")
 
         webhook_data = await self._parse_request_data(request)

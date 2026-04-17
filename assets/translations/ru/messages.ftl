@@ -51,12 +51,17 @@ msg-main-menu =
 msg-menu-devices =
     <b>📱 Управление устройствами</b>
 
-    Подключено: <b>{ $current_count } / { $max_count }</b>
+    Подключено: <b>{ $current_count } / { $max_count -> 
+    [0] { unlimited }
+    *[LIMIT] { $max_count }
+    }</b>
 
     { $has_devices ->
     [0] { empty }
     *[HAS] Нажмите на устройство чтобы удалить его.
-    Если не хватает устройств — измените подписку.
+    }{ $max_count -> 
+    [0] { space }
+    *[LIMIT] Если не хватает лимита устройств — измените подписку.
     }
 
 msg-menu-devices-confirm-reissue =
@@ -66,15 +71,21 @@ msg-menu-devices-confirm-reissue =
 
     Вам потребуется:
     • Удалить старую подписку из приложения
-    • Добавить новую ссылку из раздела «Подключиться»
+    • Добавить новую ссылку из раздела «{ btn-menu.connect }»
 
     Вы уверены, что хотите сбросить ссылку?
 
 msg-menu-devices-confirm-delete =
-    🗑 Удалить устройство <b>{ $selected_device_label }</b>?
+    🗑 <b>Подтвердите удаление устройства</b>
+
+    <b>{ $device_model }</b>
+    <blockquote>
+    • <b>Платформа</b>: { $platform_icon } { $platform }
+    • <b>Добавлено</b>: { $created_at }
+    </blockquote>
 
 msg-menu-devices-confirm-delete-all =
-    🗑 Удалить <b>все устройства</b>?
+    🗑 <b>Подтвердите удаление всех устройств</b>
 
 msg-menu-invite =
     <b>👥 Пригласить друзей</b>
@@ -356,7 +367,7 @@ msg-broadcast-send = <b>📢 Отправить рассылку ({ audience-typ
 msg-broadcast-content =
     <b>✉️ Содержимое рассылки</b>
 
-    Отправьте любое сообщение: текст, изображение или все вместе (поддерживается HTML).
+    Отправьте сообщение (поддерживается HTML). Можно прикрепить фото, видео или файл. Лимит: до 4096 символов без медиа, до 1024 символов с медиа.
 
 msg-broadcast-buttons = <b>✳️ Кнопки рассылки</b>
 
@@ -385,10 +396,9 @@ msg-user-devices = <b>📱 Устройства пользователя ({ $cur
 msg-user-give-access = <b>🔑 Предоставить доступ к плану</b>
 
 msg-users-search =
-    <b>🔍 Умный поиск</b>
+    <b>🔍 Поиск пользователя</b>
 
     Введите ID пользователя, часть имени или перешлите любое его сообщение.
-    Чтобы найти транзакцию, введите её UUID.
 
 msg-users-search-results =
     <b>🔍 Поиск пользователя</b>
@@ -797,7 +807,7 @@ msg-backup-main =
     }
     • <b>Интервал</b>:  { $interval_hours ->
     [one] каждый
-    *[other] каждые
+    *[OTHER] каждые
     } { $interval_hours } ч.
     • <b>Кол-во файлов</b>: { $max_files }
     </blockquote>
@@ -829,15 +839,23 @@ msg-menu-editor-button =
     <b>🎛 Конфигуратор кнопки</b>
 
     <blockquote>
-    • <b>Статус</b>: { $is_active -> 
+    • <b>Статус</b>: { $is_active ->
         [1] 🟢 Включена
         *[0] 🔴 Выключена
         }
     • <b>Текст</b>: { $text }
     • <b>Доступ</b>: { role }
     • <b>Тип</b>: { button-type }
-    • <b>Данные</b>: { $payload }
-    
+    • <b>Цвет</b>: { $color ->
+        [primary] Основной
+        [success] Зеленый
+        [danger] Красный
+        *[OTHER] Без цвета
+        }
+    { $type ->
+        [TEXT] { empty }
+       *[OTHER] • <b>Данные</b>: { $payload }
+    }
     </blockquote>
 
     Выберите пункт для изменения.
@@ -860,7 +878,17 @@ msg-menu-editor-button-type =
 msg-menu-editor-button-payload =
     <b>📄 Изменить данные кнопки</b>
 
-    Введите данные кнопки (для ссылок использовать https).
+    { $button_type ->
+        [URL] Введите ссылку. Должна начинаться с <code>https://</code>.
+        [COPY] Введите текст, который скопируется в буфер обмена при нажатии.
+        [WEB_APP] Введите ссылку на веб-приложение. Должна начинаться с <code>https://</code>, ссылки <code>t.me</code> не поддерживаются.
+        *[TEXT] Отправьте сообщение (поддерживается HTML). Можно прикрепить фото, видео, файл или стикер. Лимит: до 4096 символов без медиа, до 1024 символов с медиа.
+    }
+
+msg-menu-editor-button-color =
+    <b>🎨 Изменить цвет кнопки</b>
+
+    Выберите цвет кнопки.
 
 
 # Gateways
@@ -1072,7 +1100,7 @@ msg-plan-duration =
 msg-plan-prices =
     <b>💰 Изменить цены длительности ({ $value ->
             [0] { unlimited }
-            *[other] { unit-day }
+            *[OTHER] { unit-day }
         })</b>
 
     Выберите валюту с ценой для изменения.
@@ -1080,7 +1108,7 @@ msg-plan-prices =
 msg-plan-price =
     <b>💰 Изменить цену для длительности ({ $value ->
             [0] { unlimited }
-            *[other] { unit-day }
+            *[OTHER] { unit-day }
         })</b>
 
     Введите новую цену для валюты { $currency }.
@@ -1223,15 +1251,25 @@ msg-subscription-details =
     }
     </blockquote>
 
-msg-subscription-duration = 
+msg-subscription-duration =
     <b>⏳ Выберите длительность</b>
 
     { msg-subscription-details }
+
+    { $plan_is_modified ->
+    [1] <i>ℹ️ Условия плана изменились с момента последней покупки — актуальные данные указаны выше.</i>
+    *[0] { "" }
+    }
 
 msg-subscription-payment-method =
     <b>💳 Выберите способ оплаты</b>
 
     { msg-subscription-details }
+
+    { $plan_is_modified ->
+    [0] { empty }
+    *[MODIFIED] <i>ℹ️ Условия плана изменились с момента последней покупки — актуальные данные указаны выше.</i>
+    }
 
 msg-subscription-confirm =
     <b>🛒 Подтверждение { $purchase_type ->
@@ -1246,6 +1284,11 @@ msg-subscription-confirm =
     [RENEW] <i>⚠️ Текущая подписка будет <u>продлена</u> на выбранный срок.</i>
     [CHANGE] <i>⚠️ Текущая подписка будет <u>заменена</u> выбранной без пересчета оставшегося срока.</i>
     *[OTHER] { empty }
+    }
+
+    { $plan_is_modified ->
+    [0] { empty }
+    *[MODIFIED] <i>ℹ️ Условия плана изменились с момента последней покупки — актуальные данные указаны выше.</i>
     }
 
 msg-subscription-trial =
@@ -1276,10 +1319,7 @@ msg-subscription-failed =
 
 
 # Importer
-msg-importer-main =
-    <b>📥 Импорт пользователей</b>
-
-    Запуск синхронизации: проверка всех пользователей в RemnaWave. Если пользователя нет в базе бота, он будет создан и получит временную подписку. Если данные пользователя отличаются, они будут автоматически обновлены (приоритет на данные из панели).
+msg-importer-main = <b>📥 Импорт пользователей</b>
 
 msg-importer-from-xui =
     <b>📥 Импорт пользователей (3X-UI)</b>
@@ -1315,8 +1355,18 @@ msg-importer-import-completed =
     • <b>Не удалось импортировать</b>: { $failed_count }
     </blockquote>
 
-msg-importer-sync-completed =
-    <b>📥 Синхронизация пользователей завершена</b>
+msg-importer-sync-panel =
+    <b>🌀 Синхронизация: панель → бот</b>
+
+    Проходит по всем пользователям в RemnaWave. Если пользователь отсутствует в боте — создает его и добавляет подписку. Если присутствует — обновляет данные.
+
+msg-importer-sync-bot =
+    <b>🤖 Синхронизация: бот → панель</b>
+
+    Проходит по всем пользователям бота с подпиской. Если пользователь отсутствует в панели — создает его. Если присутствует — обновляет данные.
+
+msg-importer-sync-panel-completed =
+    <b>📥 Синхронизация панель → бот завершена</b>
 
     <b>📃 Информация:</b>
     <blockquote>
@@ -1328,6 +1378,20 @@ msg-importer-sync-completed =
     Обновлены подписки: { $updated}
     
     Пользователи без Telegram ID: { $missing_telegram }
+    Ошибки при синхронизации: { $errors }
+    </blockquote>
+
+msg-importer-sync-bot-completed =
+    <b>🔄 Синхронизация бот → панель завершена</b>
+
+    <b>📃 Информация:</b>
+    <blockquote>
+    Всего пользователей в боте: { $total_bot_users }
+
+    Обновлены в панели: { $updated }
+    Пересозданы в панели: { $recreated }
+    
+    Без подписки (пропущены): { $skipped_no_subscription }
     Ошибки при синхронизации: { $errors }
     </blockquote>
 

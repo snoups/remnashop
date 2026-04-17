@@ -102,3 +102,21 @@ class ReissueSubscription(Interactor[None, None]):
         await self.remnawave.revoke_subscription(current_subscription.user_remna_id)
 
         logger.info(f"{actor.log} Reissued subscription")
+
+
+class ReissueUserSubscription(Interactor[int, None]):
+    required_permission = Permission.USER_EDITOR
+
+    def __init__(self, subscription_dao: SubscriptionDao, remnawave: Remnawave) -> None:
+        self.subscription_dao = subscription_dao
+        self.remnawave = remnawave
+
+    async def _execute(self, actor: UserDto, telegram_id: int) -> None:
+        current_subscription = await self.subscription_dao.get_current(telegram_id)
+
+        if not current_subscription:
+            raise ValueError(f"No active subscription for user '{telegram_id}'")
+
+        await self.remnawave.revoke_subscription(current_subscription.user_remna_id)
+
+        logger.info(f"{actor.log} Reissued subscription for user '{telegram_id}'")

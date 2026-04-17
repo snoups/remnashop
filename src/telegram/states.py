@@ -175,6 +175,7 @@ class RemnashopMenuEditor(StatesGroup):
     AVAILABILITY = State()
     TYPE = State()
     PAYLOAD = State()
+    COLOR = State()
 
 
 class DashboardRemnawave(StatesGroup):
@@ -191,7 +192,10 @@ class DashboardImporter(StatesGroup):
     SYNC = State()
     SQUADS = State()
     IMPORT_COMPLETED = State()
-    SYNC_COMPLETED = State()
+    SYNC_PANEL = State()
+    SYNC_PANEL_COMPLETED = State()
+    SYNC_BOT = State()
+    SYNC_BOT_COMPLETED = State()
 
 
 def state_from_string(state_str: str, sep: Optional[str] = ":") -> Optional[State]:

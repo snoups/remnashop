@@ -1,6 +1,6 @@
 import hmac
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Union
 from uuid import UUID
 
 import orjson
@@ -65,11 +65,8 @@ class PlategaGateway(BasePaymentGateway):
             logger.exception(f"An unexpected error occurred while creating payment: {e}")
             raise
 
-    async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
+    async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")
-
-        if not self._verify_webhook(request):
-            raise PermissionError("Webhook verification failed")
 
         raw_body = await request.body()
         webhook_data = orjson.loads(raw_body)
@@ -89,8 +86,6 @@ class PlategaGateway(BasePaymentGateway):
                 transaction_status = TransactionStatus.COMPLETED
             case "CANCELED":
                 transaction_status = TransactionStatus.CANCELED
-            case "CHARGEBACKED":
-                transaction_status = TransactionStatus.REFUNDED
             case _:
                 raise ValueError(f"Unsupported status: {status}")
 

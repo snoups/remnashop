@@ -7,7 +7,6 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "greenlet>=3.2.4",
     "uvicorn>=0.38.0",
     "fastapi>=0.120.2",
     "python-multipart>=0.0.22",
@@ -22,7 +21,7 @@ dependencies = [
     #
     "asyncpg~=0.30.0",
     "alembic~=1.16.5",
-    "sqlalchemy[mypy]>=2.0.0",
+    "sqlalchemy>=2.0.0",
     "redis~=7.0.0",
     "taskiq[orjson]~=0.12.1",
     "taskiq-redis~=1.2.1",
@@ -44,6 +43,7 @@ repository = "https://github.com/snoups/remnashop"
 [dependency-groups]
 dev = [
     "aiogram-dialog[tools]~=2.5.0",
+    "sqlalchemy[mypy]>=2.0.0",
     "mypy>=1.18.2",
     "ruff>=0.14.2",
     "pytest>=8.4.2",

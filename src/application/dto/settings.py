@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+from aiogram.enums import ButtonStyle
 from pydantic import SecretStr
 
 from src.core.constants import REPOSITORY, T_ME
@@ -8,6 +9,7 @@ from src.core.enums import (
     AccessMode,
     ButtonType,
     Currency,
+    MediaType,
     ReferralAccrualStrategy,
     ReferralLevel,
     ReferralRewardStrategy,
@@ -163,6 +165,9 @@ class MenuButtonDto(TrackableMixin):
     text: str = "btn-test"
     type: ButtonType = ButtonType.URL
     payload: str = REPOSITORY
+    color: Optional[ButtonStyle] = None
+    media_file_id: Optional[str] = None
+    media_type: Optional[MediaType] = None
     is_active: bool = False
     required_role: Role = Role.USER
 
