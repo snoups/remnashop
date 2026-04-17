@@ -32,7 +32,6 @@ dependencies = [
     "msgspec~=0.19.0",
     "cryptography>=46.0.3",
     "qrcode[pil]>=8.2",
-    "email-validator>=2.3.0",
 ]
 
 [tool.uv.sources]

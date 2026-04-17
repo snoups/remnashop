@@ -1,12 +1,12 @@
-from email_validator import EmailNotValidError, validate_email
+import re
+
+_EMAIL_PATTERN = re.compile(
+    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+"
+)
 
 
 def is_valid_email(value: str) -> bool:
     s = value.strip()
-    if not s:
+    if not s or len(s) > 254:
         return False
-    try:
-        validate_email(s, check_deliverability=False)
-    except EmailNotValidError:
-        return False
-    return True
+    return bool(_EMAIL_PATTERN.fullmatch(s))
