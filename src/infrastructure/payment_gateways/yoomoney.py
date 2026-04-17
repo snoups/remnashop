@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Optional
 from urllib.parse import parse_qs
 from uuid import UUID
 
@@ -41,7 +41,9 @@ class YoomoneyGateway(BasePaymentGateway):
 
         self._client = self._make_client(base_url=self.API_BASE)
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
+    async def handle_create_payment(
+        self, amount: Decimal, details: str, receipt_email: Optional[str] = None
+    ) -> PaymentResultDto:
         payment_id = uuid.uuid4()
         payload = await self._create_payment_payload(str(amount), str(payment_id))
         logger.debug(f"Creating payment payload: {payload}")

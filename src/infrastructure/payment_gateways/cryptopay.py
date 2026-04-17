@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import uuid
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Optional
 from uuid import UUID
 
 import orjson
@@ -39,7 +39,9 @@ class CryptoPayGateway(BasePaymentGateway):
             headers={"Crypto-Pay-API-Token": self.data.settings.api_key.get_secret_value()},  # type: ignore[union-attr]
         )
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
+    async def handle_create_payment(
+        self, amount: Decimal, details: str, receipt_email: Optional[str] = None
+    ) -> PaymentResultDto:
         payload = await self._create_payment_payload(str(amount), details)
         logger.debug(f"Creating payment payload: {payload}")
 

@@ -15,7 +15,7 @@ from aiogram_dialog.widgets.kbd import (
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
-from src.core.enums import BannerName, Currency
+from src.core.enums import BannerName, Currency, PaymentGatewayType
 from src.telegram.keyboards import main_menu_button
 from src.telegram.states import DashboardRemnashop, RemnashopGateways
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
@@ -35,6 +35,7 @@ from .handlers import (
     on_gateway_move,
     on_gateway_select,
     on_gateway_test,
+    on_yookassa_request_email_toggle,
 )
 
 gateways = Window(
@@ -109,6 +110,17 @@ gateway_settings = Window(
             on_click=on_field_select,
         ),
         width=2,
+    ),
+    Row(
+        Button(
+            text=I18nFormat(
+                "btn-gateway.yookassa-request-email",
+                request_email=F["request_email"],
+            ),
+            id="yookassa_request_email",
+            on_click=on_yookassa_request_email_toggle,
+        ),
+        when=F["gateway_type"] == PaymentGatewayType.YOOKASSA,
     ),
     Row(
         CopyText(

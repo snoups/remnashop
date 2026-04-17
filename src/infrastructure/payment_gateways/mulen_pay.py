@@ -2,7 +2,7 @@ import hashlib
 import uuid
 from decimal import Decimal
 from hmac import compare_digest
-from typing import Any, Final
+from typing import Any, Final, Optional
 from uuid import UUID
 
 import orjson
@@ -44,7 +44,9 @@ class MulenPayGateway(BasePaymentGateway):
             },
         )
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
+    async def handle_create_payment(
+        self, amount: Decimal, details: str, receipt_email: Optional[str] = None
+    ) -> PaymentResultDto:
         order_uuid = str(uuid.uuid4())
         payload = self._create_payment_payload(amount, details, order_uuid)
         logger.debug(f"Creating payment payload: {payload}")

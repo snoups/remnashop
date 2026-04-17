@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir uv && uv sync --frozen
 ENV UVICORN_RELOAD_ENABLED=true
 ENV PATH="/opt/remnashop/.venv/bin:$PATH"
 
-RUN chmod +x ./docker-entrypoint.sh
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh && \
+    chmod +x ./docker-entrypoint.sh && \
+    ls -la ./docker-entrypoint.sh
 
-CMD ["./docker-entrypoint.sh"]
+CMD ["/bin/sh", "./docker-entrypoint.sh"]

@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Optional
 from uuid import UUID
 
 import orjson
@@ -62,8 +62,13 @@ class YookassaGateway(BasePaymentGateway):
             ),
         )
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
-        payload = await self._create_payment_payload(str(amount), details)
+    async def handle_create_payment(
+        self,
+        amount: Decimal,
+        details: str,
+        receipt_email: Optional[str] = None,
+    ) -> PaymentResultDto:
+        payload = await self._create_payment_payload(str(amount), details, receipt_email=receipt_email)
         headers = {"Idempotence-Key": str(uuid.uuid4())}
         logger.debug(f"Creating payment payload: {payload}")
 
@@ -130,25 +135,36 @@ class YookassaGateway(BasePaymentGateway):
 
         return payment_id, transaction_status
 
-    async def _create_payment_payload(self, amount: str, details: str) -> dict[str, Any]:
+    async def _create_payment_payload(
+        self,
+        amount: str,
+        details: str,
+        *,
+        receipt_email: Optional[str] = None,
+    ) -> dict[str, Any]:
+        settings = self.data.settings
+        receipt: dict[str, Any] = {
+            "items": [
+                {
+                    "description": details,
+                    "quantity": "1.00",
+                    "amount": {"value": amount, "currency": self.data.currency},
+                    "vat_code": settings.vat_code,  # type: ignore[union-attr]
+                    "payment_subject": self.PAYMENT_SUBJECT,
+                    "payment_mode": self.PAYMENT_MODE,
+                }
+            ],
+        }
+        if receipt_email is not None:
+            receipt["customer"] = {"email": receipt_email}
+        elif not settings.request_email:
+            receipt["customer"] = {"email": settings.customer}  # type: ignore[union-attr]
         return {
             "amount": {"value": amount, "currency": self.data.currency},
             "confirmation": {"type": "redirect", "return_url": await self._get_bot_redirect_url()},
             "capture": True,
             "description": details,
-            "receipt": {
-                "customer": {"email": self.data.settings.customer},  # type: ignore[union-attr]
-                "items": [
-                    {
-                        "description": details,
-                        "quantity": "1.00",
-                        "amount": {"value": amount, "currency": self.data.currency},
-                        "vat_code": self.data.settings.vat_code,  # type: ignore[union-attr]
-                        "payment_subject": self.PAYMENT_SUBJECT,
-                        "payment_mode": self.PAYMENT_MODE,
-                    }
-                ],
-            },
+            "receipt": receipt,
         }
 
     def _get_payment_data(self, data: dict[str, Any]) -> PaymentResultDto:
