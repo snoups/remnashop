@@ -1,10 +1,10 @@
-from typing import Final, Optional
+from typing import Any, Callable, Final, Optional
 
 from aiogram.enums import ButtonStyle
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram_dialog import StartMode
-from aiogram_dialog.widgets.kbd import CopyText, Group, ListGroup, Row, Start, Url, WebApp
+from aiogram_dialog.widgets.kbd import Button, CopyText, Group, ListGroup, Row, Start, Url, WebApp
 from aiogram_dialog.widgets.style import Style
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
@@ -18,24 +18,60 @@ CALLBACK_CHANNEL_CONFIRM: Final[str] = "channel_confirm"
 CALLBACK_RULES_ACCEPT: Final[str] = "rules_accept"
 
 
-def build_buttons_row(row: int) -> Group:
+def _type_and_color(btn_type: ButtonType, color: Optional[ButtonStyle]) -> Any:
+    base = F["item"].type == btn_type
+    return base & (F["item"].color == color)
+
+
+def _style_kwargs(c: Optional[ButtonStyle]) -> dict[str, Any]:
+    return {"style": Style(c)} if c is not None else {}
+
+
+def build_buttons_row(row: int, text_on_click: Optional[Callable[..., Any]] = None) -> Group:
+    url_widgets = [
+        Url(
+            text=Format("{item.text}"),
+            url=Format("{item.payload}"),
+            when=_type_and_color(ButtonType.URL, c),
+            **_style_kwargs(c),
+        )
+        for c in (None, *ButtonStyle)
+    ]
+    copy_widgets = [
+        CopyText(
+            text=Format("{item.text}"),
+            copy_text=Format("{item.payload}"),
+            when=_type_and_color(ButtonType.COPY, c),
+            **_style_kwargs(c),
+        )
+        for c in (None, *ButtonStyle)
+    ]
+    webapp_widgets = [
+        WebApp(
+            text=Format("{item.text}"),
+            url=Format("{item.payload}"),
+            when=_type_and_color(ButtonType.WEB_APP, c),
+            **_style_kwargs(c),
+        )
+        for c in (None, *ButtonStyle)
+    ]
+    text_widgets = [
+        Button(
+            text=Format("{item.text}"),
+            id=f"text_msg_{row}_{c or 'default'}",
+            on_click=text_on_click,
+            when=_type_and_color(ButtonType.TEXT, c),
+            **_style_kwargs(c),
+        )
+        for c in (None, *ButtonStyle)
+    ]
+
     return Group(
         ListGroup(
-            Url(
-                text=Format("{item.text}"),
-                url=Format("{item.payload}"),
-                when=F["item"].type == ButtonType.URL,
-            ),
-            CopyText(
-                text=Format("{item.text}"),
-                copy_text=Format("{item.payload}"),
-                when=F["item"].type == ButtonType.COPY,
-            ),
-            WebApp(
-                text=Format("{item.text}"),
-                url=Format("{item.payload}"),
-                when=F["item"].type == ButtonType.WEB_APP,
-            ),
+            *url_widgets,
+            *copy_widgets,
+            *webapp_widgets,
+            *text_widgets,
             id=f"custom_buttons_row_{row}",
             items=f"row_{row}_buttons",
             item_id_getter=lambda item: item.index,

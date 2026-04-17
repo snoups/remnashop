@@ -139,6 +139,98 @@ class SyncRemnaUser(Interactor[SyncRemnaUserDto, bool]):
         return bool(subscription.changed_data)
 
 
+class SyncAllUsersFromBot(Interactor[None, dict[str, int]]):
+    required_permission = None
+
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        user_dao: UserDao,
+        subscription_dao: SubscriptionDao,
+        remnawave: Remnawave,
+        sync_remna_user: SyncRemnaUser,
+    ) -> None:
+        self.uow = uow
+        self.user_dao = user_dao
+        self.subscription_dao = subscription_dao
+        self.remnawave = remnawave
+        self.sync_remna_user = sync_remna_user
+
+    async def _execute(self, actor: UserDto, data: None) -> dict[str, int]:
+        bot_users = await self._fetch_all_bot_users()
+
+        logger.info(f"Total users in bot for reverse sync: '{len(bot_users)}'")
+
+        updated = 0
+        recreated = 0
+        skipped = 0
+        errors = 0
+
+        for user in bot_users:
+            try:
+                subscription = await self.subscription_dao.get_current(user.telegram_id)
+
+                if not subscription:
+                    skipped += 1
+                    continue
+
+                remna_user = await self.remnawave.get_user_by_uuid(subscription.user_remna_id)
+
+                if remna_user:
+                    updated_user = await self.remnawave.update_user(
+                        user=user,
+                        uuid=subscription.user_remna_id,
+                        subscription=subscription,
+                    )
+                    if updated_user.subscription_url != subscription.url:
+                        subscription.url = updated_user.subscription_url
+                        await self.subscription_dao.update(subscription)
+                        await self.uow.commit()
+                    updated += 1
+                else:
+                    created_user = await self.remnawave.create_user(
+                        user=user,
+                        subscription=subscription,
+                    )
+                    await self.sync_remna_user.system(
+                        SyncRemnaUserDto(created_user, creating=False)
+                    )
+                    recreated += 1
+
+            except Exception as exception:
+                logger.exception(
+                    f"Error reverse-syncing bot user '{user.telegram_id}': {exception}"
+                )
+                errors += 1
+
+        result = {
+            "total_bot_users": len(bot_users),
+            "updated": updated,
+            "recreated": recreated,
+            "skipped_no_subscription": skipped,
+            "errors": errors,
+        }
+
+        logger.info(f"Reverse sync (bot → panel) summary: '{result}'")
+        return result
+
+    async def _fetch_all_bot_users(self) -> list[UserDto]:
+        all_users: list[UserDto] = []
+        limit = 500
+        offset = 0
+
+        while True:
+            batch = await self.user_dao.get_all(limit=limit, offset=offset)
+            if not batch:
+                break
+            all_users.extend(batch)
+            if len(batch) < limit:
+                break
+            offset += len(batch)
+
+        return all_users
+
+
 class SyncAllUsersFromPanel(Interactor[None, dict[str, int]]):
     required_permission = None
 

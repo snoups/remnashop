@@ -99,7 +99,10 @@ async def on_device_delete_request(
         raise ValueError(f"Device not found for hwid '{selected_short_hwid}'")
 
     dialog_manager.dialog_data["selected_short_hwid"] = selected_short_hwid
-    dialog_manager.dialog_data["selected_device_label"] = device["label"]
+    dialog_manager.dialog_data["selected_device_model"] = device["device_model"] or ""
+    dialog_manager.dialog_data["selected_platform"] = device["platform"] or ""
+    dialog_manager.dialog_data["selected_platform_icon"] = device["platform_icon"]
+    dialog_manager.dialog_data["selected_created_at"] = device["created_at"]
     await dialog_manager.switch_to(state=MainMenu.DEVICE_CONFIRM_DELETE)
 
 
@@ -209,6 +212,37 @@ async def on_show_qr(
             i18n_key="",
             media=MediaDescriptorDto(kind="bytes", value=referral_qr, filename="qr.png"),
             media_type=MediaType.PHOTO,
+            disable_default_markup=False,
+            delete_after=None,
+        ),
+    )
+
+
+@inject
+async def on_text_button_click(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    settings_dao: FromDishka[SettingsDao],
+    notifier: FromDishka[Notifier],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    button_index = int(dialog_manager.item_id)  # type: ignore[attr-defined]
+    settings = await settings_dao.get()
+    button = next((b for b in settings.menu.buttons if b.index == button_index), None)
+
+    if not button or not button.payload:
+        return
+
+    await notifier.notify_user(
+        user=user,
+        payload=MessagePayloadDto(
+            i18n_key="raw-message",
+            i18n_kwargs={"content": button.payload},
+            media=MediaDescriptorDto(kind="file_id", value=button.media_file_id)
+            if button.media_file_id
+            else None,
+            media_type=button.media_type,
             disable_default_markup=False,
             delete_after=None,
         ),

@@ -6,7 +6,13 @@ from dataclasses import asdict
 from typing import Any, Callable, Optional, Sequence, Union
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError
+from aiogram.exceptions import (
+    TelegramBadRequest,
+    TelegramForbiddenError,
+    TelegramMigrateToChat,
+    TelegramNotFound,
+    TelegramUnauthorizedError,
+)
 from aiogram.types import (
     BufferedInputFile,
     FSInputFile,
@@ -199,7 +205,13 @@ class NotificationService(Notifier):
             else:
                 logger.error(f"Payload must contain text or media for route {chat_id}:{thread_id}")
 
-        except TelegramAPIError as e:
+        except (
+            TelegramForbiddenError,
+            TelegramBadRequest,
+            TelegramNotFound,
+            TelegramMigrateToChat,
+            TelegramUnauthorizedError,
+        ) as e:
             logger.error(f"Failed to send system notification to route {chat_id}:{thread_id}: {e}")
             await self.event_publisher.publish(
                 NotificationErrorEvent(
@@ -248,7 +260,7 @@ class NotificationService(Notifier):
     ) -> Optional[Message]:
         render_kwargs = payload.i18n_kwargs.copy()
 
-        if isinstance(user, UserDto) and payload.i18n_key == "ntf-broadcast.message":
+        if isinstance(user, UserDto) and payload.i18n_key == "raw-message":
             user_data = asdict(user)
             render_kwargs = {**user_data, **payload.i18n_kwargs}
 
@@ -335,7 +347,7 @@ class NotificationService(Notifier):
         i18n = self.translator_hub.get_translator_by_locale(locale)
         translated_text = i18n.get(i18n_key, **i18n_kwargs)
 
-        if i18n_key == "ntf-broadcast.message":
+        if i18n_key == "raw-message":
             if "$" in translated_text and i18n_kwargs:
                 template = string.Template(translated_text)
                 return template.safe_substitute(i18n_kwargs)

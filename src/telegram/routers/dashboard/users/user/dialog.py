@@ -66,6 +66,7 @@ from .handlers import (
     on_points_select,
     on_purchase_discount_input,
     on_purchase_discount_select,
+    on_reissue_subscription,
     on_reset_traffic,
     on_role_select,
     on_send,
@@ -232,6 +233,13 @@ subscription = Window(
             text=I18nFormat("btn-user.subscription-delete"),
             id="delete",
             on_click=on_subscription_delete,
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-user.subscription-reissue"),
+            id="reissue",
+            on_click=on_reissue_subscription,
         ),
     ),
     Row(
@@ -427,7 +435,7 @@ devices_list = Window(
         Row(
             CopyText(
                 text=Format("{item[platform]} - {item[device_model]}"),
-                copy_text=Format("{item[user_agent]}"),
+                copy_text=Format("{item[hwid]}"),
             ),
             Button(
                 text=Format("❌"),

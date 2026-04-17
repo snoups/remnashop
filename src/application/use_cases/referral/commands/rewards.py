@@ -219,6 +219,8 @@ class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
                     )
                 )
 
+                await self.uow.commit()
+
             logger.info(
                 f"Issued '{reward_type}' reward '{reward_amount}' for referrer "
                 f"'{referrer.telegram_id}' (level '{level.name}')"

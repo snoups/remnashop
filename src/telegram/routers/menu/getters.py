@@ -132,6 +132,7 @@ def get_platform_icon(platform: str | None) -> str:
 async def devices_getter(
     dialog_manager: DialogManager,
     user: UserDto,
+    i18n: FromDishka[TranslatorRunner],
     subscription_dao: FromDishka[SubscriptionDao],
     remnawave: FromDishka[Remnawave],
     **kwargs: Any,
@@ -147,11 +148,18 @@ async def devices_getter(
         {
             "short_hwid": device.hwid[:32],
             "hwid": device.hwid,
-            "platform": device.platform,
-            "device_model": device.device_model,
+            "platform": device.platform or False,
+            "device_model": device.device_model or False,
             "user_agent": device.user_agent,
-            "label": f"{get_platform_icon(device.platform)} "
-            f"{device.platform} ({device.device_model})",
+            "platform_icon": get_platform_icon(device.platform),
+            "created_at": device.created_at.strftime("%d.%m.%Y"),
+            "label": i18n.get(
+                "btn-devices.item",
+                platform_icon=get_platform_icon(device.platform),
+                platform=device.platform or False,
+                device_model=device.device_model or False,
+                created_at=device.created_at.strftime("%d.%m.%Y"),
+            ),
         }
         for device in devices
     ]
@@ -160,7 +168,7 @@ async def devices_getter(
 
     return {
         "current_count": len(devices),
-        "max_count": i18n_format_device_limit(current_subscription.device_limit),
+        "max_count": current_subscription.device_limit,
         "devices": formatted_devices,
         "devices_empty": len(devices) == 0,
         "has_devices": len(devices) > 0,
@@ -173,8 +181,12 @@ async def device_confirm_delete_getter(
     user: UserDto,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    selected_label = dialog_manager.dialog_data.get("selected_device_label", "")
-    return {"selected_device_label": selected_label}
+    return {
+        "device_model": dialog_manager.dialog_data.get("selected_device_model", ""),
+        "platform": dialog_manager.dialog_data.get("selected_platform", ""),
+        "platform_icon": dialog_manager.dialog_data.get("selected_platform_icon", ""),
+        "created_at": dialog_manager.dialog_data.get("selected_created_at", ""),
+    }
 
 
 @inject

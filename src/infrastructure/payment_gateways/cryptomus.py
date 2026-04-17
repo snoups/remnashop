@@ -4,7 +4,7 @@ import json
 import uuid
 from decimal import Decimal
 from hmac import compare_digest
-from typing import Any
+from typing import Any, Union
 from uuid import UUID
 
 import orjson
@@ -73,19 +73,19 @@ class CryptomusGateway(BasePaymentGateway):
             logger.exception(f"An unexpected error occurred while creating payment: {e}")
             raise
 
-    async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
+    async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")
         webhook_data = await self._get_webhook_data(request)
 
         if not self._verify_webhook(request, webhook_data):
             raise PermissionError("Webhook verification failed")
 
+        status = webhook_data.get("status")
         payment_id_str = webhook_data.get("order_id")
 
         if not payment_id_str:
             raise ValueError("Required field 'order_id' is missing")
 
-        status = webhook_data.get("status")
         payment_id = UUID(payment_id_str)
 
         match status:
@@ -93,6 +93,11 @@ class CryptomusGateway(BasePaymentGateway):
                 transaction_status = TransactionStatus.COMPLETED
             case "cancel":
                 transaction_status = TransactionStatus.CANCELED
+            case "confirm_check":
+                logger.debug(
+                    f"Received confirm_check webhook for {self.__class__.__name__}, skipping"
+                )
+                return None
             case _:
                 raise ValueError(f"Unsupported status: {status}")
 

@@ -14,6 +14,7 @@ from dishka import AsyncContainer
 from loguru import logger
 
 from src.application.common import EventPublisher, Notifier
+from src.application.common.dao import UserDao
 from src.application.dto import MessagePayloadDto, TempUserDto
 from src.application.events import ErrorEvent
 from src.application.services import BotService
@@ -54,6 +55,7 @@ class ErrorMiddleware(EventTypedMiddleware):
         event_publisher = await container.get(EventPublisher)
         notifier = await container.get(Notifier)
         redirect_menu = await container.get(RedirectMenu)
+        user_dao = await container.get(UserDao)
 
         is_context_loss = isinstance(
             event.exception,
@@ -93,7 +95,16 @@ class ErrorMiddleware(EventTypedMiddleware):
                 if not is_start_command:
                     await redirect_menu.system(aiogram_user.id)
 
-                if not is_context_loss:
+                if is_context_loss:
+                    user = await user_dao.get_by_telegram_id(aiogram_user.id)
+                    if user:
+                        i18n_key = (
+                            "ntf-error.lost-context"
+                            if user.is_privileged
+                            else "ntf-error.lost-context-restart"
+                        )
+                        await notifier.notify_user(user, i18n_key=i18n_key)
+                else:
                     await notifier.notify_user(
                         user=TempUserDto.from_aiogram(aiogram_user),
                         payload=MessagePayloadDto(

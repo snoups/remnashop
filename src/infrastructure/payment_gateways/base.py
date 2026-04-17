@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from ipaddress import ip_address, ip_network
-from typing import Optional, Protocol
+from typing import Optional, Protocol, Union
 from uuid import UUID
 
 import orjson
@@ -41,7 +41,10 @@ class BasePaymentGateway(ABC):
     async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto: ...
 
     @abstractmethod
-    async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]: ...
+    async def handle_webhook(
+        self,
+        request: Request,
+    ) -> Union[tuple[UUID, TransactionStatus], None]: ...
 
     async def build_webhook_response(self, request: Request) -> Response:
         return Response(status_code=200)

@@ -1,4 +1,7 @@
+from typing import Optional
+
 from adaptix import Retort
+from aiogram.enums import ButtonStyle
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
@@ -11,13 +14,17 @@ from src.application.common import Notifier
 from src.application.dto import MenuButtonDto, UserDto
 from src.application.use_cases.misc.commands.menu_editor import (
     ConfirmMenuButtonChanges,
+    UpdateMenuButtonColor,
+    UpdateMenuButtonColorDto,
+    UpdateMenuButtonMedia,
+    UpdateMenuButtonMediaDto,
     UpdateMenuButtonPayload,
     UpdateMenuButtonPayloadDto,
     UpdateMenuButtonText,
     UpdateMenuButtonTextDto,
 )
 from src.core.constants import USER_KEY
-from src.core.enums import ButtonType, Role
+from src.core.enums import ButtonType, MediaType, Role
 from src.core.exceptions import MenuEditorInvalidPayloadError
 from src.telegram.states import RemnashopMenuEditor
 
@@ -132,30 +139,98 @@ async def on_type_select(
 
 
 @inject
-async def on_payload_input(
+async def on_payload_input(  # noqa: C901
     message: Message,
     widget: MessageInput,
     dialog_manager: DialogManager,
     retort: FromDishka[Retort],
     notifier: FromDishka[Notifier],
     update_menu_button_payload: FromDishka[UpdateMenuButtonPayload],
+    update_menu_button_media: FromDishka[UpdateMenuButtonMedia],
 ) -> None:
     dialog_manager.show_mode = ShowMode.EDIT
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
 
-    if message.text is None:
-        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
-        return
+    button = dialog_manager.dialog_data["button"]
+    button = retort.load(button, MenuButtonDto)
 
+    if button.type == ButtonType.TEXT:
+        media_type: Optional[MediaType] = None
+        file_id: Optional[str] = None
+
+        if message.photo:
+            media_type = MediaType.PHOTO
+            file_id = message.photo[-1].file_id
+        elif message.video:
+            media_type = MediaType.VIDEO
+            file_id = message.video.file_id
+        elif message.document:
+            media_type = MediaType.DOCUMENT
+            file_id = message.document.file_id
+        elif message.sticker:
+            media_type = MediaType.DOCUMENT
+            file_id = message.sticker.file_id
+
+        text = message.html_text or ""
+
+        if not text and not file_id:
+            await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+            return
+
+        button = await update_menu_button_media(
+            user, UpdateMenuButtonMediaDto(button, file_id, media_type)
+        )
+
+        if text:
+            try:
+                button = await update_menu_button_payload(
+                    user, UpdateMenuButtonPayloadDto(button, text)
+                )
+            except ValueError:
+                await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+                return
+    else:
+        if message.text is None:
+            await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+            return
+
+        try:
+            button = await update_menu_button_payload(
+                user, UpdateMenuButtonPayloadDto(button, message.text)
+            )
+        except ValueError:
+            await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
+            return
+
+    dialog_manager.dialog_data["button"] = retort.dump(button)
+    await dialog_manager.switch_to(RemnashopMenuEditor.BUTTON)
+
+
+_COLOR_MAP: dict[str, Optional[ButtonStyle]] = {
+    "color_default": None,
+    "color_primary": ButtonStyle.PRIMARY,
+    "color_success": ButtonStyle.SUCCESS,
+    "color_danger": ButtonStyle.DANGER,
+}
+
+
+@inject
+async def on_color_select(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    retort: FromDishka[Retort],
+    update_menu_button_color: FromDishka[UpdateMenuButtonColor],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
     button = dialog_manager.dialog_data["button"]
     button = retort.load(button, MenuButtonDto)
 
     try:
-        button = await update_menu_button_payload(
-            user, UpdateMenuButtonPayloadDto(button, message.text)
+        button = await update_menu_button_color(
+            user, UpdateMenuButtonColorDto(button, _COLOR_MAP[widget.widget_id or ""])
         )
     except ValueError:
-        await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
     dialog_manager.dialog_data["button"] = retort.dump(button)
@@ -179,6 +254,7 @@ async def on_confirm(
         await confirm_menu_button_changes(user, button)
     except MenuEditorInvalidPayloadError:
         await notifier.notify_user(user, i18n_key="ntf-menu-editor.invalid-payload")
+        return
 
     await notifier.notify_user(user, i18n_key="ntf-menu-editor.button-saved")
     await dialog_manager.reset_stack()

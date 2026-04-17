@@ -135,7 +135,7 @@ class RemnaWebhookService:
                     traffic_used=i18n_format_bytes_to_unit(
                         remna_user.used_traffic_bytes, min_unit=ByteUnitKey.MEGABYTE
                     ),
-                    traffic_limit=i18n_format_bytes_to_unit(remna_user.traffic_limit_bytes),
+                    traffic_limit=i18n_format_bytes_to_unit(remna_user.traffic_limit_bytes or None),
                     device_limit=i18n_format_device_limit(remna_user.hwid_device_limit),
                     expire_time=i18n_format_expire_time(remna_user.expire_at),
                 )
@@ -326,7 +326,7 @@ class RemnaWebhookService:
                     traffic_used=i18n_format_bytes_to_unit(
                         remna_user.used_traffic_bytes, min_unit=ByteUnitKey.MEGABYTE
                     ),
-                    traffic_limit=i18n_format_bytes_to_unit(remna_user.traffic_limit_bytes),
+                    traffic_limit=i18n_format_bytes_to_unit(remna_user.traffic_limit_bytes or None),
                     device_limit=i18n_format_device_limit(remna_user.hwid_device_limit),
                     expire_time=i18n_format_expire_time(remna_user.expire_at),
                 )

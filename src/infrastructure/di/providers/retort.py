@@ -43,6 +43,8 @@ from src.application.dto.payment_gateway import (
     YooKassaGatewaySettingsDto,
     YooMoneyGatewaySettingsDto,
 )
+from aiogram.enums import ButtonStyle
+
 from src.core.enums import MediaType, PaymentGatewayType, ReferralLevel, Role
 from src.core.types import AnyKeyboard
 from src.infrastructure.database.models import PaymentGateway
@@ -73,6 +75,10 @@ class RetortProvider(Provider):
                 ),
                 dumper(OriginSubclassLSC(StorageKey), serialize_storage_key),
                 #
+                loader(
+                    P[MenuButtonDto].color,
+                    lambda x: ButtonStyle(x) if x else None,
+                ),
                 loader(SecretStr, SecretStr),
                 dumper(
                     SecretStr, lambda v: v.get_secret_value() if isinstance(v, SecretStr) else v

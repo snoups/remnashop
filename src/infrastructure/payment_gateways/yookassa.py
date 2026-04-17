@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Union
 from uuid import UUID
 
 import orjson
@@ -104,7 +104,7 @@ class YookassaGateway(BasePaymentGateway):
         )
         raise last_connect_error  # type: ignore[misc]
 
-    async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
+    async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug("Received YooKassa webhook request")
 
         if not self._verify_webhook(request):

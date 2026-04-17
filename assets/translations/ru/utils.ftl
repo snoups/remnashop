@@ -5,6 +5,7 @@ msg-test = Сообщение
 development = В разработке!
 test-payment = Тестовый платеж
 unknown = —
+raw-message = { $content }
 
 development-promocode = Промокоды еще не реализованы, для мотивации и ускорения разработки можете закинуть монет.
 
@@ -156,8 +157,8 @@ frg-node-info =
     • <b>Название</b>: { $country } { $name }
     • <b>Адрес</b>: <code>{ $address }{ $port ->
     [0] { space }
-    *[HAS] :{ $port }</code>
-    }
+    *[HAS] :{ $port }
+    }</code>
     • <b>Трафик</b>: { $traffic_used } / { $traffic_limit }
     { $last_status_message -> 
     [0] { empty }
@@ -220,17 +221,17 @@ unlimited = ∞
 
 unit-unlimited = { $value ->
     [0] { unlimited }
-    *[other] { $value }
+    *[OTHER] { $value }
 }
 
 unit-device = { $value -> 
     [0] { unlimited }
-    *[other] { $value } 
+    *[OTHER] { $value } 
 } { $value ->
     [0] { space }
     [one] устройство
     [few] устройства
-    *[other] устройств
+    *[OTHER] устройств
 }
 
 unit-byte = { $value } Б
@@ -242,37 +243,37 @@ unit-terabyte = { $value } ТБ
 unit-second = { $value } { $value ->
     [one] секунда
     [few] секунды
-    *[other] секунд
+    *[OTHER] секунд
 }
 
 unit-minute = { $value } { $value ->
     [one] минута
     [few] минуты
-    *[other] минут
+    *[OTHER] минут
 }
 
 unit-hour = { $value } { $value ->
     [one] час
     [few] часа
-    *[other] часов
+    *[OTHER] часов
 }
 
 unit-day = { $value } { $value ->
     [one] день
     [few] дня
-    *[other] дней
+    *[OTHER] дней
 }
 
 unit-month = { $value } { $value ->
     [one] месяц
     [few] месяца
-    *[other] месяцев
+    *[OTHER] месяцев
 }
 
 unit-year = { $value } { $value ->
     [one] год
     [few] года
-    *[other] лет
+    *[OTHER] лет
 }
 
 
@@ -403,6 +404,7 @@ button-type = { $button_type ->
     [URL] Открыть ссылку
     [COPY] Скопировать текст
     [WEB_APP] Открыть веб-приложение
+    [TEXT] Отправить сообщение
     *[OTHER] { $button_type }
 }
 

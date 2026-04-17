@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from aiogram import Dispatcher
 from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
@@ -21,6 +23,8 @@ def get_dispatcher(config: AppConfig) -> Dispatcher:
         ),
         json_loads=json.decode,
         json_dumps=json.encode,
+        state_ttl=timedelta(days=7),
+        data_ttl=timedelta(days=7),
     )
 
     dispatcher = Dispatcher(storage=storage, config=config)
@@ -43,3 +47,8 @@ def setup_dispatcher(dispatcher: Dispatcher) -> None:
     setup_global_filters(dispatcher)
     setup_routers(dispatcher)
     logger.info("Dispatcher layers have been configured")
+
+
+def setup_worker_dispatcher(dispatcher: Dispatcher) -> None:
+    setup_routers(dispatcher)
+    logger.info("Worker dispatcher routers have been configured")

@@ -5,8 +5,6 @@ from typing import Any, Optional, cast
 
 from aiogram.types import Message, TelegramObject
 from loguru import logger
-from PIL import Image
-from qrcode import ERROR_CORRECT_H, QRCode  # type: ignore[attr-defined]
 
 from src.application.common import Interactor
 from src.application.common.dao import UserDao
@@ -75,6 +73,9 @@ class GenerateReferralQr(Interactor[str, str]):
     required_permission = None
 
     async def _execute(self, actor: UserDto, url: str) -> str:
+        from PIL import Image  # noqa: PLC0415
+        from qrcode import ERROR_CORRECT_H, QRCode  # type: ignore[attr-defined]  # noqa: PLC0415
+
         qr: Any = QRCode(
             version=1,
             error_correction=ERROR_CORRECT_H,

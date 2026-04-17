@@ -27,7 +27,7 @@ from src.application.use_cases.broadcast.queries.audience import (
     GetBroadcastAudienceCount,
     GetBroadcastAudienceCountDto,
 )
-from src.core.constants import USER_KEY
+from src.core.constants import TEXT_MAX_LENGTH, TEXT_MEDIA_MAX_LENGTH, USER_KEY
 from src.core.enums import BroadcastAudience, MediaType
 from src.telegram.keyboards import CLOSE_BUTTON_ID, get_broadcast_buttons
 from src.telegram.states import DashboardBroadcast
@@ -45,7 +45,7 @@ def _update_payload(
         retort.load(raw_payload, MessagePayloadDto)
         if raw_payload
         else MessagePayloadDto(
-            i18n_key="ntf-broadcast.message",
+            i18n_key="raw-message",
             disable_default_markup=False,
             delete_after=None,
         )
@@ -176,7 +176,7 @@ async def on_content_input(
         await notifier.notify_user(user, i18n_key="ntf-common.invalid-value")
         return
 
-    max_length = 1024 if file_id else 4096
+    max_length = TEXT_MEDIA_MAX_LENGTH if file_id else TEXT_MAX_LENGTH
     if message.html_text and len(message.html_text) > max_length:
         logger.warning(
             f"{user.log} Message text exceeds limit: '{len(message.html_text)}' > '{max_length}'"

@@ -55,7 +55,15 @@ async def import_completed_getter(
     return completed
 
 
-async def sync_completed_getter(
+async def sync_panel_completed_getter(
+    dialog_manager: DialogManager,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    completed: dict = dialog_manager.dialog_data["completed"]
+    return completed
+
+
+async def sync_bot_completed_getter(
     dialog_manager: DialogManager,
     **kwargs: Any,
 ) -> dict[str, Any]:

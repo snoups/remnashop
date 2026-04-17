@@ -1,6 +1,5 @@
 from typing import Final
 
-import httpx
 import orjson
 from adaptix import Retort
 from dishka.integrations.taskiq import FromDishka, inject
@@ -34,6 +33,8 @@ async def check_bot_update(
     if not local_version:
         logger.warning("Local version tag is missing in config, skipping update check")
         return
+
+    import httpx  # noqa: PLC0415
 
     try:
         async with httpx.AsyncClient(

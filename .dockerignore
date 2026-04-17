@@ -8,3 +8,32 @@ __pycache__
 .env.*
 .idea
 .vscode
+
+# Logs & runtime data
+logs/
+backups/
+
+# Tests
+tests/
+
+# Infrastructure configs (not needed inside container)
+traefik/
+.github/
+docker-compose*.yml
+Makefile
+
+# Meta files
+.gitignore
+.dockerignore
+*.md
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor & local tools
+.claude/
+.history

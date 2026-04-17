@@ -63,3 +63,6 @@ RECENT_ACTIVITY_MAX_COUNT: Final[int] = 25
 BATCH_SIZE_10: Final[int] = 10
 BATCH_SIZE_20: Final[int] = 20
 BATCH_DELAY: Final[int] = 1
+
+TEXT_MAX_LENGTH: Final[int] = 4096
+TEXT_MEDIA_MAX_LENGTH: Final[int] = 1024

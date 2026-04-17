@@ -188,6 +188,12 @@ class PurchaseSubscription(Interactor[PurchaseSubscriptionDto, None]):
                         new_expire = base_date + timedelta(days=duration)
 
                     subscription.expire_at = new_expire
+                    subscription.device_limit = plan.device_limit
+                    subscription.traffic_limit = plan.traffic_limit
+                    subscription.traffic_limit_strategy = plan.traffic_limit_strategy
+                    subscription.tag = plan.tag
+                    subscription.internal_squads = plan.internal_squads
+                    subscription.external_squad = plan.external_squad
 
                     updated_user = await self.remnawave.update_user(
                         user=user,

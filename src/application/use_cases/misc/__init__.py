@@ -5,6 +5,8 @@ from src.application.common import Interactor
 from .commands.maintenance import CancelOldTransactions, ClearOldBroadcasts
 from .commands.menu_editor import (
     ConfirmMenuButtonChanges,
+    UpdateMenuButtonColor,
+    UpdateMenuButtonMedia,
     UpdateMenuButtonPayload,
     UpdateMenuButtonText,
 )
@@ -16,6 +18,8 @@ MISC_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     GetLogs,
     UpdateMenuButtonText,
     UpdateMenuButtonPayload,
+    UpdateMenuButtonColor,
+    UpdateMenuButtonMedia,
     ConfirmMenuButtonChanges,
     GetMenuData,
     RedirectMenu,

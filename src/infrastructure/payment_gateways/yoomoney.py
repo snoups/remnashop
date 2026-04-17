@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Union
 from urllib.parse import parse_qs
 from uuid import UUID
 
@@ -68,7 +68,7 @@ class YoomoneyGateway(BasePaymentGateway):
             logger.exception(f"An unexpected error occurred while creating payment: {e}")
             raise
 
-    async def handle_webhook(self, request: Request) -> tuple[UUID, TransactionStatus]:
+    async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug("Received YooMoney webhook request")
         webhook_data = await self._get_webhook_data(request)
         operation_id = webhook_data.get("operation_id")

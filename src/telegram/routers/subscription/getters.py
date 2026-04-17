@@ -140,6 +140,8 @@ async def duration_getter(
             }
         )
 
+    plan_is_modified = 1 if dialog_manager.dialog_data.get("plan_is_modified", False) else 0
+
     return {
         "plan": i18n.get(plan.name),
         "description": i18n.get(plan.description) if plan.description else False,
@@ -153,6 +155,7 @@ async def duration_getter(
         "only_single_plan": only_single_plan,
         "discount_percent": pricing_service.get_effective_discount(user),
         "is_personal_discount": pricing_service.is_largest_discount_personal(user),
+        "plan_is_modified": plan_is_modified,
     }
 
 
@@ -197,6 +200,8 @@ async def payment_method_getter(
 
     key, kw = i18n_format_days(duration.days)
 
+    plan_is_modified = 1 if dialog_manager.dialog_data.get("plan_is_modified", False) else 0
+
     return {
         "plan": i18n.get(plan.name),
         "description": i18n.get(plan.description) if plan.description else False,
@@ -210,6 +215,7 @@ async def payment_method_getter(
         "only_single_duration": only_single_duration,
         "discount_percent": pricing_service.get_effective_discount(user),
         "is_personal_discount": pricing_service.is_largest_discount_personal(user),
+        "plan_is_modified": plan_is_modified,
     }
 
 
@@ -251,6 +257,8 @@ async def confirm_getter(
     key, kw = i18n_format_days(duration.days)
     gateways = await payment_gateway_dao.get_active()
 
+    plan_is_modified = 1 if dialog_manager.dialog_data.get("plan_is_modified", False) else 0
+
     return {
         "purchase_type": purchase_type,
         "plan": i18n.get(plan.name),
@@ -269,6 +277,7 @@ async def confirm_getter(
         "only_single_gateway": len(gateways) == 1,
         "only_single_duration": only_single_duration,
         "is_free": is_free,
+        "plan_is_modified": plan_is_modified,
     }
 
 

@@ -15,7 +15,7 @@ from src.core.constants import CONFIG_KEY, USER_KEY
 from src.core.enums import BannerFormat, BannerName, Locale
 
 
-@functools.lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=64)
 def get_banner(
     banners_dir: Path,
     name: BannerName,

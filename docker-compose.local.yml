@@ -32,7 +32,7 @@ x-env: &env
 
 services:
   remnashop-db:
-    image: postgres:17
+    image: postgres:17-alpine
     container_name: "remnashop-db"
     hostname: remnashop-db
     <<: [*common, *logging, *env]
@@ -64,7 +64,7 @@ services:
     
     command: >
       sh -c '
-      ARGS="--save \"\" --appendonly no --maxmemory-policy noeviction --loglevel warning";
+      ARGS="--save \"\" --appendonly yes --maxmemory 512mb --maxmemory-policy volatile-lru --loglevel warning";
       if [ -n "$${REDIS_PASSWORD}" ]; then
         exec valkey-server $${ARGS} --requirepass "$${REDIS_PASSWORD}";
       else
@@ -101,8 +101,8 @@ services:
     hostname: remnashop-taskiq-worker
     <<: [*build, *common, *logging, *env]
 
-    command: taskiq worker src.infrastructure.taskiq.worker:worker 
-      --ack-type when_received --tasks-pattern src/infrastructure/taskiq/tasks/*.py -fsd
+    command: taskiq worker src.infrastructure.taskiq.worker:worker
+      --workers 1 --ack-type when_received --tasks-pattern src/infrastructure/taskiq/tasks/*.py -fsd
 
     depends_on:
         remnashop-redis:

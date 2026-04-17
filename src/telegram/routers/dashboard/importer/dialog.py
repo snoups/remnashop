@@ -10,14 +10,21 @@ from src.telegram.widgets.banner import Banner
 from src.telegram.widgets.i18n_format import I18nFormat
 from src.telegram.widgets.ignore_update import IgnoreUpdate
 
-from .getters import from_xui_getter, import_completed_getter, squads_getter, sync_completed_getter
+from .getters import (
+    from_xui_getter,
+    import_completed_getter,
+    squads_getter,
+    sync_bot_completed_getter,
+    sync_panel_completed_getter,
+)
 from .handlers import (
     on_database_input,
     on_import_active_xui,
     on_import_all_xui,
     on_squad_select,
     on_squads,
-    on_sync,
+    on_sync_from_bot,
+    on_sync_from_panel,
 )
 
 importer = Window(
@@ -31,10 +38,17 @@ importer = Window(
         ),
     ),
     Row(
-        Button(
-            text=I18nFormat("btn-importer.sync"),
-            id="sync",
-            on_click=on_sync,
+        SwitchTo(
+            text=I18nFormat("btn-importer.sync-from-panel"),
+            id="sync_panel",
+            state=DashboardImporter.SYNC_PANEL,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-importer.sync-from-bot"),
+            id="sync_bot",
+            state=DashboardImporter.SYNC_BOT,
         ),
     ),
     Row(
@@ -48,6 +62,50 @@ importer = Window(
     ),
     IgnoreUpdate(),
     state=DashboardImporter.MAIN,
+)
+
+sync_panel = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-importer-sync-panel"),
+    Row(
+        Button(
+            text=I18nFormat("btn-importer.sync-start"),
+            id="sync_panel_start",
+            on_click=on_sync_from_panel,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardImporter.MAIN,
+        ),
+        *main_menu_button,
+    ),
+    IgnoreUpdate(),
+    state=DashboardImporter.SYNC_PANEL,
+)
+
+sync_bot = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-importer-sync-bot"),
+    Row(
+        Button(
+            text=I18nFormat("btn-importer.sync-start"),
+            id="sync_bot_start",
+            on_click=on_sync_from_bot,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardImporter.MAIN,
+        ),
+        *main_menu_button,
+    ),
+    IgnoreUpdate(),
+    state=DashboardImporter.SYNC_BOT,
 )
 
 from_xui = Window(
@@ -135,9 +193,9 @@ squads = Window(
     getter=squads_getter,
 )
 
-sync_completed = Window(
+sync_panel_completed = Window(
     Banner(BannerName.DASHBOARD),
-    I18nFormat("msg-importer-sync-completed"),
+    I18nFormat("msg-importer-sync-panel-completed"),
     Row(
         Start(
             text=I18nFormat("btn-back.general"),
@@ -148,14 +206,34 @@ sync_completed = Window(
     ),
     *back_main_menu_button,
     IgnoreUpdate(),
-    state=DashboardImporter.SYNC_COMPLETED,
-    getter=sync_completed_getter,
+    state=DashboardImporter.SYNC_PANEL_COMPLETED,
+    getter=sync_panel_completed_getter,
+)
+
+sync_bot_completed = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-importer-sync-bot-completed"),
+    Row(
+        Start(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardImporter.MAIN,
+            mode=StartMode.RESET_STACK,
+        ),
+    ),
+    *back_main_menu_button,
+    IgnoreUpdate(),
+    state=DashboardImporter.SYNC_BOT_COMPLETED,
+    getter=sync_bot_completed_getter,
 )
 
 router = Dialog(
     importer,
+    sync_panel,
+    sync_bot,
     from_xui,
     squads,
     import_completed,
-    sync_completed,
+    sync_panel_completed,
+    sync_bot_completed,
 )
