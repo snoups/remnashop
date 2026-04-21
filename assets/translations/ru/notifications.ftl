@@ -115,6 +115,11 @@ ntf-subscription =
     .renew-plan-unavailable = ❌ <i>Текущий план устарел и недоступен для продления.</i>
     .payment-creation-failed = ❌ <i>Ошибка при создании платежа. Попробуйте позже.</i>
 
+ntf-manual-transfer =
+    .receipt-received = ✅ <i>Чек получен! Ожидайте подтверждения от администратора.</i>
+    .confirmed = ✅ <i>Ваш платеж подтвержден! Подписка активирована.</i>
+    .rejected = ❌ <i>Ваш платеж отклонен. Свяжитесь с поддержкой.</i>
+
 ntf-broadcast =
     .message = { $content }
     .text-too-long = ❌ Превышено максимальное кол-во символов ({ $max_limit }).

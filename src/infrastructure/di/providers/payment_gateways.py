@@ -15,6 +15,7 @@ from src.infrastructure.payment_gateways import (
     CryptoPayGateway,
     FreeKassaGateway,
     HeleketGateway,
+    ManualTransferGateway,
     MulenPayGateway,
     PayMasterGateway,
     PaymentGatewayFactory,
@@ -41,6 +42,7 @@ GATEWAY_MAP: dict[PaymentGatewayType, Type[BasePaymentGateway]] = {
     PaymentGatewayType.ROBOKASSA: RobokassaGateway,
     PaymentGatewayType.URLPAY: UrlPayGateway,
     PaymentGatewayType.WATA: WataGateway,
+    PaymentGatewayType.MANUAL_TRANSFER: ManualTransferGateway,
 }
 
 

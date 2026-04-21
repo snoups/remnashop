@@ -28,6 +28,7 @@ class Subscription(StatesGroup):
     SUCCESS = State()
     FAILED = State()
     TRIAL = State()
+    RECEIPT = State()
 
 
 class Dashboard(StatesGroup):

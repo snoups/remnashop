@@ -321,3 +321,71 @@ async def success_payment_getter(
         "connection_url": config.bot.mini_app_url or subscription.url,
         "connectable": True,
     }
+
+
+@inject
+async def receipt_getter(
+    dialog_manager: DialogManager,
+    user: UserDto,
+    retort: FromDishka[Retort],
+    i18n: FromDishka[TranslatorRunner],
+    payment_gateway_dao: FromDishka[PaymentGatewayDao],
+    pricing_service: FromDishka[PricingService],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
+
+    if not raw_plan:
+        logger.debug("PlanDto not found in dialog data")
+        await dialog_manager.start(state=Subscription.MAIN)
+        return {}
+
+    plan = retort.load(raw_plan, PlanDto)
+    selected_duration = dialog_manager.dialog_data["selected_duration"]
+    selected_payment_method = dialog_manager.dialog_data["selected_payment_method"]
+    payment_gateway = await payment_gateway_dao.get_by_type(selected_payment_method)
+    duration = plan.get_duration(selected_duration)
+    pricing_data = dialog_manager.dialog_data["final_pricing"]
+    pricing = retort.load(pricing_data, PriceDetailsDto)
+
+    if not duration:
+        raise ValueError(f"Duration '{selected_duration}' not found in plan '{plan.name}'")
+
+    if not payment_gateway:
+        raise ValueError(f"Not found PaymentGateway by selected type '{selected_payment_method}'")
+
+    settings = payment_gateway.settings
+    bank_name = None
+    account_holder = None
+    account_number = None
+    card_number = None
+    if settings:
+        bank_name = settings.bank_name
+        account_holder = settings.account_holder
+        account_number = settings.account_number
+        card_number = settings.card_number
+
+    key, kw = i18n_format_days(duration.days)
+    gateways = await payment_gateway_dao.get_active()
+
+    return {
+        "plan": i18n.get(plan.name),
+        "description": i18n.get(plan.description) if plan.description else False,
+        "type": plan.type,
+        "devices": i18n_format_device_limit(plan.device_limit),
+        "traffic": i18n_format_traffic_limit(plan.traffic_limit),
+        "period": i18n.get(key, **kw),
+        "payment_method": selected_payment_method,
+        "final_amount": pricing.final_amount,
+        "discount_percent": pricing.discount_percent,
+        "original_amount": pricing.original_amount,
+        "is_personal_discount": pricing_service.is_largest_discount_personal(user),
+        "currency": payment_gateway.currency.symbol,
+        "only_single_gateway": len(gateways) == 1,
+        "only_single_duration": dialog_manager.dialog_data.get("only_single_duration", False),
+        "only_single_plan": dialog_manager.dialog_data.get("only_single_plan", False),
+        "bank_name": bank_name,
+        "account_holder": account_holder,
+        "account_number": account_number,
+        "card_number": card_number,
+    }
