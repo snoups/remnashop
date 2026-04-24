@@ -282,6 +282,11 @@ btn-gateway =
     *[0] 🔴 Выключено
     }
 
+    .yookassa-request-email = { $request_email ->
+    [1] 🟢 Запрашивать почту
+    *[0] 🔴 Запрашивать почту
+    }
+
     .default-currency-choice = { $enabled -> 
     [1] 🔘
     *[0] ⚪
@@ -463,6 +468,8 @@ btn-subscription =
     .back-plans = ⬅️ Назад к выбору плана
     .back-duration = ⬅️ Изменить длительность
     .back-payment-method = ⬅️ Изменить способ оплаты
+    .back-yookassa-email = ⬅️ Назад к вводу почты
+    .skip-email = ⏭️ Пропустить
     .connect = 🚀 Подключиться
 
     .duration = { $period } | { $final_amount -> 

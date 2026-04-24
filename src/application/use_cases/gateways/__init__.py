@@ -5,6 +5,7 @@ from src.application.common.interactor import Interactor
 from .commands.configuration import (
     MovePaymentGatewayUp,
     TogglePaymentGatewayActive,
+    ToggleYooKassaRequestEmail,
     UpdatePaymentGatewaySettings,
 )
 from .commands.payment import (
@@ -19,6 +20,7 @@ GATEWAYS_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     GetPaymentGatewayInstance,
     MovePaymentGatewayUp,
     TogglePaymentGatewayActive,
+    ToggleYooKassaRequestEmail,
     UpdatePaymentGatewaySettings,
     CreateDefaultPaymentGateway,
     CreatePayment,

@@ -61,6 +61,17 @@ class YooKassaGatewaySettingsDto(GatewaySettingsDto):
     api_key: Optional[SecretStr] = None
     customer: Optional[str] = None
     vat_code: Optional[int] = None
+    request_email: bool = False
+
+    @property
+    def as_list(self) -> list[dict[str, Any]]:
+        return [
+            {"field": f.name, "value": getattr(self, f.name)}
+            for f in fields(self)
+            if f.name
+            not in {"type", "created_at", "updated_at", "request_email"}
+            and not f.name.startswith("_")
+        ]
 
 
 @dataclass(kw_only=True)

@@ -8,6 +8,7 @@ from src.application.common.dao import PaymentGatewayDao
 from src.application.common.policy import Permission
 from src.application.common.uow import UnitOfWork
 from src.application.dto import UserDto
+from src.application.dto.payment_gateway import YooKassaGatewaySettingsDto
 from src.core.exceptions import GatewayNotConfiguredError
 
 
@@ -79,6 +80,34 @@ class TogglePaymentGatewayActive(Interactor[int, None]):
         logger.info(
             f"{actor.log} Updated payment gateway '{gateway_id}' "
             f"active status from '{old_status}' to '{gateway.is_active}'"
+        )
+
+
+class ToggleYooKassaRequestEmail(Interactor[int, None]):
+    required_permission = Permission.REMNASHOP_GATEWAYS
+
+    def __init__(self, uow: UnitOfWork, gateway_dao: PaymentGatewayDao) -> None:
+        self.uow = uow
+        self.gateway_dao = gateway_dao
+
+    async def _execute(self, actor: UserDto, gateway_id: int) -> None:
+        async with self.uow:
+            gateway = await self.gateway_dao.get_by_id(gateway_id)
+
+            if not gateway:
+                raise ValueError(f"Payment gateway with id '{gateway_id}' not found")
+
+            if not isinstance(gateway.settings, YooKassaGatewaySettingsDto):
+                raise ValueError(f"Gateway '{gateway_id}' is not YooKassa")
+
+            gateway.settings.request_email = not gateway.settings.request_email
+
+            await self.gateway_dao.update(gateway)
+            await self.uow.commit()
+
+        logger.info(
+            f"{actor.log} Toggled YooKassa request_email for gateway '{gateway_id}' "
+            f"to '{gateway.settings.request_email}'"
         )
 
 

@@ -2,7 +2,7 @@ import hashlib
 import uuid
 from decimal import Decimal
 from hmac import compare_digest
-from typing import Any, Final
+from typing import Any, Final, Optional
 from urllib.parse import parse_qs, urlencode
 from uuid import UUID
 
@@ -34,7 +34,9 @@ class RobokassaGateway(BasePaymentGateway):
                 f"got {type(self.data.settings).__name__}"
             )
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
+    async def handle_create_payment(
+        self, amount: Decimal, details: str, receipt_email: Optional[str] = None
+    ) -> PaymentResultDto:
         order_id = uuid.uuid4()
         inv_id = 0
         out_sum = self._format_amount(amount)

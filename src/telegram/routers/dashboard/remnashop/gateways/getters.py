@@ -6,6 +6,7 @@ from dishka.integrations.aiogram_dialog import inject
 
 from src.application.common.dao import PaymentGatewayDao, SettingsDao
 from src.application.dto import PaymentGatewayDto
+from src.application.dto.payment_gateway import YooKassaGatewaySettingsDto
 from src.core.config import AppConfig
 from src.core.enums import Currency
 
@@ -55,6 +56,11 @@ async def gateway_getter(
         "settings": gateway.settings.as_list,
         "webhook": config.get_webhook(gateway.type),
         "requires_webhook": gateway.requires_webhook,
+        "request_email": (
+            int(gateway.settings.request_email)
+            if isinstance(gateway.settings, YooKassaGatewaySettingsDto)
+            else None
+        ),
     }
 
 
