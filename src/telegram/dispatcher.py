@@ -1,5 +1,6 @@
 from aiogram import Dispatcher
 from aiogram.fsm.storage.base import DefaultKeyBuilder
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram_dialog import BgManagerFactory, setup_dialogs
 from loguru import logger
@@ -13,18 +14,22 @@ from src.telegram.routers import setup_routers
 
 
 def get_dispatcher(config: AppConfig) -> Dispatcher:
-    storage = RedisStorage.from_url(
-        url=config.redis.dsn,
-        key_builder=DefaultKeyBuilder(
-            with_bot_id=True,
-            with_destiny=True,
-        ),
-        json_loads=json.decode,
-        json_dumps=json.encode,
-    )
+    if config.memory_storage:
+        storage = MemoryStorage()
+        logger.info("Initialized Dispatcher with in-memory storage")
+    else:
+        storage = RedisStorage.from_url(
+            url=config.redis.dsn,
+            key_builder=DefaultKeyBuilder(
+                with_bot_id=True,
+                with_destiny=True,
+            ),
+            json_loads=json.decode,
+            json_dumps=json.encode,
+        )
+        logger.info("Initialized Dispatcher with Redis storage")
 
     dispatcher = Dispatcher(storage=storage, config=config)
-    logger.info("Initialized Dispatcher with Redis storage")
     return dispatcher
 
 

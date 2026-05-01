@@ -11,6 +11,7 @@ from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, 
 from src.application.dto import PlanDto, PriceDetailsDto, UserDto
 from src.application.services import PricingService
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
+from src.application.use_cases.user.queries.plans import GetAvailableTrial
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.config import AppConfig
 from src.core.enums import PurchaseType
@@ -20,6 +21,7 @@ from src.core.utils.i18n_helpers import (
     i18n_format_expire_time,
     i18n_format_traffic_limit,
 )
+from src.core.utils.time import get_traffic_reset_delta
 from src.telegram.states import Subscription
 
 
@@ -28,15 +30,48 @@ async def subscription_getter(
     dialog_manager: DialogManager,
     user: UserDto,
     subscription_dao: FromDishka[SubscriptionDao],
+    get_available_trial: FromDishka[GetAvailableTrial],
     **kwargs: Any,
 ) -> dict[str, Any]:
     current_subscription = await subscription_dao.get_current(user.telegram_id)
+    available_trial = await get_available_trial.system(user) if user.is_trial_available else None
     has_active = bool(current_subscription and not current_subscription.is_trial)
     is_unlimited = current_subscription.is_unlimited if current_subscription else False
-    return {
+    data: dict[str, Any] = {
+        "has_subscription": False,
         "has_active_subscription": has_active,
         "is_not_unlimited": not is_unlimited,
+        "trial_available": user.is_trial_available and bool(available_trial),
+        "is_trial": False,
+        "status": None,
+        "traffic_limit": None,
+        "device_limit": None,
+        "expire_time": None,
+        "traffic_strategy": None,
+        "reset_time": None,
     }
+
+    if not current_subscription:
+        return data
+
+    data.update(
+        {
+            "has_subscription": True,
+            "is_trial": current_subscription.is_trial,
+            "status": current_subscription.current_status,
+            "traffic_limit": i18n_format_traffic_limit(current_subscription.traffic_limit),
+            "device_limit": i18n_format_device_limit(current_subscription.device_limit),
+            "expire_time": i18n_format_expire_time(current_subscription.expire_at),
+            "traffic_strategy": current_subscription.traffic_limit_strategy,
+            "reset_time": i18n_format_expire_time(
+                get_traffic_reset_delta(
+                    current_subscription.traffic_limit_strategy,
+                    current_subscription.created_at,
+                )
+            ),
+        }
+    )
+    return data
 
 
 @inject

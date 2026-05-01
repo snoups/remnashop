@@ -13,7 +13,7 @@ def create_aiogram_container(
         AppConfig: config,
         BgManagerFactory: bg_manager_factory,
     }
-    return make_async_container(*get_aiogram_providers(), context=context)
+    return make_async_container(*get_aiogram_providers(local=config.memory_storage), context=context)
 
 
 def create_taskiq_container(

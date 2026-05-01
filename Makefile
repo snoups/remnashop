@@ -22,6 +22,10 @@ run: _run_local
 .PHONY: run-local
 run-local: _run_local
 
+.PHONY: run-preview
+run-preview:
+	APP_MEMORY_STORAGE=true uv run --no-sync python -m src.local_polling
+
 .PHONY: run-prod
 run-prod: _run_prod
 

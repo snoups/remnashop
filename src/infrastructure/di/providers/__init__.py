@@ -14,21 +14,47 @@ from .services import ServicesProvider
 from .use_cases import UseCasesProvider
 
 
-def get_aiogram_providers() -> list[Provider]:
-    return [
+def get_aiogram_providers(local: bool = False) -> list[Provider]:
+    common = [
         AiogramProvider(),
         BotProvider(),
         ConfigProvider(),
-        DaoProvider(),
-        DatabaseProvider(),
         I18nProvider(),
         I18nAiogramProvider(),
         PaymentGatewaysProvider(),
         RedisProvider(),
-        RemnawaveProvider(),
         RetortProvider(),
         ServicesProvider(),
         UseCasesProvider(),
+    ]
+
+    if local:
+        from src.infrastructure.local import (
+            LocalDaoProvider,
+            LocalDatabaseProvider,
+            LocalRemnawaveProvider,
+        )
+
+        return [
+            common[0],
+            common[1],
+            common[2],
+            LocalDaoProvider(),
+            LocalDatabaseProvider(),
+            *common[3:7],
+            LocalRemnawaveProvider(),
+            *common[7:],
+        ]
+
+    return [
+        common[0],
+        common[1],
+        common[2],
+        DaoProvider(),
+        DatabaseProvider(),
+        *common[3:7],
+        RemnawaveProvider(),
+        *common[7:],
     ]
 
 

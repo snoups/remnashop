@@ -1,5 +1,5 @@
 btn-back = 
-    .general = ⬅️ Назад
+    .general = Назад
     .menu = ↩️ Главное меню
     .menu-return = ↩️ Вернуться в главное меню
     .dashboard = ↩️ Вернуться в панель управления
@@ -43,9 +43,10 @@ btn-menu =
     .trial = 🎁 ПОПРОБОВАТЬ БЕСПЛАТНО
     .connect = 🚀 Подключиться
     .devices = 📱 Устройства
-    .subscription = 💳 Подписка
-    .invite = 👥 Пригласить
-    .support = 🆘 Поддержка
+    .subscription = Мои подписки
+    .instruction = Инструкция
+    .invite = Реферальная программа
+    .support = Помощь
     .dashboard = 🛠 Панель управления
 
     .connect-not-available =
@@ -61,6 +62,11 @@ btn-invite =
     .send = 📩 Пригласить
     .qr = 🧾 QR-код
     .withdraw-points = 💎 Обменять баллы
+
+btn-support =
+    .user-agreement = Пользовательское соглашение
+    .privacy-policy = Политика конфиденциальности
+    .contact = Написать в поддержку
 
 btn-dashboard =
     .statistics = 📊 Статистика
@@ -450,7 +456,7 @@ btn-importer =
 
 btn-subscription =
     .plan = 💳 Перейти к оформлению подписки
-    .new = 💸 Купить подписку
+    .new = Купить подписку
     .renew = 🔄 Продлить
     .change = 🔃 Изменить
     .promocode = 🎟 Активировать промокод

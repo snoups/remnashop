@@ -207,6 +207,7 @@ class NotificationService(Notifier):
             i18n_key=payload.i18n_key,
             i18n_kwargs=render_kwargs,
         )
+        text = self._apply_custom_emoji_icon(text, payload.icon_custom_emoji_id)
 
         kwargs: dict[str, Any] = {
             "disable_notification": payload.disable_notification,
@@ -264,6 +265,16 @@ class NotificationService(Notifier):
             return self.bot.send_document
 
         return None
+
+    def _apply_custom_emoji_icon(
+        self,
+        text: str,
+        icon_custom_emoji_id: Optional[str],
+    ) -> str:
+        if not icon_custom_emoji_id:
+            return text
+
+        return f'<tg-emoji emoji-id="{icon_custom_emoji_id}">🔹</tg-emoji> {text}'
 
     def _get_translated_text(
         self,

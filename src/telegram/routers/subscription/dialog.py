@@ -10,6 +10,7 @@ from src.core.enums import BannerName, PaymentGatewayType, PurchaseType
 from src.telegram.keyboards import back_main_menu_button, connect_buttons
 from src.telegram.states import Subscription
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
+from src.telegram.widgets.icon_buttons import IconButton
 
 from .getters import (
     confirm_getter,
@@ -33,11 +34,12 @@ subscription = Window(
     Banner(BannerName.SUBSCRIPTION),
     I18nFormat("msg-subscription-main"),
     Row(
-        Button(
+        IconButton(
             text=I18nFormat("btn-subscription.new"),
             id=f"{PAYMENT_PREFIX}{PurchaseType.NEW}",
             on_click=on_subscription_plans,
             when=~F["has_active_subscription"],
+            icon_custom_emoji_id="5258204546391351475",
         ),
         Button(
             text=I18nFormat("btn-subscription.renew"),

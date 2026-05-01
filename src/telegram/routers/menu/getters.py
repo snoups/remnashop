@@ -19,6 +19,10 @@ from src.core.utils.i18n_helpers import (
 )
 from src.core.utils.time import get_traffic_reset_delta
 
+HELP_ICON_CUSTOM_EMOJI_ID: str | None = None
+USER_AGREEMENT_URL = "https://telegra.ph/POLZOVATELSKOE-SOGLASHENIE-NERF-VPN-05-01"
+PRIVACY_POLICY_URL = "https://telegra.ph/POLITIKA-KONFIDENCIALNOSTI-NERF-VPN-05-01"
+
 
 @inject
 async def menu_getter(
@@ -50,6 +54,9 @@ async def menu_getter(
             # ui / config
             "is_mini_app": config.bot.is_mini_app,
             "support_url": support_url,
+            "user_agreement_url": USER_AGREEMENT_URL,
+            "privacy_policy_url": PRIVACY_POLICY_URL,
+            "help_icon_custom_emoji_id": HELP_ICON_CUSTOM_EMOJI_ID or 0,
             # referral
             "referral_enabled": menu_data.is_referral_enabled,
             # defaults

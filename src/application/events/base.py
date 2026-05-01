@@ -1,6 +1,6 @@
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID, uuid4
 
 from src.application.dto import MessagePayloadDto, UserDto
@@ -39,3 +39,13 @@ class SystemEvent(BaseEvent): ...
 @dataclass(frozen=True, kw_only=True)
 class UserEvent(BaseEvent):
     user: UserDto
+    icon_custom_emoji_id: Optional[str] = None
+
+    def as_payload(self, *args: Any, **kwargs: Any) -> "MessagePayloadDto":
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs=asdict(self),
+            disable_default_markup=False,
+            delete_after=None,
+            icon_custom_emoji_id=self.icon_custom_emoji_id,
+        )

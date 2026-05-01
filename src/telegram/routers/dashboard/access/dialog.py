@@ -7,6 +7,7 @@ from src.core.enums import AccessMode, BannerName
 from src.telegram.keyboards import main_menu_button
 from src.telegram.states import Dashboard, DashboardAccess
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
+from src.telegram.widgets.icon_start import IconStart
 
 from .getters import access_getter, channel_getter, conditions_getter, rules_getter
 from .handlers import (
@@ -51,11 +52,12 @@ access = Window(
         ),
     ),
     Row(
-        Start(
+        IconStart(
             text=I18nFormat("btn-back.general"),
             id="back",
             state=Dashboard.MAIN,
             mode=StartMode.RESET_STACK,
+            icon_custom_emoji_id="5258236805890710909"
         ),
         *main_menu_button,
     ),

@@ -25,6 +25,7 @@ class MessagePayloadDto:
 
     delete_after: Optional[int] = 5
     message_effect: Optional[MessageEffectId] = None
+    icon_custom_emoji_id: Optional[str] = None
     disable_notification: bool = False
 
     @property

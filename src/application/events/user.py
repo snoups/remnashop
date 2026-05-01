@@ -1,5 +1,5 @@
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 from remnapy.enums.users import TrafficLimitStrategy
 
@@ -16,6 +16,7 @@ class SubscriptionLimitedEvent(UserEvent):
         default=UserNotificationType.LIMITED,
         init=False,
     )
+    icon_custom_emoji_id: Optional[str] = "5769126056262898415"
 
     is_trial: bool
     traffic_strategy: TrafficLimitStrategy

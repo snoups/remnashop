@@ -23,6 +23,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     domain: SecretStr
     host: str = "0.0.0.0"
     port: int = 5000
+    memory_storage: bool = False
 
     locales: LocaleList = LocaleList([Locale.RU])  # TODO: Change to EN
     default_locale: Locale = Locale.RU  # TODO: Change to EN
