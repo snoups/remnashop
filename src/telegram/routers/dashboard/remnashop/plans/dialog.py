@@ -75,7 +75,7 @@ from .handlers import (
 )
 
 plans = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plans-main"),
     Row(
         SwitchTo(
@@ -140,7 +140,7 @@ plans = Window(
 )
 
 plans_import = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plans-import"),
     Row(
         SwitchTo(
@@ -155,7 +155,7 @@ plans_import = Window(
 )
 
 plans_export = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plans-export"),
     Column(
         Select(
@@ -191,7 +191,7 @@ plans_export = Window(
 )
 
 configurator = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-configurator"),
     Row(
         Button(
@@ -310,7 +310,7 @@ configurator = Window(
 )
 
 name = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-name"),
     Row(
         SwitchTo(
@@ -326,7 +326,7 @@ name = Window(
 )
 
 description = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-description"),
     Row(
         Button(
@@ -350,7 +350,7 @@ description = Window(
 )
 
 tag = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-tag"),
     Row(
         Button(
@@ -374,7 +374,7 @@ tag = Window(
 )
 
 plan_type = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-type"),
     Row(
         Button(
@@ -406,7 +406,7 @@ plan_type = Window(
 )
 
 availability = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-availability"),
     Column(
         Select(
@@ -431,7 +431,7 @@ availability = Window(
 )
 
 traffic = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-traffic"),
     Column(
         Select(
@@ -461,7 +461,7 @@ traffic = Window(
 )
 
 devices = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-devices"),
     Row(
         SwitchTo(
@@ -476,7 +476,7 @@ devices = Window(
 )
 
 durations = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-durations"),
     ListGroup(
         Row(
@@ -521,7 +521,7 @@ durations = Window(
 )
 
 durations_add = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-duration"),
     Row(
         SwitchTo(
@@ -536,7 +536,7 @@ durations_add = Window(
 )
 
 prices = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-prices", value=F["duration"]),
     Column(
         Select(
@@ -565,7 +565,7 @@ prices = Window(
 )
 
 price = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-price", value=F["duration"], currency=F["currency"]),
     Row(
         SwitchTo(
@@ -581,7 +581,7 @@ price = Window(
 )
 
 allowed_users = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-allowed-users"),
     ListGroup(
         Row(
@@ -613,7 +613,7 @@ allowed_users = Window(
 )
 
 squads = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-squads"),
     Row(
         SwitchTo(
@@ -642,7 +642,7 @@ squads = Window(
 )
 
 internal_squads = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-internal-squads"),
     Column(
         Select(
@@ -671,7 +671,7 @@ internal_squads = Window(
 )
 
 external_squads = Window(
-    Banner(BannerName.DASHBOARD),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-plan-external-squads"),
     Column(
         Select(

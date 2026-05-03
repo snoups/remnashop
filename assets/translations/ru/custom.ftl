@@ -15,3 +15,16 @@ custom-menu-link2 = 2️⃣ Вторая кнопка
 
 custom-plan-name1 = 1️⃣ Первый план
 custom-plan-name2 = 2️⃣ Второй план
+custom-plan-7days = <tg-emoji emoji-id="5884428842780594914">🧩</tg-emoji> Недельный | 79₽ 🎯
+
+custom-plan-30days =
+    <tg-emoji emoji-id="6037083366438737901">💎</tg-emoji> Месячный | 120₽ 🎯
+
+custom-plan-90days =
+    <tg-emoji emoji-id="5422354988103901774">⬆️</tg-emoji> 3-х месячный | 550₽ 🎯
+
+custom-plan-180days =
+    <tg-emoji emoji-id="5805553606635559688">👑</tg-emoji> 6-и месячный | 900₽ 🎯
+
+custom-plan-365days =
+    <tg-emoji emoji-id="6028346797368283073">🛡</tg-emoji> Годовой | 1800₽ 🎯

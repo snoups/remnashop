@@ -1,6 +1,6 @@
 from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Button, Row, ScrollingGroup, Select, Start, SwitchTo
+from aiogram_dialog.widgets.kbd import Button, Row, ScrollingGroup, Select, SwitchTo
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
@@ -8,6 +8,7 @@ from src.core.enums import BannerName
 from src.telegram.keyboards import main_menu_button
 from src.telegram.states import Dashboard, DashboardUsers
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
+from src.telegram.widgets.icon_start import IconStart
 
 from .getters import (
     blacklist_getter,
@@ -49,11 +50,12 @@ users = Window(
         ),
     ),
     Row(
-        Start(
+        IconStart(
             text=I18nFormat("btn-back.general"),
             id="back",
             state=Dashboard.MAIN,
             mode=StartMode.RESET_STACK,
+            icon_custom_emoji_id="5258236805890710909"
         ),
         *main_menu_button,
     ),

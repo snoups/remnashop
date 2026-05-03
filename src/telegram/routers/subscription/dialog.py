@@ -1,15 +1,17 @@
 from aiogram.enums import ButtonStyle
-from aiogram_dialog import Dialog, Window
+from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.kbd import Button, Column, Group, Row, Select, SwitchTo, Url
 from aiogram_dialog.widgets.style import Style
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.core.constants import PAYMENT_PREFIX
-from src.core.enums import BannerName, PaymentGatewayType, PurchaseType
+from src.core.enums import BannerName, PurchaseType
 from src.telegram.keyboards import back_main_menu_button, connect_buttons
-from src.telegram.states import Subscription
+from src.telegram.states import MainMenu, Subscription
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
+from src.telegram.widgets.icon_buttons import IconButton, IconSelect
+from src.telegram.widgets.icon_start import IconStart
 
 from .getters import (
     confirm_getter,
@@ -23,21 +25,31 @@ from .getters import (
 )
 from .handlers import (
     on_duration_select,
+    on_get_trial,
     on_get_subscription,
     on_payment_method_select,
     on_plan_select,
     on_subscription_plans,
+    on_subscription_start,
 )
 
 subscription = Window(
     Banner(BannerName.SUBSCRIPTION),
     I18nFormat("msg-subscription-main"),
     Row(
-        Button(
+        IconButton(
             text=I18nFormat("btn-subscription.new"),
             id=f"{PAYMENT_PREFIX}{PurchaseType.NEW}",
             on_click=on_subscription_plans,
-            when=~F["has_active_subscription"],
+            when=~F["has_active_subscription"] & ~F["trial_available"],
+            icon_custom_emoji_id="5258204546391351475",
+        ),
+        Button(
+            text=I18nFormat("btn-menu.trial"),
+            id="trial",
+            on_click=on_get_trial,
+            when=F["trial_available"],
+            style=Style(ButtonStyle.SUCCESS),
         ),
         Button(
             text=I18nFormat("btn-subscription.renew"),
@@ -60,14 +72,22 @@ subscription = Window(
     #         # state=Subscription.PROMOCODE,
     #     ),
     # ),
-    *back_main_menu_button,
+    Row(
+        IconStart(
+            text=I18nFormat("btn-back.general"),
+            id=f"{PAYMENT_PREFIX}back",
+            state=MainMenu.MAIN,
+            mode=StartMode.RESET_STACK,
+            icon_custom_emoji_id="5258236805890710909",
+        ),
+    ),
     IgnoreUpdate(),
     state=Subscription.MAIN,
     getter=subscription_getter,
 )
 
 plan = Window(
-    Banner(BannerName.SUBSCRIPTION),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-subscription-plan"),
     Column(
         Select(
@@ -87,33 +107,36 @@ plan = Window(
 
 
 plans = Window(
-    Banner(BannerName.SUBSCRIPTION),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-subscription-plans"),
     Column(
-        Select(
+        IconSelect(
             text=Format("{item[name]}"),
             id=f"{PAYMENT_PREFIX}select_plan",
             item_id_getter=lambda item: item["id"],
             items="plans",
             type_factory=int,
             on_click=on_plan_select,
+            icon_items_key="plans",
+            icon_custom_emoji_id_getter=lambda item: item.get("icon_custom_emoji_id"),
         ),
     ),
     Row(
-        SwitchTo(
+        IconStart(
             text=I18nFormat("btn-back.general"),
             id=f"{PAYMENT_PREFIX}back",
-            state=Subscription.MAIN,
+            state=MainMenu.MAIN,
+            mode=StartMode.RESET_STACK,
+            icon_custom_emoji_id="5258236805890710909",
         ),
     ),
-    *back_main_menu_button,
     IgnoreUpdate(),
     state=Subscription.PLANS,
     getter=plans_getter,
 )
 
 duration = Window(
-    Banner(BannerName.SUBSCRIPTION),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-subscription-duration"),
     Group(
         Select(
@@ -148,22 +171,22 @@ duration = Window(
 )
 
 payment_method = Window(
-    Banner(BannerName.SUBSCRIPTION),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-subscription-payment-method"),
     Column(
         Select(
             text=I18nFormat(
                 "btn-subscription.payment-method",
-                gateway_type=F["item"]["gateway_type"],
+                payment_label=F["item"]["payment_label"],
                 final_amount=F["item"]["final_amount"],
                 original_amount=F["item"]["original_amount"],
                 discount_percent=F["item"]["discount_percent"],
                 currency=F["item"]["currency"],
             ),
             id=f"{PAYMENT_PREFIX}select_payment_method",
-            item_id_getter=lambda item: item["gateway_type"],
+            item_id_getter=lambda item: item["id"],
             items="payment_methods",
-            type_factory=PaymentGatewayType,
+            type_factory=str,
             on_click=on_payment_method_select,
         ),
     ),
@@ -190,7 +213,7 @@ payment_method = Window(
 )
 
 confirm = Window(
-    Banner(BannerName.SUBSCRIPTION),
+    Banner(BannerName.TARIFF),
     I18nFormat("msg-subscription-confirm"),
     Row(
         Url(
@@ -277,4 +300,5 @@ router = Dialog(
     success_payment,
     success_trial,
     failed,
+    on_start=on_subscription_start,
 )

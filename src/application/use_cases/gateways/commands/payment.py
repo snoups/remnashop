@@ -111,6 +111,7 @@ class CreatePaymentDto:
     pricing: PriceDetailsDto
     purchase_type: PurchaseType
     gateway_type: PaymentGatewayType
+    platega_payment_method: int | None = None
 
 
 class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
@@ -163,10 +164,19 @@ class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
                 )
                 return PaymentResultDto(id=transaction.payment_id, url=None)
 
-            payment: PaymentResultDto = await gateway_instance.handle_create_payment(
-                amount=data.pricing.final_amount,
-                details=details,
-            )
+            if data.gateway_type == PaymentGatewayType.PLATEGA:
+                payment: PaymentResultDto = await getattr(
+                    gateway_instance, "handle_create_payment"
+                )(
+                    amount=data.pricing.final_amount,
+                    details=details,
+                    payment_method=data.platega_payment_method,
+                )
+            else:
+                payment = await gateway_instance.handle_create_payment(
+                    amount=data.pricing.final_amount,
+                    details=details,
+                )
 
             transaction.payment_id = payment.id
             await self.transaction_dao.create(transaction)

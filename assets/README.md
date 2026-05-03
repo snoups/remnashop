@@ -50,7 +50,9 @@ Banner filenames must correspond to the following predefined names, specified in
 * **`DEFAULT`**: The default banner, used when a specific banner is not found.
 * **`MENU`**: The main menu banner.
 * **`DASHBOARD`**: The dashboard banner.
+* **`HELP`**: The help/support banner.
 * **`SUBSCRIPTION`**: The subscription banner.
+* **`TARIFF`**: The tariff/plans banner.
 * **`REFERRAL`**: The referral banner.
 
 ## Example file structure

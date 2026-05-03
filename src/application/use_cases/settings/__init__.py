@@ -7,6 +7,7 @@ from .commands.currency import UpdateDefaultCurrency
 from .commands.notifications import ToggleNotification
 from .commands.referral import (
     ToggleReferralSystem,
+    ToggleReferralTrialReward,
     UpdateReferralAccrualStrategy,
     UpdateReferralLevel,
     UpdateReferralRewardConfig,
@@ -25,6 +26,7 @@ SETTINGS_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     ToggleNotification,
     TogglePayments,
     ToggleReferralSystem,
+    ToggleReferralTrialReward,
     ToggleRegistration,
     UpdateChannelRequirement,
     UpdateReferralAccrualStrategy,

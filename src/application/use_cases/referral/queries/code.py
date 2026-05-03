@@ -94,7 +94,7 @@ class GenerateReferralQr(Interactor[str, str]):
 
         qr_img = qr_img.convert("RGB")
 
-        logo_path = ASSETS_DIR / "logo.png"
+        logo_path = ASSETS_DIR / "default2.jpg"
         if logo_path.exists():
             logo = Image.open(logo_path).convert("RGBA")
 

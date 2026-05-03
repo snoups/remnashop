@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from datetime import timedelta
 
 from loguru import logger
 
-from src.application.common import EventPublisher, Interactor
+from src.application.common import EventPublisher, Interactor, Remnawave
 from src.application.common.dao import ReferralDao, SettingsDao, SubscriptionDao, UserDao
 from src.application.common.uow import UnitOfWork
 from src.application.dto import ReferralRewardDto, TransactionDto, UserDto
@@ -11,15 +12,12 @@ from src.application.use_cases.referral.queries.calculations import (
     CalculateReferralReward,
     CalculateReferralRewardDto,
 )
-from src.application.use_cases.subscription.commands.management import (
-    AddSubscriptionDuration,
-    AddSubscriptionDurationDto,
-)
 from src.application.use_cases.user.commands.profile_edit import (
     ChangeUserPoints,
     ChangeUserPointsDto,
 )
 from src.core.enums import PurchaseType, ReferralAccrualStrategy, ReferralLevel, ReferralRewardType
+from src.core.utils.time import datetime_now
 
 
 @dataclass(frozen=True)
@@ -34,19 +32,21 @@ class GiveReferrerReward(Interactor[GiveReferrerRewardDto, None]):
 
     def __init__(
         self,
+        uow: UnitOfWork,
         user_dao: UserDao,
         subscription_dao: SubscriptionDao,
         referral_dao: ReferralDao,
         event_publisher: EventPublisher,
         change_user_points: ChangeUserPoints,
-        add_subscription_duration: AddSubscriptionDuration,
+        remnawave: Remnawave,
     ) -> None:
+        self.uow = uow
         self.user_dao = user_dao
         self.subscription_dao = subscription_dao
         self.referral_dao = referral_dao
         self.event_publisher = event_publisher
         self.change_user_points = change_user_points
-        self.add_subscription_duration = add_subscription_duration
+        self.remnawave = remnawave
 
     async def _execute(self, actor: UserDto, data: GiveReferrerRewardDto) -> None:
         reward = data.reward
@@ -94,12 +94,24 @@ class GiveReferrerReward(Interactor[GiveReferrerRewardDto, None]):
                 f"expire date '{subscription.expire_at}'"
             )
 
-            await self.add_subscription_duration.system(
-                AddSubscriptionDurationDto(
-                    telegram_id=user.telegram_id,
-                    days=reward.amount,
-                ),
-            )
+            new_expire = subscription.expire_at + timedelta(days=reward.amount)
+
+            if new_expire < datetime_now():
+                logger.warning(
+                    f"{actor.log} Invalid expire time for user '{user.telegram_id}', "
+                    "unable to add referral days"
+                )
+                return
+
+            async with self.uow:
+                subscription.expire_at = new_expire
+                await self.subscription_dao.update(subscription)
+                await self.remnawave.update_user(
+                    user=user,
+                    uuid=subscription.user_remna_id,
+                    subscription=subscription,
+                )
+                await self.uow.commit()
 
         else:
             raise ValueError(
@@ -116,7 +128,10 @@ class GiveReferrerReward(Interactor[GiveReferrerRewardDto, None]):
 
         await self.event_publisher.publish(event_reward)
 
-        await self.referral_dao.mark_reward_as_issued(reward.id)  # type: ignore[arg-type]
+        async with self.uow:
+            await self.referral_dao.mark_reward_as_issued(reward.id)  # type: ignore[arg-type]
+            await self.uow.commit()
+
         logger.info(f"{actor.log} Finished applying reward to user '{user.telegram_id}'")
 
 
@@ -124,6 +139,7 @@ class GiveReferrerReward(Interactor[GiveReferrerRewardDto, None]):
 class AssignReferralRewardsDto:
     user: UserDto
     transaction: TransactionDto
+    is_trial_activation: bool = False
 
 
 class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
@@ -150,6 +166,10 @@ class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
 
         if not settings.referral.enable:
             logger.info("Referral system is disabled; reward assignment skipped")
+            return
+
+        if data.is_trial_activation and not settings.referral.reward_for_trial:
+            logger.info("Referral reward for trial activation is disabled; reward skipped")
             return
 
         if (
@@ -183,6 +203,21 @@ class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
                 logger.info(f"No reward config for level '{level.name}'")
                 continue
 
+            reward_already_exists = await self.referral_dao.has_reward(
+                referral.id,  # type: ignore[arg-type]
+                referrer.telegram_id,
+            )
+
+            if (
+                settings.referral.accrual_strategy == ReferralAccrualStrategy.ON_FIRST_PAYMENT
+                and reward_already_exists
+            ):
+                logger.info(
+                    f"Reward for referral '{referral.id}' and referrer "
+                    f"'{referrer.telegram_id}' already exists; skipped"
+                )
+                continue
+
             reward_amount = await self.calculate_referral_reward.system(
                 CalculateReferralRewardDto(
                     settings=settings.referral,
@@ -211,13 +246,13 @@ class AssignReferralRewards(Interactor[AssignReferralRewardsDto, None]):
 
                 await self.uow.commit()
 
-                await self.give_referrer_reward.system(
-                    GiveReferrerRewardDto(
-                        user_telegram_id=referrer.telegram_id,
-                        reward=reward,
-                        referred_name=data.user.name,
-                    )
+            await self.give_referrer_reward.system(
+                GiveReferrerRewardDto(
+                    user_telegram_id=referrer.telegram_id,
+                    reward=reward,
+                    referred_name=data.user.name,
                 )
+            )
 
             logger.info(
                 f"Issued '{reward_type}' reward '{reward_amount}' for referrer "

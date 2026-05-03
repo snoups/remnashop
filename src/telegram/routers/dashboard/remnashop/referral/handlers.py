@@ -9,6 +9,7 @@ from src.application.common import Notifier
 from src.application.dto import UserDto
 from src.application.use_cases.settings.commands.referral import (
     ToggleReferralSystem,
+    ToggleReferralTrialReward,
     UpdateReferralAccrualStrategy,
     UpdateReferralLevel,
     UpdateReferralRewardConfig,
@@ -33,6 +34,17 @@ async def on_enable_toggle(
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     await toggle_referral_system(user)
+
+
+@inject
+async def on_trial_reward_toggle(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    toggle_referral_trial_reward: FromDishka[ToggleReferralTrialReward],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    await toggle_referral_trial_reward(user)
 
 
 @inject

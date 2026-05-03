@@ -1,5 +1,8 @@
 x-build: &build
-  image: ghcr.io/snoups/remnashop:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: remnashop-fork:latest
 
   volumes:
       - ./logs:/opt/remnashop/logs

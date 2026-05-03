@@ -140,7 +140,9 @@ class BannerName(StrEnum):
     DEFAULT = auto()
     MENU = auto()
     DASHBOARD = auto()
+    HELP = auto()
     SUBSCRIPTION = auto()
+    TARIFF = auto()
     PROMOCODE = auto()
     REFERRAL = auto()
 

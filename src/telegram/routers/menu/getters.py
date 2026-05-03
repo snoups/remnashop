@@ -1,4 +1,5 @@
 from typing import Any
+from urllib.parse import quote
 
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
@@ -11,6 +12,7 @@ from src.application.dto import UserDto
 from src.application.services import BotService
 from src.application.use_cases.misc.queries.menu import GetMenuData
 from src.core.config import AppConfig
+from src.core.enums import ReferralLevel
 from src.core.exceptions import MenuRenderError
 from src.core.utils.i18n_helpers import (
     i18n_format_device_limit,
@@ -18,6 +20,13 @@ from src.core.utils.i18n_helpers import (
     i18n_format_traffic_limit,
 )
 from src.core.utils.time import get_traffic_reset_delta
+
+HELP_ICON_CUSTOM_EMOJI_ID: str | None = None
+USER_AGREEMENT_URL = "https://telegra.ph/POLZOVATELSKOE-SOGLASHENIE-NERF-VPN-05-01"
+PRIVACY_POLICY_URL = "https://telegra.ph/POLITIKA-KONFIDENCIALNOSTI-NERF-VPN-05-01"
+INVITE_SHARE_TEXT = (
+    "Привет, я использую Nerf VPN для быстрого и безопасного интернета. Присоединяйся!"
+)
 
 
 @inject
@@ -50,10 +59,14 @@ async def menu_getter(
             # ui / config
             "is_mini_app": config.bot.is_mini_app,
             "support_url": support_url,
+            "user_agreement_url": USER_AGREEMENT_URL,
+            "privacy_policy_url": PRIVACY_POLICY_URL,
+            "help_icon_custom_emoji_id": HELP_ICON_CUSTOM_EMOJI_ID or 0,
             # referral
             "referral_enabled": menu_data.is_referral_enabled,
             # defaults
             "has_subscription": False,
+            "has_active_subscription": False,
             "connectable": False,
             "trial_available": False,
             "has_device_limit": False,
@@ -81,6 +94,7 @@ async def menu_getter(
         data.update(
             {
                 "has_subscription": True,
+                "has_active_subscription": subscription.is_active,
                 "is_trial": subscription.is_trial,
                 "traffic_strategy": subscription.traffic_limit_strategy,
                 "status": subscription.current_status,
@@ -191,6 +205,12 @@ async def invite_getter(
     referrals = await referral_dao.get_referrals_count(user.telegram_id)
     payments = await referral_dao.get_referrals_with_payment_count(user.telegram_id)
     referral_url = await bot_service.get_referral_url(user.referral_code)
+    referral_reward_days = settings.referral.reward.config.get(ReferralLevel.FIRST, 0)
+    share_url = (
+        "https://t.me/share/url"
+        f"?url={quote(referral_url, safe='')}"
+        f"&text={quote(INVITE_SHARE_TEXT, safe='')}"
+    )
     support_url = bot_service.get_support_url(text=i18n.get("message.withdraw-points"))
 
     return {
@@ -201,6 +221,8 @@ async def invite_getter(
         "is_points_reward": settings.referral.reward.is_points,
         "has_points": True if user.points > 0 else False,
         "referral_url": referral_url,
+        "referral_reward_days": referral_reward_days,
+        "share_url": share_url,
         "withdraw": support_url,
     }
 

@@ -42,8 +42,13 @@ class PlategaGateway(BasePaymentGateway):
             },
         )
 
-    async def handle_create_payment(self, amount: Decimal, details: str) -> PaymentResultDto:
-        payload = await self._create_payment_payload(amount, details)
+    async def handle_create_payment(
+        self,
+        amount: Decimal,
+        details: str,
+        payment_method: int | None = None,
+    ) -> PaymentResultDto:
+        payload = await self._create_payment_payload(amount, details, payment_method)
         logger.debug(f"Creating payment payload: {payload}")
 
         try:
@@ -96,10 +101,23 @@ class PlategaGateway(BasePaymentGateway):
 
         return payment_id, transaction_status
 
-    async def _create_payment_payload(self, amount: Decimal, details: str) -> dict[str, Any]:
+    async def _create_payment_payload(
+        self,
+        amount: Decimal,
+        details: str,
+        payment_method: int | None = None,
+    ) -> dict[str, Any]:
+        selected_payment_method = payment_method
+        if selected_payment_method is None:
+            selected_payment_method = self.data.settings.payment_method  # type: ignore[union-attr]
+        if selected_payment_method is None:
+            selected_payment_method = self.data.settings.sbp_payment_method  # type: ignore[union-attr]
+        if selected_payment_method is None:
+            selected_payment_method = self.data.settings.card_payment_method  # type: ignore[union-attr]
+
         return {
             "command": {},
-            "paymentMethod": self.data.settings.payment_method,  # type: ignore[union-attr]
+            "paymentMethod": selected_payment_method,
             "paymentDetails": {
                 "amount": float(amount),
                 "currency": self.data.currency.value,

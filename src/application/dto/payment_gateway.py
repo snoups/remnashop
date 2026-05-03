@@ -124,6 +124,20 @@ class PlategaGatewaySettingsDto(GatewaySettingsDto):
     merchant_id: Optional[str] = None
     api_key: Optional[SecretStr] = None
     payment_method: Optional[int] = None
+    sbp_payment_method: Optional[int] = None
+    card_payment_method: Optional[int] = None
+
+    @property
+    def is_configured(self) -> bool:
+        return (
+            self.merchant_id is not None
+            and self.api_key is not None
+            and (
+                self.payment_method is not None
+                or self.sbp_payment_method is not None
+                or self.card_payment_method is not None
+            )
+        )
 
 
 @dataclass(kw_only=True)

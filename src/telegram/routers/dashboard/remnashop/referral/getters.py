@@ -28,6 +28,7 @@ async def referral_getter(
         "reward_type": settings.referral.reward.type,
         "accrual_strategy_type": settings.referral.accrual_strategy,
         "reward_strategy_type": settings.referral.reward.strategy,
+        "reward_for_trial": settings.referral.reward_for_trial,
     }
 
 

@@ -85,7 +85,30 @@ class RemnawaveImpl(Remnawave):
                 f"RemnaUser '{request_dto.username}' with UUID '{request_dto.uuid}' "
                 f"already exists in panel"
             )
-            raise
+
+            try:
+                existing_user = await self.sdk.users.get_user_by_username(request_dto.username)
+            except NotFoundError:
+                existing_users = await self.get_user_by_telegram_id(user.telegram_id)
+                existing_user = next(
+                    (item for item in existing_users if item.username == request_dto.username),
+                    existing_users[0] if existing_users else None,
+                )
+
+            if not existing_user:
+                raise
+
+            logger.info(
+                f"RemnaUser '{request_dto.username}' already exists for telegram_id "
+                f"'{user.telegram_id}', updating existing UUID '{existing_user.uuid}'"
+            )
+            return await self.update_user(
+                user=user,
+                uuid=existing_user.uuid,
+                plan=plan,
+                subscription=subscription,
+                reset_traffic=True,
+            )
 
     async def update_user(
         self,

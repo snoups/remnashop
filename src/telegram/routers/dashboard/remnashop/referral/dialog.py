@@ -28,6 +28,7 @@ from .handlers import (
     on_reward_input,
     on_reward_select,
     on_reward_strategy_select,
+    on_trial_reward_toggle,
 )
 
 referral = Window(
@@ -71,6 +72,13 @@ referral = Window(
             text=I18nFormat("btn-referral.reward"),
             id="reward",
             state=RemnashopReferral.REWARD,
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-referral.trial-reward", reward_for_trial=F["reward_for_trial"]),
+            id="trial_reward",
+            on_click=on_trial_reward_toggle,
         ),
     ),
     Row(

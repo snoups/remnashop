@@ -29,6 +29,8 @@ class ReferralDao(Protocol):
 
     async def mark_reward_as_issued(self, reward_id: int) -> None: ...
 
+    async def has_reward(self, referral_id: int, user_telegram_id: int) -> bool: ...
+
     async def get_total_rewards_amount(
         self,
         telegram_id: int,

@@ -135,6 +135,22 @@ class ReferralDaoImpl(ReferralDao):
         await self.session.execute(stmt)
         logger.debug(f"Reward '{reward_id}' marked as issued")
 
+    async def has_reward(self, referral_id: int, user_telegram_id: int) -> bool:
+        stmt = select(
+            select(ReferralReward)
+            .where(
+                ReferralReward.referral_id == referral_id,
+                ReferralReward.user_telegram_id == user_telegram_id,
+            )
+            .exists()
+        )
+        exists = bool(await self.session.scalar(stmt))
+        logger.debug(
+            f"Reward existence for referral '{referral_id}' and user "
+            f"'{user_telegram_id}' is '{exists}'"
+        )
+        return exists
+
     async def get_total_rewards_amount(
         self,
         telegram_id: int,

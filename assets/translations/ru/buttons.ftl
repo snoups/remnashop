@@ -1,5 +1,5 @@
 btn-back = 
-    .general = ⬅️ Назад
+    .general = Назад
     .menu = ↩️ Главное меню
     .menu-return = ↩️ Вернуться в главное меню
     .dashboard = ↩️ Вернуться в панель управления
@@ -9,7 +9,7 @@ btn-common =
     .devices-empty = ⚠️ У вас нет подключённых устройств
     .cancel = Отмена
 
-    .squad-choice = { $selected -> 
+    .squad-choice = { $selected ->
     [1] 🔘
     *[0] ⚪
     } { $name }
@@ -43,13 +43,14 @@ btn-menu =
     .trial = 🎁 ПОПРОБОВАТЬ БЕСПЛАТНО
     .connect = 🚀 Подключиться
     .devices = 📱 Устройства
-    .subscription = 💳 Подписка
-    .invite = 👥 Пригласить
-    .support = 🆘 Поддержка
+    .subscription = Мои подписки
+    .instruction = Инструкция
+    .invite = Реферальная программа
+    .support = Помощь
     .dashboard = 🛠 Панель управления
 
     .connect-not-available =
-    ⚠️ { $status -> 
+    ⚠️ { $status ->
     [LIMITED] ПРЕВЫШЕН ЛИМИТ ТРАФИКА
     [EXPIRED] СРОК ДЕЙСТВИЯ ИСТЕК
     *[OTHER] ВАША ПОДПИСКА НЕ РАБОТАЕТ
@@ -58,9 +59,14 @@ btn-menu =
 btn-invite =
     .about = ❓ Подробнее о награде
     .copy = 📋 Скопировать ссылку
-    .send = 📩 Пригласить
+    .send = Пригласить
     .qr = 🧾 QR-код
     .withdraw-points = 💎 Обменять баллы
+
+btn-support =
+    .user-agreement = Пользовательское соглашение
+    .privacy-policy = Политика конфиденциальности
+    .contact = Написать в поддержку
 
 btn-dashboard =
     .statistics = 📊 Статистика
@@ -158,7 +164,7 @@ btn-user =
     [FAILED] ⚠️
     *[OTHER] { $status }
     } { $created_at }
-    
+
     .trial-toggle = { $is_trial_available ->
     [1] 🧪 Пробник: доступен
     *[0] 🧪 Пробник: не доступен
@@ -188,14 +194,14 @@ btn-broadcast =
 
     .plan-title = { $is_active ->
     [1] 🟢
-    *[0] 🔴 
+    *[0] 🔴
     } { $name }
-    
+
     .button-choice = { $selected ->
     [1] 🔘
     *[0] ⚪
     }
-    
+
     .title = { $status ->
     [PROCESSING] ⏳
     [COMPLETED] ✅
@@ -204,7 +210,7 @@ btn-broadcast =
     [ERROR] ⚠️
     *[OTHER] { $status }
     } { $created_at }
-    
+
 btn-goto =
     .subscription = 💳 Купить подписку
     .promocode = 🎟 Активировать промокод
@@ -259,16 +265,16 @@ btn-menu-editor =
     .payload = 📄 Данные
     .confirm = ✅ Сохранить
 
-    .button = { $is_active -> 
-        [1] 🟢 
-        *[0] 🔴 
+    .button = { $is_active ->
+        [1] 🟢
+        *[0] 🔴
     } { $text }
-    
-    .active = { $is_active -> 
+
+    .active = { $is_active ->
         [1] 🟢 Включена
         *[0] 🔴 Выключена
     }
-    
+
 btn-gateway =
     .title = { gateway-type }
     .setting = { $field }
@@ -282,7 +288,7 @@ btn-gateway =
     *[0] 🔴 Выключено
     }
 
-    .default-currency-choice = { $enabled -> 
+    .default-currency-choice = { $enabled ->
     [1] 🔘
     *[0] ⚪
     } { $symbol } { $currency }
@@ -293,32 +299,36 @@ btn-referral =
     .accrual-strategy = 📍 Условие начисления
     .reward-strategy = ⚖️ Форма начисления
     .reward = 🎁 Награда
-    
-    .enable = { $is_enable -> 
+    .trial-reward = { $reward_for_trial ->
+    [1] 🟢 Награда за пробник
+    *[0] 🔴 Награда за пробник
+    }
+
+    .enable = { $is_enable ->
     [1] 🟢 Включена
     *[0] 🔴 Выключена
     }
 
-    .level-choice = { $type -> 
+    .level-choice = { $type ->
     [1] 1️⃣
     [2] 2️⃣
     [3] 3️⃣
     *[OTHER] { $type }
     }
 
-    .reward-choice = { $type -> 
+    .reward-choice = { $type ->
     [POINTS] 💎 Баллы
     [EXTRA_DAYS] ⏳ Дни
     *[OTHER] { $type }
     }
 
-    .accrual-strategy-choice = { $type -> 
+    .accrual-strategy-choice = { $type ->
     [ON_FIRST_PAYMENT] 💳 Первый платеж
     [ON_EACH_PAYMENT] 💸 Каждый платеж
     *[OTHER] { $type }
     }
 
-    .reward-strategy-choice = { $type -> 
+    .reward-strategy-choice = { $type ->
     [AMOUNT] 🔸 Фиксированная
     [PERCENT] 🔹 Процентная
     *[OTHER] { $type }
@@ -327,7 +337,7 @@ btn-referral =
 btn-notifications =
     .user = 👥 Пользовательские
     .system = ⚙️ Системные
-    
+
     .user-choice = { $enabled ->
     [1] 🔘
     *[0] ⚪
@@ -343,7 +353,7 @@ btn-notifications =
     *[OTHER] { $type }
     }
 
-    .system-choice = { $enabled -> 
+    .system-choice = { $enabled ->
     [1] 🔘
     *[0] ⚪
     } { $type ->
@@ -393,7 +403,7 @@ btn-plans =
     .trial = { $is_trial ->
     [1] 🔘
     *[0] ⚪
-    } Пробник 
+    } Пробник
 
     .export-choice = { $selected ->
     [1] 🔘
@@ -402,15 +412,15 @@ btn-plans =
 
     .title = { $is_active ->
     [1] 🟢
-    *[0] 🔴 
+    *[0] 🔴
     } { $name }
 
-    .active = { $is_active -> 
+    .active = { $is_active ->
     [1] 🟢 Включен
     *[0] 🔴 Выключен
     }
-    
-    .type-choice = { $type -> 
+
+    .type-choice = { $type ->
     [TRAFFIC] 🌐 Трафик
     [DEVICES] 📱 Устройства
     [BOTH] 🔗 Трафик + устройства
@@ -418,7 +428,7 @@ btn-plans =
     *[OTHER] { $type }
     }
 
-    .availability-choice = { $type -> 
+    .availability-choice = { $type ->
     [ALL] 🌍 Для всех
     [NEW] 🌱 Для новых
     [EXISTING] 👥 Для клиентов
@@ -433,7 +443,7 @@ btn-plans =
     *[0] ⚪ { traffic-strategy }
     }
 
-    
+
 btn-remnawave =
     .users = 👥 Пользователи
     .hosts = 🌐 Хосты
@@ -450,11 +460,11 @@ btn-importer =
 
 btn-subscription =
     .plan = 💳 Перейти к оформлению подписки
-    .new = 💸 Купить подписку
+    .new = Купить подписку
     .renew = 🔄 Продлить
     .change = 🔃 Изменить
     .promocode = 🎟 Активировать промокод
-    .payment-method = { gateway-type } | { $final_amount ->
+    .payment-method = { $payment_label } | { $final_amount ->
     [0] 🎁
     *[HAS] { $final_amount }{ $currency }
     }
@@ -465,7 +475,7 @@ btn-subscription =
     .back-payment-method = ⬅️ Изменить способ оплаты
     .connect = 🚀 Подключиться
 
-    .duration = { $period } | { $final_amount -> 
+    .duration = { $period } | { $final_amount ->
     [0] 🎁
     *[HAS] { $final_amount }{ $currency }
     }
@@ -478,8 +488,8 @@ btn-promocode =
     .lifetime = ⌛ Время жизни
     .allowed = 👥 Разрешенные пользователи
     .confirm = ✅ Подтвердить
-    
-    .active = { $is_active -> 
+
+    .active = { $is_active ->
     [1] 🟢
     *[0] 🔴
     } Статус

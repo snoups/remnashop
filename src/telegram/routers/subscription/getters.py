@@ -1,3 +1,4 @@
+import re
 from typing import Any, cast
 
 from adaptix import Retort
@@ -11,6 +12,7 @@ from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, 
 from src.application.dto import PlanDto, PriceDetailsDto, UserDto
 from src.application.services import PricingService
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
+from src.application.use_cases.user.queries.plans import GetAvailableTrial
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.config import AppConfig
 from src.core.enums import PurchaseType
@@ -20,23 +22,75 @@ from src.core.utils.i18n_helpers import (
     i18n_format_expire_time,
     i18n_format_traffic_limit,
 )
+from src.core.utils.time import get_traffic_reset_delta
 from src.telegram.states import Subscription
+
+from .payment_options import build_payment_method_options, find_payment_method_option
+
+
+CUSTOM_EMOJI_PATTERN = re.compile(
+    r'<tg-emoji\s+emoji-id=["\'](?P<id>\d+)["\'][^>]*>.*?</tg-emoji>',
+    re.DOTALL,
+)
+
+
+def format_plan_button_label(name: str) -> tuple[str, str | None]:
+    match = CUSTOM_EMOJI_PATTERN.search(name)
+    icon_custom_emoji_id = match.group("id") if match else None
+    label = CUSTOM_EMOJI_PATTERN.sub("", name)
+    label = " ".join(label.split())
+    return label or name, icon_custom_emoji_id
 
 
 @inject
 async def subscription_getter(
     dialog_manager: DialogManager,
+    config: AppConfig,
     user: UserDto,
     subscription_dao: FromDishka[SubscriptionDao],
+    get_available_trial: FromDishka[GetAvailableTrial],
     **kwargs: Any,
 ) -> dict[str, Any]:
     current_subscription = await subscription_dao.get_current(user.telegram_id)
+    available_trial = await get_available_trial.system(user) if user.is_trial_available else None
     has_active = bool(current_subscription and not current_subscription.is_trial)
     is_unlimited = current_subscription.is_unlimited if current_subscription else False
-    return {
+    data: dict[str, Any] = {
+        "has_subscription": False,
         "has_active_subscription": has_active,
         "is_not_unlimited": not is_unlimited,
+        "trial_available": user.is_trial_available and bool(available_trial),
+        "is_trial": False,
+        "status": None,
+        "traffic_limit": None,
+        "device_limit": None,
+        "expire_time": None,
+        "traffic_strategy": None,
+        "reset_time": None,
     }
+
+    if not current_subscription:
+        return data
+
+    data.update(
+        {
+            "has_subscription": True,
+            "is_trial": current_subscription.is_trial,
+            "status": current_subscription.current_status,
+            "traffic_limit": i18n_format_traffic_limit(current_subscription.traffic_limit),
+            "device_limit": i18n_format_device_limit(current_subscription.device_limit),
+            "expire_time": i18n_format_expire_time(current_subscription.expire_at),
+            "connection_url": config.bot.mini_app_url or current_subscription.url,
+            "traffic_strategy": current_subscription.traffic_limit_strategy,
+            "reset_time": i18n_format_expire_time(
+                get_traffic_reset_delta(
+                    current_subscription.traffic_limit_strategy,
+                    current_subscription.created_at,
+                )
+            ),
+        }
+    )
+    return data
 
 
 @inject
@@ -90,13 +144,17 @@ async def plans_getter(
 ) -> dict[str, Any]:
     plans = await get_available_plans.system(user)
 
-    formatted_plans = [
-        {
-            "id": plan.id,
-            "name": i18n.get(plan.name),
-        }
-        for plan in plans
-    ]
+    formatted_plans = []
+    for plan in plans:
+        name = i18n.get(plan.name)
+        label, icon_custom_emoji_id = format_plan_button_label(name)
+        formatted_plans.append(
+            {
+                "id": plan.id,
+                "name": label,
+                "icon_custom_emoji_id": icon_custom_emoji_id,
+            }
+        )
 
     return {
         "plans": formatted_plans,
@@ -184,12 +242,16 @@ async def payment_method_getter(
         raise ValueError(f"Duration '{selected_duration}' not found in plan '{plan.name}'")
 
     payment_methods = []
-    for gateway in gateways:
+    gateways_by_type = {gateway.type: gateway for gateway in gateways}
+    for option in build_payment_method_options(gateways):
+        gateway = gateways_by_type[option.gateway_type]
         raw_price = duration.get_price(gateway.currency)
         price = pricing_service.calculate(user, raw_price, gateway.currency)
         payment_methods.append(
             {
-                "gateway_type": gateway.type,
+                "id": option.id,
+                "payment_label": option.label
+                or i18n.get("gateway-type", gateway_type=option.gateway_type),
                 "final_amount": price.final_amount,
                 "original_amount": price.original_amount,
                 "discount_percent": price.discount_percent,
@@ -238,7 +300,9 @@ async def confirm_getter(
     is_free = dialog_manager.dialog_data.get("is_free", False)
     selected_payment_method = dialog_manager.dialog_data["selected_payment_method"]
     purchase_type = dialog_manager.dialog_data["purchase_type"]
-    payment_gateway = await payment_gateway_dao.get_by_type(selected_payment_method)
+    gateways = await payment_gateway_dao.get_active()
+    selected_option = find_payment_method_option(gateways, selected_payment_method)
+    payment_gateway = await payment_gateway_dao.get_by_type(selected_option.gateway_type)
     duration = plan.get_duration(selected_duration)
 
     if not duration:
@@ -252,7 +316,7 @@ async def confirm_getter(
     pricing = retort.load(pricing_data, PriceDetailsDto)
 
     key, kw = i18n_format_days(duration.days)
-    gateways = await payment_gateway_dao.get_active()
+    payment_options = build_payment_method_options(gateways)
 
     return {
         "purchase_type": purchase_type,
@@ -262,14 +326,16 @@ async def confirm_getter(
         "devices": i18n_format_device_limit(plan.device_limit),
         "traffic": i18n_format_traffic_limit(plan.traffic_limit),
         "period": i18n.get(key, **kw),
-        "payment_method": selected_payment_method,
+        "payment_method": selected_option.gateway_type,
+        "payment_method_label": selected_option.label
+        or i18n.get("gateway-type", gateway_type=selected_option.gateway_type),
         "final_amount": pricing.final_amount,
         "discount_percent": pricing.discount_percent,
         "original_amount": pricing.original_amount,
         "is_personal_discount": pricing_service.is_largest_discount_personal(user),
         "currency": payment_gateway.currency.symbol,
         "url": result_url,
-        "only_single_gateway": len(gateways) == 1,
+        "only_single_gateway": len(payment_options) == 1,
         "only_single_duration": only_single_duration,
         "is_free": is_free,
     }

@@ -19,10 +19,20 @@ from src.application.use_cases.gateways.commands.payment import (
     ProcessPaymentDto,
 )
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
-from src.application.use_cases.user.queries.plans import GetAvailablePlans
+from src.application.use_cases.subscription.commands.purchase import (
+    ActivateTrialSubscription,
+    ActivateTrialSubscriptionDto,
+)
+from src.application.use_cases.user.queries.plans import GetAvailablePlans, GetAvailableTrial
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
-from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
+from src.core.enums import PurchaseType, TransactionStatus
 from src.telegram.states import Subscription
+
+from .payment_options import (
+    PaymentMethodOption,
+    build_payment_method_options,
+    find_payment_method_option,
+)
 
 PAYMENT_CACHE_KEY = "payment_cache"
 CURRENT_DURATION_KEY = "selected_duration"
@@ -35,8 +45,33 @@ class CachedPaymentData(TypedDict):
     final_pricing: str
 
 
-def _get_cache_key(duration: int, gateway_type: PaymentGatewayType) -> str:
-    return f"{duration}:{gateway_type.value}"
+async def on_subscription_start(start_data: object, dialog_manager: DialogManager) -> None:
+    if isinstance(start_data, dict) and "purchase_type" in start_data:
+        dialog_manager.dialog_data["purchase_type"] = PurchaseType(start_data["purchase_type"])
+
+
+@inject
+async def on_get_trial(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    notifier: FromDishka[Notifier],
+    get_available_trial: FromDishka[GetAvailableTrial],
+    activate_trial_subscription: FromDishka[ActivateTrialSubscription],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    plan = await get_available_trial.system(user)
+
+    if not plan:
+        await notifier.notify_user(user=user, i18n_key="ntf-common.trial-unavailable")
+        raise ValueError("Trial plan not exist")
+
+    trial = PlanSnapshotDto.from_plan(plan, plan.durations[0].days)
+    await activate_trial_subscription.system(ActivateTrialSubscriptionDto(user, trial))
+
+
+def _get_cache_key(duration: int, payment_method_id: str) -> str:
+    return f"{duration}:{payment_method_id}"
 
 
 def _load_payment_data(dialog_manager: DialogManager) -> dict[str, CachedPaymentData]:
@@ -55,7 +90,7 @@ async def _create_payment_and_get_data(
     dialog_manager: DialogManager,
     plan: PlanDto,
     duration_days: int,
-    gateway_type: PaymentGatewayType,
+    payment_method: PaymentMethodOption,
     retort: Retort,
     payment_gateway_dao: PaymentGatewayDao,
     notifier: Notifier,
@@ -64,7 +99,7 @@ async def _create_payment_and_get_data(
 ) -> Optional[CachedPaymentData]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     duration = plan.get_duration(duration_days)
-    payment_gateway = await payment_gateway_dao.get_by_type(gateway_type)
+    payment_gateway = await payment_gateway_dao.get_by_type(payment_method.gateway_type)
     purchase_type: PurchaseType = dialog_manager.dialog_data["purchase_type"]
 
     if not duration or not payment_gateway:
@@ -82,7 +117,8 @@ async def _create_payment_and_get_data(
                 plan_snapshot=transaction_plan,
                 pricing=pricing,
                 purchase_type=purchase_type,
-                gateway_type=gateway_type,
+                gateway_type=payment_method.gateway_type,
+                platega_payment_method=payment_method.platega_payment_method,
             ),
         )
 
@@ -112,6 +148,7 @@ async def on_purchase_type_select(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     plans: list[PlanDto] = await get_available_plans.system(user)
     gateways = await payment_gateway_dao.get_active()
+    payment_options = build_payment_method_options(gateways)
     dialog_manager.dialog_data["purchase_type"] = purchase_type
     dialog_manager.dialog_data.pop(CURRENT_DURATION_KEY, None)
 
@@ -120,7 +157,7 @@ async def on_purchase_type_select(
         await notifier.notify_user(user, i18n_key="ntf-subscription.plans-unavailable")
         return
 
-    if not gateways:
+    if not payment_options:
         logger.warning(f"{user.log} No active payment gateways")
         await notifier.notify_user(user, i18n_key="ntf-subscription.gateways-unavailable")
         return
@@ -172,6 +209,7 @@ async def on_subscription_plans(  # noqa: C901
 
     plans: list[PlanDto] = await get_available_plans.system(user)
     gateways = await payment_gateway_dao.get_active()
+    payment_options = build_payment_method_options(gateways)
 
     if not callback.data:
         raise ValueError("Callback data is empty")
@@ -186,7 +224,7 @@ async def on_subscription_plans(  # noqa: C901
         await notifier.notify_user(user, i18n_key="ntf-subscription.plans-unavailable")
         return
 
-    if not gateways:
+    if not payment_options:
         logger.warning(f"{user.log} No active payment gateways")
         await notifier.notify_user(user, i18n_key="ntf-subscription.gateways-unavailable")
         return
@@ -218,16 +256,17 @@ async def on_subscription_plans(  # noqa: C901
             dialog_manager.dialog_data["selected_duration"] = plans[0].durations[0].days
             dialog_manager.dialog_data["only_single_duration"] = True
 
-            if len(gateways) == 1:
-                logger.info(f"{user.log} Auto-selected payment method '{gateways[0].type}'")
-                dialog_manager.dialog_data["selected_payment_method"] = gateways[0].type
+            if len(payment_options) == 1:
+                payment_option = payment_options[0]
+                logger.info(f"{user.log} Auto-selected payment method '{payment_option.id}'")
+                dialog_manager.dialog_data["selected_payment_method"] = payment_option.id
                 dialog_manager.dialog_data["only_single_payment_method"] = True
 
                 payment_data = await _create_payment_and_get_data(
                     dialog_manager=dialog_manager,
                     plan=plans[0],
                     duration_days=plans[0].durations[0].days,
-                    gateway_type=gateways[0].type,
+                    payment_method=payment_option,
                     retort=retort,
                     payment_gateway_dao=payment_gateway_dao,
                     notifier=notifier,
@@ -313,6 +352,13 @@ async def on_duration_select(
     plan = retort.load(raw_plan, PlanDto)
     settings = await settings_dao.get()
     gateways = await payment_gateway_dao.get_active()
+    payment_options = build_payment_method_options(gateways)
+
+    if not payment_options:
+        logger.warning(f"{user.log} No active payment gateways")
+        await notifier.notify_user(user, i18n_key="ntf-subscription.gateways-unavailable")
+        return
+
     currency = settings.default_currency
     price = pricing_service.calculate(
         user,
@@ -321,12 +367,12 @@ async def on_duration_select(
     )
     dialog_manager.dialog_data["is_free"] = price.is_free
 
-    if len(gateways) == 1 or price.is_free:
-        selected_payment_method = gateways[0].type
-        dialog_manager.dialog_data[CURRENT_METHOD_KEY] = selected_payment_method
+    if len(payment_options) == 1 or price.is_free:
+        selected_payment_method = payment_options[0]
+        dialog_manager.dialog_data[CURRENT_METHOD_KEY] = selected_payment_method.id
 
         cache = _load_payment_data(dialog_manager)
-        cache_key = _get_cache_key(selected_duration, selected_payment_method)
+        cache_key = _get_cache_key(selected_duration, selected_payment_method.id)
 
         if cache_key in cache:
             logger.info(f"{user.log} Re-selected same duration and single gateway")
@@ -334,13 +380,13 @@ async def on_duration_select(
             await dialog_manager.switch_to(state=Subscription.CONFIRM)
             return
 
-        logger.info(f"{user.log} Auto-selected single gateway '{selected_payment_method}'")
+        logger.info(f"{user.log} Auto-selected single gateway '{selected_payment_method.id}'")
 
         payment_data = await _create_payment_and_get_data(
             dialog_manager=dialog_manager,
             plan=plan,
             duration_days=selected_duration,
-            gateway_type=selected_payment_method,
+            payment_method=selected_payment_method,
             retort=retort,
             payment_gateway_dao=payment_gateway_dao,
             notifier=notifier,
@@ -363,7 +409,7 @@ async def on_payment_method_select(
     callback: CallbackQuery,
     widget: Select,
     dialog_manager: DialogManager,
-    selected_payment_method: PaymentGatewayType,
+    selected_payment_method: str,
     retort: FromDishka[Retort],
     payment_gateway_dao: FromDishka[PaymentGatewayDao],
     notifier: FromDishka[Notifier],
@@ -394,12 +440,14 @@ async def on_payment_method_select(
         return
 
     plan = retort.load(raw_plan, PlanDto)
+    gateways = await payment_gateway_dao.get_active()
+    payment_option = find_payment_method_option(gateways, selected_payment_method)
 
     payment_data = await _create_payment_and_get_data(
         dialog_manager=dialog_manager,
         plan=plan,
         duration_days=selected_duration,
-        gateway_type=selected_payment_method,
+        payment_method=payment_option,
         retort=retort,
         payment_gateway_dao=payment_gateway_dao,
         notifier=notifier,

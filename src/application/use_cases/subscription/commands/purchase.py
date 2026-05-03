@@ -1,15 +1,33 @@
 from dataclasses import dataclass
 from datetime import timedelta
+from decimal import Decimal
 from typing import Optional
+from uuid import uuid4
 
 from loguru import logger
 
 from src.application.common import EventPublisher, Interactor, Redirect, Remnawave, TranslatorRunner
 from src.application.common.dao import SubscriptionDao, TransactionDao, UserDao
 from src.application.common.uow import UnitOfWork
-from src.application.dto import PlanSnapshotDto, SubscriptionDto, TransactionDto, UserDto
+from src.application.dto import (
+    PlanSnapshotDto,
+    PriceDetailsDto,
+    SubscriptionDto,
+    TransactionDto,
+    UserDto,
+)
 from src.application.events import TrialActivatedEvent
-from src.core.enums import PurchaseType, SubscriptionStatus, TransactionStatus
+from src.application.use_cases.referral.commands.rewards import (
+    AssignReferralRewards,
+    AssignReferralRewardsDto,
+)
+from src.core.enums import (
+    Currency,
+    PaymentGatewayType,
+    PurchaseType,
+    SubscriptionStatus,
+    TransactionStatus,
+)
 from src.core.exceptions import PurchaseError, TrialError
 from src.core.types import RemnaUserDto
 from src.core.utils.converters import days_to_datetime
@@ -39,6 +57,7 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
         event_publisher: EventPublisher,
         redirect: Redirect,
         i18n: TranslatorRunner,
+        assign_referral_rewards: AssignReferralRewards,
     ) -> None:
         self.uow = uow
         self.user_dao = user_dao
@@ -47,6 +66,7 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
         self.event_publisher = event_publisher
         self.redirect = redirect
         self.i18n = i18n
+        self.assign_referral_rewards = assign_referral_rewards
 
     async def _execute(self, actor: UserDto, data: ActivateTrialSubscriptionDto) -> None:
         user = data.user
@@ -95,6 +115,26 @@ class ActivateTrialSubscription(Interactor[ActivateTrialSubscriptionDto, None]):
                 plan_duration=i18n_format_days(plan.duration),
             )
             await self.event_publisher.publish(event)
+            await self.assign_referral_rewards.system(
+                AssignReferralRewardsDto(
+                    user=user,
+                    transaction=TransactionDto(
+                        payment_id=uuid4(),
+                        user_telegram_id=user.telegram_id,
+                        status=TransactionStatus.COMPLETED,
+                        purchase_type=PurchaseType.NEW,
+                        gateway_type=PaymentGatewayType.URLPAY,
+                        pricing=PriceDetailsDto(
+                            original_amount=Decimal(0),
+                            discount_percent=0,
+                            final_amount=Decimal(0),
+                        ),
+                        currency=Currency.RUB,
+                        plan_snapshot=plan,
+                    ),
+                    is_trial_activation=True,
+                )
+            )
             await self.redirect.to_success_trial(user.telegram_id)
             logger.info(
                 f"{actor.log} Trial subscription completed "

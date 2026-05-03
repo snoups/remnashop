@@ -116,6 +116,7 @@ class ReferralSettingsDto(TrackableMixin):
     enable: bool = True
     level: ReferralLevel = ReferralLevel.FIRST
     accrual_strategy: ReferralAccrualStrategy = ReferralAccrualStrategy.ON_FIRST_PAYMENT
+    reward_for_trial: bool = False
     reward: ReferralRewardSettingsDto = field(default_factory=ReferralRewardSettingsDto)
 
 
