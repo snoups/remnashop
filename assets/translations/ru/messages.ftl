@@ -5,9 +5,8 @@ msg-main-menu =
     <blockquote>
     <tg-emoji emoji-id="6030445631921721471">🛡</tg-emoji> <b>Статус:</b> <tg-emoji emoji-id="5454156248813432363">🎥</tg-emoji> Безопасно
     <tg-emoji emoji-id="5258096772776991776">⚙️</tg-emoji> <b>Протокол:</b> VLESS + Reality
-    <tg-emoji emoji-id="6041923781696426657">🏳️</tg-emoji> <b>Локации:</b> 🇦🇹 • 🇳🇱
+    <tg-emoji emoji-id="6041923781696426657">🏳️</tg-emoji> <b>Локации:</b> 🇳🇱 • 🇵🇱 • 🇩🇪 • 🇸🇪
     </blockquote>
-# • 🇨🇭 • 🇩🇪 • 🇫🇮
 msg-menu-devices =
     <b>📱 Управление устройствами</b>
 
@@ -1138,8 +1137,6 @@ msg-subscription-activation-guide =
     }
 
     🆕 Чтобы подключить дополнительные устройства, оформите новую подписку.
-
-    <code>"{ $subscription_url }"</code>
 
     Инструкции по настройке:
 
