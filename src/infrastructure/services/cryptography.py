@@ -94,10 +94,10 @@ class CryptographerImpl(Cryptographer):
     def is_encrypted(self, value: str) -> bool:
         return isinstance(value, str) and value.startswith(ENCRYPTED_PREFIX)
 
-    def generate_short_code(self, data: Any, length: int = 6) -> str:
+    def generate_short_code(self, data: Any, length: int = 9) -> str:
         payload = f"{data}:{self.config.crypt_key.get_secret_value()}"
         digest = hashlib.sha256(payload.encode("utf-8")).digest()
-        code_int = int.from_bytes(digest[:6], "big")
+        code_int = int.from_bytes(digest[:8], "big")
         full_code = self.base62_encode(code_int)
 
         result = full_code[:length].rjust(length, "0")
