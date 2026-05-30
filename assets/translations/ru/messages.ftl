@@ -1166,6 +1166,27 @@ msg-subscription-confirm =
     *[OTHER] { empty }
     }
 
+msg-manual-transfer-receipt =
+    <b>🏦 Реквизиты для оплаты</b>
+
+    { msg-subscription-details }
+
+    <b>Реквизиты для перевода:</b>
+    { $bank_info.bank_name ->
+        *[not_empty] • Банк: { $bank_info.bank_name }
+    }
+    { $bank_info.account_holder ->
+        *[not_empty] • Получатель: { $bank_info.account_holder }
+    }
+    { $bank_info.account_number ->
+        *[not_empty] • Счет: { $bank_info.account_number }
+    }
+    { $bank_info.card_number ->
+        *[not_empty] • Карта: { $bank_info.card_number }
+    }
+
+    <i>📎 Отправьте чек/скриншот оплаты в этот чат.</i>
+
 msg-subscription-trial =
     <b>✅ Пробная подписка успешно получена!</b>
 

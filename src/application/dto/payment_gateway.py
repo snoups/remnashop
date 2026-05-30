@@ -31,6 +31,7 @@ class PaymentGatewayDto(BaseDto, TrackableMixin):
             PaymentGatewayType.HELEKET,
             PaymentGatewayType.FREEKASSA,
             PaymentGatewayType.PAYMASTER,
+            PaymentGatewayType.MANUAL_TRANSFER,
         }
 
 
@@ -149,6 +150,15 @@ class WataGatewaySettingsDto(GatewaySettingsDto):
     api_key: Optional[SecretStr] = None
 
 
+@dataclass(kw_only=True)
+class ManualTransferGatewaySettingsDto(GatewaySettingsDto):
+    type: Literal[PaymentGatewayType.MANUAL_TRANSFER] = PaymentGatewayType.MANUAL_TRANSFER
+    bank_name: Optional[str] = None
+    account_holder: Optional[str] = None
+    account_number: Optional[str] = None
+    card_number: Optional[str] = None
+
+
 AnyGatewaySettingsDto = Union[
     YooKassaGatewaySettingsDto,
     YooMoneyGatewaySettingsDto,
@@ -162,4 +172,5 @@ AnyGatewaySettingsDto = Union[
     RoboKassaGatewaySettingsDto,
     UrlPayGatewaySettingsDto,
     WataGatewaySettingsDto,
+    ManualTransferGatewaySettingsDto,
 ]

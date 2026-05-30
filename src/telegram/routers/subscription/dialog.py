@@ -18,6 +18,7 @@ from .getters import (
     payment_method_getter,
     plan_getter,
     plans_getter,
+    receipt_getter,
     subscription_getter,
     success_payment_getter,
 )
@@ -267,6 +268,15 @@ failed = Window(
     state=Subscription.FAILED,
 )
 
+receipt = Window(
+    Banner(BannerName.SUBSCRIPTION),
+    I18nFormat("msg-manual-transfer-receipt"),
+    *back_main_menu_button,
+    IgnoreUpdate(),
+    state=Subscription.RECEIPT,
+    getter=receipt_getter,
+)
+
 router = Dialog(
     subscription,
     plan,
@@ -274,6 +284,7 @@ router = Dialog(
     duration,
     payment_method,
     confirm,
+    receipt,
     success_payment,
     success_trial,
     failed,
