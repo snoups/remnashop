@@ -124,6 +124,9 @@ ntf-promocode =
     .audience-mismatch = ❌ <i>Этот промокод доступен только клиентам с активной подпиской.</i>
     .plan-mismatch = ❌ <i>Промокод не подходит для выбранного тарифа.</i>
     .applied = ✅ <i>Промокод принят! Скидка { $discount }% будет применена к вашему заказу.</i>
+    .code-already-exists = ❌ <i>Промокод с таким кодом уже существует.</i>
+    .admin-created = ✅ <i>Промокод успешно создан.</i>
+    .admin-deactivated = ✅ <i>Промокод деактивирован.</i>
 
 ntf-broadcast =
     .message = { $content }

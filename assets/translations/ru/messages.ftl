@@ -1264,31 +1264,70 @@ msg-importer-sync-completed =
 
 # Promocodes
 msg-promocodes-main = <b>🎟 Промокоды</b>
+
+msg-promocodes-list = <b>📃 Список промокодов</b>
+
+msg-promocode-code =
+    <b>🏷️ Введите код промокода</b>
+
+    Только латиница, цифры и спецсимволы. Максимум 64 символа.
+    <i>Пример: VAY20</i>
+
+msg-promocode-reward =
+    <b>🎁 Введите процент скидки</b>
+
+    Целое число от 1 до 99.
+    <i>Пример: 20</i>
+
+msg-promocode-allowed =
+    <b>📦 Выберите тариф</b>
+
+    Промокод будет привязан к выбранному тарифу.
+
+msg-promocode-availability =
+    <b>✴️ Выберите аудиторию</b>
+
+    Определяет, кто может использовать промокод.
+
+msg-promocode-type =
+    <b>🔢 Введите лимит использований</b>
+
+    Целое число больше 0.
+    <i>Пример: 100</i>
+
+msg-promocode-lifetime =
+    <b>⌛ Введите срок действия</b>
+
+    Формат: <code>ДД.ММ.ГГГГ</code> или <code>ДД.ММ.ГГГГ ЧЧ:ММ</code>
+    <i>Пример: 31.12.2026</i>
+
 msg-promocode-configurator =
-    <b>🎟 Конфигуратор промокода</b>
+    <b>🎟 Новый промокод — подтверждение</b>
 
     <blockquote>
-    • <b>Код</b>: { $code }
-    • <b>Тип</b>: { promocode-type }
-    • <b>Доступ</b>: { availability-type }
-    • <b>Статус</b>: { $is_active -> 
-        [1] 🟢 Включен
-        *[0] 🔴 Выключен
+    • <b>Код</b>: <code>{ $code }</code>
+    • <b>Скидка</b>: { $discount_percent }%
+    • <b>Тариф</b>: { $plan_name }
+    • <b>Аудитория</b>: { promo-audience }
+    • <b>Лимит активаций</b>: { $max_activations }
+    • <b>Срок действия</b>: { $expires_at_str }
+    </blockquote>
+
+    Проверьте параметры и нажмите «Подтвердить».
+
+msg-promocode-view =
+    <b>🎟 Промокод</b>
+
+    <blockquote>
+    • <b>Код</b>: <code>{ $code }</code>
+    • <b>Скидка</b>: { $discount_percent }%
+    • <b>Тариф</b>: { $plan_name }
+    • <b>Аудитория</b>: { promo-audience }
+    • <b>Лимит активаций</b>: { $max_activations }
+    • <b>Использовано</b>: { $activations_count }
+    • <b>Срок действия</b>: { $expires_at_str }
+    • <b>Статус</b>: { $is_active ->
+        [1] 🟢 Активен
+        *[0] 🔴 Неактивен
         }
     </blockquote>
-
-    <blockquote>
-    { $promocode_type ->
-    [DURATION] • <b>Длительность</b>: { $reward }
-    [TRAFFIC] • <b>Трафик</b>: { $reward }
-    [DEVICES] • <b>Устройства</b>: { $reward }
-    [SUBSCRIPTION] • <b>Подписка</b>: { frg-plan-snapshot }
-    [PERSONAL_DISCOUNT] • <b>Персональная скидка</b>: { $reward }%
-    [PURCHASE_DISCOUNT] • <b>Скидка на покупку</b>: { $reward }%
-    *[OTHER] { $promocode_type }
-    }
-    • <b>Срок действия</b>: { $lifetime }
-    • <b>Лимит активаций</b>: { $max_activations }
-    </blockquote>
-
-    Выберите пункт для изменения.

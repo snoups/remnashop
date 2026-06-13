@@ -478,8 +478,22 @@ btn-promocode =
     .lifetime = ⌛ Время жизни
     .allowed = 👥 Разрешенные пользователи
     .confirm = ✅ Подтвердить
-    
-    .active = { $is_active -> 
+    .deactivate = 🔴 Деактивировать
+
+    .plan-choice = 📦 { $name }
+
+    .audience-choice = { $audience ->
+        [ALL] 👥 Для всех
+        [WITH_ACTIVE_SUBSCRIPTION] 🔒 Только с активной подпиской
+        *[OTHER] { $audience }
+    }
+
+    .item = { $is_active ->
+        [1] 🟢
+        *[0] 🔴
+    } { $code } — { $discount_percent }%
+
+    .active = { $is_active ->
     [1] 🟢
     *[0] 🔴
     } Статус

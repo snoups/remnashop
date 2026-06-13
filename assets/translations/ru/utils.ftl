@@ -6,8 +6,6 @@ development = В разработке!
 test-payment = Тестовый платеж
 unknown = —
 
-development-promocode = Промокоды еще не реализованы, для мотивации и ускорения разработки можете закинуть монет.
-
 payment-invoice-description = { purchase-type } подписки { $name } на { $duration }
 
 inline-invite =
@@ -286,7 +284,7 @@ promocode-type = { $promocode_type ->
     *[OTHER] { $promocode_type }
 }
 
-availability-type = { $availability_type -> 
+availability-type = { $availability_type ->
     [ALL] Для всех
     [NEW] Для новых
     [EXISTING] Для существующих
@@ -294,6 +292,12 @@ availability-type = { $availability_type ->
     [ALLOWED] Для разрешенных
     [LINK] По ссылке
     *[OTHER] { $availability_type }
+}
+
+promo-audience = { $audience ->
+    [ALL] Для всех
+    [WITH_ACTIVE_SUBSCRIPTION] Только с активной подпиской
+    *[OTHER] { $audience }
 }
 
 gateway-type = { $gateway_type ->
