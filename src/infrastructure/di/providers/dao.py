@@ -4,6 +4,7 @@ from src.application.common.dao import (
     BroadcastDao,
     PaymentGatewayDao,
     PlanDao,
+    PromocodeDao,
     ReferralDao,
     SettingsDao,
     SubscriptionDao,
@@ -16,6 +17,7 @@ from src.infrastructure.database.dao import (
     BroadcastDaoImpl,
     PaymentGatewayDaoImpl,
     PlanDaoImpl,
+    PromocodeDaoImpl,
     ReferralDaoImpl,
     SettingsDaoImpl,
     SubscriptionDaoImpl,
@@ -32,6 +34,7 @@ class DaoProvider(Provider):
     broadcast = provide(source=BroadcastDaoImpl, provides=BroadcastDao)
     payment_gateway = provide(source=PaymentGatewayDaoImpl, provides=PaymentGatewayDao)
     plan = provide(source=PlanDaoImpl, provides=PlanDao)
+    promocode = provide(source=PromocodeDaoImpl, provides=PromocodeDao)
     referral = provide(source=ReferralDaoImpl, provides=ReferralDao)
     settings = provide(source=SettingsDaoImpl, provides=SettingsDao)
     subscription = provide(source=SubscriptionDaoImpl, provides=SubscriptionDao)

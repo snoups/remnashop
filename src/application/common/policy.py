@@ -53,6 +53,7 @@ class Permission(UpperStrEnum):
     #
     REMNASHOP_GATEWAYS = auto()
     REMNASHOP_PLAN_EDITOR = auto()
+    REMNASHOP_PROMOCODE_EDITOR = auto()
     REMNASHOP_LOGS = auto()
     #
     USER_EDITOR = auto()
@@ -72,6 +73,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
     Role.ADMIN: {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_ACCESS,
+        Permission.VIEW_PROMOCODE,
     },
     Role.PREVIEW: {  # TODO: Implement demo Bot instance
         Permission.VIEW_DASHBOARD,

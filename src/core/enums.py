@@ -78,6 +78,11 @@ class PlanAvailability(UpperStrEnum):
     LINK = auto()
 
 
+class PromoAudience(UpperStrEnum):
+    ALL = auto()
+    WITH_ACTIVE_SUBSCRIPTION = auto()
+
+
 class PaymentGatewayType(UpperStrEnum):
     TELEGRAM_STARS = auto()
     YOOKASSA = auto()

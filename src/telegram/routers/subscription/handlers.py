@@ -1,15 +1,17 @@
+from datetime import datetime, timezone
 from typing import Optional, TypedDict, cast
 
 from adaptix import Retort
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
-from src.application.common import Notifier
-from src.application.common.dao import PaymentGatewayDao, PlanDao, SettingsDao, SubscriptionDao
+from src.application.common import Notifier, TranslatorRunner
+from src.application.common.dao import PaymentGatewayDao, PlanDao, PromocodeDao, SettingsDao, SubscriptionDao
 from src.application.dto import PlanDto, PlanSnapshotDto, UserDto
 from src.application.services import PricingService
 from src.application.use_cases.gateways.commands.payment import (
@@ -21,12 +23,17 @@ from src.application.use_cases.gateways.commands.payment import (
 from src.application.use_cases.plan.queries.match import MatchPlan, MatchPlanDto
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.core.constants import PAYMENT_PREFIX, USER_KEY
-from src.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
+from src.core.enums import PaymentGatewayType, PromoAudience, PurchaseType, TransactionStatus
 from src.telegram.states import Subscription
 
 PAYMENT_CACHE_KEY = "payment_cache"
 CURRENT_DURATION_KEY = "selected_duration"
 CURRENT_METHOD_KEY = "selected_payment_method"
+
+PROMO_ID_KEY = "promo_id"
+PROMO_CODE_KEY = "promo_code"
+PROMO_DISCOUNT_KEY = "promo_discount_percent"
+PROMO_PLAN_ID_KEY = "promo_plan_id"
 
 
 class CachedPaymentData(TypedDict):
@@ -37,6 +44,11 @@ class CachedPaymentData(TypedDict):
 
 def _get_cache_key(duration: int, gateway_type: PaymentGatewayType) -> str:
     return f"{duration}:{gateway_type.value}"
+
+
+def _clear_promo_data(dialog_manager: DialogManager) -> None:
+    for key in (PROMO_ID_KEY, PROMO_CODE_KEY, PROMO_DISCOUNT_KEY, PROMO_PLAN_ID_KEY):
+        dialog_manager.dialog_data.pop(key, None)
 
 
 def _load_payment_data(dialog_manager: DialogManager) -> dict[str, CachedPaymentData]:
@@ -73,7 +85,17 @@ async def _create_payment_and_get_data(
 
     transaction_plan = PlanSnapshotDto.from_plan(plan, duration.days)
     price = duration.get_price(payment_gateway.currency)
-    pricing = pricing_service.calculate(user, price, payment_gateway.currency)
+
+    promo_discount: int = dialog_manager.dialog_data.get(PROMO_DISCOUNT_KEY, 0)
+    promo_plan_id: Optional[int] = dialog_manager.dialog_data.get(PROMO_PLAN_ID_KEY)
+    promocode_id: Optional[int] = dialog_manager.dialog_data.get(PROMO_ID_KEY)
+
+    if promo_discount and promo_plan_id == plan.id:
+        pricing = pricing_service.calculate_with_promo(user, price, payment_gateway.currency, promo_discount)
+        effective_promocode_id = promocode_id
+    else:
+        pricing = pricing_service.calculate(user, price, payment_gateway.currency)
+        effective_promocode_id = None
 
     try:
         result = await create_payment(
@@ -83,6 +105,7 @@ async def _create_payment_and_get_data(
                 pricing=pricing,
                 purchase_type=purchase_type,
                 gateway_type=gateway_type,
+                promocode_id=effective_promocode_id,
             ),
         )
 
@@ -260,6 +283,7 @@ async def on_plan_select(
     selected_plan: int,
     retort: FromDishka[Retort],
     plan_dao: FromDishka[PlanDao],
+    notifier: FromDishka[Notifier],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     plan = await plan_dao.get_by_id(plan_id=selected_plan)
@@ -270,6 +294,16 @@ async def on_plan_select(
         return
 
     logger.info(f"{user.log} Selected plan '{plan.id}'")
+
+    stored_promo_plan_id: Optional[int] = dialog_manager.dialog_data.get(PROMO_PLAN_ID_KEY)
+    if stored_promo_plan_id is not None and stored_promo_plan_id != plan.id:
+        promo_code = dialog_manager.dialog_data.get(PROMO_CODE_KEY, "")
+        logger.info(
+            f"{user.log} Clearing promocode '{promo_code}' — "
+            f"plan_id mismatch (promo={stored_promo_plan_id}, selected={plan.id})"
+        )
+        _clear_promo_data(dialog_manager)
+        await notifier.notify_user(user, i18n_key="ntf-promocode.plan-mismatch")
 
     dialog_manager.dialog_data[PlanDto.__name__] = retort.dump(plan)
     dialog_manager.dialog_data.pop(PAYMENT_CACHE_KEY, None)
@@ -425,3 +459,72 @@ async def on_get_subscription(
     payment_id = dialog_manager.dialog_data["payment_id"]
     logger.info(f"{user.log} Getted free subscription '{payment_id}'")
     await process_payment.system(ProcessPaymentDto(payment_id, TransactionStatus.COMPLETED))
+
+
+@inject
+async def on_promocode_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    promocode_dao: FromDishka[PromocodeDao],
+    subscription_dao: FromDishka[SubscriptionDao],
+    retort: FromDishka[Retort],
+    i18n: FromDishka[TranslatorRunner],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    code = (message.text or "").strip().upper()
+
+    if not code:
+        return
+
+    promocode = await promocode_dao.get_by_code(code)
+
+    if not promocode or promocode.id is None:
+        await message.answer(i18n.get("ntf-promocode.not-found"))
+        return
+
+    if not promocode.is_active:
+        await message.answer(i18n.get("ntf-promocode.inactive"))
+        return
+
+    now = datetime.now(tz=timezone.utc)
+    if promocode.expires_at.replace(tzinfo=timezone.utc) < now:
+        await message.answer(i18n.get("ntf-promocode.expired"))
+        return
+
+    activation_count = await promocode_dao.count_activations(promocode.id)
+    if activation_count >= promocode.max_activations:
+        await message.answer(i18n.get("ntf-promocode.limit-exceeded"))
+        return
+
+    already_used = await promocode_dao.has_user_activated(promocode.id, user.telegram_id)
+    if already_used:
+        await message.answer(i18n.get("ntf-promocode.already-used"))
+        return
+
+    if promocode.audience == PromoAudience.WITH_ACTIVE_SUBSCRIPTION:
+        subscription = await subscription_dao.get_current(user.telegram_id)
+        if not subscription:
+            await message.answer(i18n.get("ntf-promocode.audience-mismatch"))
+            return
+
+    raw_plan = dialog_manager.dialog_data.get(PlanDto.__name__)
+    if raw_plan:
+        plan = retort.load(raw_plan, PlanDto)
+        if promocode.plan_id != plan.id:
+            await message.answer(i18n.get("ntf-promocode.plan-mismatch"))
+            return
+
+    dialog_manager.dialog_data[PROMO_ID_KEY] = promocode.id
+    dialog_manager.dialog_data[PROMO_CODE_KEY] = code
+    dialog_manager.dialog_data[PROMO_DISCOUNT_KEY] = promocode.discount_percent
+    dialog_manager.dialog_data[PROMO_PLAN_ID_KEY] = promocode.plan_id
+    dialog_manager.dialog_data.pop(PAYMENT_CACHE_KEY, None)
+
+    logger.info(
+        f"{user.log} Applied promocode '{code}' "
+        f"(discount={promocode.discount_percent}%, plan_id={promocode.plan_id})"
+    )
+
+    await message.answer(i18n.get("ntf-promocode.applied", discount=promocode.discount_percent))
+    await dialog_manager.switch_to(state=Subscription.MAIN)

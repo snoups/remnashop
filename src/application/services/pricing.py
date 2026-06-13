@@ -62,6 +62,42 @@ class PricingService:
             final_amount=final_amount,
         )
 
+    def calculate_with_promo(
+        self, user: UserDto, price: Decimal, currency: Currency, promo_discount: int
+    ) -> PriceDetailsDto:
+        user_discount = max(user.purchase_discount or 0, user.personal_discount or 0)
+        effective_discount = min(max(user_discount, promo_discount), 99)
+
+        logger.debug(
+            f"Calculating price with promo for user '{user.telegram_id}': "
+            f"user_discount='{user_discount}', promo_discount='{promo_discount}', "
+            f"effective='{effective_discount}'"
+        )
+
+        if price <= 0:
+            return PriceDetailsDto(
+                original_amount=Decimal(0),
+                discount_percent=0,
+                final_amount=Decimal(0),
+            )
+
+        discounted = price * (Decimal(100) - Decimal(effective_discount)) / Decimal(100)
+        final_amount = self.apply_currency_rules(discounted, currency)
+
+        if final_amount == price:
+            effective_discount = 0
+
+        logger.info(
+            f"Price with promo: original='{price}', "
+            f"effective_discount='{effective_discount}', final='{final_amount}'"
+        )
+
+        return PriceDetailsDto(
+            original_amount=price,
+            discount_percent=effective_discount,
+            final_amount=final_amount,
+        )
+
     def parse_price(self, input_price: str, currency: Currency) -> Decimal:
         logger.debug(f"Parsing input price '{input_price}' for currency '{currency}'")
 

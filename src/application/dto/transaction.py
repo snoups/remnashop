@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Self
+from typing import Optional, Self
 from uuid import UUID
 
 from src.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
@@ -42,6 +42,8 @@ class TransactionDto(BaseDto, TrackableMixin, TimestampMixin):
     pricing: "PriceDetailsDto"
     currency: Currency
     plan_snapshot: "PlanSnapshotDto"
+
+    promocode_id: Optional[int] = field(default=None)
 
     @property
     def is_completed(self) -> bool:

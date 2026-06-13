@@ -1,5 +1,6 @@
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 from uuid import UUID
 
 from loguru import logger
@@ -13,6 +14,7 @@ from src.application.common import (
 )
 from src.application.common.dao import (
     PaymentGatewayDao,
+    PromocodeDao,
     ReferralDao,
     SubscriptionDao,
     TransactionDao,
@@ -44,6 +46,10 @@ from src.application.dto.payment_gateway import (
 )
 from src.application.events import UserPurchaseEvent
 from src.application.use_cases.gateways.queries.providers import GetPaymentGatewayInstance
+from src.application.use_cases.promocode.commands.management import (
+    RecordPromocodeActivation,
+    RecordPromocodeActivationDto,
+)
 from src.application.use_cases.referral.commands.rewards import (
     AssignReferralRewards,
     AssignReferralRewardsDto,
@@ -111,6 +117,7 @@ class CreatePaymentDto:
     pricing: PriceDetailsDto
     purchase_type: PurchaseType
     gateway_type: PaymentGatewayType
+    promocode_id: Optional[int] = field(default=None)
 
 
 class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
@@ -151,6 +158,7 @@ class CreatePayment(Interactor[CreatePaymentDto, PaymentResultDto]):
             pricing=data.pricing,
             currency=gateway_instance.data.currency,
             plan_snapshot=data.plan_snapshot,
+            promocode_id=data.promocode_id,
         )
 
         async with self.uow:
@@ -240,22 +248,26 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         transaction_dao: TransactionDao,
         subscription_dao: SubscriptionDao,
         referral_dao: ReferralDao,
+        promocode_dao: PromocodeDao,
         event_publisher: EventPublisher,
         notifier: Notifier,
         i18n: TranslatorRunner,
         assign_referral_rewards: AssignReferralRewards,
         purchase_subscription: PurchaseSubscription,
+        record_promocode_activation: RecordPromocodeActivation,
     ) -> None:
         self.uow = uow
         self.user_dao = user_dao
         self.transaction_dao = transaction_dao
         self.subscription_dao = subscription_dao
         self.referral_dao = referral_dao
+        self.promocode_dao = promocode_dao
         self.event_publisher = event_publisher
         self.notifier = notifier
         self.i18n = i18n
         self.assign_referral_rewards = assign_referral_rewards
         self.purchase_subscription = purchase_subscription
+        self.record_promocode_activation = record_promocode_activation
 
     async def _execute(self, actor: UserDto, data: ProcessPaymentDto) -> None:
         payment_id = data.payment_id
@@ -347,3 +359,25 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
 
         if not transaction.pricing.is_free:
             await self.assign_referral_rewards.system(AssignReferralRewardsDto(user, transaction))
+
+        if transaction.promocode_id is not None:
+            already_activated = await self.promocode_dao.has_user_activated(
+                transaction.promocode_id, user.telegram_id
+            )
+            if not already_activated:
+                await self.record_promocode_activation.system(
+                    RecordPromocodeActivationDto(
+                        promocode_id=transaction.promocode_id,
+                        user_telegram_id=user.telegram_id,
+                        transaction_payment_id=transaction.payment_id,
+                    )
+                )
+                logger.info(
+                    f"Recorded promocode activation for user '{user.telegram_id}', "
+                    f"promocode_id='{transaction.promocode_id}'"
+                )
+            else:
+                logger.warning(
+                    f"Skipped duplicate promocode activation for user '{user.telegram_id}', "
+                    f"promocode_id='{transaction.promocode_id}'"
+                )

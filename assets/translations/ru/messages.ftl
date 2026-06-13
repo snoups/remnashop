@@ -1087,6 +1087,13 @@ msg-notifications-system = <b>⚙️ Системные уведомления</
 # Subscription
 msg-subscription-main = <b>💳 Подписка</b>
 msg-subscription-plans = <b>📦 Выберите план</b>
+
+msg-subscription-promocode =
+    <b>🎟 Активировать промокод</b>
+
+    Введите ваш промокод ниже.
+
+    Промокод будет проверен на соответствие выбранному тарифу. Если тариф ещё не выбран, вернитесь и выберите его после ввода кода.
 msg-subscription-new-success = Чтобы начать пользоваться нашим сервисом, нажмите кнопку <code>`{ btn-subscription.connect }`</code> и следуйте инструкциям!
 msg-subscription-renew-success = Ваша подписка продлена на { $added_duration }.
 
@@ -1159,6 +1166,11 @@ msg-subscription-confirm =
     } подписки</b>
 
     { msg-subscription-details }
+
+    { $promo_code ->
+    [0] { empty }
+    *[HAS] <blockquote>🎟 Промокод <code>{ $promo_code }</code> применён</blockquote>
+    }
 
     { $purchase_type ->
     [RENEW] <i>⚠️ Текущая подписка будет <u>продлена</u> на выбранный срок.</i>

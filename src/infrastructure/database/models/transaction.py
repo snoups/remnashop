@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy import BigInteger, ForeignKey
@@ -31,5 +31,11 @@ class Transaction(BaseSql, TimestampMixin):
     pricing: Mapped[dict[str, Any]]
     currency: Mapped[Currency]
     plan_snapshot: Mapped[dict[str, Any]]
+
+    promocode_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("promocodes.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     user: Mapped["User"] = relationship(foreign_keys=[user_telegram_id])

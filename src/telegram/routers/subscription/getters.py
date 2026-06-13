@@ -22,6 +22,8 @@ from src.core.utils.i18n_helpers import (
 )
 from src.telegram.states import Subscription
 
+from .handlers import PROMO_CODE_KEY, PROMO_PLAN_ID_KEY
+
 
 @inject
 async def subscription_getter(
@@ -254,6 +256,10 @@ async def confirm_getter(
     key, kw = i18n_format_days(duration.days)
     gateways = await payment_gateway_dao.get_active()
 
+    promo_code = dialog_manager.dialog_data.get(PROMO_CODE_KEY)
+    promo_plan_id = dialog_manager.dialog_data.get(PROMO_PLAN_ID_KEY)
+    effective_promo_code = promo_code if (promo_plan_id == plan.id and promo_code) else None
+
     return {
         "purchase_type": purchase_type,
         "plan": i18n.get(plan.name),
@@ -272,6 +278,7 @@ async def confirm_getter(
         "only_single_gateway": len(gateways) == 1,
         "only_single_duration": only_single_duration,
         "is_free": is_free,
+        "promo_code": effective_promo_code or "0",
     }
 
 
