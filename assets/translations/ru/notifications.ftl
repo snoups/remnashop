@@ -113,6 +113,7 @@ ntf-subscription =
     .plans-unavailable = ❌ <i>В данный момент нет доступных планов.</i>
     .gateways-unavailable = ❌ <i>В данный момент нет доступных платежных систем.</i>
     .renew-plan-unavailable = ❌ <i>Текущий план устарел и недоступен для продления.</i>
+    .renew-plan-changed = ⚠️ <i>Ваш текущий тариф больше недоступен. Выберите новый тариф для продления подписки.</i>
     .payment-creation-failed = ❌ <i>Ошибка при создании платежа. Попробуйте позже.</i>
 
 ntf-promocode =

@@ -161,9 +161,8 @@ async def on_purchase_type_select(
                 await dialog_manager.switch_to(state=Subscription.DURATION)
                 return
             else:
-                logger.warning(f"{user.log} Tried to renew, but no matching plan found")
-                await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-unavailable")
-                return
+                logger.warning(f"{user.log} Tried to renew, but no matching plan found - showing available plans")
+                await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-changed")
 
     if len(plans) == 1:
         logger.info(f"{user.log} Auto-selected single plan '{plans[0].id}'")
@@ -227,9 +226,8 @@ async def on_subscription_plans(  # noqa: C901
                 await dialog_manager.switch_to(state=Subscription.DURATION)
                 return
             else:
-                logger.warning(f"{user.log} Tried to renew, but no matching plan found")
-                await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-unavailable")
-                return
+                logger.warning(f"{user.log} Tried to renew, but no matching plan found - showing available plans")
+                await notifier.notify_user(user, i18n_key="ntf-subscription.renew-plan-changed")
 
     if len(plans) == 1:
         logger.info(f"{user.log} Auto-selected single plan '{plans[0].id}'")
