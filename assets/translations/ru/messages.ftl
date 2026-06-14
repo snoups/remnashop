@@ -48,6 +48,13 @@ msg-main-menu =
     </blockquote>
     }
 
+msg-main-menu-how-to-connect =
+    <blockquote>📲 <b>Как подключиться:</b>
+    • 1. Скачайте приложение Happ
+    • 2. Нажмите «Подключиться»
+    • 3. Пролистайте немного вниз
+    • 4. Нажмите «Добавить подписку»</blockquote>
+
 msg-menu-devices =
     <b>📱 Управление устройствами</b>
 

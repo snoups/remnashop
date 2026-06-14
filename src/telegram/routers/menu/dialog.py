@@ -47,6 +47,7 @@ from .handlers import (
 menu = Window(
     Banner(BannerName.MENU),
     I18nFormat("msg-main-menu"),
+    I18nFormat("msg-main-menu-how-to-connect"),
     Row(
         *connect_buttons,
         Button(
