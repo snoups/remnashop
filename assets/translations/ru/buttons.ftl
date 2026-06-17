@@ -388,6 +388,7 @@ btn-menu-editor =
 btn-gateway =
     .title = { gateway-type }
     .setting = { $field }
+    .display-name = 🏷️ Отображаемое название
     .webhook-copy = 📋 Скопировать вебхук
     .test = 🐞 Тест
     .default-currency = 💸 Валюта по умолчанию

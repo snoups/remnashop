@@ -99,6 +99,16 @@ gateways = Window(
 gateway_settings = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-gateways-settings", gateway_type=F["gateway_type"]),
+    Row(
+        Select(
+            text=I18nFormat("btn-gateway.display-name"),
+            id="display_name_setting",
+            item_id_getter=lambda item: item["field"],
+            items="display_name_field",
+            type_factory=str,
+            on_click=on_field_select,
+        ),
+    ),
     Group(
         Select(
             text=I18nFormat("btn-gateway.setting", field=F["item"]["field"].upper()),

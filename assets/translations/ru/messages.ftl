@@ -1090,7 +1090,10 @@ msg-gateways-placement = <b>🔢 Изменить позиционировани
 msg-gateways-field =
     <b>🌐 Конфигурация { gateway-type }</b>
 
-    Введите новое значение для { $field }.
+    Введите новое значение для { $field ->
+        [display_name] отображаемого названия
+       *[other] { $field }
+    }.
 
 
 # Referral

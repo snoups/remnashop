@@ -48,11 +48,16 @@ async def gateway_getter(
     if not gateway.settings:
         raise ValueError(f"Gateway '{gateway_id}' has not settings")
 
+    settings = gateway.settings.as_list
+    display_name_field = [s for s in settings if s["field"] == "display_name"]
+    other_settings = [s for s in settings if s["field"] != "display_name"]
+
     return {
         "id": gateway.id,
         "gateway_type": gateway.type,
         "is_active": gateway.is_active,
-        "settings": gateway.settings.as_list,
+        "display_name_field": display_name_field,
+        "settings": other_settings,
         "webhook": config.get_webhook(gateway.type),
         "requires_webhook": gateway.requires_webhook,
     }

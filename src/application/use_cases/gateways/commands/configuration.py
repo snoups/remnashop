@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import get_type_hints
 
 from adaptix import Retort
 from loguru import logger
@@ -106,7 +107,7 @@ class UpdatePaymentGatewaySettings(Interactor[UpdatePaymentGatewaySettingsDto, N
 
             try:
                 settings_type = type(gateway.settings)
-                field_type = settings_type.__annotations__.get(data.field_name)
+                field_type = get_type_hints(settings_type).get(data.field_name)
 
                 if not field_type:
                     raise ValueError(
