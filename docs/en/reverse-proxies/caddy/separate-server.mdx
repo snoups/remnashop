@@ -15,7 +15,8 @@ description: "Simple configuration"
 Create a Caddyfile in the /opt/remnawave/caddy directory:
 
 <CodeGroup>
-    ```bash Create Caddyfile mkdir -p /opt/remnawave/caddy && cd /opt/remnawave/caddy && nano Caddyfile
+    ```bash Create Caddyfile
+    mkdir -p /opt/remnawave/caddy && cd /opt/remnawave/caddy && nano Caddyfile
     ```
 </CodeGroup>
 
@@ -44,34 +45,55 @@ Paste the following configuration.
 Create a `docker-compose.yml` file in the `/opt/remnawave/caddy` directory:
 
 <CodeGroup>
-    ```bash Create docker-compose.yml cd /opt/remnawave/caddy && nano docker-compose.yml
+    ```bash Create docker-compose.yml
+    cd /opt/remnawave/caddy && nano docker-compose.yml
     ```
 </CodeGroup>
 
 Paste the following configuration:
 
 <CodeGroup>
-    ```bash docker-compose.yml services: caddy: image: caddy:2.9 container_name:
-    'caddy' hostname: caddy restart: always ports: - '0.0.0.0:443:443' -
-    '0.0.0.0:80:80' networks: - remnawave-network volumes: -
-    ./Caddyfile:/etc/caddy/Caddyfile - caddy-ssl-data:/data networks:
-    remnawave-network: name: remnawave-network driver: bridge external: true
-    volumes: caddy-ssl-data: driver: local external: false name: caddy-ssl-data
+    ```bash docker-compose.yml
+    services:
+        caddy:
+            image: caddy:2.9
+            container_name: 'caddy'
+            hostname: caddy
+            restart: always
+            ports:
+                - '0.0.0.0:443:443'
+                - '0.0.0.0:80:80'
+            networks:
+                - remnawave-network
+            volumes:
+                - ./Caddyfile:/etc/caddy/Caddyfile
+                - caddy-ssl-data:/data
+    networks:
+        remnawave-network:
+            name: remnawave-network
+            driver: bridge
+            external: true
+    volumes:
+        caddy-ssl-data:
+            driver: local
+            external: false
+            name: caddy-ssl-data
     ```
 </CodeGroup>
 
 ## Start the container
 
 <CodeGroup>
-    ```bash Start the container docker compose up -d && docker compose logs -f -t
+    ```bash Start the container
+    docker compose up -d && docker compose logs -f -t
     ```
 </CodeGroup>
 
 Now restart the Remnashop containers:
 
 <CodeGroup>
-    ```bash Restart Remnashop containers cd /opt/remnashop && docker compose
-    down && docker compose up -d && docker compose logs -f
+    ```bash Restart Remnashop containers
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
     ```
 </CodeGroup>
 

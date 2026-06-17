@@ -1,0 +1,29 @@
+---
+title: "Custom Emoji"
+description: "Using custom emoji in Remnashop buttons and messages"
+---
+
+Telegram supports custom (premium) emoji in buttons and messages. To use them, the bot must have a paid username (Fragment) **or** the bot owner must have an active Telegram Premium subscription.
+
+## How to get an emoji ID
+
+1. Send the desired custom emoji to [@getidsbot](https://t.me/getidsbot) or `@RawDataBot`.
+2. The bot will reply with message details including the `custom_emoji_id` field.
+
+## Syntax
+
+Two formats are supported directly in `.ftl` key values.
+
+### Full format
+
+```ftl
+btn-example = <tg-emoji emoji-id="5406756500108501710">🎁</tg-emoji> Button text
+```
+
+### Short format
+
+```ftl
+btn-example = <e id="5406756500108501710">🎁</e> Button text
+```
+
+The fallback text inside the tag (a plain emoji) is shown on clients that don't support custom emoji. It is recommended to always provide it.

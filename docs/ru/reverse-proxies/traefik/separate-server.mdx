@@ -73,36 +73,36 @@ description: "Простая конфигурация"
 <CodeGroup>
     ```bash traefik.yml highlight={23}
     api:
-    dashboard: true
-    debug: true
+      dashboard: true
+      debug: true
     entryPoints:
-    http:
+      http:
         address: ":80"
         http:
-        redirections:
+          redirections:
             entryPoint:
-            to: https
-            scheme: https
-    https:
+              to: https
+              scheme: https
+      https:
         address: ":443"
     serversTransport:
-    insecureSkipVerify: true
+      insecureSkipVerify: true
     providers:
-    file:
+      file:
         directory: /config
         watch: true
     certificatesResolvers:
-    letsencrypt:
+      letsencrypt:
         acme:
-        email: REPLACE_WITH_YOUR_EMAIL
-        storage: /letsencrypt/acme.json
-        httpChallenge:
+          email: REPLACE_WITH_YOUR_EMAIL
+          storage: /letsencrypt/acme.json
+          httpChallenge:
             entryPoint: http
     log:
-    level: "INFO"
-    filePath: "/var/log/traefik/traefik.log"
+      level: "INFO"
+      filePath: "/var/log/traefik/traefik.log"
     accessLog:
-    filePath: "/var/log/traefik/access.log"
+      filePath: "/var/log/traefik/access.log"
     ```
 </CodeGroup>
 
@@ -126,18 +126,19 @@ description: "Простая конфигурация"
 <CodeGroup>
     ```bash remnashop.yml highlight={4}
     http:
-    routers:
+      routers:
         remnashop:
-        rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
-        entrypoints:
+          rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
+          entrypoints:
             - https
-        tls:
+          tls:
             certResolver: letsencrypt
-        service: remnashop
+          service: remnashop
+
     services:
-        remnashop:
+      remnashop:
         loadBalancer:
-            servers:
+          servers:
             - url: "http://remnashop:5000"
     ```
 </CodeGroup>

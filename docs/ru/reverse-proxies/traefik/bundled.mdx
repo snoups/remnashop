@@ -33,19 +33,19 @@ description: "Простая конфигурация"
 <CodeGroup>
     ```javascript remnashop.yml highlight={4}
     http:
-    routers:
+      routers:
         remnashop:
-        rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
-        entrypoints:
+          rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
+          entrypoints:
             - https
-        tls:
+          tls:
             certResolver: letsencrypt
-        service: remnashop
+          service: remnashop
 
     services:
-        remnashop:
+      remnashop:
         loadBalancer:
-            servers:
+          servers:
             - url: "http://remnashop:5000"
     ```
 </CodeGroup>

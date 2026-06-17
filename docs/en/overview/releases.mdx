@@ -5,6 +5,62 @@ description: "History of changes"
 
 ---
 
+#### 0.8.0 (coming soon)
+
+New:
+- Added a **promocode** system with various discount types and usage conditions
+- Added a promocode activation notification
+- Added **detailed statistics** for promocodes and their activations
+- Added an **ad links** system: configurator, revenue tracking, etc.
+- Added the ad link to the user registration notification
+- Added a **blacklist** with bulk user blocking, plus auto-updated lists
+- Added a notification for registration attempts by blacklisted users
+- Added a **backup system** for the database and assets, with notifications
+- Added extra settings: disabling device deletion for users, subscription re-issue, referral link reset, etc.
+- Added an **"Extra settings"** section in the dashboard for options not directly tied to other sections
+- Reworked the **translation system**: user translations take priority over the built-in ones
+- Added support for **10 new locales** (BG, DA, EL, FI, HU, NO, SV, TG, TH, ZH)
+- Added support for **custom emoji**
+- Added the **Valutix** payment gateway (14 gateways now supported)
+- Improved the notification system: system notifications can be routed to a **group/topic**
+- Added **torrent blocker** and "user not connected" events
+- Added new error and exception events
+- Added a notification when inline mode is disabled at startup
+- Added a configurable **display name** for payment gateways in settings
+- Added support for **Platega** checkout without method selection
+- Added a new **message** type for extra main-menu buttons
+- Added a **color** setting for extra main-menu buttons
+- Added a **"subscribers only"** visibility flag in the extra main-menu buttons editor
+- Added a reserve button for connecting via a web browser (in case of MiniApp issues)
+- Added the ability to set a **paid trial period**
+- Added the ability to renew a subscription on a **modified plan** (with a notice that the plan terms have changed)
+- Active **connections are now dropped** when a device is deleted
+- Improved **last month's income** statistics
+- Added a back button to the referrals list (in the referral profile window)
+- Added the ability to reset a user's invite link
+- Added auto-disabling of the trial subscription when leaving the channel/group
+- Improved log detail in error and exception events
+- Hardened gateways and webhooks, improved transaction idempotency
+- Performed a security audit, fixed vulnerabilities and minor bugs
+
+Fixes:
+- Fixed the translation that displays the discount at purchase
+- Fixed revoking the OWNER role from the previous user when BOT_OWNER_ID changes
+- Fixed YooMoney webhook validation (API update)
+- Excluded paid trial plan purchases from referral rewards
+- Discounts are no longer applied to the trial price
+- Fixed a crash when checking out with a **100%** discount
+- Fixed retaining the purchase type during subscription checkout
+- Fixed user activity tracking (the recent interacting users list)
+- Fixed archived log compression
+
+Upcoming Web & API:
+- Added a public **REST API** (plans, subscription, referrals, authentication)
+- Added **JWT and cookie** authentication, refresh tokens, and Telegram login
+- Added **health endpoints** and a Swagger UI toggle (`APP_SWAGGER_ENABLED`)
+
+---
+
 #### 0.7.5 (April 10, 2026)
 
 New:

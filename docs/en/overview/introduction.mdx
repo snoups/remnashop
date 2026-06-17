@@ -21,7 +21,8 @@ description: "Remnashop is a Telegram bot for selling VPN subscriptions, integra
     - Multiple reward types: extra days, traffic, subscription activation for a
     chosen plan, personal discount, or discount for the next purchase. -
     Configurable lifetime: by time or number of activations. - Convenient
-    promocode configurator.
+    promocode configurator. - Detailed statistics for promocodes and their
+    activations.
 </Accordion>
 
 <Accordion title="📢 Broadcasts">
@@ -45,7 +46,8 @@ description: "Remnashop is a Telegram bot for selling VPN subscriptions, integra
     - Configurable trial setup through the plan configurator. - Supports any
     limits. - Supports multiple trial plans. - Separate internal and external
     squad assignments. - Availability settings for users who joined via ad or
-    referral links.
+    referral links. - Support for a paid trial period. - Auto-disabling of the
+    trial subscription when leaving the channel or group.
 </Accordion>
 
 <Accordion title="👥 Referral System">
@@ -56,7 +58,7 @@ description: "Remnashop is a Telegram bot for selling VPN subscriptions, integra
 <Accordion title="💳 Payment Systems">
     - Supports multiple payment gateways: Telegram Stars, YooKassa, YooMoney,
     Cryptomus, Heleket, CryptoPay (CryptoBot), FreeKassa, MulenPay, PayMaster, Platega, RoboKassa,
-    UrlPay, WATA. - Payment gateway configurator. - Default currency setup. -
+    UrlPay, WATA, Valutix. - Payment gateway configurator. - Default currency setup. -
     Ability to run test payments. - Customizable display order for payment
     methods.
 </Accordion>
@@ -77,6 +79,12 @@ description: "Remnashop is a Telegram bot for selling VPN subscriptions, integra
     restricted, and register restricted. - Automatic notifications for users who
     attempted to purchase during restricted mode. - Conditional access support:
     rule acceptance and channel subscription.
+</Accordion>
+
+<Accordion title="⛔ Blacklist">
+    - Block users by Telegram ID. - Bulk blocking via a list. - Support for
+    auto-updated external block lists. - Notification for registration attempts
+    by blacklisted users.
 </Accordion>
 
 <Accordion title="📈 Ad Links">
@@ -106,15 +114,27 @@ description: "Remnashop is a Telegram bot for selling VPN subscriptions, integra
     from other bots.
 </Accordion>
 
+<Accordion title="💾 Backups">
+    - Backups of the database and assets. - Automatic backup scheduler. -
+    Notifications about backup results. - Manage backups directly in the
+    dashboard.
+</Accordion>
+
 <Accordion title="🎛 Main Menu Editor">
-    - Ability to add and modify additional buttons in the main menu.
+    - Add and modify additional buttons in the main menu. - Button types: link,
+    copy text, Web App, and text message. - Button color setting. - Visibility
+    control: by role and a "subscribers only" flag. - Support for media and
+    custom emoji in buttons.
 </Accordion>
 
 <Accordion title="🌐 Internationalization">
     - Ability to set unique banners for each locale and specific dialogs. -
-    Support for interface translations into multiple languages. - Ability to
-    translate plan names and descriptions. - Automatic language detection on
-    first registration and after subsequent changes.
+    Support for interface translations into multiple languages. - Two-layer
+    translation system: user translations (`custom.ftl`) take priority over the
+    built-in ones and persist across updates. - Support for custom emoji in
+    buttons and messages. - Ability to translate plan names and descriptions. -
+    Automatic language detection on first registration and after subsequent
+    changes.
 </Accordion>
 
 <Accordion title="🪄 MiniApp">

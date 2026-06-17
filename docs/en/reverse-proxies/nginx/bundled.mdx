@@ -22,16 +22,16 @@ If Nginx is already configured, all you need to do is add a new location block t
 Issue a certificate for the Remnashop domain name:
 
 <CodeGroup>
-    ```bash Issue certificate acme.sh --issue --standalone -d 'BOT_DOMAIN'
-    --key-file /opt/remnawave/nginx/botdomain_privkey.key --fullchain-file
-    /opt/remnawave/nginx/botdomain_fullchain.pem --alpn --tlsport 8443
+    ```bash Issue certificate
+    acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/botdomain_privkey.key --fullchain-file /opt/remnawave/nginx/botdomain_fullchain.pem --alpn --tlsport 8443
     ```
 </CodeGroup>
 
 Open the Nginx configuration file:
 
 <CodeGroup>
-    ```bash Edit nginx.conf cd /opt/remnawave/nginx && nano nginx.conf
+    ```bash Edit nginx.conf
+    cd /opt/remnawave/nginx && nano nginx.conf
     ```
 </CodeGroup>
 
@@ -55,11 +55,11 @@ Add a new upstream block at the top of the configuration file. Note the highligh
     }
 
     upstream remnawave-subscription-page {
-    server remnawave-subscription-page:3010;
+        server remnawave-subscription-page:3010;
     }
 
     upstream remnashop {
-    server remnashop:5000;
+        server remnashop:5000;
     }
     ```
 </CodeGroup>
@@ -141,8 +141,8 @@ Now add a new server block at the bottom of the configuration file:
 Now update the docker-compose.yml file for Nginx to mount the new certificate files:
 
 <CodeGroup>
-    ```bash Edit docker-compose.yml cd /opt/remnawave/nginx && nano
-    docker-compose.yml
+    ```bash Edit docker-compose.yml
+    cd /opt/remnawave/nginx && nano docker-compose.yml
     ```
 </CodeGroup>
 
@@ -166,11 +166,10 @@ Now update the docker-compose.yml file for Nginx to mount the new certificate fi
                 - remnawave-network
 
     networks:
-    remnawave-network:
-    name: remnawave-network
-    driver: bridge
-    external: true
-
+        remnawave-network:
+            name: remnawave-network
+            driver: bridge
+            external: true
     ```
 </CodeGroup>
 
@@ -185,8 +184,8 @@ Now restart the Nginx container:
 And restart the Remnashop containers:
 
 <CodeGroup>
-    ```bash Restart Remnashop containers cd /opt/remnashop && docker compose
-    down && docker compose up -d && docker compose logs -f
+    ```bash Restart Remnashop containers
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
     ```
 </CodeGroup>
 

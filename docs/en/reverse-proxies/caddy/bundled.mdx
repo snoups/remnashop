@@ -20,7 +20,9 @@ In this guide, we will look at the configuration and setup of the Caddy reverse 
 If Caddy is already configured, all you need to do is add a new site block to the Caddyfile:
 
 <CodeGroup>
-    ```bash Edit Caddyfile cd /opt/remnawave/caddy && nano Caddyfile ```
+    ```bash Edit Caddyfile
+    cd /opt/remnawave/caddy && nano Caddyfile
+    ```
 </CodeGroup>
 
 <Warning>
@@ -61,16 +63,16 @@ Add a new site block as shown in the example configuration below. Note the highl
 Now restart the Caddy container:
 
 <CodeGroup>
-    ```bash Restart Caddy container cd /opt/remnawave/caddy && docker compose
-    down && docker compose up -d && docker compose logs -f
+    ```bash Restart Caddy container
+    cd /opt/remnawave/caddy && docker compose down && docker compose up -d && docker compose logs -f
     ```
 </CodeGroup>
 
 And restart the Remnashop containers:
 
 <CodeGroup>
-    ```bash Restart Remnashop containers cd /opt/remnashop && docker compose
-    down && docker compose up -d && docker compose logs -f 
+    ```bash Restart Remnashop containers
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
     ```
 </CodeGroup>
 

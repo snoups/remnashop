@@ -9,17 +9,29 @@ The bot supports custom banners for each page and locale. Supported page names: 
 
 Supported formats: `jpg`, `jpeg`, `png`, `gif`, `webp`.
 
-Banners should be placed at: `/opt/remnashop/assets/banners/`
+Banners are loaded from two sources with different priority:
+
+1. **Your banners** — `/opt/remnashop/assets/banners/` (highest priority)
+2. **Bot built-in banners** — `assets.default/banners/` inside the Docker image (fallback)
+
+To **use your own banner**, place the file in `assets/banners/` — it automatically takes priority over the built-in one. To **use a built-in banner**, simply don't place a file.
 
 ### Fallback chain
 
-When loading a banner, the system searches in the following order:
+When loading a banner, the system searches in the following order.
+
+**User volume (`assets/banners/`):**
 
 1. `banners/{user_locale}/{page}` — page-specific banner for the user's locale
 2. `banners/{user_locale}/default` — default banner for the user's locale
 3. `banners/{default_locale}/{page}` — page-specific banner for the default locale
 4. `banners/{default_locale}/default` — default banner for the default locale
-5. `banners/default` — global fallback
+5. `banners/default` — global user fallback
+
+**Built-in banners (`assets.default/banners/`, inside the image):**
+
+6. `banners/{user_locale}/{page}` — built-in page-specific banner
+7. `banners/default` — built-in global banner (last resort)
 
 ### Usage examples
 
@@ -41,26 +53,54 @@ banners/
     └── menu.jpg
 ```
 
-<Warning>
-    The `banners/default.jpg` file is the global fallback and is required for the bot to work properly. Do not delete it.
-</Warning>
+<Note>
+    If you don't place any banner, the bot uses its built-in banners from the image. Your own `banners/default.jpg` sets the global fallback for all pages and locales.
+</Note>
 
 ---
 
 ## Translations
 
-Translation files are located at: `/opt/remnashop/assets/translations/{locale}/`
+Translations are loaded from two sources with different priority:
 
-| File                | Description                                          |
-| ------------------- | ---------------------------------------------------- |
-| `buttons.ftl`       | Button labels                                        |
-| `messages.ftl`      | Messages and dialog texts                            |
-| `notifications.ftl` | Notification texts                                   |
-| `events.ftl`        | Event-triggered messages                             |
-| `utils.ftl`         | Utility strings (statuses, labels, etc.)             |
-| `custom.ftl`        | Custom translations for plan names, menu buttons, etc. |
+1. **Your overrides** — `/opt/remnashop/assets/translations/{locale}/custom.ftl` (highest priority)
+2. **Bot built-ins** — `assets.default/translations/{locale}/*.ftl` inside the Docker image (fallback for all other keys)
 
-The `custom.ftl` file is intended for user-defined keys — for example, translated plan names or extra menu button labels. Add your keys here instead of editing the main files.
+This means:
+
+- New keys added in a bot update are available automatically — no action needed.
+- Your overrides in `custom.ftl` are never touched by updates.
+- To override any built-in key, add it to `custom.ftl` with your translation.
+
+<Note>
+    The built-in files (`buttons.ftl`, `messages.ftl`, `notifications.ftl`, `events.ftl`, `utils.ftl`) live inside the image and always match the bot version. You don't need to edit them in the user volume — `custom.ftl` is enough.
+</Note>
+
+### The `custom.ftl` file
+
+Each locale folder may contain a `custom.ftl` file (e.g. `translations/ru/custom.ftl`). It is used both to **override** built-in keys and for your **own** strings — plan names, extra menu buttons, etc.
+
+Add key-value pairs using the Fluent syntax:
+
+```ftl
+# Override a built-in key
+btn-menu-connect = 🚀 Connect
+
+# Your own menu buttons
+custom-menu-link1 = 1️⃣ First button
+custom-menu-link2 = 2️⃣ Second button
+
+# Your own plan names
+custom-plan-name1 = 1️⃣ Basic plan
+custom-plan-name2 = 2️⃣ Premium plan
+```
+
+To avoid collisions with built-in keys, prefix your own keys with `custom-`.
+
+| Context  | Max length      |
+| -------- | --------------- |
+| Buttons  | 32 characters   |
+| Messages | 1024 characters |
 
 After making changes, restart the container for them to take effect.
 
@@ -69,10 +109,6 @@ After making changes, restart the container for them to take effect.
     cd /opt/remnashop && docker compose down && docker compose up -d
     ```
 </CodeGroup>
-
-<Warning>
-    Translation persistence across bot updates is not currently supported. When updating, your previous assets will be archived at: `/opt/remnashop/assets/*.bak`
-</Warning>
 
 ---
 

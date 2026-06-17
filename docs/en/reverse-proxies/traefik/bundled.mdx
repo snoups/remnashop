@@ -20,8 +20,8 @@ In this guide, we will look at the configuration and setup of the Traefik revers
 If Traefik is already configured, you need to create a new dynamic configuration file <Badge>remnashop.yml</Badge> in the <Badge>/opt/remnawave/traefik/config</Badge> directory:
 
 <CodeGroup>
-    ```bash Traefik configuration cd /opt/remnawave/traefik/config && nano
-    remnashop.yml
+    ```bash Traefik configuration
+    cd /opt/remnawave/traefik/config && nano remnashop.yml
     ```
 </CodeGroup>
 
@@ -35,18 +35,29 @@ Paste the following configuration.
 
 <CodeGroup>
     ```javascript remnashop.yml highlight={4}
-    http: routers: remnashop: rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) &&
-    PathPrefix(`/api/v1`)" entrypoints: - https tls: certResolver: letsencrypt
-    service: remnashop services: remnashop: loadBalancer: servers: - url:
-    "http://remnashop:5000"
+    http:
+      routers:
+        remnashop:
+          rule: "Host(`REPLACE_WITH_YOUR_DOMAIN_BOT`) && PathPrefix(`/api/v1`)"
+          entrypoints:
+            - https
+          tls:
+            certResolver: letsencrypt
+          service: remnashop
+
+    services:
+      remnashop:
+        loadBalancer:
+          servers:
+            - url: "http://remnashop:5000"
     ```
 </CodeGroup>
 
 Now restart the Remnashop containers:
 
 <CodeGroup>
-    ```bash Restart Remnashop containers cd /opt/remnashop && docker compose
-    down && docker compose up -d && docker compose logs -f
+    ```bash Restart Remnashop containers
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
     ```
 </CodeGroup>
 

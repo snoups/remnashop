@@ -9,6 +9,8 @@ traefik
 logs/*
 !logs/.gitkeep
 .history
+.claude
+CLAUDE.md
 
 # Environment
 .venv/

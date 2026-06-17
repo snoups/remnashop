@@ -14,6 +14,7 @@ description: "Description of all environment variables for configuring Remnashop
 | `APP_LOCALES`        | ❌       | `ru`      | Comma-separated list of supported locales. Example: `en, ru`                                   |
 | `APP_DEFAULT_LOCALE` | ❌       | `ru`      | Default locale.                                                                                |
 | `APP_ORIGINS`        | ❌       | —         | Comma-separated list of allowed CORS origins.                                                  |
+| `APP_SWAGGER_ENABLED`| ❌       | `false`   | Whether to enable the Swagger UI and OpenAPI documentation.                                    |
 
 ---
 
@@ -57,9 +58,9 @@ description: "Description of all environment variables for configuring Remnashop
 | `DATABASE_PORT`         | ❌       | `5432`         | Database port.                                            |
 | `DATABASE_NAME`         | ❌       | `remnashop`    | Database name.                                            |
 | `DATABASE_USER`         | ❌       | `remnashop`    | Database user.                                            |
-| `DATABASE_POOL_SIZE`    | ❌       | `30`           | Connection pool size.                                     |
-| `DATABASE_MAX_OVERFLOW` | ❌       | `30`           | Maximum additional connections beyond the pool.           |
-| `DATABASE_POOL_TIMEOUT` | ❌       | `10`           | Timeout for waiting for a connection from the pool (sec). |
+| `DATABASE_POOL_SIZE`    | ❌       | `10`           | Connection pool size.                                     |
+| `DATABASE_MAX_OVERFLOW` | ❌       | `20`           | Maximum additional connections beyond the pool.           |
+| `DATABASE_POOL_TIMEOUT` | ❌       | `30`           | Timeout for waiting for a connection from the pool (sec). |
 | `DATABASE_POOL_RECYCLE` | ❌       | `1800`         | Connection lifetime in the pool (sec).                    |
 | `DATABASE_ECHO`         | ❌       | `false`        | Log SQL queries.                                          |
 | `DATABASE_ECHO_POOL`    | ❌       | `false`        | Log connection pool events.                               |

@@ -4,8 +4,7 @@ description: "Simple configuration"
 ---
 
 <Warning>
-    Installing on a separate server means that Nginx will be installed on a
-    different server than the Remnawave panel and other components.
+    Installing on a separate server means that Nginx will be installed on a different server than the Remnawave panel and other components.
 </Warning>
 
 <Danger>
@@ -19,28 +18,28 @@ You need to issue an SSL certificate. The easiest way is to use [acme.sh](https:
 ## Install dependencies
 
 <CodeGroup>
-    ```bash Install dependencies sudo apt-get install cron socat
+    ```bash Install dependencies
+    sudo apt-get install cron socat
     ```
 </CodeGroup>
 
 <Info>
-    You can use any email address to issue the certificate, but it is
-    recommended to use a valid one.
+    You can use any email address to issue the certificate, but it is recommended to use a valid one.
 </Info>
 
 Replace `EMAIL` with your email address:
 
 <CodeGroup>
-    ```bash Install acme.sh curl https://get.acme.sh | sh -s email=EMAIL &&
-    source ~/.bashrc
+    ```bash Install acme.sh
+    curl https://get.acme.sh | sh -s email=EMAIL && source ~/.bashrc
     ```
 </CodeGroup>
 
 ## Create a folder for certificates
 
 <CodeGroup>
-    ```bash Create directory mkdir -p /opt/remnawave/nginx && cd
-    /opt/remnawave/nginx
+    ```bash Create directory
+    mkdir -p /opt/remnawave/nginx && cd /opt/remnawave/nginx
     ```
 </CodeGroup>
 
@@ -49,20 +48,17 @@ Replace `EMAIL` with your email address:
 Replace `BOT_DOMAIN` with the domain name you want to issue a certificate for.
 
 <Warning>
-    Do not use domain zones: .ru, .su, .рф. ZeroSSL does not currently support
-    these zones.
+    Do not use domain zones: .ru, .su, .рф. ZeroSSL does not currently support these zones.
 </Warning>
 
 <CodeGroup>
-    ```bash Issue certificate acme.sh --issue --standalone -d 'BOT_DOMAIN'
-    --key-file /opt/remnawave/nginx/privkey.key --fullchain-file
-    /opt/remnawave/nginx/fullchain.pem --alpn --tlsport 8443
-    ```
+```bash Issue certificate
+acme.sh --issue --standalone -d 'BOT_DOMAIN' --key-file /opt/remnawave/nginx/privkey.key --fullchain-file /opt/remnawave/nginx/fullchain.pem --alpn --tlsport 8443
+```
 </CodeGroup>
 
 <Info>
-    Make sure that port `8443` is open on your server. It is
-    required for certificate issuance.
+    Make sure that port `8443` is open on your server. It is required for certificate issuance.
 </Info>
 
 <Frame>
@@ -76,16 +72,15 @@ This confirms that the certificate has been issued. `Acme.sh` will automatically
 Create a `nginx.conf` file in the `/opt/remnawave/nginx` directory:
 
 <CodeGroup>
-    ```bash Create nginx.conf cd /opt/remnawave/nginx && nano nginx.conf
+    ```bash Create nginx.conf
+    cd /opt/remnawave/nginx && nano nginx.conf
     ```
 </CodeGroup>
 
 Paste the following configuration.
 
 <Warning>
-    Replace <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN` with your
-    domain name.
-    
+    Replace <Badge color="orange">REPLACE_WITH_YOUR_DOMAIN</Badge> with your domain name.
     Review the configuration below and pay attention to the highlighted lines.
 </Warning>
 
@@ -96,7 +91,7 @@ Paste the following configuration.
     }
 
     server {
-    server_name REPLACE_WITH_YOUR_DOMAIN;
+        server_name REPLACE_WITH_YOUR_DOMAIN;
 
         listen 443 ssl;
         listen [::]:443 ssl reuseport;
@@ -160,18 +155,15 @@ Paste the following configuration.
             text/javascript
             text/plain
             text/xml;
-
     }
 
     server {
-    listen 443 ssl default*server;
-    listen [::]:443 ssl default_server;
-    server_name *;
+        listen 443 ssl default_server;
+        listen [::]:443 ssl default_server;
+        server_name _;
 
         ssl_reject_handshake on;
-
     }
-
     ```
 </CodeGroup>
 
@@ -182,13 +174,12 @@ Create a `docker-compose.yml` file in the `/opt/remnawave/nginx` directory:
 <CodeGroup>
     ```bash Create docker-compose.yml
     cd /opt/remnawave/nginx && nano docker-compose.yml
-    ````
+    ```
+</CodeGroup>
 
-    </CodeGroup>
+Paste the following configuration:
 
-    Paste the following configuration:
-
-    <CodeGroup>
+<CodeGroup>
     ```bash docker-compose.yml
     services:
         remnawave-nginx:
@@ -206,11 +197,10 @@ Create a `docker-compose.yml` file in the `/opt/remnawave/nginx` directory:
                 - remnawave-network
 
     networks:
-    remnawave-network:
-    name: remnawave-network
-    driver: bridge
-    external: true
-
+        remnawave-network:
+            name: remnawave-network
+            driver: bridge
+            external: true
     ```
 </CodeGroup>
 
@@ -225,8 +215,8 @@ Create a `docker-compose.yml` file in the `/opt/remnawave/nginx` directory:
 And restart the Remnashop containers:
 
 <CodeGroup>
-    ```bash Restart Remnashop containers cd /opt/remnashop && docker compose
-    down && docker compose up -d && docker compose logs -f
+    ```bash Restart Remnashop containers
+    cd /opt/remnashop && docker compose down && docker compose up -d && docker compose logs -f
     ```
 </CodeGroup>
 

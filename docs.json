@@ -27,6 +27,7 @@
                 "docs/ru/install/installation",
                 "docs/ru/install/environment-variables",
                 "docs/ru/install/assets",
+                "docs/ru/install/custom-emoji",
                 "docs/ru/install/update"
               ]
             },
@@ -59,6 +60,7 @@
                 "docs/en/install/installation",
                 "docs/en/install/environment-variables",
                 "docs/en/install/assets",
+                "docs/en/install/custom-emoji",
                 "docs/en/install/update"
               ]
             },
