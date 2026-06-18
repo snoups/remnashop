@@ -110,6 +110,14 @@ After making changes, restart the container for them to take effect.
     ```
 </CodeGroup>
 
+<Warning>
+    When you override a built-in key in `custom.ftl`, you also lock in its variables (placeholders). If that key changes in a bot update — a variable is added, renamed, or removed — your translation will no longer match the current key, and rendering the message may fail.
+
+    For this reason, after every update check whether translations changed and, if needed, bring your overrides in `custom.ftl` in line with the current keys. Each release indicates whether translations were affected.
+
+    You can compare translations between versions in the [translations folder history on GitHub](https://github.com/snoups/remnashop/commits/main/assets/translations) or by comparing tags, for example [`v0.7.5...v0.8.0`](https://github.com/snoups/remnashop/compare/v0.7.5...v0.8.0).
+</Warning>
+
 ---
 
 ## QR Code Logo

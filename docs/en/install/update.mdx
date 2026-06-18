@@ -7,16 +7,18 @@ To update and restart the bot, run the following command:
 
 <CodeGroup>
     ```bash Update the bot
-    cd /opt/remnashop && docker compose pull && docker compose down && RESET_ASSETS=true docker compose up -d && docker compose logs -f
+    cd /opt/remnashop && docker compose pull && docker compose down && docker compose up -d && docker compose logs -f
     ```
 </CodeGroup>
 
-When using `RESET_ASSETS=true`, the following actions are performed:
+The built-in assets (default translations and banners) ship inside the Docker image and are updated automatically together with the bot — you no longer need to reset them manually.
 
-- All current assets are backed up with a timestamp (`/opt/remnashop/assets/*.bak`).
-- New assets from the image are downloaded and unpacked.
-- After the update, the bot will use the latest asset files.
+On startup after an update, the bot:
 
-<Warning>
-    If you do not use `RESET_ASSETS=true`, the old assets will remain unchanged. This may cause the bot to work incorrectly after the update.
-</Warning>
+- Picks up the latest built-in translations and banners from the image.
+- Keeps your custom translations (`custom.ftl`) and banners unchanged.
+- When upgrading from a version below 0.8, moves the old translation files into a `.legacy/` folder — only `custom.ftl` remains in the user volume.
+
+<Note>
+    Your overrides in `custom.ftl` and your own banners in `assets/` are never touched by an update. See the [Assets](/docs/en/install/assets) page for details.
+</Note>
