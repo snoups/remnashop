@@ -5,6 +5,28 @@ description: "History of changes"
 
 ---
 
+#### 0.8.1 (June 19, 2026)
+
+New:
+- Opening a user card now preserves the **originating list** (recent / by activity / search results / blacklist), and the "Back" button returns to it; search results are restored with the same matches
+- User list labels now show an **identifier**: `name (telegram_id | email | internal id)`
+
+Fixes:
+- Fixed handling of the **Valutix** webhook response format
+- Fixed user injection into worker dialogs: background getters (e.g. `Subscription:SUCCESS`) now receive user data
+- Allowed editing of **own** profile fields regardless of role comparison
+- Fixed purchasing and renewing a **free** subscription
+- Fixed handling of **text** menu buttons that carry media without text
+
+Web & API:
+- Added **Telegram Mini App** authentication: endpoint and `initData` validation
+- Added a **trial activation** endpoint
+- Added a **promocode activation** endpoint
+- Added a **delete-all-devices** endpoint
+- Enabled the **subscription reissue** endpoint
+
+---
+
 #### 0.8.0 (June 19, 2026)
 
 New:
