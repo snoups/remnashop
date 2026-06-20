@@ -1,0 +1,22 @@
+# Build and run the code from the currently checked-out repository branch.
+#
+# Use this file together with one production compose file:
+#   docker compose -f docker-compose.prod.internal.yml -f docker-compose.custom.yml up -d --build
+# or:
+#   docker compose -f docker-compose.prod.external.yml -f docker-compose.custom.yml up -d --build
+
+x-custom-build: &custom-build
+  image: remnashop-custom:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+services:
+  remnashop:
+    <<: *custom-build
+
+  remnashop-taskiq-worker:
+    <<: *custom-build
+
+  remnashop-taskiq-scheduler:
+    <<: *custom-build
