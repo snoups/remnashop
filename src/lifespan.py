@@ -83,7 +83,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.critical(
                 f"Webhook has a last error message: '{webhook_info.last_error_message}'"
             )
-            webhook_error_event = WebhookErrorEvent()
+            webhook_error_event = WebhookErrorEvent(
+                error_message=webhook_info.last_error_message,
+            )
             await event_bus.publish(webhook_error_event)
 
         await command_service.setup_commands()
