@@ -7,6 +7,7 @@ def setup_routers(router: Router) -> None:
     # WARNING: The order of router registration matters!
     routers = [
         extra.payment.router,
+        extra.giveaway.router,
         extra.notification.router,
         extra.test.router,
         extra.commands.router,
@@ -21,6 +22,7 @@ def setup_routers(router: Router) -> None:
         #
         dashboard.dialog.router,
         dashboard.promocodes.dialog.router,
+        dashboard.giveaways.dialog.router,
         dashboard.statistics.dialog.router,
         dashboard.access.dialog.router,
         dashboard.broadcast.dialog.router,

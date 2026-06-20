@@ -81,6 +81,21 @@ class PlanAvailability(UpperStrEnum):
 class PromoAudience(UpperStrEnum):
     ALL = auto()
     WITH_ACTIVE_SUBSCRIPTION = auto()
+    WITHOUT_ACTIVE_SUBSCRIPTION = auto()
+
+
+class GiveawayCampaignStatus(UpperStrEnum):
+    DRAFT = auto()
+    ACTIVE = auto()
+    COMPLETED = auto()
+    ARCHIVED = auto()
+
+
+class GiveawayEntryStatus(UpperStrEnum):
+    ELIGIBLE = auto()
+    WINNER = auto()
+    ARCHIVED = auto()
+    EXCLUDED = auto()
 
 
 class PaymentGatewayType(UpperStrEnum):

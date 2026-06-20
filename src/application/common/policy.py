@@ -30,6 +30,7 @@ class Permission(UpperStrEnum):
     VIEW_USERS = auto()
     VIEW_BROADCAST = auto()
     VIEW_PROMOCODE = auto()
+    VIEW_GIVEAWAY = auto()
     VIEW_ACCESS = auto()
     VIEW_REMNAWAVE = auto()
     VIEW_REMNASHOP = auto()
@@ -54,11 +55,13 @@ class Permission(UpperStrEnum):
     REMNASHOP_GATEWAYS = auto()
     REMNASHOP_PLAN_EDITOR = auto()
     REMNASHOP_PROMOCODE_EDITOR = auto()
+    REMNASHOP_GIVEAWAY_EDITOR = auto()
     REMNASHOP_LOGS = auto()
     #
     USER_EDITOR = auto()
     USER_SUBSCRIPTION_EDITOR = auto()
     USER_SYNC = auto()
+    USER_DELETE = auto()
     #
     IMPORTER = auto()
     ASSIGN_ROLE = auto()
@@ -74,6 +77,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_ACCESS,
         Permission.VIEW_PROMOCODE,
+        Permission.VIEW_GIVEAWAY,
+        Permission.REMNASHOP_GIVEAWAY_EDITOR,
     },
     Role.PREVIEW: {  # TODO: Implement demo Bot instance
         Permission.VIEW_DASHBOARD,

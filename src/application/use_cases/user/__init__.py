@@ -3,6 +3,7 @@ from typing import Final
 from src.application.common import Interactor
 
 from .commands.blocking import SetBotBlockedStatus, ToggleUserBlockedStatus, UnblockAllUsers
+from .commands.deletion import DeleteUserCompletely
 from .commands.messaging import SendMessageToUser
 from .commands.profile_edit import (
     ChangeUserPoints,
@@ -19,6 +20,7 @@ from .queries.search import SearchUsers
 USER_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     GetAdmins,
     GetOrCreateUser,
+    DeleteUserCompletely,
     SetBotBlockedStatus,
     ToggleUserBlockedStatus,
     RevokeRole,

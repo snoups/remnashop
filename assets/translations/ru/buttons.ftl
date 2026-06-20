@@ -67,6 +67,7 @@ btn-dashboard =
     .users = 👥 Пользователи
     .broadcast = 📢 Рассылка
     .promocodes = 🎟 Промокоды
+    .giveaways = 🎁 Акции
     .access = 🔓 Режим доступа
     .remnawave = 🌊 RemnaWave
     .remnashop = 🛍 RemnaShop
@@ -139,6 +140,9 @@ btn-user =
     .give-subscription = 🎁 Выдать подписку
     .subscription-internal-squads = ⏺️ Внутренние сквады
     .subscription-external-squads = ⏹️ Внешний сквад
+    .delete = 🗑 Удалить пользователя
+    .delete-confirm = Да, удалить пользователя
+    .delete-cancel = Отмена
 
     .allowed-plan-choice = { $selected ->
     [1] 🔘
@@ -485,6 +489,7 @@ btn-promocode =
     .audience-choice = { $audience ->
         [ALL] 👥 Для всех
         [WITH_ACTIVE_SUBSCRIPTION] 🔒 Только с активной подпиской
+        [WITHOUT_ACTIVE_SUBSCRIPTION] 🔓 Только без активной подписки
         *[OTHER] { $audience }
     }
 
@@ -497,3 +502,28 @@ btn-promocode =
     [1] 🟢
     *[0] 🔴
     } Статус
+
+btn-giveaway =
+    .list = 📃 Список акций
+    .create = ➕ Создать акцию
+    .entries = 👥 Участники
+    .winners = 🏆 Победители
+    .select-winner = 🎲 Выбрать победителя
+    .select-next-winner = 🎲 Выбрать следующего
+    .enable = 🟢 Включить
+    .disable = 🔴 Выключить
+    .keep-disabled = ⚪ Оставить выключенной
+    .complete = ✅ Завершить
+    .archive = 🗄 Очистить / архивировать
+    .archive-confirm = ⚠️ Да, очистить
+    .delete = 🗑 Удалить акцию
+    .delete-confirm = Да, удалить
+    .cancel = Отмена
+    .confirm = ✅ Подтвердить
+    .continue = Продолжить ➡️
+    .leave-phone = 📱 Оставить номер телефона
+    .skip-phone = ⏭ Пропустить
+    .purchase-type = { $selected ->
+        [1] ✅
+        *[0] ◻️
+    } { $purchase_type }

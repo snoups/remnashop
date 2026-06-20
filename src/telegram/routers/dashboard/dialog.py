@@ -8,6 +8,7 @@ from src.telegram.states import (
     Dashboard,
     DashboardAccess,
     DashboardBroadcast,
+    DashboardGiveaways,
     DashboardImporter,
     DashboardPromocodes,
     DashboardRemnashop,
@@ -50,6 +51,15 @@ dashboard = Window(
             state=DashboardPromocodes.MAIN,
             mode=StartMode.RESET_STACK,
             when=require_permission(Permission.VIEW_PROMOCODE),
+        ),
+    ),
+    Row(
+        Start(
+            text=I18nFormat("btn-dashboard.giveaways"),
+            id="giveaways",
+            state=DashboardGiveaways.MAIN,
+            mode=StartMode.RESET_STACK,
+            when=require_permission(Permission.VIEW_GIVEAWAY),
         ),
     ),
     Row(

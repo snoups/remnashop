@@ -22,10 +22,24 @@ class PromocodeDaoImpl(PromocodeDao):
         self.retort = retort
         self.conversion_retort = conversion_retort
 
-        self._to_dto = self.conversion_retort.get_converter(Promocode, PromocodeDto)
-        self._to_dto_list = self.conversion_retort.get_converter(list[Promocode], list[PromocodeDto])
         self._to_activation_dto = self.conversion_retort.get_converter(
             PromocodeActivation, PromocodeActivationDto
+        )
+
+    @staticmethod
+    def _to_promocode_dto(model: Promocode) -> PromocodeDto:
+        return PromocodeDto(
+            id=model.id,
+            code=model.code,
+            discount_percent=model.discount_percent,
+            plan_id=model.plan_id,
+            audience=model.audience,
+            max_activations=model.max_activations,
+            expires_at=model.expires_at,
+            is_active=model.is_active,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            plan=None,
         )
 
     async def create(self, promocode: PromocodeDto) -> PromocodeDto:
@@ -43,7 +57,7 @@ class PromocodeDaoImpl(PromocodeDao):
         await self.session.refresh(db_obj, attribute_names=["plan"])
 
         logger.debug(f"Created promocode '{db_obj.code}' (id={db_obj.id})")
-        return self._to_dto(db_obj)
+        return self._to_promocode_dto(db_obj)
 
     async def get_by_id(self, promocode_id: int) -> Optional[PromocodeDto]:
         stmt = select(Promocode).where(Promocode.id == promocode_id)
@@ -51,7 +65,7 @@ class PromocodeDaoImpl(PromocodeDao):
 
         if db_obj:
             logger.debug(f"Promocode id='{promocode_id}' found")
-            return self._to_dto(db_obj)
+            return self._to_promocode_dto(db_obj)
 
         logger.debug(f"Promocode id='{promocode_id}' not found")
         return None
@@ -62,7 +76,7 @@ class PromocodeDaoImpl(PromocodeDao):
 
         if db_obj:
             logger.debug(f"Promocode '{code}' found")
-            return self._to_dto(db_obj)
+            return self._to_promocode_dto(db_obj)
 
         logger.debug(f"Promocode '{code}' not found")
         return None
@@ -131,4 +145,4 @@ class PromocodeDaoImpl(PromocodeDao):
         db_list = cast(list, result.all())
 
         logger.debug(f"Retrieved '{len(db_list)}' promocodes")
-        return self._to_dto_list(db_list)
+        return [self._to_promocode_dto(item) for item in db_list]

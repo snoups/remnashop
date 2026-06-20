@@ -10,6 +10,18 @@ from src.core.utils.time import datetime_now
 from .base import BaseDto, TimestampMixin, TrackableMixin
 
 
+@dataclass(frozen=True)
+class UserDeletionSummaryDto:
+    subscriptions: int = 0
+    transactions_anonymized: int = 0
+    giveaway_entries: int = 0
+    promocode_activations: int = 0
+    referral_edges: int = 0
+    referral_rewards: int = 0
+    broadcast_messages: int = 0
+    plan_access_entries: int = 0
+
+
 @dataclass(kw_only=True)
 class TempUserDto:
     telegram_id: int

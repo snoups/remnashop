@@ -442,6 +442,43 @@ msg-user-main =
     </blockquote>
     }
 
+msg-user-delete-confirm =
+    <b>Вы уверены, что хотите полностью удалить пользователя?</b>
+
+    <blockquote>
+    Telegram ID: <code>{ NUMBER($telegram_id, useGrouping: 0) }</code>
+    Username: { $username ->
+        [0] не указан
+        *[HAS] @{ $username }
+    }
+    Подписка: { $subscription_status ->
+        [0] отсутствует
+        *[HAS] { $subscription_status }
+    }
+    </blockquote>
+
+    Будут удалены:
+    — локальный пользователь;
+    — локальные подписки;
+    — участие в акциях;
+    — активации промокодов;
+    — реферальные связи и награды;
+    — история сообщений рассылок;
+    — персональный доступ к тарифам;
+    — данные, связанные с VPN-подпиской.
+
+    Финансовые транзакции будут сохранены без привязки к Telegram ID.
+
+    Если пользователь есть в Remnawave, он будет удалён там тоже.
+
+    <b>Это действие нельзя отменить.</b>
+
+msg-user-delete-input =
+    <b>Последнее подтверждение</b>
+
+    Введите Telegram ID <code>{ NUMBER($telegram_id, useGrouping: 0) }</code>,
+    чтобы полностью удалить пользователя.
+
 msg-user-statistics =
     <b>📊 Статистика пользователя</b>
 
@@ -1338,3 +1375,103 @@ msg-promocode-view =
         *[0] 🔴 Неактивен
         }
     </blockquote>
+
+# Giveaways
+msg-giveaways-main =
+    <b>🎁 Акции</b>
+
+    Создавайте акции для покупателей выбранных тарифов и сроков подписки.
+
+msg-giveaways-list = <b>📃 Список акций</b>
+
+msg-giveaway-name =
+    <b>Введите название акции</b>
+
+    Пример: <i>Розыгрыш 15 000 ₽</i>
+
+msg-giveaway-start =
+    <b>Введите дату начала</b>
+
+    Формат: <code>ДД.ММ.ГГГГ</code> или <code>ДД.ММ.ГГГГ ЧЧ:ММ</code>
+
+msg-giveaway-end =
+    <b>Введите дату окончания</b>
+
+    Формат: <code>ДД.ММ.ГГГГ</code> или <code>ДД.ММ.ГГГГ ЧЧ:ММ</code>
+
+msg-giveaway-winner-count =
+    <b>Введите количество победителей</b>
+
+    Пример: <code>5</code>
+
+msg-giveaway-prize =
+    <b>Введите сумму приза одному победителю</b>
+
+    Пример: <code>3000</code>
+
+msg-giveaway-plan = <b>Выберите участвующий тариф</b>
+
+msg-giveaway-duration = <b>Выберите участвующий срок подписки</b>
+
+msg-giveaway-purchase-types =
+    <b>Выберите типы покупки</b>
+
+    Отметьте один или несколько вариантов.
+
+msg-giveaway-activity =
+    <b>Включить акцию сразу после создания?</b>
+
+msg-giveaway-configurator =
+    <b>🎁 Новая акция — подтверждение</b>
+
+    <blockquote>
+    Название: { $name }
+    Период: { $starts_at } — { $ends_at }
+    Победителей: { $winner_count }
+    Приз одному: { $prize_amount } ₽
+    Тариф: { $plan_name }
+    Срок: { $duration_days } дней
+    Типы покупки: { $purchase_types }
+    Активна: { $is_active ->
+        [1] да
+        *[0] нет
+    }
+    </blockquote>
+
+msg-giveaway-view =
+    <b>🎁 { $name }</b>
+
+    <blockquote>
+    Статус: { $status }
+    Период: { $starts_at } — { $ends_at }
+    Тариф: { $plan_name }
+    Срок: { $duration_days } дней
+    Типы покупки: { $purchase_types }
+    Участников: { $entries_count }
+    Победителей: { $winners_count } из { $winner_count }
+    Приз одному: { $prize_amount } ₽
+    </blockquote>
+
+msg-giveaway-entries = <b>👥 Участники акции</b>
+
+msg-giveaway-winners = <b>🏆 Победители акции</b>
+
+msg-giveaway-participants-shortage =
+    ⚠️ Уникальных участников меньше, чем запланированных победителей.
+
+msg-giveaway-archive-confirm =
+    <b>Вы уверены, что хотите очистить участников и победителей этой акции?</b>
+
+    Записи будут архивированы. Это действие нельзя отменить через интерфейс.
+
+msg-giveaway-delete-confirm =
+    <b>Вы уверены, что хотите полностью удалить эту акцию?</b>
+
+    Будут удалены:
+    — сама акция;
+    — участники этой акции;
+    — выбранные победители этой акции.
+
+    Платежи, пользователи и подписки удалены не будут.
+
+    Это действие нельзя отменить.

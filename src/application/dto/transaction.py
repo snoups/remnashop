@@ -31,7 +31,7 @@ class PriceDetailsDto(TrackableMixin):
 @dataclass(kw_only=True)
 class TransactionDto(BaseDto, TrackableMixin, TimestampMixin):
     payment_id: UUID
-    user_telegram_id: int
+    user_telegram_id: Optional[int]
 
     status: TransactionStatus
     is_test: bool = False

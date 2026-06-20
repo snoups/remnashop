@@ -1,4 +1,5 @@
 from .broadcast import BroadcastDaoImpl
+from .giveaway import GiveawayDaoImpl
 from .payment_gateway import PaymentGatewayDaoImpl
 from .plan import PlanDaoImpl
 from .promocode import PromocodeDaoImpl
@@ -12,6 +13,7 @@ from .webhook import WebhookDaoImpl
 
 __all__ = [
     "BroadcastDaoImpl",
+    "GiveawayDaoImpl",
     "PaymentGatewayDaoImpl",
     "PlanDaoImpl",
     "PromocodeDaoImpl",

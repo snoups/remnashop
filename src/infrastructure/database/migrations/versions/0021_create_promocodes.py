@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column("code", sa.String(length=64), nullable=False),
         sa.Column("discount_percent", sa.Integer(), nullable=False),
         sa.Column("plan_id", sa.Integer(), nullable=False),
-        sa.Column("audience", sa.Enum("ALL", "WITH_ACTIVE_SUBSCRIPTION", name="promo_audience"), nullable=False),
+        sa.Column("audience", promo_audience, nullable=False),
         sa.Column("max_activations", sa.Integer(), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),

@@ -107,12 +107,21 @@ class ValidatePromocode(Interactor[ValidatePromocodeDto, PromocodeDto]):
             )
             raise PromocodeAlreadyUsedError
 
-        if promocode.audience == PromoAudience.WITH_ACTIVE_SUBSCRIPTION:
+        if promocode.audience != PromoAudience.ALL:
             subscription = await self.subscription_dao.get_current(data.user_telegram_id)
-            if not subscription:
+            has_subscription = subscription is not None
+
+            if promocode.audience == PromoAudience.WITH_ACTIVE_SUBSCRIPTION and not has_subscription:
                 logger.debug(
                     f"{actor.log} Promocode '{data.code}' requires active subscription, "
                     f"user '{data.user_telegram_id}' has none"
+                )
+                raise PromocodeAudienceMismatchError
+
+            if promocode.audience == PromoAudience.WITHOUT_ACTIVE_SUBSCRIPTION and has_subscription:
+                logger.debug(
+                    f"{actor.log} Promocode '{data.code}' requires no active subscription, "
+                    f"user '{data.user_telegram_id}' has one"
                 )
                 raise PromocodeAudienceMismatchError
 

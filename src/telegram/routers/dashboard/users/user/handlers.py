@@ -46,6 +46,7 @@ from src.application.use_cases.subscription.commands.sync import (
     SyncSubscriptionFromRemnawave,
 )
 from src.application.use_cases.user.commands.blocking import ToggleUserBlockedStatus
+from src.application.use_cases.user.commands.deletion import DeleteUserCompletely
 from src.application.use_cases.user.commands.messaging import (
     SendMessageToUser,
     SendMessageToUserDto,
@@ -65,7 +66,7 @@ from src.application.use_cases.user.queries.profile import GetUserDevices
 from src.core.constants import TARGET_TELEGRAM_ID, USER_KEY
 from src.core.enums import Role
 from src.core.utils.validators import parse_int
-from src.telegram.states import DashboardUser
+from src.telegram.states import DashboardUser, DashboardUsers
 from src.telegram.utils import is_double_click
 
 
@@ -103,6 +104,50 @@ async def on_block_toggle(
     target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
     await toggle_user_blocked_status(user, target_telegram_id)
     await redirect.to_main_menu(target_telegram_id)
+
+
+async def on_user_delete_request(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+) -> None:
+    await dialog_manager.switch_to(DashboardUser.DELETE_CONFIRM)
+
+
+async def on_user_delete_confirm(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+) -> None:
+    await dialog_manager.switch_to(DashboardUser.DELETE_INPUT)
+
+
+@inject
+async def on_user_delete_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    delete_user_completely: FromDishka[DeleteUserCompletely],
+    notifier: FromDishka[Notifier],
+) -> None:
+    actor: UserDto = dialog_manager.middleware_data[USER_KEY]
+    target_telegram_id = int(dialog_manager.dialog_data[TARGET_TELEGRAM_ID])
+    confirmation = (message.text or "").strip()
+    if confirmation != str(target_telegram_id):
+        await notifier.notify_user(actor, i18n_key="ntf-user.delete-id-mismatch")
+        return
+
+    try:
+        await delete_user_completely(actor, target_telegram_id)
+    except Exception:
+        logger.exception(
+            f"{actor.log} Failed to completely delete user '{target_telegram_id}'"
+        )
+        await notifier.notify_user(actor, i18n_key="ntf-user.delete-failed")
+        return
+
+    await notifier.notify_user(actor, i18n_key="ntf-user.deleted")
+    await dialog_manager.start(DashboardUsers.MAIN, mode=StartMode.RESET_STACK)
 
 
 @inject

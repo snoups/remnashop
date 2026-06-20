@@ -13,6 +13,8 @@ from src.core.enums import (
     BroadcastMessageStatus,
     BroadcastStatus,
     Currency,
+    GiveawayCampaignStatus,
+    GiveawayEntryStatus,
     Locale,
     PaymentGatewayType,
     PlanAvailability,
@@ -54,6 +56,14 @@ mapper_registry = registry(
         ReferralRewardStrategy: Enum(ReferralRewardStrategy, name="referral_reward_strategy"),
         ReferralRewardType: Enum(ReferralRewardType, name="referral_reward_type"),
         PromoAudience: Enum(PromoAudience, name="promo_audience"),
+        GiveawayCampaignStatus: Enum(
+            GiveawayCampaignStatus,
+            name="giveaway_campaign_status",
+        ),
+        GiveawayEntryStatus: Enum(
+            GiveawayEntryStatus,
+            name="giveaway_entry_status",
+        ),
     }
 )
 

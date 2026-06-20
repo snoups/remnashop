@@ -57,6 +57,18 @@ class TransactionDaoImpl(TransactionDao):
         logger.debug(f"Transaction '{payment_id}' not found")
         return None
 
+    async def get_by_payment_id_for_update(
+        self,
+        payment_id: UUID,
+    ) -> Optional[TransactionDto]:
+        stmt = (
+            select(Transaction)
+            .where(Transaction.payment_id == payment_id)
+            .with_for_update()
+        )
+        db_transaction = await self.session.scalar(stmt)
+        return self._convert_to_dto(db_transaction) if db_transaction else None
+
     async def get_by_user(self, telegram_id: int) -> list[TransactionDto]:
         stmt = (
             select(Transaction)

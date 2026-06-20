@@ -1,6 +1,6 @@
 from typing import Optional, Protocol, runtime_checkable
 
-from src.application.dto import UserDto
+from src.application.dto import UserDeletionSummaryDto, UserDto
 from src.core.enums import Role
 
 
@@ -21,6 +21,8 @@ class UserDao(Protocol):
     async def update(self, user: UserDto) -> Optional[UserDto]: ...
 
     async def delete(self, telegram_id: int) -> bool: ...
+
+    async def delete_user_completely(self, telegram_id: int) -> UserDeletionSummaryDto: ...
 
     async def count(self) -> int: ...
 

@@ -1,4 +1,5 @@
 from typing import Any
+from urllib.parse import quote
 
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
@@ -33,6 +34,9 @@ async def menu_getter(
     try:
         menu_data = await get_menu_data(user)
         support_url = bot_service.get_support_url(text=i18n.get("message.help"))
+        referral_share_url = (
+            f"https://t.me/share/url?url={quote(menu_data.referral_url, safe='')}"
+        )
 
         purchase_discount = user.purchase_discount or 0
         personal_discount = user.personal_discount or 0
@@ -52,6 +56,7 @@ async def menu_getter(
             "support_url": support_url,
             # referral
             "referral_enabled": menu_data.is_referral_enabled,
+            "referral_share_url": referral_share_url,
             # defaults
             "has_subscription": False,
             "connectable": False,
@@ -191,6 +196,7 @@ async def invite_getter(
     referrals = await referral_dao.get_referrals_count(user.telegram_id)
     payments = await referral_dao.get_referrals_with_payment_count(user.telegram_id)
     referral_url = await bot_service.get_referral_url(user.referral_code)
+    referral_share_url = f"https://t.me/share/url?url={quote(referral_url, safe='')}"
     support_url = bot_service.get_support_url(text=i18n.get("message.withdraw-points"))
 
     return {
@@ -201,6 +207,7 @@ async def invite_getter(
         "is_points_reward": settings.referral.reward.is_points,
         "has_points": True if user.points > 0 else False,
         "referral_url": referral_url,
+        "referral_share_url": referral_share_url,
         "withdraw": support_url,
     }
 

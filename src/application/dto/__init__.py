@@ -1,6 +1,7 @@
 from .base import BaseDto, TimestampMixin, TrackableMixin
 from .broadcast import BroadcastDto, BroadcastMessageDto
 from .build import BuildInfoDto
+from .giveaway import GiveawayCampaignDto, GiveawayEntryDto
 from .message_payload import MediaDescriptorDto, MessagePayloadDto
 from .notification_task import NotificationTaskDto
 from .payment_gateway import (
@@ -33,7 +34,7 @@ from .statistics import (
 )
 from .subscription import RemnaSubscriptionDto, SubscriptionDto
 from .transaction import PriceDetailsDto, TransactionDto
-from .user import TempUserDto, UserDto
+from .user import TempUserDto, UserDeletionSummaryDto, UserDto
 
 __all__ = [
     "BaseDto",
@@ -42,6 +43,8 @@ __all__ = [
     "BroadcastDto",
     "BroadcastMessageDto",
     "BuildInfoDto",
+    "GiveawayCampaignDto",
+    "GiveawayEntryDto",
     "MediaDescriptorDto",
     "MessagePayloadDto",
     "NotificationTaskDto",
@@ -77,5 +80,6 @@ __all__ = [
     "PriceDetailsDto",
     "TransactionDto",
     "TempUserDto",
+    "UserDeletionSummaryDto",
     "UserDto",
 ]

@@ -16,10 +16,11 @@ class Transaction(BaseSql, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     payment_id: Mapped[UUID] = mapped_column(index=True, unique=True)
-    user_telegram_id: Mapped[int] = mapped_column(
+    user_telegram_id: Mapped[Optional[int]] = mapped_column(
         BigInteger,
-        ForeignKey("users.telegram_id"),
+        ForeignKey("users.telegram_id", ondelete="SET NULL"),
         index=True,
+        nullable=True,
     )
 
     status: Mapped[TransactionStatus] = mapped_column(index=True)

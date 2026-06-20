@@ -16,6 +16,7 @@ from src.application.common.dao import (
     TransactionDao,
     UserDao,
 )
+from src.application.common.policy import Permission, PermissionPolicy
 from src.application.dto import PlanDurationDto, RemnaSubscriptionDto, SubscriptionDto, UserDto
 from src.application.use_cases.statistics.queries.users import GetUserStatistics
 from src.application.use_cases.user.queries.plans import GetAvailablePlans
@@ -64,6 +65,11 @@ async def user_getter(
         "is_trial_available": profile.target_user.is_trial_available,
         "is_not_self": profile.target_user.telegram_id != user.telegram_id,
         "can_edit": profile.can_edit,
+        "can_delete": (
+            profile.can_edit
+            and profile.target_user.telegram_id != user.telegram_id
+            and PermissionPolicy.has_permission(user, Permission.USER_DELETE)
+        ),
         "status": None,
         "is_trial": False,
         "has_subscription": profile.subscription is not None,
@@ -81,6 +87,29 @@ async def user_getter(
         )
 
     return data
+
+
+@inject
+async def delete_user_getter(
+    dialog_manager: DialogManager,
+    user: UserDto,
+    get_user_profile: FromDishka[GetUserProfile],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
+    profile = await get_user_profile(user, target_telegram_id)
+    return {
+        "telegram_id": profile.target_user.telegram_id,
+        "username": profile.target_user.username or False,
+        "subscription_status": (
+            profile.subscription.current_status if profile.subscription else False
+        ),
+        "can_delete": (
+            profile.can_edit
+            and profile.target_user.telegram_id != user.telegram_id
+            and PermissionPolicy.has_permission(user, Permission.USER_DELETE)
+        ),
+    }
 
 
 @inject

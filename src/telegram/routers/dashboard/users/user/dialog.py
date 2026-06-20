@@ -24,6 +24,7 @@ from src.telegram.states import DashboardUser, DashboardUsers
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
 from .getters import (
+    delete_user_getter,
     device_limit_getter,
     devices_getter,
     discount_getter,
@@ -80,6 +81,9 @@ from .handlers import (
     on_transaction_select,
     on_transactions,
     on_trial_toggle,
+    on_user_delete_confirm,
+    on_user_delete_input,
+    on_user_delete_request,
     on_user_select,
 )
 
@@ -162,6 +166,14 @@ user = Window(
             id="block",
             on_click=on_block_toggle,
             when=F["is_not_self"] & F["can_edit"],
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-user.delete"),
+            id="delete_user",
+            on_click=on_user_delete_request,
+            when=F["can_delete"],
         ),
     ),
     Row(
@@ -836,6 +848,42 @@ role = Window(
     getter=role_getter,
 )
 
+delete_confirm = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-user-delete-confirm"),
+    Row(
+        Button(
+            text=I18nFormat("btn-user.delete-confirm"),
+            id="delete_confirm",
+            on_click=on_user_delete_confirm,
+        ),
+        SwitchTo(
+            text=I18nFormat("btn-user.delete-cancel"),
+            id="cancel",
+            state=DashboardUser.MAIN,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=DashboardUser.DELETE_CONFIRM,
+    getter=delete_user_getter,
+)
+
+delete_input = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-user-delete-input"),
+    MessageInput(func=on_user_delete_input),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-user.delete-cancel"),
+            id="cancel",
+            state=DashboardUser.MAIN,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=DashboardUser.DELETE_INPUT,
+    getter=delete_user_getter,
+)
+
 router = Dialog(
     user,
     subscription,
@@ -861,4 +909,6 @@ router = Dialog(
     points,
     give_access,
     role,
+    delete_confirm,
+    delete_input,
 )

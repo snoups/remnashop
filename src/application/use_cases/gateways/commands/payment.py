@@ -1,8 +1,10 @@
+import asyncio
 import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 from uuid import UUID
 
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
 
 from src.application.common import (
@@ -23,6 +25,7 @@ from src.application.common.dao import (
 from src.application.common.policy import Permission
 from src.application.common.uow import UnitOfWork
 from src.application.dto import (
+    MessagePayloadDto,
     PaymentResultDto,
     PlanSnapshotDto,
     PriceDetailsDto,
@@ -46,6 +49,10 @@ from src.application.dto.payment_gateway import (
 )
 from src.application.events import UserPurchaseEvent
 from src.application.use_cases.gateways.queries.providers import GetPaymentGatewayInstance
+from src.application.use_cases.giveaway.commands import (
+    RegisterGiveawayEntry,
+    RegisterGiveawayEntryDto,
+)
 from src.application.use_cases.promocode.commands.management import (
     RecordPromocodeActivation,
     RecordPromocodeActivationDto,
@@ -255,6 +262,7 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         assign_referral_rewards: AssignReferralRewards,
         purchase_subscription: PurchaseSubscription,
         record_promocode_activation: RecordPromocodeActivation,
+        register_giveaway_entry: RegisterGiveawayEntry,
     ) -> None:
         self.uow = uow
         self.user_dao = user_dao
@@ -268,28 +276,33 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         self.assign_referral_rewards = assign_referral_rewards
         self.purchase_subscription = purchase_subscription
         self.record_promocode_activation = record_promocode_activation
+        self.register_giveaway_entry = register_giveaway_entry
 
     async def _execute(self, actor: UserDto, data: ProcessPaymentDto) -> None:
         payment_id = data.payment_id
         new_status = data.new_transaction_status
 
         async with self.uow:
-            transaction = await self.transaction_dao.get_by_payment_id(payment_id)
+            transaction = await self.transaction_dao.get_by_payment_id_for_update(payment_id)
 
             if not transaction:
                 logger.critical(f"Transaction not found for '{payment_id}'")
+                return
+
+            if transaction.is_completed:
+                logger.warning(f"Transaction '{payment_id}' already completed")
+                return
+
+            if transaction.user_telegram_id is None:
+                logger.warning(
+                    f"Transaction '{payment_id}' belongs to a deleted user; processing skipped"
+                )
                 return
 
             user = await self.user_dao.get_by_telegram_id(transaction.user_telegram_id)
 
             if not user:
                 logger.critical(f"User not found for transaction '{payment_id}'")
-                return
-
-            if transaction.is_completed:
-                logger.warning(
-                    f"Transaction '{payment_id}' for user '{user.telegram_id}' already completed"
-                )
                 return
 
             if new_status == TransactionStatus.CANCELED:
@@ -356,6 +369,52 @@ class ProcessPayment(Interactor[ProcessPaymentDto, None]):
         await self.purchase_subscription.system(
             PurchaseSubscriptionDto(user, transaction, subscription)
         )
+
+        try:
+            giveaway_entries = await self.register_giveaway_entry.system(
+                RegisterGiveawayEntryDto(user=user, transaction=transaction)
+            )
+            if giveaway_entries:
+                # Preserve Telegram's visual order: purchase result first, giveaway second.
+                await asyncio.sleep(1)
+            for entry in giveaway_entries:
+                if entry.id is None:
+                    continue
+                keyboard = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="btn-giveaway.leave-phone",
+                                callback_data=f"giveaway_phone:{entry.id}",
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                text="btn-giveaway.skip-phone",
+                                callback_data="giveaway_skip",
+                            )
+                        ],
+                    ]
+                )
+                await self.notifier.notify_user(
+                    user,
+                    payload=MessagePayloadDto(
+                        i18n_key="ntf-giveaway.registered",
+                        i18n_kwargs={"code": entry.participant_code},
+                        reply_markup=keyboard,
+                        disable_default_markup=True,
+                        delete_after=None,
+                    ),
+                )
+                logger.info(
+                    f"Giveaway code issued for entry='{entry.id}' "
+                    f"payment='{transaction.payment_id}'"
+                )
+        except Exception:
+            logger.exception(
+                f"Giveaway registration failed for payment '{transaction.payment_id}'; "
+                "VPN purchase remains successful"
+            )
 
         if not transaction.pricing.is_free:
             await self.assign_referral_rewards.system(AssignReferralRewardsDto(user, transaction))

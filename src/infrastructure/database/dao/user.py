@@ -5,20 +5,22 @@ from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
 from redis.asyncio import Redis
-from sqlalchemy import Integer, delete, func, or_, select, update
+from sqlalchemy import any_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.common.dao import UserDao
-from src.application.dto import UserDto
-from src.core.constants import TTL_1H, TTL_6H
+from src.application.dto import UserDeletionSummaryDto, UserDto
 from src.core.enums import Role, SubscriptionStatus
-from src.infrastructure.database.models import Referral, Subscription, Transaction, User
-from src.infrastructure.redis.cache import invalidate_cache, provide_cache
-from src.infrastructure.redis.keys import (
-    USER_COUNT_PREFIX,
-    USER_LIST_PREFIX,
-    RoleKey,
-    UserCacheKey,
+from src.infrastructure.database.models import (
+    BroadcastMessage,
+    GiveawayEntry,
+    Plan,
+    PromocodeActivation,
+    Referral,
+    ReferralReward,
+    Subscription,
+    Transaction,
+    User,
 )
 
 
@@ -147,6 +149,75 @@ class UserDaoImpl(UserDao):
 
         logger.debug(f"User '{telegram_id}' not found for deletion")
         return False
+
+    async def delete_user_completely(self, telegram_id: int) -> UserDeletionSummaryDto:
+        related_referrals = select(Referral.id).where(
+            or_(
+                Referral.referrer_telegram_id == telegram_id,
+                Referral.referred_telegram_id == telegram_id,
+            )
+        )
+
+        rewards_result = await self.session.execute(
+            delete(ReferralReward).where(
+                or_(
+                    ReferralReward.user_telegram_id == telegram_id,
+                    ReferralReward.referral_id.in_(related_referrals),
+                )
+            )
+        )
+        referrals_result = await self.session.execute(
+            delete(Referral).where(
+                or_(
+                    Referral.referrer_telegram_id == telegram_id,
+                    Referral.referred_telegram_id == telegram_id,
+                )
+            )
+        )
+        promocodes_result = await self.session.execute(
+            delete(PromocodeActivation).where(
+                PromocodeActivation.user_telegram_id == telegram_id
+            )
+        )
+        giveaways_result = await self.session.execute(
+            delete(GiveawayEntry).where(GiveawayEntry.user_telegram_id == telegram_id)
+        )
+        broadcasts_result = await self.session.execute(
+            delete(BroadcastMessage).where(BroadcastMessage.user_telegram_id == telegram_id)
+        )
+        transactions_result = await self.session.execute(
+            update(Transaction)
+            .where(Transaction.user_telegram_id == telegram_id)
+            .values(user_telegram_id=None)
+        )
+        plans_result = await self.session.execute(
+            update(Plan)
+            .where(telegram_id == any_(Plan.allowed_user_ids))
+            .values(allowed_user_ids=func.array_remove(Plan.allowed_user_ids, telegram_id))
+        )
+
+        await self.clear_current_subscription(telegram_id)
+        subscriptions_result = await self.session.execute(
+            delete(Subscription).where(Subscription.user_telegram_id == telegram_id)
+        )
+        user_result = await self.session.execute(
+            delete(User).where(User.telegram_id == telegram_id).returning(User.id)
+        )
+        if user_result.scalar_one_or_none() is None:
+            raise ValueError(f"User '{telegram_id}' not found for deletion")
+
+        summary = UserDeletionSummaryDto(
+            subscriptions=subscriptions_result.rowcount,
+            transactions_anonymized=transactions_result.rowcount,
+            giveaway_entries=giveaways_result.rowcount,
+            promocode_activations=promocodes_result.rowcount,
+            referral_edges=referrals_result.rowcount,
+            referral_rewards=rewards_result.rowcount,
+            broadcast_messages=broadcasts_result.rowcount,
+            plan_access_entries=plans_result.rowcount,
+        )
+        logger.debug(f"Prepared complete local deletion for user '{telegram_id}': {summary}")
+        return summary
 
     async def exists(self, telegram_id: int) -> bool:
         stmt = select(select(User).where(User.telegram_id == telegram_id).exists())

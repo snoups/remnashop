@@ -297,6 +297,7 @@ availability-type = { $availability_type ->
 promo-audience = { $audience ->
     [ALL] Для всех
     [WITH_ACTIVE_SUBSCRIPTION] Только с активной подпиской
+    [WITHOUT_ACTIVE_SUBSCRIPTION] Только без активной подписки
     *[OTHER] { $audience }
 }
 

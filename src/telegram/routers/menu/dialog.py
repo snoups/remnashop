@@ -7,7 +7,6 @@ from aiogram_dialog.widgets.kbd import (
     ListGroup,
     Row,
     Start,
-    SwitchInlineQueryChosenChatButton,
     SwitchTo,
     Url,
 )
@@ -16,7 +15,7 @@ from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.application.common.policy import Permission
-from src.core.constants import INLINE_QUERY_INVITE, PAYMENT_PREFIX
+from src.core.constants import PAYMENT_PREFIX
 from src.core.enums import BannerName
 from src.telegram.keyboards import connect_buttons, custom_buttons
 from src.telegram.routers.dashboard.users.handlers import on_user_search
@@ -87,13 +86,10 @@ menu = Window(
             on_click=on_invite,
             when=F["referral_enabled"],
         ),
-        SwitchInlineQueryChosenChatButton(
+        Url(
             text=I18nFormat("btn-menu.invite"),
-            query=Format(INLINE_QUERY_INVITE),
-            allow_user_chats=True,
-            allow_group_chats=True,
-            allow_channel_chats=True,
             id="send",
+            url=Format("{referral_share_url}"),
             when=~F["referral_enabled"],
         ),
         Url(
@@ -234,13 +230,10 @@ invite = Window(
             id="qr",
             on_click=on_show_qr,
         ),
-        SwitchInlineQueryChosenChatButton(
+        Url(
             text=I18nFormat("btn-invite.send"),
-            query=Format(INLINE_QUERY_INVITE),
-            allow_user_chats=True,
-            allow_group_chats=True,
-            allow_channel_chats=True,
             id="send",
+            url=Format("{referral_share_url}"),
         ),
     ),
     Row(
