@@ -111,8 +111,11 @@ async def on_promocode_confirm(
     except PromocodeExpiredError:
         await notifier.notify_user(user, i18n_key="ntf-promocode.expired")
         return
-    except (PromocodeNotFoundError, PromocodeNotAvailableError):
-        await notifier.notify_user(user, i18n_key="ntf-promocode.activation-failed")
+    except PromocodeNotFoundError:
+        await notifier.notify_user(user, i18n_key="ntf-promocode.not-found")
+        return
+    except PromocodeNotAvailableError:
+        await notifier.notify_user(user, i18n_key="ntf-promocode.not-available")
         return
     except Exception as exc:
         logger.exception(f"{user.log} Promocode '{code}' activation failed unexpectedly")
