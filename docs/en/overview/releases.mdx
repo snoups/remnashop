@@ -5,6 +5,27 @@ description: "History of changes"
 
 ---
 
+#### 0.8.2 (June 23, 2026)
+
+New:
+- Improved the **promocode activation deeplink** (`promo` / `promo_<code>`): following the link opens activation with the code prefilled
+- Added **promocode code validation**: only `A-Za-z0-9_-` characters are allowed
+- Added a configurable **default notification route** as a shared destination for system notifications
+- Added the ability to change **platform icons** via `platform-icon.*` localization keys
+- Implemented localization of **plan names** across the dashboard, subscription dialog, and purchase/promocode events
+
+Fixes:
+- Fixed custom emoji support in notification button text
+- Fixed silent loss of settings changes
+- Fixed the webhook-error notification crash
+- **Devices / Duration / Traffic** promocode rewards now require an active subscription
+- Split the "promocode not found" and "promocode not available" messages instead of a single generic one
+
+Web & API:
+- Added a **paid trial** in the web cabinet: `POST /subscription/trial/purchase` endpoint with payment gateway and price selection
+
+---
+
 #### 0.8.1 (June 19, 2026)
 
 New:
