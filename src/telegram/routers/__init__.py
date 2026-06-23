@@ -1,12 +1,13 @@
 from aiogram import Router
 
-from . import dashboard, extra, menu, subscription
+from . import client_giveaways, dashboard, extra, menu, subscription
 
 
 def setup_routers(router: Router) -> None:
     # WARNING: The order of router registration matters!
     routers = [
         extra.payment.router,
+        extra.giveaway.router,
         extra.notification.router,
         extra.test.router,
         extra.commands.router,
@@ -16,11 +17,13 @@ def setup_routers(router: Router) -> None:
         #
         menu.handlers.router,
         menu.dialog.router,
+        client_giveaways.dialog.router,
         #
         subscription.dialog.router,
         #
         dashboard.dialog.router,
         dashboard.promocodes.dialog.router,
+        dashboard.giveaways.dialog.router,
         dashboard.statistics.dialog.router,
         dashboard.access.dialog.router,
         dashboard.broadcast.dialog.router,

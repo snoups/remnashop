@@ -7,7 +7,6 @@ from aiogram_dialog.widgets.kbd import (
     ListGroup,
     Row,
     Start,
-    SwitchInlineQueryChosenChatButton,
     SwitchTo,
     Url,
 )
@@ -16,11 +15,11 @@ from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from src.application.common.policy import Permission
-from src.core.constants import INLINE_QUERY_INVITE, PAYMENT_PREFIX
+from src.core.constants import PAYMENT_PREFIX
 from src.core.enums import BannerName
 from src.telegram.keyboards import connect_buttons, custom_buttons
 from src.telegram.routers.dashboard.users.handlers import on_user_search
-from src.telegram.states import Dashboard, MainMenu, Subscription
+from src.telegram.states import ClientGiveaways, Dashboard, MainMenu, Subscription
 from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 from src.telegram.window import Window
@@ -59,6 +58,15 @@ menu = Window(
         when=F["has_subscription"],
     ),
     Row(
+        Start(
+            text=I18nFormat("btn-menu.giveaways"),
+            id="giveaways",
+            state=ClientGiveaways.LIST,
+            mode=StartMode.RESET_STACK,
+            when=F["show_giveaways"],
+        ),
+    ),
+    Row(
         Button(
             text=I18nFormat("btn-menu.trial"),
             id="trial",
@@ -87,13 +95,10 @@ menu = Window(
             on_click=on_invite,
             when=F["referral_enabled"],
         ),
-        SwitchInlineQueryChosenChatButton(
+        Url(
             text=I18nFormat("btn-menu.invite"),
-            query=Format(INLINE_QUERY_INVITE),
-            allow_user_chats=True,
-            allow_group_chats=True,
-            allow_channel_chats=True,
             id="send",
+            url=Format("{referral_share_url}"),
             when=~F["referral_enabled"],
         ),
         Url(
@@ -125,7 +130,7 @@ devices = Window(
         Button(
             text=I18nFormat("btn-common.devices-empty"),
             id="devices_empty",
-            when=~F["has_devices"],
+            when=F["show_devices_empty"],
         ),
     ),
     ListGroup(
@@ -234,13 +239,10 @@ invite = Window(
             id="qr",
             on_click=on_show_qr,
         ),
-        SwitchInlineQueryChosenChatButton(
+        Url(
             text=I18nFormat("btn-invite.send"),
-            query=Format(INLINE_QUERY_INVITE),
-            allow_user_chats=True,
-            allow_group_chats=True,
-            allow_channel_chats=True,
             id="send",
+            url=Format("{referral_share_url}"),
         ),
     ),
     Row(

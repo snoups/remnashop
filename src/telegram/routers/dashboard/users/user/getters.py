@@ -165,6 +165,7 @@ async def devices_getter(
         "current_count": data.current_count,
         "max_count": i18n_format_device_limit(data.max_count),
         "devices": formatted_devices,
+        "devices_unavailable": data.devices_unavailable,
     }
 
 

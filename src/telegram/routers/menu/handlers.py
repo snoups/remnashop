@@ -25,6 +25,7 @@ from src.application.use_cases.subscription.commands.purchase import (
 from src.application.use_cases.user.queries.plans import GetAvailableTrial
 from src.core.constants import USER_KEY
 from src.core.enums import MediaType
+from src.core.exceptions import RemnawaveDevicesUnavailableError
 from src.core.utils.i18n_helpers import i18n_format_expire_time
 from src.core.utils.time import get_traffic_reset_delta
 from src.telegram.keyboards import CALLBACK_CHANNEL_CONFIRM, CALLBACK_RULES_ACCEPT
@@ -122,9 +123,15 @@ async def on_device_delete_confirm(
     if not full_hwid:
         raise ValueError(f"Full HWID not found for '{selected_short_hwid}'")
 
-    await delete_user_device(
-        user, DeleteUserDeviceDto(telegram_id=user.telegram_id, hwid=full_hwid)
-    )
+    try:
+        await delete_user_device(
+            user, DeleteUserDeviceDto(telegram_id=user.telegram_id, hwid=full_hwid)
+        )
+    except RemnawaveDevicesUnavailableError:
+        await notifier.notify_user(user=user, i18n_key="ntf-devices.unavailable")
+        await dialog_manager.switch_to(state=MainMenu.DEVICES)
+        return
+
     await notifier.notify_user(user=user, i18n_key="ntf-devices.deleted")
     await dialog_manager.switch_to(state=MainMenu.DEVICES)
 
@@ -138,7 +145,13 @@ async def on_device_delete_all_confirm(
     notifier: FromDishka[Notifier],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    await delete_user_all_devices(user)
+    try:
+        await delete_user_all_devices(user)
+    except RemnawaveDevicesUnavailableError:
+        await notifier.notify_user(user=user, i18n_key="ntf-devices.unavailable")
+        await dialog_manager.switch_to(state=MainMenu.DEVICES)
+        return
+
     await notifier.notify_user(user=user, i18n_key="ntf-devices.all-deleted")
     await dialog_manager.switch_to(state=MainMenu.DEVICES)
 

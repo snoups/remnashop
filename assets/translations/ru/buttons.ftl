@@ -44,6 +44,7 @@ btn-menu =
     .connect = 🚀 Подключиться
     .devices = 📱 Устройства
     .subscription = 💳 Подписка
+    .giveaways = 🎁 Акции
     .invite = 👥 Пригласить
     .support = 🆘 Поддержка
     .dashboard = 🛠 Панель управления
@@ -62,11 +63,18 @@ btn-invite =
     .qr = 🧾 QR-код
     .withdraw-points = 💎 Обменять баллы
 
+btn-client-giveaway =
+    .buy = 💳 Купить подписку для участия
+    .conditions = 📄 Условия акции
+    .phone = 📱 Оставить / изменить номер телефона
+    .results = 🏆 Итоги акции
+
 btn-dashboard =
     .statistics = 📊 Статистика
     .users = 👥 Пользователи
     .broadcast = 📢 Рассылка
     .promocodes = 🎟 Промокоды
+    .giveaways = 🎁 Акции
     .access = 🔓 Режим доступа
     .remnawave = 🌊 RemnaWave
     .remnashop = 🛍 RemnaShop
@@ -485,6 +493,7 @@ btn-promocode =
     .audience-choice = { $audience ->
         [ALL] 👥 Для всех
         [WITH_ACTIVE_SUBSCRIPTION] 🔒 Только с активной подпиской
+        [WITHOUT_ACTIVE_SUBSCRIPTION] 🔓 Только без активной подписки
         *[OTHER] { $audience }
     }
 
@@ -497,3 +506,31 @@ btn-promocode =
     [1] 🟢
     *[0] 🔴
     } Статус
+
+btn-giveaway =
+    .list = 📃 Список акций
+    .create = ➕ Создать акцию
+    .entries = 👥 Участники
+    .winners = 🏆 Победители
+    .select-winner = 🎲 Выбрать победителя
+    .select-next-winner = 🎲 Выбрать следующего
+    .add-participant = ➕ Добавить участника
+    .enable = 🟢 Включить
+    .disable = 🔴 Выключить
+    .keep-disabled = ⚪ Оставить выключенной
+    .complete = ✅ Завершить
+    .archive = 🗄 Очистить / архивировать
+    .archive-confirm = ⚠️ Да, очистить
+    .rules = 📄 Условия акции
+    .rules-edit = ✏️ Изменить условия
+    .delete = 🗑 Удалить акцию
+    .delete-confirm = Да, удалить
+    .cancel = Отмена
+    .confirm = ✅ Подтвердить
+    .continue = Продолжить ➡️
+    .leave-phone = 📱 Оставить номер телефона
+    .skip-phone = ⏭ Пропустить
+    .purchase-type = { $selected ->
+        [1] ✅
+        *[0] ◻️
+    } { $purchase_type }

@@ -2,6 +2,7 @@ from dishka import Provider, Scope, provide
 
 from src.application.common.dao import (
     BroadcastDao,
+    GiveawayDao,
     PaymentGatewayDao,
     PlanDao,
     PromocodeDao,
@@ -15,6 +16,7 @@ from src.application.common.dao import (
 )
 from src.infrastructure.database.dao import (
     BroadcastDaoImpl,
+    GiveawayDaoImpl,
     PaymentGatewayDaoImpl,
     PlanDaoImpl,
     PromocodeDaoImpl,
@@ -32,6 +34,7 @@ class DaoProvider(Provider):
     scope = Scope.REQUEST
 
     broadcast = provide(source=BroadcastDaoImpl, provides=BroadcastDao)
+    giveaway = provide(source=GiveawayDaoImpl, provides=GiveawayDao)
     payment_gateway = provide(source=PaymentGatewayDaoImpl, provides=PaymentGatewayDao)
     plan = provide(source=PlanDaoImpl, provides=PlanDao)
     promocode = provide(source=PromocodeDaoImpl, provides=PromocodeDao)

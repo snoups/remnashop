@@ -58,12 +58,16 @@ msg-main-menu-how-to-connect =
 msg-menu-devices =
     <b>📱 Управление устройствами</b>
 
+    { $devices_unavailable ->
+    [1] ⚠️ Не удалось получить список устройств. Обратитесь в поддержку.
+    *[0]
     Подключено: <b>{ $current_count } / { $max_count }</b>
 
     { $has_devices ->
     [0] { empty }
     *[HAS] Нажмите на устройство чтобы удалить его.
     Если не хватает устройств — измените подписку.
+    }
     }
 
 msg-menu-devices-confirm-reissue =
@@ -388,7 +392,13 @@ msg-broadcast-view =
 msg-users-recent-registered = <b>🆕 Последние зарегистрированные</b>
 msg-users-recent-activity = <b>📝 Последние взаимодействующие</b>
 msg-user-transactions = <b>🧾 Транзакции пользователя</b>
-msg-user-devices = <b>📱 Устройства пользователя ({ $current_count } / { $max_count })</b>
+msg-user-devices =
+    <b>📱 Устройства пользователя ({ $current_count } / { $max_count })</b>
+
+    { $devices_unavailable ->
+    [1] ⚠️ Не удалось получить список устройств из Remnawave.
+    *[0] { empty }
+    }
 msg-user-give-access = <b>🔑 Предоставить доступ к плану</b>
 
 msg-users-search =
@@ -1338,3 +1348,199 @@ msg-promocode-view =
         *[0] 🔴 Неактивен
         }
     </blockquote>
+
+# Giveaways
+msg-giveaways-main =
+    <b>🎁 Акции</b>
+
+    Создавайте акции для покупателей выбранных тарифов и сроков подписки.
+
+msg-giveaways-list = <b>📃 Список акций</b>
+
+msg-giveaway-name =
+    <b>Введите название акции</b>
+
+    Пример: <i>Розыгрыш 15 000 ₽</i>
+
+msg-giveaway-start =
+    <b>Введите дату начала</b>
+
+    Формат: <code>ДД.ММ.ГГГГ</code> или <code>ДД.ММ.ГГГГ ЧЧ:ММ</code>
+
+msg-giveaway-end =
+    <b>Введите дату окончания</b>
+
+    Формат: <code>ДД.ММ.ГГГГ</code> или <code>ДД.ММ.ГГГГ ЧЧ:ММ</code>
+
+msg-giveaway-winner-count =
+    <b>Введите количество победителей</b>
+
+    Пример: <code>5</code>
+
+msg-giveaway-prize =
+    <b>Введите сумму приза одному победителю</b>
+
+    Пример: <code>3000</code>
+
+msg-giveaway-plan = <b>Выберите участвующий тариф</b>
+
+msg-giveaway-duration = <b>Выберите участвующий срок подписки</b>
+
+msg-giveaway-purchase-types =
+    <b>Выберите типы покупки</b>
+
+    Отметьте один или несколько вариантов.
+
+msg-giveaway-rules =
+    <b>Введите текст условий акции</b>
+
+    До 4000 символов. Отправьте <code>-</code>, чтобы использовать автоматически сформированные условия.
+
+msg-giveaway-activity =
+    <b>Включить акцию сразу после создания?</b>
+
+msg-giveaway-configurator =
+    <b>🎁 Новая акция — подтверждение</b>
+
+    <blockquote>
+    Название: { $name }
+    Период: { $starts_at } — { $ends_at }
+    Победителей: { $winner_count }
+    Приз одному: { $prize_amount } ₽
+    Тариф: { $plan_name }
+    Срок: { $duration_days } дней
+    Типы покупки: { $purchase_types }
+    Условия: { $rules_text }
+    Активна: { $is_active ->
+        [1] да
+        *[0] нет
+    }
+    </blockquote>
+
+msg-giveaway-view =
+    <b>🎁 { $name }</b>
+
+    <blockquote>
+    Статус: { $status }
+    Период: { $starts_at } — { $ends_at }
+    Тариф: { $plan_name }
+    Срок: { $duration_days } дней
+    Типы покупки: { $purchase_types }
+    Участников: { $entries_count }
+    Победителей: { $winners_count } из { $winner_count }
+    Приз одному: { $prize_amount } ₽
+    Условия: { $rules_mode }
+    </blockquote>
+
+msg-giveaway-rules-view = <b>📄 Условия акции</b>
+
+msg-giveaway-rules-edit =
+    <b>Изменение условий акции</b>
+
+    Отправьте новый текст до 4000 символов или <code>-</code> для автоматических условий.
+
+msg-giveaway-entries = <b>👥 Участники акции</b>
+
+msg-giveaway-winners = <b>🏆 Победители акции</b>
+
+msg-giveaway-manual-entry-phone =
+    <b>Введите номер телефона участника.</b>
+
+    Формат:
+    <code>8924830022332</code>
+
+    Только цифры, без плюса, пробелов, скобок и дефисов.
+
+msg-giveaway-manual-entry-added =
+    <b>Участник добавлен ✅</b>
+
+    Телефон:
+    <code>{ $phone }</code>
+
+    Уникальный код участника:
+    <code>{ $participant_code }</code>
+
+    Отправьте этот код участнику вручную.
+
+msg-giveaway-participants-shortage =
+    ⚠️ Уникальных участников меньше, чем запланированных победителей.
+
+msg-giveaway-archive-confirm =
+    <b>Вы уверены, что хотите очистить участников и победителей этой акции?</b>
+
+    Записи будут архивированы. Это действие нельзя отменить через интерфейс.
+
+msg-giveaway-delete-confirm =
+    <b>Вы уверены, что хотите полностью удалить эту акцию?</b>
+
+    Будут удалены:
+    — сама акция;
+    — участники этой акции;
+    — выбранные победители этой акции.
+
+    Платежи, пользователи и подписки удалены не будут.
+
+    Это действие нельзя отменить.
+
+# Client giveaways
+msg-client-giveaways = <b>🎁 Акции</b>
+
+msg-client-giveaways-empty =
+    Сейчас активных акций нет.
+
+    Следите за обновлениями — новые розыгрыши появятся здесь 🎁
+
+msg-client-giveaway-view =
+    <b>🎁 { $name }</b>
+
+    <b>Призовой фонд:</b>
+    { $winner_count } победителей × { $prize_amount } ₽
+
+    <b>Период акции:</b>
+    с { $starts_at } до { $ends_at }
+
+    <b>Чтобы участвовать:</b>
+    купите подписку «{ $plan_name }» на { $duration_days } дней.
+
+    После оплаты бот автоматически выдаст уникальный номер участника.
+
+    <b>Ваш статус:</b>
+    { $status_text }
+
+    { $has_entry ->
+        [1]
+        Ваш номер участника:
+        <code>{ $participant_code }</code>
+
+        Телефон: { $phone }
+        *[0]
+        Чтобы стать участником, купите указанную подписку.
+    }
+
+    { $is_winner ->
+        [1]
+        🎉 <b>Вы стали победителем!</b>
+        Место: { $winner_rank }
+        Приз: { $prize_amount } ₽
+
+        Мы свяжемся с вами для выплаты.
+        *[0] { empty }
+    }
+
+msg-client-giveaway-status =
+    .participating = Вы уже участвуете ✅
+    .not-participating = Вы пока не участвуете.
+    .completed = Акция завершена.
+    .winner = 🎉 Победитель
+
+msg-client-giveaway-conditions = <b>📄 Условия акции</b>
+
+msg-client-giveaway-phone =
+    <b>📱 Контактный номер</b>
+
+    Текущий номер: { $phone }
+
+    Отправьте новый номер только цифрами, 10–15 символов.
+    Пример: <code>8924830022332</code>
+
+msg-client-giveaway-results = <b>🏆 Итоги акции</b>

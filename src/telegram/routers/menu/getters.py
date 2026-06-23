@@ -1,4 +1,5 @@
 from typing import Any
+from urllib.parse import quote
 
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
@@ -9,9 +10,10 @@ from src.application.common import Remnawave, TranslatorRunner
 from src.application.common.dao import ReferralDao, SettingsDao, SubscriptionDao
 from src.application.dto import UserDto
 from src.application.services import BotService
+from src.application.use_cases.giveaway.queries import ListClientGiveaways
 from src.application.use_cases.misc.queries.menu import GetMenuData
 from src.core.config import AppConfig
-from src.core.exceptions import MenuRenderError
+from src.core.exceptions import MenuRenderError, RemnawaveDevicesUnavailableError
 from src.core.utils.i18n_helpers import (
     i18n_format_device_limit,
     i18n_format_expire_time,
@@ -28,11 +30,16 @@ async def menu_getter(
     bot_service: FromDishka[BotService],
     i18n: FromDishka[TranslatorRunner],
     get_menu_data: FromDishka[GetMenuData],
+    list_client_giveaways: FromDishka[ListClientGiveaways],
     **kwargs: Any,
 ) -> dict[str, Any]:
     try:
         menu_data = await get_menu_data(user)
         support_url = bot_service.get_support_url(text=i18n.get("message.help"))
+        referral_share_url = (
+            f"https://t.me/share/url?url={quote(menu_data.referral_url, safe='')}"
+        )
+        giveaways = await list_client_giveaways(user)
 
         purchase_discount = user.purchase_discount or 0
         personal_discount = user.personal_discount or 0
@@ -52,6 +59,8 @@ async def menu_getter(
             "support_url": support_url,
             # referral
             "referral_enabled": menu_data.is_referral_enabled,
+            "referral_share_url": referral_share_url,
+            "show_giveaways": bool(giveaways),
             # defaults
             "has_subscription": False,
             "connectable": False,
@@ -141,7 +150,16 @@ async def devices_getter(
     if not current_subscription:
         raise ValueError(f"Current subscription for user '{user.telegram_id}' not found")
 
-    devices = await remnawave.get_devices(current_subscription.user_remna_id)
+    devices_unavailable = False
+    try:
+        devices = await remnawave.get_devices(current_subscription.user_remna_id)
+    except RemnawaveDevicesUnavailableError:
+        logger.warning(
+            f"Unable to render devices for Telegram user '{user.telegram_id}', "
+            f"Remnawave user '{current_subscription.user_remna_id}' is unavailable"
+        )
+        devices = []
+        devices_unavailable = True
 
     formatted_devices = [
         {
@@ -164,6 +182,8 @@ async def devices_getter(
         "devices": formatted_devices,
         "devices_empty": len(devices) == 0,
         "has_devices": len(devices) > 0,
+        "show_devices_empty": not devices_unavailable and len(devices) == 0,
+        "devices_unavailable": devices_unavailable,
     }
 
 
@@ -191,6 +211,7 @@ async def invite_getter(
     referrals = await referral_dao.get_referrals_count(user.telegram_id)
     payments = await referral_dao.get_referrals_with_payment_count(user.telegram_id)
     referral_url = await bot_service.get_referral_url(user.referral_code)
+    referral_share_url = f"https://t.me/share/url?url={quote(referral_url, safe='')}"
     support_url = bot_service.get_support_url(text=i18n.get("message.withdraw-points"))
 
     return {
@@ -201,6 +222,7 @@ async def invite_getter(
         "is_points_reward": settings.referral.reward.is_points,
         "has_points": True if user.points > 0 else False,
         "referral_url": referral_url,
+        "referral_share_url": referral_share_url,
         "withdraw": support_url,
     }
 

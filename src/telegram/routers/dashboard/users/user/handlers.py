@@ -64,6 +64,7 @@ from src.application.use_cases.user.queries.plans import GetAvailablePlans
 from src.application.use_cases.user.queries.profile import GetUserDevices
 from src.core.constants import TARGET_TELEGRAM_ID, USER_KEY
 from src.core.enums import Role
+from src.core.exceptions import RemnawaveDevicesUnavailableError
 from src.core.utils.validators import parse_int
 from src.telegram.states import DashboardUser
 from src.telegram.utils import is_double_click
@@ -199,6 +200,10 @@ async def on_devices(
     target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
     user_devices = await get_user_devices(user, target_telegram_id)
 
+    if user_devices.devices_unavailable:
+        await notifier.notify_user(user, i18n_key="ntf-devices.unavailable")
+        return
+
     if not user_devices.current_count:
         await notifier.notify_user(user, i18n_key="ntf-user.devices-empty")
         return
@@ -212,6 +217,7 @@ async def on_device_delete(
     widget: Button,
     dialog_manager: DialogManager,
     delete_user_device: FromDishka[DeleteUserDevice],
+    notifier: FromDishka[Notifier],
 ) -> None:
     selected_short_hwid = dialog_manager.item_id  # type: ignore[attr-defined]
     hwid_map: list[dict] = dialog_manager.dialog_data.get("hwid_map")  # type: ignore[assignment]
@@ -223,7 +229,15 @@ async def on_device_delete(
 
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     target_telegram_id = dialog_manager.dialog_data[TARGET_TELEGRAM_ID]
-    has_devices = await delete_user_device(user, DeleteUserDeviceDto(target_telegram_id, full_hwid))
+    try:
+        has_devices = await delete_user_device(
+            user,
+            DeleteUserDeviceDto(target_telegram_id, full_hwid),
+        )
+    except RemnawaveDevicesUnavailableError:
+        await notifier.notify_user(user, i18n_key="ntf-devices.unavailable")
+        await dialog_manager.switch_to(state=DashboardUser.SUBSCRIPTION)
+        return
 
     if not has_devices:
         await dialog_manager.switch_to(state=DashboardUser.SUBSCRIPTION)

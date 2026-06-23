@@ -26,8 +26,6 @@ async def remnawave_webhook(
 ) -> Response:
     try:
         raw_body = await request.body()
-        data = await request.json()
-        logger.debug(f"Received Remnawave webhook payload: '{data}'")
         payload = WebhookUtility.parse_webhook(
             body=raw_body.decode("utf-8"),
             headers=dict(request.headers),
@@ -41,6 +39,8 @@ async def remnawave_webhook(
     if not payload:
         logger.warning("Payload is empty after validation")
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+    logger.debug(f"Received validated Remnawave webhook event '{payload.event}'")
 
     try:
         if WebhookUtility.is_user_event(payload.event):

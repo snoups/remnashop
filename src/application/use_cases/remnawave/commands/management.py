@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 from remnapy import RemnawaveSDK
+from remnapy.exceptions import AuthenticationError, ForbiddenError, NotFoundError
 from remnapy.models import DeleteUserAllHwidDeviceRequestDto
 
 from src.application.common import Interactor
@@ -9,6 +10,7 @@ from src.application.common.dao import SubscriptionDao
 from src.application.common.policy import Permission
 from src.application.common.remnawave import Remnawave
 from src.application.dto import UserDto
+from src.core.exceptions import RemnawaveDevicesUnavailableError
 
 
 @dataclass(frozen=True)
@@ -54,9 +56,28 @@ class DeleteUserAllDevices(Interactor[None, None]):
                 f"User '{actor.telegram_id}' has no active subscription or device limit unlimited"
             )
 
-        result = await self.remnawave_sdk.hwid.delete_all_hwid_user(
-            DeleteUserAllHwidDeviceRequestDto(user_uuid=current_subscription.user_remna_id)
-        )
+        try:
+            result = await self.remnawave_sdk.hwid.delete_all_hwid_user(
+                DeleteUserAllHwidDeviceRequestDto(user_uuid=current_subscription.user_remna_id)
+            )
+        except AuthenticationError as e:
+            logger.error(
+                "Remnawave rejected deletion of all HWID devices: "
+                "API authentication failed (HTTP 401)"
+            )
+            raise RemnawaveDevicesUnavailableError from e
+        except ForbiddenError as e:
+            logger.error(
+                "Remnawave rejected deletion of all HWID devices: "
+                "access forbidden (HTTP 403); check API token and proxy permissions"
+            )
+            raise RemnawaveDevicesUnavailableError from e
+        except NotFoundError as e:
+            logger.warning(
+                f"Remnawave user '{current_subscription.user_remna_id}' was not found "
+                "while deleting all HWID devices (HTTP 404)"
+            )
+            raise RemnawaveDevicesUnavailableError from e
 
         logger.info(f"{actor.log} Deleted all devices ({result.total})")
 

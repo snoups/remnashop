@@ -11,6 +11,7 @@ from src.application.common.dao import SettingsDao, SubscriptionDao, UserDao
 from src.application.common.policy import Permission
 from src.application.dto import SubscriptionDto, UserDto
 from src.core.config import AppConfig
+from src.core.exceptions import RemnawaveDevicesUnavailableError
 from src.core.types import RemnaUserDto
 
 
@@ -138,6 +139,7 @@ class GetUserDevicesResultDto:
     current_count: int
     max_count: int
     subscription: SubscriptionDto
+    devices_unavailable: bool = False
 
 
 class GetUserDevices(Interactor[int, GetUserDevicesResultDto]):
@@ -162,13 +164,24 @@ class GetUserDevices(Interactor[int, GetUserDevicesResultDto]):
         if not subscription:
             raise ValueError(f"Subscription for '{telegram_id}' not found")
 
-        devices = await self.remnawave.get_devices(subscription.user_remna_id)
+        devices_unavailable = False
+        try:
+            devices = await self.remnawave.get_devices(subscription.user_remna_id)
+        except RemnawaveDevicesUnavailableError:
+            logger.warning(
+                f"{actor.log} Could not retrieve devices for user '{telegram_id}', "
+                f"Remnawave user '{subscription.user_remna_id}' is unavailable"
+            )
+            devices = []
+            devices_unavailable = True
 
-        logger.info(f"{actor.log} Retrieved '{len(devices)}' devices for user '{telegram_id}'")
+        if not devices_unavailable:
+            logger.info(f"{actor.log} Retrieved '{len(devices)}' devices for user '{telegram_id}'")
 
         return GetUserDevicesResultDto(
             devices=devices,
             current_count=len(devices),
             max_count=subscription.device_limit,
             subscription=subscription,
+            devices_unavailable=devices_unavailable,
         )

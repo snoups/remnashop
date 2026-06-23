@@ -17,6 +17,18 @@ class Notification(StatesGroup):
     CLOSE = State()
 
 
+class GiveawayPhone(StatesGroup):
+    INPUT = State()
+
+
+class ClientGiveaways(StatesGroup):
+    LIST = State()
+    VIEW = State()
+    CONDITIONS = State()
+    PHONE = State()
+    RESULTS = State()
+
+
 class Subscription(StatesGroup):
     MAIN = State()
     PROMOCODE = State()
@@ -62,6 +74,31 @@ class DashboardPromocodes(StatesGroup):
     REWARD = State()
     LIFETIME = State()
     ALLOWED = State()
+
+
+class DashboardGiveaways(StatesGroup):
+    MAIN = State()
+    LIST = State()
+    NAME = State()
+    STARTS_AT = State()
+    ENDS_AT = State()
+    WINNER_COUNT = State()
+    PRIZE_AMOUNT = State()
+    PLAN = State()
+    DURATION = State()
+    PURCHASE_TYPES = State()
+    RULES = State()
+    ACTIVITY = State()
+    CONFIGURATOR = State()
+    VIEW = State()
+    ENTRIES = State()
+    WINNERS = State()
+    ARCHIVE_CONFIRM = State()
+    DELETE_CONFIRM = State()
+    RULES_VIEW = State()
+    RULES_EDIT = State()
+    MANUAL_ENTRY_PHONE = State()
+    MANUAL_ENTRY_ADDED = State()
 
 
 class DashboardAccess(StatesGroup):

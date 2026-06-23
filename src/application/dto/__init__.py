@@ -1,6 +1,7 @@
 from .base import BaseDto, TimestampMixin, TrackableMixin
 from .broadcast import BroadcastDto, BroadcastMessageDto
 from .build import BuildInfoDto
+from .giveaway import ClientGiveawayDto, GiveawayCampaignDto, GiveawayEntryDto
 from .message_payload import MediaDescriptorDto, MessagePayloadDto
 from .notification_task import NotificationTaskDto
 from .payment_gateway import (
@@ -42,6 +43,9 @@ __all__ = [
     "BroadcastDto",
     "BroadcastMessageDto",
     "BuildInfoDto",
+    "GiveawayCampaignDto",
+    "GiveawayEntryDto",
+    "ClientGiveawayDto",
     "MediaDescriptorDto",
     "MessagePayloadDto",
     "NotificationTaskDto",

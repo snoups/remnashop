@@ -4,6 +4,9 @@ from typing import Union
 class MenuRenderError(Exception): ...
 
 
+class RemnawaveDevicesUnavailableError(Exception): ...
+
+
 class PermissionDeniedError(Exception): ...
 
 

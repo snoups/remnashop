@@ -6,7 +6,7 @@ from uuid import UUID
 from loguru import logger
 from packaging.version import Version
 from remnapy import RemnawaveSDK
-from remnapy.exceptions import AuthenticationError, ConflictError, NotFoundError
+from remnapy.exceptions import AuthenticationError, ConflictError, ForbiddenError, NotFoundError
 from remnapy.models import (
     CreateUserRequestDto,
     DeleteUserHwidDeviceRequestDto,
@@ -21,6 +21,7 @@ from src.application.common.remnawave import T
 from src.application.dto import PlanSnapshotDto, RemnaSubscriptionDto, SubscriptionDto, UserDto
 from src.core.constants import REMNAWAVE_MIN_VERSION
 from src.core.enums import SubscriptionStatus
+from src.core.exceptions import RemnawaveDevicesUnavailableError
 from src.core.utils.converters import days_to_datetime, gb_to_bytes
 
 
@@ -143,7 +144,27 @@ class RemnawaveImpl(Remnawave):
         return response.root
 
     async def get_devices(self, user_uuid: UUID) -> list[HwidDeviceDto]:
-        response = await self.sdk.hwid.get_hwid_user(user_uuid)
+        try:
+            response = await self.sdk.hwid.get_hwid_user(user_uuid)
+        except AuthenticationError as e:
+            logger.error(
+                f"Remnawave rejected HWID devices request for user '{user_uuid}': "
+                "API authentication failed (HTTP 401)"
+            )
+            raise RemnawaveDevicesUnavailableError from e
+        except ForbiddenError as e:
+            logger.error(
+                f"Remnawave rejected HWID devices request for user '{user_uuid}': "
+                "access forbidden (HTTP 403); check API token and proxy permissions"
+            )
+            raise RemnawaveDevicesUnavailableError from e
+        except NotFoundError as e:
+            logger.warning(
+                f"Remnawave user '{user_uuid}' was not found while fetching HWID devices "
+                "(HTTP 404)"
+            )
+            raise RemnawaveDevicesUnavailableError from e
+
         logger.debug(f"Fetched {response.total} devices for RemnaUser '{user_uuid}'")
         return response.devices if response.total else []
 
@@ -156,9 +177,24 @@ class RemnawaveImpl(Remnawave):
                 f"Deleted HWID device '{hwid_uuid}' for RemnaUser '{user_uuid}'. "
                 f"Total devices now: {response.total}"
             )
-        except NotFoundError:
-            logger.debug(f"RemnaUser '{user_uuid}' not found in panel")
-            return None
+        except AuthenticationError as e:
+            logger.error(
+                f"Remnawave rejected HWID device deletion for user '{user_uuid}': "
+                "API authentication failed (HTTP 401)"
+            )
+            raise RemnawaveDevicesUnavailableError from e
+        except ForbiddenError as e:
+            logger.error(
+                f"Remnawave rejected HWID device deletion for user '{user_uuid}': "
+                "access forbidden (HTTP 403); check API token and proxy permissions"
+            )
+            raise RemnawaveDevicesUnavailableError from e
+        except NotFoundError as e:
+            logger.warning(
+                f"Remnawave user or HWID device for user '{user_uuid}' was not found "
+                "during deletion (HTTP 404)"
+            )
+            raise RemnawaveDevicesUnavailableError from e
 
         return int(response.total)
 
