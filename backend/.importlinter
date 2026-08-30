@@ -1,0 +1,297 @@
+[importlinter]
+root_package = app
+
+[importlinter:contract:auth-encapsulation]
+name = auth module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.settings
+    app.modules.users
+    app.modules.gateways
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.auth.repository
+    app.modules.auth.dto
+    app.modules.auth.di
+    app.modules.auth.usecases
+
+[importlinter:contract:settings-encapsulation]
+name = settings module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.users
+    app.modules.gateways
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.settings.repository
+    app.modules.settings.dto
+    app.modules.settings.di
+    app.modules.settings.usecases
+
+[importlinter:contract:users-encapsulation]
+name = users module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.gateways
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.users.repository
+    app.modules.users.dto
+    app.modules.users.di
+    app.modules.users.usecases
+ignore_imports =
+    app.core.security.permissions -> app.modules.users.dto
+    app.core.usecase -> app.modules.users.dto
+
+[importlinter:contract:event-log-encapsulation]
+name = event_log module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.gateways
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.event_log.repository
+    app.modules.event_log.dto
+    app.modules.event_log.di
+    app.modules.event_log.usecases
+    app.modules.event_log.tasks
+    app.modules.event_log.subscribers
+    app.modules.event_log.serializers
+ignore_imports =
+    app.core.event_bus -> app.modules.event_log.subscribers
+
+[importlinter:contract:banners-encapsulation]
+name = banners module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.gateways
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.banners.repository
+    app.modules.banners.dto
+    app.modules.banners.di
+    app.modules.banners.usecases
+    app.modules.banners.storage
+
+[importlinter:contract:api-tokens-encapsulation]
+name = api_tokens module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.gateways
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.api_tokens.repository
+    app.modules.api_tokens.dto
+    app.modules.api_tokens.di
+    app.modules.api_tokens.usecases
+
+[importlinter:contract:translations-encapsulation]
+name = translations module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.gateways
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.translations.repository
+    app.modules.translations.dto
+    app.modules.translations.di
+    app.modules.translations.usecases
+    app.modules.translations.tasks
+    app.modules.translations.events
+    app.modules.translations.seed
+    app.modules.translations.serializer
+ignore_imports =
+    app.core.event_bus -> app.modules.translations.events
+
+[importlinter:contract:gateways-encapsulation]
+name = gateways module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.gateways.repository
+    app.modules.gateways.dto
+    app.modules.gateways.di
+    app.modules.gateways.usecases
+    app.modules.gateways.field_catalog
+
+[importlinter:contract:plans-encapsulation]
+name = plans module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.gateways
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.plans.repository
+    app.modules.plans.dto
+    app.modules.plans.di
+    app.modules.plans.usecases
+
+[importlinter:contract:subscriptions-encapsulation]
+name = subscriptions module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.gateways
+    app.modules.plans
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.subscriptions.repository
+    app.modules.subscriptions.addon_repository
+    app.modules.subscriptions.dto
+    app.modules.subscriptions.di
+    app.modules.subscriptions.domain
+    app.modules.subscriptions.lifecycle
+    app.modules.subscriptions.tasks
+    app.modules.subscriptions.usecases
+
+[importlinter:contract:promocodes-encapsulation]
+name = promocodes module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.gateways
+    app.modules.plans
+    app.modules.subscriptions
+forbidden_modules =
+    app.modules.promocodes.repository
+    app.modules.promocodes.dto
+    app.modules.promocodes.di
+    app.modules.promocodes.usecases

@@ -3,21 +3,17 @@
 .vscode/
 .code-workspace
 data/*
-tests
 .DS_Store
-traefik
-logs/*
-!logs/.gitkeep
-.history
-.claude
-CLAUDE.md
+traefik/
+backend/logs/*
+!backend/logs/.gitkeep
 docs/
+notes.txt
 
 # Environment
 .venv/
 .env
 venv/
-.tests
 
 # Cache
 __pycache__/
@@ -26,15 +22,15 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
-.coverage/
+.import_linter_cache/
 
 # Coverage
 .coverage
 htmlcov/
 
 # Backups
-backups/*
-!backups/.gitkeep
+backend/backups/*
+!backend/backups/.gitkeep
 
 # Logs
 *.log
@@ -46,4 +42,6 @@ dist/
 site/
 *.egg-info/
 *.egg
-frontend/
+
+# Worktrees
+.worktrees/

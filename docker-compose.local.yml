@@ -1,21 +1,14 @@
-x-build: &build
-  build:
-    context: .
-    dockerfile: Dockerfile.local
-
+x-build-volumes: &build-volumes
   volumes:
-      - ./src:/opt/remnashop/src
-      - ./logs:/opt/remnashop/logs
-      - ./assets:/opt/remnashop/assets
+    - ./backend/app:/opt/remnashop/app
+    - ./backend/logs:/opt/remnashop/logs
 
 x-common: &common
   ulimits:
     nofile:
       soft: 1048576
       hard: 1048576
-
   restart: unless-stopped
-
   networks:
     - remnawave-network
 
@@ -29,39 +22,32 @@ x-logging: &logging
 x-env: &env
   env_file: .env
 
-
 services:
   remnashop-db:
     image: postgres:17
     container_name: "remnashop-db"
     hostname: remnashop-db
     <<: [*common, *logging, *env]
-
     environment:
       - POSTGRES_USER=${DATABASE_USER:-remnashop}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRES_DB=${DATABASE_NAME:-remnashop}
       - TZ=UTC
-
     ports:
       - 127.0.0.1:6767:${DATABASE_PORT:-5432}
-      
     volumes:
       - remnashop-db-data:/var/lib/postgresql/data
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${DATABASE_USER:-remnashop} -d $${DATABASE_NAME:-remnashop}"]
       interval: 3s
       timeout: 10s
       retries: 3
-    
 
   remnashop-redis:
     image: valkey/valkey:9-alpine
     container_name: "remnashop-redis"
     hostname: remnashop-redis
     <<: [*common, *logging, *env]
-    
     command: >
       sh -c '
       ARGS="--save \"\" --appendonly yes --maxmemory 512mb --maxmemory-policy volatile-lru --loglevel warning";
@@ -70,60 +56,103 @@ services:
       else
         exec valkey-server $${ARGS};
       fi'
-
     volumes:
       - remnashop-redis-data:/data
-
     healthcheck:
       test: ["CMD-SHELL", "valkey-cli $${REDIS_PASSWORD:+-a \"$REDIS_PASSWORD\"} ping | grep PONG"]
       interval: 3s
       timeout: 10s
       retries: 3
-    
 
-  remnashop:
-    container_name: "remnashop-local"
-    hostname: remnashop
-    <<: [*build, *common, *logging, *env]
-
+  remnashop-api:
+    container_name: "remnashop-api-local"
+    hostname: remnashop-api
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    <<: [*common, *logging, *env]
+    volumes:
+      - ./backend/app:/opt/remnashop/app
+      - ./backend/logs:/opt/remnashop/logs
+      - remnashop-media-data:/opt/remnashop/media
+    command: ["api"]
     ports:
       - 127.0.0.1:5000:${APP_PORT:-5000}
-
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:$${APP_PORT:-5000}/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
-        remnashop-db:
-          condition: service_healthy
-        remnashop-redis:
-          condition: service_healthy
+      remnashop-db:
+        condition: service_healthy
+      remnashop-redis:
+        condition: service_healthy
 
-
-  remnashop-taskiq-worker:
-    container_name: "remnashop-taskiq-worker"
-    hostname: remnashop-taskiq-worker
-    <<: [*build, *common, *logging, *env]
-
-    command: taskiq worker src.infrastructure.taskiq.worker:worker
-      --workers 1 --ack-type when_received --tasks-pattern src/infrastructure/taskiq/tasks/*.py -fsd
-
+  remnashop-telegram:
+    container_name: "remnashop-telegram-local"
+    hostname: remnashop-telegram
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+      args:
+        UV_EXTRA: telegram
+    <<: [*common, *logging, *env]
+    volumes:
+      - ./backend/app:/opt/remnashop/app
+      - ./backend/logs:/opt/remnashop/logs
+      - remnashop-media-data:/opt/remnashop/media
+    command: ["telegram"]
+    ports:
+      - 127.0.0.1:${BOT_PORT:-5001}:${BOT_PORT:-5001}
     depends_on:
-        remnashop-redis:
-          condition: service_healthy
-        remnashop-db:
-          condition: service_healthy
+      remnashop-api:
+        condition: service_healthy
 
-  remnashop-taskiq-scheduler:
-    container_name: "remnashop-taskiq-scheduler"
-    hostname: remnashop-taskiq-scheduler
-    <<: [*build, *common, *logging, *env]
-
-    command: taskiq scheduler src.infrastructure.taskiq.scheduler:scheduler
-      --tasks-pattern src/infrastructure/taskiq/tasks/*.py -fsd
-
+  remnashop-worker:
+    container_name: "remnashop-worker-local"
+    hostname: remnashop-worker
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    <<: [*build-volumes, *common, *logging, *env]
+    command: ["worker"]
     depends_on:
-        remnashop-redis:
-          condition: service_healthy
-        remnashop-db:
-          condition: service_healthy
+      remnashop-api:
+        condition: service_healthy
 
+  remnashop-scheduler:
+    container_name: "remnashop-scheduler-local"
+    hostname: remnashop-scheduler
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    <<: [*build-volumes, *common, *logging, *env]
+    command: ["scheduler"]
+    depends_on:
+      remnashop-api:
+        condition: service_healthy
+
+  remnashop-frontend:
+    container_name: "remnashop-frontend-local"
+    hostname: remnashop-frontend
+    image: node:22-alpine
+    working_dir: /opt/frontend
+    volumes:
+      - ./frontend:/opt/frontend
+      - /opt/frontend/node_modules
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_API_PROXY_TARGET: http://remnashop-api:5000
+    restart: unless-stopped
+    networks:
+      - remnawave-network
+    ports:
+      - 127.0.0.1:5173:5173
+    depends_on:
+      remnashop-api:
+        condition: service_healthy
 
 networks:
   remnawave-network:
@@ -136,8 +165,11 @@ volumes:
     name: remnashop-db-data
     driver: local
     external: false
-    
   remnashop-redis-data:
     name: remnashop-redis-data
+    driver: local
+    external: false
+  remnashop-media-data:
+    name: remnashop-media-data
     driver: local
     external: false

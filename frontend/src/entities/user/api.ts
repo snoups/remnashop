@@ -1,0 +1,67 @@
+import { apiDelete, apiGet, apiPatch } from "@shared/api/http";
+import type { Permission, Role } from "@shared/types/rbac";
+
+export interface CurrentUser {
+  id: number;
+  login: string | null;
+  name: string;
+  role: Role;
+  effective_permissions: Permission[];
+}
+
+export interface UpdateOwnProfileRequest {
+  name?: string;
+  current_password?: string;
+  new_password?: string;
+}
+
+export function getCurrentUser(): Promise<CurrentUser> {
+  return apiGet<CurrentUser>("/users/me");
+}
+
+export function updateOwnProfile(payload: UpdateOwnProfileRequest): Promise<CurrentUser> {
+  return apiPatch<CurrentUser, UpdateOwnProfileRequest>("/users/me", payload);
+}
+
+export interface UserListItem {
+  id: number;
+  name: string;
+  role: Role;
+  telegram_id: number | null;
+  username: string | null;
+  email: string | null;
+  login: string | null;
+  language: string;
+  is_blocked: boolean;
+  created_at: string | null;
+}
+
+export const DEFAULT_PAGE_SIZE = 50;
+
+export interface UserListPage {
+  items: UserListItem[];
+  total: number;
+}
+
+export interface UserListFilters {
+  search?: string;
+  role?: Role;
+  isBlocked?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export function listUsers(filters: UserListFilters = {}): Promise<UserListPage> {
+  const params = new URLSearchParams();
+  if (filters.search) params.set("search", filters.search);
+  if (filters.role) params.set("role", filters.role);
+  if (filters.isBlocked !== undefined) params.set("is_blocked", String(filters.isBlocked));
+  params.set("page", String(filters.page ?? 1));
+  params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
+
+  return apiGet<UserListPage>(`/users?${params.toString()}`);
+}
+
+export function deleteUser(userId: number): Promise<void> {
+  return apiDelete<void>(`/users/${userId}`);
+}

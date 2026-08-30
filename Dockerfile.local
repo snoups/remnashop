@@ -1,16 +1,25 @@
 FROM python:3.12-alpine
 WORKDIR /opt/remnashop
 
-RUN apk add --no-cache git postgresql-client
+RUN apk add --no-cache postgresql-client
 
-COPY pyproject.toml .
-COPY uv.lock .
-COPY docker-entrypoint.sh .
+ARG UV_EXTRA=""
 
-RUN pip install --no-cache-dir uv && uv sync --frozen
+COPY backend/pyproject.toml backend/uv.lock ./
+
+RUN pip install --no-cache-dir uv && \
+    if [ -n "$UV_EXTRA" ]; then \
+        uv sync --frozen --extra "$UV_EXTRA"; \
+    else \
+        uv sync --frozen; \
+    fi
 
 ENV UVICORN_RELOAD_ENABLED=true
 ENV PATH="/opt/remnashop/.venv/bin:$PATH"
 
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/assets ./assets
+COPY docker-entrypoint.sh ./
 RUN chmod +x ./docker-entrypoint.sh
-CMD ["./docker-entrypoint.sh"]
+
+ENTRYPOINT ["./docker-entrypoint.sh"]

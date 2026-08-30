@@ -8,6 +8,7 @@ __pycache__
 .env.*
 .idea
 .vscode
+.worktrees/
 
 logs/
 backups/
@@ -30,3 +31,7 @@ Makefile
 htmlcov/
 
 .history
+
+node_modules/
+**/node_modules/
+frontend/dist/

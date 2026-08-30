@@ -1,0 +1,64 @@
+from loguru import logger
+
+from app.core.db.uow import UnitOfWork
+from app.core.enums import PromocodeAvailability, PromocodeRewardType
+from app.core.exceptions import ValidationError
+from app.core.security.permissions import Permission
+from app.core.usecase import UseCase
+from app.modules.plans import PlanRepository
+from app.modules.promocodes.dto import CreatePromocodeDto, PromocodeDto
+from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.subscriptions import AddOnRepository
+from app.modules.users import UserDto
+
+
+class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
+    required_permission = Permission.PROMOCODES_CREATE
+
+    def __init__(
+        self,
+        promocode_repository: PromocodeRepository,
+        addon_repository: AddOnRepository,
+        plan_repository: PlanRepository,
+        uow: UnitOfWork,
+    ) -> None:
+        self._promocode_repository = promocode_repository
+        self._addon_repository = addon_repository
+        self._plan_repository = plan_repository
+        self._uow = uow
+
+    async def _execute(self, actor: UserDto, data: CreatePromocodeDto) -> PromocodeDto:
+        await self._validate_reward(data)
+        if data.availability == PromocodeAvailability.ALLOWED and not data.allowed_user_ids:
+            raise ValidationError("availability=ALLOWED requires at least one allowed user id")
+
+        async with self._uow:
+            promo = await self._promocode_repository.create(data)
+        logger.info(f"{actor.log} Created promocode '{promo.code}'")
+        return promo
+
+    async def _validate_reward(self, data: CreatePromocodeDto) -> None:
+        if data.reward_type is PromocodeRewardType.DURATION:
+            if data.reward is None or data.reward < 1:
+                raise ValidationError("reward must be >= 1 for reward type 'DURATION'")
+        elif data.reward_type in (PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES):
+            if data.reward_addon_id is None:
+                raise ValidationError(
+                    f"reward_addon_id is required for reward type '{data.reward_type}'"
+                )
+            addon = await self._addon_repository.get_by_id(data.reward_addon_id)
+            if addon.type.value != data.reward_type.value:
+                raise ValidationError(
+                    f"AddOn '{addon.id}' has type '{addon.type}', expected '{data.reward_type}'"
+                )
+        elif data.reward_type is PromocodeRewardType.SUBSCRIPTION:
+            if (
+                data.reward_plan_id is None
+                or data.reward_duration_days is None
+                or data.reward_duration_days < 1
+            ):
+                raise ValidationError(
+                    "reward_plan_id and a positive reward_duration_days are required "
+                    "for reward type 'SUBSCRIPTION'"
+                )
+            await self._plan_repository.get_by_id(data.reward_plan_id)

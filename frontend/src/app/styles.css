@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+/* Sourced from remnashop.dev's live Fumadocs dark theme (.dark CSS vars, --color-fd-*),
+   not the Mintlify docs.json on the docs branch -- that file is stale, the deployed
+   site no longer uses it. See frontend/DESIGN.md for the mapping. */
+@theme {
+  --color-canvas: #111111;
+  /* Form input/select fields — split from --color-canvas so tweaking the page
+     background doesn't also repaint every input. Same value as canvas by
+     default; the two are free to diverge. */
+  --color-input: #121212d6;
+  --color-surface: #393c47;
+  --color-popover: #393c47;
+  --color-border: #e8ecfb17;
+  /* Edge for translucent panels sitting over ShaderBackground — near-white at
+     low opacity, distinct from --color-border which is for opaque UI (inputs,
+     popovers). Matches the mockup's --glass-border. */
+  --color-glass-border: #e8ecfb17;
+  --color-foreground: #e8ecfb;
+  --color-muted-foreground: #8b93b8;
+  --color-primary: #22d3ee;
+  --color-primary-hover: #67e8f9;
+  --color-primary-foreground: #01030f;
+  --color-accent: #22d3ee1f;
+  --color-accent-foreground: #a8f2ff;
+  --color-success: #00c758;
+  --color-warning: #f99c00;
+  --color-error: #fb2c36;
+
+  --radius-popover: 20px;
+  /* popover radius minus its p-1.5 (6px) padding, so item corners nest cleanly */
+  --radius-popover-item: 14px;
+  --radius-dialog: 24px;
+}
+
+/* Fallback paint behind ShaderBackground's canvas — before it mounts, and if
+   WebGL2 is unavailable and the canvas hides itself. */
+html {
+  background-color: var(--color-canvas);
+}
+
+/* Replaces the browser's default blue focus ring app-wide. `:focus-visible`
+   only fires for keyboard navigation, not mouse clicks. Scoped to `@layer
+   base` (not left unlayered) so a `focus-visible:outline-none` utility --
+   itself in Tailwind's `@layer utilities` -- can still win per-element:
+   unlayered CSS always beats layered CSS regardless of specificity. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Leva (DebugPanel, dev-only) has no prop for panel position — it's always
+   fixed top-right by default. Override its root to anchor bottom-right
+   instead. `.leva-c-kWgxhW` is leva 0.10.1's own generated class for that
+   root div (verified against the installed version, not a public API) —
+   silently stops working on any leva upgrade; re-inspect the DOM if so. */
+.leva-c-kWgxhW {
+  top: auto !important;
+  bottom: 10px !important;
+}
+
+/* react-colorful (ColorPickerField's accent color popover) ships square
+   corners and its own sizing by default — round it to match this app's
+   rounded-xl/rounded-full language and fit it to the popover it's mounted
+   inside. Class names are the library's own public, documented API for
+   restyling (not internal/generated), so this is expected to keep working
+   across upgrades. */
+.react-colorful {
+  width: 200px;
+  height: auto;
+}
+
+.react-colorful__saturation {
+  border-radius: 12px;
+}
+
+.react-colorful__hue {
+  height: 14px;
+  margin-top: 10px;
+  border-radius: 9999px;
+}
+
+.react-colorful__pointer {
+  width: 16px;
+  height: 16px;
+}
+
+/* Native search-input "clear" (x) button — recolored via mask since the
+   browser default icon doesn't accept `color`. */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px;
+  width: 14px;
+  cursor: pointer;
+  background-color: var(--color-muted-foreground);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* Native textarea resize grip. `mask-image` isn't honored on this
+   pseudo-element (Chromium just fills the box with `background-color`,
+   which is why the mask attempt rendered as a solid square) -- the color
+   has to be baked into the SVG itself as a `background-image` instead. */
+textarea::-webkit-resizer {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238b93b8' stroke-width='1.4' stroke-linecap='round'%3E%3Cline x1='14' y1='2' x2='2' y2='14'/%3E%3Cline x1='14' y1='7' x2='7' y2='14'/%3E%3Cline x1='14' y1='12' x2='12' y2='14'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+/* App-wide scrollbar styling. `scrollbar-color` covers Firefox; the
+   `::-webkit-scrollbar-*` pseudo-elements cover Chromium/Safari. */
+* {
+  scrollbar-color: var(--color-accent) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-accent);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+}
+
+/* Fades scrolled content into the top edge of a container instead of a hard
+   clip. Two mask layers: the fade gradient covers everything but the
+   rightmost 10px (matches the scrollbar width above), which gets a solid,
+   fully-opaque layer -- otherwise the scrollbar itself (painted as part of
+   the same box) fades along with the content. */
+.scroll-fade-top {
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent, black 24px),
+    linear-gradient(black, black);
+  -webkit-mask-size:
+    calc(100% - 10px) 100%,
+    10px 100%;
+  -webkit-mask-position: left top, right top;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-image:
+    linear-gradient(to bottom, transparent, black 24px),
+    linear-gradient(black, black);
+  mask-size:
+    calc(100% - 10px) 100%,
+    10px 100%;
+  mask-position: left top, right top;
+  mask-repeat: no-repeat, no-repeat;
+}

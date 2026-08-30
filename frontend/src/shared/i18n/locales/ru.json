@@ -1,0 +1,687 @@
+{
+  "app": {
+    "title": "Remnashop — панель управления"
+  },
+  "toast": {
+    "close": "Закрыть"
+  },
+  "errors": {
+    "notFoundTitle": "Страница не найдена",
+    "notFoundDescription": "Такой страницы не существует или она была перемещена.",
+    "notFoundButton": "На главную",
+    "serverUnreachableTitle": "Не удаётся подключиться к серверу",
+    "serverUnreachableDescription": "Проверьте соединение или повторите попытку через некоторое время.",
+    "serverErrorTitle": "Ошибка сервера",
+    "serverErrorDescription": "Сервер ответил с ошибкой. Проверьте логи бэкенда.",
+    "retry": "Повторить"
+  },
+  "auth": {
+    "loginPageTitle": "Вход",
+    "bootstrapPageTitle": "Регистрация",
+    "loading": "Загрузка…",
+    "login": "Логин",
+    "loginPlaceholder": "Введите логин",
+    "password": "Пароль",
+    "passwordPlaceholder": "Введите пароль",
+    "confirmPassword": "Подтверждение пароля",
+    "confirmPasswordPlaceholder": "Повторите пароль",
+    "passwordHint": "Не менее 24 символов, с заглавной буквой, строчной буквой и цифрой.",
+    "generatePassword": "Сгенерировать пароль",
+    "copiedToClipboard": "Скопировано в буфер обмена!",
+    "createOwnerAccount": "Создать аккаунт владельца",
+    "signIn": "Войти",
+    "errors": {
+      "loginTooShort": "Логин должен быть не короче 3 символов",
+      "loginInvalidChars": "Логин может содержать только латинские буквы, цифры, точки, подчёркивания и дефисы",
+      "passwordRequirements": "Пароль должен быть не менее 24 символов и содержать заглавную букву, строчную букву и цифру",
+      "passwordsDoNotMatch": "Пароли не совпадают",
+      "genericError": "Что-то пошло не так"
+    },
+    "oauth": {
+      "continueWith": "Продолжить через {{provider}}",
+      "invalidCallback": "Некорректный OAuth callback",
+      "completingSignIn": "Завершаем вход…"
+    },
+    "welcome": {
+      "title": "Добро пожаловать в Remnashop",
+      "description": "Remnashop — телеграм-бот для продажи VPN-подписок поверх Remnawave, который развивается силами энтузиастов в свободное время. Если проект оказался полезен, поддержка очень приветствуется.",
+      "continueButton": "Продолжить в панель"
+    }
+  },
+  "dashboard": {
+    "welcomeTitle": "Добро пожаловать в панель управления Remnashop",
+    "welcomeSubtitle": "Это черновой каркас — реальные страницы (Пользователи, Планы…) ещё не все построены."
+  },
+  "eventLog": {
+    "title": "Журнал событий",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить журнал событий.",
+    "empty": "События не найдены.",
+    "filters": {
+      "category": "Тип",
+      "categoryAll": "Все категории",
+      "categoryAuth": "Авторизация",
+      "categoryAdminManagement": "Управление администраторами",
+      "categoryUser": "Пользователи",
+      "categorySettings": "Настройки",
+      "actor": "Инициатор",
+      "actorPlaceholder": "Имя, логин или ID",
+      "dateFrom": "С",
+      "dateTo": "По",
+      "clearDate": "Очистить дату"
+    },
+    "columns": {
+      "occurredAt": "Время",
+      "eventType": "Событие",
+      "actor": "Инициатор"
+    },
+    "detail": {
+      "target": "Цель",
+      "ip": "IP-адрес",
+      "payload": "Данные",
+      "copyPayload": "Скопировать данные"
+    },
+    "pagination": {
+      "loadMore": "Показать ещё",
+      "loadingMore": "Загрузка…"
+    },
+    "events": {
+      "LoginSucceededEvent": "Вход выполнен",
+      "LoginFailedEvent": "Неудачная попытка входа",
+      "OwnerBootstrappedEvent": "Создан аккаунт владельца",
+      "BootstrapConflictEvent": "Попытка bootstrap (владелец уже существует)",
+      "OAuthLoginSucceededEvent": "Вход через OAuth",
+      "OAuthLoginFailedEvent": "Неудачная попытка входа через OAuth",
+      "OAuthIdentityConnectedEvent": "Подключён OAuth-аккаунт",
+      "OAuthIdentityDisconnectedEvent": "Отключён OAuth-аккаунт",
+      "SessionRevokedEvent": "Сессия отозвана",
+      "SessionTheftDetectedEvent": "Обнаружена кража сессии",
+      "UserSessionRevokedByAdminEvent": "Сессия пользователя отозвана администратором",
+      "AdminCreatedEvent": "Создан администратор",
+      "AdminPromotedEvent": "Пользователь повышен до администратора",
+      "AdminPermissionsUpdatedEvent": "Обновлены права администратора",
+      "AdminDemotedEvent": "Администратор понижен",
+      "AdminDeletedEvent": "Администратор удалён",
+      "UserDeletedEvent": "Пользователь удалён",
+      "TelegramUserRegisteredEvent": "Новый пользователь через Telegram",
+      "LocaleActivatedEvent": "Локаль добавлена",
+      "LocaleDeactivatedEvent": "Локаль удалена"
+    }
+  },
+  "sidebar": {
+    "tagline": "Панель управления",
+    "overview": "Обзор",
+    "settings": "Настройки",
+    "users": "Пользователи",
+    "plans": "Планы",
+    "subscriptions": "Подписки",
+    "servers": "Серверы",
+    "payments": "Платежи",
+    "support": "Обращения",
+    "admins": "Администраторы",
+    "eventLog": "Журнал событий"
+  },
+  "admins": {
+    "title": "Администраторы",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить администраторов.",
+    "create": {
+      "button": "Создать администратора",
+      "title": "Создание нового администратора",
+      "loginLabel": "Логин",
+      "nameLabel": "Имя",
+      "submit": "Создать",
+      "error": "Не удалось создать администратора."
+    },
+    "passwordModal": {
+      "title": "Временный пароль",
+      "description": "Пароль показывается только один раз и больше недоступен. Сохраните его.",
+      "close": "Продолжить"
+    },
+    "permissionsForm": {
+      "title": "Разрешения",
+      "headers": {
+        "permission": "Право",
+        "grant": "Выдать",
+        "revoke": "Отозвать"
+      },
+      "cancel": "Отмена",
+      "submit": "Сохранить",
+      "error": "Не удалось обновить права."
+    },
+    "demote": {
+      "button": "Разжаловать",
+      "title": "Разжаловать администратора",
+      "confirm": "Разжаловать этого администратора до обычного пользователя? Его логин и права будут очищены.",
+      "cancel": "Отмена",
+      "error": "Не удалось понизить администратора."
+    }
+  },
+  "users": {
+    "title": "Пользователи",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить пользователей.",
+    "empty": "Пользователи не найдены.",
+    "blocked": "Заблокирован",
+    "filters": {
+      "search": "Поиск",
+      "searchPlaceholder": "Имя, логин, email или Telegram ID",
+      "role": "Роль",
+      "roleAll": "Все роли",
+      "status": "Блокировка",
+      "statusAll": "Все",
+      "statusActive": "Не заблокированы",
+      "statusBlocked": "Заблокированы"
+    },
+    "pagination": {
+      "loadMore": "Показать ещё",
+      "loadingMore": "Загрузка…"
+    },
+    "delete": {
+      "button": "Удалить пользователя",
+      "confirm": "Удалить {{name}} безвозвратно? Это действие нельзя отменить.",
+      "error": "Не удалось удалить пользователя."
+    },
+    "details": {
+      "button": "Подробнее",
+      "id": "ID",
+      "login": "Логин",
+      "username": "Username",
+      "telegramId": "Telegram ID",
+      "email": "Email",
+      "language": "Язык",
+      "status": "Статус",
+      "active": "Активен",
+      "createdAt": "Создан"
+    }
+  },
+  "header": {
+    "dashboard": "Панель управления",
+    "account": "Логин",
+    "profile": "Профиль",
+    "logout": "Выйти",
+    "searchPlaceholder": "Поиск",
+    "notifications": "Уведомления"
+  },
+  "settings": {
+    "title": "Настройки",
+    "tabs": {
+      "general": "Общие",
+      "bot": "Telegram бот",
+      "apiTokens": "API-токены",
+      "appearance": "Внешний вид",
+      "gateways": "Шлюзы"
+    },
+    "bot": {
+      "title": "Telegram бот",
+      "description": "Конфигурация Telegram-бота",
+      "loading": "Загрузка…",
+      "loadErrorBadge": "ошибка",
+      "configured": "настроен",
+      "notConfigured": "не настроен",
+      "tokenLabel": "Токен бота",
+      "tokenHint": "Выдаётся @BotFather при создании бота. Используется для отправки сообщений от имени бота и подключения вебхука.",
+      "secretTokenLabel": "Секретный токен вебхука",
+      "secretTokenHint": "Telegram присылает его в заголовке каждого запроса вебхука; API сверяет значение перед тем как доверять запросу — так вебхук доступен только Telegram.",
+      "generateSecretToken": "Сгенерировать",
+      "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "saved": "Сохранено.",
+      "errorEmptyFields": "Заполните хотя бы одно поле для обновления",
+      "errorInvalidToken": "Неверный формат токена бота",
+      "dropPendingUpdatesLabel": "Сбрасывать очередь апдейтов при установке вебхука",
+      "dropPendingUpdatesHint": "Накопленные до установки вебхука апдейты Telegram будут отброшены, а не доставлены после активации.",
+      "bannersEnabledLabel": "Показывать баннеры",
+      "bannersEnabledHint": "Прикрепляет изображение к сообщениям бота там, где для них настроен баннер. Если подходящий файл не найден — отправляется только текст.",
+      "applyChangesDescription": "Перезапускает telegram-процесс, чтобы он подхватил сохранённые токен/секрет. Не действует, если процесс сейчас не запущен.",
+      "restartBot": "Перезапустить",
+      "restarting": "Перезапуск…",
+      "restartCooldown": "Перезапуск ({{seconds}}с)",
+      "restartRequested": "Перезапуск запрошен. Процесс бота скоро вернётся с сохранёнными настройками."
+    },
+    "botCommands": {
+      "title": "Команды бота",
+      "description": "Список доступных команд.",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить команды.",
+      "enabledLabel": "Включена",
+      "dragHandle": "Перетащить для изменения порядка",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "saved": "Сохранено.",
+      "savedTelegramSyncFailed": "Сохранено, но не удалось обновить меню Telegram. Попробуйте сохранить ещё раз."
+    },
+    "translationsEditor": {
+      "title": "Переводы бота",
+      "description": "Редактирование текста, который бот показывает для каждой локали.",
+      "loading": "Загрузка переводов…",
+      "loadError": "Не удалось загрузить переводы.",
+      "addLocale": "Добавить локаль",
+      "removeLocale": "Удалить",
+      "resetToDefault": "Сбросить",
+      "saved": "Перевод сохранён.",
+      "savedTelegramSyncFailed": "Сохранено, но синхронизация с Telegram не удалась.",
+      "reset": "Перевод сброшен к значению по умолчанию."
+    },
+    "banners": {
+      "title": "Баннеры",
+      "description": "Установка баннеров для каждого окна бота",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить баннеры.",
+      "upload": "Загрузить",
+      "replace": "Заменить",
+      "delete": "Удалить",
+      "uploadError": "Не удалось загрузить баннер.",
+      "deleteError": "Не удалось удалить баннер.",
+      "unsupportedFormat": "Неподдерживаемый формат файла"
+    },
+    "appearance": {
+      "title": "Внешний вид",
+      "description": "Настройка внешнего вида и брендинга",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить настройки внешнего вида.",
+      "section": {
+        "branding": "Брендинг",
+        "accentColor": "Акцентный цвет",
+        "images": "Изображения"
+      },
+      "brandNameLabel": "Название бренда",
+      "brandNamePlaceholder": "Remnashop",
+      "accentColorLabel": "Акцентный цвет",
+      "presetsLabel": "Готовые цвета",
+      "previousColorLabel": "Предыдущий цвет",
+      "shaderEnabledLabel": "Фоновый шейдер",
+      "shaderPaletteLabel": "Цвета фонового шейдера",
+      "shaderPalette": {
+        "base": "База",
+        "amplitude": "Амплитуда",
+        "frequency": "Частота",
+        "phase": "Фаза"
+      },
+      "logoLabel": "Логотип",
+      "faviconLabel": "Фавикон",
+      "upload": "Загрузить",
+      "replace": "Заменить",
+      "delete": "Удалить",
+      "save": "Сохранить",
+      "saveSuccess": "Внешний вид обновлён.",
+      "saveError": "Не удалось сохранить настройки внешнего вида.",
+      "uploadError": "Не удалось загрузить изображение.",
+      "deleteError": "Не удалось удалить изображение.",
+      "reset": "Сбросить по умолчанию",
+      "resetSuccess": "Название бренда и цвет возвращены к значениям по умолчанию.",
+      "resetError": "Не удалось сбросить настройки внешнего вида."
+    },
+    "oauth": {
+      "title": "OAuth-провайдеры",
+      "description": "Управление способами входа в панель управления.",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить текущий статус.",
+      "configured": "настроен",
+      "notConfigured": "не настроен",
+      "enableAria": "Включить {{provider}}",
+      "githubClientIdLabel": "ID клиента GitHub",
+      "githubClientSecretLabel": "Секрет клиента GitHub",
+      "telegramClientIdLabel": "ID клиента Telegram",
+      "telegramClientSecretLabel": "Секрет клиента Telegram",
+      "oidcDisplayNameLabel": "Отображаемое имя",
+      "oidcIssuerUrlLabel": "URL издателя OIDC",
+      "oidcClientIdLabel": "ID клиента OIDC",
+      "oidcClientSecretLabel": "Секрет клиента OIDC",
+      "passwordLoginLabel": "Вход по паролю",
+      "passwordLoginDescription": "Прежде чем выключать, убедитесь, что хотя бы один OAuth-провайдер работает.",
+      "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "saved": "Сохранено.",
+      "errorEmptyFields": "Заполните хотя бы одно поле для обновления",
+      "guideAriaLabel": "Справочная статья",
+      "copy": "Копировать",
+      "telegramGuide": {
+        "title": "Telegram OAuth2",
+        "intro": "Для настройки функции «Вход через Telegram» вам необходим Telegram-бот, также необходимо дополнительно настроить бота, чтобы функция работала корректно.",
+        "botSetupTitle": "Настройка бота",
+        "botSetupSteps": [
+          "Откройте @BotFather",
+          "Откройте MiniApp кнопкой «Open»",
+          "Выберите вашего бота и нажмите Bot Settings",
+          "Если в разделе Web Login уже указан домен — удалите его",
+          "Нажмите кнопку Switch to OpenID Connect Login. Если такой кнопки нет, после удаления домена вернитесь на пункт меню назад и повторите действия с шага 3",
+          "Нажмите Add an Allowed URL и укажите значения ниже:"
+        ],
+        "trustedOriginsLabel": "Trusted Origins",
+        "trustedOriginsValue": "https://remnashop.domain.com",
+        "redirectUrisLabel": "Redirect URIs",
+        "redirectUrisValue": "https://remnashop.domain.com/oauth2/callback/telegram",
+        "accessSetupTitle": "Настройка доступа",
+        "accessSetupIntro": "После заполнения Client ID, Client Secret и Frontend Domain вам необходимо указать список ID администраторов, для которых будет доступен вход.",
+        "accessSetupSteps": [
+          "С нужного аккаунта запустите бота @Get_myidrobot",
+          "В ответ бот пришлёт ваш ID — введите его в соответствующее поле"
+        ],
+        "knownIssuesTitle": "Решение известных ошибок",
+        "knownIssuesIntro": "Разного рода защиты, установленные поверх панели (наподобие куки и т.д.), могут работать некорректно с Telegram OAuth2.",
+        "knownIssuesProxyTip": "Используйте путь /oauth2/ в своих реверс-прокси для решения этой проблемы.",
+        "errorBotDomainTitle": "Ошибка: BOT_DOMAIN_INVALID",
+        "errorBotDomainBody": "Эта ошибка возникает из-за неправильной настройки домена бота — изучите пункт «Настройка бота» выше. При необходимости выполните его повторно шаг за шагом.",
+        "errorNoCodeTitle": "Ошибка: не приходит код подтверждения от Telegram при логине",
+        "errorNoCodeBody": "К сожалению, со стороны Remnashop эту проблему не решить. Попробуйте использовать бота, который был создан давно, или другой браузер. Также вы можете попробовать залогиниться на одном из «официальных» ресурсов Telegram — например, fragment.com: так как сессия Telegram в рамках браузера общая, это может помочь войти в панель."
+      },
+      "githubGuide": {
+        "title": "OAuth2: GitHub",
+        "createAppTitle": "Создание OAuth приложения",
+        "createAppIntro": "Для начала вам необходимо создать OAuth приложение. Перейдите по ссылке для создания приложения:",
+        "callbackIntro": "В пункте Authorization callback URL введите адрес вашей панели.",
+        "callbackCommentLabel": "Замените YOUR_REMNASHOP_DOMAIN на адрес вашей панели",
+        "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/github",
+        "callbackNote": "Не забудьте заменить YOUR_REMNASHOP_DOMAIN на корректный адрес панели.",
+        "settingsTitle": "Настройки OAuth2 в Remnashop",
+        "settingsBody": "После создания OAuth2 приложения — скопируйте Client ID и Client Secret. Вставьте эти данные в соответствующем разделе."
+      },
+      "oidcGuide": {
+        "title": "OpenID Connect (SSO)",
+        "intro": "Подходит любой OIDC-совместимый провайдер — Keycloak, Authentik, Zitadel, Auth0, PocketID и другие. Издатель должен отдавать стандартный endpoint /.well-known/openid-configuration.",
+        "callbackTitle": "Создание приложения у провайдера",
+        "callbackIntro": "При создании приложения у OIDC-провайдера укажите Redirect URI, указанный ниже.",
+        "callbackCommentLabel": "Замените YOUR_REMNASHOP_DOMAIN на адрес вашей панели",
+        "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/oidc",
+        "callbackNote": "Не забудьте заменить YOUR_REMNASHOP_DOMAIN на корректный адрес панели.",
+        "settingsTitle": "Настройки OIDC в Remnashop",
+        "settingsBody": "Укажите Issuer URL вашего провайдера, а также полученные Client ID и Client Secret. Отображаемое имя используется как подпись кнопки входа на странице логина."
+      },
+      "passwordLoginGuide": {
+        "title": "Вход по паролю",
+        "rescueTitle": "Экстренное включение",
+        "rescueIntro": "Если вы отключили вход по паролю и потеряли доступ к другим методам входа, включите его через Rescue CLI:",
+        "rescueCommandLabel": "Команда",
+        "rescueCommandValue": "docker exec -it <api-container> python -m app.cli",
+        "rescueNote": "После запуска выберите пункт «Enable password authentication»."
+      }
+    },
+    "gateways": {
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить платёжные шлюзы.",
+      "configured": "настроен",
+      "notConfigured": "не настроен",
+      "enableAria": "Включить {{gateway}}",
+      "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "saved": "Сохранено.",
+      "errorEmptyFields": "Заполните хотя бы одно поле для обновления",
+      "toggleError": "Не удалось изменить статус шлюза.",
+      "moveUp": "Переместить вверх",
+      "moveDown": "Переместить вниз",
+      "types": {
+        "TELEGRAM_STARS": "Telegram Stars",
+        "YOOKASSA": "YooKassa",
+        "YOOMONEY": "YooMoney",
+        "VALUTIX": "Valutix",
+        "CRYPTOMUS": "Cryptomus",
+        "HELEKET": "Heleket",
+        "CRYPTOPAY": "CryptoPay",
+        "FREEKASSA": "FreeKassa",
+        "MULENPAY": "MulenPay",
+        "PAYMASTER": "PayMaster",
+        "PLATEGA": "Platega",
+        "ROBOKASSA": "RoboKassa",
+        "URLPAY": "UrlPay",
+        "WATA": "Wata",
+        "ROLLYPAY": "RollyPay"
+      },
+      "fields": {
+        "YOOKASSA": {
+          "shop_id": "ID магазина",
+          "api_key": "API-ключ",
+          "customer": "Email клиента (для чека)",
+          "vat_code": "Код НДС"
+        },
+        "YOOMONEY": {
+          "wallet_id": "ID кошелька",
+          "secret_key": "Секретный ключ"
+        },
+        "CRYPTOMUS": {
+          "merchant_id": "ID мерчанта",
+          "api_key": "API-ключ"
+        },
+        "HELEKET": {
+          "merchant_id": "ID мерчанта",
+          "api_key": "API-ключ"
+        },
+        "CRYPTOPAY": {
+          "api_key": "API-ключ"
+        },
+        "FREEKASSA": {
+          "shop_id": "ID магазина",
+          "api_key": "API-ключ",
+          "secret_word_2": "Секретное слово №2",
+          "payment_system_id": "ID платёжной системы",
+          "customer_email": "Email клиента",
+          "customer_ip": "IP клиента"
+        },
+        "MULENPAY": {
+          "api_key": "API-ключ",
+          "secret_key": "Секретный ключ",
+          "shop_id": "ID магазина",
+          "vat_code": "Код НДС"
+        },
+        "PAYMASTER": {
+          "merchant_id": "ID мерчанта",
+          "api_key": "API-ключ"
+        },
+        "PLATEGA": {
+          "merchant_id": "ID мерчанта",
+          "api_key": "API-ключ",
+          "payment_method": "ID способа оплаты"
+        },
+        "ROBOKASSA": {
+          "merchant_login": "Логин мерчанта",
+          "password1": "Пароль №1",
+          "password2": "Пароль №2"
+        },
+        "URLPAY": {
+          "shop_id": "ID магазина",
+          "api_key": "API-ключ",
+          "secret_key": "Секретный ключ",
+          "vat_code": "Код НДС"
+        },
+        "WATA": {
+          "api_key": "API-ключ"
+        },
+        "VALUTIX": {
+          "api_key": "API-ключ"
+        },
+        "ROLLYPAY": {
+          "api_key": "API-ключ"
+        }
+      }
+    }
+  },
+  "apiTokens": {
+    "title": "API-токены",
+    "description": "Управление API токенами для доступа из кода.",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить.",
+    "empty": "API токены не найдены",
+    "create": "Создать токен",
+    "createTitle": "Создать API-токен",
+    "createNotice": "Секрет токена показывается только один раз, сразу после создания — сохраните его в надёжном месте.",
+    "nameLabel": "Название",
+    "namePlaceholder": "например, ci-deploy",
+    "permissionsLabel": "Права",
+    "fullAccess": "Полный доступ",
+    "readOnly": "Только чтение",
+    "lifetimeLabel": "Время жизни токена",
+    "expiresIn30Days": "30 дней",
+    "expiresIn90Days": "90 дней",
+    "expiresIn180Days": "180 дней",
+    "expiresIn365Days": "365 дней",
+    "neverExpires": "Бессрочно",
+    "expiresAt": "Истекает {{date}}",
+    "submit": "Создать",
+    "cancel": "Отмена",
+    "createError": "Не удалось создать токен.",
+    "secretTitle": "Токен создан",
+    "secretWarning": "Скопируйте сейчас — повторно он не будет показан.",
+    "copy": "Копировать",
+    "copied": "Скопировано",
+    "done": "Готово",
+    "lastUsed": "Использован {{date}}",
+    "neverUsed": "Ещё не использовался",
+    "createdAt": "Создан {{date}}",
+    "revoke": "Отозвать",
+    "revokeTitle": "Отозвать API-токен",
+    "revokeConfirm": "Любой скрипт или интеграция, использующие этот токен, немедленно потеряют доступ.",
+    "revokeError": "Не удалось отозвать токен."
+  },
+  "profile": {
+    "title": "Профиль",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить профиль.",
+    "edit": {
+      "button": "Редактировать",
+      "title": "Редактирование профиля",
+      "close": "Закрыть",
+      "changeAvatar": "Изменить аватар",
+      "avatarHint": "Загрузка аватара пока не реализована.",
+      "nameLabel": "Отображаемое имя",
+      "changePassword": "Изменить пароль",
+      "currentPasswordLabel": "Текущий пароль",
+      "currentPasswordPlaceholder": "Введите текущий пароль",
+      "currentPasswordRequired": "Введите текущий пароль, чтобы задать новый",
+      "newPasswordLabel": "Новый пароль",
+      "newPasswordPlaceholder": "Введите новый пароль",
+      "cancel": "Отмена",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "saved": "Профиль обновлён."
+    },
+    "oauthAccounts": {
+      "title": "Подключённые аккаунты",
+      "description": "Входите через привязанный аккаунт GitHub или Telegram вместо пароля.",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить.",
+      "github": "GitHub",
+      "telegram": "Telegram",
+      "oidcFallback": "SSO",
+      "connected": "Подключён",
+      "connectedAs": "Подключён как {{login}}",
+      "notConnected": "Не подключён",
+      "connect": "Подключить",
+      "disconnect": "Отключить"
+    },
+    "accountSecurity": {
+      "title": "Список разрешённых IP",
+      "description": "Ограничьте доступ к своему аккаунту конкретными IP-адресами или CIDR-диапазонами.",
+      "placeholder": "например, 203.0.113.5 или 203.0.113.0/24, по одному на строку",
+      "submit": "Сохранить",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить.",
+      "saveError": "Не удалось сохранить.",
+      "selfLockoutError": "Ваш текущий IP отсутствует в отправленном списке — это заблокирует вам доступ."
+    }
+  },
+  "sessions": {
+    "title": "Активные сессии",
+    "description": "Устройства, с которых был выполнен вход в аккаунт.",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить.",
+    "empty": "Активных сессий нет.",
+    "revoke": "Завершить",
+    "revokeTitle": "Завершить сессию",
+    "revokeConfirm": "Устройство будет отключено от аккаунта.",
+    "revokeConfirmCurrent": "Это текущее устройство. Вы выйдете из аккаунта.",
+    "revokeError": "Не удалось завершить сессию.",
+    "cancel": "Отмена",
+    "back": "Назад",
+    "thisDevice": "Это устройство",
+    "lastUsed": "{{date}}"
+  },
+  "language": {
+    "label": "Язык"
+  },
+  "roles": {
+    "USER": "Пользователь",
+    "ADMIN": "Администратор",
+    "OWNER": "Владелец",
+    "SYSTEM": "Система"
+  },
+  "permissions": {
+    "PUBLIC": "Публичный доступ",
+    "BOT_SETTINGS_VIEW": "Просмотр настроек бота",
+    "BOT_COMMANDS_VIEW": "Просмотр команд бота",
+    "BOT_SETTINGS_MANAGE": "Настройки бота",
+    "BOT_COMMANDS_MANAGE": "Команды бота",
+    "BOT_RESTART": "Перезапуск бота",
+    "OAUTH_SETTINGS_VIEW": "Просмотр настроек OAuth",
+    "OAUTH_SETTINGS_MANAGE": "Настройки OAuth",
+    "BANNERS_VIEW": "Просмотр баннеров",
+    "BANNERS_IMAGE_VIEW": "Просмотр изображения баннера",
+    "BANNERS_UPLOAD": "Загрузка баннеров",
+    "BANNERS_DELETE": "Удаление баннеров",
+    "LOCALES_VIEW": "Просмотр локалей",
+    "LOCALES_ADD": "Добавление локалей",
+    "LOCALES_REMOVE": "Удаление локалей",
+    "TRANSLATIONS_VIEW": "Просмотр переводов",
+    "TRANSLATIONS_UPDATE": "Редактирование переводов",
+    "TRANSLATIONS_RESET": "Сброс переводов",
+    "OWN_ACCOUNT_MANAGE": "Свой аккаунт",
+    "ADMINS_MANAGE": "Управление администраторами",
+    "API_TOKENS_MANAGE": "Управление API-токенами",
+    "EVENT_LOG_VIEW": "Журнал событий",
+    "USERS_VIEW": "Просмотр пользователей",
+    "USERS_DELETE": "Удаление пользователей",
+    "USER_SESSIONS_VIEW": "Просмотр сессий пользователей",
+    "USER_SESSIONS_REVOKE": "Отзыв сессий пользователей",
+    "APPEARANCE_SETTINGS_MANAGE": "Настройки внешнего вида",
+    "APPEARANCE_SETTINGS_RESET": "Сброс настроек внешнего вида",
+    "APPEARANCE_LOGO_UPLOAD": "Загрузка логотипа",
+    "APPEARANCE_LOGO_DELETE": "Удаление логотипа",
+    "APPEARANCE_FAVICON_UPLOAD": "Загрузка фавикона",
+    "APPEARANCE_FAVICON_DELETE": "Удаление фавикона",
+    "GATEWAYS_VIEW": "Просмотр платёжных шлюзов",
+    "GATEWAYS_UPDATE": "Изменение настроек шлюзов",
+    "GATEWAYS_TOGGLE": "Включение/выключение шлюзов",
+    "GATEWAYS_REORDER": "Изменение порядка шлюзов"
+  },
+  "permissionCategories": {
+    "botSettings": "Настройки бота",
+    "oauthSettings": "Настройки OAuth",
+    "banners": "Баннеры",
+    "locales": "Локали",
+    "translations": "Переводы",
+    "users": "Пользователи",
+    "userSessions": "Сессии пользователей",
+    "eventLog": "Журнал событий",
+    "appearance": "Внешний вид",
+    "gateways": "Платёжные шлюзы"
+  },
+  "permissionPicker": {
+    "read": "Чтение",
+    "write": "Запись"
+  },
+  "buildInfo": {
+    "title": "О сборке",
+    "close": "Закрыть",
+    "version": "Версия",
+    "branch": "Ветка",
+    "commit": "Коммит",
+    "commitDate": "Дата коммита",
+    "copyCommit": "Скопировать хеш коммита",
+    "copied": "Скопировано",
+    "localBuild": "Локальная сборка",
+    "githubButton": "GitHub",
+    "telegramButton": "Telegram"
+  },
+  "donate": {
+    "button": "Поддержать",
+    "title": "Поддержать проект",
+    "description": "Проект развивается на добровольных началах — если он оказался полезен, поддержка очень приветствуется.",
+    "boostyLabel": "Boosty",
+    "yookassaLabel": "ЮKassa",
+    "communityTitle": "Закрытый чат",
+    "communityDescription": "Платная подписка на Boosty, которая даёт доступ к закрытому чату поддержки.",
+    "communityButton": "Оформить подписку"
+  }
+}

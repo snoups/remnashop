@@ -1,0 +1,117 @@
+from dataclasses import dataclass
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
+
+from app.core.dto import BaseDto, TimestampMixin
+
+
+class BotSettingsDto(BaseDto, TimestampMixin):
+    token: Optional[str] = None
+    secret_token: Optional[str] = None
+    drop_pending_updates: bool = False
+    banners_enabled: bool = False
+
+    @property
+    def is_configured(self) -> bool:
+        return self.token is not None and self.secret_token is not None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateBotSettingsDto:
+    token: Optional[str] = None
+    secret_token: Optional[str] = None
+    drop_pending_updates: Optional[bool] = None
+    banners_enabled: Optional[bool] = None
+
+
+class BotCommandDto(BaseDto, TimestampMixin):
+    command: str
+    sort_order: int = 0
+    enabled: bool = True
+
+
+class UpdateBotCommandsResultDto(BaseModel):
+    model_config = ConfigDict(strict=False, extra="ignore")
+
+    commands: list[BotCommandDto]
+    telegram_sync_failed: bool = False
+
+
+class OAuthSettingsDto(BaseDto, TimestampMixin):
+    github_client_id: Optional[str] = None
+    github_client_secret: Optional[str] = None
+    github_enabled: bool = False
+    telegram_client_id: Optional[str] = None
+    telegram_client_secret: Optional[str] = None
+    telegram_enabled: bool = False
+    oidc_issuer_url: Optional[str] = None
+    oidc_client_id: Optional[str] = None
+    oidc_client_secret: Optional[str] = None
+    oidc_display_name: Optional[str] = None
+    oidc_enabled: bool = False
+    password_login_enabled: bool = True
+
+    @property
+    def is_github_configured(self) -> bool:
+        return self.github_client_id is not None and self.github_client_secret is not None
+
+    @property
+    def is_telegram_configured(self) -> bool:
+        return self.telegram_client_id is not None and self.telegram_client_secret is not None
+
+    @property
+    def is_github_usable(self) -> bool:
+        return self.is_github_configured and self.github_enabled
+
+    @property
+    def is_telegram_usable(self) -> bool:
+        return self.is_telegram_configured and self.telegram_enabled
+
+    @property
+    def is_oidc_configured(self) -> bool:
+        # display_name is required alongside the credentials -- without it the
+        # login button has nothing to render as its label.
+        return (
+            self.oidc_issuer_url is not None
+            and self.oidc_client_id is not None
+            and self.oidc_client_secret is not None
+            and self.oidc_display_name is not None
+        )
+
+    @property
+    def is_oidc_usable(self) -> bool:
+        return self.is_oidc_configured and self.oidc_enabled
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateOAuthSettingsDto:
+    github_client_id: Optional[str] = None
+    github_client_secret: Optional[str] = None
+    github_enabled: Optional[bool] = None
+    telegram_client_id: Optional[str] = None
+    telegram_client_secret: Optional[str] = None
+    telegram_enabled: Optional[bool] = None
+    oidc_issuer_url: Optional[str] = None
+    oidc_client_id: Optional[str] = None
+    oidc_client_secret: Optional[str] = None
+    oidc_display_name: Optional[str] = None
+    oidc_enabled: Optional[bool] = None
+    password_login_enabled: Optional[bool] = None
+
+
+class AppearanceSettingsDto(BaseDto, TimestampMixin):
+    brand_name: Optional[str] = None
+    primary_color: Optional[str] = None
+    shader_palette: Optional[list[str]] = None
+    shader_enabled: bool = True
+    has_logo: bool = False
+    has_favicon: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateAppearanceSettingsDto:
+    brand_name: Optional[str] = None
+    primary_color: Optional[str] = None
+    shader_palette: Optional[list[str]] = None
+    shader_enabled: Optional[bool] = None

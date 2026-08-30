@@ -44,7 +44,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
-      - name: 🏗️ Build and Push Docker Image
+      - name: 🏗️ Build and Push Docker Image (api)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -58,6 +58,22 @@ jobs:
             BUILD_BRANCH=main
             BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
             BUILD_TAG=${{ github.ref_name }}
+
+      - name: 🏗️ Build and Push Docker Image (telegram)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/snoups/remnashop:latest-telegram
+            ghcr.io/snoups/remnashop:${{ github.ref_name }}-telegram
+          build-args: |
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
+            BUILD_BRANCH=main
+            BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
+            BUILD_TAG=${{ github.ref_name }}
+            UV_EXTRA=telegram
 
       - name: 📦 Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -80,14 +96,16 @@ jobs:
 
             ## 🐳 Docker Images
 
-            ### Latest:
+            `api` service:
             ```
             ghcr.io/snoups/remnashop:latest
+            ghcr.io/snoups/remnashop:${{ github.ref_name }}
             ```
 
-            ### Versioned:
+            `telegram` service (includes aiogram -- only this variant needs it):
             ```
-            ghcr.io/snoups/remnashop:${{ github.ref_name }}
+            ghcr.io/snoups/remnashop:latest-telegram
+            ghcr.io/snoups/remnashop:${{ github.ref_name }}-telegram
             ```
           draft: false
           prerelease: false

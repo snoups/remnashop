@@ -7,7 +7,8 @@
 
 ![remnashop](https://github.com/user-attachments/assets/57ba5832-4646-45e1-b082-f8f2f5e82c3e)
 
-**This project is a Telegram bot for selling VPN subscriptions, integrated with Remnawave.**
+**A ready-made platform for selling VPN subscriptions, built on Remnawave.**
+**Automate payment collection, VPN access delivery, and customer management — through a web dashboard or a Telegram bot.**
 
 [![Static Badge](https://img.shields.io/badge/public_group-white?style=social&logo=Telegram&logoColor=blue&logoSize=auto&labelColor=white&link=https%3A%2F%2Ft.me%2Fsn0ups)](https://t.me/remna_shop)
 [![Static Badge](https://img.shields.io/badge/remnawave-white?style=social&logo=Telegram&logoColor=blue&logoSize=auto&labelColor=white&link=https%3A%2F%2Ft.me%2Fsnoups)](https://t.me/+xQs17zMzwCY1NzYy)

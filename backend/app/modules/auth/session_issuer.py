@@ -1,0 +1,82 @@
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+from app.core.config import AppConfig
+from app.core.constants import TTL_30D
+from app.core.db.uow import UnitOfWork
+from app.core.security import create_access_token, generate_refresh_token, hash_refresh_token
+from app.modules.auth.dto import CreateSessionDto
+from app.modules.auth.repository import SessionRepository
+
+
+@dataclass(frozen=True, kw_only=True)
+class IssuedSession:
+    access_token: str
+    refresh_token: str
+    csrf_token: str
+    expires_at: datetime
+
+
+class SessionIssuer:
+    def __init__(
+        self, session_repository: SessionRepository, uow: UnitOfWork, config: AppConfig
+    ) -> None:
+        self._session_repository = session_repository
+        self._uow = uow
+        self._config = config
+
+    async def issue(
+        self, user_id: int, ip_address: str, user_agent: Optional[str]
+    ) -> IssuedSession:
+        refresh_token = generate_refresh_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=TTL_30D)
+
+        async with self._uow:
+            await self._session_repository.revoke_active_by_fingerprint(
+                user_id, ip_address, user_agent
+            )
+            session = await self._session_repository.create(
+                CreateSessionDto(
+                    user_id=user_id,
+                    refresh_token_hash=hash_refresh_token(refresh_token),
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    expires_at=expires_at,
+                )
+            )
+
+        access_token = create_access_token(
+            user_id, session.id, self._config.jwt_secret.get_secret_value()
+        )
+        # same primitive, unrelated purpose -- just need a fresh random value
+        csrf_token = generate_refresh_token()
+
+        return IssuedSession(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            csrf_token=csrf_token,
+            expires_at=expires_at,
+        )
+
+    def generate_new_refresh_token(self) -> str:
+        return generate_refresh_token()
+
+    async def reissue_access_only(
+        self, user_id: int, session_id: int, refresh_token: str
+    ) -> IssuedSession:
+        # Used by RefreshSessionUseCase after it has already rotated the
+        # session row -- unlike issue(), this does NOT create a new session,
+        # it mints the access/csrf pair for an *existing* one.
+        session = await self._session_repository.get_active_by_id(session_id)
+        assert session is not None
+        access_token = create_access_token(
+            user_id, session_id, self._config.jwt_secret.get_secret_value()
+        )
+        csrf_token = generate_refresh_token()
+        return IssuedSession(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            csrf_token=csrf_token,
+            expires_at=session.expires_at,
+        )

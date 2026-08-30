@@ -1,0 +1,687 @@
+{
+  "app": {
+    "title": "Remnashop Dashboard"
+  },
+  "toast": {
+    "close": "Dismiss"
+  },
+  "errors": {
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The page you're looking for doesn't exist or was moved.",
+    "notFoundButton": "Go home",
+    "serverUnreachableTitle": "Can't reach the server",
+    "serverUnreachableDescription": "Check your connection or try again in a moment.",
+    "serverErrorTitle": "Server error",
+    "serverErrorDescription": "The server responded with an error. Check the backend logs.",
+    "retry": "Retry"
+  },
+  "auth": {
+    "loginPageTitle": "Sign in",
+    "bootstrapPageTitle": "Registration",
+    "loading": "Loading…",
+    "login": "Login",
+    "loginPlaceholder": "Enter your login",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Repeat your password",
+    "passwordHint": "At least 24 characters, with an uppercase letter, a lowercase letter, and a digit.",
+    "generatePassword": "Generate password",
+    "copiedToClipboard": "Copied to clipboard!",
+    "createOwnerAccount": "Create owner account",
+    "signIn": "Sign in",
+    "errors": {
+      "loginTooShort": "Login must be at least 3 characters long",
+      "loginInvalidChars": "Login may only contain Latin letters, digits, dots, underscores, and hyphens",
+      "passwordRequirements": "Password must be at least 24 characters long and contain an uppercase letter, a lowercase letter, and a digit",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "genericError": "Something went wrong"
+    },
+    "oauth": {
+      "continueWith": "Continue with {{provider}}",
+      "invalidCallback": "Invalid OAuth callback",
+      "completingSignIn": "Completing sign-in…"
+    },
+    "welcome": {
+      "title": "Welcome to Remnashop",
+      "description": "Remnashop is a Telegram bot for selling VPN subscriptions on top of Remnawave, built by enthusiasts in their spare time. If it's been useful to you, support is very welcome.",
+      "continueButton": "Continue to dashboard"
+    }
+  },
+  "dashboard": {
+    "welcomeTitle": "Welcome to the Remnashop Dashboard",
+    "welcomeSubtitle": "This is a draft shell — real pages (Users, Plans…) aren't all built yet."
+  },
+  "eventLog": {
+    "title": "Event log",
+    "loading": "Loading…",
+    "loadError": "Failed to load event log.",
+    "empty": "No events found.",
+    "filters": {
+      "category": "Type",
+      "categoryAll": "All categories",
+      "categoryAuth": "Auth",
+      "categoryAdminManagement": "Admin management",
+      "categoryUser": "Users",
+      "categorySettings": "Settings",
+      "actor": "Initiator",
+      "actorPlaceholder": "Name, login, or ID",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "clearDate": "Clear date"
+    },
+    "columns": {
+      "occurredAt": "Time",
+      "eventType": "Event",
+      "actor": "Initiator"
+    },
+    "detail": {
+      "target": "Target",
+      "ip": "IP address",
+      "payload": "Payload",
+      "copyPayload": "Copy payload"
+    },
+    "pagination": {
+      "loadMore": "Show more",
+      "loadingMore": "Loading…"
+    },
+    "events": {
+      "LoginSucceededEvent": "Logged in",
+      "LoginFailedEvent": "Failed login attempt",
+      "OwnerBootstrappedEvent": "Owner account created",
+      "BootstrapConflictEvent": "Bootstrap attempted (owner already exists)",
+      "OAuthLoginSucceededEvent": "Logged in via OAuth",
+      "OAuthLoginFailedEvent": "Failed OAuth login attempt",
+      "OAuthIdentityConnectedEvent": "Connected OAuth account",
+      "OAuthIdentityDisconnectedEvent": "Disconnected OAuth account",
+      "SessionRevokedEvent": "Session revoked",
+      "SessionTheftDetectedEvent": "Session theft detected",
+      "UserSessionRevokedByAdminEvent": "User session revoked by admin",
+      "AdminCreatedEvent": "Admin created",
+      "AdminPromotedEvent": "User promoted to admin",
+      "AdminPermissionsUpdatedEvent": "Admin permissions updated",
+      "AdminDemotedEvent": "Admin demoted",
+      "AdminDeletedEvent": "Admin deleted",
+      "UserDeletedEvent": "User deleted",
+      "TelegramUserRegisteredEvent": "New user via Telegram",
+      "LocaleActivatedEvent": "Locale added",
+      "LocaleDeactivatedEvent": "Locale removed"
+    }
+  },
+  "sidebar": {
+    "tagline": "Admin panel",
+    "overview": "Overview",
+    "settings": "Settings",
+    "users": "Users",
+    "plans": "Plans",
+    "subscriptions": "Subscriptions",
+    "servers": "Servers",
+    "payments": "Payments",
+    "support": "Support",
+    "admins": "Admins",
+    "eventLog": "Event log"
+  },
+  "admins": {
+    "title": "Admins",
+    "loading": "Loading…",
+    "loadError": "Failed to load admins.",
+    "create": {
+      "button": "Create admin",
+      "title": "Create a new admin",
+      "loginLabel": "Login",
+      "nameLabel": "Name",
+      "submit": "Create",
+      "error": "Failed to create admin."
+    },
+    "passwordModal": {
+      "title": "Save this password now",
+      "description": "This password is shown only once and cannot be retrieved later.",
+      "close": "I've copied it"
+    },
+    "permissionsForm": {
+      "title": "Edit permissions",
+      "headers": {
+        "permission": "Permission",
+        "grant": "Grant",
+        "revoke": "Revoke"
+      },
+      "cancel": "Cancel",
+      "submit": "Save",
+      "error": "Failed to update permissions."
+    },
+    "demote": {
+      "button": "Demote to user",
+      "title": "Demote admin",
+      "confirm": "Demote this admin to a regular user? Their login and permissions will be cleared.",
+      "cancel": "Cancel",
+      "error": "Failed to demote admin."
+    }
+  },
+  "users": {
+    "title": "Users",
+    "loading": "Loading…",
+    "loadError": "Failed to load users.",
+    "empty": "No users found.",
+    "blocked": "Blocked",
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Name, login, email, or Telegram ID",
+      "role": "Role",
+      "roleAll": "All roles",
+      "status": "Status",
+      "statusAll": "All",
+      "statusActive": "Active",
+      "statusBlocked": "Blocked"
+    },
+    "pagination": {
+      "loadMore": "Show more",
+      "loadingMore": "Loading…"
+    },
+    "delete": {
+      "button": "Delete user",
+      "confirm": "Permanently delete {{name}}? This cannot be undone.",
+      "error": "Failed to delete user."
+    },
+    "details": {
+      "button": "Details",
+      "id": "ID",
+      "login": "Login",
+      "username": "Username",
+      "telegramId": "Telegram ID",
+      "email": "Email",
+      "language": "Language",
+      "status": "Status",
+      "active": "Active",
+      "createdAt": "Created"
+    }
+  },
+  "header": {
+    "dashboard": "Dashboard",
+    "account": "Login",
+    "profile": "Profile",
+    "logout": "Log out",
+    "searchPlaceholder": "Search",
+    "notifications": "Notifications"
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "general": "General",
+      "bot": "Telegram Bot",
+      "apiTokens": "API Tokens",
+      "appearance": "Appearance",
+      "gateways": "Gateways"
+    },
+    "bot": {
+      "title": "Telegram Bot",
+      "description": "Telegram bot configuration",
+      "loading": "Loading…",
+      "loadErrorBadge": "error",
+      "configured": "configured",
+      "notConfigured": "not configured",
+      "tokenLabel": "Bot token",
+      "tokenHint": "Issued by @BotFather when the bot is created. Used to send messages as the bot and to register the webhook.",
+      "secretTokenLabel": "Webhook secret token",
+      "secretTokenHint": "Sent back by Telegram in every webhook request's header; the API checks it matches before trusting the request, so only Telegram can reach your webhook.",
+      "generateSecretToken": "Generate",
+      "placeholder": "Leave blank to keep the current value",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "errorEmptyFields": "Enter at least one field to update",
+      "errorInvalidToken": "Invalid bot token format",
+      "dropPendingUpdatesLabel": "Drop pending updates when setting the webhook",
+      "dropPendingUpdatesHint": "Discards any updates Telegram queued up before the webhook was set, instead of delivering that backlog once it goes live.",
+      "bannersEnabledLabel": "Show banners",
+      "bannersEnabledHint": "Attaches an image to bot messages where a banner is configured. Falls back to text-only if no matching banner file is found.",
+      "applyChangesDescription": "Restarts the telegram process so it picks up the saved token/secret. Has no effect if the process isn't currently running.",
+      "restartBot": "Restart",
+      "restarting": "Restarting…",
+      "restartCooldown": "Restarting ({{seconds}}s)",
+      "restartRequested": "Restart requested. The bot process will come back up with the saved settings shortly."
+    },
+    "botCommands": {
+      "title": "Bot commands",
+      "description": "Commands shown in the Telegram menu.",
+      "loading": "Loading…",
+      "loadError": "Failed to load commands.",
+      "enabledLabel": "Enabled",
+      "dragHandle": "Drag to reorder",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "savedTelegramSyncFailed": "Saved, but Telegram wasn't updated. Try saving again."
+    },
+    "translationsEditor": {
+      "title": "Bot translations",
+      "description": "Edit the text the bot shows per locale.",
+      "loading": "Loading translations...",
+      "loadError": "Failed to load translations.",
+      "addLocale": "Add locale",
+      "removeLocale": "Remove",
+      "resetToDefault": "Reset",
+      "saved": "Translation saved.",
+      "savedTelegramSyncFailed": "Saved, but Telegram sync failed.",
+      "reset": "Translation reset to default."
+    },
+    "banners": {
+      "title": "Banners",
+      "description": "Set up banners for every bot screen",
+      "loading": "Loading…",
+      "loadError": "Failed to load banners.",
+      "upload": "Upload",
+      "replace": "Replace",
+      "delete": "Delete",
+      "uploadError": "Failed to upload banner.",
+      "deleteError": "Failed to delete banner.",
+      "unsupportedFormat": "Unsupported file format"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Configure the dashboard's accent color and branding",
+      "loading": "Loading…",
+      "loadError": "Failed to load appearance settings.",
+      "section": {
+        "branding": "Branding",
+        "accentColor": "Accent color",
+        "images": "Images"
+      },
+      "brandNameLabel": "Brand name",
+      "brandNamePlaceholder": "Remnashop",
+      "accentColorLabel": "Accent color",
+      "presetsLabel": "Presets",
+      "previousColorLabel": "Previous color",
+      "shaderEnabledLabel": "Background shader",
+      "shaderPaletteLabel": "Background shader colors",
+      "shaderPalette": {
+        "base": "Base",
+        "amplitude": "Amplitude",
+        "frequency": "Frequency",
+        "phase": "Phase"
+      },
+      "logoLabel": "Logo",
+      "faviconLabel": "Favicon",
+      "upload": "Upload",
+      "replace": "Replace",
+      "delete": "Delete",
+      "save": "Save",
+      "saveSuccess": "Appearance updated.",
+      "saveError": "Failed to save appearance settings.",
+      "uploadError": "Failed to upload image.",
+      "deleteError": "Failed to delete image.",
+      "reset": "Reset to default",
+      "resetSuccess": "Reverted to the default brand name and color.",
+      "resetError": "Failed to reset appearance settings."
+    },
+    "oauth": {
+      "title": "OAuth providers",
+      "description": "Manage dashboard sign-in methods for admins.",
+      "loading": "Loading…",
+      "loadError": "Failed to load current status.",
+      "configured": "configured",
+      "notConfigured": "not configured",
+      "enableAria": "Enable {{provider}}",
+      "githubClientIdLabel": "GitHub client ID",
+      "githubClientSecretLabel": "GitHub client secret",
+      "telegramClientIdLabel": "Telegram client ID",
+      "telegramClientSecretLabel": "Telegram client secret",
+      "oidcDisplayNameLabel": "Display name",
+      "oidcIssuerUrlLabel": "OIDC issuer URL",
+      "oidcClientIdLabel": "OIDC client ID",
+      "oidcClientSecretLabel": "OIDC client secret",
+      "passwordLoginLabel": "Password login",
+      "passwordLoginDescription": "Allow signing in with login and password. Make sure at least one OAuth provider works before disabling this.",
+      "placeholder": "Leave blank to keep the current value",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "errorEmptyFields": "Enter at least one field to update",
+      "guideAriaLabel": "Reference article",
+      "copy": "Copy",
+      "telegramGuide": {
+        "title": "Telegram OAuth2",
+        "intro": "Setting up \"Sign in with Telegram\" requires a Telegram bot, and that bot needs some extra configuration for the feature to work correctly.",
+        "botSetupTitle": "Setting up the bot",
+        "botSetupSteps": [
+          "Open @BotFather",
+          "Open the Mini App via the \"Open\" button",
+          "Select your bot and press Bot Settings",
+          "If a domain is already set under Web Login, remove it",
+          "Press Switch to OpenID Connect Login. If that button isn't there, go back a menu after removing the domain and repeat step 3",
+          "Press Add an Allowed URL and enter the values below:"
+        ],
+        "trustedOriginsLabel": "Trusted Origins",
+        "trustedOriginsValue": "https://remnashop.domain.com",
+        "redirectUrisLabel": "Redirect URIs",
+        "redirectUrisValue": "https://remnashop.domain.com/oauth2/callback/telegram",
+        "accessSetupTitle": "Setting up access",
+        "accessSetupIntro": "After filling in the Client ID, Client Secret, and Frontend Domain, you need to list the admin IDs allowed to sign in.",
+        "accessSetupSteps": [
+          "From the account you want to grant access, message @Get_myidrobot",
+          "The bot replies with your ID -- enter it into the corresponding field"
+        ],
+        "knownIssuesTitle": "Troubleshooting known issues",
+        "knownIssuesIntro": "Protections layered in front of the panel (cookie policies and similar) can misbehave with Telegram OAuth2.",
+        "knownIssuesProxyTip": "Use the /oauth2/ path in your reverse proxy to work around this.",
+        "errorBotDomainTitle": "Error: BOT_DOMAIN_INVALID",
+        "errorBotDomainBody": "This happens when the bot's domain isn't configured correctly -- revisit \"Setting up the bot\" above and redo it step by step if needed.",
+        "errorNoCodeTitle": "Error: no confirmation code arrives from Telegram at login",
+        "errorNoCodeBody": "This isn't something fixable on Remnashop's side. Try a bot created a while ago, or a different browser. You can also try signing in on one of Telegram's own \"official\" surfaces first, e.g. fragment.com -- since the Telegram session is shared within the browser, that can help the panel sign-in go through."
+      },
+      "githubGuide": {
+        "title": "OAuth2: GitHub",
+        "createAppTitle": "Creating an OAuth app",
+        "createAppIntro": "First, create an OAuth app. Follow this link to create one:",
+        "callbackIntro": "Under Authorization callback URL, enter your panel's address.",
+        "callbackCommentLabel": "Replace YOUR_REMNASHOP_DOMAIN with your panel's address",
+        "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/github",
+        "callbackNote": "Don't forget to replace YOUR_REMNASHOP_DOMAIN with your panel's actual address.",
+        "settingsTitle": "OAuth2 settings in Remnashop",
+        "settingsBody": "Once the OAuth app is created, copy the Client ID and Client Secret. Paste them into the corresponding fields."
+      },
+      "oidcGuide": {
+        "title": "OpenID Connect (SSO)",
+        "intro": "Any OIDC-compliant provider works — Keycloak, Authentik, Zitadel, Auth0, PocketID, and others. The issuer must serve the standard /.well-known/openid-configuration endpoint.",
+        "callbackTitle": "Creating the app with your provider",
+        "callbackIntro": "When creating the app with your OIDC provider, set the Redirect URI below.",
+        "callbackCommentLabel": "Replace YOUR_REMNASHOP_DOMAIN with your panel's domain",
+        "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/oidc",
+        "callbackNote": "Don't forget to replace YOUR_REMNASHOP_DOMAIN with your actual panel domain.",
+        "settingsTitle": "OIDC settings in Remnashop",
+        "settingsBody": "Enter your provider's Issuer URL along with the Client ID and Client Secret you received. The display name is used as the label on the login button."
+      },
+      "passwordLoginGuide": {
+        "title": "Password login",
+        "rescueTitle": "Emergency re-enable",
+        "rescueIntro": "If you disabled password login and lost access to the other sign-in methods, re-enable it via the Rescue CLI:",
+        "rescueCommandLabel": "Command",
+        "rescueCommandValue": "docker exec -it <api-container> python -m app.cli",
+        "rescueNote": "After it starts, choose \"Enable password authentication\"."
+      }
+    },
+    "gateways": {
+      "loading": "Loading…",
+      "loadError": "Failed to load payment gateways.",
+      "configured": "configured",
+      "notConfigured": "not configured",
+      "enableAria": "Enable {{gateway}}",
+      "placeholder": "Leave blank to keep the current value",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "errorEmptyFields": "Enter at least one field to update",
+      "toggleError": "Failed to update gateway status.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "types": {
+        "TELEGRAM_STARS": "Telegram Stars",
+        "YOOKASSA": "YooKassa",
+        "YOOMONEY": "YooMoney",
+        "VALUTIX": "Valutix",
+        "CRYPTOMUS": "Cryptomus",
+        "HELEKET": "Heleket",
+        "CRYPTOPAY": "CryptoPay",
+        "FREEKASSA": "FreeKassa",
+        "MULENPAY": "MulenPay",
+        "PAYMASTER": "PayMaster",
+        "PLATEGA": "Platega",
+        "ROBOKASSA": "RoboKassa",
+        "URLPAY": "UrlPay",
+        "WATA": "Wata",
+        "ROLLYPAY": "RollyPay"
+      },
+      "fields": {
+        "YOOKASSA": {
+          "shop_id": "Shop ID",
+          "api_key": "API key",
+          "customer": "Customer email (for receipts)",
+          "vat_code": "VAT code"
+        },
+        "YOOMONEY": {
+          "wallet_id": "Wallet ID",
+          "secret_key": "Secret key"
+        },
+        "CRYPTOMUS": {
+          "merchant_id": "Merchant ID",
+          "api_key": "API key"
+        },
+        "HELEKET": {
+          "merchant_id": "Merchant ID",
+          "api_key": "API key"
+        },
+        "CRYPTOPAY": {
+          "api_key": "API key"
+        },
+        "FREEKASSA": {
+          "shop_id": "Shop ID",
+          "api_key": "API key",
+          "secret_word_2": "Secret word #2",
+          "payment_system_id": "Payment system ID",
+          "customer_email": "Customer email",
+          "customer_ip": "Customer IP"
+        },
+        "MULENPAY": {
+          "api_key": "API key",
+          "secret_key": "Secret key",
+          "shop_id": "Shop ID",
+          "vat_code": "VAT code"
+        },
+        "PAYMASTER": {
+          "merchant_id": "Merchant ID",
+          "api_key": "API key"
+        },
+        "PLATEGA": {
+          "merchant_id": "Merchant ID",
+          "api_key": "API key",
+          "payment_method": "Payment method ID"
+        },
+        "ROBOKASSA": {
+          "merchant_login": "Merchant login",
+          "password1": "Password #1",
+          "password2": "Password #2"
+        },
+        "URLPAY": {
+          "shop_id": "Shop ID",
+          "api_key": "API key",
+          "secret_key": "Secret key",
+          "vat_code": "VAT code"
+        },
+        "WATA": {
+          "api_key": "API key"
+        },
+        "VALUTIX": {
+          "api_key": "API key"
+        },
+        "ROLLYPAY": {
+          "api_key": "API key"
+        }
+      }
+    }
+  },
+  "apiTokens": {
+    "title": "API tokens",
+    "description": "Tokens for programmatic access to the dashboard API.",
+    "loading": "Loading…",
+    "loadError": "Failed to load.",
+    "empty": "No API tokens.",
+    "create": "Create token",
+    "createTitle": "Create API token",
+    "createNotice": "The token secret is shown only once, right after creation — save it somewhere safe.",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. ci-deploy",
+    "permissionsLabel": "Permissions",
+    "fullAccess": "Full access",
+    "readOnly": "Read only",
+    "lifetimeLabel": "Token lifetime",
+    "expiresIn30Days": "30 days",
+    "expiresIn90Days": "90 days",
+    "expiresIn180Days": "180 days",
+    "expiresIn365Days": "365 days",
+    "neverExpires": "Never expires",
+    "expiresAt": "Expires {{date}}",
+    "submit": "Create",
+    "cancel": "Cancel",
+    "createError": "Failed to create token.",
+    "secretTitle": "Token created",
+    "secretWarning": "Copy this now — it won't be shown again.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "done": "Done",
+    "lastUsed": "Last used {{date}}",
+    "neverUsed": "Never used",
+    "createdAt": "Created {{date}}",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke API token",
+    "revokeConfirm": "Any script or integration using this token will lose access immediately.",
+    "revokeError": "Failed to revoke token."
+  },
+  "profile": {
+    "title": "Profile",
+    "loading": "Loading…",
+    "loadError": "Failed to load profile.",
+    "edit": {
+      "button": "Edit",
+      "title": "Edit profile",
+      "close": "Close",
+      "changeAvatar": "Change avatar",
+      "avatarHint": "Avatar upload isn't implemented yet.",
+      "nameLabel": "Display name",
+      "changePassword": "Change password",
+      "currentPasswordLabel": "Current password",
+      "currentPasswordPlaceholder": "Enter your current password",
+      "currentPasswordRequired": "Enter your current password to set a new one",
+      "newPasswordLabel": "New password",
+      "newPasswordPlaceholder": "Enter a new password",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Profile updated."
+    },
+    "oauthAccounts": {
+      "title": "Connected accounts",
+      "description": "Sign in with a linked GitHub or Telegram account instead of your password.",
+      "loading": "Loading…",
+      "loadError": "Failed to load.",
+      "github": "GitHub",
+      "telegram": "Telegram",
+      "oidcFallback": "SSO",
+      "connected": "Connected",
+      "connectedAs": "Connected as {{login}}",
+      "notConnected": "Not connected",
+      "connect": "Connect",
+      "disconnect": "Disconnect"
+    },
+    "accountSecurity": {
+      "title": "IP allowlist",
+      "description": "Restrict your own account to specific IP addresses or CIDR ranges.",
+      "placeholder": "e.g. 203.0.113.5 or 203.0.113.0/24, one per line",
+      "submit": "Save",
+      "loading": "Loading…",
+      "loadError": "Failed to load.",
+      "saveError": "Failed to save.",
+      "selfLockoutError": "Your current IP is not in the list you submitted -- this would lock you out."
+    }
+  },
+  "sessions": {
+    "title": "Active sessions",
+    "description": "Devices currently signed in to this account.",
+    "loading": "Loading…",
+    "loadError": "Failed to load.",
+    "empty": "No active sessions.",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke session",
+    "revokeConfirm": "The device will be signed out.",
+    "revokeConfirmCurrent": "This is your current device. You will be signed out.",
+    "revokeError": "Failed to revoke session.",
+    "cancel": "Cancel",
+    "back": "Back",
+    "thisDevice": "This device",
+    "lastUsed": "{{date}}"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "roles": {
+    "USER": "User",
+    "ADMIN": "Admin",
+    "OWNER": "Owner",
+    "SYSTEM": "System"
+  },
+  "permissions": {
+    "PUBLIC": "Public access",
+    "BOT_SETTINGS_VIEW": "View bot settings",
+    "BOT_COMMANDS_VIEW": "View bot commands",
+    "BOT_SETTINGS_MANAGE": "Bot settings",
+    "BOT_COMMANDS_MANAGE": "Bot commands",
+    "BOT_RESTART": "Restart bot",
+    "OAUTH_SETTINGS_VIEW": "View OAuth settings",
+    "OAUTH_SETTINGS_MANAGE": "OAuth settings",
+    "BANNERS_VIEW": "View banners",
+    "BANNERS_IMAGE_VIEW": "View banner image",
+    "BANNERS_UPLOAD": "Upload banners",
+    "BANNERS_DELETE": "Delete banners",
+    "LOCALES_VIEW": "View locales",
+    "LOCALES_ADD": "Add locales",
+    "LOCALES_REMOVE": "Remove locales",
+    "TRANSLATIONS_VIEW": "View translations",
+    "TRANSLATIONS_UPDATE": "Edit translations",
+    "TRANSLATIONS_RESET": "Reset translations",
+    "OWN_ACCOUNT_MANAGE": "Own account",
+    "ADMINS_MANAGE": "Manage admins",
+    "API_TOKENS_MANAGE": "Manage API tokens",
+    "EVENT_LOG_VIEW": "Event log",
+    "USERS_VIEW": "View users",
+    "USERS_DELETE": "Delete users",
+    "USER_SESSIONS_VIEW": "View user sessions",
+    "USER_SESSIONS_REVOKE": "Revoke user sessions",
+    "APPEARANCE_SETTINGS_MANAGE": "Appearance settings",
+    "APPEARANCE_SETTINGS_RESET": "Reset appearance settings",
+    "APPEARANCE_LOGO_UPLOAD": "Upload logo",
+    "APPEARANCE_LOGO_DELETE": "Delete logo",
+    "APPEARANCE_FAVICON_UPLOAD": "Upload favicon",
+    "APPEARANCE_FAVICON_DELETE": "Delete favicon",
+    "GATEWAYS_VIEW": "View payment gateways",
+    "GATEWAYS_UPDATE": "Update gateway settings",
+    "GATEWAYS_TOGGLE": "Enable/disable gateways",
+    "GATEWAYS_REORDER": "Reorder gateways"
+  },
+  "permissionCategories": {
+    "botSettings": "Bot Settings",
+    "oauthSettings": "OAuth Settings",
+    "banners": "Banners",
+    "locales": "Locales",
+    "translations": "Translations",
+    "users": "Users",
+    "userSessions": "User Sessions",
+    "eventLog": "Event Log",
+    "appearance": "Appearance",
+    "gateways": "Payment Gateways"
+  },
+  "permissionPicker": {
+    "read": "Read",
+    "write": "Write"
+  },
+  "buildInfo": {
+    "title": "Build info",
+    "close": "Close",
+    "version": "Version",
+    "branch": "Branch",
+    "commit": "Commit",
+    "commitDate": "Commit date",
+    "copyCommit": "Copy commit hash",
+    "copied": "Copied",
+    "localBuild": "Local build",
+    "githubButton": "GitHub",
+    "telegramButton": "Telegram"
+  },
+  "donate": {
+    "button": "Donate",
+    "title": "Support the project",
+    "description": "The project is built on a volunteer basis — if it's been useful to you, support is very welcome.",
+    "boostyLabel": "Boosty",
+    "yookassaLabel": "YooKassa",
+    "communityTitle": "Private chat",
+    "communityDescription": "A paid subscription on Boosty that gives access to a private support chat.",
+    "communityButton": "Subscribe"
+  }
+}

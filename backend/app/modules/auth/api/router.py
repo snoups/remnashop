@@ -1,0 +1,253 @@
+from datetime import datetime, timezone
+
+from dishka import FromDishka
+from dishka.integrations.fastapi import inject
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
+
+from app.api.dependencies.rate_limit import rate_limit
+from app.core.config import AppConfig
+from app.core.constants import TIME_1M
+from app.core.enums import OAuthProvider
+from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.utils.http import resolve_client_ip
+from app.modules.auth import (
+    BootstrapOwnerUseCase,
+    GetAuthStatusUseCase,
+    LoginUseCase,
+    LogoutUseCase,
+    OAuthLoginAuthorizeUseCase,
+    OAuthLoginCallbackUseCase,
+    RefreshSessionUseCase,
+)
+from app.modules.auth.api.schemas import (
+    AuthResponse,
+    BootstrapRequest,
+    LoginRequest,
+    OAuthAuthorizeResponse,
+    OAuthCallbackRequest,
+    RefreshResponse,
+    StatusResponse,
+)
+from app.modules.auth.session_issuer import IssuedSession
+from app.modules.users import UserDto
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+REFRESH_COOKIE_NAME = "refresh_token"
+CSRF_COOKIE_NAME = "csrf_token"
+REFRESH_COOKIE_PATH = "/api/v1/auth"
+
+
+def _set_session_cookies(response: Response, issued: "IssuedSession", secure: bool) -> None:
+    response.set_cookie(
+        REFRESH_COOKIE_NAME,
+        issued.refresh_token,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        path=REFRESH_COOKIE_PATH,
+        max_age=int((issued.expires_at - datetime.now(timezone.utc)).total_seconds()),
+    )
+    response.set_cookie(
+        CSRF_COOKIE_NAME,
+        issued.csrf_token,
+        httponly=False,
+        secure=secure,
+        samesite="lax",
+        path="/",
+        max_age=int((issued.expires_at - datetime.now(timezone.utc)).total_seconds()),
+    )
+
+
+def _clear_session_cookies(response: Response) -> None:
+    response.delete_cookie(REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH)
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
+
+
+def _verify_csrf(request: Request) -> None:
+    cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
+    header_value = request.headers.get("x-csrf-token")
+    if not cookie_value or not header_value or cookie_value != header_value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF check failed")
+
+
+def _to_auth_response(user: UserDto, access_token: str) -> AuthResponse:
+    # All three auth flows below only ever reach here with a user that has a login
+    # (bootstrap always sets it; login/OAuth-login only succeed for users that have one).
+    assert user.login is not None
+    return AuthResponse(
+        id=user.id, login=user.login, role=str(user.role), access_token=access_token
+    )
+
+
+@router.get(
+    "/status",
+    response_model=StatusResponse,
+    dependencies=[Depends(rate_limit(key="status", limit=30, window_seconds=TIME_1M))],
+)
+@inject
+async def get_status(use_case: FromDishka[GetAuthStatusUseCase]) -> StatusResponse:
+    result = await use_case.execute()
+    return StatusResponse(
+        is_login_allowed=result.owner_exists,
+        is_register_allowed=not result.owner_exists,
+        oauth_providers={
+            provider.value.lower(): enabled for provider, enabled in result.oauth_providers.items()
+        },
+        oidc_display_name=result.oidc_display_name,
+        is_password_login_enabled=result.password_login_enabled,
+    )
+
+
+@router.post(
+    "/bootstrap",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(key="bootstrap", limit=5, window_seconds=TIME_1M))],
+)
+@inject
+async def bootstrap(
+    payload: BootstrapRequest,
+    request: Request,
+    response: Response,
+    use_case: FromDishka[BootstrapOwnerUseCase],
+    config: FromDishka[AppConfig],
+) -> AuthResponse:
+    try:
+        owner, issued = await use_case.execute(
+            login=payload.login,
+            password=payload.password,
+            client_ip=resolve_client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
+    except ConflictError as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+
+    _set_session_cookies(response, issued, config.secure_cookies)
+    return _to_auth_response(owner, issued.access_token)
+
+
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit(key="login", limit=10, window_seconds=TIME_1M))],
+)
+@inject
+async def login(
+    payload: LoginRequest,
+    request: Request,
+    response: Response,
+    use_case: FromDishka[LoginUseCase],
+    config: FromDishka[AppConfig],
+) -> AuthResponse:
+    try:
+        user, issued = await use_case.execute(
+            login=payload.login,
+            password=payload.password,
+            client_ip=resolve_client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
+    except AuthenticationError as error:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+
+    _set_session_cookies(response, issued, config.secure_cookies)
+    return _to_auth_response(user, issued.access_token)
+
+
+@router.get(
+    "/oauth/{provider}/authorize",
+    response_model=OAuthAuthorizeResponse,
+    dependencies=[Depends(rate_limit(key="oauth_authorize", limit=10, window_seconds=TIME_1M))],
+)
+@inject
+async def oauth_authorize(
+    provider: OAuthProvider,
+    use_case: FromDishka[OAuthLoginAuthorizeUseCase],
+) -> OAuthAuthorizeResponse:
+    try:
+        url = await use_case.execute(provider)
+    except AuthenticationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    return OAuthAuthorizeResponse(authorization_url=url)
+
+
+@router.post(
+    "/oauth/{provider}/callback",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit(key="oauth_callback", limit=10, window_seconds=TIME_1M))],
+)
+@inject
+async def oauth_callback(
+    provider: OAuthProvider,
+    payload: OAuthCallbackRequest,
+    request: Request,
+    response: Response,
+    use_case: FromDishka[OAuthLoginCallbackUseCase],
+    config: FromDishka[AppConfig],
+) -> AuthResponse:
+    try:
+        user, issued = await use_case.execute(
+            provider,
+            payload.code,
+            payload.state,
+            resolve_client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
+    except AuthenticationError as error:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+
+    _set_session_cookies(response, issued, config.secure_cookies)
+    return _to_auth_response(user, issued.access_token)
+
+
+@router.post(
+    "/refresh",
+    response_model=RefreshResponse,
+    dependencies=[Depends(rate_limit(key="refresh", limit=30, window_seconds=TIME_1M))],
+)
+@inject
+async def refresh(
+    request: Request,
+    response: Response,
+    use_case: FromDishka[RefreshSessionUseCase],
+    config: FromDishka[AppConfig],
+) -> RefreshResponse | JSONResponse:
+    _verify_csrf(request)
+    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
+
+    try:
+        issued = await use_case.execute(
+            refresh_token=refresh_token,
+            ip_address=resolve_client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
+    except AuthenticationError as error:
+        error_response = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": str(error)}
+        )
+        _clear_session_cookies(error_response)
+        return error_response
+
+    _set_session_cookies(response, issued, config.secure_cookies)
+    return RefreshResponse(access_token=issued.access_token)
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit(key="logout", limit=30, window_seconds=TIME_1M))],
+)
+@inject
+async def logout(
+    request: Request,
+    response: Response,
+    use_case: FromDishka[LogoutUseCase],
+) -> None:
+    _verify_csrf(request)
+    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if refresh_token:
+        await use_case.execute(refresh_token=refresh_token)
+    _clear_session_cookies(response)

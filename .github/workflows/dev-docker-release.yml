@@ -12,6 +12,7 @@ jobs:
 
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
+      telegram_image_tag: ${{ steps.vars.outputs.telegram_image_tag }}
       short_sha: ${{ steps.vars.outputs.short_sha }}
 
     steps:
@@ -35,15 +36,18 @@ jobs:
           BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY}"
           IMAGE_TAGS="${IMAGE_REPO}:dev,${IMAGE_REPO}:dev-${SHORT_SHA}"
+          TELEGRAM_IMAGE_TAGS="${IMAGE_REPO}:dev-telegram,${IMAGE_REPO}:dev-${SHORT_SHA}-telegram"
 
           echo "image_tag=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
+          echo "telegram_image_tag=${TELEGRAM_IMAGE_TAGS}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
 
           echo "✅ Tags: ${IMAGE_TAGS}"
+          echo "✅ Telegram tags: ${TELEGRAM_IMAGE_TAGS}"
           echo "✅ SHA: ${SHORT_SHA}"
 
-      - name: 🏗️ Build and Push Image
+      - name: 🏗️ Build and Push Image (api)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -55,6 +59,20 @@ jobs:
             BUILD_BRANCH=${{ github.ref_name }}
             BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
             BUILD_TAG=dev
+
+      - name: 🏗️ Build and Push Image (telegram)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.vars.outputs.telegram_image_tag }}
+          build-args: |
+            BUILD_TIME=${{ steps.vars.outputs.build_time }}
+            BUILD_BRANCH=${{ github.ref_name }}
+            BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
+            BUILD_TAG=dev
+            UV_EXTRA=telegram
 
   release:
     name: 📦 Build and Publish Dev Artifact
@@ -115,8 +133,11 @@ jobs:
           gh release edit dev-build --notes-file - <<EOF
           🔁 Updated development build
           🔗 [Commit]($COMMIT_URL)
-          🏷️ Tags:
+          🏷️ api:
           • \`dev\`
           • \`dev-$SHORT_SHA\`
+          🏷️ telegram:
+          • \`dev-telegram\`
+          • \`dev-$SHORT_SHA-telegram\`
           📅 Built: $DATE
           EOF

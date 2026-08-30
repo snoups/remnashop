@@ -1,0 +1,146 @@
+import pytest
+
+from app.core.db.uow import UnitOfWork
+from app.core.enums import Locale, Role
+from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.security.permissions import Permission
+from app.modules.api_tokens.repository import ApiTokenRepository
+from app.modules.api_tokens.usecases import (
+    CreateApiTokenInput,
+    CreateApiTokenUseCase,
+    ListApiTokensUseCase,
+    RevokeApiTokenUseCase,
+)
+from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.repository import UserRepository
+
+OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
+
+
+@pytest.fixture
+async def owner(user_repository: UserRepository, uow: UnitOfWork) -> UserDto:
+    # CreateApiTokenUseCase persists created_by_user_id, which has a real FK
+    # to users.id -- unlike OWNER above, this actor must exist in the DB.
+    async with uow:
+        user = await user_repository.create(
+            CreateUserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+        )
+        await uow.commit()
+    return user
+
+
+async def test_owner_can_create_token_and_secret_is_returned_once(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork, owner: UserDto
+) -> None:
+    use_case = CreateApiTokenUseCase(api_token_repository, uow)
+
+    result = await use_case(
+        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+    )
+
+    assert result.token.name == "ci-script"
+    assert result.token.permissions == [Permission.BANNERS_UPLOAD]
+    assert len(result.secret) > 20
+
+
+async def test_create_token_rejects_manage_admins_permission(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork
+) -> None:
+    use_case = CreateApiTokenUseCase(api_token_repository, uow)
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER, CreateApiTokenInput(name="bad", permissions=[Permission.ADMINS_MANAGE])
+        )
+
+
+async def test_create_token_rejects_manage_own_account_permission(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork
+) -> None:
+    use_case = CreateApiTokenUseCase(api_token_repository, uow)
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER, CreateApiTokenInput(name="bad", permissions=[Permission.OWN_ACCOUNT_MANAGE])
+        )
+
+
+async def test_regular_user_cannot_create_token(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork
+) -> None:
+    use_case = CreateApiTokenUseCase(api_token_repository, uow)
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(
+            REGULAR_USER,
+            CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD]),
+        )
+
+
+async def test_list_returns_created_tokens_without_secret(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork, owner: UserDto
+) -> None:
+    create_use_case = CreateApiTokenUseCase(api_token_repository, uow)
+    list_use_case = ListApiTokensUseCase(api_token_repository)
+
+    await create_use_case(
+        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+    )
+
+    tokens = await list_use_case(OWNER)
+    assert len(tokens) == 1
+    assert tokens[0].name == "ci-script"
+
+
+async def test_revoke_removes_token_from_list(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork, owner: UserDto
+) -> None:
+    create_use_case = CreateApiTokenUseCase(api_token_repository, uow)
+    revoke_use_case = RevokeApiTokenUseCase(api_token_repository, uow)
+    list_use_case = ListApiTokensUseCase(api_token_repository)
+
+    created = await create_use_case(
+        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+    )
+
+    await revoke_use_case(OWNER, created.token.id)
+
+    tokens = await list_use_case(OWNER)
+    assert tokens == []
+
+
+async def test_revoke_unknown_token_raises_not_found(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork
+) -> None:
+    revoke_use_case = RevokeApiTokenUseCase(api_token_repository, uow)
+
+    with pytest.raises(NotFoundError):
+        await revoke_use_case(OWNER, 999_999)
+
+
+async def test_create_token_with_expires_in_days_computes_expiry(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork, owner: UserDto
+) -> None:
+    use_case = CreateApiTokenUseCase(api_token_repository, uow)
+
+    result = await use_case(
+        owner,
+        CreateApiTokenInput(
+            name="ci-script", permissions=[Permission.BANNERS_VIEW], expires_in_days=30
+        ),
+    )
+
+    assert result.token.expires_at is not None
+
+
+async def test_create_token_without_expires_in_days_never_expires(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork, owner: UserDto
+) -> None:
+    use_case = CreateApiTokenUseCase(api_token_repository, uow)
+
+    result = await use_case(
+        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_VIEW])
+    )
+
+    assert result.token.expires_at is None
