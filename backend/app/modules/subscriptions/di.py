@@ -18,7 +18,8 @@ from app.modules.subscriptions.usecases import (
     PurchaseSubscriptionUseCase,
     ReissueSubscriptionUseCase,
     ReorderAddOnsUseCase,
-    SetAddOnPricesUseCase,
+    SetAddOnBasePriceUseCase,
+    SetAddOnPriceOverrideUseCase,
     SyncSubscriptionStatusUseCase,
     UpdateAddOnUseCase,
     UpdateSubscriptionSquadsUseCase,
@@ -45,7 +46,8 @@ class SubscriptionsProvider(Provider):
     create_addon_use_case = provide(CreateAddOnUseCase)
     update_addon_use_case = provide(UpdateAddOnUseCase)
     delete_addon_use_case = provide(DeleteAddOnUseCase)
-    set_addon_prices_use_case = provide(SetAddOnPricesUseCase)
+    set_addon_base_price_use_case = provide(SetAddOnBasePriceUseCase)
+    set_addon_price_override_use_case = provide(SetAddOnPriceOverrideUseCase)
     reorder_addons_use_case = provide(ReorderAddOnsUseCase)
     grant_addon_use_case = provide(GrantAddOnUseCase)
     purchase_subscription_use_case = provide(PurchaseSubscriptionUseCase)

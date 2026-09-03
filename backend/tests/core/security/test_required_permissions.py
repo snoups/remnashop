@@ -11,6 +11,9 @@ from app.modules.gateways.usecases.toggle_gateway_active import ToggleGatewayAct
 from app.modules.gateways.usecases.update_gateway_settings import UpdateGatewaySettingsUseCase
 from app.modules.payments.usecases.get_payment_order import GetPaymentOrderUseCase
 from app.modules.payments.usecases.list_payment_orders import ListPaymentOrdersUseCase
+from app.modules.plans.usecases.set_plan_duration_base_price import (
+    SetPlanDurationBasePriceUseCase,
+)
 from app.modules.settings.usecases.add_locale import AddLocaleUseCase
 from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
 from app.modules.settings.usecases.remove_locale import RemoveLocaleUseCase
@@ -39,6 +42,10 @@ from app.modules.users.usecases.set_user_personal_discount import (
         (SetUserPersonalDiscountUseCase, Permission.USERS_DISCOUNT_MANAGE),
         (ListPaymentOrdersUseCase, Permission.PAYMENTS_VIEW),
         (GetPaymentOrderUseCase, Permission.PAYMENTS_ORDER_VIEW),
+        (
+            SetPlanDurationBasePriceUseCase,
+            Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
+        ),
     ],
 )
 def test_split_usecase_requires_expected_permission(

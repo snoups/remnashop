@@ -42,7 +42,7 @@ async def _create_trial_plan(plan_repository: PlanRepository):
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[SetPlanDurationDto(days=3, order_index=0, prices=[])],
+            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal("0.99"))],
         )
     )
     await plan_repository.update_squads(

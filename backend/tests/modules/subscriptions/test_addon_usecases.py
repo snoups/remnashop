@@ -3,14 +3,13 @@ from decimal import Decimal
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AddOnType, Currency, Locale, Role
+from app.core.enums import AddOnType, Locale, Role
 from app.core.exceptions import PermissionDeniedError
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import (
     CreateAddOnDto,
     ReorderAddOnsDto,
-    SetAddOnPriceDto,
-    SetAddOnPricesDto,
+    SetAddOnBasePriceDto,
     UpdateAddOnDto,
 )
 from app.modules.subscriptions.usecases import (
@@ -18,7 +17,7 @@ from app.modules.subscriptions.usecases import (
     DeleteAddOnUseCase,
     ListAddOnsUseCase,
     ReorderAddOnsUseCase,
-    SetAddOnPricesUseCase,
+    SetAddOnBasePriceUseCase,
     UpdateAddOnUseCase,
 )
 from app.modules.users.dto import UserDto
@@ -28,7 +27,7 @@ REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
 def _create_dto(name: str = "traffic-10gb") -> CreateAddOnDto:
-    return CreateAddOnDto(name=name, type=AddOnType.TRAFFIC, amount=10)
+    return CreateAddOnDto(name=name, type=AddOnType.TRAFFIC, amount=10, base_price=Decimal("1.99"))
 
 
 async def test_owner_can_list_addons(addon_repository: AddOnRepository) -> None:
@@ -103,31 +102,29 @@ async def test_regular_user_cannot_delete_addon(
         await use_case(REGULAR_USER, created.id)
 
 
-async def test_owner_can_set_addon_prices(
+async def test_owner_can_set_addon_base_price(
     addon_repository: AddOnRepository, uow: UnitOfWork
 ) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = SetAddOnPricesUseCase(addon_repository, uow)
+    use_case = SetAddOnBasePriceUseCase(addon_repository, uow)
 
     updated = await use_case(
-        OWNER,
-        SetAddOnPricesDto(
-            addon_id=created.id,
-            prices=[SetAddOnPriceDto(currency=Currency.RUB, price=Decimal("99.00"))],
-        ),
+        OWNER, SetAddOnBasePriceDto(addon_id=created.id, base_price=Decimal("2.49"))
     )
 
-    assert [p.price for p in updated.prices] == [Decimal("99.00")]
+    assert updated.base_price == Decimal("2.49")
 
 
-async def test_regular_user_cannot_set_addon_prices(
+async def test_regular_user_cannot_set_addon_base_price(
     addon_repository: AddOnRepository, uow: UnitOfWork
 ) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = SetAddOnPricesUseCase(addon_repository, uow)
+    use_case = SetAddOnBasePriceUseCase(addon_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER, SetAddOnPricesDto(addon_id=created.id, prices=[]))
+        await use_case(
+            REGULAR_USER, SetAddOnBasePriceDto(addon_id=created.id, base_price=Decimal("2.49"))
+        )
 
 
 async def test_owner_can_reorder_addons(addon_repository: AddOnRepository, uow: UnitOfWork) -> None:

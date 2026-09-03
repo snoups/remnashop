@@ -21,7 +21,10 @@ from app.modules.subscriptions.usecases.list_subscriptions import (
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
 from app.modules.subscriptions.usecases.reissue_subscription import ReissueSubscriptionUseCase
 from app.modules.subscriptions.usecases.reorder_addons import ReorderAddOnsUseCase
-from app.modules.subscriptions.usecases.set_addon_prices import SetAddOnPricesUseCase
+from app.modules.subscriptions.usecases.set_addon_base_price import SetAddOnBasePriceUseCase
+from app.modules.subscriptions.usecases.set_addon_price_override import (
+    SetAddOnPriceOverrideUseCase,
+)
 from app.modules.subscriptions.usecases.sync_subscription_status import (
     SyncSubscriptionStatusUseCase,
 )
@@ -51,7 +54,8 @@ __all__ = [
     "PurchaseSubscriptionUseCase",
     "ReissueSubscriptionUseCase",
     "ReorderAddOnsUseCase",
-    "SetAddOnPricesUseCase",
+    "SetAddOnBasePriceUseCase",
+    "SetAddOnPriceOverrideUseCase",
     "SyncSubscriptionStatusUseCase",
     "UpdateAddOnUseCase",
     "UpdateSubscriptionSquadsUseCase",

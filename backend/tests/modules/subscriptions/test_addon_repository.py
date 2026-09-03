@@ -8,14 +8,16 @@ from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import (
     CreateAddOnDto,
     ReorderAddOnsDto,
-    SetAddOnPriceDto,
-    SetAddOnPricesDto,
+    SetAddOnBasePriceDto,
+    SetAddOnPriceOverrideDto,
     UpdateAddOnDto,
 )
 
 
-def _create_dto(name: str = "traffic-10gb") -> CreateAddOnDto:
-    return CreateAddOnDto(name=name, type=AddOnType.TRAFFIC, amount=10)
+def _create_dto(
+    name: str = "traffic-10gb", base_price: Decimal = Decimal("1.99")
+) -> CreateAddOnDto:
+    return CreateAddOnDto(name=name, type=AddOnType.TRAFFIC, amount=10, base_price=base_price)
 
 
 async def test_create_then_list_all_returns_addon(addon_repository: AddOnRepository) -> None:
@@ -27,7 +29,8 @@ async def test_create_then_list_all_returns_addon(addon_repository: AddOnReposit
     assert addons[0].id == created.id
     assert addons[0].name == "traffic-10gb"
     assert addons[0].is_active is False
-    assert addons[0].prices == []
+    assert addons[0].base_price == Decimal("1.99")
+    assert addons[0].overrides == []
 
 
 async def test_create_assigns_incrementing_order_index(addon_repository: AddOnRepository) -> None:
@@ -83,36 +86,64 @@ async def test_delete_unknown_addon_raises_not_found(addon_repository: AddOnRepo
         await addon_repository.delete(999_999)
 
 
-async def test_set_prices_replaces_full_set(addon_repository: AddOnRepository) -> None:
+async def test_set_base_price_updates_addon(addon_repository: AddOnRepository) -> None:
     created = await addon_repository.create(_create_dto())
 
-    updated = await addon_repository.set_prices(
-        SetAddOnPricesDto(
-            addon_id=created.id,
-            prices=[SetAddOnPriceDto(currency=Currency.RUB, price=Decimal("99.00"))],
-        )
+    updated = await addon_repository.set_base_price(
+        SetAddOnBasePriceDto(addon_id=created.id, base_price=Decimal("2.49"))
     )
 
-    assert [p.price for p in updated.prices] == [Decimal("99.00")]
+    assert updated.base_price == Decimal("2.49")
 
 
-async def test_set_prices_again_drops_previous_set(addon_repository: AddOnRepository) -> None:
+async def test_set_price_override_upserts_and_unpins(addon_repository: AddOnRepository) -> None:
     created = await addon_repository.create(_create_dto())
-    await addon_repository.set_prices(
-        SetAddOnPricesDto(
-            addon_id=created.id,
-            prices=[SetAddOnPriceDto(currency=Currency.RUB, price=Decimal("99.00"))],
+
+    pinned = await addon_repository.set_price_override(
+        SetAddOnPriceOverrideDto(
+            addon_id=created.id, currency=Currency.RUB, price=Decimal("120"), anchor=Currency.USD
         )
     )
+    assert pinned.overrides[0].currency is Currency.RUB
+    assert pinned.overrides[0].price == Decimal("120")
 
-    updated = await addon_repository.set_prices(
-        SetAddOnPricesDto(
-            addon_id=created.id,
-            prices=[SetAddOnPriceDto(currency=Currency.USD, price=Decimal("1.50"))],
+    unpinned = await addon_repository.set_price_override(
+        SetAddOnPriceOverrideDto(
+            addon_id=created.id, currency=Currency.RUB, price=None, anchor=Currency.USD
         )
     )
+    assert unpinned.overrides == []
 
-    assert [(p.currency, p.price) for p in updated.prices] == [(Currency.USD, Decimal("1.50"))]
+
+async def test_set_price_override_can_unpin_the_anchor_currency(
+    addon_repository: AddOnRepository,
+) -> None:
+    created = await addon_repository.create(_create_dto())
+    await addon_repository.set_price_override(
+        SetAddOnPriceOverrideDto(
+            addon_id=created.id, currency=Currency.RUB, price=Decimal("120"), anchor=Currency.USD
+        )
+    )
+    # RUB has since become the anchor -- the stranded override must still be removable
+    unpinned = await addon_repository.set_price_override(
+        SetAddOnPriceOverrideDto(
+            addon_id=created.id, currency=Currency.RUB, price=None, anchor=Currency.RUB
+        )
+    )
+    assert unpinned.overrides == []
+
+
+async def test_set_price_override_rejects_anchor_currency(
+    addon_repository: AddOnRepository,
+) -> None:
+    created = await addon_repository.create(_create_dto())
+
+    with pytest.raises(ValidationError):
+        await addon_repository.set_price_override(
+            SetAddOnPriceOverrideDto(
+                addon_id=created.id, currency=Currency.USD, price=Decimal("2"), anchor=Currency.USD
+            )
+        )
 
 
 async def test_reorder_applies_new_order(addon_repository: AddOnRepository) -> None:

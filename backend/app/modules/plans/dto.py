@@ -10,15 +10,17 @@ from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import Currency, PlanAvailability, PlanType
 
 
-class PlanPriceDto(BaseDto):
+class PlanPriceOverrideDto(BaseDto):
     currency: Currency
     price: Decimal
 
 
 class PlanDurationDto(BaseDto):
+    id: int
     days: int
     order_index: int = 0
-    prices: list[PlanPriceDto] = Field(default_factory=list)
+    base_price: Decimal
+    overrides: list[PlanPriceOverrideDto] = Field(default_factory=list)
 
 
 class PlanDto(BaseDto, TimestampMixin):
@@ -69,22 +71,32 @@ class UpdatePlanDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class SetPlanPriceDto:
-    currency: Currency
-    price: Decimal
-
-
-@dataclass(frozen=True, kw_only=True)
 class SetPlanDurationDto:
     days: int
     order_index: int
-    prices: list[SetPlanPriceDto]
+    base_price: Decimal
 
 
 @dataclass(frozen=True, kw_only=True)
 class SetPlanDurationsDto:
     plan_id: int
     durations: list[SetPlanDurationDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetPlanPriceOverrideDto:
+    plan_id: int
+    days: int
+    currency: Currency
+    price: Optional[Decimal]
+    anchor: Currency
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetPlanDurationBasePriceDto:
+    plan_id: int
+    days: int
+    base_price: Decimal
 
 
 @dataclass(frozen=True, kw_only=True)

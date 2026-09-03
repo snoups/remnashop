@@ -27,12 +27,12 @@ from app.modules.plans.dto import (
     PlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing import PricingRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions import (
@@ -74,6 +74,7 @@ def create_checkout_use_case(
     subscription_repository: SubscriptionRepository,
     settings_repository: SettingsRepository,
     referral_repository: ReferralRepository,
+    pricing_repository: PricingRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
     monkeypatch: pytest.MonkeyPatch,
@@ -90,6 +91,7 @@ def create_checkout_use_case(
         subscription_repository,
         settings_repository,
         referral_repository,
+        pricing_repository,
         uow,
     )
 
@@ -113,13 +115,7 @@ async def plan(plan_repository: PlanRepository) -> PlanDto:
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=created.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(

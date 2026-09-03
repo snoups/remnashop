@@ -2,15 +2,18 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import Currency, PlanAvailability, PlanType
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.plans.dto import (
     CreatePlanDto,
+    PlanDto,
     ReorderPlansDto,
+    SetPlanDurationBasePriceDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
+    SetPlanPriceOverrideDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
@@ -24,6 +27,10 @@ def _create_dto(public_code: str = "basic", name: str = "Basic") -> CreatePlanDt
     )
 
 
+async def _make_plan(plan_repository: PlanRepository) -> PlanDto:
+    return await plan_repository.create(_create_dto())
+
+
 async def _add_minimal_squad(plan_repository: PlanRepository, plan_id: int) -> None:
     await plan_repository.update_squads(
         UpdatePlanSquadsDto(plan_id=plan_id, internal_squads=[uuid4()], external_squad=None)
@@ -34,13 +41,7 @@ async def _add_minimal_duration(plan_repository: PlanRepository, plan_id: int) -
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan_id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.USD, price=Decimal("9.99"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("9.99"))],
         )
     )
 
@@ -255,22 +256,15 @@ async def test_set_durations_replaces_full_set(plan_repository: PlanRepository) 
         SetPlanDurationsDto(
             plan_id=created.id,
             durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[
-                        SetPlanPriceDto(currency=Currency.RUB, price=Decimal("299.00")),
-                        SetPlanPriceDto(currency=Currency.USD, price=Decimal("3.99")),
-                    ],
-                ),
-                SetPlanDurationDto(days=90, order_index=1, prices=[]),
+                SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99")),
+                SetPlanDurationDto(days=90, order_index=1, base_price=Decimal("9.99")),
             ],
         )
     )
 
     assert [duration.days for duration in updated.durations] == [30, 90]
-    assert len(updated.durations[0].prices) == 2
-    assert updated.durations[0].prices[0].price == Decimal("299.00")
+    assert updated.durations[0].base_price == Decimal("3.99")
+    assert updated.durations[0].overrides == []
 
 
 async def test_set_durations_again_drops_previous_set(plan_repository: PlanRepository) -> None:
@@ -278,14 +272,14 @@ async def test_set_durations_again_drops_previous_set(plan_repository: PlanRepos
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=created.id,
-            durations=[SetPlanDurationDto(days=30, order_index=0, prices=[])],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99"))],
         )
     )
 
     updated = await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=created.id,
-            durations=[SetPlanDurationDto(days=7, order_index=0, prices=[])],
+            durations=[SetPlanDurationDto(days=7, order_index=0, base_price=Decimal("0.99"))],
         )
     )
 
@@ -300,29 +294,8 @@ async def test_set_durations_rejects_duplicate_days(plan_repository: PlanReposit
             SetPlanDurationsDto(
                 plan_id=created.id,
                 durations=[
-                    SetPlanDurationDto(days=30, order_index=0, prices=[]),
-                    SetPlanDurationDto(days=30, order_index=1, prices=[]),
-                ],
-            )
-        )
-
-
-async def test_set_durations_rejects_duplicate_currency(plan_repository: PlanRepository) -> None:
-    created = await plan_repository.create(_create_dto())
-
-    with pytest.raises(ValidationError):
-        await plan_repository.set_durations(
-            SetPlanDurationsDto(
-                plan_id=created.id,
-                durations=[
-                    SetPlanDurationDto(
-                        days=30,
-                        order_index=0,
-                        prices=[
-                            SetPlanPriceDto(currency=Currency.USD, price=Decimal("5.00")),
-                            SetPlanPriceDto(currency=Currency.USD, price=Decimal("9.00")),
-                        ],
-                    )
+                    SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99")),
+                    SetPlanDurationDto(days=30, order_index=1, base_price=Decimal("9.99")),
                 ],
             )
         )
@@ -411,3 +384,139 @@ async def test_get_by_id_returns_plan(plan_repository: PlanRepository) -> None:
 async def test_get_by_id_unknown_plan_raises_not_found(plan_repository: PlanRepository) -> None:
     with pytest.raises(NotFoundError):
         await plan_repository.get_by_id(999_999)
+
+
+async def test_set_durations_stores_base_price(
+    plan_repository: PlanRepository, session: AsyncSession
+) -> None:
+    plan = await _make_plan(plan_repository)
+    result = await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99"))],
+        )
+    )
+    assert result.durations[0].base_price == Decimal("3.99")
+    assert result.durations[0].overrides == []
+
+
+async def test_set_price_override_upserts_and_unpins(
+    plan_repository: PlanRepository, session: AsyncSession
+) -> None:
+    plan = await _make_plan(plan_repository)
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99"))],
+        )
+    )
+    pinned = await plan_repository.set_price_override(
+        SetPlanPriceOverrideDto(
+            plan_id=plan.id,
+            days=30,
+            currency=Currency.RUB,
+            price=Decimal("299"),
+            anchor=Currency.USD,
+        )
+    )
+    assert pinned.durations[0].overrides[0].currency is Currency.RUB
+    unpinned = await plan_repository.set_price_override(
+        SetPlanPriceOverrideDto(
+            plan_id=plan.id, days=30, currency=Currency.RUB, price=None, anchor=Currency.USD
+        )
+    )
+    assert unpinned.durations[0].overrides == []
+
+
+async def test_set_duration_base_price_preserves_other_durations_overrides(
+    plan_repository: PlanRepository, session: AsyncSession
+) -> None:
+    plan = await _make_plan(plan_repository)
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99")),
+                SetPlanDurationDto(days=90, order_index=1, base_price=Decimal("9.99")),
+            ],
+        )
+    )
+    await plan_repository.set_price_override(
+        SetPlanPriceOverrideDto(
+            plan_id=plan.id,
+            days=30,
+            currency=Currency.RUB,
+            price=Decimal("299"),
+            anchor=Currency.USD,
+        )
+    )
+
+    updated = await plan_repository.set_duration_base_price(
+        SetPlanDurationBasePriceDto(plan_id=plan.id, days=90, base_price=Decimal("19.99"))
+    )
+
+    by_days = {duration.days: duration for duration in updated.durations}
+    assert by_days[90].base_price == Decimal("19.99")
+    assert by_days[30].base_price == Decimal("3.99")
+    assert by_days[30].overrides[0].currency is Currency.RUB
+    assert by_days[30].overrides[0].price == Decimal("299")
+
+
+async def test_set_duration_base_price_unknown_duration_raises_not_found(
+    plan_repository: PlanRepository, session: AsyncSession
+) -> None:
+    plan = await _make_plan(plan_repository)
+    with pytest.raises(NotFoundError):
+        await plan_repository.set_duration_base_price(
+            SetPlanDurationBasePriceDto(plan_id=plan.id, days=30, base_price=Decimal("5"))
+        )
+
+
+async def test_set_price_override_can_unpin_the_anchor_currency(
+    plan_repository: PlanRepository, session: AsyncSession
+) -> None:
+    plan = await _make_plan(plan_repository)
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99"))],
+        )
+    )
+    await plan_repository.set_price_override(
+        SetPlanPriceOverrideDto(
+            plan_id=plan.id,
+            days=30,
+            currency=Currency.RUB,
+            price=Decimal("299"),
+            anchor=Currency.USD,
+        )
+    )
+    # RUB has since become the anchor -- the stranded override must still be removable
+    unpinned = await plan_repository.set_price_override(
+        SetPlanPriceOverrideDto(
+            plan_id=plan.id, days=30, currency=Currency.RUB, price=None, anchor=Currency.RUB
+        )
+    )
+    assert unpinned.durations[0].overrides == []
+
+
+async def test_set_price_override_rejects_anchor_currency(
+    plan_repository: PlanRepository, session: AsyncSession
+) -> None:
+    plan = await _make_plan(plan_repository)
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99"))],
+        )
+    )
+    with pytest.raises(ValidationError):
+        await plan_repository.set_price_override(
+            SetPlanPriceOverrideDto(
+                plan_id=plan.id,
+                days=30,
+                currency=Currency.USD,
+                price=Decimal("5"),
+                anchor=Currency.USD,
+            )
+        )

@@ -21,6 +21,7 @@ from app.modules.payments.gateways.yookassa import YooKassaGateway
 from app.modules.payments.pricing import quote_price
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.plans import PlanRepository, is_plan_purchasable_by
+from app.modules.pricing import PricingRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
@@ -52,6 +53,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         subscription_repository: SubscriptionRepository,
         settings_repository: SettingsRepository,
         referral_repository: ReferralRepository,
+        pricing_repository: PricingRepository,
         uow: UnitOfWork,
     ) -> None:
         self._plan_repository = plan_repository
@@ -61,6 +63,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         self._subscription_repository = subscription_repository
         self._settings_repository = settings_repository
         self._referral_repository = referral_repository
+        self._pricing_repository = pricing_repository
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
@@ -93,7 +96,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
 
         await self._validate_provisioning_preconditions(data)
 
-        quote = quote_price(plan, data.duration_days, data.currency, user)
+        rates = await self._pricing_repository.get_rate_table()
+        quote = quote_price(plan, data.duration_days, data.currency, user, rates)
         plan_snapshot = PlanSnapshot(
             plan_id=plan.id,
             public_code=plan.public_code,

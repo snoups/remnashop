@@ -37,4 +37,5 @@ export type Permission =
   | "GATEWAYS_VIEW"
   | "GATEWAYS_UPDATE"
   | "GATEWAYS_TOGGLE"
-  | "GATEWAYS_REORDER";
+  | "GATEWAYS_REORDER"
+  | "PRICING_VIEW";

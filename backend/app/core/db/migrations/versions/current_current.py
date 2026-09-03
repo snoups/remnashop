@@ -82,6 +82,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("type", sa.Enum("TRAFFIC", "DEVICES", name="addontype"), nullable=False),
         sa.Column("amount", sa.Integer(), nullable=False),
+        sa.Column("base_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("order_index", sa.Integer(), nullable=False),
         sa.Column("is_active", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
@@ -96,6 +97,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
+        sa.CheckConstraint("base_price > 0", name="ck_addons_base_price_positive"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_addons_name"), "addons", ["name"], unique=True)
@@ -337,6 +339,35 @@ def upgrade() -> None:
         ),
     )
     op.create_table(
+        "currency_rates",
+        sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
+        sa.Column("rate", sa.Numeric(precision=12, scale=6), nullable=False),
+        sa.Column(
+            "rounding_mode", sa.Enum("INTEGER", "DECIMAL_2", name="roundingmode"), nullable=False
+        ),
+        sa.Column("charm_ending", sa.Integer(), nullable=True),
+        sa.Column("min_amount", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.CheckConstraint(
+            "charm_ending IS NULL OR (charm_ending >= 0 AND charm_ending <= 99)",
+            name="ck_currency_rates_charm_ending_range",
+        ),
+        sa.CheckConstraint("min_amount >= 0", name="ck_currency_rates_min_amount_nonneg"),
+        sa.CheckConstraint("rate > 0", name="ck_currency_rates_rate_positive"),
+        sa.PrimaryKeyConstraint("currency"),
+    )
+    op.create_table(
         "oauth_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -472,6 +503,31 @@ def upgrade() -> None:
     op.create_index(op.f("ix_plans_name"), "plans", ["name"], unique=True)
     op.create_index(op.f("ix_plans_order_index"), "plans", ["order_index"], unique=False)
     op.create_index(op.f("ix_plans_public_code"), "plans", ["public_code"], unique=True)
+    op.create_table(
+        "pricing_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column(
+            "anchor_currency",
+            sa.Enum("USD", "XTR", "RUB", name="currency"),
+            server_default="USD",
+            nullable=False,
+        ),
+        sa.Column("price_per_day", sa.Numeric(precision=10, scale=2), nullable=True),
+        sa.Column("price_per_gb", sa.Numeric(precision=10, scale=2), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
     op.create_table(
         "referral_settings",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -635,15 +691,21 @@ def upgrade() -> None:
         postgresql_where=sa.text("role = 'OWNER'"),
     )
     op.create_table(
-        "addon_prices",
+        "addon_price_overrides",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("addon_id", sa.Integer(), nullable=False),
         sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
         sa.Column("price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.ForeignKeyConstraint(["addon_id"], ["addons.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("addon_id", "currency", name="uq_addon_price_override"),
     )
-    op.create_index(op.f("ix_addon_prices_addon_id"), "addon_prices", ["addon_id"], unique=False)
+    op.create_index(
+        op.f("ix_addon_price_overrides_addon_id"),
+        "addon_price_overrides",
+        ["addon_id"],
+        unique=False,
+    )
     op.create_table(
         "api_tokens",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -715,6 +777,7 @@ def upgrade() -> None:
                 "SUBSCRIPTION",
                 "PROMOCODE",
                 "REFERRAL",
+                "PRICING",
                 name="event_category",
             ),
             nullable=False,
@@ -777,6 +840,8 @@ def upgrade() -> None:
         sa.Column("plan_id", sa.Integer(), nullable=False),
         sa.Column("days", sa.Integer(), nullable=False),
         sa.Column("order_index", sa.Integer(), nullable=False),
+        sa.Column("base_price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.CheckConstraint("base_price > 0", name="ck_plan_durations_base_price_positive"),
         sa.ForeignKeyConstraint(["plan_id"], ["plans.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -1015,6 +1080,7 @@ def upgrade() -> None:
                 "SUBSCRIPTION",
                 "PROMOCODE",
                 "REFERRAL",
+                "PRICING",
                 name="event_category",
             ),
             nullable=False,
@@ -1128,16 +1194,20 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_payment_orders_user_id"), "payment_orders", ["user_id"], unique=False)
     op.create_table(
-        "plan_prices",
+        "plan_price_overrides",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("plan_duration_id", sa.Integer(), nullable=False),
         sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
         sa.Column("price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.ForeignKeyConstraint(["plan_duration_id"], ["plan_durations.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("plan_duration_id", "currency", name="uq_plan_price_override"),
     )
     op.create_index(
-        op.f("ix_plan_prices_plan_duration_id"), "plan_prices", ["plan_duration_id"], unique=False
+        op.f("ix_plan_price_overrides_plan_duration_id"),
+        "plan_price_overrides",
+        ["plan_duration_id"],
+        unique=False,
     )
     op.create_table(
         "promocode_activations",
@@ -1263,8 +1333,10 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_promocode_activations_user_id"), table_name="promocode_activations")
     op.drop_index(op.f("ix_promocode_activations_promocode_id"), table_name="promocode_activations")
     op.drop_table("promocode_activations")
-    op.drop_index(op.f("ix_plan_prices_plan_duration_id"), table_name="plan_prices")
-    op.drop_table("plan_prices")
+    op.drop_index(
+        op.f("ix_plan_price_overrides_plan_duration_id"), table_name="plan_price_overrides"
+    )
+    op.drop_table("plan_price_overrides")
     op.drop_index(op.f("ix_payment_orders_user_id"), table_name="payment_orders")
     op.drop_index("ix_payment_orders_status_expires_at", table_name="payment_orders")
     op.drop_table("payment_orders")
@@ -1308,8 +1380,8 @@ def downgrade() -> None:
     op.drop_table("backup_runs")
     op.drop_index(op.f("ix_api_tokens_token_hash"), table_name="api_tokens")
     op.drop_table("api_tokens")
-    op.drop_index(op.f("ix_addon_prices_addon_id"), table_name="addon_prices")
-    op.drop_table("addon_prices")
+    op.drop_index(op.f("ix_addon_price_overrides_addon_id"), table_name="addon_price_overrides")
+    op.drop_table("addon_price_overrides")
     op.drop_index(
         "ux_users_single_owner", table_name="users", postgresql_where=sa.text("role = 'OWNER'")
     )
@@ -1322,12 +1394,14 @@ def downgrade() -> None:
     op.drop_table("users")
     op.drop_table("shop_settings")
     op.drop_table("referral_settings")
+    op.drop_table("pricing_settings")
     op.drop_index(op.f("ix_plans_public_code"), table_name="plans")
     op.drop_index(op.f("ix_plans_order_index"), table_name="plans")
     op.drop_index(op.f("ix_plans_name"), table_name="plans")
     op.drop_table("plans")
     op.drop_table("payment_gateways")
     op.drop_table("oauth_settings")
+    op.drop_table("currency_rates")
     op.drop_table("bot_translations")
     op.drop_table("bot_settings")
     op.drop_table("bot_commands")

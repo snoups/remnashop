@@ -69,7 +69,14 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
         errors = bundle.check_messages()
         if errors:
             raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
-        if contains_placeable(candidate_text):
+        # Checked against just this one submitted value, not candidate_text
+        # (the whole locale) -- scoping to the whole locale would reject an
+        # edit to any OTHER key the moment one placeable-bearing value exists
+        # anywhere in it (e.g. seeded bot-menu content), which isn't what
+        # this restriction is meant to catch. contains_placeable needs a
+        # full "id = value" line to parse a Pattern at all, hence the
+        # throwaway id.
+        if contains_placeable(f"placeholder-id = {data.value}"):
             raise ValidationError("Fluent placeables are not supported in translation values")
 
         async with self._uow:

@@ -144,6 +144,8 @@ def test_every_catalog_permission_has_metadata() -> None:
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.ADMINS_MANAGE,
         Permission.API_TOKENS_MANAGE,
+        Permission.PRICING_RATES_MANAGE,
+        Permission.PRICING_ANCHOR_MANAGE,
     }
     assert set(Permission) - PERMISSION_METADATA.keys() == non_catalog
 
@@ -175,9 +177,15 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,
         Permission.PLANS_DURATIONS_MANAGE,
+        Permission.PLANS_PRICE_OVERRIDE_MANAGE,
+        Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
         Permission.PLANS_ACCESS_MANAGE,
         Permission.PLANS_SQUADS_MANAGE,
         Permission.PLANS_ORDER_MANAGE,
+        Permission.PRICING_VIEW,
+        Permission.PRICING_PREVIEW_VIEW,
+        Permission.PRICING_SETTINGS_MANAGE,
+        Permission.PRICING_BASE_ADJUST_MANAGE,
         Permission.SUBSCRIPTIONS_VIEW,
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
@@ -187,6 +195,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.ADDONS_UPDATE,
         Permission.ADDONS_DELETE,
         Permission.ADDONS_PRICES_MANAGE,
+        Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
         Permission.ADDONS_REORDER,
         Permission.PROMOCODES_VIEW,
         Permission.PROMOCODES_CREATE,
@@ -275,6 +284,8 @@ def test_plans_permissions_granted_to_admin_by_default() -> None:
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,
         Permission.PLANS_DURATIONS_MANAGE,
+        Permission.PLANS_PRICE_OVERRIDE_MANAGE,
+        Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
         Permission.PLANS_ACCESS_MANAGE,
         Permission.PLANS_SQUADS_MANAGE,
         Permission.PLANS_ORDER_MANAGE,
@@ -295,6 +306,7 @@ def test_subscriptions_permissions_granted_to_admin_by_default() -> None:
         Permission.ADDONS_UPDATE,
         Permission.ADDONS_DELETE,
         Permission.ADDONS_PRICES_MANAGE,
+        Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
         Permission.ADDONS_REORDER,
     ):
         assert permission in admin_default

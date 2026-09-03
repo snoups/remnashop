@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -218,7 +219,12 @@ async def test_grant_entitlement_adds_row_and_recomputes_effective_limits(
     # None-addon_id fixture above, a non-null value here must reference a row
     # that actually exists.
     addon = await addon_repository.create(
-        CreateAddOnDto(name="traffic-50gb-repo-test", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="traffic-50gb-repo-test",
+            type=AddOnType.TRAFFIC,
+            amount=50,
+            base_price=Decimal("1.99"),
+        )
     )
 
     granted = await subscription_repository.grant_entitlement(
@@ -238,7 +244,12 @@ async def test_grant_entitlement_with_idempotency_key_is_not_applied_twice(
     user_id = await _create_user(user_repository, 5024)
     created = await subscription_repository.create(_create_dto(user_id, 5024))
     addon = await addon_repository.create(
-        CreateAddOnDto(name="traffic-50gb-idem-test", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="traffic-50gb-idem-test",
+            type=AddOnType.TRAFFIC,
+            amount=50,
+            base_price=Decimal("1.99"),
+        )
     )
 
     first = await subscription_repository.grant_entitlement(

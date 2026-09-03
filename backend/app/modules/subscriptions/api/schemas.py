@@ -69,13 +69,15 @@ class AddOnResponse(BaseModel):
     amount: int
     order_index: int
     is_active: bool
-    prices: list[AddOnPriceItem]
+    base_price: Decimal
+    overrides: list[AddOnPriceItem]
 
 
 class CreateAddOnRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     type: AddOnType
     amount: int = Field(gt=0)
+    base_price: Decimal = Field(gt=0)
 
 
 class UpdateAddOnRequest(BaseModel):
@@ -85,8 +87,12 @@ class UpdateAddOnRequest(BaseModel):
     is_active: Optional[bool] = None
 
 
-class SetAddOnPricesRequest(BaseModel):
-    prices: list[AddOnPriceItem]
+class SetAddOnBasePriceRequest(BaseModel):
+    base_price: Decimal = Field(gt=0)
+
+
+class SetAddOnPriceOverrideRequest(BaseModel):
+    price: Optional[Decimal] = Field(default=None, gt=0)
 
 
 class ReorderAddOnsRequest(BaseModel):

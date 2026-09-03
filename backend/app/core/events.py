@@ -24,6 +24,7 @@ class EventCategory(UpperStrEnum):
     SUBSCRIPTION = auto()
     PROMOCODE = auto()
     REFERRAL = auto()
+    PRICING = auto()
 
 
 @dataclass(frozen=True, kw_only=True)

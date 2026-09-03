@@ -1,14 +1,17 @@
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Numeric
+from sqlalchemy import ForeignKey, Numeric, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
 from app.core.enums import Currency
 
 
-class PlanPrice(BaseSql):
-    __tablename__ = "plan_prices"
+class PlanPriceOverride(BaseSql):
+    __tablename__ = "plan_price_overrides"
+    __table_args__ = (
+        UniqueConstraint("plan_duration_id", "currency", name="uq_plan_price_override"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     plan_duration_id: Mapped[int] = mapped_column(

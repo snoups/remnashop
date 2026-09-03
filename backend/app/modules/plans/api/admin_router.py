@@ -3,12 +3,15 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies.admin import require_admin
+from app.core.enums import Currency
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.plans.api.schemas import (
     CreatePlanRequest,
     PlanResponse,
     ReorderPlansRequest,
+    SetPlanDurationBasePriceRequest,
     SetPlanDurationsRequest,
+    SetPlanPriceOverrideRequest,
     UpdatePlanAccessRequest,
     UpdatePlanRequest,
     UpdatePlanSquadsRequest,
@@ -18,9 +21,10 @@ from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
     ReorderPlansDto,
+    SetPlanDurationBasePriceDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
+    SetPlanPriceOverrideDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
@@ -30,11 +34,14 @@ from app.modules.plans.usecases import (
     DeletePlanUseCase,
     ListPlansUseCase,
     ReorderPlansUseCase,
+    SetPlanDurationBasePriceUseCase,
     SetPlanDurationsUseCase,
+    SetPlanPriceOverrideUseCase,
     UpdatePlanAccessUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
+from app.modules.pricing import PricingRepository
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -177,14 +184,62 @@ async def set_plan_durations(
                     SetPlanDurationDto(
                         days=duration.days,
                         order_index=duration.order_index,
-                        prices=[
-                            SetPlanPriceDto(currency=price.currency, price=price.price)
-                            for price in duration.prices
-                        ],
+                        base_price=duration.base_price,
                     )
                     for duration in payload.durations
                 ],
             ),
+        )
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    return _to_response(plan)
+
+
+@router.put("/{plan_id}/durations/{days}/override/{currency}", response_model=PlanResponse)
+@inject
+async def set_plan_price_override(
+    plan_id: int,
+    days: int,
+    currency: Currency,
+    payload: SetPlanPriceOverrideRequest,
+    use_case: FromDishka[SetPlanPriceOverrideUseCase],
+    pricing_repository: FromDishka[PricingRepository],
+    actor: UserDto = Depends(require_admin),
+) -> PlanResponse:
+    table = await pricing_repository.get_rate_table()
+    try:
+        plan = await use_case(
+            actor,
+            SetPlanPriceOverrideDto(
+                plan_id=plan_id,
+                days=days,
+                currency=currency,
+                price=payload.price,
+                anchor=table.anchor,
+            ),
+        )
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    return _to_response(plan)
+
+
+@router.put("/{plan_id}/durations/{days}/base-price", response_model=PlanResponse)
+@inject
+async def set_plan_duration_base_price(
+    plan_id: int,
+    days: int,
+    payload: SetPlanDurationBasePriceRequest,
+    use_case: FromDishka[SetPlanDurationBasePriceUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> PlanResponse:
+    try:
+        plan = await use_case(
+            actor,
+            SetPlanDurationBasePriceDto(plan_id=plan_id, days=days, base_price=payload.base_price),
         )
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error

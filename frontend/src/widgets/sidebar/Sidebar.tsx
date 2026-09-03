@@ -1,4 +1,5 @@
 import {
+  Coins,
   CreditCard,
   LayoutGrid,
   Layers,
@@ -121,6 +122,18 @@ export function Sidebar() {
           >
             <BounceIcon icon={ShieldCheck} size={17} hoverSize={23.5} />
             <span className={LABEL_CLASSNAME}>{t("sidebar.admins")}</span>
+          </MotionNavLink>
+        )}
+        {permissions.includes("PRICING_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/pricing"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Coins} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.pricing")}</span>
           </MotionNavLink>
         )}
         {permissions.includes("EVENT_LOG_VIEW") && (

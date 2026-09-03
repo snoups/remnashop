@@ -14,6 +14,7 @@ export const EventLogPage = lazy(() =>
 export const NotFoundPage = lazy(() =>
   import("@pages/not-found/NotFoundPage").then((m) => ({ default: m.NotFoundPage })),
 );
+export const PricingPage = lazy(() => import("@pages/pricing/PricingPage").then((m) => ({ default: m.PricingPage })));
 export const ProfilePage = lazy(() => import("@pages/profile/ProfilePage").then((m) => ({ default: m.ProfilePage })));
 export const ApiTokensPage = lazy(() =>
   import("@pages/settings/ApiTokensPage").then((m) => ({ default: m.ApiTokensPage })),

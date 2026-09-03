@@ -56,9 +56,17 @@ class Permission(UpperStrEnum):
     PLANS_UPDATE = auto()
     PLANS_DELETE = auto()
     PLANS_DURATIONS_MANAGE = auto()
+    PLANS_PRICE_OVERRIDE_MANAGE = auto()
+    PLANS_DURATION_BASE_PRICE_MANAGE = auto()
     PLANS_ACCESS_MANAGE = auto()
     PLANS_SQUADS_MANAGE = auto()
     PLANS_ORDER_MANAGE = auto()
+    PRICING_VIEW = auto()
+    PRICING_PREVIEW_VIEW = auto()
+    PRICING_RATES_MANAGE = auto()
+    PRICING_ANCHOR_MANAGE = auto()
+    PRICING_SETTINGS_MANAGE = auto()
+    PRICING_BASE_ADJUST_MANAGE = auto()
     SUBSCRIPTIONS_VIEW = auto()
     SUBSCRIPTIONS_UPDATE = auto()
     SUBSCRIPTIONS_SQUADS_MANAGE = auto()
@@ -68,6 +76,7 @@ class Permission(UpperStrEnum):
     ADDONS_UPDATE = auto()
     ADDONS_DELETE = auto()
     ADDONS_PRICES_MANAGE = auto()
+    ADDONS_PRICE_OVERRIDE_MANAGE = auto()
     ADDONS_REORDER = auto()
     PROMOCODES_VIEW = auto()
     PROMOCODES_CREATE = auto()
@@ -136,9 +145,15 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PLANS_UPDATE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_DELETE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_DURATIONS_MANAGE: PermissionMeta(resource="plans", kind="write"),
+    Permission.PLANS_PRICE_OVERRIDE_MANAGE: PermissionMeta(resource="plans", kind="write"),
+    Permission.PLANS_DURATION_BASE_PRICE_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_ACCESS_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_SQUADS_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_ORDER_MANAGE: PermissionMeta(resource="plans", kind="write"),
+    Permission.PRICING_VIEW: PermissionMeta(resource="pricing", kind="read"),
+    Permission.PRICING_PREVIEW_VIEW: PermissionMeta(resource="pricing", kind="read"),
+    Permission.PRICING_SETTINGS_MANAGE: PermissionMeta(resource="pricing", kind="write"),
+    Permission.PRICING_BASE_ADJUST_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.SUBSCRIPTIONS_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
     Permission.SUBSCRIPTIONS_UPDATE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_SQUADS_MANAGE: PermissionMeta(resource="subscriptions", kind="write"),
@@ -148,6 +163,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ADDONS_UPDATE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_DELETE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_PRICES_MANAGE: PermissionMeta(resource="addons", kind="write"),
+    Permission.ADDONS_PRICE_OVERRIDE_MANAGE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_REORDER: PermissionMeta(resource="addons", kind="write"),
     Permission.PROMOCODES_VIEW: PermissionMeta(resource="promocodes", kind="read"),
     Permission.PROMOCODES_CREATE: PermissionMeta(resource="promocodes", kind="write"),
@@ -204,9 +220,15 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,
         Permission.PLANS_DURATIONS_MANAGE,
+        Permission.PLANS_PRICE_OVERRIDE_MANAGE,
+        Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
         Permission.PLANS_ACCESS_MANAGE,
         Permission.PLANS_SQUADS_MANAGE,
         Permission.PLANS_ORDER_MANAGE,
+        Permission.PRICING_VIEW,
+        Permission.PRICING_PREVIEW_VIEW,
+        Permission.PRICING_SETTINGS_MANAGE,
+        Permission.PRICING_BASE_ADJUST_MANAGE,
         Permission.SUBSCRIPTIONS_VIEW,
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
@@ -216,6 +238,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.ADDONS_UPDATE,
         Permission.ADDONS_DELETE,
         Permission.ADDONS_PRICES_MANAGE,
+        Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
         Permission.ADDONS_REORDER,
         Permission.PROMOCODES_VIEW,
         Permission.PROMOCODES_CREATE,

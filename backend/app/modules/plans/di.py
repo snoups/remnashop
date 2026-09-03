@@ -7,7 +7,9 @@ from app.modules.plans.usecases import (
     ListActivePlansUseCase,
     ListPlansUseCase,
     ReorderPlansUseCase,
+    SetPlanDurationBasePriceUseCase,
     SetPlanDurationsUseCase,
+    SetPlanPriceOverrideUseCase,
     UpdatePlanAccessUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
@@ -24,6 +26,8 @@ class PlansProvider(Provider):
     update_plan_use_case = provide(UpdatePlanUseCase)
     delete_plan_use_case = provide(DeletePlanUseCase)
     set_plan_durations_use_case = provide(SetPlanDurationsUseCase)
+    set_plan_duration_base_price_use_case = provide(SetPlanDurationBasePriceUseCase)
+    set_plan_price_override_use_case = provide(SetPlanPriceOverrideUseCase)
     update_plan_access_use_case = provide(UpdatePlanAccessUseCase)
     update_plan_squads_use_case = provide(UpdatePlanSquadsUseCase)
     reorder_plans_use_case = provide(ReorderPlansUseCase)

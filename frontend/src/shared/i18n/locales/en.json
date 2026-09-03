@@ -119,7 +119,8 @@
     "payments": "Payments",
     "support": "Support",
     "admins": "Admins",
-    "eventLog": "Event log"
+    "eventLog": "Event log",
+    "pricing": "Pricing"
   },
   "admins": {
     "title": "Admins",
@@ -673,6 +674,93 @@
     "localBuild": "Local build",
     "githubButton": "GitHub",
     "telegramButton": "Telegram"
+  },
+  "pricing": {
+    "loading": "Loading pricing data…",
+    "loadError": "Failed to load pricing data.",
+    "rates": {
+      "title": "Currency rates",
+      "description": "Conversion rates, rounding, and minimum amounts used to derive prices in each currency.",
+      "rateLabel": "Rate",
+      "roundingModeLabel": "Rounding",
+      "charmEndingLabel": "Charm ending",
+      "charmEndingPlaceholder": "e.g. 99",
+      "minAmountLabel": "Minimum amount",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Rate updated.",
+      "saveError": "Failed to update the rate.",
+      "previewError": "Failed to preview the rate change.",
+      "confirmTitle": "Confirm rate change",
+      "confirmMessage": "This will recalculate every price shown in {{currency}}. Review the changes below:",
+      "confirmButton": "Apply",
+      "cancelButton": "Cancel"
+    },
+    "roundingModes": {
+      "INTEGER": "Round to whole number",
+      "DECIMAL_2": "Round to 2 decimals"
+    },
+    "anchor": {
+      "title": "Anchor currency",
+      "description": "The anchor currency's rate is fixed at 1 -- every other currency is derived from it.",
+      "badge": "Anchor",
+      "change": "Change anchor",
+      "confirmTitle": "Switch anchor currency",
+      "confirmMessage": "Switching the anchor to {{currency}} will recalculate every derived price. Review the changes below:",
+      "confirmButton": "Switch",
+      "cancelButton": "Cancel",
+      "saved": "Anchor currency updated.",
+      "saveError": "Failed to switch the anchor currency."
+    },
+    "settings": {
+      "title": "Usage-based pricing",
+      "description": "Optional per-day / per-GB pricing, used elsewhere in the shop.",
+      "pricePerDayLabel": "Price per day",
+      "pricePerGbLabel": "Price per GB",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Settings updated.",
+      "saveError": "Failed to update settings."
+    },
+    "matrix": {
+      "title": "Price matrix",
+      "description": "Base prices and per-currency overrides for every plan duration and addon.",
+      "item": "Item",
+      "basePrice": "Base price",
+      "plansSection": "Plans",
+      "addonsSection": "Addons",
+      "empty": "No plans or addons yet.",
+      "pinned": "Pinned override",
+      "clearPin": "Clear override",
+      "anchorReadOnly": "Anchor currency — edit via the base price column",
+      "saved": "Price updated.",
+      "saveError": "Failed to update the price.",
+      "planNotFound": "Could not resolve the plan for this row.",
+      "bulkAdjust": "Bulk adjust",
+      "bulkAdjustTitle": "Bulk adjust base prices",
+      "bulkAdjustDescription": "Multiply base prices by a factor across a whole scope.",
+      "scopeLabel": "Scope",
+      "scope": {
+        "ALL_PLANS": "All plan durations",
+        "ALL_ADDONS": "All addons"
+      },
+      "factorLabel": "Factor",
+      "factorPlaceholder": "e.g. 1.10 for +10%",
+      "preview": "Preview",
+      "previewing": "Loading preview…",
+      "previewError": "Failed to preview the change.",
+      "cancel": "Cancel",
+      "confirmTitle": "Confirm bulk adjustment",
+      "confirmMessage": "{{count}} price(s) will change:",
+      "apply": "Apply",
+      "applied": "Base prices updated.",
+      "applyError": "Failed to adjust base prices."
+    },
+    "diff": {
+      "old": "Old",
+      "new": "New",
+      "empty": "No prices will change."
+    }
   },
   "donate": {
     "button": "Donate",

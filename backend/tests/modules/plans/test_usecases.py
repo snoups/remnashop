@@ -5,7 +5,7 @@ import pytest
 
 from app.core.actor import SyntheticActor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, Locale, PlanAvailability, PlanType, Role, SubscriptionStatus
+from app.core.enums import Locale, PlanAvailability, PlanType, Role, SubscriptionStatus
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.plans.dto import (
@@ -13,7 +13,6 @@ from app.modules.plans.dto import (
     ReorderPlansDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
@@ -51,13 +50,7 @@ async def _add_minimal_duration(plan_repository: PlanRepository, plan_id: int) -
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan_id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.USD, price=Decimal("9.99"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("9.99"))],
         )
     )
 
@@ -481,13 +474,7 @@ async def test_owner_can_set_plan_durations(
         OWNER,
         SetPlanDurationsDto(
             plan_id=created.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("299.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("299.00"))],
         ),
     )
 

@@ -59,6 +59,7 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
         "oauth.router",
         "payments.router",
         "plans.router",
+        "pricing.router",
         "promocodes.router",
         "referrals.router",
         "settings.router",

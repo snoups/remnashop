@@ -16,6 +16,7 @@ from app.modules.payments.api import public_router as payments_public_router
 from app.modules.payments.api import webhook_router as payments_webhook_router
 from app.modules.plans.api import admin_router as plans_admin_router
 from app.modules.plans.api import public_router as plans_public_router
+from app.modules.pricing.api import admin_router as pricing_admin_router
 from app.modules.promocodes.api import admin_router as promocodes_admin_router
 from app.modules.promocodes.api import public_router as promocodes_public_router
 from app.modules.referrals.api import admin_router as referrals_admin_router
@@ -41,6 +42,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     settings_router,
     plans_admin_router,
     plans_public_router,
+    pricing_admin_router,
     promocodes_admin_router,
     promocodes_public_router,
     referrals_admin_router,

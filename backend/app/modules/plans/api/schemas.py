@@ -7,6 +7,7 @@ from remnapy.enums import TrafficLimitStrategy
 
 from app.core.enums import Currency, PlanAvailability, PlanType
 from app.modules.plans.dto import PlanDurationDto
+from app.modules.pricing import CurrencyRateTable, resolve_price
 
 
 class PlanPriceItem(BaseModel):
@@ -17,7 +18,8 @@ class PlanPriceItem(BaseModel):
 class PlanDurationItem(BaseModel):
     days: int = Field(gt=0)
     order_index: int = 0
-    prices: list[PlanPriceItem]
+    base_price: Decimal = Field(gt=0)
+    overrides: list[PlanPriceItem] = Field(default_factory=list)
 
 
 def to_duration_items(durations: list[PlanDurationDto]) -> list[PlanDurationItem]:
@@ -25,9 +27,40 @@ def to_duration_items(durations: list[PlanDurationDto]) -> list[PlanDurationItem
         PlanDurationItem(
             days=duration.days,
             order_index=duration.order_index,
+            base_price=duration.base_price,
+            overrides=[
+                PlanPriceItem(currency=override.currency, price=override.price)
+                for override in duration.overrides
+            ],
+        )
+        for duration in durations
+    ]
+
+
+class PublicPlanDurationItem(BaseModel):
+    days: int = Field(gt=0)
+    order_index: int = 0
+    prices: list[PlanPriceItem]
+
+
+def to_public_duration_items(
+    durations: list[PlanDurationDto], rates: CurrencyRateTable
+) -> list[PublicPlanDurationItem]:
+    return [
+        PublicPlanDurationItem(
+            days=duration.days,
+            order_index=duration.order_index,
             prices=[
-                PlanPriceItem(currency=price.currency, price=price.price)
-                for price in duration.prices
+                PlanPriceItem(
+                    currency=currency,
+                    price=resolve_price(
+                        duration.base_price,
+                        currency,
+                        next((o.price for o in duration.overrides if o.currency == currency), None),
+                        rates,
+                    ),
+                )
+                for currency in Currency
             ],
         )
         for duration in durations
@@ -67,7 +100,7 @@ class PublicPlanResponse(BaseModel):
     device_limit: int
     is_trial: bool
     order_index: int
-    durations: list[PlanDurationItem]
+    durations: list[PublicPlanDurationItem]
 
 
 class CreatePlanRequest(BaseModel):
@@ -96,6 +129,14 @@ class UpdatePlanRequest(BaseModel):
 
 class SetPlanDurationsRequest(BaseModel):
     durations: list[PlanDurationItem]
+
+
+class SetPlanPriceOverrideRequest(BaseModel):
+    price: Optional[Decimal] = Field(default=None, gt=0)
+
+
+class SetPlanDurationBasePriceRequest(BaseModel):
+    base_price: Decimal = Field(gt=0)
 
 
 class UpdatePlanAccessRequest(BaseModel):

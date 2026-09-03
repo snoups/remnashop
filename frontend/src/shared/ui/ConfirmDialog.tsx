@@ -1,5 +1,6 @@
 import { AlertTriangle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 
@@ -13,6 +14,8 @@ interface ConfirmDialogProps {
   danger?: boolean;
   /** false renders inline in the parent's own container instead of portaling to document.body */
   portal?: boolean;
+  /** extra content rendered between the message and the action buttons -- a diff table, a small form, etc. */
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -24,6 +27,7 @@ export function ConfirmDialog({
   cancelLabel,
   danger,
   portal = true,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -74,6 +78,8 @@ export function ConfirmDialog({
           </div>
 
           <p className="px-5 pt-4 text-[12.5px] text-muted-foreground">{message}</p>
+
+          {children && <div className="px-5 pt-3">{children}</div>}
 
           <div className="flex gap-2 px-5 pb-5 pt-4">
             <button

@@ -7,12 +7,18 @@ from app.modules.oauth.repository import OAuthIdentityRepository
 from app.worker.broker import broker
 
 
+async def cleanup_oidc_identities(
+    *, oauth_identity_repository: OAuthIdentityRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        deleted = await oauth_identity_repository.delete_all_by_provider(OAuthProvider.OIDC)
+    logger.info(f"OIDC issuer changed: cleared {deleted} stale oauth_identities row(s)")
+
+
 @broker.task
 @inject(patch_module=True)
 async def cleanup_oidc_identities_task(
     oauth_identity_repository: FromDishka[OAuthIdentityRepository],
     uow: FromDishka[UnitOfWork],
 ) -> None:
-    async with uow:
-        deleted = await oauth_identity_repository.delete_all_by_provider(OAuthProvider.OIDC)
-    logger.info(f"OIDC issuer changed: cleared {deleted} stale oauth_identities row(s)")
+    await cleanup_oidc_identities(oauth_identity_repository=oauth_identity_repository, uow=uow)

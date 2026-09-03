@@ -20,9 +20,10 @@ from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.plans import get_plans_providers
+from app.modules.pricing import get_pricing_providers
 from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto
@@ -41,12 +42,6 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
-class _SubscriptionsProvider(Provider):
-    scope = Scope.REQUEST
-
-    subscription_repository = provide(SubscriptionRepository)
-
-
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
@@ -57,8 +52,9 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_settings_providers(),
         *get_translations_providers(),
         *get_plans_providers(),
+        *get_pricing_providers(),
         *get_referrals_providers(),
-        _SubscriptionsProvider(),
+        *get_subscriptions_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -214,11 +210,7 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     await client.put(
         f"{API_V1}/plans/{plan_id}/durations",
         headers=owner_headers,
-        json={
-            "durations": [
-                {"days": 30, "order_index": 0, "prices": [{"currency": "USD", "price": "9.99"}]}
-            ]
-        },
+        json={"durations": [{"days": 30, "order_index": 0, "base_price": "9.99"}]},
     )
     await client.put(
         f"{API_V1}/plans/{plan_id}/squads",

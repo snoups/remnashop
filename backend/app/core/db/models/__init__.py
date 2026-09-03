@@ -2,7 +2,7 @@ from app.core.db.models.active_locale import ActiveLocale
 from app.core.db.models.addon import AddOn
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
-from app.core.db.models.addon_price import AddOnPrice
+from app.core.db.models.addon_price_override import AddOnPriceOverride
 from app.core.db.models.api_token import ApiToken
 from app.core.db.models.appearance_settings import AppearanceSettings
 from app.core.db.models.backup_run import BackupRun
@@ -11,6 +11,7 @@ from app.core.db.models.banner import Banner
 from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.bot_translation import BotTranslation
+from app.core.db.models.currency_rate import CurrencyRate
 from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.models.oauth_identity import OAuthIdentity
@@ -19,7 +20,8 @@ from app.core.db.models.payment_gateway import PaymentGateway
 from app.core.db.models.payment_order import PaymentOrder
 from app.core.db.models.plan import Plan
 from app.core.db.models.plan_duration import PlanDuration
-from app.core.db.models.plan_price import PlanPrice
+from app.core.db.models.plan_price_override import PlanPriceOverride
+from app.core.db.models.pricing_settings import PricingSettings
 from app.core.db.models.promocode import Promocode, PromocodeActivation
 from app.core.db.models.referral import Referral
 from app.core.db.models.referral_reward import ReferralReward
@@ -35,7 +37,7 @@ __all__ = [
     "AddOn",
     "AddOnEntitlement",
     "AddOnGrantIdempotency",
-    "AddOnPrice",
+    "AddOnPriceOverride",
     "ApiToken",
     "AppearanceSettings",
     "BackupRun",
@@ -44,6 +46,7 @@ __all__ = [
     "BotCommand",
     "BotSettings",
     "BotTranslation",
+    "CurrencyRate",
     "EventLogEntry",
     "EventOutboxEntry",
     "OAuthIdentity",
@@ -52,7 +55,8 @@ __all__ = [
     "PaymentOrder",
     "Plan",
     "PlanDuration",
-    "PlanPrice",
+    "PlanPriceOverride",
+    "PricingSettings",
     "Promocode",
     "PromocodeActivation",
     "Referral",

@@ -1,4 +1,5 @@
 from dataclasses import fields as dataclass_fields
+from decimal import Decimal
 from typing import Final
 
 from sqlalchemy import delete, func, select
@@ -7,16 +8,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.plan import Plan
 from app.core.db.models.plan_duration import PlanDuration
-from app.core.db.models.plan_price import PlanPrice
+from app.core.db.models.plan_price_override import PlanPriceOverride
 from app.core.enums import PlanAvailability, PlanType
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
     PlanDurationDto,
-    PlanPriceDto,
+    PlanPriceOverrideDto,
     ReorderPlansDto,
+    SetPlanDurationBasePriceDto,
     SetPlanDurationsDto,
+    SetPlanPriceOverrideDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
@@ -61,25 +64,27 @@ class PlanRepository:
         duration_rows = duration_result.scalars().all()
         duration_ids = [row.id for row in duration_rows]
 
-        prices_by_duration: dict[int, list[PlanPriceDto]] = {}
+        overrides_by_duration: dict[int, list[PlanPriceOverrideDto]] = {}
         if duration_ids:
-            price_result = await self.session.execute(
-                select(PlanPrice)
-                .where(PlanPrice.plan_duration_id.in_(duration_ids))
-                .order_by(PlanPrice.id)
+            override_result = await self.session.execute(
+                select(PlanPriceOverride)
+                .where(PlanPriceOverride.plan_duration_id.in_(duration_ids))
+                .order_by(PlanPriceOverride.id)
             )
-            for price_row in price_result.scalars():
-                prices_by_duration.setdefault(price_row.plan_duration_id, []).append(
-                    PlanPriceDto(currency=price_row.currency, price=price_row.price)
+            for override_row in override_result.scalars():
+                overrides_by_duration.setdefault(override_row.plan_duration_id, []).append(
+                    PlanPriceOverrideDto(currency=override_row.currency, price=override_row.price)
                 )
 
         durations_by_plan: dict[int, list[PlanDurationDto]] = {}
         for row in duration_rows:
             durations_by_plan.setdefault(row.plan_id, []).append(
                 PlanDurationDto(
+                    id=row.id,
                     days=row.days,
                     order_index=row.order_index,
-                    prices=prices_by_duration.get(row.id, []),
+                    base_price=row.base_price,
+                    overrides=overrides_by_duration.get(row.id, []),
                 )
             )
         return durations_by_plan
@@ -241,31 +246,93 @@ class PlanRepository:
                 raise ValidationError(f"Duplicate duration of {duration.days} days")
             seen_days.add(duration.days)
 
-            currencies = [price.currency for price in duration.prices]
-            if len(set(currencies)) != len(currencies):
-                raise ValidationError(
-                    f"Duplicate currency in prices for {duration.days}-day duration"
-                )
-
         await self.session.execute(select(func.pg_advisory_xact_lock(_PLAN_DURATIONS_LOCK_KEY)))
         await self.session.execute(delete(PlanDuration).where(PlanDuration.plan_id == data.plan_id))
         await self.session.flush()
 
         duration_rows = [
-            PlanDuration(plan_id=data.plan_id, days=duration.days, order_index=duration.order_index)
+            PlanDuration(
+                plan_id=data.plan_id,
+                days=duration.days,
+                order_index=duration.order_index,
+                base_price=duration.base_price,
+            )
             for duration in data.durations
         ]
         self.session.add_all(duration_rows)
         await self.session.flush()
 
-        self.session.add_all(
-            PlanPrice(plan_duration_id=duration_row.id, currency=price.currency, price=price.price)
-            for duration_row, duration in zip(duration_rows, data.durations)
-            for price in duration.prices
+        durations_by_plan = await self._load_durations([row.id])
+        return self._to_dto(row, durations_by_plan.get(row.id, []))
+
+    async def set_price_override(self, data: SetPlanPriceOverrideDto) -> PlanDto:
+        if data.price is not None and data.currency == data.anchor:
+            raise ValidationError("Cannot override the anchor currency's price")
+
+        row = await self._get_or_raise(data.plan_id)
+
+        duration_result = await self.session.execute(
+            select(PlanDuration).where(
+                PlanDuration.plan_id == data.plan_id, PlanDuration.days == data.days
+            )
         )
+        duration_row = duration_result.scalar_one_or_none()
+        if duration_row is None:
+            raise NotFoundError(f"Plan '{data.plan_id}' has no duration of '{data.days}' days")
+
+        if data.price is None:
+            await self.session.execute(
+                delete(PlanPriceOverride).where(
+                    PlanPriceOverride.plan_duration_id == duration_row.id,
+                    PlanPriceOverride.currency == data.currency,
+                )
+            )
+        else:
+            override_result = await self.session.execute(
+                select(PlanPriceOverride).where(
+                    PlanPriceOverride.plan_duration_id == duration_row.id,
+                    PlanPriceOverride.currency == data.currency,
+                )
+            )
+            override_row = override_result.scalar_one_or_none()
+            if override_row is None:
+                self.session.add(
+                    PlanPriceOverride(
+                        plan_duration_id=duration_row.id, currency=data.currency, price=data.price
+                    )
+                )
+            else:
+                override_row.price = data.price
+
         await self.session.flush()
         durations_by_plan = await self._load_durations([row.id])
         return self._to_dto(row, durations_by_plan.get(row.id, []))
+
+    async def set_duration_base_price(self, data: SetPlanDurationBasePriceDto) -> PlanDto:
+        row = await self._get_or_raise(data.plan_id)
+
+        duration_result = await self.session.execute(
+            select(PlanDuration).where(
+                PlanDuration.plan_id == data.plan_id, PlanDuration.days == data.days
+            )
+        )
+        duration_row = duration_result.scalar_one_or_none()
+        if duration_row is None:
+            raise NotFoundError(f"Plan '{data.plan_id}' has no duration of '{data.days}' days")
+
+        duration_row.base_price = data.base_price
+        await self.session.flush()
+
+        durations_by_plan = await self._load_durations([row.id])
+        return self._to_dto(row, durations_by_plan.get(row.id, []))
+
+    async def set_duration_base_prices(self, values: dict[int, Decimal]) -> None:
+        for duration_id, base_price in values.items():
+            row = await self.session.get(PlanDuration, duration_id)
+            if row is None:
+                raise NotFoundError(f"Plan duration '{duration_id}' not found")
+            row.base_price = base_price
+        await self.session.flush()
 
     async def update_access(self, data: UpdatePlanAccessDto) -> PlanDto:
         if (

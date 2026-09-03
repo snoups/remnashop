@@ -26,7 +26,11 @@ from app.modules.settings.dto import (
     UpdateOAuthSettingsDto,
     UpdateShopSettingsDto,
 )
-from app.modules.settings.events import LocaleActivatedEvent, LocaleDeactivatedEvent
+from app.modules.settings.events import (
+    LocaleActivatedEvent,
+    LocaleDeactivatedEvent,
+    OidcIssuerChangedEvent,
+)
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import (
     AddLocaleUseCase,
@@ -219,6 +223,70 @@ async def test_update_oauth_settings_rejects_non_public_issuer_host(
         await update_use_case(
             OWNER, UpdateOAuthSettingsDto(oidc_issuer_url="https://127.0.0.1/realms/myrealm")
         )
+
+
+async def test_update_oauth_settings_publishes_oidc_issuer_changed_event_when_issuer_changes(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher: EventPublisher,
+) -> None:
+    async def _fake_assert_public_https_host(url: str) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "app.modules.settings.usecases.update_oauth_settings.assert_public_https_host",
+        _fake_assert_public_https_host,
+    )
+    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
+
+    await update_use_case(
+        OWNER, UpdateOAuthSettingsDto(oidc_issuer_url="https://keycloak.example.com/realms/first")
+    )
+
+    row = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == OidcIssuerChangedEvent.__name__
+            )
+        )
+    ).one()
+    assert row is not None
+
+
+async def test_update_oauth_settings_does_not_publish_event_when_issuer_is_unchanged(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher: EventPublisher,
+) -> None:
+    async def _fake_assert_public_https_host(url: str) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "app.modules.settings.usecases.update_oauth_settings.assert_public_https_host",
+        _fake_assert_public_https_host,
+    )
+    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
+    issuer_url = "https://keycloak.example.com/realms/stable"
+    await update_use_case(OWNER, UpdateOAuthSettingsDto(oidc_issuer_url=issuer_url))
+    # First call above already published one OidcIssuerChangedEvent (None -> issuer_url) --
+    # only re-submitting the SAME issuer_url a second time is under test here.
+
+    await update_use_case(
+        OWNER, UpdateOAuthSettingsDto(oidc_issuer_url=issuer_url, oidc_display_name="Renamed")
+    )
+
+    rows = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == OidcIssuerChangedEvent.__name__
+            )
+        )
+    ).all()
+    assert len(rows) == 1  # only the first call's event -- the second didn't add another
 
 
 async def test_regular_user_cannot_view_oauth_settings(

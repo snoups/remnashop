@@ -1,4 +1,5 @@
 import asyncio
+from typing import TYPE_CHECKING, Optional
 
 import uvicorn
 from aiogram import Bot
@@ -13,10 +14,16 @@ from app.modules.settings import BotSettingsDto, read_bot_settings
 from app.telegram.app import get_app
 from app.telegram.container import create_aiogram_container
 from app.telegram.dispatcher import get_bg_manager_factory, get_dispatcher, setup_dispatcher
+from app.telegram.i18n import read_translator_hub
 from app.telegram.idle_app import get_idle_app
 
+if TYPE_CHECKING:
+    from fluentogram import TranslatorHub
 
-def build_app(config: AppConfig, bot_settings: BotSettingsDto) -> FastAPI:
+
+def build_app(
+    config: AppConfig, bot_settings: BotSettingsDto, translator_hub: Optional["TranslatorHub"]
+) -> FastAPI:
     if bot_settings.token is None or bot_settings.secret_token is None:
         logger.warning(
             "Bot token not set (Dashboard -> Settings -> Bot) -- telegram service idling. "
@@ -24,11 +31,12 @@ def build_app(config: AppConfig, bot_settings: BotSettingsDto) -> FastAPI:
         )
         return get_idle_app(config)
 
+    assert translator_hub is not None  # guaranteed by the __main__ block below
     dispatcher = get_dispatcher(config)
     bg_manager_factory = get_bg_manager_factory(dispatcher)
     bot = Bot(token=bot_settings.token.get_secret_value())
 
-    container = create_aiogram_container(config, bg_manager_factory, bot)
+    container = create_aiogram_container(config, bg_manager_factory, bot, translator_hub)
     # Must run before setup_dispatcher(): outer middlewares run in registration
     # order, and UserMiddleware (registered there) reads data[CONTAINER_KEY],
     # which only exists once dishka's own outer middleware has populated it.
@@ -57,7 +65,16 @@ if __name__ == "__main__":
     # app object, sidesteps that entirely (and matches the "read once at
     # startup, no hot-reload" design -- see /CLAUDE.md).
     _bot_settings = asyncio.run(read_bot_settings(_config))
-    _app = build_app(_config, _bot_settings)
+    # Only read the hub when the bot is actually configured -- an unset
+    # token means build_app takes the idle-app path below and never uses
+    # it, and read_translator_hub raises when no locale is active yet
+    # (exactly the state of a fresh, not-yet-configured deploy).
+    _translator_hub = (
+        asyncio.run(read_translator_hub(_config))
+        if _bot_settings.token is not None and _bot_settings.secret_token is not None
+        else None
+    )
+    _app = build_app(_config, _bot_settings, _translator_hub)
 
     uvicorn.run(
         app=_app,

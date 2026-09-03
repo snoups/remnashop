@@ -57,6 +57,17 @@ class Currency(UpperStrEnum):
         return symbols.get(self, "?")
 
 
+class RoundingMode(UpperStrEnum):
+    INTEGER = auto()
+    DECIMAL_2 = auto()
+
+
+class PriceAdjustScope(UpperStrEnum):
+    ALL_PLANS = auto()
+    ALL_ADDONS = auto()
+    SELECTED = auto()
+
+
 class DiscountSource(UpperStrEnum):
     NONE = auto()
     PERSONAL = auto()

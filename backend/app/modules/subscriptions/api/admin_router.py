@@ -5,20 +5,22 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.enums import SubscriptionStatus
+from app.core.enums import Currency, SubscriptionStatus
 from app.core.exceptions import (
     ConflictError,
     NotFoundError,
     RemnawavePanelUnavailableError,
     ValidationError,
 )
+from app.modules.pricing import PricingRepository
 from app.modules.subscriptions.api.schemas import (
     AddOnEntitlementItem,
     AddOnPriceItem,
     AddOnResponse,
     CreateAddOnRequest,
     ReorderAddOnsRequest,
-    SetAddOnPricesRequest,
+    SetAddOnBasePriceRequest,
+    SetAddOnPriceOverrideRequest,
     SubscriptionPageResponse,
     SubscriptionResponse,
     UpdateAddOnRequest,
@@ -31,8 +33,8 @@ from app.modules.subscriptions.dto import (
     AddOnDto,
     CreateAddOnDto,
     ReorderAddOnsDto,
-    SetAddOnPriceDto,
-    SetAddOnPricesDto,
+    SetAddOnBasePriceDto,
+    SetAddOnPriceOverrideDto,
     SubscriptionDto,
     UpdateAddOnDto,
     UpdateSubscriptionDto,
@@ -46,7 +48,8 @@ from app.modules.subscriptions.usecases import (
     ListSubscriptionsInput,
     ListSubscriptionsUseCase,
     ReorderAddOnsUseCase,
-    SetAddOnPricesUseCase,
+    SetAddOnBasePriceUseCase,
+    SetAddOnPriceOverrideUseCase,
     UpdateAddOnUseCase,
     UpdateSubscriptionSquadsUseCase,
     UpdateSubscriptionUseCase,
@@ -99,8 +102,10 @@ def _to_addon_response(addon: AddOnDto) -> AddOnResponse:
         amount=addon.amount,
         order_index=addon.order_index,
         is_active=addon.is_active,
-        prices=[
-            AddOnPriceItem(currency=price.currency, price=price.price) for price in addon.prices
+        base_price=addon.base_price,
+        overrides=[
+            AddOnPriceItem(currency=override.currency, price=override.price)
+            for override in addon.overrides
         ],
     )
 
@@ -216,7 +221,13 @@ async def create_addon(
 ) -> AddOnResponse:
     try:
         addon = await use_case(
-            actor, CreateAddOnDto(name=payload.name, type=payload.type, amount=payload.amount)
+            actor,
+            CreateAddOnDto(
+                name=payload.name,
+                type=payload.type,
+                amount=payload.amount,
+                base_price=payload.base_price,
+            ),
         )
     except ConflictError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
@@ -278,25 +289,43 @@ async def delete_addon(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
 
 
-@addons_router.put("/{addon_id}/prices", response_model=AddOnResponse)
+@addons_router.put("/{addon_id}/base-price", response_model=AddOnResponse)
 @inject
-async def set_addon_prices(
+async def set_addon_base_price(
     addon_id: int,
-    payload: SetAddOnPricesRequest,
-    use_case: FromDishka[SetAddOnPricesUseCase],
+    payload: SetAddOnBasePriceRequest,
+    use_case: FromDishka[SetAddOnBasePriceUseCase],
     actor: UserDto = Depends(require_admin),
 ) -> AddOnResponse:
     try:
         addon = await use_case(
+            actor, SetAddOnBasePriceDto(addon_id=addon_id, base_price=payload.base_price)
+        )
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return _to_addon_response(addon)
+
+
+@addons_router.put("/{addon_id}/override/{currency}", response_model=AddOnResponse)
+@inject
+async def set_addon_price_override(
+    addon_id: int,
+    currency: Currency,
+    payload: SetAddOnPriceOverrideRequest,
+    use_case: FromDishka[SetAddOnPriceOverrideUseCase],
+    pricing_repository: FromDishka[PricingRepository],
+    actor: UserDto = Depends(require_admin),
+) -> AddOnResponse:
+    table = await pricing_repository.get_rate_table()
+    try:
+        addon = await use_case(
             actor,
-            SetAddOnPricesDto(
-                addon_id=addon_id,
-                prices=[
-                    SetAddOnPriceDto(currency=price.currency, price=price.price)
-                    for price in payload.prices
-                ],
+            SetAddOnPriceOverrideDto(
+                addon_id=addon_id, currency=currency, price=payload.price, anchor=table.anchor
             ),
         )
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     return _to_addon_response(addon)

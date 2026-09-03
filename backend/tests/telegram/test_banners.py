@@ -5,7 +5,7 @@ from app.core.enums import BannerName, Locale
 from app.modules.banners.dto import UploadBannerDto
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.storage import save_banner_file
-from app.telegram.banners import get_banner
+from app.telegram.banners import get_banner, get_banner_media
 
 
 def _config(config: AppConfig, tmp_path: Path) -> AppConfig:
@@ -105,3 +105,13 @@ async def test_get_banner_uses_locale_fallback(
     assert result is not None
     data, _ = result
     assert data == b"fake-png"
+
+
+async def test_get_banner_media_returns_none_when_not_found(
+    banner_repository: BannerRepository, config: AppConfig, tmp_path: Path
+) -> None:
+    cfg = _config(config, tmp_path)
+    media = await get_banner_media(
+        banner_repository, cfg, BannerName.MENU, Locale.RU, cfg.default_locale
+    )
+    assert media is None

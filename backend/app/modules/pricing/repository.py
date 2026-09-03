@@ -1,0 +1,126 @@
+from decimal import Decimal
+from typing import Final
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db.models.currency_rate import CurrencyRate
+from app.core.db.models.pricing_settings import PricingSettings
+from app.core.enums import Currency, RoundingMode
+from app.core.exceptions import ValidationError
+from app.modules.pricing.dto import (
+    RATE_PRECISION,
+    CurrencyRateDto,
+    CurrencyRateTable,
+    PricingSettingsDto,
+    UpdateCurrencyRateDto,
+    UpdatePricingSettingsDto,
+)
+
+_SETTINGS_ID: Final[int] = 1
+
+_SEED_RATES: Final[dict[Currency, tuple[RoundingMode, None, Decimal]]] = {
+    Currency.USD: (RoundingMode.DECIMAL_2, None, Decimal("0.01")),
+    Currency.RUB: (RoundingMode.INTEGER, None, Decimal("10")),
+    Currency.XTR: (RoundingMode.INTEGER, None, Decimal("1")),
+}
+
+
+class PricingRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    def _to_rate_dto(self, row: CurrencyRate) -> CurrencyRateDto:
+        return CurrencyRateDto(
+            currency=row.currency,
+            rate=row.rate,
+            rounding_mode=row.rounding_mode,
+            charm_ending=row.charm_ending,
+            min_amount=row.min_amount,
+        )
+
+    def _to_settings_dto(self, row: PricingSettings) -> PricingSettingsDto:
+        return PricingSettingsDto(
+            id=row.id,
+            anchor_currency=row.anchor_currency,
+            price_per_day=row.price_per_day,
+            price_per_gb=row.price_per_gb,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    async def _get_or_create_settings(self) -> PricingSettings:
+        row = await self.session.get(PricingSettings, _SETTINGS_ID)
+        if row is None:
+            row = PricingSettings(id=_SETTINGS_ID)
+            self.session.add(row)
+        return row
+
+    async def get_rate_table(self) -> CurrencyRateTable:
+        result = await self.session.execute(select(CurrencyRate))
+        rows = {row.currency: row for row in result.scalars()}
+
+        for currency, (rounding_mode, charm_ending, min_amount) in _SEED_RATES.items():
+            if currency not in rows:
+                row = CurrencyRate(
+                    currency=currency,
+                    rate=Decimal("1"),
+                    rounding_mode=rounding_mode,
+                    charm_ending=charm_ending,
+                    min_amount=min_amount,
+                )
+                self.session.add(row)
+                rows[currency] = row
+
+        settings = await self._get_or_create_settings()
+        await self.session.flush()
+
+        return CurrencyRateTable(
+            anchor=settings.anchor_currency,
+            rows={currency: self._to_rate_dto(row) for currency, row in rows.items()},
+        )
+
+    async def get_settings(self) -> PricingSettingsDto:
+        settings = await self._get_or_create_settings()
+        await self.session.flush()
+        return self._to_settings_dto(settings)
+
+    async def update_rate(self, data: UpdateCurrencyRateDto) -> CurrencyRateDto:
+        settings = await self._get_or_create_settings()
+        if data.currency == settings.anchor_currency and data.rate != 1:
+            raise ValidationError("The anchor currency's rate is fixed at 1.0")
+
+        row = await self.session.get(CurrencyRate, data.currency)
+        if row is None:
+            raise ValidationError(f"No currency rate row for {data.currency}")
+
+        row.rate = data.rate.quantize(RATE_PRECISION)
+        row.rounding_mode = data.rounding_mode
+        row.charm_ending = data.charm_ending
+        row.min_amount = data.min_amount
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_rate_dto(row)
+
+    async def update_settings(self, data: UpdatePricingSettingsDto) -> PricingSettingsDto:
+        row = await self._get_or_create_settings()
+
+        row.price_per_day = data.price_per_day
+        row.price_per_gb = data.price_per_gb
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_settings_dto(row)
+
+    async def set_anchor(self, new_anchor: Currency, new_rates: dict[Currency, Decimal]) -> None:
+        settings = await self._get_or_create_settings()
+        settings.anchor_currency = new_anchor
+
+        for currency, rate in new_rates.items():
+            row = await self.session.get(CurrencyRate, currency)
+            if row is None:
+                raise ValidationError(f"No currency rate row for {currency}")
+            row.rate = rate
+
+        await self.session.flush()

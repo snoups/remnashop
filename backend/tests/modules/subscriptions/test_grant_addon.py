@@ -17,7 +17,6 @@ from app.modules.plans.dto import (
     CreatePlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -59,13 +58,7 @@ async def _create_subscription(
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -117,7 +110,9 @@ async def test_system_can_grant_addon_and_push_limit_to_panel(
         431,
     )
     addon = await addon_repository.create(
-        CreateAddOnDto(name="traffic-50gb", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="traffic-50gb", type=AddOnType.TRAFFIC, amount=50, base_price=Decimal("1.99")
+        )
     )
     use_case = GrantAddOnUseCase(
         subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
@@ -157,7 +152,9 @@ async def test_real_actor_cannot_call_grant_addon_directly(
         432,
     )
     addon = await addon_repository.create(
-        CreateAddOnDto(name="traffic-50gb-2", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="traffic-50gb-2", type=AddOnType.TRAFFIC, amount=50, base_price=Decimal("1.99")
+        )
     )
     use_case = GrantAddOnUseCase(
         subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
@@ -217,7 +214,12 @@ async def test_grant_addon_retried_after_panel_failure_does_not_double_grant(
         435,
     )
     addon = await addon_repository.create(
-        CreateAddOnDto(name="traffic-50gb-retry", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="traffic-50gb-retry",
+            type=AddOnType.TRAFFIC,
+            amount=50,
+            base_price=Decimal("1.99"),
+        )
     )
     use_case = GrantAddOnUseCase(
         subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
@@ -274,7 +276,9 @@ async def test_system_can_grant_devices_addon_without_clearing_traffic_limit(
         434,
     )
     addon = await addon_repository.create(
-        CreateAddOnDto(name="devices-addon", type=AddOnType.DEVICES, amount=2)
+        CreateAddOnDto(
+            name="devices-addon", type=AddOnType.DEVICES, amount=2, base_price=Decimal("0.99")
+        )
     )
     use_case = GrantAddOnUseCase(
         subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher

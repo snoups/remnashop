@@ -16,7 +16,7 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import Currency, Locale, PaymentGatewayType, PlanType, Role
+from app.core.enums import Locale, PaymentGatewayType, PlanType, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
@@ -31,14 +31,14 @@ from app.modules.plans.dto import (
     PlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing import get_pricing_providers
 from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto
@@ -61,7 +61,6 @@ class _PaymentsProvider(Provider):
     scope = Scope.REQUEST
 
     payment_order_repository = provide(PaymentOrderRepository)
-    subscription_repository = provide(SubscriptionRepository)
     create_checkout_use_case = provide(CreateCheckoutUseCase)
 
 
@@ -73,9 +72,11 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_plans_providers(),
+        *get_pricing_providers(),
         *get_referrals_providers(),
         *get_gateways_providers(),
         *get_settings_providers(),
+        *get_subscriptions_providers(),
         *get_translations_providers(),
         _PaymentsProvider(),
         _TestSessionProvider(session),
@@ -150,13 +151,7 @@ async def plan(plan_repository: PlanRepository) -> PlanDto:
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=created.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(

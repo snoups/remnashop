@@ -99,7 +99,7 @@ class SubscriptionDto(BaseDto, TimestampMixin):
     addon_entitlements: list[AddOnEntitlementDto] = Field(default_factory=list)
 
 
-class AddOnPriceDto(BaseDto):
+class AddOnPriceOverrideDto(BaseDto):
     currency: Currency
     price: Decimal
 
@@ -110,7 +110,8 @@ class AddOnDto(BaseDto, TimestampMixin):
     amount: int
     order_index: int = 0
     is_active: bool = False
-    prices: list[AddOnPriceDto] = Field(default_factory=list)
+    base_price: Decimal
+    overrides: list[AddOnPriceOverrideDto] = Field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -151,6 +152,7 @@ class CreateAddOnDto:
     name: str
     type: AddOnType
     amount: int
+    base_price: Decimal
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -163,15 +165,17 @@ class UpdateAddOnDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class SetAddOnPriceDto:
-    currency: Currency
-    price: Decimal
+class SetAddOnBasePriceDto:
+    addon_id: int
+    base_price: Decimal
 
 
 @dataclass(frozen=True, kw_only=True)
-class SetAddOnPricesDto:
+class SetAddOnPriceOverrideDto:
     addon_id: int
-    prices: list[SetAddOnPriceDto]
+    currency: Currency
+    price: Optional[Decimal]
+    anchor: Currency
 
 
 @dataclass(frozen=True, kw_only=True)

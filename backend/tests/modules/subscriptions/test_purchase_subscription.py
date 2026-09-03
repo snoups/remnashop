@@ -20,7 +20,6 @@ from app.modules.plans.dto import (
     PlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -59,13 +58,7 @@ async def _create_plan(plan_repository: PlanRepository, public_code: str = "basi
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -741,13 +734,7 @@ async def test_change_from_trial_gives_no_credit(
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=trial_plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -885,13 +872,7 @@ async def test_concurrent_new_purchases_never_exceed_the_cap(
                 SetPlanDurationsDto(
                     plan_id=plan.id,
                     durations=[
-                        SetPlanDurationDto(
-                            days=30,
-                            order_index=0,
-                            prices=[
-                                SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))
-                            ],
-                        )
+                        SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))
                     ],
                 )
             )
@@ -1391,7 +1372,12 @@ async def test_change_does_not_reparent_addon_entitlement_to_the_new_row(
         ),
     )
     addon = await addon_repository.create(
-        CreateAddOnDto(name="reparent-traffic-addon", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="reparent-traffic-addon",
+            type=AddOnType.TRAFFIC,
+            amount=50,
+            base_price=Decimal("1.99"),
+        )
     )
     grant_use_case = GrantAddOnUseCase(
         subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
@@ -1467,7 +1453,12 @@ async def test_trial_upgrade_does_not_reparent_addon_entitlement_to_the_new_row(
         ),
     )
     addon = await addon_repository.create(
-        CreateAddOnDto(name="reparent-trial-devices-addon", type=AddOnType.DEVICES, amount=2)
+        CreateAddOnDto(
+            name="reparent-trial-devices-addon",
+            type=AddOnType.DEVICES,
+            amount=2,
+            base_price=Decimal("0.99"),
+        )
     )
     grant_use_case = GrantAddOnUseCase(
         subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher

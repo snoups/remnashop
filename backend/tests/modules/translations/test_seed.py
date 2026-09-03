@@ -71,6 +71,21 @@ async def test_seeding_does_not_resurrect_a_removed_locale(
     assert await translations_repository.get(Locale.RU, "command", "menu") is None
 
 
+async def test_seeds_menu_ftl_alongside_commands_ftl(
+    tmp_path: Path,
+    config: AppConfig,
+    translations_repository: TranslationsRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    seed_config = _seed_config(config, tmp_path)
+    (tmp_path / "translations" / "en" / "menu.ftl").write_text("msg-main-menu = Main menu\n")
+
+    await ensure_translations_seeded(seed_config, translations_repository, settings_repository)
+
+    entry = await translations_repository.get(Locale.EN, "msg-main-menu", "")
+    assert entry is not None and entry.value == "Main menu"
+
+
 async def test_seeding_only_activates_locales_with_a_seed_file(
     tmp_path: Path,
     config: AppConfig,

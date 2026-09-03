@@ -1,0 +1,204 @@
+from decimal import Decimal
+from uuid import uuid4
+
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db.uow import UnitOfWork
+from app.core.enums import Currency, PaymentGatewayType, PlanType, PurchaseType, Role, RoundingMode
+from app.core.ports import EventPublisher
+from app.modules.gateways.repository import GatewaysRepository
+from app.modules.payments.dto import CreateCheckoutDto, PaymentOrderDto
+from app.modules.payments.repository import PaymentOrderRepository
+from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
+from app.modules.plans.api.schemas import to_public_duration_items
+from app.modules.plans.dto import (
+    CreatePlanDto,
+    PlanDto,
+    SetPlanDurationDto,
+    SetPlanDurationsDto,
+    UpdatePlanDto,
+    UpdatePlanSquadsDto,
+)
+from app.modules.plans.repository import PlanRepository
+from app.modules.plans.usecases import ListActivePlansUseCase
+from app.modules.pricing.dto import SwitchAnchorCurrencyDto, UpdateCurrencyRateDto
+from app.modules.pricing.repository import PricingRepository
+from app.modules.pricing.usecases import SwitchAnchorCurrencyUseCase, UpdateCurrencyRateUseCase
+from app.modules.referrals.repository import ReferralRepository
+from app.modules.settings.repository import SettingsRepository
+from app.modules.subscriptions.addon_repository import AddOnRepository
+from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.repository import UserRepository
+
+OWNER = UserDto(name="owner", role=Role.OWNER)
+
+
+class _FakeGateway:
+    async def create_payment(
+        self, order: PaymentOrderDto, settings: dict[str, str]
+    ) -> tuple[str, str]:
+        return "yk-fake-id", "https://yookassa.ru/pay/fake"
+
+    async def verify_payment(self, external_payment_id: str, settings: dict[str, str]) -> bool:
+        raise NotImplementedError
+
+
+@pytest.fixture
+def payment_order_repository(session: AsyncSession) -> PaymentOrderRepository:
+    return PaymentOrderRepository(session)
+
+
+async def _create_active_plan(plan_repository: PlanRepository, public_code: str) -> PlanDto:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code=public_code,
+            name="Integration Plan",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=created.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("2.00"))],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=created.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    return await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
+
+
+async def _rub_catalog_price(
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
+    pricing_repository: PricingRepository,
+) -> Decimal:
+    list_active_plans = ListActivePlansUseCase(
+        plan_repository, subscription_repository, referral_repository
+    )
+    plans = await list_active_plans(OWNER)
+    catalog_plan = next(p for p in plans if p.id == plan.id)
+    rates = await pricing_repository.get_rate_table()
+    item = to_public_duration_items(catalog_plan.durations, rates)[0]
+    return next(price for price in item.prices if price.currency is Currency.RUB).price
+
+
+async def test_rate_change_moves_catalog_but_not_existing_order(
+    plan_repository: PlanRepository,
+    pricing_repository: PricingRepository,
+    payment_order_repository: PaymentOrderRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
+    gateways_repository: GatewaysRepository,
+    settings_repository: SettingsRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.modules.payments.usecases.create_checkout.YooKassaGateway", lambda: _FakeGateway()
+    )
+
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("90"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+
+    user = await user_repository.create(
+        CreateUserDto(name="integration-buyer", telegram_id=800_001)
+    )
+    plan = await _create_active_plan(plan_repository, "integration-order-plan")
+
+    create_checkout = CreateCheckoutUseCase(
+        plan_repository,
+        user_repository,
+        gateways_repository,
+        payment_order_repository,
+        subscription_repository,
+        settings_repository,
+        referral_repository,
+        pricing_repository,
+        uow,
+    )
+    result = await create_checkout(
+        user,
+        CreateCheckoutDto(
+            user_id=user.id,
+            plan_id=plan.id,
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+        ),
+    )
+
+    order = await payment_order_repository.get_by_id(result.order_id)
+    assert order.base_price == Decimal("180")  # 2.00 * 90
+
+    await UpdateCurrencyRateUseCase(pricing_repository, uow, event_publisher)(
+        OWNER,
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("100"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        ),
+    )
+
+    catalog_price = await _rub_catalog_price(
+        plan, plan_repository, subscription_repository, referral_repository, pricing_repository
+    )
+    assert catalog_price == Decimal("200")  # 2.00 * 100
+
+    reloaded_order = await payment_order_repository.get_by_id(result.order_id)
+    assert reloaded_order.base_price == Decimal("180")
+
+
+async def test_switch_anchor_leaves_catalog_stable(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("95"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    plan = await _create_active_plan(plan_repository, "integration-anchor-plan")
+
+    before = await _rub_catalog_price(
+        plan, plan_repository, subscription_repository, referral_repository, pricing_repository
+    )
+
+    await SwitchAnchorCurrencyUseCase(
+        pricing_repository, plan_repository, addon_repository, uow, event_publisher
+    )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
+
+    after = await _rub_catalog_price(
+        plan, plan_repository, subscription_repository, referral_repository, pricing_repository
+    )
+
+    assert abs(after - before) <= Decimal("1")

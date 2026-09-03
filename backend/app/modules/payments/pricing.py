@@ -1,40 +1,21 @@
-from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
-from typing import Final
+from decimal import Decimal
 
 from app.core.enums import Currency, DiscountSource
 from app.core.exceptions import ValidationError
 from app.modules.payments.dto import PriceQuote
 from app.modules.plans import PlanDto
+from app.modules.pricing import CurrencyRateTable, resolve_price, round_amount
 from app.modules.users import UserDto
 
-_MIN_UNIT_RUB_XTR: Final[Decimal] = Decimal("1")
-_MIN_UNIT_OTHER: Final[Decimal] = Decimal("0.01")
 
-
-def _apply_currency_rules(amount: Decimal, currency: Currency) -> Decimal:
-    if currency in (Currency.RUB, Currency.XTR):
-        amount = amount.to_integral_value(rounding=ROUND_DOWN)
-        min_amount = _MIN_UNIT_RUB_XTR
-    else:
-        amount = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        min_amount = _MIN_UNIT_OTHER
-
-    if amount < min_amount:
-        amount = min_amount
-    return amount
-
-
-def _base_price(plan: PlanDto, duration_days: int, currency: Currency) -> Decimal:
+def _base_price(
+    plan: PlanDto, duration_days: int, currency: Currency, rates: CurrencyRateTable
+) -> Decimal:
     for duration in plan.durations:
         if duration.days != duration_days:
             continue
-        for price in duration.prices:
-            if price.currency is currency:
-                return price.price
-        raise ValidationError(
-            f"Plan '{plan.public_code}' has no price for currency '{currency.value}' "
-            f"at duration '{duration_days}' days"
-        )
+        override = next((o.price for o in duration.overrides if o.currency is currency), None)
+        return resolve_price(duration.base_price, currency, override, rates)
     raise ValidationError(f"Plan '{plan.public_code}' has no duration of '{duration_days}' days")
 
 
@@ -49,8 +30,10 @@ def _effective_discount(user: UserDto) -> tuple[int, DiscountSource]:
     return percent, DiscountSource.PURCHASE
 
 
-def quote_price(plan: PlanDto, duration_days: int, currency: Currency, user: UserDto) -> PriceQuote:
-    base_price = _base_price(plan, duration_days, currency)
+def quote_price(
+    plan: PlanDto, duration_days: int, currency: Currency, user: UserDto, rates: CurrencyRateTable
+) -> PriceQuote:
+    base_price = _base_price(plan, duration_days, currency, rates)
     discount_percent, discount_source = _effective_discount(user)
 
     if discount_percent >= 100:
@@ -61,8 +44,11 @@ def quote_price(plan: PlanDto, duration_days: int, currency: Currency, user: Use
             final_price=Decimal(0),
         )
 
-    discounted = base_price * (Decimal(100) - Decimal(discount_percent)) / Decimal(100)
-    final_price = _apply_currency_rules(discounted, currency)
+    if discount_percent == 0:
+        final_price = base_price
+    else:
+        discounted = base_price * (Decimal(100) - Decimal(discount_percent)) / Decimal(100)
+        final_price = round_amount(discounted, rates.for_currency(currency), charm=False)
 
     return PriceQuote(
         base_price=base_price,

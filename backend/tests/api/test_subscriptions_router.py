@@ -209,18 +209,18 @@ async def test_owner_can_manage_addon_lifecycle(
     create_response = await client.post(
         f"{API_V1}/addons",
         headers=headers,
-        json={"name": "traffic-10gb", "type": "TRAFFIC", "amount": 10},
+        json={"name": "traffic-10gb", "type": "TRAFFIC", "amount": 10, "base_price": "1.99"},
     )
     assert create_response.status_code == 201
     addon_id = create_response.json()["id"]
 
-    prices_response = await client.put(
-        f"{API_V1}/addons/{addon_id}/prices",
+    base_price_response = await client.put(
+        f"{API_V1}/addons/{addon_id}/base-price",
         headers=headers,
-        json={"prices": [{"currency": "RUB", "price": "99.00"}]},
+        json={"base_price": "2.49"},
     )
-    assert prices_response.status_code == 200
-    assert prices_response.json()["prices"][0]["price"] == "99.00"
+    assert base_price_response.status_code == 200
+    assert base_price_response.json()["base_price"] == "2.49"
 
     delete_response = await client.delete(f"{API_V1}/addons/{addon_id}", headers=headers)
     assert delete_response.status_code == 204

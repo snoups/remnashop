@@ -22,7 +22,6 @@ from app.modules.plans.dto import (
     CreatePlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
@@ -115,7 +114,9 @@ async def test_create_traffic_promocode_requires_matching_addon_type(
 ) -> None:
     addon_repository = AddOnRepository(promocode_repository.session)
     devices_addon = await addon_repository.create(
-        CreateAddOnDto(name="Bonus devices", type=AddOnType.DEVICES, amount=2)
+        CreateAddOnDto(
+            name="Bonus devices", type=AddOnType.DEVICES, amount=2, base_price=Decimal("0.99")
+        )
     )
     use_case = CreatePromocodeUseCase(
         promocode_repository, addon_repository, PlanRepository(promocode_repository.session), uow
@@ -137,7 +138,9 @@ async def test_create_traffic_promocode_with_matching_addon_succeeds(
 ) -> None:
     addon_repository = AddOnRepository(promocode_repository.session)
     traffic_addon = await addon_repository.create(
-        CreateAddOnDto(name="Bonus traffic", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="Bonus traffic", type=AddOnType.TRAFFIC, amount=50, base_price=Decimal("1.99")
+        )
     )
     use_case = CreatePromocodeUseCase(
         promocode_repository, addon_repository, PlanRepository(promocode_repository.session), uow
@@ -324,13 +327,7 @@ async def test_activate_subscription_reward_creates_new_subscription(
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -391,13 +388,7 @@ async def test_activate_subscription_reward_requires_a_referrer_for_invited_plan
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -688,13 +679,7 @@ async def test_activate_duration_reward_extends_subscription_expiry(
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -765,13 +750,7 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -802,7 +781,9 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
 
     addon_repository = AddOnRepository(promocode_repository.session)
     traffic_addon = await addon_repository.create(
-        CreateAddOnDto(name="Bonus traffic", type=AddOnType.TRAFFIC, amount=50)
+        CreateAddOnDto(
+            name="Bonus traffic", type=AddOnType.TRAFFIC, amount=50, base_price=Decimal("1.99")
+        )
     )
     await promocode_repository.create(
         CreatePromocodeDto(

@@ -38,6 +38,7 @@ from app.modules.gateways.repository import GatewaysRepository
 from app.modules.oauth.providers.state_store import OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing.repository import PricingRepository
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
@@ -118,6 +119,11 @@ def event_publisher(session: AsyncSession) -> EventPublisher:
 @pytest.fixture
 def settings_repository(session: AsyncSession) -> SettingsRepository:
     return SettingsRepository(session)
+
+
+@pytest.fixture
+def pricing_repository(session: AsyncSession) -> PricingRepository:
+    return PricingRepository(session)
 
 
 @pytest.fixture

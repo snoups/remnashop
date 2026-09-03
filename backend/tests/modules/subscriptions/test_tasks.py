@@ -12,7 +12,6 @@ from app.modules.plans.dto import (
     CreatePlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
-    SetPlanPriceDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -70,13 +69,7 @@ async def test_purchase_subscription_task_body_creates_a_subscription(
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -128,13 +121,7 @@ async def test_grant_addon_task_body_grants_an_entitlement(
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[
-                SetPlanDurationDto(
-                    days=30,
-                    order_index=0,
-                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
-                )
-            ],
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
         )
     )
     await plan_repository.update_squads(
@@ -160,7 +147,9 @@ async def test_grant_addon_task_body_grants_an_entitlement(
         target_subscription_id=None,
     )
     addon = await addon_repository.create(
-        CreateAddOnDto(name="task-addon", type=AddOnType.TRAFFIC, amount=25)
+        CreateAddOnDto(
+            name="task-addon", type=AddOnType.TRAFFIC, amount=25, base_price=Decimal("1.99")
+        )
     )
 
     granted = await grant_addon(
