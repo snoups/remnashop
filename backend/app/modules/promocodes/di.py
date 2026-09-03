@@ -8,6 +8,7 @@ from app.modules.promocodes.usecases import (
     GeneratePromocodeCodeUseCase,
     ListPromocodesUseCase,
     UpdatePromocodeUseCase,
+    ValidatePromocodeUseCase,
 )
 
 
@@ -21,6 +22,7 @@ class PromocodesProvider(Provider):
     list_promocodes_use_case = provide(ListPromocodesUseCase)
     generate_promocode_code_use_case = provide(GeneratePromocodeCodeUseCase)
     activate_promocode_use_case = provide(ActivatePromocodeUseCase)
+    validate_promocode_use_case = provide(ValidatePromocodeUseCase)
 
 
 def get_promocodes_providers() -> list[Provider]:

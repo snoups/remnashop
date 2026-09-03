@@ -62,3 +62,9 @@ class User(BaseSql, TimestampMixin):
     # under a UNIQUE index.
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
     points: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal(0), server_default="0")
+    # One-way latch: True until the user's first trial activation, then
+    # never re-derived from subscription history (a trial subscription can
+    # later become DELETED via a trial->paid conversion -- see
+    # PurchaseSubscriptionUseCase._purchase_new -- so "has a trial row"
+    # would give the wrong answer post-conversion).
+    is_trial_available: Mapped[bool] = mapped_column(default=True, server_default="true")

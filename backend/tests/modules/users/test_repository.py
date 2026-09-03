@@ -249,3 +249,19 @@ async def test_credit_points_adds_to_existing_points(user_repository: UserReposi
     updated = await user_repository.get_by_id(created.id)
     assert updated is not None
     assert updated.points == Decimal("20.00")
+
+
+async def test_update_fields_sets_is_trial_available_false(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    created = await _create_user(user_repository, uow, name="trial-user")
+    assert created.is_trial_available is True
+
+    async with uow:
+        updated = await user_repository.update_fields(
+            created.id, UpdateUserDto(is_trial_available=False)
+        )
+        await uow.commit()
+
+    assert updated is not None
+    assert updated.is_trial_available is False

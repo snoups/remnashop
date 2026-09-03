@@ -104,7 +104,15 @@ async def get_shop_settings(
     actor: UserDto = Depends(require_admin),
 ) -> ShopSettingsResponse:
     settings = await use_case(actor)
-    return ShopSettingsResponse(max_active_subscriptions=settings.max_active_subscriptions)
+    return ShopSettingsResponse(
+        max_active_subscriptions=settings.max_active_subscriptions,
+        device_single_reset_enabled=settings.device_single_reset_enabled,
+        device_single_reset_cooldown_hours=settings.device_single_reset_cooldown_hours,
+        device_all_reset_enabled=settings.device_all_reset_enabled,
+        device_all_reset_cooldown_hours=settings.device_all_reset_cooldown_hours,
+        link_reset_enabled=settings.link_reset_enabled,
+        link_reset_cooldown_hours=settings.link_reset_cooldown_hours,
+    )
 
 
 @router.put("/shop", response_model=ShopSettingsResponse)
@@ -116,11 +124,28 @@ async def update_shop_settings(
 ) -> ShopSettingsResponse:
     try:
         settings = await use_case(
-            actor, UpdateShopSettingsDto(max_active_subscriptions=payload.max_active_subscriptions)
+            actor,
+            UpdateShopSettingsDto(
+                max_active_subscriptions=payload.max_active_subscriptions,
+                device_single_reset_enabled=payload.device_single_reset_enabled,
+                device_single_reset_cooldown_hours=payload.device_single_reset_cooldown_hours,
+                device_all_reset_enabled=payload.device_all_reset_enabled,
+                device_all_reset_cooldown_hours=payload.device_all_reset_cooldown_hours,
+                link_reset_enabled=payload.link_reset_enabled,
+                link_reset_cooldown_hours=payload.link_reset_cooldown_hours,
+            ),
         )
     except ValidationError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    return ShopSettingsResponse(max_active_subscriptions=settings.max_active_subscriptions)
+    return ShopSettingsResponse(
+        max_active_subscriptions=settings.max_active_subscriptions,
+        device_single_reset_enabled=settings.device_single_reset_enabled,
+        device_single_reset_cooldown_hours=settings.device_single_reset_cooldown_hours,
+        device_all_reset_enabled=settings.device_all_reset_enabled,
+        device_all_reset_cooldown_hours=settings.device_all_reset_cooldown_hours,
+        link_reset_enabled=settings.link_reset_enabled,
+        link_reset_cooldown_hours=settings.link_reset_cooldown_hours,
+    )
 
 
 @router.post("/bot/restart", status_code=status.HTTP_202_ACCEPTED)

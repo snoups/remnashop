@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
+from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -443,6 +444,83 @@ async def test_for_update_reads_see_fresh_data_not_identity_map_stale(
         locked = await subscription_repository.get_by_id_for_update(created.id)
 
     assert locked.status == SubscriptionStatus.LIMITED
+
+
+async def test_get_by_remnawave_user_id_ignores_deleted_rows_sharing_the_uuid(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="dup-uuid-buyer"))
+    dead = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=9001,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=10,
+            device_limit=1,
+            traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
+            is_trial=True,
+            internal_squads=[],
+            external_squad=None,
+            expire_at=datetime_now() + timedelta(days=1),
+            url="https://fake-panel.test/sub/dead",
+            plan_snapshot=make_plan_snapshot(is_trial=True),
+        )
+    )
+    await subscription_repository.mark_deleted(dead.id)
+    live = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=9001,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
+            is_trial=False,
+            internal_squads=[],
+            external_squad=None,
+            expire_at=datetime_now() + timedelta(days=30),
+            url="https://fake-panel.test/sub/live",
+            plan_snapshot=make_plan_snapshot(is_trial=False),
+        )
+    )
+
+    found = await subscription_repository.get_by_remnawave_user_id(9001)
+
+    assert found is not None
+    assert found.id == live.id
+
+
+async def test_list_paginated_excludes_deleted_by_default(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="list-default-buyer"))
+    dead = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=9101,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=10,
+            device_limit=1,
+            traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
+            is_trial=False,
+            internal_squads=[],
+            external_squad=None,
+            expire_at=datetime_now() + timedelta(days=1),
+            url="https://fake-panel.test/sub/dead2",
+            plan_snapshot=make_plan_snapshot(is_trial=False),
+        )
+    )
+    await subscription_repository.mark_deleted(dead.id)
+
+    items, total = await subscription_repository.list_paginated(status=None)
+    assert dead.id not in [item.id for item in items]
+
+    deleted_items, deleted_total = await subscription_repository.list_paginated(
+        status=SubscriptionStatus.DELETED
+    )
+    assert dead.id in [item.id for item in deleted_items]
 
 
 async def test_delete_stale_idempotency_keys_removes_only_old_rows(

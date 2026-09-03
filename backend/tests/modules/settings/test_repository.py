@@ -421,7 +421,15 @@ async def test_update_shop_settings_to_unlimited(
     settings_repository: SettingsRepository,
 ) -> None:
     settings = await settings_repository.update_shop_settings(
-        UpdateShopSettingsDto(max_active_subscriptions=None)
+        UpdateShopSettingsDto(
+            max_active_subscriptions=None,
+            device_single_reset_enabled=True,
+            device_single_reset_cooldown_hours=0,
+            device_all_reset_enabled=True,
+            device_all_reset_cooldown_hours=0,
+            link_reset_enabled=True,
+            link_reset_cooldown_hours=0,
+        )
     )
 
     assert settings.max_active_subscriptions is None
@@ -432,7 +440,40 @@ async def test_update_shop_settings_to_a_specific_cap(
     settings_repository: SettingsRepository,
 ) -> None:
     settings = await settings_repository.update_shop_settings(
-        UpdateShopSettingsDto(max_active_subscriptions=10)
+        UpdateShopSettingsDto(
+            max_active_subscriptions=10,
+            device_single_reset_enabled=True,
+            device_single_reset_cooldown_hours=0,
+            device_all_reset_enabled=True,
+            device_all_reset_cooldown_hours=0,
+            link_reset_enabled=True,
+            link_reset_cooldown_hours=0,
+        )
     )
 
     assert settings.max_active_subscriptions == 10
+
+
+async def test_shop_settings_round_trips_reset_cooldowns(
+    settings_repository: SettingsRepository,
+) -> None:
+    default = await settings_repository.get_shop_settings()
+    assert default.device_single_reset_enabled is True
+    assert default.device_single_reset_cooldown_hours == 0
+
+    updated = await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=default.max_active_subscriptions,
+            device_single_reset_enabled=False,
+            device_single_reset_cooldown_hours=12,
+            device_all_reset_enabled=True,
+            device_all_reset_cooldown_hours=24,
+            link_reset_enabled=True,
+            link_reset_cooldown_hours=6,
+        )
+    )
+
+    assert updated.device_single_reset_enabled is False
+    assert updated.device_single_reset_cooldown_hours == 12
+    assert updated.device_all_reset_cooldown_hours == 24
+    assert updated.link_reset_cooldown_hours == 6

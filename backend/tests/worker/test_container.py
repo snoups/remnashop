@@ -7,6 +7,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.event_bus import EventBus
 from app.core.ports import EventPublisher
 from app.modules.auth import SessionRepository
+from app.modules.backups import BackupRepository
 from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.payments.repository import PaymentOrderRepository
@@ -105,6 +106,17 @@ async def test_worker_container_resolves_prune_stale_sessions_task_dependencies(
     async with container(scope=Scope.REQUEST) as request_container:
         await request_container.get(SessionRepository)
         await request_container.get(UnitOfWork)
+    await container.close()
+
+
+async def test_worker_container_resolves_backup_task_dependencies(
+    config: AppConfig,
+) -> None:
+    container = create_worker_container(config)
+    async with container(scope=Scope.REQUEST) as request_container:
+        await request_container.get(BackupRepository)
+        await request_container.get(UnitOfWork)
+        await request_container.get(Redis)
     await container.close()
 
 

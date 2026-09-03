@@ -104,6 +104,7 @@ services:
     command: ["worker"]
     volumes:
       - ./logs:/opt/remnashop/logs
+      - remnashop-media-data:/opt/remnashop/media
     ports:
       - 127.0.0.1:${WORKER_METRICS_PORT:-9110}:${APP_METRICS_PORT:-9110}
     depends_on:

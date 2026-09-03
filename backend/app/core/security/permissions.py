@@ -80,6 +80,13 @@ class Permission(UpperStrEnum):
     REFERRALS_SETTINGS_VIEW = auto()
     REFERRALS_SETTINGS_MANAGE = auto()
     REFERRALS_POINTS_MANAGE = auto()
+    BACKUPS_VIEW = auto()
+    BACKUPS_SETTINGS_VIEW = auto()
+    BACKUPS_SETTINGS_MANAGE = auto()
+    BACKUPS_RUN_VIEW = auto()
+    BACKUPS_RUN_CREATE = auto()
+    BACKUPS_RUN_DOWNLOAD = auto()
+    BACKUPS_RUN_DELETE = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -153,6 +160,13 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.REFERRALS_SETTINGS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_SETTINGS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_POINTS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
+    Permission.BACKUPS_VIEW: PermissionMeta(resource="backups", kind="read"),
+    Permission.BACKUPS_SETTINGS_VIEW: PermissionMeta(resource="backups", kind="read"),
+    Permission.BACKUPS_SETTINGS_MANAGE: PermissionMeta(resource="backups", kind="write"),
+    Permission.BACKUPS_RUN_VIEW: PermissionMeta(resource="backups", kind="read"),
+    Permission.BACKUPS_RUN_CREATE: PermissionMeta(resource="backups", kind="write"),
+    Permission.BACKUPS_RUN_DOWNLOAD: PermissionMeta(resource="backups", kind="write"),
+    Permission.BACKUPS_RUN_DELETE: PermissionMeta(resource="backups", kind="write"),
 }
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA) | {

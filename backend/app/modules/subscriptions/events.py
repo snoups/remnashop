@@ -23,6 +23,7 @@ class SubscriptionRenewedEvent(UserEvent):
 class SubscriptionChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
     subscription_id: int
+    previous_subscription_id: int
     previous_plan_snapshot: dict[str, Any]
 
 

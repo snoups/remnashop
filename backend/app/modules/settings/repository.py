@@ -95,6 +95,12 @@ class SettingsRepository:
         return ShopSettingsDto(
             id=row.id,
             max_active_subscriptions=row.max_active_subscriptions,
+            device_single_reset_enabled=row.device_single_reset_enabled,
+            device_single_reset_cooldown_hours=row.device_single_reset_cooldown_hours,
+            device_all_reset_enabled=row.device_all_reset_enabled,
+            device_all_reset_cooldown_hours=row.device_all_reset_cooldown_hours,
+            link_reset_enabled=row.link_reset_enabled,
+            link_reset_cooldown_hours=row.link_reset_cooldown_hours,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -106,6 +112,12 @@ class SettingsRepository:
     async def update_shop_settings(self, data: UpdateShopSettingsDto) -> ShopSettingsDto:
         row = await self._get_or_create_singleton(ShopSettings)
         row.max_active_subscriptions = data.max_active_subscriptions
+        row.device_single_reset_enabled = data.device_single_reset_enabled
+        row.device_single_reset_cooldown_hours = data.device_single_reset_cooldown_hours
+        row.device_all_reset_enabled = data.device_all_reset_enabled
+        row.device_all_reset_cooldown_hours = data.device_all_reset_cooldown_hours
+        row.link_reset_enabled = data.link_reset_enabled
+        row.link_reset_cooldown_hours = data.link_reset_cooldown_hours
 
         await self.session.flush()
         await self.session.refresh(row)

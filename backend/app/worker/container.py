@@ -3,9 +3,11 @@ from dishka import AsyncContainer, Provider, Scope, make_async_container
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
 from app.modules.auth import SessionRepository
+from app.modules.backups import BackupRepository
 from app.modules.event_log import get_event_log_providers
 from app.modules.oauth import OAuthIdentityRepository
 from app.modules.payments import PaymentOrderRepository
+from app.modules.plans import PlanRepository
 from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscriptions_providers
@@ -49,6 +51,24 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
     oauth_identity_repository_provider = Provider(scope=Scope.REQUEST)
     oauth_identity_repository_provider.provide(OAuthIdentityRepository)
 
+    # BackupRepository is provided directly here, not via
+    # app.modules.backups.get_backups_providers() -- that provider also
+    # registers CreateBackupRunUseCase (which needs a RunBackupDispatch and
+    # the full request-scoped graph only api/telegram wire up). worker's two
+    # backup tasks only need the repository.
+    backup_repository_provider = Provider(scope=Scope.REQUEST)
+    backup_repository_provider.provide(BackupRepository)
+
+    # PlanRepository is provided directly here, not via
+    # app.modules.plans.get_plans_providers() -- no worker task needs the
+    # plans usecase graph. It's still required: SubscriptionsProvider now
+    # includes GetAvailableTrialUseCase, which depends on PlanRepository,
+    # and dishka validates every provide()-registered factory's full
+    # dependency graph at container build time regardless of whether a
+    # worker task actually calls that usecase.
+    plan_repository_provider = Provider(scope=Scope.REQUEST)
+    plan_repository_provider.provide(PlanRepository)
+
     context = {AppConfig: config}
     providers = [
         *get_core_providers(),
@@ -61,5 +81,7 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
         payment_order_repository_provider,
         session_repository_provider,
         oauth_identity_repository_provider,
+        backup_repository_provider,
+        plan_repository_provider,
     ]
     return make_async_container(*providers, context=context)

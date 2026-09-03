@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 from remnapy.enums import TrafficLimitStrategy
@@ -143,53 +142,3 @@ def test_reactivate_on_renew_rejects_deleted() -> None:
 
     with pytest.raises(ValidationError):
         state.reactivate_on_renew(datetime(2026, 10, 1))  # noqa: DTZ001
-
-
-def test_change_plan_in_place_applies_new_plan_on_the_same_state() -> None:
-    new_squad = uuid4()
-    state = _state(
-        status=SubscriptionStatus.ACTIVE,
-        expire_at=datetime(2026, 1, 31),  # noqa: DTZ001
-        plan_snapshot=_snapshot(plan_id=1, price_paid=Decimal("300.00")),
-    )
-    new_snapshot = _snapshot(
-        plan_id=2,
-        price_paid=Decimal("500.00"),
-        traffic_limit=200,
-        device_limit=5,
-        internal_squads=[new_squad],
-    )
-    new_expire_at = datetime(2026, 3, 1)  # noqa: DTZ001
-
-    new_state = state.change_plan_in_place(
-        new_plan_snapshot=new_snapshot, new_expire_at=new_expire_at
-    )
-
-    assert new_state.id == state.id
-    assert new_state.status is SubscriptionStatus.ACTIVE
-    assert new_state.plan_snapshot == new_snapshot
-    assert new_state.traffic_limit == 200
-    assert new_state.device_limit == 5
-    assert new_state.internal_squads == [new_squad]
-    assert new_state.expire_at == new_expire_at
-
-
-def test_change_plan_in_place_reactivates_a_limited_subscription() -> None:
-    state = _state(status=SubscriptionStatus.LIMITED)
-
-    new_state = state.change_plan_in_place(
-        new_plan_snapshot=_snapshot(),
-        new_expire_at=datetime(2026, 3, 1),  # noqa: DTZ001
-    )
-
-    assert new_state.status is SubscriptionStatus.ACTIVE
-
-
-def test_change_plan_in_place_rejects_a_deleted_subscription() -> None:
-    state = _state(status=SubscriptionStatus.DELETED)
-
-    with pytest.raises(ValidationError):
-        state.change_plan_in_place(
-            new_plan_snapshot=_snapshot(),
-            new_expire_at=datetime(2026, 3, 1),  # noqa: DTZ001
-        )

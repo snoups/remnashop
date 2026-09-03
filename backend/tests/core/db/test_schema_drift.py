@@ -7,6 +7,8 @@ from remnapy.enums import TrafficLimitStrategy
 
 from app.core.enums import (
     AddOnType,
+    BackupKind,
+    BackupRunStatus,
     BannerName,
     Currency,
     DiscountSource,
@@ -41,6 +43,8 @@ _MIGRATION: Final[Path] = (
 # this map fails test_every_migration_enum_is_mapped -- add the entry.
 _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
     "addontype": AddOnType,
+    "backupkind": BackupKind,
+    "backuprunstatus": BackupRunStatus,
     "bannername": BannerName,
     "currency": Currency,
     "discountsource": DiscountSource,

@@ -95,6 +95,7 @@ ban-relative-imports = "all"
 "app/core/db/migrations/versions/*.py" = ["E501"]
 # Interactive rescue tool -- print/input are the actual interface, not debug leftovers.
 "app/cli/__main__.py" = ["T201"]
+"app/cli/restore_backup.py" = ["T201"]
 # os.environ.setdefault(...) must run before the imports below it -- see the
 # comment in the file itself for why (a transitively-imported module-level
 # singleton bakes in the wrong host otherwise).

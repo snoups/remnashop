@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.modules.api_tokens.api import admin_router as api_tokens_admin_router
 from app.modules.auth.api import router as auth_router
 from app.modules.auth.api import sessions_router as auth_sessions_router
+from app.modules.backups.api import admin_router as backups_admin_router
 from app.modules.banners.api import admin_router as banners_admin_router
 from app.modules.event_log.api import event_log_admin_router
 from app.modules.gateways.api import admin_router as gateways_admin_router
@@ -47,6 +48,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     subscriptions_admin_router,
     subscriptions_addons_router,
     subscriptions_webhook_router,
+    backups_admin_router,
     banners_admin_router,
     event_log_admin_router,
     gateways_admin_router,

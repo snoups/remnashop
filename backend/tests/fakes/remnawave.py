@@ -6,6 +6,7 @@ from uuid import uuid4
 import httpx
 
 FakeUserStore = dict[int, dict[str, Any]]
+FakeHwidStore = dict[int, list[dict[str, Any]]]
 
 
 def _user_payload(
@@ -123,34 +124,99 @@ def _handle_disable_user(path: str, store: FakeUserStore) -> httpx.Response:
     return httpx.Response(200, json={"response": payload})
 
 
+def _handle_get_hwid_devices(path: str, devices: FakeHwidStore) -> httpx.Response:
+    user_id = int(path.rsplit("/", 1)[-1])
+    user_devices = devices.get(user_id, [])
+    return httpx.Response(
+        200, json={"response": {"total": len(user_devices), "devices": user_devices}}
+    )
+
+
+def _handle_delete_hwid_device(request: httpx.Request, devices: FakeHwidStore) -> httpx.Response:
+    body = json.loads(request.content)
+    user_id = body["userId"]
+    hwid = body["hwid"]
+    remaining = [d for d in devices.get(user_id, []) if d["hwid"] != hwid]
+    devices[user_id] = remaining
+    return httpx.Response(200, json={"response": {"total": len(remaining), "devices": remaining}})
+
+
+def _handle_delete_all_hwid_devices(
+    request: httpx.Request, devices: FakeHwidStore
+) -> httpx.Response:
+    body = json.loads(request.content)
+    user_id = body["userId"]
+    devices[user_id] = []
+    return httpx.Response(200, json={"response": {"total": 0, "devices": []}})
+
+
+def _handle_revoke_subscription(path: str, store: FakeUserStore) -> httpx.Response:
+    user_id = int(path.split("/")[-3])
+    payload = store.get(user_id)
+    if payload is None:
+        return httpx.Response(404, json={"message": f"user {user_id} not found"})
+    payload["shortUuid"] = uuid4().hex[:8]
+    payload["subscriptionUrl"] = (
+        f"https://fake-panel.test/sub/{payload['username']}-{payload['shortUuid']}"
+    )
+    payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    return httpx.Response(200, json={"response": payload})
+
+
+def _route_users(
+    request: httpx.Request, path: str, store: FakeUserStore, next_id: dict[str, int]
+) -> Optional[httpx.Response]:
+    if path == "/api/users" and request.method == "POST":
+        return _handle_create_user(request, store, next_id)
+    if path == "/api/users" and request.method == "PATCH":
+        return _handle_update_user(request, store)
+    if path.endswith("/actions/extend") and request.method == "POST":
+        return _handle_extend_user(path, request, store)
+    if path.endswith("/actions/disable") and request.method == "POST":
+        return _handle_disable_user(path, store)
+    if path.endswith("/actions/revoke") and request.method == "POST":
+        return _handle_revoke_subscription(path, store)
+    if path.startswith("/api/users/") and request.method == "GET":
+        return _handle_get_user(path, store)
+    if path.startswith("/api/users/") and request.method == "DELETE":
+        return _handle_delete_user(path, store)
+    return None
+
+
+def _route_hwid(
+    request: httpx.Request, path: str, hwid_store: FakeHwidStore
+) -> Optional[httpx.Response]:
+    if path == "/api/hwid/devices/delete" and request.method == "POST":
+        return _handle_delete_hwid_device(request, hwid_store)
+    if path == "/api/hwid/devices/delete-all" and request.method == "POST":
+        return _handle_delete_all_hwid_devices(request, hwid_store)
+    if path.startswith("/api/hwid/devices/") and request.method == "GET":
+        return _handle_get_hwid_devices(path, hwid_store)
+    return None
+
+
 def make_fake_remnawave_transport(
     store: Optional[FakeUserStore] = None,
-) -> tuple[httpx.MockTransport, FakeUserStore]:
-    """Fakes only the /users endpoints this plan's usecases actually call --
-    create/update/extend. Any other path 404s, on purpose: a usecase reaching
-    for an endpoint this fake doesn't know about should fail loudly in tests,
+    hwid_store: Optional[FakeHwidStore] = None,
+) -> tuple[httpx.MockTransport, FakeUserStore, FakeHwidStore]:
+    """Fakes the /users and /hwid/devices endpoints this plan's usecases
+    actually call. Any other path 404s, on purpose: a usecase reaching for
+    an endpoint this fake doesn't know about should fail loudly in tests,
     not silently succeed against an accidental default response."""
 
     if store is None:
         store = {}
+    if hwid_store is None:
+        hwid_store = {}
     next_id = {"value": 1000}
 
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
-
-        if path == "/api/users" and request.method == "POST":
-            return _handle_create_user(request, store, next_id)
-        if path == "/api/users" and request.method == "PATCH":
-            return _handle_update_user(request, store)
-        if path.endswith("/actions/extend") and request.method == "POST":
-            return _handle_extend_user(path, request, store)
-        if path.endswith("/actions/disable") and request.method == "POST":
-            return _handle_disable_user(path, store)
-        if path.startswith("/api/users/") and request.method == "GET":
-            return _handle_get_user(path, store)
-        if path.startswith("/api/users/") and request.method == "DELETE":
-            return _handle_delete_user(path, store)
-
+        response = _route_users(request, path, store, next_id) or _route_hwid(
+            request, path, hwid_store
+        )
+        if response is not None:
+            return response
         return httpx.Response(404, json={"error": f"fake transport: no handler for {path}"})
 
-    return httpx.MockTransport(handler), store
+    return httpx.MockTransport(handler), store, hwid_store

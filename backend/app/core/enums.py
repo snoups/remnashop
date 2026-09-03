@@ -123,6 +123,18 @@ class PaymentOrderStatus(UpperStrEnum):
     CANCELED = auto()
 
 
+class BackupKind(UpperStrEnum):
+    DATABASE = auto()
+    ASSETS = auto()
+
+
+class BackupRunStatus(UpperStrEnum):
+    PENDING = auto()
+    RUNNING = auto()
+    COMPLETED = auto()
+    FAILED = auto()
+
+
 class OAuthProvider(UpperStrEnum):
     GITHUB = auto()
     TELEGRAM = auto()

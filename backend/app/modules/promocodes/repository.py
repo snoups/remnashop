@@ -159,3 +159,23 @@ class PromocodeRepository:
         await self.session.flush()
         await self.session.refresh(row)
         return self._activation_to_dto(row)
+
+    async def get_activations_count(self, promocode_id: int) -> int:
+        result = await self.session.execute(
+            select(func.count())
+            .select_from(PromocodeActivation)
+            .where(PromocodeActivation.promocode_id == promocode_id)
+        )
+        return result.scalar_one()
+
+    async def get_activation_by_user(
+        self, promocode_id: int, user_id: int
+    ) -> Optional[PromocodeActivationDto]:
+        result = await self.session.execute(
+            select(PromocodeActivation).where(
+                PromocodeActivation.promocode_id == promocode_id,
+                PromocodeActivation.user_id == user_id,
+            )
+        )
+        row = result.scalar_one_or_none()
+        return self._activation_to_dto(row) if row is not None else None

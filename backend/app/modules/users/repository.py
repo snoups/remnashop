@@ -180,6 +180,8 @@ class UserRepository:
             db_user.personal_discount = data.personal_discount
         if data.purchase_discount is not None:
             db_user.purchase_discount = data.purchase_discount
+        if data.is_trial_available is not None:
+            db_user.is_trial_available = data.is_trial_available
 
         await self.session.flush()
         # updated_at is server-computed via onupdate=; refresh so the DTO

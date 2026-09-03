@@ -30,14 +30,25 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
     # read before the row has ever been created still sees the same value it
     # would once get-or-create runs.
     max_active_subscriptions: Optional[int] = 3
+    device_single_reset_enabled: bool = True
+    device_single_reset_cooldown_hours: int = 0
+    device_all_reset_enabled: bool = True
+    device_all_reset_cooldown_hours: int = 0
+    link_reset_enabled: bool = True
+    link_reset_cooldown_hours: int = 0
 
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateShopSettingsDto:
-    # Full replace, not a partial patch (unlike the Update*Dto above) --
-    # ShopSettings has exactly one tunable field, so there's no "don't touch"
-    # case to distinguish from "explicitly set to unlimited" (None).
+    # Full replace, not a partial patch -- matches max_active_subscriptions'
+    # existing convention on this DTO.
     max_active_subscriptions: Optional[int]
+    device_single_reset_enabled: bool
+    device_single_reset_cooldown_hours: int
+    device_all_reset_enabled: bool
+    device_all_reset_cooldown_hours: int
+    link_reset_enabled: bool
+    link_reset_cooldown_hours: int
 
 
 class BotCommandDto(BaseDto, TimestampMixin):

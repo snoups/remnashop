@@ -104,33 +104,6 @@ class SubscriptionState:
         assert_transition(self.status, target)
         return replace(self, status=target, expire_at=new_expire_at)
 
-    def change_plan_in_place(
-        self, *, new_plan_snapshot: PlanSnapshot, new_expire_at: datetime
-    ) -> SubscriptionState:
-        """Applies a CHANGE onto this same row and the same panel identity --
-        id and (at the repository/panel level) remnawave_user_id never
-        change, only the plan-driven fields do. Always lands ACTIVE,
-        matching the "you just paid, you get access" semantics a CHANGE has
-        always had, regardless of the pre-change status (LIMITED/DISABLED/
-        EXPIRED all resolve to ACTIVE here, same as a fresh purchase would).
-        new_expire_at is supplied, not computed here, because the caller
-        needs the identical value before this runs -- to mint/update the
-        panel identity with the correct final expire_at up front (see
-        calculate_proration_credit's docstring)."""
-        assert_transition(self.status, SubscriptionStatus.ACTIVE)
-        return replace(
-            self,
-            status=SubscriptionStatus.ACTIVE,
-            plan_snapshot=new_plan_snapshot,
-            traffic_limit=new_plan_snapshot.traffic_limit,
-            device_limit=new_plan_snapshot.device_limit,
-            traffic_limit_strategy=new_plan_snapshot.traffic_limit_strategy,
-            internal_squads=new_plan_snapshot.internal_squads,
-            external_squad=new_plan_snapshot.external_squad,
-            is_trial=new_plan_snapshot.is_trial,
-            expire_at=new_expire_at,
-        )
-
     def mark_deleted(self) -> SubscriptionState:
         assert_transition(self.status, SubscriptionStatus.DELETED)
         return replace(self, status=SubscriptionStatus.DELETED)

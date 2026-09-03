@@ -273,3 +273,44 @@ async def test_update_allowed_availability(promocode_repository: PromocodeReposi
 
     assert updated.availability == PromocodeAvailability.ALLOWED
     assert updated.allowed_user_ids == [7, 8]
+
+
+async def test_get_activations_count(
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="COUNT1", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=10
+        )
+    )
+    user = await user_repository.create(CreateUserDto(name="counter"))
+    assert await promocode_repository.get_activations_count(promo.id) == 0
+
+    await promocode_repository.claim_activation(
+        promocode_id=promo.id, user_id=user.id, subscription_id=None
+    )
+
+    assert await promocode_repository.get_activations_count(promo.id) == 1
+
+
+async def test_get_activation_by_user(
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="BYUSER1", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=10
+        )
+    )
+    user = await user_repository.create(CreateUserDto(name="by-user"))
+
+    assert await promocode_repository.get_activation_by_user(promo.id, user.id) is None
+
+    await promocode_repository.claim_activation(
+        promocode_id=promo.id, user_id=user.id, subscription_id=None
+    )
+
+    activation = await promocode_repository.get_activation_by_user(promo.id, user.id)
+    assert activation is not None
+    assert activation.user_id == user.id

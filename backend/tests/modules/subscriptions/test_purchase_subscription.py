@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.core.db.models import Plan, Subscription, User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, PlanType, PurchaseType, Role, SubscriptionStatus
+from app.core.enums import AddOnType, Currency, PlanType, PurchaseType, Role, SubscriptionStatus
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
@@ -26,14 +26,17 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.settings.repository import SettingsRepository
+from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import (
+    CreateAddOnDto,
     CreateSubscriptionDto,
+    GrantAddOnDto,
     PurchaseSubscriptionDto,
     SubscriptionDto,
 )
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
+from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
@@ -576,15 +579,18 @@ async def test_change_applies_proration_credit_as_extra_days(
         ),
     )
 
-    # CHANGE updates the same row and the same panel identity in place --
-    # no new subscription, no orphaned old one.
-    assert changed.id == old_subscription.id
+    # CHANGE now creates a new row sharing the old one's panel identity --
+    # the old row is kept as DELETED history, not mutated.
+    assert changed.id != old_subscription.id
     assert changed.remnawave_user_id == old_subscription.remnawave_user_id
     assert changed.status.value == "ACTIVE"
     assert changed.plan_snapshot.plan_id == new_plan.id
 
     stored = await subscription_repository.list_all()
-    assert len(stored) == 1
+    assert len(stored) == 2
+
+    old_after = await subscription_repository.get_by_id(old_subscription.id)
+    assert old_after.status.value == "DELETED"
 
     expected_days = 30 + 30  # duration_days + credit_days
     # Two independent floor-truncation points -- the credit calculation's own
@@ -651,6 +657,19 @@ async def test_change_credit_converts_at_list_price_not_the_discounted_price(
             target_subscription_id=old_subscription.id,
         ),
     )
+
+    # CHANGE now creates a new row sharing the old one's panel identity --
+    # the old row is kept as DELETED history, not mutated.
+    assert changed.id != old_subscription.id
+    assert changed.remnawave_user_id == old_subscription.remnawave_user_id
+    assert changed.status.value == "ACTIVE"
+    assert changed.plan_snapshot.plan_id == new_plan.id
+
+    stored = await subscription_repository.list_all()
+    assert len(stored) == 2
+
+    old_after = await subscription_repository.get_by_id(old_subscription.id)
+    assert old_after.status.value == "DELETED"
 
     expected_days = 30 + 30
     assert (changed.expire_at - datetime_now()).days in (
@@ -773,6 +792,19 @@ async def test_change_from_trial_gives_no_credit(
             target_subscription_id=trial_subscription.id,
         ),
     )
+
+    # CHANGE now creates a new row sharing the old one's panel identity --
+    # the old row is kept as DELETED history, not mutated.
+    assert changed.id != trial_subscription.id
+    assert changed.remnawave_user_id == trial_subscription.remnawave_user_id
+    assert changed.status.value == "ACTIVE"
+    assert changed.plan_snapshot.plan_id == new_plan.id
+
+    stored = await subscription_repository.list_all()
+    assert len(stored) == 2
+
+    old_after = await subscription_repository.get_by_id(trial_subscription.id)
+    assert old_after.status.value == "DELETED"
 
     # No credit -- expire_at is just now + 30 days, no bonus days.
     assert (changed.expire_at - datetime_now()).days in (29, 30)
@@ -1323,6 +1355,258 @@ async def test_renew_clears_purchase_discount(
     assert updated.purchase_discount == 0
 
 
+async def test_change_does_not_reparent_addon_entitlement_to_the_new_row(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    addon_repository: AddOnRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    buyer = await _create_buyer(user_repository, 440)
+    old_plan = await _create_plan(plan_repository, "reparent-old")
+    new_plan = await _create_plan(plan_repository, "reparent-new")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+    old_subscription = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                old_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+    addon = await addon_repository.create(
+        CreateAddOnDto(name="reparent-traffic-addon", type=AddOnType.TRAFFIC, amount=50)
+    )
+    grant_use_case = GrantAddOnUseCase(
+        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+    )
+    await grant_use_case.system(
+        GrantAddOnDto(subscription_id=old_subscription.id, addon_id=addon.id)
+    )
+
+    changed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                new_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.CHANGE,
+            target_subscription_id=old_subscription.id,
+        ),
+    )
+
+    # The entitlement stays on the OLD (now DELETED) row -- never reparented.
+    old_after = await subscription_repository.get_by_id(old_subscription.id)
+    assert old_after.status.value == "DELETED"
+    assert len(old_after.addon_entitlements) == 1
+    assert old_after.addon_entitlements[0].addon_id == addon.id
+
+    # The NEW row carries no bonus -- just the new plan's own base limits.
+    assert changed.addon_entitlements == []
+    assert changed.effective_traffic_limit == new_plan.traffic_limit
+    assert changed.effective_device_limit == new_plan.device_limit
+
+
+async def test_trial_upgrade_does_not_reparent_addon_entitlement_to_the_new_row(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    addon_repository: AddOnRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    buyer = await _create_buyer(user_repository, 441)
+    trial_plan = await _create_plan(plan_repository, "reparent-trial-trial")
+    paid_plan = await _create_plan(plan_repository, "reparent-trial-paid")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+    trial = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                trial_plan,
+                price_paid=Decimal("0"),
+                currency=Currency.RUB,
+                duration_days=3,
+                is_trial=True,
+            ),
+            duration_days=3,
+            price_paid=Decimal("0"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+    addon = await addon_repository.create(
+        CreateAddOnDto(name="reparent-trial-devices-addon", type=AddOnType.DEVICES, amount=2)
+    )
+    grant_use_case = GrantAddOnUseCase(
+        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+    )
+    await grant_use_case.system(GrantAddOnDto(subscription_id=trial.id, addon_id=addon.id))
+
+    paid = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                paid_plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("299.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    old_trial = await subscription_repository.get_by_id(trial.id)
+    assert old_trial.status.value == "DELETED"
+    assert len(old_trial.addon_entitlements) == 1
+    assert old_trial.addon_entitlements[0].addon_id == addon.id
+
+    assert paid.addon_entitlements == []
+    assert paid.effective_traffic_limit == paid_plan.traffic_limit
+    assert paid.effective_device_limit == paid_plan.device_limit
+
+
+async def test_new_purchase_upgrades_an_active_trial_in_place(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    buyer = await _create_buyer(user_repository, 501)
+    trial_plan = await _create_plan(plan_repository, "trial-upgrade-trial")
+    paid_plan = await _create_plan(plan_repository, "trial-upgrade-paid")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+
+    trial = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                trial_plan,
+                price_paid=Decimal("0"),
+                currency=Currency.RUB,
+                duration_days=3,
+                is_trial=True,
+            ),
+            duration_days=3,
+            price_paid=Decimal("0"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+    assert trial.is_trial is True
+
+    paid = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                paid_plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("299.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    # New row, not a mutation of the trial's.
+    assert paid.id != trial.id
+    # Same panel identity/URL -- the whole point.
+    assert paid.remnawave_user_id == trial.remnawave_user_id
+    assert paid.url == trial.url
+    assert paid.is_trial is False
+
+    old_trial = await subscription_repository.get_by_id(trial.id)
+    assert old_trial.status.value == "DELETED"
+
+    stored = await subscription_repository.list_all()
+    assert len(stored) == 2
+
+
+async def test_new_purchase_without_a_trial_still_mints_a_fresh_panel_user(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    buyer = await _create_buyer(user_repository, 502)
+    plan = await _create_plan(plan_repository, "no-trial-new")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+
+    subscription = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("299.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    assert subscription.remnawave_user_id > 0
+    stored = await subscription_repository.list_all()
+    assert len(stored) == 1
+
+
 async def test_change_clears_purchase_discount(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
@@ -1360,7 +1644,7 @@ async def test_change_clears_purchase_discount(
     async with uow:
         await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
 
-    await use_case(
+    changed = await use_case(
         buyer,
         PurchaseSubscriptionDto(
             user_id=buyer.id,
@@ -1374,6 +1658,19 @@ async def test_change_clears_purchase_discount(
             target_subscription_id=old_subscription.id,
         ),
     )
+
+    # CHANGE now creates a new row sharing the old one's panel identity --
+    # the old row is kept as DELETED history, not mutated.
+    assert changed.id != old_subscription.id
+    assert changed.remnawave_user_id == old_subscription.remnawave_user_id
+    assert changed.status.value == "ACTIVE"
+    assert changed.plan_snapshot.plan_id == new_plan.id
+
+    stored = await subscription_repository.list_all()
+    assert len(stored) == 2
+
+    old_after = await subscription_repository.get_by_id(old_subscription.id)
+    assert old_after.status.value == "DELETED"
 
     updated = await user_repository.get_by_id(buyer.id)
     assert updated is not None

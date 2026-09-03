@@ -45,7 +45,7 @@ from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.translations.repository import TranslationsRepository
 from app.modules.users.repository import UserRepository
-from tests.fakes.remnawave import FakeUserStore, make_fake_remnawave_transport
+from tests.fakes.remnawave import FakeHwidStore, FakeUserStore, make_fake_remnawave_transport
 
 
 @pytest.fixture
@@ -188,7 +188,14 @@ def remnawave_store() -> FakeUserStore:
 
 
 @pytest.fixture
-def remnawave_sdk(remnawave_store: FakeUserStore) -> RemnawaveSDK:
-    transport, _ = make_fake_remnawave_transport(remnawave_store)
+def remnawave_hwid_store() -> FakeHwidStore:
+    return {}
+
+
+@pytest.fixture
+def remnawave_sdk(
+    remnawave_store: FakeUserStore, remnawave_hwid_store: FakeHwidStore
+) -> RemnawaveSDK:
+    transport, _, _ = make_fake_remnawave_transport(remnawave_store, remnawave_hwid_store)
     client = httpx.AsyncClient(transport=transport, base_url="http://fake-panel.test/api")
     return RemnawaveSDK(client=client)

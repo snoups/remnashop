@@ -23,10 +23,22 @@ class UpdateBotSettingsRequest(BaseModel):
 
 class ShopSettingsResponse(BaseModel):
     max_active_subscriptions: Optional[int]
+    device_single_reset_enabled: bool
+    device_single_reset_cooldown_hours: int
+    device_all_reset_enabled: bool
+    device_all_reset_cooldown_hours: int
+    link_reset_enabled: bool
+    link_reset_cooldown_hours: int
 
 
 class UpdateShopSettingsRequest(BaseModel):
     max_active_subscriptions: Optional[int] = Field(default=None, ge=1)
+    device_single_reset_enabled: bool = True
+    device_single_reset_cooldown_hours: int = Field(default=0, ge=0)
+    device_all_reset_enabled: bool = True
+    device_all_reset_cooldown_hours: int = Field(default=0, ge=0)
+    link_reset_enabled: bool = True
+    link_reset_cooldown_hours: int = Field(default=0, ge=0)
 
 
 class BotCommandItem(BaseModel):

@@ -45,7 +45,7 @@ class _TestRemnawaveProvider(Provider):
 
     @provide
     def get_remnawave(self) -> RemnawaveSDK:
-        transport, _ = make_fake_remnawave_transport(self._store)
+        transport, _, _ = make_fake_remnawave_transport(self._store)
         client = httpx.AsyncClient(transport=transport, base_url="http://fake-panel.test/api")
         return RemnawaveSDK(client=client)
 
@@ -190,7 +190,9 @@ async def test_owner_can_update_and_delete_subscription(
     delete_response = await client.delete(f"{API_V1}/subscriptions/{created.id}", headers=headers)
     assert delete_response.status_code == 204
 
-    list_response = await client.get(f"{API_V1}/subscriptions", headers=headers)
+    list_response = await client.get(
+        f"{API_V1}/subscriptions", headers=headers, params={"status": "DELETED"}
+    )
     assert list_response.json()["items"][0]["status"] == "DELETED"
 
 

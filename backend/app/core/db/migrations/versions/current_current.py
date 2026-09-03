@@ -126,6 +126,26 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
+        "backup_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("interval_hours", sa.Integer(), server_default="24", nullable=False),
+        sa.Column("max_files", sa.Integer(), server_default="7", nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "banners",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -487,6 +507,18 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("max_active_subscriptions", sa.Integer(), nullable=True),
         sa.Column(
+            "device_single_reset_enabled", sa.Boolean(), server_default="true", nullable=False
+        ),
+        sa.Column(
+            "device_single_reset_cooldown_hours", sa.Integer(), server_default="0", nullable=False
+        ),
+        sa.Column("device_all_reset_enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column(
+            "device_all_reset_cooldown_hours", sa.Integer(), server_default="0", nullable=False
+        ),
+        sa.Column("link_reset_enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("link_reset_cooldown_hours", sa.Integer(), server_default="0", nullable=False),
+        sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),
@@ -564,6 +596,7 @@ def upgrade() -> None:
         sa.Column("purchase_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
         sa.Column("points", sa.Numeric(precision=12, scale=2), server_default="0", nullable=False),
+        sa.Column("is_trial_available", sa.Boolean(), server_default="true", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -637,6 +670,38 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_api_tokens_token_hash"), "api_tokens", ["token_hash"], unique=True)
+    op.create_table(
+        "backup_runs",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("kind", sa.Enum("DATABASE", "ASSETS", name="backupkind"), nullable=False),
+        sa.Column(
+            "status",
+            sa.Enum("PENDING", "RUNNING", "COMPLETED", "FAILED", name="backuprunstatus"),
+            nullable=False,
+        ),
+        sa.Column("file_path", sa.String(length=1024), nullable=True),
+        sa.Column("size_bytes", sa.BigInteger(), nullable=True),
+        sa.Column("checksum_sha256", sa.String(length=64), nullable=True),
+        sa.Column("triggered_by", sa.Integer(), nullable=True),
+        sa.Column("error", sa.String(), nullable=True),
+        sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["triggered_by"], ["users.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_backup_runs_kind"), "backup_runs", ["kind"], unique=False)
+    op.create_index(op.f("ix_backup_runs_status"), "backup_runs", ["status"], unique=False)
     op.create_table(
         "event_outbox",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -850,10 +915,17 @@ def upgrade() -> None:
         op.f("ix_subscriptions_remnawave_user_id"),
         "subscriptions",
         ["remnawave_user_id"],
-        unique=True,
+        unique=False,
     )
     op.create_index(op.f("ix_subscriptions_status"), "subscriptions", ["status"], unique=False)
     op.create_index(op.f("ix_subscriptions_user_id"), "subscriptions", ["user_id"], unique=False)
+    op.create_index(
+        "ux_subscriptions_remnawave_user_id_live",
+        "subscriptions",
+        ["remnawave_user_id"],
+        unique=True,
+        postgresql_where=sa.text("status != 'DELETED'"),
+    )
     op.create_table(
         "user_sessions",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -1209,6 +1281,11 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_user_sessions_previous_refresh_token_hash"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_expires_at"), table_name="user_sessions")
     op.drop_table("user_sessions")
+    op.drop_index(
+        "ux_subscriptions_remnawave_user_id_live",
+        table_name="subscriptions",
+        postgresql_where=sa.text("status != 'DELETED'"),
+    )
     op.drop_index(op.f("ix_subscriptions_user_id"), table_name="subscriptions")
     op.drop_index(op.f("ix_subscriptions_status"), table_name="subscriptions")
     op.drop_index(op.f("ix_subscriptions_remnawave_user_id"), table_name="subscriptions")
@@ -1226,6 +1303,9 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_event_outbox_event_type"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
     op.drop_table("event_outbox")
+    op.drop_index(op.f("ix_backup_runs_status"), table_name="backup_runs")
+    op.drop_index(op.f("ix_backup_runs_kind"), table_name="backup_runs")
+    op.drop_table("backup_runs")
     op.drop_index(op.f("ix_api_tokens_token_hash"), table_name="api_tokens")
     op.drop_table("api_tokens")
     op.drop_index(op.f("ix_addon_prices_addon_id"), table_name="addon_prices")
@@ -1252,6 +1332,7 @@ def downgrade() -> None:
     op.drop_table("bot_settings")
     op.drop_table("bot_commands")
     op.drop_table("banners")
+    op.drop_table("backup_settings")
     op.drop_table("appearance_settings")
     op.drop_index(op.f("ix_addons_order_index"), table_name="addons")
     op.drop_index(op.f("ix_addons_name"), table_name="addons")

@@ -9,8 +9,8 @@ from packaging.version import Version
 BASE_DIR: Final[Path] = Path(__file__).resolve().parents[2]
 REPO_ROOT: Final[Path] = BASE_DIR.parent
 ASSETS_DIR: Final[Path] = BASE_DIR / "assets"
-BACKUP_DIR: Final[Path] = BASE_DIR / "backups"
 MEDIA_DIR: Final[Path] = BASE_DIR / "media"
+BACKUP_DIR: Final[Path] = MEDIA_DIR / "backups"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
 
 DOMAIN_REGEX: Final[Pattern[str]] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")

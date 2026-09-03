@@ -4,6 +4,7 @@ from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
+from app.modules.backups import get_backups_providers
 from app.modules.banners import get_banners_providers
 from app.modules.event_log import get_event_log_providers
 from app.modules.gateways import get_gateways_providers
@@ -29,6 +30,7 @@ def create_api_container(config: AppConfig) -> AsyncContainer:
         *get_plans_providers(),
         *get_promocodes_providers(),
         *get_referrals_providers(),
+        *get_backups_providers(),
         *get_subscriptions_providers(),
         *get_banners_providers(),
         *get_event_log_providers(),

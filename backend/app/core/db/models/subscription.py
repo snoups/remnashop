@@ -3,7 +3,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 from remnapy.enums import TrafficLimitStrategy
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, Index, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,15 +14,26 @@ from app.core.enums import SubscriptionStatus
 
 class Subscription(BaseSql, TimestampMixin):
     __tablename__ = "subscriptions"
+    __table_args__ = (
+        Index(
+            "ux_subscriptions_remnawave_user_id_live",
+            "remnawave_user_id",
+            unique=True,
+            postgresql_where=text(f"status != '{SubscriptionStatus.DELETED.name}'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     # Remnawave 3.x addresses users by numeric id, not UUID -- confirmed
     # against our own remnapy fork: UserResponseDto.id/UpdateUserRequestDto.id
-    # are both `int`. Unique: each Subscription mints its own panel identity,
-    # two rows must never point at the same one.
-    remnawave_user_id: Mapped[int] = mapped_column(unique=True, index=True)
+    # are both `int`. Two LIVE rows must never point at the same panel
+    # identity -- enforced below as a partial unique index, not a plain
+    # `unique=True`, because a trial->paid conversion or a plan CHANGE now
+    # replaces a row (marks it DELETED, inserts a new one reusing the same
+    # remnawave_user_id) instead of mutating it in place.
+    remnawave_user_id: Mapped[int] = mapped_column(index=True)
 
     status: Mapped[SubscriptionStatus] = mapped_column(index=True)
     is_trial: Mapped[bool] = mapped_column(default=False, server_default="false")

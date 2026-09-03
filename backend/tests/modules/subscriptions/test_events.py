@@ -33,6 +33,7 @@ def test_subscription_changed_event_carries_previous_snapshot() -> None:
     event = SubscriptionChangedEvent(
         user=_user(),
         subscription_id=1,
+        previous_subscription_id=0,
         previous_plan_snapshot={"plan_id": 1},
     )
     assert event.previous_plan_snapshot == {"plan_id": 1}
@@ -40,6 +41,18 @@ def test_subscription_changed_event_carries_previous_snapshot() -> None:
         "subscription_id",
         "previous_plan_snapshot",
     }
+
+
+def test_subscription_changed_event_carries_previous_subscription_id() -> None:
+    event = SubscriptionChangedEvent(
+        user=_user(),
+        subscription_id=2,
+        previous_subscription_id=1,
+        previous_plan_snapshot={"plan_id": 1},
+    )
+
+    assert event.subscription_id == 2
+    assert event.previous_subscription_id == 1
 
 
 def test_subscription_addon_granted_event_carries_addon_id() -> None:

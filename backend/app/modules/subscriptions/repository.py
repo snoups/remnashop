@@ -134,7 +134,14 @@ class SubscriptionRepository:
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[SubscriptionDto], int]:
-        filters = [Subscription.status == status] if status is not None else []
+        # status=None means "the live subscriptions", not "every row ever" --
+        # DELETED rows are now routine history (trial->paid conversions,
+        # plan CHANGEs), not just the rare explicit-delete case this default
+        # was written around. Pass status=DELETED explicitly to see them.
+        if status is None:
+            filters = [Subscription.status != SubscriptionStatus.DELETED]
+        else:
+            filters = [Subscription.status == status]
 
         count_stmt = select(func.count()).select_from(Subscription).where(*filters)
         total = await self.session.scalar(count_stmt)
@@ -162,6 +169,12 @@ class SubscriptionRepository:
         entitlements_by_subscription = await self._load_entitlements([row.id for row in rows])
         return [self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows]
 
+    async def get_single_active_subscription_or_raise(self, user_id: int) -> SubscriptionDto:
+        active = await self.get_active_by_user(user_id)
+        if not active:
+            raise NotFoundError(f"No active subscription for user '{user_id}'")
+        return active[0]
+
     async def has_any_subscription(self, user_id: int, *, include_trial: bool = True) -> bool:
         # Any row ever, regardless of status (including DELETED/EXPIRED) --
         # this answers "has this user ever purchased", not "does one still
@@ -176,7 +189,10 @@ class SubscriptionRepository:
 
     async def get_by_remnawave_user_id(self, remnawave_user_id: int) -> Optional[SubscriptionDto]:
         result = await self.session.execute(
-            select(Subscription).where(Subscription.remnawave_user_id == remnawave_user_id)
+            select(Subscription)
+            .where(Subscription.remnawave_user_id == remnawave_user_id)
+            .order_by(Subscription.status == SubscriptionStatus.DELETED, Subscription.id.desc())
+            .limit(1)
         )
         row = result.scalar_one_or_none()
         if row is None:
@@ -225,6 +241,8 @@ class SubscriptionRepository:
         result = await self.session.execute(
             select(Subscription)
             .where(Subscription.remnawave_user_id == remnawave_user_id)
+            .order_by(Subscription.status == SubscriptionStatus.DELETED, Subscription.id.desc())
+            .limit(1)
             .with_for_update()
             .execution_options(populate_existing=True)
         )
@@ -344,13 +362,31 @@ class SubscriptionRepository:
         entitlements_by_subscription = await self._load_entitlements([row.id])
         return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
 
+    async def mark_device_single_reset(self, subscription_id: int) -> None:
+        row = await self._get_or_raise(subscription_id)
+        row.device_single_reset_at = datetime_now()
+        await self.session.flush()
+
+    async def mark_device_all_reset(self, subscription_id: int) -> None:
+        row = await self._get_or_raise(subscription_id)
+        row.device_all_reset_at = datetime_now()
+        await self.session.flush()
+
+    async def mark_link_reset(self, subscription_id: int, *, new_url: str) -> None:
+        row = await self._get_or_raise(subscription_id)
+        row.url = new_url
+        row.link_reset_at = datetime_now()
+        await self.session.flush()
+
     async def apply_state(self, state: SubscriptionState) -> SubscriptionDto:
         row = await self._get_or_raise(state.id)
         row.status = state.status
         row.expire_at = state.expire_at
         row.plan_snapshot = state.plan_snapshot.to_json()
-        # No-op for sync_status/reactivate_on_renew (they never touch these),
-        # the actual write for change_plan_in_place.
+        # apply_state is only reachable via SubscriptionLifecycleService's
+        # sync_status/reactivate_on_renew, neither of which changes these
+        # fields on the SubscriptionState they pass in -- always a no-op
+        # write of the row's existing values.
         row.traffic_limit = state.traffic_limit
         row.device_limit = state.device_limit
         row.traffic_limit_strategy = state.traffic_limit_strategy

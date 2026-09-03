@@ -116,7 +116,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.local
-    <<: [*build-volumes, *common, *logging, *env]
+    <<: [*common, *logging, *env]
+    volumes:
+      - ./backend/app:/opt/remnashop/app
+      - ./backend/logs:/opt/remnashop/logs
+      - remnashop-media-data:/opt/remnashop/media
     command: ["worker"]
     ports:
       - 127.0.0.1:${WORKER_METRICS_PORT:-9110}:${APP_METRICS_PORT:-9110}

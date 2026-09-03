@@ -1,5 +1,4 @@
-from app.modules.subscriptions.addon_repository import AddOnRepository
-from app.modules.subscriptions.di import get_subscriptions_providers
+from app.modules.subscriptions.addon_repository import AddOnRepository  # noqa: I001
 from app.modules.subscriptions.dto import (
     AddOnDto,
     AddOnEntitlementDto,
@@ -19,6 +18,13 @@ from app.modules.subscriptions.dto import (
     UpdateSubscriptionSquadsDto,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
+
+# di imported after addon_repository/dto/repository above: app.modules.plans
+# and app.modules.referrals import SubscriptionRepository/dto types back
+# from this package, and di's own chain (usecases -> get_available_trial ->
+# plans -> plans.usecases.list_active_plans -> back into this module) can
+# re-enter before it finishes -- those names must already be bound.
+from app.modules.subscriptions.di import get_subscriptions_providers
 from app.modules.subscriptions.tasks import (
     grant_addon,
     grant_addon_task,
@@ -26,13 +32,23 @@ from app.modules.subscriptions.tasks import (
     purchase_subscription_task,
 )
 from app.modules.subscriptions.usecases import (
+    ActivateTrialSubscriptionDto,
+    ActivateTrialSubscriptionUseCase,
     CreateAddOnUseCase,
     DeleteAddOnUseCase,
+    DeleteAllDevicesUseCase,
+    DeleteDeviceDto,
+    DeleteDeviceUseCase,
     DeleteSubscriptionUseCase,
+    DeviceDto,
+    GetAvailableTrialResult,
+    GetAvailableTrialUseCase,
     GrantAddOnUseCase,
     ListAddOnsUseCase,
+    ListDevicesUseCase,
     ListSubscriptionsUseCase,
     PurchaseSubscriptionUseCase,
+    ReissueSubscriptionUseCase,
     ReorderAddOnsUseCase,
     SetAddOnPricesUseCase,
     SyncSubscriptionStatusUseCase,
@@ -42,6 +58,8 @@ from app.modules.subscriptions.usecases import (
 )
 
 __all__ = [
+    "ActivateTrialSubscriptionDto",
+    "ActivateTrialSubscriptionUseCase",
     "AddOnDto",
     "AddOnEntitlementDto",
     "AddOnPriceDto",
@@ -50,14 +68,22 @@ __all__ = [
     "CreateAddOnUseCase",
     "CreateSubscriptionDto",
     "DeleteAddOnUseCase",
+    "DeleteAllDevicesUseCase",
+    "DeleteDeviceDto",
+    "DeleteDeviceUseCase",
     "DeleteSubscriptionUseCase",
+    "DeviceDto",
+    "GetAvailableTrialResult",
+    "GetAvailableTrialUseCase",
     "GrantAddOnDto",
     "GrantAddOnUseCase",
     "ListAddOnsUseCase",
+    "ListDevicesUseCase",
     "ListSubscriptionsUseCase",
     "PlanSnapshot",
     "PurchaseSubscriptionDto",
     "PurchaseSubscriptionUseCase",
+    "ReissueSubscriptionUseCase",
     "ReorderAddOnsDto",
     "ReorderAddOnsUseCase",
     "SetAddOnPriceDto",

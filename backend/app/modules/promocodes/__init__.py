@@ -14,6 +14,8 @@ from app.modules.promocodes.usecases import (
     GeneratePromocodeCodeUseCase,
     ListPromocodesUseCase,
     UpdatePromocodeUseCase,
+    ValidatePromocodeDto,
+    ValidatePromocodeUseCase,
 )
 
 __all__ = [
@@ -29,5 +31,7 @@ __all__ = [
     "PromocodeRepository",
     "UpdatePromocodeDto",
     "UpdatePromocodeUseCase",
+    "ValidatePromocodeDto",
+    "ValidatePromocodeUseCase",
     "get_promocodes_providers",
 ]

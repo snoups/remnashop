@@ -5,6 +5,8 @@ from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.addon_price import AddOnPrice
 from app.core.db.models.api_token import ApiToken
 from app.core.db.models.appearance_settings import AppearanceSettings
+from app.core.db.models.backup_run import BackupRun
+from app.core.db.models.backup_settings import BackupSettings
 from app.core.db.models.banner import Banner
 from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_settings import BotSettings
@@ -36,6 +38,8 @@ __all__ = [
     "AddOnPrice",
     "ApiToken",
     "AppearanceSettings",
+    "BackupRun",
+    "BackupSettings",
     "Banner",
     "BotCommand",
     "BotSettings",

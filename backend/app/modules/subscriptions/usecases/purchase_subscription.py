@@ -107,6 +107,17 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         if data.target_subscription_id is not None:
             raise ValidationError("target_subscription_id is forbidden for a NEW purchase")
 
+        active_trial = next(
+            (
+                sub
+                for sub in await self._subscription_repository.get_active_by_user(data.user_id)
+                if sub.is_trial
+            ),
+            None,
+        )
+        if active_trial is not None:
+            return await self._upgrade_trial_in_place(actor, data, active_trial)
+
         plan = data.plan_snapshot
         username = _build_panel_username(data.user_id)
         expire_at = datetime_now() + timedelta(days=data.duration_days)
@@ -172,6 +183,76 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
 
         logger.info(
             f"{actor.log} Purchased subscription '{subscription.id}' (plan '{plan.plan_id}', NEW)"
+        )
+        return subscription
+
+    async def _upgrade_trial_in_place(
+        self, actor: UserDto, data: PurchaseSubscriptionDto, trial: SubscriptionDto
+    ) -> SubscriptionDto:
+        # Same panel identity, reconfigured for the purchased plan -- never
+        # create_user/delete_user here, the trial's own identity is reused.
+        plan = data.plan_snapshot
+        expire_at = datetime_now() + timedelta(days=data.duration_days)
+
+        panel_user = await self._remnawave_sdk.users.update_user(
+            UpdateUserRequestDto(
+                id=trial.remnawave_user_id,
+                expire_at=expire_at,
+                traffic_limit_bytes=plan.traffic_limit * GB_TO_BYTES,
+                hwid_device_limit=plan.device_limit,
+                traffic_limit_strategy=plan.traffic_limit_strategy,
+                active_internal_squads=plan.internal_squads or None,
+                external_squad_uuid=plan.external_squad,
+            )
+        )
+
+        try:
+            async with self._uow:
+                locked_trial = await self._subscription_repository.get_by_id_for_update(trial.id)
+                if locked_trial.status is SubscriptionStatus.DELETED:
+                    raise ValidationError(
+                        "Trial subscription was already converted or deleted while this "
+                        "purchase was in flight"
+                    )
+                await self._subscription_repository.mark_deleted(trial.id)
+                subscription = await self._subscription_repository.create(
+                    self._to_create_dto(data, panel_user)
+                )
+                if data.idempotency_key is not None:
+                    await self._subscription_repository.link_idempotency_key(
+                        data.idempotency_key, subscription.id
+                    )
+                await self._event_publisher.publish(
+                    SubscriptionPurchasedEvent(
+                        user=actor,
+                        subscription_id=subscription.id,
+                        plan_id=plan.plan_id,
+                        purchase_type=data.purchase_type.value,
+                    )
+                )
+                await self._user_repository.update_fields(
+                    data.user_id, UpdateUserDto(purchase_discount=0)
+                )
+        except Exception:
+            # Best-effort revert, never disable -- this panel identity still
+            # belongs to the (reverted) trial row, not an orphan.
+            with suppress(Exception):
+                await self._remnawave_sdk.users.update_user(
+                    UpdateUserRequestDto(
+                        id=trial.remnawave_user_id,
+                        expire_at=trial.expire_at,
+                        traffic_limit_bytes=trial.traffic_limit * GB_TO_BYTES,
+                        hwid_device_limit=trial.device_limit,
+                        traffic_limit_strategy=trial.traffic_limit_strategy,
+                        active_internal_squads=trial.internal_squads or None,
+                        external_squad_uuid=trial.external_squad,
+                    )
+                )
+            raise
+
+        logger.info(
+            f"{actor.log} Purchased subscription '{subscription.id}' "
+            f"(plan '{plan.plan_id}', upgraded from trial '{trial.id}')"
         )
         return subscription
 
@@ -260,10 +341,10 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         final_expire_at = now + timedelta(days=data.duration_days + credit_days)
 
         # Reuses old's own panel identity (same UUID, same subscription_url
-        # the client may already have) instead of minting a new one -- CHANGE
-        # keeps both the local row and the panel user, updating each in
-        # place; only the plan-driven config (limits/squads/expiry) changes.
-        await self._remnawave_sdk.users.update_user(
+        # the client may already have) instead of minting a new one -- only
+        # the plan-driven config (limits/squads/expiry) changes on the panel
+        # side. The local row itself is replaced below, not mutated.
+        panel_user = await self._remnawave_sdk.users.update_user(
             UpdateUserRequestDto(
                 id=old.remnawave_user_id,
                 expire_at=final_expire_at,
@@ -286,8 +367,9 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         "Subscription was already changed or deleted while this request "
                         "was in flight"
                     )
-                updated = await self._lifecycle_service.change_plan_in_place(
-                    locked_old.id, new_plan_snapshot=plan, new_expire_at=final_expire_at
+                await self._subscription_repository.mark_deleted(old.id)
+                updated = await self._subscription_repository.create(
+                    self._to_create_dto(data, panel_user, expire_at_override=final_expire_at)
                 )
                 if data.idempotency_key is not None:
                     await self._subscription_repository.link_idempotency_key(
@@ -297,6 +379,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                     SubscriptionChangedEvent(
                         user=actor,
                         subscription_id=updated.id,
+                        previous_subscription_id=old.id,
                         previous_plan_snapshot=old.plan_snapshot.to_json(),
                     )
                 )

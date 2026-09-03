@@ -307,3 +307,21 @@ def test_admin_role_has_all_referrals_permissions() -> None:
     assert Permission.REFERRALS_SETTINGS_VIEW in admin_perms
     assert Permission.REFERRALS_SETTINGS_MANAGE in admin_perms
     assert Permission.REFERRALS_POINTS_MANAGE in admin_perms
+
+
+def test_backups_permissions_are_grantable_but_not_default_admin() -> None:
+    backups_permissions = (
+        Permission.BACKUPS_VIEW,
+        Permission.BACKUPS_SETTINGS_VIEW,
+        Permission.BACKUPS_SETTINGS_MANAGE,
+        Permission.BACKUPS_RUN_VIEW,
+        Permission.BACKUPS_RUN_CREATE,
+        Permission.BACKUPS_RUN_DOWNLOAD,
+        Permission.BACKUPS_RUN_DELETE,
+    )
+    admin_default = ROLE_PERMISSIONS[Role.ADMIN]
+    owner_default = ROLE_PERMISSIONS[Role.OWNER]
+    for permission in backups_permissions:
+        assert permission in GRANTABLE_PERMISSIONS
+        assert permission not in admin_default
+        assert permission in owner_default

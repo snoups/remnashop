@@ -23,6 +23,7 @@ class UserDto(BaseDto, TimestampMixin):
     language: Locale = Locale.EN
 
     is_blocked: bool = False
+    is_trial_available: bool = True
 
     permission_grants: Optional[list[str]] = None
     permission_revokes: Optional[list[str]] = None
@@ -104,6 +105,7 @@ class UpdateUserDto:
     ip_allowlist: Optional[list[str]] = None
     personal_discount: Optional[int] = None
     purchase_discount: Optional[int] = None
+    is_trial_available: Optional[bool] = None
 
 
 @dataclass(frozen=True, kw_only=True)

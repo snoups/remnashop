@@ -106,7 +106,18 @@ async def test_owner_can_view_and_update_shop_settings(
     settings = await get_use_case(OWNER)
     assert settings.max_active_subscriptions == 3
 
-    updated = await update_use_case(OWNER, UpdateShopSettingsDto(max_active_subscriptions=None))
+    updated = await update_use_case(
+        OWNER,
+        UpdateShopSettingsDto(
+            max_active_subscriptions=None,
+            device_single_reset_enabled=True,
+            device_single_reset_cooldown_hours=0,
+            device_all_reset_enabled=True,
+            device_all_reset_cooldown_hours=0,
+            link_reset_enabled=True,
+            link_reset_cooldown_hours=0,
+        ),
+    )
     assert updated.max_active_subscriptions is None
 
 
@@ -125,7 +136,18 @@ async def test_regular_user_cannot_update_shop_settings(
     update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await update_use_case(REGULAR_USER, UpdateShopSettingsDto(max_active_subscriptions=5))
+        await update_use_case(
+            REGULAR_USER,
+            UpdateShopSettingsDto(
+                max_active_subscriptions=5,
+                device_single_reset_enabled=True,
+                device_single_reset_cooldown_hours=0,
+                device_all_reset_enabled=True,
+                device_all_reset_cooldown_hours=0,
+                link_reset_enabled=True,
+                link_reset_cooldown_hours=0,
+            ),
+        )
 
 
 async def test_update_shop_settings_rejects_non_positive_cap(
@@ -134,7 +156,18 @@ async def test_update_shop_settings_rejects_non_positive_cap(
     update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
 
     with pytest.raises(ValidationError):
-        await update_use_case(OWNER, UpdateShopSettingsDto(max_active_subscriptions=0))
+        await update_use_case(
+            OWNER,
+            UpdateShopSettingsDto(
+                max_active_subscriptions=0,
+                device_single_reset_enabled=True,
+                device_single_reset_cooldown_hours=0,
+                device_all_reset_enabled=True,
+                device_all_reset_cooldown_hours=0,
+                link_reset_enabled=True,
+                link_reset_cooldown_hours=0,
+            ),
+        )
 
 
 async def test_owner_can_view_and_update_oauth_settings(
