@@ -1,10 +1,12 @@
-from app.modules.users.di import get_user_providers
-from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.di import get_users_providers
+from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
     GetCurrentUserUseCase,
     RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
+    SetUserPersonalDiscountDto,
+    SetUserPersonalDiscountUseCase,
 )
 
 __all__ = [
@@ -12,7 +14,10 @@ __all__ = [
     "GetCurrentUserUseCase",
     "RegisterTelegramUserDto",
     "RegisterTelegramUserUseCase",
+    "SetUserPersonalDiscountDto",
+    "SetUserPersonalDiscountUseCase",
+    "UpdateUserDto",
     "UserDto",
     "UserRepository",
-    "get_user_providers",
+    "get_users_providers",
 ]

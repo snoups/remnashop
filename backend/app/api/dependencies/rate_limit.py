@@ -1,13 +1,51 @@
-from typing import Callable, Coroutine
+from typing import Callable, Coroutine, Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import HTTPException, Request, status
 from loguru import logger
+from prometheus_client import Counter
 from redis.asyncio import Redis
 
-from app.core.constants import REDIS_KEY_PREFIX
+from app.core.config import AppConfig
+from app.core.constants import API_V1, REDIS_KEY_PREFIX, REMNAWAVE_WEBHOOK_PATH
+from app.core.security import decode_access_token
 from app.core.utils.http import resolve_client_ip
+
+_GLOBAL_RATE_LIMIT: Final[int] = 300
+_GLOBAL_RATE_LIMIT_WINDOW_S: Final[int] = 60
+_RATE_LIMIT_EXEMPT_PATHS: Final[frozenset[str]] = frozenset(
+    {"/health", "/readyz", "/metrics", f"{API_V1}{REMNAWAVE_WEBHOOK_PATH}"}
+)
+
+RATE_LIMIT_HITS: Final[Counter] = Counter(
+    "remnashop_rate_limit_hits_total",
+    "Requests rejected by a rate limiter",
+    labelnames=("key",),
+)
+
+
+async def _enforce(
+    redis: Redis,
+    redis_key: str,
+    limit: int,
+    window_seconds: int,
+    key: str,
+    log_label: str,
+) -> None:
+    current = await redis.incr(redis_key)
+    # NX (not "only on current == 1") so a crash/dropped connection between
+    # incr() and expire() self-heals on the next request instead of leaving
+    # the key stuck with no TTL forever.
+    await redis.expire(redis_key, window_seconds, nx=True)
+
+    if current > limit:
+        RATE_LIMIT_HITS.labels(key=key).inc()
+        logger.warning(f"Rate limit exceeded: {log_label}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests, try again later",
+        )
 
 
 def rate_limit(
@@ -20,18 +58,46 @@ def rate_limit(
     async def dependency(request: Request, redis: FromDishka[Redis]) -> None:
         client_ip = resolve_client_ip(request)
         redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{key}:{client_ip}"
-
-        current = await redis.incr(redis_key)
-        # NX (not "only on current == 1") so a crash/dropped connection between
-        # incr() and expire() self-heals on the next request instead of leaving
-        # the key stuck with no TTL forever.
-        await redis.expire(redis_key, window_seconds, nx=True)
-
-        if current > limit:
-            logger.warning(f"Rate limit '{key}' exceeded by IP '{client_ip}'")
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many requests, try again later",
-            )
+        await _enforce(redis, redis_key, limit, window_seconds, key, f"'{key}' by IP '{client_ip}'")
 
     return dependency
+
+
+def _resolve_rate_limit_identity(request: Request, jwt_secret: str) -> str:
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header[len("Bearer ") :]
+        try:
+            payload = decode_access_token(token, jwt_secret)
+        except Exception:  # noqa: BLE001 -- any decode failure just falls through to IP
+            pass
+        else:
+            return f"user:{payload.get('sub')}"
+    return f"ip:{resolve_client_ip(request)}"
+
+
+@inject
+async def global_rate_limit(
+    request: Request,
+    redis: FromDishka[Redis],
+    config: FromDishka[AppConfig],
+) -> None:
+    if request.url.path in _RATE_LIMIT_EXEMPT_PATHS:
+        return
+
+    identity = _resolve_rate_limit_identity(request, config.jwt_secret.get_secret_value())
+    redis_key = f"{REDIS_KEY_PREFIX}ratelimit:global:{identity}"
+
+    try:
+        await _enforce(
+            redis,
+            redis_key,
+            _GLOBAL_RATE_LIMIT,
+            _GLOBAL_RATE_LIMIT_WINDOW_S,
+            "global",
+            f"global by {identity}",
+        )
+    except HTTPException:
+        raise  # the actual 429 -- not a Redis failure, must propagate
+    except Exception:  # noqa: BLE001 -- fail open: Redis being down must not take the API down
+        logger.warning("Global rate limiter failed open: Redis unavailable")

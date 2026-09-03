@@ -67,8 +67,16 @@ class ApiTokenRepository:
         rows = await self.session.scalars(stmt)
         return [self._to_dto(row) for row in rows]
 
-    async def revoke_by_id(self, token_id: int) -> None:
-        row = await self.session.get(ApiToken, token_id)
-        if row is not None:
-            row.revoked_at = datetime.now(timezone.utc)
-            await self.session.flush()
+    async def revoke_by_id(self, token_id: int) -> Optional[ApiTokenDto]:
+        # A plain session.get() can return an identity-mapped instance with
+        # expired (unloaded) attributes -- reading row.revoked_at on that
+        # outside an explicit refresh raises MissingGreenlet. A SELECT always
+        # populates the returned instance's attributes from the query result.
+        stmt = select(ApiToken).where(ApiToken.id == token_id, ApiToken.revoked_at.is_(None))
+        row = await self.session.scalar(stmt)
+        if row is None:
+            return None
+        row.revoked_at = datetime.now(timezone.utc)
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_dto(row)

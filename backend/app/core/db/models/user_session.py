@@ -22,5 +22,5 @@ class UserSession(BaseSql, TimestampMixin):
     ip_address: Mapped[str] = mapped_column(String(45))  # IPv6-safe length
     user_agent: Mapped[Optional[str]] = mapped_column(String(255))
     last_used_at: Mapped[datetime]
-    expires_at: Mapped[datetime]
-    revoked_at: Mapped[Optional[datetime]]
+    expires_at: Mapped[datetime] = mapped_column(index=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(index=True)

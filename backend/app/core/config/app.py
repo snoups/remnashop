@@ -23,6 +23,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     domain: SecretStr
     host: str = "0.0.0.0"
     port: int = 5000
+    metrics_port: int = 9110
 
     default_locale: Locale = Locale.EN
 
@@ -78,4 +79,8 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     @classmethod
     def validate_jwt_secret(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
         validate_not_change_me(field, info)
+
+        if len(field.get_secret_value()) < 32:
+            raise ValueError("APP_JWT_SECRET must be at least 32 characters long")
+
         return field

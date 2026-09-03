@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SecretStr
 
 from app.core.dto import BaseDto, TimestampMixin
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
-    token: Optional[str] = None
-    secret_token: Optional[str] = None
+    token: Optional[SecretStr] = None
+    secret_token: Optional[SecretStr] = None
     drop_pending_updates: bool = False
     banners_enabled: bool = False
 
@@ -23,6 +23,21 @@ class UpdateBotSettingsDto:
     secret_token: Optional[str] = None
     drop_pending_updates: Optional[bool] = None
     banners_enabled: Optional[bool] = None
+
+
+class ShopSettingsDto(BaseDto, TimestampMixin):
+    # None = unlimited. Default of 3 matches the row's own DB default, so a
+    # read before the row has ever been created still sees the same value it
+    # would once get-or-create runs.
+    max_active_subscriptions: Optional[int] = 3
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateShopSettingsDto:
+    # Full replace, not a partial patch (unlike the Update*Dto above) --
+    # ShopSettings has exactly one tunable field, so there's no "don't touch"
+    # case to distinguish from "explicitly set to unlimited" (None).
+    max_active_subscriptions: Optional[int]
 
 
 class BotCommandDto(BaseDto, TimestampMixin):
@@ -40,14 +55,14 @@ class UpdateBotCommandsResultDto(BaseModel):
 
 class OAuthSettingsDto(BaseDto, TimestampMixin):
     github_client_id: Optional[str] = None
-    github_client_secret: Optional[str] = None
+    github_client_secret: Optional[SecretStr] = None
     github_enabled: bool = False
     telegram_client_id: Optional[str] = None
-    telegram_client_secret: Optional[str] = None
+    telegram_client_secret: Optional[SecretStr] = None
     telegram_enabled: bool = False
     oidc_issuer_url: Optional[str] = None
     oidc_client_id: Optional[str] = None
-    oidc_client_secret: Optional[str] = None
+    oidc_client_secret: Optional[SecretStr] = None
     oidc_display_name: Optional[str] = None
     oidc_enabled: bool = False
     password_login_enabled: bool = True

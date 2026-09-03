@@ -1,4 +1,23 @@
 import os
+
+# Tests run against the local Postgres/Redis containers used for local dev (see
+# CLAUDE.md) -- override the docker-service hostnames the real app expects.
+# Everything else (secrets, remnawave/bot tokens) comes from the repo-root
+# .env, same as any other local run.
+#
+# This MUST run before any import below: app.modules.promocodes.repository
+# transitively imports app.worker.broker, which builds its ListQueueBroker
+# singleton at import time from AppConfig.get().redis.dsn. Import it after
+# the overrides and that singleton bakes in the docker-internal Redis
+# hostname for the rest of the pytest session -- every OutboxEventPublisher
+# .kiq() call then spends ~5s failing DNS resolution before the
+# contextlib.suppress in publish() swallows it, which is where a ~14min
+# full suite came from despite nothing being actually broken.
+os.environ.setdefault("DATABASE_HOST", "localhost")
+os.environ.setdefault("DATABASE_PORT", "5432")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+
 from typing import AsyncIterator
 
 import httpx
@@ -9,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.event_bus import EventBus
+from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.ports import EventPublisher
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.oauth.state_store import OAuthStateStore
@@ -26,19 +45,25 @@ from app.modules.translations.repository import TranslationsRepository
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, make_fake_remnawave_transport
 
-# Tests run against the local Postgres/Redis containers used for local dev (see
-# CLAUDE.md) -- override the docker-service hostnames the real app expects.
-# Everything else (secrets, remnawave/bot tokens) comes from the repo-root
-# .env, same as any other local run.
-os.environ.setdefault("DATABASE_HOST", "localhost")
-os.environ.setdefault("DATABASE_PORT", "5432")
-os.environ.setdefault("REDIS_HOST", "localhost")
-os.environ.setdefault("REDIS_PORT", "6379")
-
 
 @pytest.fixture
 def config() -> AppConfig:
     return AppConfig.get()
+
+
+@pytest.fixture(autouse=True)
+async def _clean_redis(config: AppConfig) -> AsyncIterator[None]:
+    # Unlike `session` (rolled back per test), Redis state from one test --
+    # rate-limit counters, oauth state, the webhook replay guard -- has no
+    # equivalent cleanup and would otherwise persist (by TTL) across tests
+    # and even separate pytest invocations. Dedicated test-only container
+    # (see the REDIS_HOST/REDIS_PORT override above), safe to flush wholesale.
+    client = Redis.from_url(config.redis.dsn, decode_responses=True)
+    await client.flushdb()
+    try:
+        yield
+    finally:
+        await client.aclose()
 
 
 @pytest.fixture
@@ -84,8 +109,8 @@ def uow(session: AsyncSession) -> UnitOfWork:
 
 
 @pytest.fixture
-def event_publisher() -> EventPublisher:
-    return EventBus()
+def event_publisher(session: AsyncSession) -> EventPublisher:
+    return OutboxEventPublisher(session)
 
 
 @pytest.fixture

@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
 
+import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.event_log import EventLogEntry
+from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.events import EventCategory
@@ -53,3 +56,67 @@ async def test_event_log_entry_actor_fields_are_nullable(session: AsyncSession) 
     assert entry.actor_id is None
     assert entry.actor_login is None
     assert entry.ip_address is None
+
+
+async def test_event_log_entry_outbox_id_accepts_none_and_int(session: AsyncSession) -> None:
+    outbox_entry = EventOutboxEntry(
+        category=EventCategory.AUTH,
+        event_type="LoginFailedEvent",
+        occurred_at=datetime.now(timezone.utc),
+        payload={"login": "someone"},
+    )
+    session.add(outbox_entry)
+    await session.flush()
+
+    linked = EventLogEntry(
+        category=EventCategory.AUTH,
+        event_type="LoginFailedEvent",
+        occurred_at=datetime.now(timezone.utc),
+        payload={"login": "someone"},
+        outbox_id=outbox_entry.id,
+    )
+    unlinked = EventLogEntry(
+        category=EventCategory.AUTH,
+        event_type="LoginFailedEvent",
+        occurred_at=datetime.now(timezone.utc),
+        payload={"login": "someone"},
+    )
+    session.add_all([linked, unlinked])
+    await session.flush()
+
+    assert linked.outbox_id == outbox_entry.id
+    assert unlinked.outbox_id is None
+
+
+async def test_event_log_entry_outbox_id_is_unique(session: AsyncSession) -> None:
+    outbox_entry = EventOutboxEntry(
+        category=EventCategory.AUTH,
+        event_type="LoginFailedEvent",
+        occurred_at=datetime.now(timezone.utc),
+        payload={"login": "someone"},
+    )
+    session.add(outbox_entry)
+    await session.flush()
+
+    session.add(
+        EventLogEntry(
+            category=EventCategory.AUTH,
+            event_type="LoginFailedEvent",
+            occurred_at=datetime.now(timezone.utc),
+            payload={"login": "someone"},
+            outbox_id=outbox_entry.id,
+        )
+    )
+    await session.flush()
+
+    session.add(
+        EventLogEntry(
+            category=EventCategory.AUTH,
+            event_type="LoginFailedEvent",
+            occurred_at=datetime.now(timezone.utc),
+            payload={"login": "someone"},
+            outbox_id=outbox_entry.id,
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await session.flush()

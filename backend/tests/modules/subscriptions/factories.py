@@ -2,8 +2,11 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Optional
 
+from remnapy.enums import TrafficLimitStrategy
+
 from app.core.enums import Currency, SubscriptionStatus
 from app.core.utils.time import datetime_now
+from app.modules.plans.dto import PlanDto
 from app.modules.subscriptions.dto import CreateSubscriptionDto, PlanSnapshot, SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.dto import CreateUserDto
@@ -20,6 +23,34 @@ def make_plan_snapshot(**overrides: Any) -> PlanSnapshot:
         "price_paid": Decimal("0"),
         "currency": Currency.RUB,
         "duration_days": 30,
+        "traffic_limit": 100,
+        "device_limit": 3,
+        "traffic_limit_strategy": TrafficLimitStrategy.NO_RESET,
+        "is_trial": False,
+        "internal_squads": [],
+        "external_squad": None,
+    }
+    defaults.update(overrides)
+    return PlanSnapshot(**defaults)
+
+
+def snapshot_from_plan(plan: PlanDto, **overrides: Any) -> PlanSnapshot:
+    """Builds the PlanSnapshot a real checkout/promocode-redemption path would
+    build for a live plan -- for tests that purchase against a plan they just
+    created via PlanRepository and need the operational fields to match it."""
+    defaults: dict[str, Any] = {
+        "plan_id": plan.id,
+        "public_code": plan.public_code,
+        "name": plan.name,
+        "price_paid": Decimal("0"),
+        "currency": Currency.RUB,
+        "duration_days": 30,
+        "traffic_limit": plan.traffic_limit,
+        "device_limit": plan.device_limit,
+        "traffic_limit_strategy": plan.traffic_limit_strategy,
+        "is_trial": plan.is_trial,
+        "internal_squads": plan.internal_squads,
+        "external_squad": plan.external_squad,
     }
     defaults.update(overrides)
     return PlanSnapshot(**defaults)

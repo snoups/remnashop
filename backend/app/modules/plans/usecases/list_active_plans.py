@@ -1,29 +1,32 @@
 from app.core.enums import PlanAvailability
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.plans.access import is_plan_purchasable_by
 from app.modules.plans.dto import PlanDto
 from app.modules.plans.repository import PlanRepository
+from app.modules.subscriptions import SubscriptionRepository
 from app.modules.users import UserDto
 
 
 class ListActivePlansUseCase(UseCase[None, list[PlanDto]]):
     required_permission = Permission.PUBLIC
 
-    def __init__(self, plan_repository: PlanRepository) -> None:
+    def __init__(
+        self, plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    ) -> None:
         self._plan_repository = plan_repository
+        self._subscription_repository = subscription_repository
 
     async def _execute(self, actor: UserDto, data: None) -> list[PlanDto]:
         plans = await self._plan_repository.list_active()
-        return [plan for plan in plans if self._is_visible(plan, actor)]
-
-    @staticmethod
-    def _is_visible(plan: PlanDto, actor: UserDto) -> bool:
-        if plan.availability == PlanAvailability.ALL:
-            return True
-        if plan.availability == PlanAvailability.ALLOWED:
-            return (
-                actor.telegram_id is not None and actor.telegram_id in plan.allowed_telegram_ids
-            ) or (actor.email is not None and actor.email in plan.allowed_emails)
-        # NEW/EXISTING/INVITED/LINK need subscription/invite state that doesn't
-        # exist yet (subscriptions is future work per CLAUDE.md) -- hide until it lands.
-        return False
+        # LINK plans are never listed in the catalog -- only reachable by
+        # direct code/link, matching main's GetAvailablePlans (no case for LINK).
+        plans = [plan for plan in plans if plan.availability != PlanAvailability.LINK]
+        has_purchase_history = await self._subscription_repository.has_any_subscription(
+            actor.id, include_trial=False
+        )
+        return [
+            plan
+            for plan in plans
+            if is_plan_purchasable_by(plan, actor, has_purchase_history=has_purchase_history)
+        ]

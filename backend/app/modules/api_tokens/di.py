@@ -8,7 +8,7 @@ from app.modules.api_tokens.usecases import (
 )
 
 
-class ApiTokenProvider(Provider):
+class ApiTokensProvider(Provider):
     scope = Scope.REQUEST
 
     api_token_repository = provide(ApiTokenRepository)
@@ -18,4 +18,4 @@ class ApiTokenProvider(Provider):
 
 
 def get_api_tokens_providers() -> list[Provider]:
-    return [ApiTokenProvider()]
+    return [ApiTokensProvider()]

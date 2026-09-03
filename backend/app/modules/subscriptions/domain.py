@@ -104,26 +104,32 @@ class SubscriptionState:
         assert_transition(self.status, target)
         return replace(self, status=target, expire_at=new_expire_at)
 
-    def change_plan(self, *, now: datetime) -> tuple[SubscriptionState, Decimal]:
-        """Marks self DELETED (a CHANGE always retires the old identity)
-        and returns the proration credit computed from self's own
-        plan_snapshot/expire_at. Deliberately takes no `new_snapshot`/
-        `new_expire_at` -- the credit is a pure function of the OLD state
-        alone (this object never sees the new one), so it can be previewed
-        via calculate_proration_credit() before a caller has even decided
-        the new subscription's expire_at (see that function's docstring
-        for why this matters -- it's what lets a caller mint a panel
-        identity with the *correct* final expire_at up front, instead of
-        minting provisionally and reconciling after the fact)."""
-        assert_transition(self.status, SubscriptionStatus.DELETED)
-        credit = calculate_proration_credit(
-            price_paid=self.plan_snapshot.price_paid,
-            duration_days=self.plan_snapshot.duration_days,
-            expire_at=self.expire_at,
-            is_trial=self.is_trial,
-            now=now,
+    def change_plan_in_place(
+        self, *, new_plan_snapshot: PlanSnapshot, new_expire_at: datetime
+    ) -> SubscriptionState:
+        """Applies a CHANGE onto this same row and the same panel identity --
+        id and (at the repository/panel level) remnawave_user_id never
+        change, only the plan-driven fields do. Always lands ACTIVE,
+        matching the "you just paid, you get access" semantics a CHANGE has
+        always had, regardless of the pre-change status (LIMITED/DISABLED/
+        EXPIRED all resolve to ACTIVE here, same as a fresh purchase would).
+        new_expire_at is supplied, not computed here, because the caller
+        needs the identical value before this runs -- to mint/update the
+        panel identity with the correct final expire_at up front (see
+        calculate_proration_credit's docstring)."""
+        assert_transition(self.status, SubscriptionStatus.ACTIVE)
+        return replace(
+            self,
+            status=SubscriptionStatus.ACTIVE,
+            plan_snapshot=new_plan_snapshot,
+            traffic_limit=new_plan_snapshot.traffic_limit,
+            device_limit=new_plan_snapshot.device_limit,
+            traffic_limit_strategy=new_plan_snapshot.traffic_limit_strategy,
+            internal_squads=new_plan_snapshot.internal_squads,
+            external_squad=new_plan_snapshot.external_squad,
+            is_trial=new_plan_snapshot.is_trial,
+            expire_at=new_expire_at,
         )
-        return replace(self, status=SubscriptionStatus.DELETED), credit
 
     def mark_deleted(self) -> SubscriptionState:
         assert_transition(self.status, SubscriptionStatus.DELETED)
@@ -144,10 +150,7 @@ def calculate_proration_credit(
     a change_plan() transition -- e.g. to compute the new subscription's
     final expire_at (base days + credit days) before minting its panel
     identity, so the panel is minted with the correct value up front
-    instead of a provisional one reconciled after the fact. Formerly
-    subscriptions/proration.py::calculate_proration_credit, same name and
-    signature, moved here as the domain object's supporting function;
-    proration.py is deleted once nothing imports it (Task 7)."""
+    instead of a provisional one reconciled after the fact."""
     if is_trial or price_paid <= 0 or duration_days <= 0:
         return Decimal("0")
     remaining_days = max(0, (expire_at - now).days)

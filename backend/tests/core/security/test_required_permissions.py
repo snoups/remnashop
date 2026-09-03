@@ -9,11 +9,16 @@ from app.modules.gateways.usecases.list_gateways import ListGatewaysUseCase
 from app.modules.gateways.usecases.reorder_gateways import ReorderGatewaysUseCase
 from app.modules.gateways.usecases.toggle_gateway_active import ToggleGatewayActiveUseCase
 from app.modules.gateways.usecases.update_gateway_settings import UpdateGatewaySettingsUseCase
+from app.modules.payments.usecases.get_payment_order import GetPaymentOrderUseCase
+from app.modules.payments.usecases.list_payment_orders import ListPaymentOrdersUseCase
 from app.modules.settings.usecases.add_locale import AddLocaleUseCase
 from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
 from app.modules.settings.usecases.remove_locale import RemoveLocaleUseCase
 from app.modules.translations.usecases.reset_translation import ResetTranslationUseCase
 from app.modules.translations.usecases.update_translation import UpdateTranslationUseCase
+from app.modules.users.usecases.set_user_personal_discount import (
+    SetUserPersonalDiscountUseCase,
+)
 
 
 @pytest.mark.parametrize(
@@ -31,6 +36,9 @@ from app.modules.translations.usecases.update_translation import UpdateTranslati
         (UpdateGatewaySettingsUseCase, Permission.GATEWAYS_UPDATE),
         (ToggleGatewayActiveUseCase, Permission.GATEWAYS_TOGGLE),
         (ReorderGatewaysUseCase, Permission.GATEWAYS_REORDER),
+        (SetUserPersonalDiscountUseCase, Permission.USERS_DISCOUNT_MANAGE),
+        (ListPaymentOrdersUseCase, Permission.PAYMENTS_VIEW),
+        (GetPaymentOrderUseCase, Permission.PAYMENTS_ORDER_VIEW),
     ],
 )
 def test_split_usecase_requires_expected_permission(

@@ -32,14 +32,12 @@ def test_subscription_renewed_event_carries_subscription_id() -> None:
 def test_subscription_changed_event_carries_previous_snapshot() -> None:
     event = SubscriptionChangedEvent(
         user=_user(),
-        old_subscription_id=1,
-        new_subscription_id=2,
+        subscription_id=1,
         previous_plan_snapshot={"plan_id": 1},
     )
     assert event.previous_plan_snapshot == {"plan_id": 1}
     assert {f.name for f in fields(event)} >= {
-        "old_subscription_id",
-        "new_subscription_id",
+        "subscription_id",
         "previous_plan_snapshot",
     }
 

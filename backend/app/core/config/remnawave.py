@@ -50,22 +50,10 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
 
         return cookies
 
-    @field_validator("token")
+    @field_validator("token", "webhook_secret")
     @classmethod
-    def validate_remnawave_token(
+    def validate_optional_secret(
         cls, field: Optional[SecretStr], info: FieldValidationInfo
-    ) -> Optional[SecretStr]:
-        if field is None:
-            return field
-        validate_not_change_me(field, info)
-        return field
-
-    @field_validator("webhook_secret")
-    @classmethod
-    def validate_remnawave_webhook_secret(
-        cls,
-        field: Optional[SecretStr],
-        info: FieldValidationInfo,
     ) -> Optional[SecretStr]:
         if field is None:
             return field

@@ -1,10 +1,12 @@
-from typing import Final, Optional
+from datetime import datetime
+from typing import Final, Optional, cast
 
-from sqlalchemy import func, select
+from sqlalchemy import CursorResult, delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.addon_entitlement import AddOnEntitlement
+from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
 from app.core.enums import AddOnType, SubscriptionStatus
@@ -12,6 +14,7 @@ from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import SubscriptionState
 from app.modules.subscriptions.dto import (
+    DEFAULT_PAGE_SIZE,
     AddOnEntitlementDto,
     CreateSubscriptionDto,
     PlanSnapshot,
@@ -20,7 +23,7 @@ from app.modules.subscriptions.dto import (
     UpdateSubscriptionSquadsDto,
 )
 
-_ACTIVE_STATUSES = (
+_ACTIVE_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
     SubscriptionStatus.ACTIVE,
     SubscriptionStatus.DISABLED,
     SubscriptionStatus.LIMITED,
@@ -124,6 +127,31 @@ class SubscriptionRepository:
         entitlements_by_subscription = await self._load_entitlements([row.id for row in rows])
         return [self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows]
 
+    async def list_paginated(
+        self,
+        *,
+        status: Optional[SubscriptionStatus] = None,
+        page: int = 1,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> tuple[list[SubscriptionDto], int]:
+        filters = [Subscription.status == status] if status is not None else []
+
+        count_stmt = select(func.count()).select_from(Subscription).where(*filters)
+        total = await self.session.scalar(count_stmt)
+
+        stmt = (
+            select(Subscription)
+            .where(*filters)
+            .order_by(Subscription.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        rows = (await self.session.scalars(stmt)).all()
+        entitlements_by_subscription = await self._load_entitlements([row.id for row in rows])
+        return [
+            self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows
+        ], int(total or 0)
+
     async def get_active_by_user(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)
@@ -133,6 +161,18 @@ class SubscriptionRepository:
         rows = result.scalars().all()
         entitlements_by_subscription = await self._load_entitlements([row.id for row in rows])
         return [self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows]
+
+    async def has_any_subscription(self, user_id: int, *, include_trial: bool = True) -> bool:
+        # Any row ever, regardless of status (including DELETED/EXPIRED) --
+        # this answers "has this user ever purchased", not "does one still
+        # work". Backs PlanAvailability.NEW/EXISTING and
+        # PromocodeAvailability.NEW/EXISTING alike (matches main's own
+        # UserDao.has_any_subscription).
+        stmt = select(func.count()).select_from(Subscription).where(Subscription.user_id == user_id)
+        if not include_trial:
+            stmt = stmt.where(Subscription.is_trial.is_(False))
+        count = await self.session.scalar(stmt)
+        return bool(count)
 
     async def get_by_remnawave_user_id(self, remnawave_user_id: int) -> Optional[SubscriptionDto]:
         result = await self.session.execute(
@@ -232,8 +272,8 @@ class SubscriptionRepository:
         return self._to_dto(row, [])
 
     async def update(self, data: UpdateSubscriptionDto) -> SubscriptionDto:
-        # Local DB row only -- does not push the new limits to the Remnawave
-        # panel yet (that's the purchase/sync plan's job).
+        # Local DB row only -- pushing the new limits to the Remnawave panel
+        # is UpdateSubscriptionUseCase's job, after this commits.
         row = await self._get_or_raise(data.subscription_id)
 
         if data.tag is not None:
@@ -251,24 +291,41 @@ class SubscriptionRepository:
         return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
 
     async def grant_entitlement(
-        self, *, subscription_id: int, addon_id: Optional[int], addon_type: AddOnType, amount: int
+        self,
+        *,
+        subscription_id: int,
+        addon_id: Optional[int],
+        addon_type: AddOnType,
+        amount: int,
+        idempotency_key: Optional[str] = None,
     ) -> SubscriptionDto:
         await self._get_or_raise(subscription_id)  # 404s before touching AddOnEntitlement
-        self.session.add(
-            AddOnEntitlement(
-                subscription_id=subscription_id,
-                addon_id=addon_id,
-                type=addon_type,
-                amount=amount,
-                granted_at=datetime_now(),
-            )
+
+        if idempotency_key is not None:
+            existing = await self.session.get(AddOnGrantIdempotency, idempotency_key)
+            if existing is not None:
+                return await self.get_by_id(subscription_id)
+
+        entitlement = AddOnEntitlement(
+            subscription_id=subscription_id,
+            addon_id=addon_id,
+            type=addon_type,
+            amount=amount,
+            granted_at=datetime_now(),
         )
+        self.session.add(entitlement)
+        if idempotency_key is not None:
+            await self.session.flush()  # assigns entitlement.id
+            self.session.add(
+                AddOnGrantIdempotency(key=idempotency_key, entitlement_id=entitlement.id)
+            )
+
         await self.session.flush()
         return await self.get_by_id(subscription_id)
 
     async def update_squads(self, data: UpdateSubscriptionSquadsDto) -> SubscriptionDto:
-        # Local DB row only -- does not push the new squads to the Remnawave
-        # panel yet (that's the purchase/sync plan's job).
+        # Local DB row only -- pushing the new squads to the Remnawave panel
+        # is UpdateSubscriptionSquadsUseCase's job, after this commits.
         row = await self._get_or_raise(data.subscription_id)
         row.internal_squads = data.internal_squads
         row.external_squad = data.external_squad
@@ -292,6 +349,14 @@ class SubscriptionRepository:
         row.status = state.status
         row.expire_at = state.expire_at
         row.plan_snapshot = state.plan_snapshot.to_json()
+        # No-op for sync_status/reactivate_on_renew (they never touch these),
+        # the actual write for change_plan_in_place.
+        row.traffic_limit = state.traffic_limit
+        row.device_limit = state.device_limit
+        row.traffic_limit_strategy = state.traffic_limit_strategy
+        row.internal_squads = state.internal_squads
+        row.external_squad = state.external_squad
+        row.is_trial = state.is_trial
 
         await self.session.flush()
         await self.session.refresh(row)
@@ -326,3 +391,14 @@ class SubscriptionRepository:
         if row is not None:
             await self.session.delete(row)
             await self.session.flush()
+
+    async def delete_stale_idempotency_keys(self, cutoff: datetime) -> tuple[int, int]:
+        purchase = await self.session.execute(
+            delete(SubscriptionPurchaseIdempotency).where(
+                SubscriptionPurchaseIdempotency.created_at < cutoff
+            )
+        )
+        addon = await self.session.execute(
+            delete(AddOnGrantIdempotency).where(AddOnGrantIdempotency.created_at < cutoff)
+        )
+        return cast(CursorResult, purchase).rowcount, cast(CursorResult, addon).rowcount

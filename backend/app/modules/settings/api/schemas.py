@@ -21,6 +21,14 @@ class UpdateBotSettingsRequest(BaseModel):
     banners_enabled: Optional[bool] = None
 
 
+class ShopSettingsResponse(BaseModel):
+    max_active_subscriptions: Optional[int]
+
+
+class UpdateShopSettingsRequest(BaseModel):
+    max_active_subscriptions: Optional[int] = Field(default=None, ge=1)
+
+
 class BotCommandItem(BaseModel):
     command: str = Field(pattern=_COMMAND_PATTERN.pattern)
     enabled: bool

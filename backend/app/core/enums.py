@@ -57,6 +57,12 @@ class Currency(UpperStrEnum):
         return symbols.get(self, "?")
 
 
+class DiscountSource(UpperStrEnum):
+    NONE = auto()
+    PERSONAL = auto()
+    PURCHASE = auto()
+
+
 class SubscriptionStatus(UpperStrEnum):
     ACTIVE = auto()
     LIMITED = auto()
@@ -75,6 +81,8 @@ class PromocodeRewardType(UpperStrEnum):
     TRAFFIC = auto()
     DEVICES = auto()
     SUBSCRIPTION = auto()
+    PERSONAL_DISCOUNT = auto()
+    PURCHASE_DISCOUNT = auto()
 
 
 class PromocodeAvailability(UpperStrEnum):
@@ -89,6 +97,14 @@ class PurchaseType(UpperStrEnum):
     NEW = auto()
     RENEW = auto()
     CHANGE = auto()
+
+
+class PaymentOrderStatus(UpperStrEnum):
+    PENDING = auto()
+    PAID = auto()
+    FAILED = auto()
+    EXPIRED = auto()
+    CANCELED = auto()
 
 
 class OAuthProvider(UpperStrEnum):

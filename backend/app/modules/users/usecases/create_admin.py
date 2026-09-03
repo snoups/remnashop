@@ -58,10 +58,10 @@ class CreateAdminUseCase(UseCase[CreateAdminDto, tuple[UserDto, str]]):
                         permission_revokes=[p.value for p in data.permission_revokes],
                     )
                 )
+                await self._event_publisher.publish(
+                    AdminCreatedEvent(actor=actor, target=admin, ip_address=data.client_ip)
+                )
         except IntegrityError as error:
             raise ConflictError("Login already taken") from error
 
-        await self._event_publisher.publish(
-            AdminCreatedEvent(actor=actor, target=admin, ip_address=data.client_ip)
-        )
         return admin, password

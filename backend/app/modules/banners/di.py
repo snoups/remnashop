@@ -9,7 +9,7 @@ from app.modules.banners.usecases import (
 )
 
 
-class BannerProvider(Provider):
+class BannersProvider(Provider):
     scope = Scope.REQUEST
 
     banner_repository = provide(BannerRepository)
@@ -20,4 +20,4 @@ class BannerProvider(Provider):
 
 
 def get_banners_providers() -> list[Provider]:
-    return [BannerProvider()]
+    return [BannersProvider()]

@@ -40,17 +40,17 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
             old_status = subscription.status
             subscription = await self._lifecycle_service.sync_status(subscription.id, data.status)
 
-        if subscription.status is old_status:
-            # sync_status() no-op'd (already DELETED) -- SubscriptionState's
-            # own rule, not this usecase's; nothing changed, no event.
-            return subscription
+            if subscription.status is old_status:
+                # sync_status() no-op'd (already DELETED) -- SubscriptionState's
+                # own rule, not this usecase's; nothing changed, no event.
+                return subscription
 
-        await self._event_publisher.publish(
-            SubscriptionStatusSyncedEvent(
-                subscription_id=subscription.id,
-                old_status=old_status.value,
-                new_status=subscription.status.value,
-                source=data.source,
+            await self._event_publisher.publish(
+                SubscriptionStatusSyncedEvent(
+                    subscription_id=subscription.id,
+                    old_status=old_status.value,
+                    new_status=subscription.status.value,
+                    source=data.source,
+                )
             )
-        )
-        return subscription
+            return subscription

@@ -1,7 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
+from remnapy.enums import TrafficLimitStrategy
 
 from app.core.enums import Currency, SubscriptionStatus
 from app.core.exceptions import ValidationError
@@ -17,6 +19,10 @@ def _snapshot(**overrides: object) -> PlanSnapshot:
         "price_paid": Decimal("300.00"),
         "currency": Currency.RUB,
         "duration_days": 30,
+        "traffic_limit": 100,
+        "device_limit": 3,
+        "traffic_limit_strategy": TrafficLimitStrategy.NO_RESET,
+        "is_trial": False,
     }
     defaults.update(overrides)
     return PlanSnapshot(**defaults)  # type: ignore[arg-type]
@@ -139,22 +145,51 @@ def test_reactivate_on_renew_rejects_deleted() -> None:
         state.reactivate_on_renew(datetime(2026, 10, 1))  # noqa: DTZ001
 
 
-def test_change_plan_marks_old_state_deleted_and_returns_credit() -> None:
+def test_change_plan_in_place_applies_new_plan_on_the_same_state() -> None:
+    new_squad = uuid4()
     state = _state(
         status=SubscriptionStatus.ACTIVE,
         expire_at=datetime(2026, 1, 31),  # noqa: DTZ001
-        plan_snapshot=_snapshot(price_paid=Decimal("300.00"), duration_days=30),
+        plan_snapshot=_snapshot(plan_id=1, price_paid=Decimal("300.00")),
+    )
+    new_snapshot = _snapshot(
+        plan_id=2,
+        price_paid=Decimal("500.00"),
+        traffic_limit=200,
+        device_limit=5,
+        internal_squads=[new_squad],
+    )
+    new_expire_at = datetime(2026, 3, 1)  # noqa: DTZ001
+
+    new_state = state.change_plan_in_place(
+        new_plan_snapshot=new_snapshot, new_expire_at=new_expire_at
     )
 
-    new_state, credit = state.change_plan(now=datetime(2026, 1, 16))  # noqa: DTZ001
+    assert new_state.id == state.id
+    assert new_state.status is SubscriptionStatus.ACTIVE
+    assert new_state.plan_snapshot == new_snapshot
+    assert new_state.traffic_limit == 200
+    assert new_state.device_limit == 5
+    assert new_state.internal_squads == [new_squad]
+    assert new_state.expire_at == new_expire_at
 
-    assert new_state.status is SubscriptionStatus.DELETED
-    assert credit == Decimal("150.00")  # 15 remaining days * (300/30)
+
+def test_change_plan_in_place_reactivates_a_limited_subscription() -> None:
+    state = _state(status=SubscriptionStatus.LIMITED)
+
+    new_state = state.change_plan_in_place(
+        new_plan_snapshot=_snapshot(),
+        new_expire_at=datetime(2026, 3, 1),  # noqa: DTZ001
+    )
+
+    assert new_state.status is SubscriptionStatus.ACTIVE
 
 
-def test_change_plan_gives_no_credit_for_trial() -> None:
-    state = _state(is_trial=True, plan_snapshot=_snapshot(price_paid=Decimal("300.00")))
+def test_change_plan_in_place_rejects_a_deleted_subscription() -> None:
+    state = _state(status=SubscriptionStatus.DELETED)
 
-    _, credit = state.change_plan(now=datetime(2026, 1, 1))  # noqa: DTZ001
-
-    assert credit == Decimal("0")
+    with pytest.raises(ValidationError):
+        state.change_plan_in_place(
+            new_plan_snapshot=_snapshot(),
+            new_expire_at=datetime(2026, 3, 1),  # noqa: DTZ001
+        )

@@ -7,6 +7,7 @@ from app.modules.subscriptions.dto import (
     CreateAddOnDto,
     CreateSubscriptionDto,
     GrantAddOnDto,
+    PlanSnapshot,
     PurchaseSubscriptionDto,
     ReorderAddOnsDto,
     SetAddOnPriceDto,
@@ -39,9 +40,6 @@ from app.modules.subscriptions.usecases import (
     UpdateSubscriptionSquadsUseCase,
     UpdateSubscriptionUseCase,
 )
-from app.modules.subscriptions.usecases.purchase_subscription import (
-    MAX_ACTIVE_SUBSCRIPTIONS_PER_USER,
-)
 
 __all__ = [
     "AddOnDto",
@@ -57,7 +55,7 @@ __all__ = [
     "GrantAddOnUseCase",
     "ListAddOnsUseCase",
     "ListSubscriptionsUseCase",
-    "MAX_ACTIVE_SUBSCRIPTIONS_PER_USER",
+    "PlanSnapshot",
     "PurchaseSubscriptionDto",
     "PurchaseSubscriptionUseCase",
     "ReorderAddOnsDto",

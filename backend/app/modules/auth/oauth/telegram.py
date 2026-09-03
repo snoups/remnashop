@@ -1,11 +1,11 @@
 import base64
 import json
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
-_AUTHORIZE_ENDPOINT = "https://oauth.telegram.org/auth"
-_TOKEN_ENDPOINT = "https://oauth.telegram.org/token"
+_AUTHORIZE_ENDPOINT: Final[str] = "https://oauth.telegram.org/auth"
+_TOKEN_ENDPOINT: Final[str] = "https://oauth.telegram.org/token"
 
 
 def _decode_id_token_payload(id_token: str) -> dict[str, Any]:

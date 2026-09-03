@@ -3,8 +3,8 @@ from dishka.integrations.fastapi import setup_dishka as setup_fastapi_dishka
 from fastapi import FastAPI
 
 from app.api.app import get_app
+from app.api.container import create_api_container
 from app.core.config import AppConfig
-from app.core.di.container import create_api_container
 from app.core.logger import setup_logger
 
 

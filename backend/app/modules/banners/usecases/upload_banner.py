@@ -64,8 +64,6 @@ class UploadBannerUseCase(UseCase[UploadBannerInput, BannerDto]):
         save_banner_file(
             self._config.media_dir, data.name, data.locale, banner_format.value, data.data
         )
-        if existing is not None and existing.extension != banner_format.value:
-            delete_banner_file(self._config.media_dir, data.name, data.locale, existing.extension)
 
         async with self._uow:
             banner = await self._banner_repository.upsert(
@@ -77,4 +75,9 @@ class UploadBannerUseCase(UseCase[UploadBannerInput, BannerDto]):
                     size_bytes=len(data.data),
                 )
             )
+        # Only drop the old file once the DB row committed to the new one --
+        # otherwise a failed commit would leave the row pointing at a file we
+        # just deleted.
+        if existing is not None and existing.extension != banner_format.value:
+            delete_banner_file(self._config.media_dir, data.name, data.locale, existing.extension)
         return banner

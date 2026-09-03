@@ -38,10 +38,10 @@ class DeleteUserUseCase(UseCase[DeleteUserDto, None]):
 
         async with self._uow:
             deleted = await self._user_repository.delete(data.user_id)
+            if deleted:
+                await self._event_publisher.publish(
+                    UserDeletedEvent(actor=actor, target=target, ip_address=data.client_ip)
+                )
 
         if not deleted:
             raise NotFoundError("User not found")
-
-        await self._event_publisher.publish(
-            UserDeletedEvent(actor=actor, target=target, ip_address=data.client_ip)
-        )

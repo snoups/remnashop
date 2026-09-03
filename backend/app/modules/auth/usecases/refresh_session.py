@@ -59,12 +59,12 @@ class RefreshSessionUseCase:
         if theft_session is not None:
             async with self._uow:
                 await self._session_repository.revoke_by_id(theft_session.id)
-            await self._event_publisher.publish(
-                SessionTheftDetectedEvent(
-                    user_id=theft_session.user_id,
-                    session_id=theft_session.id,
-                    ip_address=ip_address,
+                await self._event_publisher.publish(
+                    SessionTheftDetectedEvent(
+                        user_id=theft_session.user_id,
+                        session_id=theft_session.id,
+                        ip_address=ip_address,
+                    )
                 )
-            )
 
         raise AuthenticationError("Invalid or expired refresh token")

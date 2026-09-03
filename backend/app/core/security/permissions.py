@@ -18,6 +18,8 @@ class Permission(UpperStrEnum):
     BOT_SETTINGS_MANAGE = auto()
     BOT_COMMANDS_MANAGE = auto()
     BOT_RESTART = auto()
+    SHOP_SETTINGS_VIEW = auto()
+    SHOP_SETTINGS_MANAGE = auto()
     OAUTH_SETTINGS_VIEW = auto()
     OAUTH_SETTINGS_MANAGE = auto()
     BANNERS_VIEW = auto()
@@ -36,6 +38,7 @@ class Permission(UpperStrEnum):
     EVENT_LOG_VIEW = auto()
     USERS_VIEW = auto()
     USERS_DELETE = auto()
+    USERS_DISCOUNT_MANAGE = auto()
     USER_SESSIONS_VIEW = auto()
     USER_SESSIONS_REVOKE = auto()
     APPEARANCE_SETTINGS_MANAGE = auto()
@@ -71,6 +74,8 @@ class Permission(UpperStrEnum):
     PROMOCODES_UPDATE = auto()
     PROMOCODES_DELETE = auto()
     PROMOCODES_GENERATE_CODE = auto()
+    PAYMENTS_VIEW = auto()
+    PAYMENTS_ORDER_VIEW = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -85,6 +90,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BOT_SETTINGS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_COMMANDS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_RESTART: PermissionMeta(resource="bot_settings", kind="write"),
+    Permission.SHOP_SETTINGS_VIEW: PermissionMeta(resource="shop_settings", kind="read"),
+    Permission.SHOP_SETTINGS_MANAGE: PermissionMeta(resource="shop_settings", kind="write"),
     Permission.OAUTH_SETTINGS_VIEW: PermissionMeta(resource="oauth_settings", kind="read"),
     Permission.OAUTH_SETTINGS_MANAGE: PermissionMeta(resource="oauth_settings", kind="write"),
     Permission.BANNERS_VIEW: PermissionMeta(resource="banners", kind="read"),
@@ -100,6 +107,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.EVENT_LOG_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_DISCOUNT_MANAGE: PermissionMeta(resource="users", kind="write"),
     Permission.USER_SESSIONS_VIEW: PermissionMeta(resource="user_sessions", kind="read"),
     Permission.USER_SESSIONS_REVOKE: PermissionMeta(resource="user_sessions", kind="write"),
     Permission.APPEARANCE_SETTINGS_MANAGE: PermissionMeta(resource="appearance", kind="write"),
@@ -135,6 +143,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PROMOCODES_UPDATE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_DELETE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_GENERATE_CODE: PermissionMeta(resource="promocodes", kind="write"),
+    Permission.PAYMENTS_VIEW: PermissionMeta(resource="payments", kind="read"),
+    Permission.PAYMENTS_ORDER_VIEW: PermissionMeta(resource="payments", kind="read"),
 }
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA) | {
@@ -152,6 +162,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_COMMANDS_MANAGE,
         Permission.BOT_RESTART,
+        Permission.SHOP_SETTINGS_VIEW,
+        Permission.SHOP_SETTINGS_MANAGE,
         Permission.BANNERS_VIEW,
         Permission.BANNERS_IMAGE_VIEW,
         Permission.BANNERS_UPLOAD,
@@ -188,6 +200,9 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.PROMOCODES_UPDATE,
         Permission.PROMOCODES_DELETE,
         Permission.PROMOCODES_GENERATE_CODE,
+        Permission.USERS_DISCOUNT_MANAGE,
+        Permission.PAYMENTS_VIEW,
+        Permission.PAYMENTS_ORDER_VIEW,
     },
     Role.USER: set(),
 }

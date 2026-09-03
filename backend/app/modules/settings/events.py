@@ -15,3 +15,8 @@ class LocaleActivatedEvent(BaseEvent):
 class LocaleDeactivatedEvent(BaseEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
     locale: Locale
+
+
+@dataclass(frozen=True, kw_only=True)
+class OidcIssuerChangedEvent(BaseEvent):
+    category: ClassVar[EventCategory] = EventCategory.SETTINGS

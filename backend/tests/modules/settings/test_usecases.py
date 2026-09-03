@@ -4,23 +4,27 @@ from typing import Optional
 import pytest
 from aiogram import Bot
 from aiogram.methods.set_my_commands import SetMyCommands
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
+from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageKind, Locale, Role
-from app.core.event_bus import EventBus
 from app.core.exceptions import (
     ConflictError,
     NotFoundError,
     PermissionDeniedError,
     ValidationError,
 )
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.modules.settings.bot_commands import BotCommand
 from app.modules.settings.dto import (
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
+    UpdateShopSettingsDto,
 )
 from app.modules.settings.events import LocaleActivatedEvent, LocaleDeactivatedEvent
 from app.modules.settings.repository import SettingsRepository
@@ -32,6 +36,7 @@ from app.modules.settings.usecases import (
     GetOAuthSettingsUseCase,
     GetPublicAppearanceImageUseCase,
     GetPublicAppearanceUseCase,
+    GetShopSettingsUseCase,
     ListActiveLocalesUseCase,
     RemoveLocaleUseCase,
     ResetAppearanceSettingsUseCase,
@@ -39,6 +44,7 @@ from app.modules.settings.usecases import (
     UpdateBotCommandsUseCase,
     UpdateBotSettingsUseCase,
     UpdateOAuthSettingsUseCase,
+    UpdateShopSettingsUseCase,
     UploadAppearanceFaviconUseCase,
     UploadAppearanceImageInput,
     UploadAppearanceLogoUseCase,
@@ -91,8 +97,51 @@ async def test_regular_user_cannot_update_bot_settings(
         await update_use_case(REGULAR_USER, UpdateBotSettingsDto(token="123:abcdef"))
 
 
+async def test_owner_can_view_and_update_shop_settings(
+    settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    get_use_case = GetShopSettingsUseCase(settings_repository)
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
+
+    settings = await get_use_case(OWNER)
+    assert settings.max_active_subscriptions == 3
+
+    updated = await update_use_case(OWNER, UpdateShopSettingsDto(max_active_subscriptions=None))
+    assert updated.max_active_subscriptions is None
+
+
+async def test_regular_user_cannot_view_shop_settings(
+    settings_repository: SettingsRepository,
+) -> None:
+    get_use_case = GetShopSettingsUseCase(settings_repository)
+
+    with pytest.raises(PermissionDeniedError):
+        await get_use_case(REGULAR_USER)
+
+
+async def test_regular_user_cannot_update_shop_settings(
+    settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
+
+    with pytest.raises(PermissionDeniedError):
+        await update_use_case(REGULAR_USER, UpdateShopSettingsDto(max_active_subscriptions=5))
+
+
+async def test_update_shop_settings_rejects_non_positive_cap(
+    settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
+
+    with pytest.raises(ValidationError):
+        await update_use_case(OWNER, UpdateShopSettingsDto(max_active_subscriptions=0))
+
+
 async def test_owner_can_view_and_update_oauth_settings(
-    settings_repository: SettingsRepository, uow: UnitOfWork, monkeypatch: pytest.MonkeyPatch
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher: EventPublisher,
 ) -> None:
     # oidc_issuer_url goes through assert_public_https_host's real DNS
     # resolution (see test_update_oauth_settings_rejects_non_public_issuer_host
@@ -106,7 +155,7 @@ async def test_owner_can_view_and_update_oauth_settings(
         _fake_assert_public_https_host,
     )
     get_use_case = GetOAuthSettingsUseCase(settings_repository)
-    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
 
     settings = await get_use_case(OWNER)
     assert not settings.is_github_configured
@@ -129,9 +178,9 @@ async def test_owner_can_view_and_update_oauth_settings(
 
 
 async def test_update_oauth_settings_rejects_non_public_issuer_host(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
         await update_use_case(
@@ -458,9 +507,9 @@ async def test_update_bot_commands_reports_telegram_sync_success(
 
 
 async def test_owner_can_add_and_list_active_locales(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, EventBus())
+    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
     list_use_case = ListActiveLocalesUseCase(settings_repository)
 
     await add_use_case(OWNER, Locale.RU)
@@ -469,29 +518,29 @@ async def test_owner_can_add_and_list_active_locales(
 
 
 async def test_add_locale_publishes_locale_activated_event(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    event_publisher: EventPublisher,
 ) -> None:
-    bus = EventBus()
-    received: list[object] = []
-
-    async def record(event: object) -> None:
-        received.append(event)
-
-    bus.subscribe(LocaleActivatedEvent, record)
-    add_use_case = AddLocaleUseCase(settings_repository, uow, bus)
+    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
 
     await add_use_case(OWNER, Locale.RU)
-    await bus.shutdown()
 
-    assert len(received) == 1
-    assert isinstance(received[0], LocaleActivatedEvent)
-    assert received[0].locale == Locale.RU
+    row = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == LocaleActivatedEvent.__name__
+            )
+        )
+    ).one()
+    assert row.payload["locale"] == Locale.RU
 
 
 async def test_add_locale_rejects_duplicate(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, EventBus())
+    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
     await add_use_case(OWNER, Locale.RU)
 
     with pytest.raises(ConflictError):
@@ -499,39 +548,40 @@ async def test_add_locale_rejects_duplicate(
 
 
 async def test_remove_locale_publishes_locale_deactivated_event(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    event_publisher: EventPublisher,
 ) -> None:
-    bus = EventBus()
-    received: list[object] = []
-
-    async def record(event: object) -> None:
-        received.append(event)
-
-    bus.subscribe(LocaleDeactivatedEvent, record)
-    add_use_case = AddLocaleUseCase(settings_repository, uow, bus)
-    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, bus)
+    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
+    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher)
     await add_use_case(OWNER, Locale.RU)
 
     await remove_use_case(OWNER, Locale.RU)
-    await bus.shutdown()
 
-    assert len(received) == 1
-    assert received[0].locale == Locale.RU
+    row = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == LocaleDeactivatedEvent.__name__
+            )
+        )
+    ).one()
+    assert row.payload["locale"] == Locale.RU
 
 
 async def test_remove_locale_rejects_en(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, EventBus())
+    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
         await remove_use_case(OWNER, Locale.EN)
 
 
 async def test_regular_user_cannot_add_locale(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, EventBus())
+    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await add_use_case(REGULAR_USER, Locale.RU)

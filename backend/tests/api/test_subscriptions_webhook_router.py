@@ -13,9 +13,11 @@ from app.core.di.providers import get_core_providers
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
 from app.modules.plans import get_plans_providers
+from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.translations import get_translations_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave_webhook import sign_webhook, user_event_payload
@@ -38,11 +40,23 @@ class _TestSessionProvider(Provider):
 async def webhook_container(
     session: AsyncSession, config: AppConfig
 ) -> AsyncIterator[AsyncContainer]:
+    # PurchaseSubscriptionUseCase (registered by get_subscriptions_providers())
+    # needs UserRepository to clear purchase_discount after a purchase -- a
+    # direct provider, not the full get_users_providers(), since that also
+    # registers admin usecases (e.g. UpdateAdminUseCase) needing SessionRevoker,
+    # which only the api/telegram containers wire up. Same pattern as
+    # app/worker/container.py's user_repository_provider.
+    user_repository_provider = Provider(scope=Scope.REQUEST)
+    user_repository_provider.provide(UserRepository)
+
     providers = [
         *get_core_providers(),
         *get_plans_providers(),
+        *get_settings_providers(),
+        *get_translations_providers(),
         *get_subscriptions_providers(),
         _TestSessionProvider(session),
+        user_repository_provider,
     ]
     container = make_async_container(*providers, context={AppConfig: config})
     yield container
@@ -204,11 +218,20 @@ async def test_missing_webhook_secret_returns_503(config: AppConfig, session: As
     unconfigured = config.model_copy(
         update={"remnawave": config.remnawave.model_copy(update={"webhook_secret": None})}
     )
+    # Dishka validates the full provider graph at construction time, so
+    # get_subscriptions_providers() still needs UserRepository resolvable
+    # even though this test never reaches PurchaseSubscriptionUseCase --
+    # same requirement as webhook_container above.
+    user_repository_provider = Provider(scope=Scope.REQUEST)
+    user_repository_provider.provide(UserRepository)
     providers = [
         *get_core_providers(),
         *get_plans_providers(),
+        *get_settings_providers(),
+        *get_translations_providers(),
         *get_subscriptions_providers(),
         _TestSessionProvider(session),
+        user_repository_provider,
     ]
     container = make_async_container(*providers, context={AppConfig: unconfigured})
     app = get_app(unconfigured)

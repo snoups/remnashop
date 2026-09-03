@@ -22,7 +22,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.settings import get_settings_providers
 from app.modules.translations import get_translations_providers
-from app.modules.users import get_user_providers
+from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -43,7 +43,7 @@ class _TestSessionProvider(Provider):
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncContainer:
     providers = [
         *get_core_providers(),
-        *get_user_providers(),
+        *get_users_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_settings_providers(),

@@ -32,3 +32,11 @@ class EventLogEntry(BaseSql):
     ip_address: Mapped[Optional[str]] = mapped_column(String(45))
 
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+    # Nullable + unique (not a foreign key required on every row): a retried
+    # outbox dispatch's persist step upserts on this to avoid a duplicate
+    # audit-log row; a row with no outbox_id simply predates this mechanism
+    # or was inserted some other way.
+    outbox_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("event_outbox.id", ondelete="SET NULL"), unique=True, nullable=True
+    )

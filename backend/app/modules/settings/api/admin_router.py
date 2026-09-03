@@ -12,17 +12,20 @@ from app.modules.settings.api.schemas import (
     BotCommandItem,
     BotSettingsResponse,
     OAuthSettingsResponse,
+    ShopSettingsResponse,
     UpdateAppearanceRequest,
     UpdateBotCommandsRequest,
     UpdateBotCommandsResponse,
     UpdateBotSettingsRequest,
     UpdateOAuthSettingsRequest,
+    UpdateShopSettingsRequest,
 )
 from app.modules.settings.dto import (
     AppearanceSettingsDto,
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
+    UpdateShopSettingsDto,
 )
 from app.modules.settings.usecases import (
     AddLocaleUseCase,
@@ -31,6 +34,7 @@ from app.modules.settings.usecases import (
     GetBotCommandsUseCase,
     GetBotSettingsUseCase,
     GetOAuthSettingsUseCase,
+    GetShopSettingsUseCase,
     ListActiveLocalesUseCase,
     RemoveLocaleUseCase,
     ResetAppearanceSettingsUseCase,
@@ -39,6 +43,7 @@ from app.modules.settings.usecases import (
     UpdateBotCommandsUseCase,
     UpdateBotSettingsUseCase,
     UpdateOAuthSettingsUseCase,
+    UpdateShopSettingsUseCase,
     UploadAppearanceFaviconUseCase,
     UploadAppearanceImageInput,
     UploadAppearanceLogoUseCase,
@@ -90,6 +95,32 @@ async def update_bot_settings(
         drop_pending_updates=settings.drop_pending_updates,
         banners_enabled=settings.banners_enabled,
     )
+
+
+@router.get("/shop", response_model=ShopSettingsResponse)
+@inject
+async def get_shop_settings(
+    use_case: FromDishka[GetShopSettingsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> ShopSettingsResponse:
+    settings = await use_case(actor)
+    return ShopSettingsResponse(max_active_subscriptions=settings.max_active_subscriptions)
+
+
+@router.put("/shop", response_model=ShopSettingsResponse)
+@inject
+async def update_shop_settings(
+    payload: UpdateShopSettingsRequest,
+    use_case: FromDishka[UpdateShopSettingsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> ShopSettingsResponse:
+    try:
+        settings = await use_case(
+            actor, UpdateShopSettingsDto(max_active_subscriptions=payload.max_active_subscriptions)
+        )
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    return ShopSettingsResponse(max_active_subscriptions=settings.max_active_subscriptions)
 
 
 @router.post("/bot/restart", status_code=status.HTTP_202_ACCEPTED)

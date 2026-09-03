@@ -48,9 +48,10 @@ class UpdateBotCommandsUseCase(UseCase[list[tuple[str, bool]], UpdateBotCommands
         telegram_sync_failed = False
         if bot_settings.is_configured:
             enabled_commands = [item for item in commands if item.enabled]
-            telegram_sync_failed = not await self._push_to_telegram(
-                bot_settings.token, enabled_commands
+            token = (
+                bot_settings.token.get_secret_value() if bot_settings.token is not None else None
             )
+            telegram_sync_failed = not await self._push_to_telegram(token, enabled_commands)
 
         return UpdateBotCommandsResultDto(
             commands=commands, telegram_sync_failed=telegram_sync_failed

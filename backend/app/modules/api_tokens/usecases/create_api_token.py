@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
+from app.core.ports import EventPublisher
 from app.core.security import generate_refresh_token, hash_refresh_token
 from app.core.security.permissions import (
     TOKEN_GRANTABLE_PERMISSIONS,
@@ -11,6 +12,7 @@ from app.core.security.permissions import (
 )
 from app.core.usecase import UseCase
 from app.modules.api_tokens.dto import ApiTokenDto, CreateApiTokenDto
+from app.modules.api_tokens.events import ApiTokenCreatedEvent
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.users import UserDto
 
@@ -31,9 +33,15 @@ class CreatedApiTokenDto:
 class CreateApiTokenUseCase(UseCase[CreateApiTokenInput, CreatedApiTokenDto]):
     required_permission = Permission.API_TOKENS_MANAGE
 
-    def __init__(self, api_token_repository: ApiTokenRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self,
+        api_token_repository: ApiTokenRepository,
+        uow: UnitOfWork,
+        event_publisher: EventPublisher,
+    ) -> None:
         self._api_token_repository = api_token_repository
         self._uow = uow
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: CreateApiTokenInput) -> CreatedApiTokenDto:
         assert_grantable(data.permissions, allowed=TOKEN_GRANTABLE_PERMISSIONS)
@@ -57,6 +65,9 @@ class CreateApiTokenUseCase(UseCase[CreateApiTokenInput, CreatedApiTokenDto]):
                     created_by_user_id=actor.id if actor.id > 0 else None,
                     expires_at=expires_at,
                 )
+            )
+            await self._event_publisher.publish(
+                ApiTokenCreatedEvent(user=actor, token_id=token.id, name=token.name)
             )
 
         return CreatedApiTokenDto(token=token, secret=secret)

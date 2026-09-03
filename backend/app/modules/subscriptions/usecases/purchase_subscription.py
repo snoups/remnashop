@@ -6,7 +6,12 @@ from uuid import uuid4
 
 from loguru import logger
 from remnapy import RemnawaveSDK
-from remnapy.models import CreateUserRequestDto, ExtendUserRequestDto, UserResponseDto
+from remnapy.models import (
+    CreateUserRequestDto,
+    ExtendUserRequestDto,
+    UpdateUserRequestDto,
+    UserResponseDto,
+)
 
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
@@ -16,11 +21,10 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.plans import PlanDto, PlanRepository
+from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.domain import calculate_proration_credit
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
-    PlanSnapshot,
     PurchaseSubscriptionDto,
     SubscriptionDto,
 )
@@ -31,9 +35,8 @@ from app.modules.subscriptions.events import (
 )
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto
+from app.modules.users import UpdateUserDto, UserDto, UserRepository
 
-MAX_ACTIVE_SUBSCRIPTIONS_PER_USER: Final[int] = 3
 _PANEL_USERNAME_PREFIX: Final[str] = "rs_"
 
 
@@ -46,15 +49,17 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
 
     def __init__(
         self,
-        plan_repository: PlanRepository,
         subscription_repository: SubscriptionRepository,
+        user_repository: UserRepository,
+        settings_repository: SettingsRepository,
         remnawave_sdk: RemnawaveSDK,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
         lifecycle_service: SubscriptionLifecycleService,
     ) -> None:
-        self._plan_repository = plan_repository
         self._subscription_repository = subscription_repository
+        self._user_repository = user_repository
+        self._settings_repository = settings_repository
         self._remnawave_sdk = remnawave_sdk
         self._uow = uow
         self._event_publisher = event_publisher
@@ -102,7 +107,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         if data.target_subscription_id is not None:
             raise ValidationError("target_subscription_id is forbidden for a NEW purchase")
 
-        plan = await self._plan_repository.get_by_id(data.plan_id)
+        plan = data.plan_snapshot
         username = _build_panel_username(data.user_id)
         expire_at = datetime_now() + timedelta(days=data.duration_days)
 
@@ -123,37 +128,50 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 # get_active_by_user_for_update only locks rows that already
                 # exist, so without this advisory lock two concurrent calls
                 # here could both observe the same under-cap count and both
-                # insert, silently exceeding MAX_ACTIVE_SUBSCRIPTIONS_PER_USER.
+                # insert, silently exceeding the cap.
                 await self._subscription_repository.acquire_purchase_cap_lock(data.user_id)
-                active = await self._subscription_repository.get_active_by_user_for_update(
-                    data.user_id
-                )
-                if len(active) >= MAX_ACTIVE_SUBSCRIPTIONS_PER_USER:
-                    raise ValidationError(
-                        f"User '{data.user_id}' is already at the concurrent-subscription cap"
+                shop_settings = await self._settings_repository.get_shop_settings()
+                max_active = shop_settings.max_active_subscriptions
+                if max_active is not None:
+                    active = await self._subscription_repository.get_active_by_user_for_update(
+                        data.user_id
                     )
+                    if len(active) >= max_active:
+                        raise ValidationError(
+                            f"User '{data.user_id}' is already at the concurrent-subscription cap"
+                        )
                 subscription = await self._subscription_repository.create(
-                    self._to_create_dto(data, plan, panel_user)
+                    self._to_create_dto(data, panel_user)
                 )
                 if data.idempotency_key is not None:
                     await self._subscription_repository.link_idempotency_key(
                         data.idempotency_key, subscription.id
                     )
+                await self._event_publisher.publish(
+                    SubscriptionPurchasedEvent(
+                        user=actor,
+                        subscription_id=subscription.id,
+                        plan_id=plan.plan_id,
+                        purchase_type=data.purchase_type.value,
+                    )
+                )
+                # Cleared unconditionally -- one extra no-op UPDATE per purchase is cheaper
+                # than a SELECT to check first, and it's always correct either way.
+                await self._user_repository.update_fields(
+                    data.user_id, UpdateUserDto(purchase_discount=0)
+                )
         except Exception:
+            # disable, not delete: the DB write failed, not the panel user
+            # itself -- disabling keeps a reversible, inspectable record on
+            # the panel side instead of erasing it outright. Unlike
+            # DeleteSubscriptionUseCase (a real, user-requested deletion),
+            # this is purely compensating for our own failure.
             with suppress(Exception):
-                await self._remnawave_sdk.users.delete_user(panel_user.id)
+                await self._remnawave_sdk.users.disable_user(panel_user.id)
             raise
 
         logger.info(
-            f"{actor.log} Purchased subscription '{subscription.id}' (plan '{plan.id}', NEW)"
-        )
-        await self._event_publisher.publish(
-            SubscriptionPurchasedEvent(
-                user=actor,
-                subscription_id=subscription.id,
-                plan_id=plan.id,
-                purchase_type=data.purchase_type.value,
-            )
+            f"{actor.log} Purchased subscription '{subscription.id}' (plan '{plan.plan_id}', NEW)"
         )
         return subscription
 
@@ -171,7 +189,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             raise ValidationError("Cannot renew a deleted subscription")
         if target.user_id != data.user_id:
             raise ValidationError("target_subscription_id does not belong to this user")
-        if target.plan_snapshot.plan_id != data.plan_id:
+        if target.plan_snapshot.plan_id != data.plan_snapshot.plan_id:
             raise ValidationError("Renewing a different plan is a CHANGE, not a RENEW")
 
         panel_user = await self._remnawave_sdk.users.extend_user(
@@ -193,14 +211,17 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 await self._subscription_repository.link_idempotency_key(
                     data.idempotency_key, subscription.id
                 )
+            await self._event_publisher.publish(
+                SubscriptionRenewedEvent(
+                    user=actor, subscription_id=subscription.id, duration_days=data.duration_days
+                )
+            )
+            await self._user_repository.update_fields(
+                data.user_id, UpdateUserDto(purchase_discount=0)
+            )
 
         logger.info(
             f"{actor.log} Renewed subscription '{subscription.id}' by {data.duration_days}d"
-        )
-        await self._event_publisher.publish(
-            SubscriptionRenewedEvent(
-                user=actor, subscription_id=subscription.id, duration_days=data.duration_days
-            )
         )
         return subscription
 
@@ -216,14 +237,13 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         if old.status is SubscriptionStatus.DELETED:
             raise ValidationError("Cannot change a deleted subscription")
 
-        plan = await self._plan_repository.get_by_id(data.plan_id)
+        plan = data.plan_snapshot
+
         now = datetime_now()
-        # Pure function of `old`'s own fields (see
-        # SubscriptionState.change_plan's docstring: it never used the new
-        # plan/expiry, only the old one) -- computable up front, before the
-        # panel is ever minted, so the panel gets the CORRECT final
-        # expire_at the first time. No provisional value, no post-hoc
-        # reconciliation, no panel/DB mismatch.
+        # Pure function of `old`'s own fields -- computable up front, before
+        # the panel is ever touched, so it gets the CORRECT final expire_at
+        # the first time. No provisional value, no post-hoc reconciliation,
+        # no panel/DB mismatch.
         credit = calculate_proration_credit(
             price_paid=old.plan_snapshot.price_paid,
             duration_days=old.plan_snapshot.duration_days,
@@ -231,82 +251,91 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             is_trial=old.is_trial,
             now=now,
         )
-        # data.price_paid is assumed to be the undiscounted list price -- if
-        # a future payment flow applies its own discount before calling this
-        # usecase, applying this day-credit on top of a discounted price
-        # would double-credit.
-        daily_rate_new = data.price_paid / Decimal(data.duration_days)
+        # Denominator is the list price (data.base_price), so the credit
+        # converts at list rate -- at the promo-discounted rate a 90%-off
+        # checkout would buy 10x the credit days it's worth.
+        proration_denominator = data.base_price if data.base_price is not None else data.price_paid
+        daily_rate_new = proration_denominator / Decimal(data.duration_days)
         credit_days = int(credit / daily_rate_new) if daily_rate_new > 0 else 0
         final_expire_at = now + timedelta(days=data.duration_days + credit_days)
 
-        username = _build_panel_username(data.user_id)
-        panel_user = await self._remnawave_sdk.users.create_user(
-            CreateUserRequestDto(
-                username=username,
+        # Reuses old's own panel identity (same UUID, same subscription_url
+        # the client may already have) instead of minting a new one -- CHANGE
+        # keeps both the local row and the panel user, updating each in
+        # place; only the plan-driven config (limits/squads/expiry) changes.
+        await self._remnawave_sdk.users.update_user(
+            UpdateUserRequestDto(
+                id=old.remnawave_user_id,
                 expire_at=final_expire_at,
                 traffic_limit_bytes=plan.traffic_limit * GB_TO_BYTES,
                 hwid_device_limit=plan.device_limit,
+                traffic_limit_strategy=plan.traffic_limit_strategy,
                 active_internal_squads=plan.internal_squads or None,
                 external_squad_uuid=plan.external_squad,
             )
         )
 
-        # old's panel identity (old.remnawave_user_id) is not revoked here --
-        # the reconcile_subscriptions task (spec Sec9.2) sweeps orphaned panel
-        # users on its own schedule. Minting the new
-        # panel user before this transaction also means a DB failure here
-        # leaves an orphaned NEW panel identity -- that one IS compensated
-        # for below (delete_user in the except block); the OLD one relies on
-        # the reconcile job, same as always.
         try:
             async with self._uow:
                 # Re-fetch under lock and re-validate nothing changed
                 # concurrently (e.g. a second CHANGE/DELETE racing this one)
-                # before committing the delete+create pair. lifecycle_service
-                # recomputes the same credit as above (pure function, same
-                # inputs) purely as a side effect of change_plan()'s own
-                # contract -- its returned value is discarded here, this
-                # usecase already has the number it needs.
+                # before committing.
                 locked_old = await self._subscription_repository.get_by_id_for_update(old.id)
                 if locked_old.status is SubscriptionStatus.DELETED:
                     raise ValidationError(
                         "Subscription was already changed or deleted while this request "
                         "was in flight"
                     )
-                await self._lifecycle_service.change_plan(locked_old.id, now=now)
-                new_subscription = await self._subscription_repository.create(
-                    self._to_create_dto(data, plan, panel_user, expire_at_override=final_expire_at)
+                updated = await self._lifecycle_service.change_plan_in_place(
+                    locked_old.id, new_plan_snapshot=plan, new_expire_at=final_expire_at
                 )
                 if data.idempotency_key is not None:
                     await self._subscription_repository.link_idempotency_key(
-                        data.idempotency_key, new_subscription.id
+                        data.idempotency_key, updated.id
                     )
+                await self._event_publisher.publish(
+                    SubscriptionChangedEvent(
+                        user=actor,
+                        subscription_id=updated.id,
+                        previous_plan_snapshot=old.plan_snapshot.to_json(),
+                    )
+                )
+                await self._user_repository.update_fields(
+                    data.user_id, UpdateUserDto(purchase_discount=0)
+                )
         except Exception:
+            # There's no orphan to clean up -- update_user mutated old's own
+            # panel identity in place, no new one was minted. Best-effort
+            # revert it to what it had before this CHANGE, so a DB failure
+            # doesn't leave the still-ACTIVE `old` subscription pointing at
+            # a panel user configured for a plan it was never billed for.
             with suppress(Exception):
-                await self._remnawave_sdk.users.delete_user(panel_user.id)
+                await self._remnawave_sdk.users.update_user(
+                    UpdateUserRequestDto(
+                        id=old.remnawave_user_id,
+                        expire_at=old.expire_at,
+                        traffic_limit_bytes=old.traffic_limit * GB_TO_BYTES,
+                        hwid_device_limit=old.device_limit,
+                        traffic_limit_strategy=old.traffic_limit_strategy,
+                        active_internal_squads=old.internal_squads or None,
+                        external_squad_uuid=old.external_squad,
+                    )
+                )
             raise
 
         logger.info(
-            f"{actor.log} Changed subscription '{old.id}' -> '{new_subscription.id}' "
-            f"(plan '{plan.id}', {credit_days}d credit applied)"
+            f"{actor.log} Changed subscription '{old.id}' to plan '{plan.plan_id}' "
+            f"({credit_days}d credit applied)"
         )
-        await self._event_publisher.publish(
-            SubscriptionChangedEvent(
-                user=actor,
-                old_subscription_id=old.id,
-                new_subscription_id=new_subscription.id,
-                previous_plan_snapshot=old.plan_snapshot.to_json(),
-            )
-        )
-        return new_subscription
+        return updated
 
     def _to_create_dto(
         self,
         data: PurchaseSubscriptionDto,
-        plan: PlanDto,
         panel_user: UserResponseDto,
         expire_at_override: Optional[datetime] = None,
     ) -> CreateSubscriptionDto:
+        plan = data.plan_snapshot
         return CreateSubscriptionDto(
             user_id=data.user_id,
             remnawave_user_id=panel_user.id,
@@ -319,12 +348,5 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             external_squad=plan.external_squad,
             expire_at=expire_at_override or panel_user.expire_at,
             url=panel_user.subscription_url,
-            plan_snapshot=PlanSnapshot(
-                plan_id=plan.id,
-                public_code=plan.public_code,
-                name=plan.name,
-                price_paid=data.price_paid,
-                currency=data.currency,
-                duration_days=data.duration_days,
-            ),
+            plan_snapshot=plan,
         )

@@ -80,11 +80,11 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
                         permission_revokes=[p.value for p in data.permission_revokes],
                     ),
                 )
+                assert updated is not None
+                await self._event_publisher.publish(
+                    AdminPromotedEvent(actor=actor, target=updated, ip_address=data.client_ip)
+                )
         except IntegrityError as error:
             raise ConflictError("Login already taken") from error
 
-        assert updated is not None
-        await self._event_publisher.publish(
-            AdminPromotedEvent(actor=actor, target=updated, ip_address=data.client_ip)
-        )
         return updated, password

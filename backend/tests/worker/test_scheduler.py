@@ -1,12 +1,17 @@
 from taskiq import TaskiqScheduler
 from taskiq.schedule_sources import LabelScheduleSource
 
+from app.worker.broker import retry_schedule_source
 from app.worker.scheduler import scheduler
 
 
 def test_scheduler_is_a_taskiq_scheduler_bound_to_the_shared_broker() -> None:
     assert isinstance(scheduler, TaskiqScheduler)
     assert any(isinstance(source, LabelScheduleSource) for source in scheduler.sources)
+
+
+def test_scheduler_also_polls_the_retry_schedule_source() -> None:
+    assert retry_schedule_source in scheduler.sources
 
 
 async def test_reconcile_task_schedule_is_discovered() -> None:

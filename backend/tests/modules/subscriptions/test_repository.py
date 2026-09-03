@@ -2,9 +2,10 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models import AddOnGrantIdempotency, SubscriptionPurchaseIdempotency
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.subscription import Subscription
 from app.core.db.uow import UnitOfWork
@@ -228,6 +229,41 @@ async def test_grant_entitlement_adds_row_and_recomputes_effective_limits(
     assert granted.addon_entitlements[0].addon_id == addon.id
 
 
+async def test_grant_entitlement_with_idempotency_key_is_not_applied_twice(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    addon_repository: AddOnRepository,
+) -> None:
+    user_id = await _create_user(user_repository, 5024)
+    created = await subscription_repository.create(_create_dto(user_id, 5024))
+    addon = await addon_repository.create(
+        CreateAddOnDto(name="traffic-50gb-idem-test", type=AddOnType.TRAFFIC, amount=50)
+    )
+
+    first = await subscription_repository.grant_entitlement(
+        subscription_id=created.id,
+        addon_id=addon.id,
+        addon_type=AddOnType.TRAFFIC,
+        amount=50,
+        idempotency_key="grant-key-1",
+    )
+    # Drop the identity map so the second call's idempotency-key lookup issues
+    # a real SELECT instead of hitting the in-session instance -- otherwise the
+    # guard "passes" without proving the row reached Postgres.
+    subscription_repository.session.expunge_all()
+    second = await subscription_repository.grant_entitlement(
+        subscription_id=created.id,
+        addon_id=addon.id,
+        addon_type=AddOnType.TRAFFIC,
+        amount=50,
+        idempotency_key="grant-key-1",
+    )
+
+    assert len(first.addon_entitlements) == 1
+    assert len(second.addon_entitlements) == 1
+    assert second.effective_traffic_limit == created.traffic_limit + 50
+
+
 async def test_grant_entitlement_unknown_subscription_raises_not_found(
     subscription_repository: SubscriptionRepository,
 ) -> None:
@@ -407,3 +443,36 @@ async def test_for_update_reads_see_fresh_data_not_identity_map_stale(
         locked = await subscription_repository.get_by_id_for_update(created.id)
 
     assert locked.status == SubscriptionStatus.LIMITED
+
+
+async def test_delete_stale_idempotency_keys_removes_only_old_rows(
+    subscription_repository: SubscriptionRepository,
+    session: AsyncSession,
+) -> None:
+    now = datetime.now(timezone.utc)
+    old_purchase = SubscriptionPurchaseIdempotency(key="old-p", subscription_id=None)
+    new_purchase = SubscriptionPurchaseIdempotency(key="new-p", subscription_id=None)
+    old_addon = AddOnGrantIdempotency(key="old-a", entitlement_id=None)
+    session.add_all([old_purchase, new_purchase, old_addon])
+    await session.flush()
+    # created_at is a server default; force the "old" rows back in time
+    await session.execute(
+        update(SubscriptionPurchaseIdempotency)
+        .where(SubscriptionPurchaseIdempotency.key == "old-p")
+        .values(created_at=now - timedelta(days=30))
+    )
+    await session.execute(
+        update(AddOnGrantIdempotency)
+        .where(AddOnGrantIdempotency.key == "old-a")
+        .values(created_at=now - timedelta(days=30))
+    )
+
+    purchase_deleted, addon_deleted = await subscription_repository.delete_stale_idempotency_keys(
+        now - timedelta(days=7)
+    )
+
+    assert (purchase_deleted, addon_deleted) == (1, 1)
+    remaining_purchase = set(
+        (await session.scalars(select(SubscriptionPurchaseIdempotency.key))).all()
+    )
+    assert remaining_purchase == {"new-p"}

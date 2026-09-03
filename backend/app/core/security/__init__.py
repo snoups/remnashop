@@ -7,7 +7,11 @@ from app.core.security.password import (
     hash_password,
     verify_password,
 )
-from app.core.security.session_token import generate_refresh_token, hash_refresh_token
+from app.core.security.session_token import (
+    derive_csrf_token,
+    generate_refresh_token,
+    hash_refresh_token,
+)
 
 __all__ = [
     "AccessTokenPayload",
@@ -16,6 +20,7 @@ __all__ = [
     "create_access_token",
     "decode_access_token",
     "decrypt_value",
+    "derive_csrf_token",
     "encrypt_value",
     "generate_password",
     "generate_refresh_token",

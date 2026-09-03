@@ -22,8 +22,7 @@ class SubscriptionRenewedEvent(UserEvent):
 @dataclass(frozen=True, kw_only=True)
 class SubscriptionChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
-    old_subscription_id: int
-    new_subscription_id: int
+    subscription_id: int
     previous_plan_snapshot: dict[str, Any]
 
 

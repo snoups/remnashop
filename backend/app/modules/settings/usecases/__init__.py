@@ -10,6 +10,7 @@ from app.modules.settings.usecases.get_public_appearance import GetPublicAppeara
 from app.modules.settings.usecases.get_public_appearance_image import (
     GetPublicAppearanceImageUseCase,
 )
+from app.modules.settings.usecases.get_shop_settings import GetShopSettingsUseCase
 from app.modules.settings.usecases.list_active_locales import ListActiveLocalesUseCase
 from app.modules.settings.usecases.remove_locale import RemoveLocaleUseCase
 from app.modules.settings.usecases.reset_appearance_settings import ResetAppearanceSettingsUseCase
@@ -20,6 +21,7 @@ from app.modules.settings.usecases.update_appearance_settings import (
 from app.modules.settings.usecases.update_bot_commands import UpdateBotCommandsUseCase
 from app.modules.settings.usecases.update_bot_settings import UpdateBotSettingsUseCase
 from app.modules.settings.usecases.update_oauth_settings import UpdateOAuthSettingsUseCase
+from app.modules.settings.usecases.update_shop_settings import UpdateShopSettingsUseCase
 from app.modules.settings.usecases.upload_appearance_image import (
     UploadAppearanceFaviconUseCase,
     UploadAppearanceImageInput,
@@ -35,6 +37,7 @@ __all__ = [
     "GetOAuthSettingsUseCase",
     "GetPublicAppearanceImageUseCase",
     "GetPublicAppearanceUseCase",
+    "GetShopSettingsUseCase",
     "ListActiveLocalesUseCase",
     "RemoveLocaleUseCase",
     "ResetAppearanceSettingsUseCase",
@@ -43,6 +46,7 @@ __all__ = [
     "UpdateBotCommandsUseCase",
     "UpdateBotSettingsUseCase",
     "UpdateOAuthSettingsUseCase",
+    "UpdateShopSettingsUseCase",
     "UploadAppearanceFaviconUseCase",
     "UploadAppearanceImageInput",
     "UploadAppearanceLogoUseCase",

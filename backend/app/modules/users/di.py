@@ -11,13 +11,14 @@ from app.modules.users.usecases import (
     ListUsersUseCase,
     PromoteToAdminUseCase,
     RegisterTelegramUserUseCase,
+    SetUserPersonalDiscountUseCase,
     UpdateAdminUseCase,
     UpdateOwnProfileUseCase,
     UpdateOwnSecuritySettingsUseCase,
 )
 
 
-class UserProvider(Provider):
+class UsersProvider(Provider):
     scope = Scope.REQUEST
 
     user_repository = provide(UserRepository)
@@ -33,7 +34,8 @@ class UserProvider(Provider):
     update_own_profile_use_case = provide(UpdateOwnProfileUseCase)
     update_own_security_settings_use_case = provide(UpdateOwnSecuritySettingsUseCase)
     register_telegram_user_use_case = provide(RegisterTelegramUserUseCase)
+    set_user_personal_discount_use_case = provide(SetUserPersonalDiscountUseCase)
 
 
-def get_user_providers() -> list[Provider]:
-    return [UserProvider()]
+def get_users_providers() -> list[Provider]:
+    return [UsersProvider()]

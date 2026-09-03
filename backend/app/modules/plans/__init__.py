@@ -1,3 +1,4 @@
+from app.modules.plans.access import is_plan_purchasable_by
 from app.modules.plans.di import get_plans_providers
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -48,4 +49,5 @@ __all__ = [
     "UpdatePlanSquadsUseCase",
     "UpdatePlanUseCase",
     "get_plans_providers",
+    "is_plan_purchasable_by",
 ]

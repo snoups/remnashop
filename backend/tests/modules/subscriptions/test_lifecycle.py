@@ -6,7 +6,7 @@ from app.core.enums import SubscriptionStatus
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.repository import UserRepository
-from tests.modules.subscriptions.factories import create_subscription
+from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
 
 
 async def test_sync_status_persists_a_legal_transition(
@@ -63,7 +63,7 @@ async def test_renew_reactivates_an_expired_subscription(
     assert result.expire_at == new_expire_at
 
 
-async def test_change_plan_deletes_old_and_returns_credit(
+async def test_change_plan_in_place_applies_new_plan_and_stays_active(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -78,11 +78,17 @@ async def test_change_plan_deletes_old_and_returns_credit(
         duration_days=30,
     )
     service = SubscriptionLifecycleService(subscription_repository)
+    new_expire_at = datetime(2026, 3, 1, tzinfo=timezone.utc)
 
     async with uow:
-        old, credit = await service.change_plan(
-            created.id, now=datetime(2026, 1, 16, tzinfo=timezone.utc)
+        updated = await service.change_plan_in_place(
+            created.id,
+            new_plan_snapshot=make_plan_snapshot(plan_id=99, traffic_limit=200),
+            new_expire_at=new_expire_at,
         )
 
-    assert old.status is SubscriptionStatus.DELETED
-    assert credit == Decimal("150.00")
+    assert updated.id == created.id
+    assert updated.status is SubscriptionStatus.ACTIVE
+    assert updated.plan_snapshot.plan_id == 99
+    assert updated.traffic_limit == 200
+    assert updated.expire_at == new_expire_at

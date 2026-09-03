@@ -26,7 +26,7 @@ def build_app(config: AppConfig, bot_settings: BotSettingsDto) -> FastAPI:
 
     dispatcher = get_dispatcher(config)
     bg_manager_factory = get_bg_manager_factory(dispatcher)
-    bot = Bot(token=bot_settings.token)
+    bot = Bot(token=bot_settings.token.get_secret_value())
 
     container = create_aiogram_container(config, bg_manager_factory, bot)
     # Must run before setup_dispatcher(): outer middlewares run in registration
@@ -36,7 +36,11 @@ def build_app(config: AppConfig, bot_settings: BotSettingsDto) -> FastAPI:
     setup_dispatcher(dispatcher)
 
     app = get_app(
-        config, dispatcher, bot, bot_settings.secret_token, bot_settings.drop_pending_updates
+        config,
+        dispatcher,
+        bot,
+        bot_settings.secret_token.get_secret_value(),
+        bot_settings.drop_pending_updates,
     )
     setup_fastapi_dishka(container, app)
     return app

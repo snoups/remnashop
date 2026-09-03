@@ -1,9 +1,17 @@
+from typing import Optional
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.enums import SubscriptionStatus
+from app.core.exceptions import (
+    ConflictError,
+    NotFoundError,
+    RemnawavePanelUnavailableError,
+    ValidationError,
+)
 from app.modules.subscriptions.api.schemas import (
     AddOnEntitlementItem,
     AddOnPriceItem,
@@ -11,12 +19,15 @@ from app.modules.subscriptions.api.schemas import (
     CreateAddOnRequest,
     ReorderAddOnsRequest,
     SetAddOnPricesRequest,
+    SubscriptionPageResponse,
     SubscriptionResponse,
     UpdateAddOnRequest,
     UpdateSubscriptionRequest,
     UpdateSubscriptionSquadsRequest,
 )
 from app.modules.subscriptions.dto import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
     AddOnDto,
     CreateAddOnDto,
     ReorderAddOnsDto,
@@ -32,6 +43,7 @@ from app.modules.subscriptions.usecases import (
     DeleteAddOnUseCase,
     DeleteSubscriptionUseCase,
     ListAddOnsUseCase,
+    ListSubscriptionsInput,
     ListSubscriptionsUseCase,
     ReorderAddOnsUseCase,
     SetAddOnPricesUseCase,
@@ -93,14 +105,22 @@ def _to_addon_response(addon: AddOnDto) -> AddOnResponse:
     )
 
 
-@router.get("", response_model=list[SubscriptionResponse])
+@router.get("", response_model=SubscriptionPageResponse)
 @inject
 async def list_subscriptions(
     use_case: FromDishka[ListSubscriptionsUseCase],
     actor: UserDto = Depends(require_admin),
-) -> list[SubscriptionResponse]:
-    subscriptions = await use_case(actor)
-    return [_to_subscription_response(subscription) for subscription in subscriptions]
+    status_filter: Optional[SubscriptionStatus] = Query(None, alias="status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+) -> SubscriptionPageResponse:
+    subscriptions, total = await use_case(
+        actor, ListSubscriptionsInput(status=status_filter, page=page, page_size=page_size)
+    )
+    return SubscriptionPageResponse(
+        items=[_to_subscription_response(subscription) for subscription in subscriptions],
+        total=total,
+    )
 
 
 @router.put("/{subscription_id}", response_model=SubscriptionResponse)
@@ -124,6 +144,11 @@ async def update_subscription(
         )
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except RemnawavePanelUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Remnawave panel is temporarily unavailable",
+        ) from error
     return _to_subscription_response(subscription)
 
 
@@ -146,6 +171,11 @@ async def update_subscription_squads(
         )
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except RemnawavePanelUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Remnawave panel is temporarily unavailable",
+        ) from error
     return _to_subscription_response(subscription)
 
 
@@ -160,6 +190,11 @@ async def delete_subscription(
         await use_case(actor, subscription_id)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except RemnawavePanelUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Remnawave panel is temporarily unavailable",
+        ) from error
 
 
 @addons_router.get("", response_model=list[AddOnResponse])

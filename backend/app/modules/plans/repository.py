@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.models.plan import Plan
 from app.core.db.models.plan_duration import PlanDuration
 from app.core.db.models.plan_price import PlanPrice
-from app.core.enums import PlanAvailability
+from app.core.enums import PlanAvailability, PlanType
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -26,6 +26,23 @@ from app.modules.plans.dto import (
 # plain read-then-write (or delete-then-insert) could otherwise interleave and corrupt.
 _PLAN_ORDER_LOCK_KEY: Final[int] = 8221938
 _PLAN_DURATIONS_LOCK_KEY: Final[int] = 8221939
+
+
+def _zero_irrelevant_limits(
+    plan_type: PlanType, traffic_limit: int, device_limit: int
+) -> tuple[int, int]:
+    """A plan's type dictates which limit actually applies -- the other is
+    force-zeroed (Remnawave panel convention: 0 = unlimited), same as the
+    pre-rebuild codebase's CommitPlan._validate_and_prepare_plan. Runs
+    unconditionally on every create/update, not just when type changes --
+    idempotent, so re-applying to an already-consistent plan is a no-op."""
+    if plan_type == PlanType.DEVICES:
+        return 0, device_limit
+    if plan_type == PlanType.TRAFFIC:
+        return traffic_limit, 0
+    if plan_type == PlanType.UNLIMITED:
+        return 0, 0
+    return traffic_limit, device_limit
 
 
 class PlanRepository:
@@ -123,6 +140,9 @@ class PlanRepository:
         count_result = await self.session.execute(select(func.count()).select_from(Plan))
         next_order_index = count_result.scalar_one()
 
+        traffic_limit, device_limit = _zero_irrelevant_limits(
+            data.type, data.traffic_limit, data.device_limit
+        )
         row = Plan(
             public_code=data.public_code,
             name=data.name,
@@ -131,8 +151,8 @@ class PlanRepository:
             type=data.type,
             availability=PlanAvailability.ALL,
             traffic_limit_strategy=data.traffic_limit_strategy,
-            traffic_limit=data.traffic_limit,
-            device_limit=data.device_limit,
+            traffic_limit=traffic_limit,
+            device_limit=device_limit,
             allowed_telegram_ids=[],
             allowed_emails=[],
             internal_squads=[],
@@ -168,6 +188,19 @@ class PlanRepository:
             if value is not None:
                 setattr(row, field.name, value)
 
+        row.traffic_limit, row.device_limit = _zero_irrelevant_limits(
+            row.type, row.traffic_limit, row.device_limit
+        )
+
+        if row.is_active:
+            if not row.internal_squads:
+                raise ValidationError("Cannot activate a plan with no squads")
+            duration_count = await self.session.scalar(
+                select(func.count()).select_from(PlanDuration).where(PlanDuration.plan_id == row.id)
+            )
+            if not duration_count:
+                raise ValidationError("Cannot activate a plan with no durations")
+
         try:
             await self.session.flush()
         except IntegrityError as error:
@@ -186,10 +219,21 @@ class PlanRepository:
             await self.session.execute(delete(Plan).where(Plan.id == plan_id))
             await self.session.flush()
         except IntegrityError as error:
-            raise ConflictError(f"Plan '{plan_id}' is still referenced by a promocode") from error
+            constraint = getattr(error.orig, "constraint_name", None)
+            if constraint == "promocodes_reward_plan_id_fkey":
+                raise ConflictError(
+                    f"Plan '{plan_id}' is still referenced by a promocode"
+                ) from error
+            # payment_orders.plan_id is ON DELETE SET NULL (purchase_subscription_task
+            # provisions from plan_snapshot, never re-resolves it live) -- deleting a
+            # plan with existing orders no longer raises here.
+            raise ConflictError(f"Plan '{plan_id}' is still referenced elsewhere") from error
 
     async def set_durations(self, data: SetPlanDurationsDto) -> PlanDto:
         row = await self._get_or_raise(data.plan_id)
+
+        if row.is_active and not data.durations:
+            raise ValidationError("Cannot remove all durations from an active plan")
 
         seen_days: set[int] = set()
         for duration in data.durations:
@@ -254,6 +298,7 @@ class PlanRepository:
         return self._to_dto(row, durations_by_plan.get(row.id, []))
 
     async def reorder(self, data: ReorderPlansDto) -> list[PlanDto]:
+        await self.session.execute(select(func.pg_advisory_xact_lock(_PLAN_ORDER_LOCK_KEY)))
         result = await self.session.execute(select(Plan))
         rows = {row.id: row for row in result.scalars()}
 

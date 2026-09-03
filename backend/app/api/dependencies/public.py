@@ -7,6 +7,7 @@ from fastapi import HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 
+from app.core.actor import Actor, SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
@@ -14,14 +15,16 @@ from app.core.security import decode_access_token, hash_refresh_token
 from app.core.utils.http import is_ip_allowed, resolve_client_ip
 from app.modules.api_tokens import ApiTokenRepository
 from app.modules.auth import SessionRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def _resolve_api_token_actor(
-    credential: str, api_token_repository: ApiTokenRepository, uow: UnitOfWork
-) -> Optional[UserDto]:
+    credential: str,
+    api_token_repository: ApiTokenRepository,
+    uow: UnitOfWork,
+) -> Optional[SyntheticActor]:
     token = await api_token_repository.get_active_by_hash(hash_refresh_token(credential))
     if token is None:
         return None
@@ -32,12 +35,13 @@ async def _resolve_api_token_actor(
     async with uow:
         await api_token_repository.touch_last_used(token.id)
 
-    return UserDto(
+    return SyntheticActor(
         id=0,  # BaseDto's existing "not persisted" sentinel -- see core/dto.py
         role=Role.USER,
         name=f"API Token: {token.name}",
+        is_privileged=True,
+        log=f"[api_token:{token.name}]",
         permission_grants=[p.value for p in token.permissions],
-        is_api_token=True,
     )
 
 
@@ -50,7 +54,7 @@ async def get_current_actor(
     api_token_repository: FromDishka[ApiTokenRepository],
     uow: FromDishka[UnitOfWork],
     credentials: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme),
-) -> UserDto:
+) -> Actor:
     client_ip = resolve_client_ip(request)
 
     if credentials is None:
@@ -73,7 +77,7 @@ async def get_current_actor(
         ) from None
 
     session = await session_repository.get_active_by_id(session_id)
-    if session is None:
+    if session is None or session.user_id != user_id:
         logger.warning(f"Token for revoked/expired session_id={session_id} from IP '{client_ip}'")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"

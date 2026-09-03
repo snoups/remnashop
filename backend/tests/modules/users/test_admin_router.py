@@ -20,7 +20,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.settings import get_settings_providers
 from app.modules.translations import get_translations_providers
-from app.modules.users import get_user_providers
+from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
@@ -50,7 +50,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
     # untouched.
     providers = [
         *get_core_providers(),
-        *get_user_providers(),
+        *get_users_providers(),
         *get_auth_providers(),
         *get_settings_providers(),
         *get_api_tokens_providers(),
@@ -353,7 +353,7 @@ async def test_get_me_includes_effective_permissions(
     assert "EVENT_LOG_VIEW" in permissions
 
 
-async def test_list_users_endpoint_returns_every_role(
+async def test_list_users_endpoint_excludes_admins_and_owner(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -374,7 +374,7 @@ async def test_list_users_endpoint_returns_every_role(
     names_and_logins = {u["name"] for u in body["items"]} | {
         u["login"] for u in body["items"] if u["login"]
     }
-    assert owner.login in names_and_logins
+    assert owner.login not in names_and_logins
     assert "HTTPRegular" in names_and_logins
 
 
@@ -470,3 +470,27 @@ async def test_delete_user_endpoint_rejects_admin_without_grant(
 
     assert response.status_code == 403
     assert await user_repository.get_by_id(target.id) is not None
+
+
+async def test_set_user_discount_updates_personal_discount(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="disc-target", role=Role.USER, language=Locale.EN)
+        )
+        await uow.commit()
+
+    response = await client.patch(
+        f"/api/v1/users/{target.id}/discount",
+        json={"percent": 30},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["personal_discount"] == 30

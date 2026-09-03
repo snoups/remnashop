@@ -1,11 +1,11 @@
-from typing import Optional, cast
+from typing import Final, Optional, cast
 
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from app.core.utils.http import assert_public_https_host
 
-_DISCOVERY_PATH = "/.well-known/openid-configuration"
+_DISCOVERY_PATH: Final[str] = "/.well-known/openid-configuration"
 
 
 class OIDCOAuthClient:

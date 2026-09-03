@@ -10,6 +10,7 @@ from app.modules.settings.usecases import (
     GetOAuthSettingsUseCase,
     GetPublicAppearanceImageUseCase,
     GetPublicAppearanceUseCase,
+    GetShopSettingsUseCase,
     ListActiveLocalesUseCase,
     RemoveLocaleUseCase,
     ResetAppearanceSettingsUseCase,
@@ -18,6 +19,7 @@ from app.modules.settings.usecases import (
     UpdateBotCommandsUseCase,
     UpdateBotSettingsUseCase,
     UpdateOAuthSettingsUseCase,
+    UpdateShopSettingsUseCase,
     UploadAppearanceFaviconUseCase,
     UploadAppearanceLogoUseCase,
 )
@@ -30,6 +32,8 @@ class SettingsProvider(Provider):
     get_bot_settings_use_case = provide(GetBotSettingsUseCase)
     update_bot_settings_use_case = provide(UpdateBotSettingsUseCase)
     restart_bot_use_case = provide(RestartBotUseCase)
+    get_shop_settings_use_case = provide(GetShopSettingsUseCase)
+    update_shop_settings_use_case = provide(UpdateShopSettingsUseCase)
     get_oauth_settings_use_case = provide(GetOAuthSettingsUseCase)
     update_oauth_settings_use_case = provide(UpdateOAuthSettingsUseCase)
     get_bot_commands_use_case = provide(GetBotCommandsUseCase)

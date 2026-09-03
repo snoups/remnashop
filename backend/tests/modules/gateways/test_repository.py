@@ -77,6 +77,24 @@ async def test_set_active_toggles_flag(gateways_repository: GatewaysRepository) 
     assert not gateway.is_active
 
 
+async def test_get_raw_settings_returns_stored_values(
+    gateways_repository: GatewaysRepository,
+) -> None:
+    await gateways_repository.update_settings(
+        PaymentGatewayType.YOOKASSA, {"shop_id": "123", "api_key": "secret"}
+    )
+
+    values = await gateways_repository.get_raw_settings(PaymentGatewayType.YOOKASSA)
+    assert values == {"shop_id": "123", "api_key": "secret"}
+
+
+async def test_get_raw_settings_returns_empty_dict_for_unconfigured_gateway(
+    gateways_repository: GatewaysRepository,
+) -> None:
+    values = await gateways_repository.get_raw_settings(PaymentGatewayType.YOOKASSA)
+    assert values == {}
+
+
 async def test_reorder_persists_order_and_creates_missing_rows(
     gateways_repository: GatewaysRepository,
 ) -> None:

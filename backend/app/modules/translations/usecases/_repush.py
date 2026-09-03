@@ -22,8 +22,9 @@ async def repush_bot_commands_if_configured(
     enabled = [item for item in commands if item.enabled]
     active_locales = await settings_repository.list_active_locales()
     translations_by_locale = await translations_repository.get_fluent_text_by_locale(active_locales)
+    token = bot_settings.token.get_secret_value() if bot_settings.token is not None else None
     await push_bot_commands_to_telegram(
-        bot_settings.token,
+        token,
         enabled,
         active_locales,
         translations_by_locale,

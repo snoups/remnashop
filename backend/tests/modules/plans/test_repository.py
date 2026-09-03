@@ -24,6 +24,27 @@ def _create_dto(public_code: str = "basic", name: str = "Basic") -> CreatePlanDt
     )
 
 
+async def _add_minimal_squad(plan_repository: PlanRepository, plan_id: int) -> None:
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan_id, internal_squads=[uuid4()], external_squad=None)
+    )
+
+
+async def _add_minimal_duration(plan_repository: PlanRepository, plan_id: int) -> None:
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan_id,
+            durations=[
+                SetPlanDurationDto(
+                    days=30,
+                    order_index=0,
+                    prices=[SetPlanPriceDto(currency=Currency.USD, price=Decimal("9.99"))],
+                )
+            ],
+        )
+    )
+
+
 async def test_create_then_list_all_returns_plan(plan_repository: PlanRepository) -> None:
     created = await plan_repository.create(_create_dto())
 
@@ -48,11 +69,45 @@ async def test_activating_plan_makes_it_appear_in_list_active(
     plan_repository: PlanRepository,
 ) -> None:
     created = await plan_repository.create(_create_dto())
+    await _add_minimal_squad(plan_repository, created.id)
+    await _add_minimal_duration(plan_repository, created.id)
 
     await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
 
     active = await plan_repository.list_active()
     assert [plan.id for plan in active] == [created.id]
+
+
+async def test_activating_plan_without_durations_raises_validation_error(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(_create_dto())
+    await _add_minimal_squad(plan_repository, created.id)
+
+    with pytest.raises(ValidationError):
+        await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
+
+
+async def test_activating_plan_without_squads_raises_validation_error(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(_create_dto())
+    await _add_minimal_duration(plan_repository, created.id)
+
+    with pytest.raises(ValidationError):
+        await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
+
+
+async def test_clearing_durations_of_active_plan_raises_validation_error(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(_create_dto())
+    await _add_minimal_squad(plan_repository, created.id)
+    await _add_minimal_duration(plan_repository, created.id)
+    await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
+
+    with pytest.raises(ValidationError):
+        await plan_repository.set_durations(SetPlanDurationsDto(plan_id=created.id, durations=[]))
 
 
 async def test_create_assigns_incrementing_order_index(plan_repository: PlanRepository) -> None:
@@ -79,6 +134,58 @@ async def test_create_duplicate_name_raises_conflict(plan_repository: PlanReposi
         await plan_repository.create(_create_dto("second", "Dup"))
 
 
+async def test_create_devices_plan_zeroes_traffic_limit(plan_repository: PlanRepository) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="devices-only",
+            name="Devices Only",
+            type=PlanType.DEVICES,
+            traffic_limit=500,
+            device_limit=5,
+        )
+    )
+
+    assert created.traffic_limit == 0
+    assert created.device_limit == 5
+
+
+async def test_create_traffic_plan_zeroes_device_limit(plan_repository: PlanRepository) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="traffic-only",
+            name="Traffic Only",
+            type=PlanType.TRAFFIC,
+            traffic_limit=500,
+            device_limit=5,
+        )
+    )
+
+    assert created.traffic_limit == 500
+    assert created.device_limit == 0
+
+
+async def test_create_unlimited_plan_zeroes_both_limits(plan_repository: PlanRepository) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="fully-unlimited",
+            name="Fully Unlimited",
+            type=PlanType.UNLIMITED,
+            traffic_limit=500,
+            device_limit=5,
+        )
+    )
+
+    assert created.traffic_limit == 0
+    assert created.device_limit == 0
+
+
+async def test_create_both_plan_keeps_both_limits(plan_repository: PlanRepository) -> None:
+    created = await plan_repository.create(_create_dto())
+
+    assert created.traffic_limit == 100
+    assert created.device_limit == 3
+
+
 async def test_update_unknown_plan_raises_not_found(plan_repository: PlanRepository) -> None:
     with pytest.raises(NotFoundError):
         await plan_repository.update(UpdatePlanDto(plan_id=999_999, name="X"))
@@ -94,6 +201,38 @@ async def test_partial_update_leaves_other_fields_untouched(
     assert updated.traffic_limit == 200
     assert updated.device_limit == 3  # untouched
     assert updated.name == "Basic"  # untouched
+
+
+async def test_update_switching_to_devices_type_zeroes_traffic_limit(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(_create_dto())
+
+    updated = await plan_repository.update(UpdatePlanDto(plan_id=created.id, type=PlanType.DEVICES))
+
+    assert updated.traffic_limit == 0
+    assert updated.device_limit == 3  # untouched
+
+
+async def test_update_on_an_already_devices_plan_keeps_traffic_limit_zeroed(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="devices-plan",
+            name="Devices Plan",
+            type=PlanType.DEVICES,
+            traffic_limit=0,
+            device_limit=3,
+        )
+    )
+
+    # Unrelated field update -- type stays DEVICES, traffic_limit must stay
+    # zeroed even though this request never mentions either field.
+    updated = await plan_repository.update(UpdatePlanDto(plan_id=created.id, name="Renamed"))
+
+    assert updated.traffic_limit == 0
+    assert updated.name == "Renamed"
 
 
 async def test_delete_removes_plan(plan_repository: PlanRepository) -> None:

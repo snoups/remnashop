@@ -82,12 +82,11 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto]):
                     external_login=external_login,
                 )
             )
-
-        await self._event_publisher.publish(
-            OAuthIdentityConnectedEvent(
-                user=actor,
-                provider=data.provider,
-                ip_address=data.client_ip,
+            await self._event_publisher.publish(
+                OAuthIdentityConnectedEvent(
+                    user=actor,
+                    provider=data.provider,
+                    ip_address=data.client_ip,
+                )
             )
-        )
         return identity

@@ -8,8 +8,8 @@ from app.modules.settings import enable_password_login
 # mirrors Remnawave's own built-in rescue CLI. Only one rescue action exists so
 # far; more (reset password, restore backup) get their own menu entry here later.
 _MENU: Final[str] = """Remnashop Rescue CLI
-  1. Enable password authentication
-  0. Exit
+    1. Enable password authentication
+    0. Exit
 """
 
 

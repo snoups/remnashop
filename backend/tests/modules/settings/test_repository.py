@@ -11,6 +11,7 @@ from app.modules.settings.dto import (
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
+    UpdateShopSettingsDto,
 )
 from app.modules.settings.repository import SettingsRepository
 
@@ -36,8 +37,10 @@ async def test_update_then_get_roundtrips_decrypted_values(
 
     settings = await settings_repository.get_bot_settings()
 
-    assert settings.token == "123:abcdef"
-    assert settings.secret_token == "webhook-secret"
+    assert settings.token is not None
+    assert settings.token.get_secret_value() == "123:abcdef"
+    assert settings.secret_token is not None
+    assert settings.secret_token.get_secret_value() == "webhook-secret"
     assert settings.is_configured
 
 
@@ -55,8 +58,10 @@ async def test_partial_update_leaves_other_field_untouched(
     )
 
     settings = await settings_repository.get_bot_settings()
-    assert settings.token == "999:newtoken"
-    assert settings.secret_token == "webhook-secret"
+    assert settings.token is not None
+    assert settings.token.get_secret_value() == "999:newtoken"
+    assert settings.secret_token is not None
+    assert settings.secret_token.get_secret_value() == "webhook-secret"
 
 
 async def test_stored_value_is_encrypted_at_rest(
@@ -136,9 +141,11 @@ async def test_update_then_get_oauth_settings_roundtrips_decrypted_values(
     settings = await settings_repository.get_oauth_settings()
 
     assert settings.github_client_id == "gh-id"
-    assert settings.github_client_secret == "gh-secret"
+    assert settings.github_client_secret is not None
+    assert settings.github_client_secret.get_secret_value() == "gh-secret"
     assert settings.telegram_client_id == "tg-id"
-    assert settings.telegram_client_secret == "tg-secret"
+    assert settings.telegram_client_secret is not None
+    assert settings.telegram_client_secret.get_secret_value() == "tg-secret"
     assert settings.is_github_configured
     assert settings.is_telegram_configured
 
@@ -215,7 +222,8 @@ async def test_update_then_get_oidc_settings_roundtrips_decrypted_values(
 
     assert settings.oidc_issuer_url == "https://keycloak.example.com/realms/myrealm"
     assert settings.oidc_client_id == "oidc-id"
-    assert settings.oidc_client_secret == "oidc-secret"
+    assert settings.oidc_client_secret is not None
+    assert settings.oidc_client_secret.get_secret_value() == "oidc-secret"
     assert settings.oidc_display_name == "Keycloak"
     assert settings.is_oidc_configured
 
@@ -399,3 +407,32 @@ async def test_set_appearance_image_kinds_are_independent(
 
     assert settings.has_logo is True
     assert settings.has_favicon is True
+
+
+async def test_get_shop_settings_defaults_to_three(
+    settings_repository: SettingsRepository,
+) -> None:
+    settings = await settings_repository.get_shop_settings()
+
+    assert settings.max_active_subscriptions == 3
+
+
+async def test_update_shop_settings_to_unlimited(
+    settings_repository: SettingsRepository,
+) -> None:
+    settings = await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(max_active_subscriptions=None)
+    )
+
+    assert settings.max_active_subscriptions is None
+    assert (await settings_repository.get_shop_settings()).max_active_subscriptions is None
+
+
+async def test_update_shop_settings_to_a_specific_cap(
+    settings_repository: SettingsRepository,
+) -> None:
+    settings = await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(max_active_subscriptions=10)
+    )
+
+    assert settings.max_active_subscriptions == 10

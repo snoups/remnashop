@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
+from app.core.db.models import EventOutboxEntry
 from app.core.db.models.user_session import UserSession
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, OAuthProvider, Role
-from app.core.event_bus import EventBus
 from app.core.events import EventCategory
 from app.core.exceptions import (
     AuthenticationError,
@@ -70,6 +71,18 @@ REGULAR_USER = UserDto(id=999, name="Bob", role=Role.USER, language=Locale.EN)
 USER_AGENT = "pytest"
 
 
+async def _newest_outbox_row(session: AsyncSession, event_type: str) -> EventOutboxEntry:
+    rows = (
+        await session.scalars(
+            select(EventOutboxEntry)
+            .where(EventOutboxEntry.event_type == event_type)
+            .order_by(EventOutboxEntry.id)
+        )
+    ).all()
+    assert rows, f"no outbox row for '{event_type}'"
+    return rows[-1]
+
+
 def _bootstrap_use_case(
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -100,6 +113,7 @@ def _login_use_case(
         event_publisher,
         SessionIssuer(session_repository, uow, config),
         settings_repository,
+        uow,
     )
 
 
@@ -121,6 +135,7 @@ def _oauth_login_callback_use_case(
         config,
         event_publisher,
         SessionIssuer(session_repository, uow, config),
+        uow,
     )
 
 
@@ -353,47 +368,31 @@ async def test_login_publishes_success_and_failure_events(
     config: AppConfig,
     session_repository: SessionRepository,
     settings_repository: SettingsRepository,
+    session: AsyncSession,
+    event_publisher: EventPublisher,
 ) -> None:
-    bus = EventBus()
-    received: list[object] = []
-
-    async def record(event: object) -> None:
-        received.append(event)
-
-    def resubscribe() -> None:
-        # publish() is fire-and-forget now, and shutdown() (used below to
-        # deterministically wait for dispatch) clears handlers -- re-register
-        # before each action that needs them observed.
-        bus.subscribe(LoginSucceededEvent, record)
-        bus.subscribe(LoginFailedEvent, record)
-
-    resubscribe()
-    await _bootstrap_use_case(user_repository, uow, config, bus, session_repository).execute(
-        login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT
-    )
-    await bus.shutdown()
-    received.clear()  # drop the OwnerBootstrappedEvent side effect of setup
-
-    resubscribe()
-    await _login_use_case(
-        user_repository, uow, config, bus, session_repository, settings_repository
+    await _bootstrap_use_case(
+        user_repository, uow, config, event_publisher, session_repository
     ).execute(login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT)
-    await bus.shutdown()
-    assert isinstance(received[-1], LoginSucceededEvent)
-    assert received[-1].user.login == "admin"
-    assert received[-1].ip_address == CLIENT_IP
 
-    resubscribe()
+    await _login_use_case(
+        user_repository, uow, config, event_publisher, session_repository, settings_repository
+    ).execute(login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT)
+
+    success = await _newest_outbox_row(session, LoginSucceededEvent.__name__)
+    assert success.payload["user"]["login"] == "admin"
+    assert success.ip_address == CLIENT_IP
+
     with pytest.raises(AuthenticationError):
         await _login_use_case(
-            user_repository, uow, config, bus, session_repository, settings_repository
+            user_repository, uow, config, event_publisher, session_repository, settings_repository
         ).execute(
             login="admin", password="wrong-one-here", client_ip=CLIENT_IP, user_agent=USER_AGENT
         )
-    await bus.shutdown()
-    assert isinstance(received[-1], LoginFailedEvent)
-    assert received[-1].login == "admin"
-    assert received[-1].ip_address == CLIENT_IP
+
+    failure = await _newest_outbox_row(session, LoginFailedEvent.__name__)
+    assert failure.payload["login"] == "admin"
+    assert failure.ip_address == CLIENT_IP
 
 
 async def test_bootstrap_publishes_owner_bootstrapped_event(
@@ -401,24 +400,16 @@ async def test_bootstrap_publishes_owner_bootstrapped_event(
     uow: UnitOfWork,
     config: AppConfig,
     session_repository: SessionRepository,
+    session: AsyncSession,
+    event_publisher: EventPublisher,
 ) -> None:
-    bus = EventBus()
-    received: list[object] = []
+    await _bootstrap_use_case(
+        user_repository, uow, config, event_publisher, session_repository
+    ).execute(login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT)
 
-    async def record(event: object) -> None:
-        received.append(event)
-
-    bus.subscribe(OwnerBootstrappedEvent, record)
-
-    await _bootstrap_use_case(user_repository, uow, config, bus, session_repository).execute(
-        login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT
-    )
-    await bus.shutdown()  # deterministically wait for fire-and-forget dispatch
-
-    assert len(received) == 1
-    assert isinstance(received[0], OwnerBootstrappedEvent)
-    assert received[0].user.login == "admin"
-    assert received[0].ip_address == CLIENT_IP
+    row = await _newest_outbox_row(session, OwnerBootstrappedEvent.__name__)
+    assert row.payload["user"]["login"] == "admin"
+    assert row.ip_address == CLIENT_IP
 
 
 class _StubOAuthClient:
@@ -587,17 +578,12 @@ async def test_oauth_login_callback_reports_provider_exchange_failure(
     uow: UnitOfWork,
     config: AppConfig,
     session_repository: SessionRepository,
+    session: AsyncSession,
+    event_publisher: EventPublisher,
 ) -> None:
     monkeypatch.setattr(
         oauth_login_callback, "get_oauth_client", lambda provider, settings: _FailingOAuthClient()
     )
-    bus = EventBus()
-    received: list[object] = []
-
-    async def record(event: object) -> None:
-        received.append(event)
-
-    bus.subscribe(OAuthLoginFailedEvent, record)
 
     state = await oauth_state_store.create(
         provider=OAuthProvider.GITHUB,
@@ -612,7 +598,7 @@ async def test_oauth_login_callback_reports_provider_exchange_failure(
         user_repository,
         uow,
         config,
-        bus,
+        event_publisher,
         session_repository,
     )
 
@@ -624,11 +610,9 @@ async def test_oauth_login_callback_reports_provider_exchange_failure(
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
-    await bus.shutdown()  # deterministically wait for fire-and-forget dispatch
 
-    assert len(received) == 1
-    assert isinstance(received[0], OAuthLoginFailedEvent)
-    assert received[0].provider is OAuthProvider.GITHUB
+    row = await _newest_outbox_row(session, OAuthLoginFailedEvent.__name__)
+    assert row.payload["provider"] == OAuthProvider.GITHUB
 
 
 async def test_oauth_login_callback_succeeds_for_linked_identity(
@@ -1161,19 +1145,16 @@ async def test_refresh_outside_grace_window_revokes_session_and_publishes_theft_
     session_repository: SessionRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    session: AsyncSession,
+    event_publisher: EventPublisher,
 ) -> None:
-    owner = await _bootstrap_owner(user_repository, uow, config, EventBus(), session_repository)
+    owner = await _bootstrap_owner(
+        user_repository, uow, config, event_publisher, session_repository
+    )
     issuer = SessionIssuer(session_repository, uow, config)
     issued = await issuer.issue(owner.id, CLIENT_IP, USER_AGENT)
 
-    bus = EventBus()
-    received: list[SessionTheftDetectedEvent] = []
-
-    async def record(event: SessionTheftDetectedEvent) -> None:
-        received.append(event)
-
-    bus.subscribe(SessionTheftDetectedEvent, record)
-    use_case = RefreshSessionUseCase(session_repository, issuer, uow, bus)
+    use_case = RefreshSessionUseCase(session_repository, issuer, uow, event_publisher)
 
     rotated = await use_case.execute(
         refresh_token=issued.refresh_token, ip_address=CLIENT_IP, user_agent=USER_AGENT
@@ -1195,11 +1176,10 @@ async def test_refresh_outside_grace_window_revokes_session_and_publishes_theft_
         await use_case.execute(
             refresh_token=issued.refresh_token, ip_address=CLIENT_IP, user_agent=USER_AGENT
         )
-    await bus.shutdown()
 
     assert await session_repository.get_active_by_id(session_row.id) is None
-    assert len(received) == 1
-    assert received[0].session_id == session_row.id
+    row = await _newest_outbox_row(session, SessionTheftDetectedEvent.__name__)
+    assert row.payload["session_id"] == session_row.id
 
 
 async def test_refresh_rejects_unknown_token(
@@ -1331,6 +1311,57 @@ async def test_admin_can_view_and_revoke_lower_privileged_users_session(
         RevokeUserSessionDto(user_id=target.id, session_id=target_session.id, client_ip=CLIENT_IP),
     )
     assert await session_repository.list_active_by_user(target.id) == []
+
+
+async def test_admin_cannot_view_or_revoke_another_admins_session(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    await _bootstrap_owner(user_repository, uow, config, event_publisher, session_repository)
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(
+                login="admin-attacker-2",
+                name="admin-attacker-2",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_grants=[
+                    Permission.USER_SESSIONS_VIEW.value,
+                    Permission.USER_SESSIONS_REVOKE.value,
+                ],
+            )
+        )
+        other_admin = await user_repository.create(
+            CreateUserDto(
+                login="admin-target",
+                name="admin-target",
+                role=Role.ADMIN,
+                language=Locale.EN,
+            )
+        )
+        await uow.commit()
+    issuer = SessionIssuer(session_repository, uow, config)
+    await issuer.issue(other_admin.id, CLIENT_IP, USER_AGENT)
+    other_admin_session = (await session_repository.list_active_by_user(other_admin.id))[0]
+
+    list_use_case = ListUserSessionsUseCase(session_repository, user_repository)
+    with pytest.raises(ConflictError):
+        await list_use_case(admin, other_admin.id)
+
+    revoke_use_case = RevokeUserSessionUseCase(
+        session_repository, user_repository, uow, event_publisher
+    )
+    with pytest.raises(ConflictError):
+        await revoke_use_case(
+            admin,
+            RevokeUserSessionDto(
+                user_id=other_admin.id, session_id=other_admin_session.id, client_ip=CLIENT_IP
+            ),
+        )
+    assert await session_repository.list_active_by_user(other_admin.id) == [other_admin_session]
 
 
 async def test_admin_cannot_view_or_revoke_owners_session(

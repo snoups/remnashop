@@ -1,9 +1,11 @@
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
+from app.core.db.models import EventOutboxEntry, User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
-from app.core.event_bus import EventBus
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security import hash_password
@@ -38,6 +40,8 @@ from app.modules.users.usecases import (
     PromoteToAdminUseCase,
     RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
+    SetUserPersonalDiscountDto,
+    SetUserPersonalDiscountUseCase,
     UpdateAdminDto,
     UpdateAdminUseCase,
     UpdateOwnSecuritySettingsUseCase,
@@ -47,6 +51,38 @@ from app.modules.users.usecases import (
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 ADMIN = UserDto(id=2, login="admin", name="admin", role=Role.ADMIN, language=Locale.EN)
 REGULAR_USER = UserDto(id=3, name="Bob", role=Role.USER, language=Locale.EN)
+
+
+@pytest.fixture(autouse=True)
+async def _seed_actor_row(session: AsyncSession) -> None:
+    # event_outbox.actor_id is a real FK into users, and OWNER/ADMIN act on
+    # almost every use case below. Role.USER, not their own role --
+    # ux_users_single_owner would otherwise reject the owner rows several
+    # tests create themselves.
+    for actor in (OWNER, ADMIN):
+        session.add(
+            User(
+                id=actor.id,
+                login=actor.login,
+                name=actor.name,
+                role=Role.USER,
+                language=actor.language,
+                is_blocked=False,
+            )
+        )
+    await session.flush()
+
+
+async def _outbox_rows(session: AsyncSession, event_type: str) -> list[EventOutboxEntry]:
+    return list(
+        (
+            await session.scalars(
+                select(EventOutboxEntry)
+                .where(EventOutboxEntry.event_type == event_type)
+                .order_by(EventOutboxEntry.id)
+            )
+        ).all()
+    )
 
 
 async def test_owner_can_create_admin(
@@ -400,15 +436,8 @@ async def test_update_admin_omitted_field_leaves_it_unchanged(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    assert isinstance(event_publisher, EventBus)
-    received: list[AdminPermissionsUpdatedEvent] = []
-
-    async def _collect(event: AdminPermissionsUpdatedEvent) -> None:
-        received.append(event)
-
-    event_publisher.subscribe(AdminPermissionsUpdatedEvent, _collect)
-
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER,
@@ -423,13 +452,13 @@ async def test_update_admin_omitted_field_leaves_it_unchanged(
 
     update_use_case = UpdateAdminUseCase(user_repository, uow, event_publisher, session_repository)
     updated = await update_use_case(OWNER, UpdateAdminDto(client_ip="127.0.0.1", user_id=admin.id))
-    await event_publisher.shutdown()
 
     assert updated.permission_grants == [Permission.OAUTH_SETTINGS_MANAGE]
     assert updated.permission_revokes == [Permission.BOT_SETTINGS_MANAGE]
-    assert len(received) == 1
-    assert received[0].permission_grants is None
-    assert received[0].permission_revokes is None
+    rows = await _outbox_rows(session, AdminPermissionsUpdatedEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["permission_grants"] is None
+    assert rows[0].payload["permission_revokes"] is None
 
 
 async def test_update_admin_explicit_empty_list_clears_overrides(
@@ -662,9 +691,12 @@ async def test_regular_user_cannot_list_admins(user_repository: UserRepository) 
         await list_use_case(REGULAR_USER)
 
 
-async def test_list_users_returns_every_role(
+async def test_list_users_excludes_admins_and_owner(
     user_repository: UserRepository, uow: UnitOfWork
 ) -> None:
+    # USERS_VIEW is grantable to a regular admin and to API tokens -- it must
+    # never surface admin/owner logins (that's ListAdminsUseCase's job, gated
+    # by the non-grantable ADMINS_MANAGE).
     async with uow:
         await user_repository.create(
             CreateUserDto(login="owner10", name="owner10", role=Role.OWNER, language=Locale.EN)
@@ -678,13 +710,15 @@ async def test_list_users_returns_every_role(
         await uow.commit()
 
     list_use_case = ListUsersUseCase(user_repository)
-    users, total = await list_use_case(OWNER, ListUsersInput())
+    users, _total = await list_use_case(OWNER, ListUsersInput())
 
-    assert {u.name for u in users} == {"owner10", "admin10", "Regular10"}
-    assert total == 3
+    names = {u.name for u in users}
+    assert "Regular10" in names
+    assert "owner10" not in names
+    assert "admin10" not in names
 
 
-async def test_admin_with_view_users_grant_sees_every_role(
+async def test_admin_with_view_users_grant_does_not_see_admins_or_owner(
     user_repository: UserRepository, uow: UnitOfWork
 ) -> None:
     async with uow:
@@ -704,7 +738,42 @@ async def test_admin_with_view_users_grant_sees_every_role(
 
     users, _total = await list_use_case(granted_admin, ListUsersInput())
 
-    assert {u.name for u in users} == {"owner12", "admin12", "Regular12"}
+    names = {u.name for u in users}
+    assert "Regular12" in names
+    assert "owner12" not in names
+    assert "admin12" not in names
+
+
+async def test_owner_with_include_staff_sees_admins_and_owner(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        await user_repository.create(
+            CreateUserDto(login="owner13", name="owner13", role=Role.OWNER, language=Locale.EN)
+        )
+        await user_repository.create(
+            CreateUserDto(login="admin13", name="admin13", role=Role.ADMIN, language=Locale.EN)
+        )
+        await user_repository.create(
+            CreateUserDto(name="Regular13", role=Role.USER, language=Locale.EN)
+        )
+        await uow.commit()
+
+    list_use_case = ListUsersUseCase(user_repository)
+    users, _total = await list_use_case(OWNER, ListUsersInput(include_staff=True))
+
+    names = {u.name for u in users}
+    assert {"Regular13", "owner13", "admin13"} <= names
+
+
+async def test_admin_with_view_users_grant_cannot_use_include_staff(
+    user_repository: UserRepository,
+) -> None:
+    granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_VIEW"]})
+    list_use_case = ListUsersUseCase(user_repository)
+
+    with pytest.raises(PermissionDeniedError):
+        await list_use_case(granted_admin, ListUsersInput(include_staff=True))
 
 
 async def test_admin_without_view_users_grant_cannot_list_users(
@@ -791,24 +860,17 @@ async def test_create_admin_publishes_admin_created_event(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    assert isinstance(event_publisher, EventBus)
-    received: list[AdminCreatedEvent] = []
-
-    async def _collect(event: AdminCreatedEvent) -> None:
-        received.append(event)
-
-    event_publisher.subscribe(AdminCreatedEvent, _collect)
-
     use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="eventtest1", name="X")
     )
-    await event_publisher.shutdown()
 
-    assert len(received) == 1
-    assert received[0].actor == OWNER
-    assert received[0].target.id == admin.id
+    rows = await _outbox_rows(session, AdminCreatedEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].actor_login == OWNER.login
+    assert rows[0].payload["target"]["id"] == admin.id
 
 
 async def test_promote_publishes_admin_promoted_event(
@@ -816,8 +878,8 @@ async def test_promote_publishes_admin_promoted_event(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    assert isinstance(event_publisher, EventBus)
     async with uow:
         target = await user_repository.create(
             CreateUserDto(
@@ -826,22 +888,15 @@ async def test_promote_publishes_admin_promoted_event(
         )
         await uow.commit()
 
-    received: list[AdminPromotedEvent] = []
-
-    async def _collect(event: AdminPromotedEvent) -> None:
-        received.append(event)
-
-    event_publisher.subscribe(AdminPromotedEvent, _collect)
-
     use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
     await use_case(
         OWNER,
         PromoteToAdminDto(client_ip="127.0.0.1", email="evt2@example.com", login="evt2-admin"),
     )
-    await event_publisher.shutdown()
 
-    assert len(received) == 1
-    assert received[0].target.id == target.id
+    rows = await _outbox_rows(session, AdminPromotedEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["target"]["id"] == target.id
 
 
 async def test_update_admin_publishes_permissions_updated_event(
@@ -850,19 +905,12 @@ async def test_update_admin_publishes_permissions_updated_event(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    assert isinstance(event_publisher, EventBus)
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evt3", name="X")
     )
-
-    received: list[AdminPermissionsUpdatedEvent] = []
-
-    async def _collect(event: AdminPermissionsUpdatedEvent) -> None:
-        received.append(event)
-
-    event_publisher.subscribe(AdminPermissionsUpdatedEvent, _collect)
 
     update_use_case = UpdateAdminUseCase(user_repository, uow, event_publisher, session_repository)
     await update_use_case(
@@ -873,10 +921,10 @@ async def test_update_admin_publishes_permissions_updated_event(
             permission_grants=[Permission.OAUTH_SETTINGS_MANAGE],
         ),
     )
-    await event_publisher.shutdown()
 
-    assert len(received) == 1
-    assert received[0].permission_grants == ["OAUTH_SETTINGS_MANAGE"]
+    rows = await _outbox_rows(session, AdminPermissionsUpdatedEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["permission_grants"] == ["OAUTH_SETTINGS_MANAGE"]
 
 
 async def test_demote_admin_publishes_admin_demoted_event(
@@ -884,26 +932,19 @@ async def test_demote_admin_publishes_admin_demoted_event(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    assert isinstance(event_publisher, EventBus)
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evt4", name="X")
     )
 
-    received: list[AdminDemotedEvent] = []
-
-    async def _collect(event: AdminDemotedEvent) -> None:
-        received.append(event)
-
-    event_publisher.subscribe(AdminDemotedEvent, _collect)
-
     demote_use_case = DemoteAdminUseCase(user_repository, uow, event_publisher)
     await demote_use_case(OWNER, DemoteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
-    await event_publisher.shutdown()
 
-    assert len(received) == 1
-    assert received[0].target.id == admin.id
+    rows = await _outbox_rows(session, AdminDemotedEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["target"]["id"] == admin.id
 
 
 async def test_register_telegram_user_creates_new_user(
@@ -933,25 +974,20 @@ async def test_register_telegram_user_returns_existing_user_without_duplicating(
 
 
 async def test_register_telegram_user_publishes_event_only_on_creation(
-    user_repository: UserRepository, uow: UnitOfWork
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    bus = EventBus()
-    received: list[TelegramUserRegisteredEvent] = []
-
-    async def _collect(event: TelegramUserRegisteredEvent) -> None:
-        received.append(event)
-
-    bus.subscribe(TelegramUserRegisteredEvent, _collect)
-
-    use_case = RegisterTelegramUserUseCase(user_repository, uow, bus)
+    use_case = RegisterTelegramUserUseCase(user_repository, uow, event_publisher)
     data = RegisterTelegramUserDto(telegram_id=888, name="Carol", language=Locale.EN)
 
+    created = await use_case.system(data)
     await use_case.system(data)
-    await use_case.system(data)
-    await bus.shutdown()
 
-    assert len(received) == 1
-    assert received[0].user.telegram_id == 888
+    rows = await _outbox_rows(session, TelegramUserRegisteredEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["user"]["id"] == created.id
 
 
 async def test_register_telegram_user_denies_non_system_actor(
@@ -1057,26 +1093,19 @@ async def test_delete_admin_publishes_admin_deleted_event(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    assert isinstance(event_publisher, EventBus)
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evtdel1", name="X")
     )
 
-    received: list[AdminDeletedEvent] = []
-
-    async def _collect(event: AdminDeletedEvent) -> None:
-        received.append(event)
-
-    event_publisher.subscribe(AdminDeletedEvent, _collect)
-
     delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
     await delete_use_case(OWNER, DeleteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
-    await event_publisher.shutdown()
 
-    assert len(received) == 1
-    assert received[0].target.login == "evtdel1"
+    rows = await _outbox_rows(session, AdminDeletedEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["target"]["login"] == "evtdel1"
 
 
 async def test_owner_can_delete_regular_user(
@@ -1176,28 +1205,23 @@ async def test_admin_with_delete_user_grant_can_delete_regular_user(
 
 
 async def test_delete_user_publishes_user_deleted_event(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
 ) -> None:
-    assert isinstance(event_publisher, EventBus)
     async with uow:
         target = await user_repository.create(
-            CreateUserDto(name="Regular16", role=Role.USER, language=Locale.EN, telegram_id=555)
+            CreateUserDto(name="Regular16", role=Role.USER, language=Locale.EN)
         )
         await uow.commit()
 
-    received: list[UserDeletedEvent] = []
-
-    async def _collect(event: UserDeletedEvent) -> None:
-        received.append(event)
-
-    event_publisher.subscribe(UserDeletedEvent, _collect)
-
     delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
     await delete_use_case(OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
-    await event_publisher.shutdown()
 
-    assert len(received) == 1
-    assert received[0].target.telegram_id == 555
+    rows = await _outbox_rows(session, UserDeletedEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["target"]["id"] == target.id
 
 
 async def test_delete_admin_twice_raises_not_found_on_second_call(
@@ -1232,3 +1256,67 @@ async def test_delete_user_twice_raises_not_found_on_second_call(
 
     with pytest.raises(NotFoundError):
         await delete_use_case(OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
+
+
+async def test_set_user_personal_discount_updates_the_user(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="target", role=Role.USER, language=Locale.EN)
+        )
+        await uow.commit()
+
+    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
+    result = await use_case(OWNER, SetUserPersonalDiscountDto(user_id=target.id, percent=50))
+
+    assert result.personal_discount == 50
+
+
+async def test_set_user_personal_discount_rejects_out_of_range_percent(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="target2", role=Role.USER, language=Locale.EN)
+        )
+        await uow.commit()
+
+    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
+    with pytest.raises(ValidationError):
+        await use_case(OWNER, SetUserPersonalDiscountDto(user_id=target.id, percent=150))
+
+
+async def test_regular_admin_cannot_set_discount_on_staff_account(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(
+                login="staff-target", name="staff-target", role=Role.ADMIN, language=Locale.EN
+            )
+        )
+        await uow.commit()
+
+    granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_DISCOUNT_MANAGE"]})
+    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
+
+    with pytest.raises(ValidationError):
+        await use_case(granted_admin, SetUserPersonalDiscountDto(user_id=target.id, percent=10))
+
+
+async def test_owner_can_set_discount_on_staff_account(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(
+                login="staff-target2", name="staff-target2", role=Role.ADMIN, language=Locale.EN
+            )
+        )
+        await uow.commit()
+
+    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
+    result = await use_case(OWNER, SetUserPersonalDiscountDto(user_id=target.id, percent=10))
+
+    assert result.personal_discount == 10

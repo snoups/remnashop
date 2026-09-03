@@ -43,6 +43,7 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
                 addon_id=addon.id,
                 addon_type=addon.type,
                 amount=addon.amount,
+                idempotency_key=data.idempotency_key,
             )
 
         if addon.type == AddOnType.TRAFFIC:
@@ -61,12 +62,16 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
             f"Granted addon '{addon.id}' ({addon.amount} {addon.type.value}) "
             f"to subscription '{subscription.id}'"
         )
-        await self._event_publisher.publish(
-            SubscriptionAddOnGrantedEvent(
-                user=actor,
-                subscription_id=subscription.id,
-                addon_id=addon.id,
-                amount=addon.amount,
+        # Retry-safe: update_user above is the only call that raises a retried
+        # exception, and it precedes this -- a failed attempt never reaches
+        # publish, so the event fires exactly once across all attempts.
+        async with self._uow:
+            await self._event_publisher.publish(
+                SubscriptionAddOnGrantedEvent(
+                    user=actor,
+                    subscription_id=subscription.id,
+                    addon_id=addon.id,
+                    amount=addon.amount,
+                )
             )
-        )
         return subscription

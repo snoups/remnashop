@@ -1,19 +1,11 @@
-import time
 from datetime import datetime, timedelta
 from typing import Optional
 
 from app.core.constants import TIMEZONE
 
-START_TIME: int = int(time.time())
-
 
 def datetime_now() -> datetime:
     return datetime.now(tz=TIMEZONE)
-
-
-def get_uptime() -> int:
-    uptime_seconds = int(time.time() - START_TIME)
-    return uptime_seconds
 
 
 def range_start_utc(value: Optional[datetime]) -> Optional[datetime]:

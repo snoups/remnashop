@@ -15,7 +15,9 @@ def get_oauth_client(provider: OAuthProvider, settings: OAuthSettingsDto) -> OAu
             raise AuthenticationError("GitHub OAuth is disabled")
         assert settings.github_client_id is not None
         assert settings.github_client_secret is not None
-        return GitHubOAuthClient(settings.github_client_id, settings.github_client_secret)
+        return GitHubOAuthClient(
+            settings.github_client_id, settings.github_client_secret.get_secret_value()
+        )
 
     if provider is OAuthProvider.TELEGRAM:
         if not settings.is_telegram_configured:
@@ -24,7 +26,9 @@ def get_oauth_client(provider: OAuthProvider, settings: OAuthSettingsDto) -> OAu
             raise AuthenticationError("Telegram OAuth is disabled")
         assert settings.telegram_client_id is not None
         assert settings.telegram_client_secret is not None
-        return TelegramOAuthClient(settings.telegram_client_id, settings.telegram_client_secret)
+        return TelegramOAuthClient(
+            settings.telegram_client_id, settings.telegram_client_secret.get_secret_value()
+        )
 
     if provider is OAuthProvider.OIDC:
         if not settings.is_oidc_configured:
@@ -35,7 +39,9 @@ def get_oauth_client(provider: OAuthProvider, settings: OAuthSettingsDto) -> OAu
         assert settings.oidc_client_id is not None
         assert settings.oidc_client_secret is not None
         return OIDCOAuthClient(
-            settings.oidc_issuer_url, settings.oidc_client_id, settings.oidc_client_secret
+            settings.oidc_issuer_url,
+            settings.oidc_client_id,
+            settings.oidc_client_secret.get_secret_value(),
         )
 
     raise AuthenticationError(f"Unsupported OAuth provider: {provider}")

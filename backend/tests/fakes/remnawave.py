@@ -55,6 +55,74 @@ def _user_payload(
     }
 
 
+def _handle_create_user(
+    request: httpx.Request, store: FakeUserStore, next_id: dict[str, int]
+) -> httpx.Response:
+    body = json.loads(request.content)
+    user_id = next_id["value"]
+    next_id["value"] += 1
+    expire_at = datetime.fromisoformat(body["expireAt"].replace("Z", "+00:00"))
+    payload = _user_payload(
+        user_id=user_id,
+        username=body["username"],
+        expire_at=expire_at,
+        traffic_limit_bytes=body.get("trafficLimitBytes") or 0,
+        hwid_device_limit=body.get("hwidDeviceLimit") or 0,
+        active_internal_squads=body.get("activeInternalSquads"),
+        external_squad_uuid=body.get("externalSquadUuid"),
+    )
+    store[user_id] = payload
+    return httpx.Response(201, json={"response": payload})
+
+
+def _handle_update_user(request: httpx.Request, store: FakeUserStore) -> httpx.Response:
+    body = json.loads(request.content)
+    payload = store[body["id"]]
+    if "trafficLimitBytes" in body:
+        payload["trafficLimitBytes"] = body["trafficLimitBytes"]
+    if "hwidDeviceLimit" in body:
+        payload["hwidDeviceLimit"] = body["hwidDeviceLimit"]
+    if body.get("expireAt") is not None:
+        payload["expireAt"] = body["expireAt"]
+    payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    return httpx.Response(200, json={"response": payload})
+
+
+def _handle_extend_user(path: str, request: httpx.Request, store: FakeUserStore) -> httpx.Response:
+    user_id = int(path.split("/")[-3])
+    body = json.loads(request.content)
+    payload = store[user_id]
+    current_expire = datetime.fromisoformat(payload["expireAt"])
+    payload["expireAt"] = (current_expire + timedelta(days=body["days"])).isoformat()
+    payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    return httpx.Response(200, json={"response": payload})
+
+
+def _handle_get_user(path: str, store: FakeUserStore) -> httpx.Response:
+    user_id = int(path.rsplit("/", 1)[-1])
+    if user_id not in store:
+        return httpx.Response(404, json={"message": f"user {user_id} not found"})
+    return httpx.Response(200, json={"response": store[user_id]})
+
+
+def _handle_delete_user(path: str, store: FakeUserStore) -> httpx.Response:
+    user_id = int(path.rsplit("/", 1)[-1])
+    payload = store.pop(user_id, None)
+    if payload is None:
+        return httpx.Response(404, json={"message": f"user {user_id} not found"})
+    return httpx.Response(200, json={"response": payload})
+
+
+def _handle_disable_user(path: str, store: FakeUserStore) -> httpx.Response:
+    user_id = int(path.split("/")[-3])
+    payload = store.get(user_id)
+    if payload is None:
+        return httpx.Response(404, json={"message": f"user {user_id} not found"})
+    payload["status"] = "DISABLED"
+    payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    return httpx.Response(200, json={"response": payload})
+
+
 def make_fake_remnawave_transport(
     store: Optional[FakeUserStore] = None,
 ) -> tuple[httpx.MockTransport, FakeUserStore]:
@@ -71,54 +139,18 @@ def make_fake_remnawave_transport(
         path = request.url.path
 
         if path == "/api/users" and request.method == "POST":
-            body = json.loads(request.content)
-            user_id = next_id["value"]
-            next_id["value"] += 1
-            expire_at = datetime.fromisoformat(body["expireAt"].replace("Z", "+00:00"))
-            payload = _user_payload(
-                user_id=user_id,
-                username=body["username"],
-                expire_at=expire_at,
-                traffic_limit_bytes=body.get("trafficLimitBytes") or 0,
-                hwid_device_limit=body.get("hwidDeviceLimit") or 0,
-                active_internal_squads=body.get("activeInternalSquads"),
-                external_squad_uuid=body.get("externalSquadUuid"),
-            )
-            store[user_id] = payload
-            return httpx.Response(201, json={"response": payload})
-
+            return _handle_create_user(request, store, next_id)
         if path == "/api/users" and request.method == "PATCH":
-            body = json.loads(request.content)
-            user_id = body["id"]
-            payload = store[user_id]
-            if "trafficLimitBytes" in body:
-                payload["trafficLimitBytes"] = body["trafficLimitBytes"]
-            if "hwidDeviceLimit" in body:
-                payload["hwidDeviceLimit"] = body["hwidDeviceLimit"]
-            if body.get("expireAt") is not None:
-                payload["expireAt"] = body["expireAt"]
-            payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
-            return httpx.Response(200, json={"response": payload})
-
+            return _handle_update_user(request, store)
         if path.endswith("/actions/extend") and request.method == "POST":
-            user_id = int(path.split("/")[-3])
-            body = json.loads(request.content)
-            payload = store[user_id]
-            current_expire = datetime.fromisoformat(payload["expireAt"])
-            payload["expireAt"] = (current_expire + timedelta(days=body["days"])).isoformat()
-            payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
-            return httpx.Response(200, json={"response": payload})
-
+            return _handle_extend_user(path, request, store)
+        if path.endswith("/actions/disable") and request.method == "POST":
+            return _handle_disable_user(path, store)
         if path.startswith("/api/users/") and request.method == "GET":
             return _handle_get_user(path, store)
+        if path.startswith("/api/users/") and request.method == "DELETE":
+            return _handle_delete_user(path, store)
 
         return httpx.Response(404, json={"error": f"fake transport: no handler for {path}"})
 
     return httpx.MockTransport(handler), store
-
-
-def _handle_get_user(path: str, store: FakeUserStore) -> httpx.Response:
-    user_id = int(path.rsplit("/", 1)[-1])
-    if user_id not in store:
-        return httpx.Response(404, json={"message": f"user {user_id} not found"})
-    return httpx.Response(200, json={"response": store[user_id]})

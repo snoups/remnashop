@@ -17,18 +17,19 @@ dependencies = [
     "alembic~=1.16.5",
     "sqlalchemy>=2.0.0",
     "redis~=7.0.0",
-    "taskiq[orjson]~=0.12.1",
+    "taskiq~=0.12.1",
     "taskiq-redis~=1.2.1",
+    "orjson~=3.11",
     #
     "pydantic~=2.11.0",
     "pydantic-settings~=2.11.0",
     "loguru~=0.7.3",
-    "msgspec~=0.19.0",
     "cryptography>=46.0.3",
     "authlib~=1.6.5",
     "qrcode[pil]>=8.2",
     "pyjwt>=2.13.0",
     "greenlet>=3.3.0",
+    "prometheus-fastapi-instrumentator>=7.1.0",
 ]
 
 [project.optional-dependencies]
@@ -94,6 +95,10 @@ ban-relative-imports = "all"
 "app/core/db/migrations/versions/*.py" = ["E501"]
 # Interactive rescue tool -- print/input are the actual interface, not debug leftovers.
 "app/cli/__main__.py" = ["T201"]
+# os.environ.setdefault(...) must run before the imports below it -- see the
+# comment in the file itself for why (a transitively-imported module-level
+# singleton bakes in the wrong host otherwise).
+"tests/conftest.py" = ["E402"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

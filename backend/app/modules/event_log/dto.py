@@ -21,3 +21,5 @@ class EventLogEntryDto(BaseDto):
     ip_address: Optional[str] = None
 
     payload: dict[str, Any] = {}
+
+    outbox_id: Optional[int] = None

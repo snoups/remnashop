@@ -22,13 +22,12 @@ class UserDto(BaseDto, TimestampMixin):
     language: Locale = Locale.EN
 
     is_blocked: bool = False
-    # Set only by get_current_actor for a synthetic, non-persisted actor
-    # built from an ApiToken match -- never true for a real User row.
-    is_api_token: bool = False
 
     permission_grants: Optional[list[str]] = None
     permission_revokes: Optional[list[str]] = None
     ip_allowlist: Optional[list[str]] = None
+    personal_discount: int = 0
+    purchase_discount: int = 0
 
     @property
     def contact_label(self) -> str:
@@ -40,7 +39,7 @@ class UserDto(BaseDto, TimestampMixin):
 
     @property
     def is_privileged(self) -> bool:
-        return self.role.includes(Role.ADMIN) or self.is_api_token
+        return self.role.includes(Role.ADMIN)
 
     @property
     def is_owner(self) -> bool:
@@ -99,6 +98,8 @@ class UpdateUserDto:
     permission_grants: Optional[list[str]] = None
     permission_revokes: Optional[list[str]] = None
     ip_allowlist: Optional[list[str]] = None
+    personal_discount: Optional[int] = None
+    purchase_discount: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -107,3 +108,9 @@ class PromoteAdminDto:
     password_hash: str
     permission_grants: list[str]
     permission_revokes: list[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetUserPersonalDiscountDto:
+    user_id: int
+    percent: int

@@ -83,9 +83,7 @@ class UseCase(ABC, Generic[InputDto, OutputDto]):
             raise PermissionDeniedError
 
         if not PermissionPolicy.has_permission(actor, self.required_permission):
-            logger.warning(
-                f"Permission denied for actor '{actor.remna_name}' with role '{actor.role}'"
-            )
+            logger.warning(f"Permission denied for actor {actor.log}")
             raise PermissionDeniedError
 
     @abstractmethod

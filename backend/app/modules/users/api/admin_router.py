@@ -17,6 +17,7 @@ from app.modules.users.api.schemas import (
     CurrentUserResponse,
     PromoteAdminRequest,
     SecurityResponse,
+    SetPersonalDiscountRequest,
     UpdateAdminRequest,
     UpdateOwnProfileRequest,
     UpdateSecurityRequest,
@@ -39,6 +40,8 @@ from app.modules.users.usecases import (
     ListUsersUseCase,
     PromoteToAdminDto,
     PromoteToAdminUseCase,
+    SetUserPersonalDiscountDto,
+    SetUserPersonalDiscountUseCase,
     UpdateAdminDto,
     UpdateAdminUseCase,
     UpdateOwnProfileDto,
@@ -97,6 +100,8 @@ def _to_user_response(user: UserDto) -> UserResponse:
         login=user.login,
         language=str(user.language),
         is_blocked=user.is_blocked,
+        personal_discount=user.personal_discount,
+        purchase_discount=user.purchase_discount,
         created_at=user.created_at,
     )
 
@@ -150,7 +155,7 @@ async def update_me(
 
 @router.get("/me/security", response_model=SecurityResponse)
 async def get_own_security(actor: UserDto = Depends(require_admin)) -> SecurityResponse:
-    return SecurityResponse(ip_allowlist=actor.ip_allowlist or [])
+    return SecurityResponse(ip_allowlist=getattr(actor, "ip_allowlist", None) or [])
 
 
 @router.put("/me/security", response_model=SecurityResponse)
@@ -182,6 +187,7 @@ async def list_users(
     search: Optional[str] = None,
     role: Optional[str] = None,
     is_blocked: Optional[bool] = None,
+    include_staff: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> UserPageResponse:
@@ -191,11 +197,47 @@ async def list_users(
             search=search,
             role=_parse_role(role),
             is_blocked=is_blocked,
+            include_staff=include_staff,
             page=page,
             page_size=page_size,
         ),
     )
     return UserPageResponse(items=[_to_user_response(u) for u in users], total=total)
+
+
+@router.patch("/{user_id}/discount", response_model=UserResponse)
+@inject
+async def set_user_discount(
+    user_id: int,
+    payload: SetPersonalDiscountRequest,
+    use_case: FromDishka[SetUserPersonalDiscountUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> UserResponse:
+    try:
+        updated = await use_case(
+            actor, SetUserPersonalDiscountDto(user_id=user_id, percent=payload.percent)
+        )
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    return _to_user_response(updated)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def delete_user(
+    user_id: int,
+    request: Request,
+    use_case: FromDishka[DeleteUserUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> None:
+    try:
+        await use_case(actor, DeleteUserDto(user_id=user_id, client_ip=resolve_client_ip(request)))
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ConflictError as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
 
 
 @admins_router.get("", response_model=list[AdminResponse])
@@ -307,22 +349,6 @@ async def demote_admin(
     except ConflictError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     return _to_admin_response(demoted)
-
-
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-@inject
-async def delete_user(
-    user_id: int,
-    request: Request,
-    use_case: FromDishka[DeleteUserUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> None:
-    try:
-        await use_case(actor, DeleteUserDto(user_id=user_id, client_ip=resolve_client_ip(request)))
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
 
 
 @admins_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

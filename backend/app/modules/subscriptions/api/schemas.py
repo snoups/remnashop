@@ -40,6 +40,11 @@ class SubscriptionResponse(BaseModel):
     addon_entitlements: list[AddOnEntitlementItem]
 
 
+class SubscriptionPageResponse(BaseModel):
+    items: list[SubscriptionResponse]
+    total: int
+
+
 class UpdateSubscriptionRequest(BaseModel):
     tag: Optional[str] = Field(default=None, max_length=32)
     traffic_limit: Optional[int] = Field(default=None, ge=0)

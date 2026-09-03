@@ -1,4 +1,6 @@
+from datetime import timedelta
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 
@@ -11,9 +13,18 @@ from app.core.enums import (
     PromocodeRewardType,
     PurchaseType,
     Role,
+    SubscriptionStatus,
 )
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
-from app.modules.plans.dto import CreatePlanDto
+from app.core.utils.time import datetime_now
+from app.modules.plans.dto import (
+    CreatePlanDto,
+    SetPlanDurationDto,
+    SetPlanDurationsDto,
+    SetPlanPriceDto,
+    UpdatePlanDto,
+    UpdatePlanSquadsDto,
+)
 from app.modules.plans.repository import PlanRepository
 from app.modules.promocodes.dto import ActivatePromocodeDto, CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
@@ -25,13 +36,19 @@ from app.modules.promocodes.usecases import (
     ListPromocodesUseCase,
     UpdatePromocodeUseCase,
 )
+from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
-from app.modules.subscriptions.dto import CreateAddOnDto, PurchaseSubscriptionDto
+from app.modules.subscriptions.dto import (
+    CreateAddOnDto,
+    CreateSubscriptionDto,
+    PurchaseSubscriptionDto,
+)
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
-from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
@@ -220,11 +237,18 @@ async def test_generate_promocode_code_returns_unique_code(
 
 
 def _activate_use_case(
-    promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+    promocode_repository,
+    subscription_repository,
+    user_repository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
 ) -> ActivatePromocodeUseCase:
+    settings_repository = SettingsRepository(promocode_repository.session)
     purchase_use_case = PurchaseSubscriptionUseCase(
-        PlanRepository(promocode_repository.session),
         subscription_repository,
+        user_repository,
+        settings_repository,
         remnawave_sdk,
         uow,
         event_publisher,
@@ -240,6 +264,9 @@ def _activate_use_case(
     return ActivatePromocodeUseCase(
         promocode_repository,
         subscription_repository,
+        PlanRepository(promocode_repository.session),
+        settings_repository,
+        user_repository,
         purchase_use_case,
         grant_addon_use_case,
         uow,
@@ -250,12 +277,18 @@ def _activate_use_case(
 async def test_activate_unknown_code_raises_not_found(
     promocode_repository: PromocodeRepository,
     subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
     remnawave_sdk,
     uow,
     event_publisher,
 ) -> None:
     use_case = _activate_use_case(
-        promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(NotFoundError):
@@ -284,6 +317,22 @@ async def test_activate_subscription_reward_creates_new_subscription(
             device_limit=3,
         )
     )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(
+                    days=30,
+                    order_index=0,
+                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
+                )
+            ],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
     await promocode_repository.create(
         CreatePromocodeDto(
             code="FREEPLAN",
@@ -293,7 +342,12 @@ async def test_activate_subscription_reward_creates_new_subscription(
         )
     )
     use_case = _activate_use_case(
-        promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     await use_case(actor, ActivatePromocodeDto(code="FREEPLAN"))
@@ -303,9 +357,154 @@ async def test_activate_subscription_reward_creates_new_subscription(
     assert active[0].plan_snapshot.plan_id == plan.id
 
 
+async def test_activate_new_availability_allows_a_user_with_no_purchase_history(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Fresh", telegram_id=910))
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="NEWONLY",
+            reward_type=PromocodeRewardType.PERSONAL_DISCOUNT,
+            reward=10,
+            availability=PromocodeAvailability.NEW,
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    await use_case(actor, ActivatePromocodeDto(code="NEWONLY"))  # must not raise
+
+
+async def test_activate_new_availability_denies_a_user_with_a_deleted_subscription(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    # "New" means never purchased a non-trial subscription, not "has none
+    # ACTIVE right now" -- a DELETED row still disqualifies, matching main.
+    actor = await user_repository.create(CreateUserDto(name="Returning", telegram_id=911))
+    await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=actor.id,
+            remnawave_user_id=911_001,
+            status=SubscriptionStatus.DELETED,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=datetime_now() - timedelta(days=1),
+            url="https://example.com/sub/911",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="NEWONLY2",
+            reward_type=PromocodeRewardType.PERSONAL_DISCOUNT,
+            reward=10,
+            availability=PromocodeAvailability.NEW,
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(actor, ActivatePromocodeDto(code="NEWONLY2"))
+
+
+async def test_activate_existing_availability_denies_a_user_with_no_purchase_history(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Fresh2", telegram_id=912))
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="EXISTONLY",
+            reward_type=PromocodeRewardType.PERSONAL_DISCOUNT,
+            reward=10,
+            availability=PromocodeAvailability.EXISTING,
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(actor, ActivatePromocodeDto(code="EXISTONLY"))
+
+
+async def test_activate_existing_availability_allows_a_user_with_a_deleted_subscription(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Returning2", telegram_id=913))
+    await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=actor.id,
+            remnawave_user_id=913_001,
+            status=SubscriptionStatus.DELETED,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=datetime_now() - timedelta(days=1),
+            url="https://example.com/sub/913",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="EXISTONLY2",
+            reward_type=PromocodeRewardType.PERSONAL_DISCOUNT,
+            reward=10,
+            availability=PromocodeAvailability.EXISTING,
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    await use_case(actor, ActivatePromocodeDto(code="EXISTONLY2"))  # must not raise
+
+
 async def test_activate_allowed_availability_denies_other_users(
     promocode_repository: PromocodeRepository,
     subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
     remnawave_sdk,
     uow,
     event_publisher,
@@ -320,7 +519,12 @@ async def test_activate_allowed_availability_denies_other_users(
         )
     )
     use_case = _activate_use_case(
-        promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(ValidationError):
@@ -330,6 +534,7 @@ async def test_activate_allowed_availability_denies_other_users(
 async def test_activate_invited_availability_always_denies(
     promocode_repository: PromocodeRepository,
     subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
     remnawave_sdk,
     uow,
     event_publisher,
@@ -343,7 +548,12 @@ async def test_activate_invited_availability_always_denies(
         )
     )
     use_case = _activate_use_case(
-        promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(ValidationError):
@@ -353,6 +563,7 @@ async def test_activate_invited_availability_always_denies(
 async def test_activate_duration_reward_requires_target_subscription(
     promocode_repository: PromocodeRepository,
     subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
     remnawave_sdk,
     uow,
     event_publisher,
@@ -361,7 +572,12 @@ async def test_activate_duration_reward_requires_target_subscription(
         CreatePromocodeDto(code="NEEDSTARGET", reward_type=PromocodeRewardType.DURATION, reward=10)
     )
     use_case = _activate_use_case(
-        promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(ValidationError):
@@ -387,9 +603,26 @@ async def test_activate_duration_reward_extends_subscription_expiry(
             device_limit=3,
         )
     )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(
+                    days=30,
+                    order_index=0,
+                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
+                )
+            ],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
     purchase_use_case = PurchaseSubscriptionUseCase(
-        plan_repository,
         subscription_repository,
+        user_repository,
+        SettingsRepository(promocode_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
@@ -399,7 +632,7 @@ async def test_activate_duration_reward_extends_subscription_expiry(
         actor,
         PurchaseSubscriptionDto(
             user_id=actor.id,
-            plan_id=plan.id,
+            plan_snapshot=snapshot_from_plan(plan, currency=Currency.USD, duration_days=30),
             duration_days=30,
             price_paid=Decimal(0),
             currency=Currency.USD,
@@ -412,7 +645,12 @@ async def test_activate_duration_reward_extends_subscription_expiry(
         CreatePromocodeDto(code="EXTEND10", reward_type=PromocodeRewardType.DURATION, reward=10)
     )
     use_case = _activate_use_case(
-        promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     await use_case(
@@ -442,9 +680,26 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
             device_limit=3,
         )
     )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(
+                    days=30,
+                    order_index=0,
+                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
+                )
+            ],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
     purchase_use_case = PurchaseSubscriptionUseCase(
-        plan_repository,
         subscription_repository,
+        user_repository,
+        SettingsRepository(promocode_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
@@ -454,7 +709,7 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
         actor,
         PurchaseSubscriptionDto(
             user_id=actor.id,
-            plan_id=plan.id,
+            plan_snapshot=snapshot_from_plan(plan, currency=Currency.USD, duration_days=30),
             duration_days=30,
             price_paid=Decimal(0),
             currency=Currency.USD,
@@ -475,7 +730,12 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
         )
     )
     use_case = _activate_use_case(
-        promocode_repository, subscription_repository, remnawave_sdk, uow, event_publisher
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     await use_case(
@@ -484,3 +744,97 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
 
     updated = await subscription_repository.get_by_id(subscription.id)
     assert updated.effective_traffic_limit == traffic_before + traffic_addon.amount
+
+
+async def test_activate_promocode_applies_personal_discount(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Eve", telegram_id=304))
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="DISC50", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=50
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    await use_case(actor, ActivatePromocodeDto(code="DISC50"))
+
+    updated = await user_repository.get_by_id(actor.id)
+    assert updated is not None
+    assert updated.personal_discount == 50
+
+
+async def test_activate_promocode_zero_reward_personal_discount_is_a_noop(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Frank", telegram_id=305))
+    # Seeded nonzero so "wrote 0" and "never wrote" are distinguishable --
+    # dropping the `if promo.reward:` guard must fail this test.
+    async with uow:
+        await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=40))
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="DISC0", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=0
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    await use_case(actor, ActivatePromocodeDto(code="DISC0"))
+
+    updated = await user_repository.get_by_id(actor.id)
+    assert updated is not None
+    assert updated.personal_discount == 40
+
+
+async def test_activate_promocode_applies_purchase_discount(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Grace", telegram_id=306))
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="ONEOFF20", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=20
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    await use_case(actor, ActivatePromocodeDto(code="ONEOFF20"))
+
+    updated = await user_repository.get_by_id(actor.id)
+    assert updated is not None
+    assert updated.purchase_discount == 20

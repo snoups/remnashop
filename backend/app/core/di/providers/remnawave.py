@@ -1,11 +1,12 @@
 from collections.abc import AsyncIterator
 
 from dishka import Provider, Scope, provide
-from httpx import AsyncClient, Timeout
+from httpx import AsyncClient, AsyncHTTPTransport, Timeout
 from loguru import logger
 from remnapy import RemnawaveSDK
 
 from app.core.config import AppConfig
+from app.core.resilient_transport import ResilientTransport
 
 
 class RemnawaveProvider(Provider):
@@ -26,12 +27,20 @@ class RemnawaveProvider(Provider):
             headers["x-forwarded-proto"] = "https"
             headers["x-forwarded-for"] = "127.0.0.1"
 
+        # AsyncClient ignores verify/cert/http1/http2/limits/trust_env entirely
+        # once transport= is given explicitly -- it returns the transport
+        # object as-is instead of building one from those kwargs. verify=True
+        # below is AsyncHTTPTransport()'s own default anyway (kept for
+        # readability), but changing it here would silently do nothing; the
+        # actual knob is the AsyncHTTPTransport(...) constructor above.
+        transport = ResilientTransport(AsyncHTTPTransport())
         client = AsyncClient(
             base_url=f"{config.remnawave.url.get_secret_value()}/api",
             headers=headers,
             cookies=config.remnawave.cookies,
             verify=True,
-            timeout=Timeout(connect=15.0, read=25.0, write=10.0, pool=5.0),
+            timeout=Timeout(connect=5.0, read=15.0, write=10.0, pool=5.0),
+            transport=transport,
         )
 
         try:

@@ -2,8 +2,10 @@ from datetime import datetime
 from typing import Callable, Optional
 
 from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import INT32_MAX
 from app.core.db.models.event_log import EventLogEntry
 from app.core.dto import SERVER_OWNED_FIELDS
 from app.core.events import EventCategory
@@ -18,14 +20,17 @@ class EventLogRepository:
             lambda row: EventLogEntryDto.model_validate(row, from_attributes=True)
         )
 
-    async def create(self, entry: EventLogEntryDto) -> EventLogEntryDto:
+    async def create(self, entry: EventLogEntryDto) -> Optional[EventLogEntryDto]:
         entry_data = entry.model_dump(exclude=SERVER_OWNED_FIELDS)
-        db_entry = EventLogEntry(**entry_data)
-
-        self.session.add(db_entry)
+        stmt = (
+            pg_insert(EventLogEntry)
+            .values(**entry_data)
+            .on_conflict_do_nothing(index_elements=["outbox_id"])
+            .returning(EventLogEntry)
+        )
+        row = (await self.session.execute(stmt)).scalar_one_or_none()
         await self.session.flush()
-
-        return self._convert_to_dto(db_entry)
+        return self._convert_to_dto(row) if row is not None else None
 
     async def list(
         self,
@@ -47,7 +52,10 @@ class EventLogRepository:
                 EventLogEntry.actor_name.ilike(pattern),
                 EventLogEntry.actor_email.ilike(pattern),
             ]
-            if search.isdigit():
+            # actor_id is a plain Integer FK (users.id), not BigInteger -- a longer
+            # digit string is a valid `search` value but out of range for the DB
+            # type, and would otherwise raise NumericValueOutOfRange from asyncpg.
+            if search.isdigit() and int(search) <= INT32_MAX:
                 search_filters.append(EventLogEntry.actor_id == int(search))
             filters.append(or_(*search_filters))
         if date_from is not None:

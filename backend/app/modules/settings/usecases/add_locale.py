@@ -25,6 +25,5 @@ class AddLocaleUseCase(UseCase[Locale, list[Locale]]):
         async with self._uow:
             await self._settings_repository.add_active_locale(data)
             locales = await self._settings_repository.list_active_locales()
-
-        await self._event_publisher.publish(LocaleActivatedEvent(locale=data))
+            await self._event_publisher.publish(LocaleActivatedEvent(locale=data))
         return locales

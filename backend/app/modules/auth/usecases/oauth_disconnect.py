@@ -35,10 +35,9 @@ class OAuthDisconnectUseCase(UseCase[OAuthDisconnectDto, None]):
                 actor.id,
                 data.provider,
             )
-
-        if deleted:
-            await self._event_publisher.publish(
-                OAuthIdentityDisconnectedEvent(
-                    user=actor, provider=data.provider, ip_address=data.client_ip
+            if deleted:
+                await self._event_publisher.publish(
+                    OAuthIdentityDisconnectedEvent(
+                        user=actor, provider=data.provider, ip_address=data.client_ip
+                    )
                 )
-            )

@@ -64,14 +64,13 @@ class UpdateAdminUseCase(UseCase[UpdateAdminDto, UserDto]):
             assert updated is not None
             if data.permission_revokes is not None:
                 await self._session_revoker.revoke_all_by_user(target.id)
-
-        await self._event_publisher.publish(
-            AdminPermissionsUpdatedEvent(
-                actor=actor,
-                target=updated,
-                permission_grants=update_data.permission_grants,
-                permission_revokes=update_data.permission_revokes,
-                ip_address=data.client_ip,
+            await self._event_publisher.publish(
+                AdminPermissionsUpdatedEvent(
+                    actor=actor,
+                    target=updated,
+                    permission_grants=update_data.permission_grants,
+                    permission_revokes=update_data.permission_revokes,
+                    ip_address=data.client_ip,
+                )
             )
-        )
         return updated

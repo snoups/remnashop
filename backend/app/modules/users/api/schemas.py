@@ -61,6 +61,8 @@ class UserResponse(BaseModel):
     login: Optional[str]
     language: str
     is_blocked: bool
+    personal_discount: int
+    purchase_discount: int
     created_at: Optional[datetime]
 
 
@@ -138,6 +140,10 @@ class UpdateSecurityRequest(BaseModel):
             except ValueError as error:
                 raise ValueError(f"Invalid IP or CIDR: {entry}") from error
         return value
+
+
+class SetPersonalDiscountRequest(BaseModel):
+    percent: int = Field(ge=0, le=100)
 
 
 class SecurityResponse(BaseModel):

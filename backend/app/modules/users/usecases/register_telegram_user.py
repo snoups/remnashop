@@ -49,6 +49,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                         language=data.language,
                     )
                 )
+                await self._event_publisher.publish(TelegramUserRegisteredEvent(user=user))
         except IntegrityError:
             # Lost a concurrent registration race (two updates from the same
             # brand-new telegram_id in flight at once) -- the winner's row
@@ -59,5 +60,4 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                 raise
             return winner
 
-        await self._event_publisher.publish(TelegramUserRegisteredEvent(user=user))
         return user

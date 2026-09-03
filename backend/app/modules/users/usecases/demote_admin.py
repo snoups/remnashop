@@ -39,9 +39,9 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
             # customer-adjacent identity, not admin credentials, same as
             # telegram_id/email surviving demotion.
             updated = await self._user_repository.demote_from_admin(data.user_id)
+            assert updated is not None
+            await self._event_publisher.publish(
+                AdminDemotedEvent(actor=actor, target=target, ip_address=data.client_ip)
+            )
 
-        assert updated is not None
-        await self._event_publisher.publish(
-            AdminDemotedEvent(actor=actor, target=target, ip_address=data.client_ip)
-        )
         return updated

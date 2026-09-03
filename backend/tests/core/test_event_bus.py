@@ -1,12 +1,57 @@
-import asyncio
-import inspect
-import pathlib
 from dataclasses import dataclass
-from typing import ClassVar
+from datetime import datetime, timezone
+from typing import Any, ClassVar
 
-import app.modules as modules_package
+import pytest
+
+from app.core.enums import Locale, OAuthProvider, Role
 from app.core.event_bus import EventBus
-from app.core.events import BaseEvent, EventCategory
+from app.core.events import BaseEvent, EventCategory, StoredEvent
+from app.core.outbox_event_publisher import _build_payload
+from app.modules.auth.events import (
+    BootstrapConflictEvent,
+    LoginFailedEvent,
+    LoginSucceededEvent,
+    OAuthIdentityConnectedEvent,
+    OAuthIdentityDisconnectedEvent,
+    OAuthLoginFailedEvent,
+    OAuthLoginSucceededEvent,
+    OwnerBootstrappedEvent,
+    SessionRevokedEvent,
+    SessionTheftDetectedEvent,
+    UserSessionRevokedByAdminEvent,
+)
+from app.modules.settings.events import LocaleActivatedEvent, LocaleDeactivatedEvent
+from app.modules.translations.tasks import (
+    copy_locale_translations_task,
+    delete_locale_translations_task,
+)
+from app.modules.users.dto import UserDto
+
+_USER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+_TARGET = UserDto(id=2, login="target", name="target", role=Role.ADMIN, language=Locale.EN)
+
+# One realistic instance per event a real handler is registered for -- built
+# from the actual event classes so the payload shape matches what
+# OutboxEventPublisher really writes, not a hand-rolled guess.
+_REGISTERED_EVENTS: dict[str, BaseEvent] = {
+    event.event_type: event
+    for event in [
+        OwnerBootstrappedEvent(user=_USER),
+        LoginSucceededEvent(user=_USER),
+        LoginFailedEvent(login="someone"),
+        BootstrapConflictEvent(login="someone"),
+        OAuthLoginSucceededEvent(user=_USER, provider=OAuthProvider.GITHUB),
+        OAuthLoginFailedEvent(provider=OAuthProvider.GITHUB),
+        OAuthIdentityConnectedEvent(user=_USER, provider=OAuthProvider.GITHUB),
+        OAuthIdentityDisconnectedEvent(user=_USER, provider=OAuthProvider.GITHUB),
+        SessionTheftDetectedEvent(user_id=1, session_id=1),
+        SessionRevokedEvent(user=_USER, session_id=1),
+        UserSessionRevokedByAdminEvent(actor=_USER, target=_TARGET, session_id=1),
+        LocaleActivatedEvent(locale=Locale.RU),
+        LocaleDeactivatedEvent(locale=Locale.RU),
+    ]
+}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -14,115 +59,130 @@ class _ProbeEvent(BaseEvent):
     category: ClassVar[EventCategory] = EventCategory.AUTH
 
 
-@dataclass(frozen=True, kw_only=True)
-class _OtherEvent(BaseEvent):
-    category: ClassVar[EventCategory] = EventCategory.AUTH
+def _stored_probe_event(**overrides: Any) -> StoredEvent:
+    defaults: dict[str, Any] = {
+        "outbox_id": 1,
+        "category": EventCategory.AUTH,
+        "event_type": "_ProbeEvent",
+        "occurred_at": datetime.now(timezone.utc),
+        "payload": {},
+        "actor_id": None,
+        "actor_login": None,
+        "actor_name": None,
+        "actor_email": None,
+        "ip_address": None,
+    }
+    defaults.update(overrides)
+    return StoredEvent(**defaults)
 
 
-async def test_publish_does_not_block_on_a_slow_handler() -> None:
+async def test_dispatch_stored_delivers_to_the_subscribed_handler() -> None:
     bus = EventBus()
-    started = asyncio.Event()
-    release = asyncio.Event()
+    received: list[StoredEvent] = []
 
-    async def slow_handler(event: _ProbeEvent) -> None:
-        started.set()
-        await release.wait()
-
-    bus.subscribe(_ProbeEvent, slow_handler)
-
-    await asyncio.wait_for(bus.publish(_ProbeEvent()), timeout=1)
-    # publish() returned already -- the handler may not have even started yet,
-    # but it must not have forced us to wait for its completion.
-    release.set()
-    await bus.shutdown()
-
-
-async def test_subscribed_handler_eventually_runs() -> None:
-    bus = EventBus()
-    received: list[_ProbeEvent] = []
-
-    async def handler(event: _ProbeEvent) -> None:
-        received.append(event)
+    async def handler(entry: StoredEvent) -> None:
+        received.append(entry)
 
     bus.subscribe(_ProbeEvent, handler)
-    await bus.publish(_ProbeEvent())
-    await bus.shutdown()
+    await bus.dispatch_stored(_stored_probe_event())
 
     assert len(received) == 1
 
 
-async def test_subscribe_all_receives_every_event_type() -> None:
+async def test_dispatch_stored_ignores_unrelated_event_types() -> None:
     bus = EventBus()
-    received: list[BaseEvent] = []
+    received: list[StoredEvent] = []
 
-    async def catch_all(event: BaseEvent) -> None:
-        received.append(event)
+    async def handler(entry: StoredEvent) -> None:
+        received.append(entry)
 
-    bus.subscribe_all(catch_all)
-    await bus.publish(_ProbeEvent())
-    await bus.publish(_OtherEvent())
-    await bus.shutdown()
+    bus.subscribe(_ProbeEvent, handler)
+    await bus.dispatch_stored(_stored_probe_event(event_type="_OtherEvent"))
 
-    assert len(received) == 2
+    assert received == []
 
 
 async def test_one_failing_handler_does_not_stop_another() -> None:
     bus = EventBus()
-    received: list[_ProbeEvent] = []
+    received: list[StoredEvent] = []
 
-    async def failing_handler(event: _ProbeEvent) -> None:
+    async def failing_handler(entry: StoredEvent) -> None:
         raise RuntimeError("boom")
 
-    async def working_handler(event: _ProbeEvent) -> None:
-        received.append(event)
+    async def working_handler(entry: StoredEvent) -> None:
+        received.append(entry)
 
     bus.subscribe(_ProbeEvent, failing_handler)
     bus.subscribe(_ProbeEvent, working_handler)
-    await bus.publish(_ProbeEvent())
-    await bus.shutdown()
+    error_message = await bus.dispatch_stored(_stored_probe_event())
 
     assert len(received) == 1
+    assert error_message == "boom"
 
 
-async def test_shutdown_awaits_pending_dispatch_before_clearing() -> None:
+async def test_dispatch_stored_returns_none_when_every_handler_succeeds() -> None:
     bus = EventBus()
-    received: list[_ProbeEvent] = []
 
-    async def slow_handler(event: _ProbeEvent) -> None:
-        await asyncio.sleep(0.05)
-        received.append(event)
+    async def handler(entry: StoredEvent) -> None:
+        pass
 
-    bus.subscribe(_ProbeEvent, slow_handler)
-    await bus.publish(_ProbeEvent())
+    bus.subscribe(_ProbeEvent, handler)
+    error_message = await bus.dispatch_stored(_stored_probe_event())
+
+    assert error_message is None
+
+
+async def test_shutdown_clears_handlers() -> None:
+    bus = EventBus()
+
+    async def handler(entry: StoredEvent) -> None:
+        pass
+
+    bus.subscribe(_ProbeEvent, handler)
     await bus.shutdown()
 
-    assert len(received) == 1
+    assert bus._handlers == {}
 
 
-def test_autodiscover_registers_every_module_that_defines_subscribers() -> None:
-    # Regression guard for EventBus.autodiscover()'s hand-maintained
-    # import list (see core/event_bus.py) -- a module that defines its own
-    # register_subscribers() but forgets to add itself there would silently
-    # never get that specific handler wired up (it'd still show up in the
-    # event log via event_log's own catch-all subscriber, but any other
-    # module-specific handler, e.g. auth's loguru logging, just wouldn't run).
-    modules_dir = pathlib.Path(modules_package.__file__).parent
-    modules_with_subscribers = {
-        path.parent.name
-        for path in modules_dir.glob("*/*.py")
-        if "def register_subscribers(" in path.read_text()
-    }
-    assert modules_with_subscribers, "sanity check: expected to find at least one module"
+def test_autodiscover_registers_auth_and_translations_handlers() -> None:
+    bus = EventBus()
+    bus.autodiscover()
 
-    autodiscover_source = inspect.getsource(EventBus.autodiscover)
-    for module_name in modules_with_subscribers:
-        # Matches the aliasing convention every existing registration follows:
-        # `register_subscribers as register_<module>_subscribers`, then
-        # `register_<module>_subscribers(self)`. Checking for the call (not
-        # just the import) is what actually caught this test's own bug during
-        # development -- an import-only check stayed green even with the call
-        # commented out.
-        assert f"register_{module_name}_subscribers(self)" in autodiscover_source, (
-            f"'{module_name}' defines register_subscribers() but "
-            "EventBus.autodiscover() doesn't appear to call it"
-        )
+    assert "LoginFailedEvent" in bus._handlers
+    assert "LocaleActivatedEvent" in bus._handlers
+
+
+@pytest.mark.parametrize("event_type", list(_REGISTERED_EVENTS), ids=list(_REGISTERED_EVENTS))
+async def test_autodiscovered_handler_reads_its_real_payload_shape(
+    event_type: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Every migrated handler reads entry.payload[...] instead of an event
+    # attribute -- a wrong key would only surface as a caught, logged
+    # exception (EventBus.dispatch_stored) or, for the locale-deletion
+    # handler, as a task that silently never fires. This proves each one
+    # still matches what OutboxEventPublisher actually writes. The two
+    # translations handlers .kiq() a taskiq task -- stubbed out here since
+    # actually reaching the broker is outside what this test is about.
+    async def _noop_kiq(*args: Any, **kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(copy_locale_translations_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(delete_locale_translations_task, "kiq", _noop_kiq)
+
+    bus = EventBus()
+    bus.autodiscover()
+    event = _REGISTERED_EVENTS[event_type]
+    stored = StoredEvent(
+        outbox_id=1,
+        category=event.category,
+        event_type=event_type,
+        occurred_at=event.occurred_at,
+        payload=_build_payload(event),
+        actor_id=None,
+        actor_login=None,
+        actor_name=None,
+        actor_email=None,
+        ip_address=None,
+    )
+
+    assert await bus.dispatch_stored(stored) is None

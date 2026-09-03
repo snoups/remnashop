@@ -4,6 +4,7 @@ from typing import Optional
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import ValidationError
+from app.core.ports import SessionRevoker
 from app.core.security import hash_password, verify_password
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -21,10 +22,17 @@ class UpdateOwnProfileDto:
 class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
-    def __init__(self, user_repository: UserRepository, uow: UnitOfWork, config: AppConfig) -> None:
+    def __init__(
+        self,
+        user_repository: UserRepository,
+        uow: UnitOfWork,
+        config: AppConfig,
+        session_revoker: SessionRevoker,
+    ) -> None:
         self._user_repository = user_repository
         self._uow = uow
         self._config = config
+        self._session_revoker = session_revoker
 
     async def _execute(self, actor: UserDto, data: UpdateOwnProfileDto) -> UserDto:
         password_hash = None
@@ -46,6 +54,12 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto]):
             updated = await self._user_repository.update_fields(
                 actor.id, UpdateUserDto(name=data.name, password_hash=password_hash)
             )
+            if password_hash is not None:
+                # A password change is a signal the account may have been
+                # compromised -- every other session (whoever holds its
+                # refresh token) stops working immediately, same as
+                # UpdateAdminUseCase does on a permission_revokes change.
+                await self._session_revoker.revoke_all_by_user(actor.id)
 
         assert updated is not None
         return updated

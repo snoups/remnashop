@@ -1,6 +1,7 @@
 from typing import Final, Optional
 
 from app.core.config import AppConfig
+from app.core.db.uow import UnitOfWork
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
 from app.core.security import verify_password
@@ -24,12 +25,14 @@ class LoginUseCase:
         event_publisher: EventPublisher,
         session_issuer: SessionIssuer,
         settings_repository: SettingsRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
         self._config = config
         self._event_publisher = event_publisher
         self._session_issuer = session_issuer
         self._settings_repository = settings_repository
+        self._uow = uow
 
     async def execute(
         self, login: str, password: str, client_ip: str, user_agent: Optional[str]
@@ -44,14 +47,23 @@ class LoginUseCase:
         stored_hash = user.password_hash if user and user.password_hash else _DUMMY_PASSWORD_HASH
         password_is_valid = await verify_password(password, stored_hash, password_pepper)
 
-        # Same generic error whether the login doesn't exist or the password is
-        # wrong -- distinguishing the two would let a client enumerate logins.
-        # verify_password() above always ran (even against the dummy hash), so
-        # an unknown login doesn't respond measurably faster and leak via timing.
-        if user is None or user.password_hash is None or not password_is_valid:
-            await self._event_publisher.publish(LoginFailedEvent(login=login, ip_address=client_ip))
+        # Same generic error whether the login doesn't exist, the password is
+        # wrong, or the account is blocked -- distinguishing any of these would
+        # let a client enumerate logins or blocked-status. verify_password()
+        # above always ran (even against the dummy hash), so an unknown login
+        # doesn't respond measurably faster and leak via timing.
+        if user is None or user.password_hash is None or not password_is_valid or user.is_blocked:
+            async with self._uow:
+                await self._event_publisher.publish(
+                    LoginFailedEvent(login=login, ip_address=client_ip)
+                )
             raise AuthenticationError("Invalid login or password")
 
         issued = await self._session_issuer.issue(user.id, client_ip, user_agent)
-        await self._event_publisher.publish(LoginSucceededEvent(user=user, ip_address=client_ip))
+        # A failure here surfaces as a request failure by design -- durable
+        # delivery means this write can't be silently swallowed.
+        async with self._uow:
+            await self._event_publisher.publish(
+                LoginSucceededEvent(user=user, ip_address=client_ip)
+            )
         return user, issued

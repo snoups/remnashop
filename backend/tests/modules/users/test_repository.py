@@ -78,6 +78,22 @@ async def test_update_fields(user_repository: UserRepository, uow: UnitOfWork) -
     assert updated.name == "After"
 
 
+async def test_update_fields_sets_personal_discount(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    created = await _create_user(user_repository, uow, name="discount-user")
+
+    async with uow:
+        updated = await user_repository.update_fields(
+            created.id, UpdateUserDto(personal_discount=25)
+        )
+        await uow.commit()
+
+    assert updated is not None
+    assert updated.personal_discount == 25
+    assert updated.purchase_discount == 0
+
+
 async def test_update_fields_missing_user_returns_none(
     user_repository: UserRepository, uow: UnitOfWork
 ) -> None:

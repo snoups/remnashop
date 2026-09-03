@@ -60,6 +60,10 @@ class GatewaysRepository:
         row = await self._get_row(gateway_type)
         return self._to_dto(row) if row is not None else self._default_dto(gateway_type)
 
+    async def get_raw_settings(self, gateway_type: PaymentGatewayType) -> dict[str, str]:
+        row = await self._get_row(gateway_type)
+        return json.loads(row.settings) if row and row.settings else {}
+
     async def update_settings(
         self, gateway_type: PaymentGatewayType, values: dict[str, str]
     ) -> PaymentGatewayDto:

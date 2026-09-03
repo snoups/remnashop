@@ -1,43 +1,32 @@
-import asyncio
-from collections import defaultdict
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Optional
 
 from loguru import logger
 
-from app.core.events import BaseEvent
+from app.core.events import BaseEvent, StoredEvent
 
 EventHandler = Callable[[Any], Awaitable[None]]
 
 
 class EventBus:
     def __init__(self) -> None:
-        self._handlers: dict[type[BaseEvent], list[EventHandler]] = defaultdict(list)
-        self._catch_all_handlers: list[EventHandler] = []
-        self._pending_tasks: set[asyncio.Task[None]] = set()
+        self._handlers: dict[str, list[EventHandler]] = {}
 
     def subscribe(self, event_type: type[BaseEvent], handler: EventHandler) -> None:
-        self._handlers[event_type].append(handler)
+        self._handlers.setdefault(event_type.__name__, []).append(handler)
 
-    def subscribe_all(self, handler: EventHandler) -> None:
-        self._catch_all_handlers.append(handler)
-
-    async def publish(self, event: BaseEvent) -> None:
-        handlers = [*self._handlers.get(type(event), []), *self._catch_all_handlers]
-        task = asyncio.create_task(self._dispatch(event, handlers))
-        self._pending_tasks.add(task)
-        task.add_done_callback(self._pending_tasks.discard)
-
-    async def _dispatch(self, event: BaseEvent, handlers: list[EventHandler]) -> None:
-        for handler in handlers:
+    async def dispatch_stored(self, entry: StoredEvent) -> Optional[str]:
+        # Every handler still runs even if an earlier one fails (isolation
+        # between handlers); the last failure's message is returned so the
+        # outbox sweep can record it and retry the whole row -- retry is
+        # row-level, not per-handler.
+        error_message: Optional[str] = None
+        for handler in self._handlers.get(entry.event_type, []):
             try:
-                await handler(event)
-            except Exception:
-                # One subscriber failing (e.g. a future notification handler hitting
-                # a network error, or an event published without a `category`) must
-                # not break the publisher's own flow or the other subscribers -- a
-                # failed login shouldn't fail to log because a Telegram notification
-                # handler threw.
-                logger.exception(f"Event handler '{handler}' failed for '{event.event_type}'")
+                await handler(entry)
+            except Exception as error:
+                error_message = str(error)
+                logger.exception(f"Event handler '{handler}' failed for '{entry.event_type}'")
+        return error_message
 
     def autodiscover(self) -> None:
         # Imported here, not at module level: modules/*/events.py sits downstream
@@ -45,23 +34,15 @@ class EventBus:
         from app.modules.auth.events import (  # noqa: PLC0415
             register_subscribers as register_auth_subscribers,
         )
-        from app.modules.event_log.subscribers import (  # noqa: PLC0415
-            register_subscribers as register_event_log_subscribers,
-        )
         from app.modules.translations.events import (  # noqa: PLC0415
             register_subscribers as register_translations_subscribers,
         )
 
         register_auth_subscribers(self)
-        register_event_log_subscribers(self)
         register_translations_subscribers(self)
 
         handler_count = sum(len(handlers) for handlers in self._handlers.values())
-        handler_count += len(self._catch_all_handlers)
         logger.debug(f"Event bus autodiscovery complete: {handler_count} handler(s) registered")
 
     async def shutdown(self) -> None:
-        if self._pending_tasks:
-            await asyncio.gather(*self._pending_tasks, return_exceptions=True)
         self._handlers.clear()
-        self._catch_all_handlers.clear()

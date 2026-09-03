@@ -40,16 +40,16 @@ class RevokeUserSessionUseCase(UseCase[RevokeUserSessionDto, None]):
         target = await self._user_repository.get_by_id(data.user_id)
         if target is None:
             raise NotFoundError("User not found")
-        if target.role > actor.role:
-            raise ConflictError("Cannot manage sessions for a higher-privileged account")
+        if target.role >= actor.role:
+            raise ConflictError("Cannot manage sessions for an equally or more privileged account")
 
         async with self._uow:
             await self._session_repository.revoke_by_id(data.session_id)
-        await self._event_publisher.publish(
-            UserSessionRevokedByAdminEvent(
-                actor=actor,
-                target=target,
-                session_id=data.session_id,
-                ip_address=data.client_ip,
+            await self._event_publisher.publish(
+                UserSessionRevokedByAdminEvent(
+                    actor=actor,
+                    target=target,
+                    session_id=data.session_id,
+                    ip_address=data.client_ip,
+                )
             )
-        )

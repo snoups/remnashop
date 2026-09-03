@@ -46,13 +46,17 @@ async def _upload_appearance_image(
     existing = await settings_repository.get_appearance_image_meta(kind)
 
     save_appearance_image(config.media_dir, kind, image_format.value, data.data)
-    if existing is not None and existing[0] != image_format.value:
-        delete_appearance_image(config.media_dir, kind, existing[0])
 
     async with uow:
-        return await settings_repository.set_appearance_image(
+        result = await settings_repository.set_appearance_image(
             kind, data.content_type, image_format.value
         )
+    # Only drop the old file once the DB row committed to the new one --
+    # otherwise a failed commit would leave the row pointing at a file we
+    # just deleted.
+    if existing is not None and existing[0] != image_format.value:
+        delete_appearance_image(config.media_dir, kind, existing[0])
+    return result
 
 
 class UploadAppearanceLogoUseCase(UseCase[UploadAppearanceImageInput, AppearanceSettingsDto]):

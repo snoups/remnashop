@@ -20,6 +20,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.auth.repository
     app.modules.auth.dto
@@ -45,6 +46,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.settings.repository
     app.modules.settings.dto
@@ -70,6 +72,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.users.repository
     app.modules.users.dto
@@ -98,16 +101,15 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.event_log.repository
     app.modules.event_log.dto
     app.modules.event_log.di
     app.modules.event_log.usecases
     app.modules.event_log.tasks
-    app.modules.event_log.subscribers
-    app.modules.event_log.serializers
 ignore_imports =
-    app.core.event_bus -> app.modules.event_log.subscribers
+    app.core.outbox_event_publisher -> app.modules.event_log.tasks
 
 [importlinter:contract:banners-encapsulation]
 name = banners module internals are private
@@ -128,6 +130,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.banners.repository
     app.modules.banners.dto
@@ -154,6 +157,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.api_tokens.repository
     app.modules.api_tokens.dto
@@ -179,6 +183,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.translations.repository
     app.modules.translations.dto
@@ -210,6 +215,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.gateways.repository
     app.modules.gateways.dto
@@ -236,6 +242,7 @@ source_modules =
     app.modules.gateways
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.plans.repository
     app.modules.plans.dto
@@ -261,6 +268,7 @@ source_modules =
     app.modules.gateways
     app.modules.plans
     app.modules.promocodes
+    app.modules.payments
 forbidden_modules =
     app.modules.subscriptions.repository
     app.modules.subscriptions.addon_repository
@@ -290,8 +298,35 @@ source_modules =
     app.modules.gateways
     app.modules.plans
     app.modules.subscriptions
+    app.modules.payments
 forbidden_modules =
     app.modules.promocodes.repository
     app.modules.promocodes.dto
     app.modules.promocodes.di
     app.modules.promocodes.usecases
+
+[importlinter:contract:payments-encapsulation]
+name = payments module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.gateways
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+forbidden_modules =
+    app.modules.payments.repository
+    app.modules.payments.dto
+    app.modules.payments.di
+    app.modules.payments.usecases

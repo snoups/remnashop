@@ -1,3 +1,4 @@
+from app.modules.users.dto import SetUserPersonalDiscountDto
 from app.modules.users.usecases.create_admin import CreateAdminDto, CreateAdminUseCase
 from app.modules.users.usecases.delete_admin import DeleteAdminDto, DeleteAdminUseCase
 from app.modules.users.usecases.delete_user import DeleteUserDto, DeleteUserUseCase
@@ -10,6 +11,7 @@ from app.modules.users.usecases.register_telegram_user import (
     RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
 )
+from app.modules.users.usecases.set_user_personal_discount import SetUserPersonalDiscountUseCase
 from app.modules.users.usecases.update_admin import UpdateAdminDto, UpdateAdminUseCase
 from app.modules.users.usecases.update_own_profile import (
     UpdateOwnProfileDto,
@@ -37,6 +39,8 @@ __all__ = [
     "PromoteToAdminUseCase",
     "RegisterTelegramUserDto",
     "RegisterTelegramUserUseCase",
+    "SetUserPersonalDiscountDto",
+    "SetUserPersonalDiscountUseCase",
     "UpdateAdminDto",
     "UpdateAdminUseCase",
     "UpdateOwnProfileDto",

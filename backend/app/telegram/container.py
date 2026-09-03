@@ -7,7 +7,7 @@ from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
 from app.modules.banners import get_banners_providers
 from app.modules.settings import get_settings_providers
-from app.modules.users import get_user_providers
+from app.modules.users import get_users_providers
 
 
 def create_aiogram_container(
@@ -23,7 +23,7 @@ def create_aiogram_container(
     providers = [
         AiogramProvider(),
         *get_core_providers(),
-        *get_user_providers(),
+        *get_users_providers(),
         *get_settings_providers(),
         *get_banners_providers(),
     ]

@@ -38,6 +38,8 @@ class RevokeSessionUseCase(UseCase[RevokeSessionDto, None]):
 
         async with self._uow:
             await self._session_repository.revoke_by_id(data.session_id)
-        await self._event_publisher.publish(
-            SessionRevokedEvent(user=actor, session_id=data.session_id, ip_address=data.client_ip)
-        )
+            await self._event_publisher.publish(
+                SessionRevokedEvent(
+                    user=actor, session_id=data.session_id, ip_address=data.client_ip
+                )
+            )

@@ -16,19 +16,21 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.plans import PlanRepository, is_plan_purchasable_by
 from app.modules.promocodes.dto import ActivatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeActivatedEvent
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
-    MAX_ACTIVE_SUBSCRIPTIONS_PER_USER,
     GrantAddOnDto,
     GrantAddOnUseCase,
+    PlanSnapshot,
     PurchaseSubscriptionDto,
     PurchaseSubscriptionUseCase,
     SubscriptionDto,
     SubscriptionRepository,
 )
-from app.modules.users import UserDto
+from app.modules.users import UpdateUserDto, UserDto, UserRepository
 
 _TARGET_REQUIRED_REWARDS: Final[frozenset[PromocodeRewardType]] = frozenset(
     {PromocodeRewardType.DURATION, PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES}
@@ -42,6 +44,9 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         self,
         promocode_repository: PromocodeRepository,
         subscription_repository: SubscriptionRepository,
+        plan_repository: PlanRepository,
+        settings_repository: SettingsRepository,
+        user_repository: UserRepository,
         purchase_subscription_use_case: PurchaseSubscriptionUseCase,
         grant_addon_use_case: GrantAddOnUseCase,
         uow: UnitOfWork,
@@ -49,6 +54,9 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
     ) -> None:
         self._promocode_repository = promocode_repository
         self._subscription_repository = subscription_repository
+        self._plan_repository = plan_repository
+        self._settings_repository = settings_repository
+        self._user_repository = user_repository
         self._purchase_subscription_use_case = purchase_subscription_use_case
         self._grant_addon_use_case = grant_addon_use_case
         self._uow = uow
@@ -80,11 +88,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
             if target.status is not SubscriptionStatus.ACTIVE:
                 raise ValidationError("target_subscription_id must be an active subscription")
         elif promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
-            active = await self._subscription_repository.get_active_by_user(actor.id)
-            if len(active) >= MAX_ACTIVE_SUBSCRIPTIONS_PER_USER:
-                raise ValidationError(
-                    f"User '{actor.id}' is already at the concurrent-subscription cap"
-                )
+            await self._check_subscription_cap(actor)
 
         async with self._uow:
             await self._promocode_repository.claim_activation(
@@ -95,25 +99,44 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
 
         await self._apply_reward(actor, promo, target)
 
-        logger.info(f"{actor.log} Activated promocode '{promo.code}'")
-        await self._event_publisher.publish(
-            PromocodeActivatedEvent(
-                user=actor, promocode_id=promo.id, reward_type=promo.reward_type.value
+        async with self._uow:
+            await self._event_publisher.publish(
+                PromocodeActivatedEvent(
+                    user=actor, promocode_id=promo.id, reward_type=promo.reward_type.value
+                )
             )
-        )
+
+        logger.info(f"{actor.log} Activated promocode '{promo.code}'")
         return promo
+
+    async def _check_subscription_cap(self, actor: UserDto) -> None:
+        shop_settings = await self._settings_repository.get_shop_settings()
+        max_active = shop_settings.max_active_subscriptions
+        if max_active is None:
+            return
+        active = await self._subscription_repository.get_active_by_user(actor.id)
+        if len(active) >= max_active:
+            raise ValidationError(
+                f"User '{actor.id}' is already at the concurrent-subscription cap"
+            )
 
     async def _check_availability(self, actor: UserDto, promo: PromocodeDto) -> None:
         if promo.availability is PromocodeAvailability.ALL:
             return
         if promo.availability is PromocodeAvailability.NEW:
-            active = await self._subscription_repository.get_active_by_user(actor.id)
-            if active:
+            # "New" = never purchased a non-trial subscription, not "has none
+            # active right now" -- matches main's UserDao.has_any_subscription.
+            has_sub = await self._subscription_repository.has_any_subscription(
+                actor.id, include_trial=False
+            )
+            if has_sub:
                 raise ValidationError(f"Promocode '{promo.code}' is for new users only")
             return
         if promo.availability is PromocodeAvailability.EXISTING:
-            active = await self._subscription_repository.get_active_by_user(actor.id)
-            if not active:
+            has_sub = await self._subscription_repository.has_any_subscription(
+                actor.id, include_trial=False
+            )
+            if not has_sub:
                 raise ValidationError(f"Promocode '{promo.code}' is for existing users only")
             return
         if promo.availability is PromocodeAvailability.ALLOWED:
@@ -135,7 +158,11 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
                     actor,
                     PurchaseSubscriptionDto(
                         user_id=actor.id,
-                        plan_id=target.plan_snapshot.plan_id,
+                        # RENEW never rebuilds the subscription's own
+                        # plan_snapshot column (see _renew()) -- reusing the
+                        # target's existing snapshot is only used for the
+                        # "same plan" identity check via .plan_id.
+                        plan_snapshot=target.plan_snapshot,
                         duration_days=promo.reward,
                         price_paid=Decimal(0),
                         currency=Currency.USD,
@@ -152,17 +179,53 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
             elif promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
                 assert promo.reward_plan_id is not None
                 assert promo.reward_duration_days is not None
+                plan = await self._plan_repository.get_by_id(promo.reward_plan_id)
+                # Same purchasability gate a direct checkout applies -- a
+                # promocode grants a plan, it doesn't bypass whether that
+                # plan is still active/available to this actor.
+                has_purchase_history = await self._subscription_repository.has_any_subscription(
+                    actor.id, include_trial=False
+                )
+                if not is_plan_purchasable_by(
+                    plan, actor, has_purchase_history=has_purchase_history
+                ):
+                    raise ValidationError(f"Plan '{plan.id}' is not available for purchase")
                 await self._purchase_subscription_use_case(
                     actor,
                     PurchaseSubscriptionDto(
                         user_id=actor.id,
-                        plan_id=promo.reward_plan_id,
+                        plan_snapshot=PlanSnapshot(
+                            plan_id=plan.id,
+                            public_code=plan.public_code,
+                            name=plan.name,
+                            price_paid=Decimal(0),
+                            currency=Currency.USD,
+                            duration_days=promo.reward_duration_days,
+                            traffic_limit=plan.traffic_limit,
+                            device_limit=plan.device_limit,
+                            traffic_limit_strategy=plan.traffic_limit_strategy,
+                            is_trial=plan.is_trial,
+                            internal_squads=plan.internal_squads,
+                            external_squad=plan.external_squad,
+                        ),
                         duration_days=promo.reward_duration_days,
                         price_paid=Decimal(0),
                         currency=Currency.USD,
                         purchase_type=PurchaseType.NEW,
                     ),
                 )
+            elif promo.reward_type is PromocodeRewardType.PERSONAL_DISCOUNT:
+                if promo.reward:
+                    async with self._uow:
+                        await self._user_repository.update_fields(
+                            actor.id, UpdateUserDto(personal_discount=promo.reward)
+                        )
+            elif promo.reward_type is PromocodeRewardType.PURCHASE_DISCOUNT:
+                if promo.reward:
+                    async with self._uow:
+                        await self._user_repository.update_fields(
+                            actor.id, UpdateUserDto(purchase_discount=promo.reward)
+                        )
         except Exception:
             # The claim above is already committed -- an orphaned activation
             # with no reward, not a double-grant past a limit. Same accepted

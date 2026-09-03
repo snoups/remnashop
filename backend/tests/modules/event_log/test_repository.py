@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.events import EventCategory
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.repository import EventLogRepository
@@ -111,3 +112,26 @@ async def test_list_paginates(event_log_repository: EventLogRepository) -> None:
 
     assert total == 5
     assert len(items) == 2
+
+
+async def test_create_with_outbox_id_is_idempotent(
+    event_log_repository: EventLogRepository,
+) -> None:
+    outbox_entry = EventOutboxEntry(
+        category=EventCategory.AUTH,
+        event_type="LoginSucceededEvent",
+        occurred_at=datetime.now(timezone.utc),
+        payload={},
+    )
+    event_log_repository.session.add(outbox_entry)
+    await event_log_repository.session.flush()
+
+    entry = _entry(outbox_id=outbox_entry.id)
+
+    first = await event_log_repository.create(entry)
+    second = await event_log_repository.create(entry)
+
+    assert first is not None
+    assert second is None
+    items, total = await event_log_repository.list()
+    assert total == 1

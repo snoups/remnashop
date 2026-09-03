@@ -32,9 +32,10 @@ class BootstrapOwnerUseCase:
         self, login: str, password: str, client_ip: str, user_agent: Optional[str]
     ) -> tuple[UserDto, IssuedSession]:
         if await self._user_repository.exists_with_role(Role.OWNER):
-            await self._event_publisher.publish(
-                BootstrapConflictEvent(login=login, ip_address=client_ip)
-            )
+            async with self._uow:
+                await self._event_publisher.publish(
+                    BootstrapConflictEvent(login=login, ip_address=client_ip)
+                )
             raise ConflictError("Owner already exists")
 
         password_pepper = self._config.crypt_key.get_secret_value()
@@ -58,7 +59,10 @@ class BootstrapOwnerUseCase:
             raise ConflictError("Owner already exists") from error
 
         issued = await self._session_issuer.issue(owner.id, client_ip, user_agent)
-        await self._event_publisher.publish(
-            OwnerBootstrappedEvent(user=owner, ip_address=client_ip)
-        )
+        # A failure here surfaces as a request failure by design -- durable
+        # delivery means this write can't be silently swallowed.
+        async with self._uow:
+            await self._event_publisher.publish(
+                OwnerBootstrappedEvent(user=owner, ip_address=client_ip)
+            )
         return owner, issued

@@ -3,11 +3,19 @@ from sqlalchemy.exc import OperationalError
 
 from app.core.config import AppConfig
 from app.core.di.providers import DatabaseProvider, RemnawaveProvider, get_core_providers
+from app.core.resilient_transport import ResilientTransport
 
 
 def test_remnawave_provider_is_registered() -> None:
     providers = get_core_providers()
     assert any(isinstance(p, RemnawaveProvider) for p in providers)
+
+
+async def test_remnawave_client_transport_is_wrapped(config: AppConfig) -> None:
+    provider = RemnawaveProvider()
+    async for sdk in provider.get_remnawave(config):
+        assert isinstance(sdk._client._transport, ResilientTransport)  # noqa: SLF001
+        break
 
 
 async def test_get_engine_fails_fast_on_unreachable_database() -> None:

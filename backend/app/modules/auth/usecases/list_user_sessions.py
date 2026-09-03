@@ -19,7 +19,7 @@ class ListUserSessionsUseCase(UseCase[int, list[SessionDto]]):
         target = await self._user_repository.get_by_id(data)
         if target is None:
             raise NotFoundError("User not found")
-        if target.role > actor.role:
-            raise ConflictError("Cannot manage sessions for a higher-privileged account")
+        if target.role >= actor.role:
+            raise ConflictError("Cannot manage sessions for an equally or more privileged account")
 
         return await self._session_repository.list_active_by_user(data)

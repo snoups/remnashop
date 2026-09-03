@@ -1,9 +1,8 @@
 from datetime import datetime
-from decimal import Decimal
 
 from app.core.enums import SubscriptionStatus
 from app.modules.subscriptions.domain import SubscriptionState
-from app.modules.subscriptions.dto import SubscriptionDto
+from app.modules.subscriptions.dto import PlanSnapshot, SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 
 
@@ -49,20 +48,12 @@ class SubscriptionLifecycleService:
         new_state = state.reactivate_on_renew(new_expire_at)
         return await self._subscription_repository.apply_state(new_state)
 
-    async def change_plan(
-        self, subscription_id: int, *, now: datetime
-    ) -> tuple[SubscriptionDto, Decimal]:
-        """Marks subscription_id DELETED and returns the proration credit
-        computed from ITS OWN plan_snapshot/expire_at -- takes no
-        new_snapshot/new_expire_at because change_plan() never needed them
-        (see SubscriptionState.change_plan's docstring). The caller can
-        therefore call calculate_proration_credit() directly to preview
-        this same credit before this method ever runs -- e.g. to compute a
-        new subscription's final expire_at before minting its panel
-        identity -- and this method will recompute the identical value
-        when it actually commits the transition."""
+    async def change_plan_in_place(
+        self, subscription_id: int, *, new_plan_snapshot: PlanSnapshot, new_expire_at: datetime
+    ) -> SubscriptionDto:
         dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
         state = _dto_to_state(dto)
-        new_state, credit = state.change_plan(now=now)
-        updated = await self._subscription_repository.apply_state(new_state)
-        return updated, credit
+        new_state = state.change_plan_in_place(
+            new_plan_snapshot=new_plan_snapshot, new_expire_at=new_expire_at
+        )
+        return await self._subscription_repository.apply_state(new_state)

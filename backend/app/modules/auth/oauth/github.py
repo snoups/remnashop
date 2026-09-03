@@ -1,10 +1,10 @@
-from typing import Optional, cast
+from typing import Final, Optional, cast
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
-_AUTHORIZE_ENDPOINT = "https://github.com/login/oauth/authorize"
-_TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token"
-_USER_ENDPOINT = "https://api.github.com/user"
+_AUTHORIZE_ENDPOINT: Final[str] = "https://github.com/login/oauth/authorize"
+_TOKEN_ENDPOINT: Final[str] = "https://github.com/login/oauth/access_token"
+_USER_ENDPOINT: Final[str] = "https://api.github.com/user"
 
 
 class GitHubOAuthClient:

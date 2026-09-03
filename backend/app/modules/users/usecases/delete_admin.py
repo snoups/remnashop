@@ -38,10 +38,10 @@ class DeleteAdminUseCase(UseCase[DeleteAdminDto, None]):
 
         async with self._uow:
             deleted = await self._user_repository.delete(data.user_id)
+            if deleted:
+                await self._event_publisher.publish(
+                    AdminDeletedEvent(actor=actor, target=target, ip_address=data.client_ip)
+                )
 
         if not deleted:
             raise NotFoundError("Admin not found")
-
-        await self._event_publisher.publish(
-            AdminDeletedEvent(actor=actor, target=target, ip_address=data.client_ip)
-        )

@@ -27,6 +27,12 @@ class User(BaseSql, TimestampMixin):
             "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'",
             name="ck_users_login_charset",
         ),
+        CheckConstraint(
+            "personal_discount BETWEEN 0 AND 100", name="ck_users_personal_discount_range"
+        ),
+        CheckConstraint(
+            "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,3 +53,5 @@ class User(BaseSql, TimestampMixin):
     permission_grants: Mapped[Optional[list[str]]] = mapped_column(JSONB)
     permission_revokes: Mapped[Optional[list[str]]] = mapped_column(JSONB)
     ip_allowlist: Mapped[Optional[list[str]]] = mapped_column(JSONB)
+    personal_discount: Mapped[int] = mapped_column(default=0, server_default="0")
+    purchase_discount: Mapped[int] = mapped_column(default=0, server_default="0")

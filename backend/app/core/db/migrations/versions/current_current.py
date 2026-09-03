@@ -246,6 +246,24 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
+        "shop_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("max_active_subscriptions", sa.Integer(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "bot_translations",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -512,6 +530,8 @@ def upgrade() -> None:
         sa.Column("permission_grants", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("permission_revokes", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("ip_allowlist", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("personal_discount", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("purchase_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -526,6 +546,12 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint(
             "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'", name="ck_users_login_charset"
+        ),
+        sa.CheckConstraint(
+            "personal_discount BETWEEN 0 AND 100", name="ck_users_personal_discount_range"
+        ),
+        sa.CheckConstraint(
+            "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
         ),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -578,7 +604,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_api_tokens_token_hash"), "api_tokens", ["token_hash"], unique=True)
     op.create_table(
-        "event_log_entries",
+        "event_outbox",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
             "category",
@@ -601,20 +627,18 @@ def upgrade() -> None:
         sa.Column("actor_email", sa.String(), nullable=True),
         sa.Column("ip_address", sa.String(length=45), nullable=True),
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("processed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("attempts", sa.Integer(), nullable=False),
+        sa.Column("last_error", sa.String(), nullable=True),
         sa.ForeignKeyConstraint(["actor_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(op.f("ix_event_outbox_category"), "event_outbox", ["category"], unique=False)
     op.create_index(
-        op.f("ix_event_log_entries_actor_id"), "event_log_entries", ["actor_id"], unique=False
+        op.f("ix_event_outbox_event_type"), "event_outbox", ["event_type"], unique=False
     )
     op.create_index(
-        op.f("ix_event_log_entries_category"), "event_log_entries", ["category"], unique=False
-    )
-    op.create_index(
-        op.f("ix_event_log_entries_event_type"), "event_log_entries", ["event_type"], unique=False
-    )
-    op.create_index(
-        op.f("ix_event_log_entries_occurred_at"), "event_log_entries", ["occurred_at"], unique=False
+        op.f("ix_event_outbox_processed_at"), "event_outbox", ["processed_at"], unique=False
     )
     op.create_table(
         "oauth_identities",
@@ -667,7 +691,15 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
         sa.Column(
             "reward_type",
-            sa.Enum("DURATION", "TRAFFIC", "DEVICES", "SUBSCRIPTION", name="promocoderewardtype"),
+            sa.Enum(
+                "DURATION",
+                "TRAFFIC",
+                "DEVICES",
+                "SUBSCRIPTION",
+                "PERSONAL_DISCOUNT",
+                "PURCHASE_DISCOUNT",
+                name="promocoderewardtype",
+            ),
             nullable=False,
         ),
         sa.Column("reward", sa.Integer(), nullable=True),
@@ -791,6 +823,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
+        op.f("ix_user_sessions_expires_at"), "user_sessions", ["expires_at"], unique=False
+    )
+    op.create_index(
         op.f("ix_user_sessions_previous_refresh_token_hash"),
         "user_sessions",
         ["previous_refresh_token_hash"],
@@ -801,6 +836,9 @@ def upgrade() -> None:
         "user_sessions",
         ["refresh_token_hash"],
         unique=True,
+    )
+    op.create_index(
+        op.f("ix_user_sessions_revoked_at"), "user_sessions", ["revoked_at"], unique=False
     )
     op.create_index(op.f("ix_user_sessions_user_id"), "user_sessions", ["user_id"], unique=False)
     op.create_table(
@@ -833,6 +871,134 @@ def upgrade() -> None:
         ["subscription_id"],
         unique=False,
     )
+    op.create_table(
+        "event_log_entries",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column(
+            "category",
+            sa.Enum(
+                "AUTH",
+                "ADMIN_MANAGEMENT",
+                "USER",
+                "SETTINGS",
+                "SUBSCRIPTION",
+                "PROMOCODE",
+                name="event_category",
+            ),
+            nullable=False,
+        ),
+        sa.Column("event_type", sa.String(length=128), nullable=False),
+        sa.Column("occurred_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("actor_id", sa.Integer(), nullable=True),
+        sa.Column("actor_login", sa.String(length=64), nullable=True),
+        sa.Column("actor_name", sa.String(), nullable=True),
+        sa.Column("actor_email", sa.String(), nullable=True),
+        sa.Column("ip_address", sa.String(length=45), nullable=True),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("outbox_id", sa.Integer(), nullable=True),
+        sa.ForeignKeyConstraint(["actor_id"], ["users.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["outbox_id"], ["event_outbox.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("outbox_id"),
+    )
+    op.create_index(
+        op.f("ix_event_log_entries_actor_id"), "event_log_entries", ["actor_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_event_log_entries_category"), "event_log_entries", ["category"], unique=False
+    )
+    op.create_index(
+        op.f("ix_event_log_entries_event_type"), "event_log_entries", ["event_type"], unique=False
+    )
+    op.create_index(
+        op.f("ix_event_log_entries_occurred_at"), "event_log_entries", ["occurred_at"], unique=False
+    )
+    op.create_table(
+        "payment_orders",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("plan_id", sa.Integer(), nullable=True),
+        sa.Column("plan_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("duration_days", sa.Integer(), nullable=False),
+        sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
+        sa.Column(
+            "purchase_type", sa.Enum("NEW", "RENEW", "CHANGE", name="purchasetype"), nullable=False
+        ),
+        sa.Column("target_subscription_id", sa.Integer(), nullable=True),
+        sa.Column(
+            "gateway_type",
+            sa.Enum(
+                "TELEGRAM_STARS",
+                "YOOKASSA",
+                "YOOMONEY",
+                "VALUTIX",
+                "CRYPTOMUS",
+                "HELEKET",
+                "CRYPTOPAY",
+                "FREEKASSA",
+                "MULENPAY",
+                "PAYMASTER",
+                "PLATEGA",
+                "ROBOKASSA",
+                "URLPAY",
+                "WATA",
+                "ROLLYPAY",
+                name="payment_gateway_type",
+            ),
+            nullable=False,
+        ),
+        sa.Column("external_payment_id", sa.String(length=128), nullable=True),
+        sa.Column(
+            "status",
+            sa.Enum("PENDING", "PAID", "FAILED", "EXPIRED", "CANCELED", name="paymentorderstatus"),
+            server_default="PENDING",
+            nullable=False,
+        ),
+        sa.Column("base_price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("discount_percent", sa.Integer(), server_default="0", nullable=False),
+        sa.Column(
+            "discount_source",
+            sa.Enum("NONE", "PERSONAL", "PURCHASE", name="discountsource"),
+            server_default="NONE",
+            nullable=False,
+        ),
+        sa.Column("final_price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("customer_email", sa.String(length=255), nullable=True),
+        sa.Column("idempotency_key", sa.String(length=36), nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["plan_id"],
+            ["plans.id"],
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["target_subscription_id"],
+            ["subscriptions.id"],
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("external_payment_id"),
+        sa.UniqueConstraint("idempotency_key"),
+    )
+    op.create_index(
+        "ix_payment_orders_status_expires_at",
+        "payment_orders",
+        ["status", "expires_at"],
+        unique=False,
+    )
+    op.create_index(op.f("ix_payment_orders_user_id"), "payment_orders", ["user_id"], unique=False)
     op.create_table(
         "plan_prices",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -896,11 +1062,40 @@ def upgrade() -> None:
         ["subscription_id"],
         unique=False,
     )
+    op.create_table(
+        "addon_grant_idempotency",
+        sa.Column("key", sa.String(), nullable=False),
+        sa.Column("entitlement_id", sa.Integer(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["entitlement_id"], ["addon_entitlements.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("key"),
+    )
+    op.create_index(
+        op.f("ix_addon_grant_idempotency_entitlement_id"),
+        "addon_grant_idempotency",
+        ["entitlement_id"],
+        unique=False,
+    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(
+        op.f("ix_addon_grant_idempotency_entitlement_id"), table_name="addon_grant_idempotency"
+    )
+    op.drop_table("addon_grant_idempotency")
     op.drop_index(
         op.f("ix_subscription_purchase_idempotency_subscription_id"),
         table_name="subscription_purchase_idempotency",
@@ -911,11 +1106,21 @@ def downgrade() -> None:
     op.drop_table("promocode_activations")
     op.drop_index(op.f("ix_plan_prices_plan_duration_id"), table_name="plan_prices")
     op.drop_table("plan_prices")
+    op.drop_index(op.f("ix_payment_orders_user_id"), table_name="payment_orders")
+    op.drop_index("ix_payment_orders_status_expires_at", table_name="payment_orders")
+    op.drop_table("payment_orders")
+    op.drop_index(op.f("ix_event_log_entries_occurred_at"), table_name="event_log_entries")
+    op.drop_index(op.f("ix_event_log_entries_event_type"), table_name="event_log_entries")
+    op.drop_index(op.f("ix_event_log_entries_category"), table_name="event_log_entries")
+    op.drop_index(op.f("ix_event_log_entries_actor_id"), table_name="event_log_entries")
+    op.drop_table("event_log_entries")
     op.drop_index(op.f("ix_addon_entitlements_subscription_id"), table_name="addon_entitlements")
     op.drop_table("addon_entitlements")
     op.drop_index(op.f("ix_user_sessions_user_id"), table_name="user_sessions")
+    op.drop_index(op.f("ix_user_sessions_revoked_at"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_refresh_token_hash"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_previous_refresh_token_hash"), table_name="user_sessions")
+    op.drop_index(op.f("ix_user_sessions_expires_at"), table_name="user_sessions")
     op.drop_table("user_sessions")
     op.drop_index(op.f("ix_subscriptions_user_id"), table_name="subscriptions")
     op.drop_index(op.f("ix_subscriptions_status"), table_name="subscriptions")
@@ -929,11 +1134,10 @@ def downgrade() -> None:
     op.drop_table("plan_durations")
     op.drop_index(op.f("ix_oauth_identities_user_id"), table_name="oauth_identities")
     op.drop_table("oauth_identities")
-    op.drop_index(op.f("ix_event_log_entries_occurred_at"), table_name="event_log_entries")
-    op.drop_index(op.f("ix_event_log_entries_event_type"), table_name="event_log_entries")
-    op.drop_index(op.f("ix_event_log_entries_category"), table_name="event_log_entries")
-    op.drop_index(op.f("ix_event_log_entries_actor_id"), table_name="event_log_entries")
-    op.drop_table("event_log_entries")
+    op.drop_index(op.f("ix_event_outbox_processed_at"), table_name="event_outbox")
+    op.drop_index(op.f("ix_event_outbox_event_type"), table_name="event_outbox")
+    op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
+    op.drop_table("event_outbox")
     op.drop_index(op.f("ix_api_tokens_token_hash"), table_name="api_tokens")
     op.drop_table("api_tokens")
     op.drop_index(op.f("ix_addon_prices_addon_id"), table_name="addon_prices")
@@ -953,6 +1157,7 @@ def downgrade() -> None:
     op.drop_table("plans")
     op.drop_table("payment_gateways")
     op.drop_table("oauth_settings")
+    op.drop_table("shop_settings")
     op.drop_table("bot_translations")
     op.drop_table("bot_settings")
     op.drop_table("bot_commands")

@@ -30,13 +30,21 @@ case "$TARGET" in
         # Each task module listed here needs its providers registered in
         # backend/app/worker/container.py's create_worker_container() too --
         # the two lists are kept in sync by hand, see that file's comment.
-        exec taskiq worker app.worker.broker:broker app.worker.lifespan app.modules.event_log.tasks app.modules.translations.tasks app.modules.subscriptions.tasks
+        # -w 1: WORKER_STARTUP binds a single metrics HTTP server port and
+        # starts a single worker-gauges poller (see app/worker/lifespan.py) --
+        # a second child process would collide on the port and double-sample
+        # the gauges.
+        exec taskiq worker -w 1 app.worker.broker:broker app.worker.lifespan app.modules.event_log.tasks app.modules.translations.tasks app.modules.subscriptions.tasks app.modules.payments.tasks app.modules.auth.tasks
         ;;
     scheduler)
         # Only includes modules with a schedule-labeled task -- not a full
         # mirror of worker's module list, since taskiq scheduler only reads
         # schedule labels off these modules, it never executes their tasks.
-        exec taskiq scheduler app.worker.scheduler:scheduler app.modules.subscriptions.tasks
+        # It also dispatches every delayed task retry via retry_schedule_source,
+        # so it's an operational dependency for retry timing: a scheduler outage
+        # stalls (does not lose -- ListRedisScheduleSource recovers past
+        # buckets) all pending retries.
+        exec taskiq scheduler app.worker.scheduler:scheduler app.modules.event_log.tasks app.modules.subscriptions.tasks app.modules.payments.tasks app.modules.auth.tasks
         ;;
     *)
         echo "Usage: docker-entrypoint.sh {api|telegram|worker|scheduler}" >&2

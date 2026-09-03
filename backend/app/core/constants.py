@@ -13,12 +13,8 @@ BACKUP_DIR: Final[Path] = BASE_DIR / "backups"
 MEDIA_DIR: Final[Path] = BASE_DIR / "media"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
 
-DOMAIN_REGEX: Pattern[str] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
-TAG_REGEX: Pattern[str] = re.compile(r"^[A-Z0-9_]{1,16}$")
-URL_PATTERN: Pattern[str] = re.compile(r"^https://\S+$")
-USERNAME_PATTERN: Pattern[str] = re.compile(r"^@[a-zA-Z0-9_]{5,32}$")
-LOGIN_PATTERN: Pattern[str] = re.compile(r"^[A-Za-z0-9._-]+$")
-INVITE_LINK_PATTERN: Pattern[str] = re.compile(r"^https://t\.me/(\+|joinchat/)[A-Za-z0-9_\-]+")
+DOMAIN_REGEX: Final[Pattern[str]] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
+LOGIN_PATTERN: Final[Pattern[str]] = re.compile(r"^[A-Za-z0-9._-]+$")
 
 REMNAWAVE_MIN_VERSION: Final[Version] = Version("2.7.0")
 REMNAWAVE_MAX_VERSION: Final[Version] = Version("2.8.0")

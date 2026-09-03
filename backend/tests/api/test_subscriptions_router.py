@@ -6,6 +6,7 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from remnapy import RemnawaveSDK
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
@@ -25,12 +26,32 @@ from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.translations import get_translations_providers
-from app.modules.users import get_user_providers
+from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.remnawave import FakeUserStore, _user_payload, make_fake_remnawave_transport
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 _EXPIRE_AT = datetime.datetime(2030, 1, 1, tzinfo=timezone.utc)
+
+
+class _TestRemnawaveProvider(Provider):
+    scope = Scope.APP
+
+    def __init__(self, store: FakeUserStore) -> None:
+        super().__init__()
+        self._store = store
+
+    @provide
+    def get_remnawave(self) -> RemnawaveSDK:
+        transport, _ = make_fake_remnawave_transport(self._store)
+        client = httpx.AsyncClient(transport=transport, base_url="http://fake-panel.test/api")
+        return RemnawaveSDK(client=client)
+
+
+@pytest.fixture
+def remnawave_store() -> FakeUserStore:
+    return {}
 
 
 class _TestSessionProvider(Provider):
@@ -46,10 +67,12 @@ class _TestSessionProvider(Provider):
 
 
 @pytest.fixture
-async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
+async def test_container(
+    session: AsyncSession, config: AppConfig, remnawave_store: FakeUserStore
+) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_user_providers(),
+        *get_users_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_plans_providers(),
@@ -57,6 +80,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_translations_providers(),
         *get_subscriptions_providers(),
         _TestSessionProvider(session),
+        _TestRemnawaveProvider(remnawave_store),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
     yield container
@@ -135,10 +159,12 @@ async def test_owner_can_update_and_delete_subscription(
     subscription_repository: SubscriptionRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    remnawave_store: FakeUserStore,
 ) -> None:
     token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
     headers = {"Authorization": f"Bearer {token}"}
     buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=301))
+    remnawave_store[7001] = _user_payload(user_id=7001, username="fake_7001", expire_at=_EXPIRE_AT)
     created = await subscription_repository.create(
         CreateSubscriptionDto(
             user_id=buyer.id,
@@ -163,7 +189,7 @@ async def test_owner_can_update_and_delete_subscription(
     assert delete_response.status_code == 204
 
     list_response = await client.get(f"{API_V1}/subscriptions", headers=headers)
-    assert list_response.json()[0]["status"] == "DELETED"
+    assert list_response.json()["items"][0]["status"] == "DELETED"
 
 
 async def test_owner_can_manage_addon_lifecycle(

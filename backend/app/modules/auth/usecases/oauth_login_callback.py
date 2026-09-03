@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.core.config import AppConfig
+from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
@@ -24,6 +25,7 @@ class OAuthLoginCallbackUseCase:
         config: AppConfig,
         event_publisher: EventPublisher,
         session_issuer: SessionIssuer,
+        uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
         self._state_store = state_store
@@ -32,6 +34,7 @@ class OAuthLoginCallbackUseCase:
         self._config = config
         self._event_publisher = event_publisher
         self._session_issuer = session_issuer
+        self._uow = uow
 
     async def execute(
         self,
@@ -48,9 +51,10 @@ class OAuthLoginCallbackUseCase:
             or state_data.purpose != OAuthFlowPurpose.LOGIN
             or state_data.provider != provider
         ):
-            await self._event_publisher.publish(
-                OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
-            )
+            async with self._uow:
+                await self._event_publisher.publish(
+                    OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
+                )
             raise AuthenticationError("Invalid or expired OAuth state")
 
         settings = await self._settings_repository.get_oauth_settings()
@@ -61,29 +65,38 @@ class OAuthLoginCallbackUseCase:
                 redirect_uri, code, state_data.code_verifier
             )
         except OAUTH_EXCHANGE_ERRORS as error:
-            await self._event_publisher.publish(
-                OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
-            )
+            async with self._uow:
+                await self._event_publisher.publish(
+                    OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
+                )
             raise AuthenticationError("Failed to exchange OAuth code") from error
 
         identity = await self._oauth_identity_repository.get_by_provider_external_id(
             provider, external_id
         )
         if identity is None:
-            await self._event_publisher.publish(
-                OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
-            )
+            async with self._uow:
+                await self._event_publisher.publish(
+                    OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
+                )
             raise AuthenticationError("This account is not linked to any user")
 
         user = await self._user_repository.get_by_id(identity.user_id)
-        if user is None:
-            await self._event_publisher.publish(
-                OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
-            )
+        # Same message whether the user record is gone or the account is
+        # blocked -- distinguishing the two would leak blocked-status to an
+        # unauthenticated caller, same reasoning as LoginUseCase's own check.
+        if user is None or user.is_blocked:
+            async with self._uow:
+                await self._event_publisher.publish(
+                    OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
+                )
             raise AuthenticationError("This account is not linked to any user")
 
         issued = await self._session_issuer.issue(user.id, client_ip, user_agent)
-        await self._event_publisher.publish(
-            OAuthLoginSucceededEvent(user=user, provider=provider, ip_address=client_ip)
-        )
+        # A failure here surfaces as a request failure by design -- durable
+        # delivery means this write can't be silently swallowed.
+        async with self._uow:
+            await self._event_publisher.publish(
+                OAuthLoginSucceededEvent(user=user, provider=provider, ip_address=client_ip)
+            )
         return user, issued

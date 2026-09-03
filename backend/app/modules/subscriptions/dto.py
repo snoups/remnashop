@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Final, Optional
 from uuid import UUID
 
 from pydantic import Field
@@ -9,6 +9,9 @@ from remnapy.enums import TrafficLimitStrategy
 
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import AddOnType, Currency, PurchaseType, SubscriptionStatus
+
+DEFAULT_PAGE_SIZE: Final[int] = 50
+MAX_PAGE_SIZE: Final[int] = 200
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -19,6 +22,16 @@ class PlanSnapshot:
     price_paid: Decimal
     currency: Currency
     duration_days: int
+    # Operational fields, needed to actually provision a Remnawave panel user
+    # (NEW/CHANGE) without a live PlanRepository lookup at provisioning time --
+    # captured once, at checkout/redemption time, when the plan is known to
+    # still exist and be purchasable. See purchase_subscription.py.
+    traffic_limit: int
+    device_limit: int
+    traffic_limit_strategy: TrafficLimitStrategy
+    is_trial: bool
+    internal_squads: list[UUID] = field(default_factory=list)
+    external_squad: Optional[UUID] = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -28,6 +41,12 @@ class PlanSnapshot:
             "price_paid": str(self.price_paid),
             "currency": self.currency.value,
             "duration_days": self.duration_days,
+            "traffic_limit": self.traffic_limit,
+            "device_limit": self.device_limit,
+            "traffic_limit_strategy": self.traffic_limit_strategy.value,
+            "is_trial": self.is_trial,
+            "internal_squads": [str(squad) for squad in self.internal_squads],
+            "external_squad": str(self.external_squad) if self.external_squad else None,
         }
 
     @classmethod
@@ -39,6 +58,12 @@ class PlanSnapshot:
             price_paid=Decimal(data["price_paid"]),
             currency=Currency(data["currency"]),
             duration_days=data["duration_days"],
+            traffic_limit=data["traffic_limit"],
+            device_limit=data["device_limit"],
+            traffic_limit_strategy=TrafficLimitStrategy(data["traffic_limit_strategy"]),
+            is_trial=data["is_trial"],
+            internal_squads=[UUID(squad) for squad in data["internal_squads"]],
+            external_squad=UUID(data["external_squad"]) if data["external_squad"] else None,
         )
 
 
@@ -90,10 +115,6 @@ class AddOnDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class CreateSubscriptionDto:
-    """Internal plumbing: not wired to any usecase in this plan. Exists so the
-    purchase plan (a separate plan) can call SubscriptionRepository.create()
-    unchanged, and so this plan's own tests can build fixtures directly."""
-
     user_id: int
     remnawave_user_id: int
     status: SubscriptionStatus
@@ -161,14 +182,13 @@ class ReorderAddOnsDto:
 @dataclass(frozen=True, kw_only=True)
 class PurchaseSubscriptionDto:
     user_id: int
-    plan_id: int
+    plan_snapshot: PlanSnapshot
     duration_days: int
-    # No real payment integration exists yet (modules/gateways has no
-    # transaction model) -- price_paid/currency are supplied directly by the
-    # caller for now, standing in for what a future gateway price-quote step
-    # will compute. Deviates from spec §5.1's literal DTO (which has no price
-    # field, assuming a payment step already existed) for exactly this reason.
+    # price_paid is what the user actually paid (post-discount). base_price,
+    # when set, is the undiscounted list price and is used as the CHANGE
+    # proration denominator; None means "same as price_paid".
     price_paid: Decimal
+    base_price: Optional[Decimal] = None
     currency: Currency
     purchase_type: PurchaseType
     target_subscription_id: Optional[int] = None
@@ -179,6 +199,7 @@ class PurchaseSubscriptionDto:
 class GrantAddOnDto:
     subscription_id: int
     addon_id: int
+    idempotency_key: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import auto
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 from uuid import UUID, uuid4
 
 from app.core.enums import UpperStrEnum
@@ -50,3 +50,17 @@ class UserEvent(BaseEvent):
 class ActorTargetEvent(BaseEvent):
     actor: UserDto
     target: UserDto
+
+
+@dataclass(frozen=True, kw_only=True)
+class StoredEvent:
+    outbox_id: int
+    category: EventCategory
+    event_type: str
+    occurred_at: datetime
+    payload: dict[str, Any]
+    actor_id: Optional[int]
+    actor_login: Optional[str]
+    actor_name: Optional[str]
+    actor_email: Optional[str]
+    ip_address: Optional[str]

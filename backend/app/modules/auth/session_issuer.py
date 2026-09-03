@@ -5,7 +5,12 @@ from typing import Optional
 from app.core.config import AppConfig
 from app.core.constants import TTL_30D
 from app.core.db.uow import UnitOfWork
-from app.core.security import create_access_token, generate_refresh_token, hash_refresh_token
+from app.core.security import (
+    create_access_token,
+    derive_csrf_token,
+    generate_refresh_token,
+    hash_refresh_token,
+)
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 
@@ -46,11 +51,9 @@ class SessionIssuer:
                 )
             )
 
-        access_token = create_access_token(
-            user_id, session.id, self._config.jwt_secret.get_secret_value()
-        )
-        # same primitive, unrelated purpose -- just need a fresh random value
-        csrf_token = generate_refresh_token()
+        secret = self._config.jwt_secret.get_secret_value()
+        access_token = create_access_token(user_id, session.id, secret)
+        csrf_token = derive_csrf_token(refresh_token, secret)
 
         return IssuedSession(
             access_token=access_token,
@@ -70,10 +73,9 @@ class SessionIssuer:
         # it mints the access/csrf pair for an *existing* one.
         session = await self._session_repository.get_active_by_id(session_id)
         assert session is not None
-        access_token = create_access_token(
-            user_id, session_id, self._config.jwt_secret.get_secret_value()
-        )
-        csrf_token = generate_refresh_token()
+        secret = self._config.jwt_secret.get_secret_value()
+        access_token = create_access_token(user_id, session_id, secret)
+        csrf_token = derive_csrf_token(refresh_token, secret)
         return IssuedSession(
             access_token=access_token,
             refresh_token=refresh_token,

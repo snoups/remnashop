@@ -155,6 +155,8 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_COMMANDS_MANAGE,
         Permission.BOT_RESTART,
+        Permission.SHOP_SETTINGS_VIEW,
+        Permission.SHOP_SETTINGS_MANAGE,
         Permission.BANNERS_VIEW,
         Permission.BANNERS_IMAGE_VIEW,
         Permission.BANNERS_UPLOAD,
@@ -191,6 +193,9 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PROMOCODES_UPDATE,
         Permission.PROMOCODES_DELETE,
         Permission.PROMOCODES_GENERATE_CODE,
+        Permission.USERS_DISCOUNT_MANAGE,
+        Permission.PAYMENTS_VIEW,
+        Permission.PAYMENTS_ORDER_VIEW,
     }
 
 

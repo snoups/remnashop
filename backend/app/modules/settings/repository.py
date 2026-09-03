@@ -1,6 +1,7 @@
 from dataclasses import fields as dataclass_fields
 from typing import Final, Optional, TypeVar
 
+from pydantic import SecretStr
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,7 @@ from app.core.db.models.appearance_settings import AppearanceSettings
 from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.oauth_settings import OAuthSettings
+from app.core.db.models.shop_settings import ShopSettings
 from app.core.enums import AppearanceImageKind, Locale
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
@@ -17,9 +19,11 @@ from app.modules.settings.dto import (
     BotCommandDto,
     BotSettingsDto,
     OAuthSettingsDto,
+    ShopSettingsDto,
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
+    UpdateShopSettingsDto,
 )
 
 _SINGLETON_ID: Final[int] = 1
@@ -30,7 +34,9 @@ _SINGLETON_ID: Final[int] = 1
 # instead of the second cleanly replacing the first).
 _BOT_COMMANDS_LOCK_KEY: Final[int] = 8221937
 
-_SingletonRow = TypeVar("_SingletonRow", BotSettings, OAuthSettings, AppearanceSettings)
+_SingletonRow = TypeVar(
+    "_SingletonRow", BotSettings, OAuthSettings, AppearanceSettings, ShopSettings
+)
 
 
 class SettingsRepository:
@@ -50,8 +56,8 @@ class SettingsRepository:
 
         return BotSettingsDto(
             id=row.id,
-            token=row.token,
-            secret_token=row.secret_token,
+            token=SecretStr(row.token) if row.token is not None else None,
+            secret_token=SecretStr(row.secret_token) if row.secret_token is not None else None,
             drop_pending_updates=row.drop_pending_updates,
             banners_enabled=row.banners_enabled,
             created_at=row.created_at,
@@ -83,6 +89,28 @@ class SettingsRepository:
         await self.session.refresh(row)
         return self._to_dto(row)
 
+    def _to_shop_dto(self, row: Optional[ShopSettings]) -> ShopSettingsDto:
+        if row is None:
+            return ShopSettingsDto()
+        return ShopSettingsDto(
+            id=row.id,
+            max_active_subscriptions=row.max_active_subscriptions,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    async def get_shop_settings(self) -> ShopSettingsDto:
+        row = await self.session.get(ShopSettings, _SINGLETON_ID)
+        return self._to_shop_dto(row)
+
+    async def update_shop_settings(self, data: UpdateShopSettingsDto) -> ShopSettingsDto:
+        row = await self._get_or_create_singleton(ShopSettings)
+        row.max_active_subscriptions = data.max_active_subscriptions
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_shop_dto(row)
+
     def _to_oauth_dto(self, row: Optional[OAuthSettings]) -> OAuthSettingsDto:
         if row is None:
             return OAuthSettingsDto()
@@ -90,14 +118,24 @@ class SettingsRepository:
         return OAuthSettingsDto(
             id=row.id,
             github_client_id=row.github_client_id,
-            github_client_secret=row.github_client_secret,
+            github_client_secret=(
+                SecretStr(row.github_client_secret)
+                if row.github_client_secret is not None
+                else None
+            ),
             github_enabled=row.github_enabled,
             telegram_client_id=row.telegram_client_id,
-            telegram_client_secret=row.telegram_client_secret,
+            telegram_client_secret=(
+                SecretStr(row.telegram_client_secret)
+                if row.telegram_client_secret is not None
+                else None
+            ),
             telegram_enabled=row.telegram_enabled,
             oidc_issuer_url=row.oidc_issuer_url,
             oidc_client_id=row.oidc_client_id,
-            oidc_client_secret=row.oidc_client_secret,
+            oidc_client_secret=(
+                SecretStr(row.oidc_client_secret) if row.oidc_client_secret is not None else None
+            ),
             oidc_display_name=row.oidc_display_name,
             oidc_enabled=row.oidc_enabled,
             password_login_enabled=row.password_login_enabled,

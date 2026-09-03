@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, cast
+from typing import Final, Optional, cast
 
-from sqlalchemy import ColumnElement, CursorResult, delete, select, update
+from sqlalchemy import ColumnElement, CursorResult, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.oauth_identity import OAuthIdentity
@@ -14,7 +14,7 @@ from app.modules.auth.dto import (
     SessionDto,
 )
 
-_ROTATION_GRACE_SECONDS = 30
+_ROTATION_GRACE_SECONDS: Final[int] = 30
 
 
 class OAuthIdentityRepository:
@@ -83,6 +83,12 @@ class OAuthIdentityRepository:
         result = await self.session.execute(stmt)
         await self.session.flush()
         return cast(CursorResult, result).rowcount > 0
+
+    async def delete_all_by_provider(self, provider: OAuthProvider) -> int:
+        stmt = delete(OAuthIdentity).where(OAuthIdentity.provider == provider)
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+        return cast(CursorResult, result).rowcount
 
 
 class SessionRepository:
@@ -166,7 +172,8 @@ class SessionRepository:
     async def rotate(
         self, session_id: int, new_refresh_token_hash: str, *, extend_grace: bool = True
     ) -> SessionDto:
-        row = await self.session.get(UserSession, session_id)
+        stmt = select(UserSession).where(UserSession.id == session_id).with_for_update()
+        row = await self.session.scalar(stmt)
         assert row is not None
         now = datetime.now(timezone.utc)
         if extend_grace:
@@ -218,3 +225,10 @@ class SessionRepository:
         )
         await self.session.execute(stmt)
         await self.session.flush()
+
+    async def delete_stale(self, cutoff: datetime) -> int:
+        stmt = delete(UserSession).where(
+            or_(UserSession.expires_at < cutoff, UserSession.revoked_at < cutoff)
+        )
+        result = await self.session.execute(stmt)
+        return cast(CursorResult, result).rowcount

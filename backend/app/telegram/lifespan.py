@@ -10,7 +10,6 @@ from fastapi import FastAPI
 from loguru import logger
 
 from app.core.config import AppConfig
-from app.core.ports import EventSubscriber
 from app.telegram.restart_listener import listen_for_restart
 from app.telegram.webhook import TelegramWebhookEndpoint
 
@@ -34,9 +33,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         logger.info(f"Webhook set to '{webhook_url}'")
 
-    event_subscriber = await container.get(EventSubscriber)
-    event_subscriber.autodiscover()
-
     restart_task = asyncio.create_task(listen_for_restart(config))
 
     await endpoint.startup()
@@ -47,5 +43,4 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     with contextlib.suppress(asyncio.CancelledError):
         await restart_task
     await endpoint.shutdown()
-    await event_subscriber.shutdown()
     await container.close()

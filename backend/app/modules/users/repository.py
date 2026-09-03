@@ -104,7 +104,10 @@ class UserRepository:
                 User.username.ilike(pattern),
                 User.email.ilike(pattern),
             ]
-            if search.isdigit():
+            # telegram_id is a BigInteger column -- a longer digit string is
+            # a valid `search` value but out of range for the DB type, and
+            # would otherwise raise NumericValueOutOfRange from asyncpg.
+            if search.isdigit() and int(search).bit_length() < 63:
                 search_filters.append(User.telegram_id == int(search))
             filters.append(or_(*search_filters))
         if is_blocked is not None:
@@ -140,6 +143,10 @@ class UserRepository:
             db_user.permission_revokes = data.permission_revokes
         if data.ip_allowlist is not None:
             db_user.ip_allowlist = data.ip_allowlist
+        if data.personal_discount is not None:
+            db_user.personal_discount = data.personal_discount
+        if data.purchase_discount is not None:
+            db_user.purchase_discount = data.purchase_discount
 
         await self.session.flush()
         # updated_at is server-computed via onupdate=; refresh so the DTO

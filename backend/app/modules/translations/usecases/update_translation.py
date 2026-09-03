@@ -41,6 +41,12 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
         # Lazy import -- fluent_compiler lives under the telegram extra.
         from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
 
+        if "\n" in data.value:
+            # A newline lets the value break out of its own line when
+            # serialize_to_fluent() writes it back out, injecting a second
+            # top-level Fluent message into the locale text.
+            raise ValidationError("Translation values cannot contain newlines")
+
         existing = await self._translations_repository.list_by_locale(data.locale)
         candidate = [
             entry

@@ -9,13 +9,6 @@ class EventPublisher(Protocol):
 
 
 @runtime_checkable
-class EventSubscriber(Protocol):
-    def autodiscover(self) -> None: ...
-
-    async def shutdown(self) -> None: ...
-
-
-@runtime_checkable
 class SessionRevoker(Protocol):
     async def revoke_all_by_user(self, user_id: int) -> None: ...
 
