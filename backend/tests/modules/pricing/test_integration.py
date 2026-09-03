@@ -8,6 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PaymentGatewayType, PlanType, PurchaseType, Role, RoundingMode
 from app.core.ports import EventPublisher
 from app.modules.gateways.repository import GatewaysRepository
+from app.modules.payments import PaymentGatewayFactory, PaymentIntent
 from app.modules.payments.dto import CreateCheckoutDto, PaymentOrderDto
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
@@ -36,13 +37,18 @@ OWNER = UserDto(name="owner", role=Role.OWNER)
 
 
 class _FakeGateway:
-    async def create_payment(
-        self, order: PaymentOrderDto, settings: dict[str, str]
-    ) -> tuple[str, str]:
-        return "yk-fake-id", "https://yookassa.ru/pay/fake"
+    async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
+        return PaymentIntent(
+            confirmation_url="https://yookassa.ru/pay/fake", provider_payment_id="yk-fake-id"
+        )
 
-    async def verify_payment(self, external_payment_id: str, settings: dict[str, str]) -> bool:
-        raise NotImplementedError
+
+class _FakeFactory(PaymentGatewayFactory):
+    def __init__(self) -> None:
+        self._gateway = _FakeGateway()
+
+    def build(self, gateway_type, settings):  # type: ignore[no-untyped-def]
+        return self._gateway  # type: ignore[return-value]
 
 
 @pytest.fixture
@@ -100,11 +106,12 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     user_repository: UserRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        "app.modules.payments.usecases.create_checkout.YooKassaGateway", lambda: _FakeGateway()
-    )
+    async with uow:
+        await gateways_repository.update_settings(
+            PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k"}
+        )
+        await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
 
     await pricing_repository.get_rate_table()
     await pricing_repository.update_rate(
@@ -132,6 +139,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         referral_repository,
         pricing_repository,
         uow,
+        _FakeFactory(),
     )
     result = await create_checkout(
         user,

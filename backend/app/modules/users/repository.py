@@ -1,14 +1,15 @@
 import secrets
 import string
 from decimal import Decimal
-from typing import Callable, Final, Optional
+from typing import Callable, Final, Optional, cast
 
 from loguru import logger
-from sqlalchemy import ColumnElement, exists, func, or_, select, update
+from sqlalchemy import ColumnElement, CursorResult, exists, false, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user import User
 from app.core.enums import Role
+from app.core.exceptions import ValidationError
 from app.modules.users.dto import (
     DEFAULT_PAGE_SIZE,
     CreateUserDto,
@@ -105,10 +106,19 @@ class UserRepository:
 
     async def credit_points(self, user_id: int, amount: Decimal) -> None:
         # Atomic UPDATE, not read-modify-write -- concurrent grants (two
-        # referral rewards landing at once) can't clobber each other.
-        stmt = update(User).where(User.id == user_id).values(points=User.points + amount)
-        await self.session.execute(stmt)
+        # referral rewards landing at once) can't clobber each other. The
+        # non-negative floor is part of the same predicate for the same
+        # reason: a caller checking `points + delta >= 0` first and updating
+        # after would let two concurrent debits both pass and overdraw.
+        stmt = (
+            update(User)
+            .where(User.id == user_id, User.points + amount >= 0)
+            .values(points=User.points + amount)
+        )
+        result = await self.session.execute(stmt)
         await self.session.flush()
+        if cast(CursorResult, result).rowcount == 0:
+            raise ValidationError(f"Adjustment would take user '{user_id}' points below zero")
 
     async def exists_with_role(self, role: Role) -> bool:
         stmt = select(exists().where(User.role == role))
@@ -118,6 +128,12 @@ class UserRepository:
         stmt = select(User).where(User.role.in_(roles)).order_by(User.created_at.desc())
         rows = (await self.session.scalars(stmt)).all()
         return self._convert_to_dto_list(list(rows))
+
+    async def list_by_ids(self, user_ids: list[int]) -> list[UserDto]:
+        if not user_ids:
+            return []
+        result = await self.session.execute(select(User).where(User.id.in_(user_ids)))
+        return self._convert_to_dto_list(list(result.scalars()))
 
     async def list_filtered(
         self,
@@ -221,6 +237,56 @@ class UserRepository:
         await self.session.flush()
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)
+
+    async def set_blocked(self, user_id: int, is_blocked: bool) -> Optional[UserDto]:
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            return None
+        db_user.is_blocked = is_blocked
+        await self.session.flush()
+        await self.session.refresh(db_user)
+        return self._convert_to_dto(db_user)
+
+    async def bulk_block_by_telegram_ids(self, telegram_ids: list[int]) -> list[int]:
+        if not telegram_ids:
+            return []
+        stmt = (
+            select(User).where(User.telegram_id.in_(telegram_ids)).where(User.is_blocked.is_(False))
+        )
+        rows = list((await self.session.execute(stmt)).scalars())
+        for row in rows:
+            row.is_blocked = True
+        await self.session.flush()
+        return [row.id for row in rows]
+
+    async def unblock_all(self) -> int:
+        stmt = update(User).where(User.is_blocked.is_(True)).values(is_blocked=False)
+        result = await self.session.execute(stmt)
+        return cast(CursorResult, result).rowcount
+
+    async def block_matching(self, telegram_ids: set[int], emails: set[str]) -> list[int]:
+        if not telegram_ids and not emails:
+            return []
+        # Role.USER only: reconcile runs with no actor and no role guard, and an
+        # auto-blocked OWNER has no recovery path (unblock_user needs a strictly
+        # higher-role actor). Blocking staff stays an explicit BlockUserUseCase call.
+        # emails come from normalize_identity (lowercased); User.email is stored as written.
+        stmt = (
+            select(User)
+            .where(User.role == Role.USER)
+            .where(User.is_blocked.is_(False))
+            .where(
+                or_(
+                    User.telegram_id.in_(telegram_ids) if telegram_ids else false(),
+                    func.lower(User.email).in_(emails) if emails else false(),
+                )
+            )
+        )
+        rows = list((await self.session.execute(stmt)).scalars())
+        for row in rows:
+            row.is_blocked = True
+        await self.session.flush()
+        return [row.id for row in rows]
 
     async def delete(self, user_id: int) -> bool:
         db_user = await self.session.get(User, user_id)

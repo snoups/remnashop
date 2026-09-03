@@ -6,8 +6,10 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.event_bus import EventBus
 from app.core.ports import EventPublisher
+from app.modules.advertising.repository import AdLinkRepository
 from app.modules.auth import SessionRepository
 from app.modules.backups import BackupRepository
+from app.modules.blacklist import BlacklistRepository
 from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.payments.repository import PaymentOrderRepository
@@ -120,6 +122,19 @@ async def test_worker_container_resolves_backup_task_dependencies(
     await container.close()
 
 
+async def test_worker_container_resolves_blacklist_task_dependencies(
+    config: AppConfig,
+) -> None:
+    container = create_worker_container(config)
+    async with container(scope=Scope.REQUEST) as request_container:
+        await request_container.get(BlacklistRepository)
+        await request_container.get(UserRepository)
+        await request_container.get(UnitOfWork)
+        await request_container.get(EventPublisher)
+        await request_container.get(Redis)
+    await container.close()
+
+
 async def test_worker_container_resolves_assign_referral_rewards_task_dependencies(
     config: AppConfig,
 ) -> None:
@@ -131,4 +146,14 @@ async def test_worker_container_resolves_assign_referral_rewards_task_dependenci
         await request_container.get(PurchaseSubscriptionUseCase)
         await request_container.get(UnitOfWork)
         await request_container.get(EventPublisher)
+    await container.close()
+
+
+async def test_worker_container_resolves_ad_link_attribution_task_dependencies(
+    config: AppConfig,
+) -> None:
+    container = create_worker_container(config)
+    async with container(scope=Scope.REQUEST) as request_container:
+        await request_container.get(AdLinkRepository)
+        await request_container.get(UnitOfWork)
     await container.close()

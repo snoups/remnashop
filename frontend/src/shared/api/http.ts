@@ -171,8 +171,13 @@ export function apiPatch<TResponse, TBody>(path: string, body: TBody): Promise<T
   });
 }
 
-export function apiDelete<TResponse>(path: string): Promise<TResponse> {
-  return request<TResponse>(path, { method: "DELETE" });
+export function apiDelete<TResponse, TBody = never>(path: string, body?: TBody): Promise<TResponse> {
+  if (body === undefined) return request<TResponse>(path, { method: "DELETE" });
+  return request<TResponse>(path, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export function apiUpload<TResponse>(path: string, formData: FormData): Promise<TResponse> {

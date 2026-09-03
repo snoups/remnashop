@@ -1,13 +1,17 @@
 from typing import Any
 
 from aiogram.enums import ChatType
-from aiogram.types import Chat
+from aiogram.types import Chat, Message
 from aiogram.types import User as AiogramUser
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.constants import CONFIG_KEY, CONTAINER_KEY, USER_KEY
+from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
+from app.modules.blacklist import BlacklistRepository
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import RegisterTelegramUserUseCase
 from app.telegram.middlewares.user import UserMiddleware
@@ -15,15 +19,22 @@ from app.telegram.middlewares.user import UserMiddleware
 
 class _FakeContainer:
     def __init__(
-        self, user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+        self,
+        user_repository: UserRepository,
+        blacklist_repository: BlacklistRepository,
+        uow: UnitOfWork,
+        event_publisher: EventPublisher,
     ) -> None:
         self._user_repository = user_repository
+        self._blacklist_repository = blacklist_repository
         self._uow = uow
         self._event_publisher = event_publisher
 
     async def get(self, dependency_type: type) -> Any:
         assert dependency_type is RegisterTelegramUserUseCase
-        return RegisterTelegramUserUseCase(self._user_repository, self._uow, self._event_publisher)
+        return RegisterTelegramUserUseCase(
+            self._user_repository, self._blacklist_repository, self._uow, self._event_publisher
+        )
 
 
 class _ExplodingContainer:
@@ -65,6 +76,7 @@ async def test_user_middleware_skips_registration_for_group_chat_messages(
 
 async def test_user_middleware_registers_user_for_private_chat_messages(
     user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     config: AppConfig,
@@ -72,7 +84,7 @@ async def test_user_middleware_registers_user_for_private_chat_messages(
     data: dict[str, Any] = {
         "event_chat": Chat(id=4242, type=ChatType.PRIVATE),
         "event_from_user": _sender(),
-        CONTAINER_KEY: _FakeContainer(user_repository, uow, event_publisher),
+        CONTAINER_KEY: _FakeContainer(user_repository, blacklist_repository, uow, event_publisher),
         CONFIG_KEY: config,
     }
 
@@ -81,3 +93,43 @@ async def test_user_middleware_registers_user_for_private_chat_messages(
     assert handler_called is True
     assert data[USER_KEY].telegram_id == 4242
     assert await user_repository.get_by_telegram_id(4242) is not None
+
+
+async def test_user_middleware_carries_ad_link_code_from_start_payload(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    config: AppConfig,
+    session: AsyncSession,
+) -> None:
+    message = Message.model_construct(
+        message_id=1,
+        date=0,
+        chat=Chat(id=5252, type=ChatType.PRIVATE),
+        text="/start ad_middleware-code",
+        from_user=_sender(5252),
+    )
+    data: dict[str, Any] = {
+        "event_chat": message.chat,
+        "event_from_user": message.from_user,
+        CONTAINER_KEY: _FakeContainer(user_repository, blacklist_repository, uow, event_publisher),
+        CONFIG_KEY: config,
+    }
+
+    middleware = UserMiddleware()
+
+    async def handler(event: Any, handler_data: dict[str, Any]) -> None:
+        return None
+
+    await middleware.middleware_logic(handler, message, data)
+
+    rows = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == "TelegramUserRegisteredEvent"
+            )
+        )
+    ).all()
+    assert len(rows) == 1
+    assert rows[0].payload["ad_link_code"] == "middleware-code"

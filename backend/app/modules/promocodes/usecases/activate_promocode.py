@@ -6,7 +6,6 @@ from loguru import logger
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
-    PromocodeAvailability,
     PromocodeRewardType,
     PurchaseType,
     SubscriptionStatus,
@@ -17,6 +16,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.plans import PlanRepository, is_plan_purchasable_by
+from app.modules.promocodes.availability import assert_available_to
 from app.modules.promocodes.dto import ActivatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeActivatedEvent
 from app.modules.promocodes.repository import PromocodeRepository
@@ -74,7 +74,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         if promo.expires_at is not None and datetime_now() > promo.expires_at:
             raise ValidationError(f"Promocode '{code}' has expired")
 
-        await self._check_availability(actor, promo)
+        await assert_available_to(promo, actor, self._subscription_repository)
 
         target: Optional[SubscriptionDto] = None
         if promo.reward_type in _TARGET_REQUIRED_REWARDS:
@@ -122,35 +122,6 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
             raise ValidationError(
                 f"User '{actor.id}' is already at the concurrent-subscription cap"
             )
-
-    async def _check_availability(self, actor: UserDto, promo: PromocodeDto) -> None:
-        if promo.availability is PromocodeAvailability.ALL:
-            return
-        if promo.availability is PromocodeAvailability.NEW:
-            # "New" = never purchased a non-trial subscription, not "has none
-            # active right now" -- matches main's UserDao.has_any_subscription.
-            has_sub = await self._subscription_repository.has_any_subscription(
-                actor.id, include_trial=False
-            )
-            if has_sub:
-                raise ValidationError(f"Promocode '{promo.code}' is for new users only")
-            return
-        if promo.availability is PromocodeAvailability.EXISTING:
-            has_sub = await self._subscription_repository.has_any_subscription(
-                actor.id, include_trial=False
-            )
-            if not has_sub:
-                raise ValidationError(f"Promocode '{promo.code}' is for existing users only")
-            return
-        if promo.availability is PromocodeAvailability.ALLOWED:
-            if actor.id not in promo.allowed_user_ids:
-                raise ValidationError(f"Promocode '{promo.code}' is not available to this user")
-            return
-        # PromocodeAvailability.INVITED (promocode redemption eligibility) is
-        # intentionally out of scope for the referrals module -- see
-        # docs/superpowers/specs/2026-08-31-referrals-design.md §10; always deny
-        # for now.
-        raise ValidationError(f"Promocode '{promo.code}' is not available to this user")
 
     async def _apply_reward(
         self, actor: UserDto, promo: PromocodeDto, target: Optional[SubscriptionDto]

@@ -6,18 +6,30 @@ from app.modules.payments.dto import (
     PaymentOrderDto,
     PriceQuote,
 )
+from app.modules.payments.gateways.base import (
+    PaymentGateway,
+    PaymentIntent,
+    WebhookRequest,
+    WebhookResult,
+)
+from app.modules.payments.gateways.factory import PaymentGatewayFactory
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
-from app.modules.payments.usecases.handle_yookassa_webhook import HandleYooKassaWebhookUseCase
+from app.modules.payments.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
 
 __all__ = [
     "CheckoutResultDto",
     "CreateCheckoutDto",
     "CreateCheckoutUseCase",
     "CreatePaymentOrderDto",
-    "HandleYooKassaWebhookUseCase",
+    "HandlePaymentWebhookUseCase",
+    "PaymentGateway",
+    "PaymentGatewayFactory",
+    "PaymentIntent",
     "PaymentOrderDto",
     "PaymentOrderRepository",
     "PriceQuote",
+    "WebhookRequest",
+    "WebhookResult",
     "get_payments_providers",
 ]

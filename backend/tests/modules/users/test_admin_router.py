@@ -14,10 +14,12 @@ from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.password import PASSWORD_MIN_LENGTH
+from app.core.security.permissions import Permission
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.blacklist import get_blacklist_providers
 from app.modules.settings import get_settings_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
@@ -55,6 +57,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
         *get_settings_providers(),
         *get_api_tokens_providers(),
         *get_translations_providers(),
+        *get_blacklist_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -494,3 +497,99 @@ async def test_set_user_discount_updates_personal_discount(
 
     assert response.status_code == 200
     assert response.json()["personal_discount"] == 30
+
+
+async def test_block_and_unblock_user_endpoints(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="block-target", role=Role.USER, language=Locale.EN)
+        )
+        await uow.commit()
+
+    response = await client.post(
+        f"/api/v1/users/{target.id}/block", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["is_blocked"] is True
+
+    response = await client.post(
+        f"/api/v1/users/{target.id}/unblock", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["is_blocked"] is False
+
+
+async def test_block_user_endpoint_returns_404_for_unknown_user(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+
+    response = await client.post(
+        "/api/v1/users/999999999/block", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 404
+
+
+async def test_bulk_block_endpoint_reports_counts_for_mixed_ids(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    async with uow:
+        known = await user_repository.create(
+            CreateUserDto(name="bulk-known", role=Role.USER, language=Locale.EN, telegram_id=555001)
+        )
+        await uow.commit()
+
+    response = await client.post(
+        "/api/v1/users/block-bulk",
+        json={"telegram_ids": [known.telegram_id, 555002]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {"blocked": 1, "added_to_list": 1, "skipped": 0}
+
+
+async def test_unblock_all_endpoint_requires_unblock_all_permission(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(
+                login="blockonlyadmin",
+                password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
+                name="blockonlyadmin",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_grants=[Permission.USERS_BLOCK],
+            )
+        )
+        await uow.commit()
+    token = await _issue_token(admin.id, session_repository, config)
+
+    response = await client.post(
+        "/api/v1/users/unblock-all", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 403

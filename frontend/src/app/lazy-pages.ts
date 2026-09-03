@@ -1,6 +1,9 @@
 import { lazy } from "react";
 
 export const AdminsPage = lazy(() => import("@pages/admins/AdminsPage").then((m) => ({ default: m.AdminsPage })));
+export const BlacklistPage = lazy(() =>
+  import("@pages/blacklist/BlacklistPage").then((m) => ({ default: m.BlacklistPage })),
+);
 export const LoginPage = lazy(() => import("@pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
 export const OAuthCallbackPage = lazy(() =>
   import("@pages/auth/OAuthCallbackPage").then((m) => ({ default: m.OAuthCallbackPage })),

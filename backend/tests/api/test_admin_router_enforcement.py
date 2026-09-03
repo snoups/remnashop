@@ -50,10 +50,12 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
     # test above would trivially pass on an empty list -- assert real coverage.
     discovered = {label for label, _ in _discover_admin_routers()}
     assert discovered == {
+        "advertising.router",
         "api_tokens.router",
         "auth.sessions_router",
         "backups.router",
         "banners.router",
+        "blacklist.router",
         "event_log.router",
         "gateways.router",
         "oauth.router",

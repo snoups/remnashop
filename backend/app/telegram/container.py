@@ -7,6 +7,7 @@ from fluentogram import TranslatorHub
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
 from app.modules.banners import get_banners_providers
+from app.modules.blacklist import get_blacklist_providers
 from app.modules.plans import get_plans_providers
 from app.modules.promocodes import get_promocodes_providers
 from app.modules.settings import get_settings_providers
@@ -35,5 +36,6 @@ def create_aiogram_container(
         *get_subscriptions_providers(),
         *get_promocodes_providers(),
         *get_plans_providers(),
+        *get_blacklist_providers(),
     ]
     return make_async_container(*providers, context=context)

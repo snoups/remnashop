@@ -126,6 +126,11 @@ class ReferralAccrualStrategy(UpperStrEnum):
     EVERY_PAYMENT = auto()
 
 
+class AdLinkChannel(UpperStrEnum):
+    BOT = auto()
+    WEBCABINET = auto()
+
+
 class PaymentOrderStatus(UpperStrEnum):
     PENDING = auto()
     PAID = auto()
@@ -144,6 +149,11 @@ class BackupRunStatus(UpperStrEnum):
     RUNNING = auto()
     COMPLETED = auto()
     FAILED = auto()
+
+
+class BlacklistKind(UpperStrEnum):
+    TELEGRAM_ID = auto()
+    EMAIL = auto()
 
 
 class OAuthProvider(UpperStrEnum):

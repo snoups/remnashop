@@ -1,4 +1,5 @@
 import {
+  Ban,
   Coins,
   CreditCard,
   LayoutGrid,
@@ -109,6 +110,19 @@ export function Sidebar() {
           >
             <BounceIcon icon={Users} size={17} hoverSize={23.5} />
             <span className={LABEL_CLASSNAME}>{t("sidebar.users")}</span>
+          </MotionNavLink>
+        )}
+
+        {permissions.includes("BLACKLIST_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/blacklist"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Ban} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.blacklist")}</span>
           </MotionNavLink>
         )}
 

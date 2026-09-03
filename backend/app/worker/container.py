@@ -2,8 +2,10 @@ from dishka import AsyncContainer, Provider, Scope, make_async_container
 
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
+from app.modules.advertising import AdLinkRepository
 from app.modules.auth import SessionRepository
 from app.modules.backups import BackupRepository
+from app.modules.blacklist import BlacklistRepository
 from app.modules.event_log import get_event_log_providers
 from app.modules.oauth import OAuthIdentityRepository
 from app.modules.payments import PaymentOrderRepository
@@ -69,6 +71,20 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
     plan_repository_provider = Provider(scope=Scope.REQUEST)
     plan_repository_provider.provide(PlanRepository)
 
+    # BlacklistRepository is provided directly here, not via
+    # app.modules.blacklist.get_blacklist_providers() -- that provider also
+    # registers the full admin usecase graph. The sync/reconcile tasks only
+    # need the repository.
+    blacklist_repository_provider = Provider(scope=Scope.REQUEST)
+    blacklist_repository_provider.provide(BlacklistRepository)
+
+    # AdLinkRepository is provided directly here, not via
+    # app.modules.advertising.get_advertising_providers() -- that provider also
+    # registers the full admin usecase graph (payments/pricing dependencies
+    # included). record_ad_link_attribution_task only needs the repository.
+    ad_link_repository_provider = Provider(scope=Scope.REQUEST)
+    ad_link_repository_provider.provide(AdLinkRepository)
+
     context = {AppConfig: config}
     providers = [
         *get_core_providers(),
@@ -83,5 +99,7 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
         oauth_identity_repository_provider,
         backup_repository_provider,
         plan_repository_provider,
+        blacklist_repository_provider,
+        ad_link_repository_provider,
     ]
     return make_async_container(*providers, context=context)

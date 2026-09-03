@@ -33,6 +33,7 @@ from app.core.ports import EventPublisher
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.repository import SessionRepository
 from app.modules.banners.repository import BannerRepository
+from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.gateways.repository import GatewaysRepository
 from app.modules.oauth.providers.state_store import OAuthStateStore
@@ -174,6 +175,11 @@ def translations_repository(session: AsyncSession) -> TranslationsRepository:
 @pytest.fixture
 def referral_repository(session: AsyncSession) -> ReferralRepository:
     return ReferralRepository(session)
+
+
+@pytest.fixture
+def blacklist_repository(session: AsyncSession) -> BlacklistRepository:
+    return BlacklistRepository(session)
 
 
 @pytest.fixture

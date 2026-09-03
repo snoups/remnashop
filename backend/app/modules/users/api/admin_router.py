@@ -13,11 +13,14 @@ from app.modules.users.api.schemas import (
     AdminPromoteResponse,
     AdminResponse,
     AdminWithPasswordResponse,
+    BulkBlockRequest,
+    BulkBlockResponse,
     CreateAdminRequest,
     CurrentUserResponse,
     PromoteAdminRequest,
     SecurityResponse,
     SetPersonalDiscountRequest,
+    UnblockAllResponse,
     UpdateAdminRequest,
     UpdateOwnProfileRequest,
     UpdateSecurityRequest,
@@ -26,6 +29,8 @@ from app.modules.users.api.schemas import (
 )
 from app.modules.users.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, UserDto
 from app.modules.users.usecases import (
+    BlockUserUseCase,
+    BulkBlockUsersUseCase,
     CreateAdminDto,
     CreateAdminUseCase,
     DeleteAdminDto,
@@ -42,6 +47,8 @@ from app.modules.users.usecases import (
     PromoteToAdminUseCase,
     SetUserPersonalDiscountDto,
     SetUserPersonalDiscountUseCase,
+    UnblockAllUsersUseCase,
+    UnblockUserUseCase,
     UpdateAdminDto,
     UpdateAdminUseCase,
     UpdateOwnProfileDto,
@@ -222,6 +229,57 @@ async def set_user_discount(
     except ValidationError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     return _to_user_response(updated)
+
+
+@router.post("/{user_id}/block", response_model=UserResponse)
+@inject
+async def block_user(
+    user_id: int,
+    use_case: FromDishka[BlockUserUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> UserResponse:
+    try:
+        updated = await use_case(actor, user_id)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return _to_user_response(updated)
+
+
+@router.post("/{user_id}/unblock", response_model=UserResponse)
+@inject
+async def unblock_user(
+    user_id: int,
+    use_case: FromDishka[UnblockUserUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> UserResponse:
+    try:
+        updated = await use_case(actor, user_id)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return _to_user_response(updated)
+
+
+@router.post("/block-bulk", response_model=BulkBlockResponse)
+@inject
+async def bulk_block_users(
+    payload: BulkBlockRequest,
+    use_case: FromDishka[BulkBlockUsersUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> BulkBlockResponse:
+    result = await use_case(actor, payload.telegram_ids)
+    return BulkBlockResponse(
+        blocked=result.blocked, added_to_list=result.added_to_list, skipped=result.skipped
+    )
+
+
+@router.post("/unblock-all", response_model=UnblockAllResponse)
+@inject
+async def unblock_all_users(
+    use_case: FromDishka[UnblockAllUsersUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> UnblockAllResponse:
+    count = await use_case(actor)
+    return UnblockAllResponse(unblocked=count)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

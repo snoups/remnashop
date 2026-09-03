@@ -205,6 +205,39 @@ async def test_update_promocode_deactivates(promocode_repository: PromocodeRepos
     assert updated.is_active is False
 
 
+async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist(
+    promocode_repository: PromocodeRepository, uow
+) -> None:
+    # The patch alone carries no availability, so the merged state -- not the
+    # patch -- is what has to be validated: an ALLOWED promocode with an empty
+    # allowlist stays active but is redeemable by nobody.
+    create_use_case = CreatePromocodeUseCase(
+        promocode_repository,
+        AddOnRepository(promocode_repository.session),
+        PlanRepository(promocode_repository.session),
+        uow,
+    )
+    created = await create_use_case(
+        OWNER,
+        CreatePromocodeDto(
+            code="ALLOWLIST",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=5,
+            availability=PromocodeAvailability.ALLOWED,
+            allowed_user_ids=[1],
+        ),
+    )
+    update_use_case = UpdatePromocodeUseCase(promocode_repository, uow)
+
+    with pytest.raises(ValidationError):
+        await update_use_case(
+            OWNER, UpdatePromocodeDto(promocode_id=created.id, allowed_user_ids=[])
+        )
+
+    unchanged = await promocode_repository.get_by_id(created.id)
+    assert unchanged.allowed_user_ids == [1]
+
+
 async def test_delete_promocode(promocode_repository: PromocodeRepository, uow) -> None:
     create_use_case = CreatePromocodeUseCase(
         promocode_repository,

@@ -18,6 +18,7 @@ from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.blacklist import get_blacklist_providers
 from app.modules.event_log import get_event_log_providers
 from app.modules.settings import get_settings_providers
 from app.modules.translations import get_translations_providers
@@ -48,6 +49,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
         *get_event_log_providers(),
         *get_api_tokens_providers(),
         *get_translations_providers(),
+        *get_blacklist_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})

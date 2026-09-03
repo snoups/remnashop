@@ -1,9 +1,12 @@
 from decimal import Decimal
 from typing import Any
 
+import pytest
+
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.events import EventCategory
+from app.core.exceptions import ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.repository import EventLogRepository
@@ -251,6 +254,21 @@ async def test_credit_points_adds_to_existing_points(user_repository: UserReposi
     assert updated.points == Decimal("20.00")
 
 
+async def test_credit_points_refuses_to_overdraw(user_repository: UserRepository) -> None:
+    # The floor lives in the UPDATE predicate, not in a caller's read-then-
+    # write: two concurrent debits would otherwise both read the same balance
+    # and both pass their own check.
+    created = await user_repository.create(CreateUserDto(name="b", telegram_id=5))
+    await user_repository.credit_points(created.id, Decimal("10"))
+
+    with pytest.raises(ValidationError):
+        await user_repository.credit_points(created.id, Decimal("-20"))
+
+    unchanged = await user_repository.get_by_id(created.id)
+    assert unchanged is not None
+    assert unchanged.points == Decimal("10")
+
+
 async def test_update_fields_sets_is_trial_available_false(
     user_repository: UserRepository, uow: UnitOfWork
 ) -> None:
@@ -265,3 +283,21 @@ async def test_update_fields_sets_is_trial_available_false(
 
     assert updated is not None
     assert updated.is_trial_available is False
+
+
+async def test_list_by_ids_returns_matching_users_in_no_particular_order(
+    user_repository: UserRepository,
+) -> None:
+    a = await user_repository.create(CreateUserDto(name="Alpha", telegram_id=910_001))
+    b = await user_repository.create(CreateUserDto(name="Beta", telegram_id=910_002))
+    await user_repository.create(CreateUserDto(name="Gamma", telegram_id=910_003))
+
+    users = await user_repository.list_by_ids([a.id, b.id])
+
+    assert {user.id for user in users} == {a.id, b.id}
+
+
+async def test_list_by_ids_empty_input_returns_empty_list(
+    user_repository: UserRepository,
+) -> None:
+    assert await user_repository.list_by_ids([]) == []

@@ -4,7 +4,6 @@ from uuid import uuid4
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
-    Currency,
     PaymentGatewayType,
     PaymentOrderStatus,
     PurchaseType,
@@ -16,8 +15,8 @@ from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.gateways import GatewaysRepository
 from app.modules.payments.dto import CheckoutResultDto, CreateCheckoutDto, CreatePaymentOrderDto
-from app.modules.payments.gateways.base import PaymentGateway
-from app.modules.payments.gateways.yookassa import YooKassaGateway
+from app.modules.payments.gateways.factory import PaymentGatewayFactory
+from app.modules.payments.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.payments.pricing import quote_price
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.plans import PlanRepository, is_plan_purchasable_by
@@ -32,13 +31,6 @@ from app.modules.subscriptions import (
 from app.modules.users import UserDto, UserRepository
 
 _ORDER_TTL: Final[timedelta] = timedelta(minutes=30)
-
-# Which currencies each gateway actually settles -- YooKassa is a Russian
-# processor, RUB only. Extend this map (not a DB CheckConstraint -- see the
-# spec's §9) the day a second gateway/currency pairing ships.
-_GATEWAY_CURRENCIES: Final[dict[PaymentGatewayType, frozenset[Currency]]] = {
-    PaymentGatewayType.YOOKASSA: frozenset({Currency.RUB}),
-}
 
 
 class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
@@ -55,6 +47,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         referral_repository: ReferralRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        gateway_factory: PaymentGatewayFactory,
     ) -> None:
         self._plan_repository = plan_repository
         self._user_repository = user_repository
@@ -65,15 +58,17 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         self._referral_repository = referral_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._gateway_factory = gateway_factory
 
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
         if data.user_id != actor.id and not actor.is_privileged:
             raise PermissionDeniedError
 
-        if data.gateway_type is not PaymentGatewayType.YOOKASSA:
+        if data.gateway_type is PaymentGatewayType.TELEGRAM_STARS:
+            raise ValidationError("Telegram Stars checkout runs in the bot, not the web API")
+        if data.gateway_type not in GATEWAY_REGISTRY:
             raise ValidationError(f"Gateway '{data.gateway_type.value}' is not yet supported")
-
-        if data.currency not in _GATEWAY_CURRENCIES[data.gateway_type]:
+        if data.currency is not gateway_currency(data.gateway_type):
             raise ValidationError(
                 f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'"
             )
@@ -113,6 +108,10 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
             external_squad=plan.external_squad,
         )
 
+        is_free = quote.final_price == 0
+        if not is_free:
+            await self._validate_gateway_availability(data.gateway_type)
+
         async with self._uow:
             order = await self._payment_order_repository.create(
                 CreatePaymentOrderDto(
@@ -134,7 +133,6 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
                 )
             )
 
-            is_free = quote.final_price == 0
             if is_free:
                 order = await self._payment_order_repository.mark_status(
                     order.id, PaymentOrderStatus.PAID
@@ -161,15 +159,22 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
             return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
         settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
-        gateway: PaymentGateway = YooKassaGateway()
-        external_payment_id, confirmation_url = await gateway.create_payment(order, settings)
+        gateway = self._gateway_factory.build(data.gateway_type, settings)
+        intent = await gateway.create_payment(order)
 
         async with self._uow:
             await self._payment_order_repository.mark_status(
-                order.id, PaymentOrderStatus.PENDING, external_payment_id=external_payment_id
+                order.id,
+                PaymentOrderStatus.PENDING,
+                external_payment_id=intent.provider_payment_id,
             )
 
-        return CheckoutResultDto(order_id=order.id, confirmation_url=confirmation_url)
+        return CheckoutResultDto(order_id=order.id, confirmation_url=intent.confirmation_url)
+
+    async def _validate_gateway_availability(self, gateway_type: PaymentGatewayType) -> None:
+        gateway_config = await self._gateways_repository.get_by_type(gateway_type)
+        if not gateway_config.is_active or not gateway_config.is_configured:
+            raise ValidationError(f"Gateway '{gateway_type.value}' is not available")
 
     async def _validate_provisioning_preconditions(self, data: CreateCheckoutDto) -> None:
         # Belt-and-braces: PurchaseSubscriptionUseCase re-checks all of this

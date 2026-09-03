@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from remnapy import RemnawaveSDK
+from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
@@ -1271,6 +1272,7 @@ async def test_purchase_new_clears_purchase_discount(
             duration_days=30,
             price_paid=Decimal("299.00"),
             currency=Currency.RUB,
+            consumes_purchase_discount=True,
             purchase_type=PurchaseType.NEW,
         ),
     )
@@ -1310,6 +1312,7 @@ async def test_renew_clears_purchase_discount(
             duration_days=30,
             price_paid=Decimal("299.00"),
             currency=Currency.RUB,
+            consumes_purchase_discount=True,
             purchase_type=PurchaseType.NEW,
         ),
     )
@@ -1326,6 +1329,7 @@ async def test_renew_clears_purchase_discount(
             duration_days=30,
             price_paid=Decimal("299.00"),
             currency=Currency.RUB,
+            consumes_purchase_discount=True,
             purchase_type=PurchaseType.RENEW,
             target_subscription_id=original.id,
         ),
@@ -1629,6 +1633,7 @@ async def test_change_clears_purchase_discount(
             duration_days=30,
             price_paid=Decimal("300.00"),
             currency=Currency.RUB,
+            consumes_purchase_discount=True,
             purchase_type=PurchaseType.NEW,
         ),
     )
@@ -1645,6 +1650,7 @@ async def test_change_clears_purchase_discount(
             duration_days=30,
             price_paid=Decimal("300.00"),
             currency=Currency.RUB,
+            consumes_purchase_discount=True,
             purchase_type=PurchaseType.CHANGE,
             target_subscription_id=old_subscription.id,
         ),
@@ -1666,3 +1672,161 @@ async def test_change_clears_purchase_discount(
     updated = await user_repository.get_by_id(buyer.id)
     assert updated is not None
     assert updated.purchase_discount == 0
+
+
+async def test_new_purchase_provisions_the_plans_traffic_limit_strategy_on_the_panel(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # create_user defaults trafficLimitStrategy to NO_RESET, so omitting it
+    # silently provisions a never-resetting panel user for a MONTH plan while
+    # the local row (and the dashboard) claim MONTH.
+    buyer = await _create_buyer(user_repository, 431)
+    plan = await _create_plan(plan_repository, "monthly-reset")
+    plan = await plan_repository.update(
+        UpdatePlanDto(plan_id=plan.id, traffic_limit_strategy=TrafficLimitStrategy.MONTH)
+    )
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+
+    subscription = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("299.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    panel_user = await remnawave_sdk.users.get_user_by_id(subscription.remnawave_user_id)
+    assert panel_user.traffic_limit_strategy is TrafficLimitStrategy.MONTH
+    assert subscription.traffic_limit_strategy is TrafficLimitStrategy.MONTH
+
+
+async def test_a_failed_renew_keeps_the_idempotency_key_so_extend_is_never_replayed(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # extend_user is cumulative: releasing the key after it has already landed
+    # would let the reconcile sweep (or taskiq's own retry) grant a second
+    # duration for a single payment.
+    buyer = await _create_buyer(user_repository, 432)
+    plan = await _create_plan(plan_repository, "renew-retry")
+    lifecycle = SubscriptionLifecycleService(subscription_repository)
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        lifecycle,
+    )
+    snapshot = snapshot_from_plan(
+        plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+    )
+    original = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot,
+            duration_days=30,
+            price_paid=Decimal("299.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+    before = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
+
+    async def _fail(*_args: object, **_kwargs: object) -> SubscriptionDto:
+        raise RuntimeError("DB write failed after the panel call landed")
+
+    lifecycle.renew = _fail  # type: ignore[method-assign]
+    key = uuid4().hex
+    renewal = PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot,
+        duration_days=30,
+        price_paid=Decimal("299.00"),
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.RENEW,
+        target_subscription_id=original.id,
+        idempotency_key=key,
+    )
+    with pytest.raises(RuntimeError):
+        await use_case(buyer, renewal)
+
+    after_first = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
+    assert after_first == before + timedelta(days=30)
+
+    # The retry must refuse outright, not extend a second time.
+    with pytest.raises(ValidationError, match="already in progress"):
+        await use_case(buyer, renewal)
+    after_retry = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
+    assert after_retry == after_first
+
+
+async def test_a_system_grant_does_not_consume_the_purchase_discount(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # A trial / promocode reward / referral EXTRA_DAYS grant never quoted a
+    # price, so it must not burn a discount the customer never got to use.
+    buyer = await _create_buyer(user_repository, 433)
+    plan = await _create_plan(plan_repository, "granted-free")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+    async with uow:
+        await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
+
+    await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("0"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("0"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    updated = await user_repository.get_by_id(buyer.id)
+    assert updated is not None
+    assert updated.purchase_discount == 15

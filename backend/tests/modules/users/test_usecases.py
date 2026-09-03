@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry, User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import BlacklistKind, Locale, Role
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security import hash_password
@@ -13,6 +13,7 @@ from app.core.security.password import PASSWORD_MIN_LENGTH
 from app.core.security.permissions import Permission
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import SessionIssuer
+from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.events import (
     AdminCreatedEvent,
@@ -20,6 +21,7 @@ from app.modules.users.events import (
     AdminDemotedEvent,
     AdminPermissionsUpdatedEvent,
     AdminPromotedEvent,
+    TelegramRegistrationBlockedEvent,
     TelegramUserRegisteredEvent,
     UserDeletedEvent,
 )
@@ -948,9 +950,14 @@ async def test_demote_admin_publishes_admin_demoted_event(
 
 
 async def test_register_telegram_user_creates_new_user(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
-    use_case = RegisterTelegramUserUseCase(user_repository, uow, event_publisher)
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
 
     user = await use_case.system(
         RegisterTelegramUserDto(telegram_id=555, name="Alice", language=Locale.EN)
@@ -962,9 +969,14 @@ async def test_register_telegram_user_creates_new_user(
 
 
 async def test_register_telegram_user_returns_existing_user_without_duplicating(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
-    use_case = RegisterTelegramUserUseCase(user_repository, uow, event_publisher)
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
     data = RegisterTelegramUserDto(telegram_id=777, name="Bob", language=Locale.EN)
 
     first = await use_case.system(data)
@@ -975,11 +987,14 @@ async def test_register_telegram_user_returns_existing_user_without_duplicating(
 
 async def test_register_telegram_user_publishes_event_only_on_creation(
     user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     session: AsyncSession,
 ) -> None:
-    use_case = RegisterTelegramUserUseCase(user_repository, uow, event_publisher)
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
     data = RegisterTelegramUserDto(telegram_id=888, name="Carol", language=Locale.EN)
 
     created = await use_case.system(data)
@@ -991,15 +1006,90 @@ async def test_register_telegram_user_publishes_event_only_on_creation(
 
 
 async def test_register_telegram_user_denies_non_system_actor(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
-    use_case = RegisterTelegramUserUseCase(user_repository, uow, event_publisher)
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
             REGULAR_USER,
             RegisterTelegramUserDto(telegram_id=999, name="Mallory", language=Locale.EN),
         )
+
+
+async def test_register_telegram_user_blocks_blacklisted_telegram_id(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "1010")
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
+
+    user = await use_case.system(
+        RegisterTelegramUserDto(telegram_id=1010, name="Mallory", language=Locale.EN)
+    )
+
+    assert user.is_blocked is True
+
+    blocked_rows = await _outbox_rows(session, TelegramRegistrationBlockedEvent.__name__)
+    assert len(blocked_rows) == 1
+    assert blocked_rows[0].payload["user"]["id"] == user.id
+
+    registered_rows = await _outbox_rows(session, TelegramUserRegisteredEvent.__name__)
+    assert not any(row.payload["user"]["id"] == user.id for row in registered_rows)
+
+
+async def test_register_telegram_user_carries_ad_link_code_on_creation(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
+    data = RegisterTelegramUserDto(
+        telegram_id=1001, name="Dave", language=Locale.EN, ad_link_code="yt-jan"
+    )
+
+    await use_case.system(data)
+
+    rows = await _outbox_rows(session, TelegramUserRegisteredEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["ad_link_code"] == "yt-jan"
+
+
+async def test_register_telegram_user_existing_user_ignores_ad_link_code(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
+    first_call = RegisterTelegramUserDto(telegram_id=1002, name="Erin", language=Locale.EN)
+    second_call = RegisterTelegramUserDto(
+        telegram_id=1002, name="Erin", language=Locale.EN, ad_link_code="late-click"
+    )
+
+    await use_case.system(first_call)
+    await use_case.system(second_call)
+
+    rows = await _outbox_rows(session, TelegramUserRegisteredEvent.__name__)
+    assert len(rows) == 1
+    assert rows[0].payload["ad_link_code"] is None
 
 
 async def test_owner_can_delete_admin(

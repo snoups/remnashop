@@ -15,6 +15,7 @@ def _user_payload(
     username: str,
     expire_at: datetime,
     traffic_limit_bytes: int = 0,
+    traffic_limit_strategy: str = "NO_RESET",
     hwid_device_limit: int = 0,
     active_internal_squads: Optional[list[str]] = None,
     external_squad_uuid: Optional[str] = None,
@@ -26,7 +27,7 @@ def _user_payload(
         "username": username,
         "status": "ACTIVE",
         "trafficLimitBytes": traffic_limit_bytes,
-        "trafficLimitStrategy": "NO_RESET",
+        "trafficLimitStrategy": traffic_limit_strategy,
         "expireAt": expire_at.isoformat(),
         "telegramId": None,
         "email": None,
@@ -68,6 +69,7 @@ def _handle_create_user(
         username=body["username"],
         expire_at=expire_at,
         traffic_limit_bytes=body.get("trafficLimitBytes") or 0,
+        traffic_limit_strategy=body.get("trafficLimitStrategy") or "NO_RESET",
         hwid_device_limit=body.get("hwidDeviceLimit") or 0,
         active_internal_squads=body.get("activeInternalSquads"),
         external_squad_uuid=body.get("externalSquadUuid"),
@@ -83,6 +85,8 @@ def _handle_update_user(request: httpx.Request, store: FakeUserStore) -> httpx.R
         payload["trafficLimitBytes"] = body["trafficLimitBytes"]
     if "hwidDeviceLimit" in body:
         payload["hwidDeviceLimit"] = body["hwidDeviceLimit"]
+    if body.get("trafficLimitStrategy") is not None:
+        payload["trafficLimitStrategy"] = body["trafficLimitStrategy"]
     if body.get("expireAt") is not None:
         payload["expireAt"] = body["expireAt"]
     payload["updatedAt"] = datetime.now(timezone.utc).isoformat()

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.actor import SyntheticActor
 from app.core.db.models import EventOutboxEntry
-from app.core.events import ActorTargetEvent, BaseEvent, UserEvent
+from app.core.events import ActorEvent, BaseEvent, UserEvent
 
 _SAFE_USER_FIELDS: Final[tuple[str, ...]] = ("id", "login", "name", "role")
 _SKIPPED_PAYLOAD_FIELDS: Final[set[str]] = {"event_id", "occurred_at", "ip_address"}
@@ -40,7 +40,7 @@ def _build_payload(event: BaseEvent) -> dict[str, Any]:
 def _actor_fields(
     event: BaseEvent,
 ) -> tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
-    if isinstance(event, ActorTargetEvent):
+    if isinstance(event, ActorEvent):
         actor = event.actor
     elif isinstance(event, UserEvent):
         actor = event.user

@@ -19,6 +19,7 @@ from app.core.enums import (
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewaysRepository
+from app.modules.payments import PaymentGatewayFactory, PaymentIntent
 from app.modules.payments.dto import CreateCheckoutDto, PaymentOrderDto
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
@@ -50,19 +51,33 @@ class _FakeGateway:
         self.confirmation_url = confirmation_url
         self.create_payment_calls: list[PaymentOrderDto] = []
 
-    async def create_payment(
-        self, order: PaymentOrderDto, settings: dict[str, str]
-    ) -> tuple[str, str]:
+    async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         self.create_payment_calls.append(order)
-        return "yk-fake-id", self.confirmation_url
+        return PaymentIntent(
+            confirmation_url=self.confirmation_url, provider_payment_id="yk-fake-id"
+        )
 
-    async def verify_payment(self, external_payment_id: str, settings: dict[str, str]) -> bool:
-        raise NotImplementedError
+
+class _FakeFactory(PaymentGatewayFactory):
+    def __init__(self, gateway: _FakeGateway) -> None:
+        self._gateway = gateway
+
+    def build(self, gateway_type, settings):  # type: ignore[no-untyped-def]
+        return self._gateway  # type: ignore[return-value]
 
 
 @pytest.fixture
 def fake_gateway() -> _FakeGateway:
     return _FakeGateway()
+
+
+@pytest.fixture
+async def _active_yookassa(gateways_repository: GatewaysRepository, uow: UnitOfWork) -> None:
+    async with uow:
+        await gateways_repository.update_settings(
+            PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k"}
+        )
+        await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
 
 
 @pytest.fixture
@@ -77,12 +92,7 @@ def create_checkout_use_case(
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> CreateCheckoutUseCase:
-    monkeypatch.setattr(
-        "app.modules.payments.usecases.create_checkout.YooKassaGateway",
-        lambda: fake_gateway,
-    )
     return CreateCheckoutUseCase(
         plan_repository,
         user_repository,
@@ -93,6 +103,7 @@ def create_checkout_use_case(
         referral_repository,
         pricing_repository,
         uow,
+        _FakeFactory(fake_gateway),
     )
 
 
@@ -126,6 +137,7 @@ async def plan(plan_repository: PlanRepository) -> PlanDto:
 
 async def test_create_checkout_creates_a_pending_order_and_returns_confirmation_url(
     create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
     fake_gateway: _FakeGateway,
     actor: UserDto,
     plan: PlanDto,
@@ -210,23 +222,6 @@ async def test_create_checkout_rejects_purchasing_for_another_user_without_privi
         )
 
 
-async def test_create_checkout_unsupported_gateway_raises(
-    create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
-) -> None:
-    with pytest.raises(ValidationError):
-        await create_checkout_use_case(
-            actor,
-            CreateCheckoutDto(
-                user_id=actor.id,
-                plan_id=plan.id,
-                duration_days=30,
-                currency=Currency.RUB,
-                purchase_type=PurchaseType.NEW,
-                gateway_type=PaymentGatewayType.TELEGRAM_STARS,
-            ),
-        )
-
-
 async def _seed_subscription(
     subscription_repository: SubscriptionRepository,
     *,
@@ -257,6 +252,7 @@ async def _seed_subscription(
 
 async def test_create_checkout_rejects_a_new_purchase_at_the_subscription_cap(
     create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
     actor: UserDto,
     plan: PlanDto,
     subscription_repository: SubscriptionRepository,
@@ -293,6 +289,7 @@ async def test_create_checkout_rejects_a_new_purchase_at_the_subscription_cap(
 
 async def test_create_checkout_allows_a_link_availability_plan(
     create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
     fake_gateway: _FakeGateway,
     actor: UserDto,
     plan: PlanDto,
@@ -327,6 +324,7 @@ async def test_create_checkout_allows_a_link_availability_plan(
 
 async def test_create_checkout_rejects_an_existing_availability_plan_for_a_fresh_user(
     create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
     actor: UserDto,
     plan: PlanDto,
     plan_repository: PlanRepository,
@@ -356,6 +354,7 @@ async def test_create_checkout_rejects_an_existing_availability_plan_for_a_fresh
 
 async def test_create_checkout_invited_plan_requires_a_referrer(
     create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
     fake_gateway: _FakeGateway,
     actor: UserDto,
     plan: PlanDto,
@@ -407,6 +406,7 @@ async def test_create_checkout_invited_plan_requires_a_referrer(
 
 async def test_create_checkout_rejects_an_inactive_plan(
     create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
     actor: UserDto,
     plan: PlanDto,
     plan_repository: PlanRepository,
@@ -429,6 +429,7 @@ async def test_create_checkout_rejects_an_inactive_plan(
 
 async def test_create_checkout_renew_rejects_a_target_belonging_to_another_user(
     create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
     actor: UserDto,
     plan: PlanDto,
     subscription_repository: SubscriptionRepository,
@@ -457,7 +458,58 @@ async def test_create_checkout_renew_rejects_a_target_belonging_to_another_user(
         )
 
 
-async def test_create_checkout_rejects_a_currency_the_gateway_does_not_settle(
+async def test_checkout_rejects_an_unimplemented_gateway(
+    create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
+) -> None:
+    with pytest.raises(ValidationError):
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                user_id=actor.id,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                gateway_type=PaymentGatewayType.CRYPTOMUS,
+            ),
+        )
+
+
+async def test_checkout_rejects_telegram_stars_from_the_web(
+    create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
+) -> None:
+    with pytest.raises(ValidationError):
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                user_id=actor.id,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.XTR,
+                purchase_type=PurchaseType.NEW,
+                gateway_type=PaymentGatewayType.TELEGRAM_STARS,
+            ),
+        )
+
+
+async def test_checkout_rejects_an_inactive_gateway(
+    create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
+) -> None:
+    with pytest.raises(ValidationError):
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                user_id=actor.id,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+            ),
+        )
+
+
+async def test_checkout_rejects_a_currency_the_gateway_does_not_settle(
     create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
 ) -> None:
     with pytest.raises(ValidationError):

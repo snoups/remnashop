@@ -2,6 +2,8 @@ from dishka import Provider, Scope, provide
 
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
+    BlockUserUseCase,
+    BulkBlockUsersUseCase,
     CreateAdminUseCase,
     DeleteAdminUseCase,
     DeleteUserUseCase,
@@ -12,6 +14,8 @@ from app.modules.users.usecases import (
     PromoteToAdminUseCase,
     RegisterTelegramUserUseCase,
     SetUserPersonalDiscountUseCase,
+    UnblockAllUsersUseCase,
+    UnblockUserUseCase,
     UpdateAdminUseCase,
     UpdateOwnProfileUseCase,
     UpdateOwnSecuritySettingsUseCase,
@@ -35,6 +39,10 @@ class UsersProvider(Provider):
     update_own_security_settings_use_case = provide(UpdateOwnSecuritySettingsUseCase)
     register_telegram_user_use_case = provide(RegisterTelegramUserUseCase)
     set_user_personal_discount_use_case = provide(SetUserPersonalDiscountUseCase)
+    block_user_use_case = provide(BlockUserUseCase)
+    unblock_user_use_case = provide(UnblockUserUseCase)
+    bulk_block_users_use_case = provide(BulkBlockUsersUseCase)
+    unblock_all_users_use_case = provide(UnblockAllUsersUseCase)
 
 
 def get_users_providers() -> list[Provider]:

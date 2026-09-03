@@ -1,3 +1,4 @@
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.core.exceptions import ValidationError
@@ -17,14 +18,20 @@ class RemoveLocaleUseCase(UseCase[Locale, list[Locale]]):
         settings_repository: SettingsRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
+        config: AppConfig,
     ) -> None:
         self._settings_repository = settings_repository
         self._uow = uow
         self._event_publisher = event_publisher
+        self._config = config
 
     async def _execute(self, actor: UserDto, data: Locale) -> list[Locale]:
-        if data == Locale.EN:
-            raise ValidationError("The en locale cannot be removed")
+        # The default locale is the TranslatorHub's root_locale -- deactivating
+        # it leaves the hub with no root translator, and read_translator_hub()
+        # runs before uvicorn.run() in telegram/__main__.py, so the process
+        # would crash on every start instead of just losing one language.
+        if data == self._config.default_locale:
+            raise ValidationError(f"The default locale ({data.value}) cannot be removed")
 
         async with self._uow:
             await self._settings_repository.remove_active_locale(data)

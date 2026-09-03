@@ -1,7 +1,7 @@
 from contextlib import suppress
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Callable, Final, Optional
 from uuid import uuid4
 
 from loguru import logger
@@ -74,16 +74,30 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             if existing is not None:
                 return existing
 
+        # Releasing the key lets a retry (taskiq's own, or the reconcile sweep)
+        # start over from scratch -- correct only while nothing non-idempotent
+        # has hit the panel yet. extend_user is cumulative, so a RENEW that
+        # already called it must NOT be replayed: a second run would grant a
+        # second duration for one payment. _purchase_new mints a fresh panel
+        # user per attempt (and disables the failed one) and _change writes an
+        # absolute expire_at, so both stay safe to retry all the way through.
+        panel_extend_landed = False
+
+        def mark_panel_extend_landed() -> None:
+            nonlocal panel_extend_landed
+            panel_extend_landed = True
+
         try:
             if data.purchase_type is PurchaseType.NEW:
                 return await self._purchase_new(actor, data)
             if data.purchase_type is PurchaseType.RENEW:
-                return await self._renew(actor, data)
+                return await self._renew(actor, data, mark_panel_extend_landed)
             if data.purchase_type is PurchaseType.CHANGE:
                 return await self._change(actor, data)
             raise NotImplementedError(f"purchase_type '{data.purchase_type}' not yet implemented")
         except Exception:
-            await self._release_idempotency_key_best_effort(data.idempotency_key)
+            if not panel_extend_landed:
+                await self._release_idempotency_key_best_effort(data.idempotency_key)
             raise
 
     async def _claim_or_return_existing(self, key: str) -> Optional[SubscriptionDto]:
@@ -95,6 +109,17 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         if existing is not None:
             return existing
         raise ValidationError(f"Purchase with idempotency_key '{key}' is already in progress")
+
+    async def _clear_purchase_discount(self, data: PurchaseSubscriptionDto) -> None:
+        # A discount is spent by being quoted against a price, so only a real
+        # checkout consumes it -- a trial, a promocode reward or a referral
+        # EXTRA_DAYS renewal all reach here too and would otherwise burn a
+        # discount the customer never got to use. Within a checkout it's
+        # cleared unconditionally: one no-op UPDATE is cheaper than a SELECT
+        # to check first, and it's always correct either way.
+        if not data.consumes_purchase_discount:
+            return
+        await self._user_repository.update_fields(data.user_id, UpdateUserDto(purchase_discount=0))
 
     async def _release_idempotency_key_best_effort(self, key: Optional[str]) -> None:
         if key is None:
@@ -127,6 +152,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 username=username,
                 expire_at=expire_at,
                 traffic_limit_bytes=plan.traffic_limit * GB_TO_BYTES,
+                traffic_limit_strategy=plan.traffic_limit_strategy,
                 hwid_device_limit=plan.device_limit,
                 active_internal_squads=plan.internal_squads or None,
                 external_squad_uuid=plan.external_squad,
@@ -166,11 +192,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         purchase_type=data.purchase_type.value,
                     )
                 )
-                # Cleared unconditionally -- one extra no-op UPDATE per purchase is cheaper
-                # than a SELECT to check first, and it's always correct either way.
-                await self._user_repository.update_fields(
-                    data.user_id, UpdateUserDto(purchase_discount=0)
-                )
+                await self._clear_purchase_discount(data)
         except Exception:
             # disable, not delete: the DB write failed, not the panel user
             # itself -- disabling keeps a reversible, inspectable record on
@@ -230,9 +252,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         purchase_type=data.purchase_type.value,
                     )
                 )
-                await self._user_repository.update_fields(
-                    data.user_id, UpdateUserDto(purchase_discount=0)
-                )
+                await self._clear_purchase_discount(data)
         except Exception:
             # Best-effort revert, never disable -- this panel identity still
             # belongs to the (reverted) trial row, not an orphan.
@@ -256,7 +276,12 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         )
         return subscription
 
-    async def _renew(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
+    async def _renew(
+        self,
+        actor: UserDto,
+        data: PurchaseSubscriptionDto,
+        on_panel_extend: Callable[[], None],
+    ) -> SubscriptionDto:
         if data.target_subscription_id is None:
             raise ValidationError("target_subscription_id is required for a RENEW")
 
@@ -276,6 +301,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         panel_user = await self._remnawave_sdk.users.extend_user(
             target.remnawave_user_id, ExtendUserRequestDto(days=data.duration_days)
         )
+        on_panel_extend()
 
         async with self._uow:
             locked = await self._subscription_repository.get_by_id_for_update(target.id)
@@ -297,9 +323,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                     user=actor, subscription_id=subscription.id, duration_days=data.duration_days
                 )
             )
-            await self._user_repository.update_fields(
-                data.user_id, UpdateUserDto(purchase_discount=0)
-            )
+            await self._clear_purchase_discount(data)
 
         logger.info(
             f"{actor.log} Renewed subscription '{subscription.id}' by {data.duration_days}d"
@@ -383,9 +407,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         previous_plan_snapshot=old.plan_snapshot.to_json(),
                     )
                 )
-                await self._user_repository.update_fields(
-                    data.user_id, UpdateUserDto(purchase_discount=0)
-                )
+                await self._clear_purchase_discount(data)
         except Exception:
             # There's no orphan to clean up -- update_user mutated old's own
             # panel identity in place, no new one was minted. Best-effort

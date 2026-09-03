@@ -7,8 +7,10 @@ import {
   Info,
   LaptopMinimal,
   Loader2,
+  Lock,
   Search,
   Trash2,
+  Unlock,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
@@ -16,8 +18,11 @@ import { useTranslation } from "react-i18next";
 
 import {
   DEFAULT_PAGE_SIZE,
+  blockUser,
   deleteUser,
   listUsers,
+  unblockAllUsers,
+  unblockUser,
   type UserListFilters,
   type UserListItem,
 } from "@entities/user/api";
@@ -164,10 +169,63 @@ export function UsersPage() {
     }
   };
 
+  const handleUserUpdated = (updated: UserListItem) => {
+    if (state.kind !== "ready") return;
+    setState({
+      kind: "ready",
+      items: state.items.map((u) => (u.id === updated.id ? updated : u)),
+      total: state.total,
+    });
+  };
+
+  const handleBlock = async (user: UserListItem) => {
+    try {
+      const updated = await blockUser(user.id);
+      handleUserUpdated(updated);
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("users.block.error")));
+    }
+  };
+
+  const handleUnblock = async (user: UserListItem) => {
+    try {
+      const updated = await unblockUser(user.id);
+      handleUserUpdated(updated);
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("users.unblock.error")));
+    }
+  };
+
+  const handleUnblockAll = async () => {
+    if (!window.confirm(t("users.unblockAll.confirm"))) return;
+    try {
+      const result = await unblockAllUsers();
+      toast.success(t("users.unblockAll.success", { count: result.unblocked }));
+      const refetched = await listUsers({ ...baseFilters, page: 1, pageSize: visibleCount });
+      setState({ kind: "ready", items: refetched.items, total: refetched.total });
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("users.unblockAll.error")));
+    }
+  };
+
   const hasMore = state.kind === "ready" && state.items.length < state.total;
 
   return (
     <div className="flex flex-col gap-4">
+      {permissions.includes("USERS_UNBLOCK_ALL") && (
+        <div className="flex justify-end">
+          <motion.button
+            type="button"
+            onClick={() => void handleUnblockAll()}
+            {...bounceTap(bounceStrength)}
+            className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] font-semibold text-foreground/90 transition-colors hover:bg-white/5"
+          >
+            <Unlock className="size-3.5" />
+            {t("users.unblockAll.button")}
+          </motion.button>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-40 flex-1 flex-col gap-1.5">
@@ -267,6 +325,13 @@ export function UsersPage() {
                         label: t("sessions.title"),
                         icon: LaptopMinimal,
                         onClick: () => setSessionsUser(user),
+                      });
+                    }
+                    if (permissions.includes(user.is_blocked ? "USERS_UNBLOCK" : "USERS_BLOCK")) {
+                      menuItems.push({
+                        label: user.is_blocked ? t("users.unblock.button") : t("users.block.button"),
+                        icon: user.is_blocked ? Unlock : Lock,
+                        onClick: () => void (user.is_blocked ? handleUnblock(user) : handleBlock(user)),
                       });
                     }
                     if (canDelete) {

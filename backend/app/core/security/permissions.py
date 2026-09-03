@@ -96,6 +96,25 @@ class Permission(UpperStrEnum):
     BACKUPS_RUN_CREATE = auto()
     BACKUPS_RUN_DOWNLOAD = auto()
     BACKUPS_RUN_DELETE = auto()
+    BLACKLIST_VIEW = auto()
+    BLACKLIST_SOURCES_VIEW = auto()
+    BLACKLIST_ENTRY_ADD = auto()
+    BLACKLIST_ENTRY_REMOVE = auto()
+    BLACKLIST_SOURCE_ADD = auto()
+    BLACKLIST_SOURCE_REMOVE = auto()
+    BLACKLIST_SOURCE_TOGGLE = auto()
+    BLACKLIST_SYNC = auto()
+    USERS_BLOCK = auto()
+    USERS_UNBLOCK = auto()
+    USERS_BULK_BLOCK = auto()
+    USERS_UNBLOCK_ALL = auto()
+    AD_LINKS_VIEW = auto()
+    AD_LINKS_STATS_VIEW = auto()
+    AD_LINKS_USERS_VIEW = auto()
+    AD_LINKS_CREATE = auto()
+    AD_LINKS_GENERATE_CODE = auto()
+    AD_LINKS_UPDATE = auto()
+    AD_LINKS_DELETE = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -183,6 +202,24 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BACKUPS_RUN_CREATE: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_DOWNLOAD: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_DELETE: PermissionMeta(resource="backups", kind="write"),
+    Permission.BLACKLIST_VIEW: PermissionMeta(resource="blacklist", kind="read"),
+    Permission.BLACKLIST_SOURCES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
+    Permission.BLACKLIST_ENTRY_ADD: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.BLACKLIST_ENTRY_REMOVE: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.BLACKLIST_SOURCE_ADD: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.BLACKLIST_SOURCE_REMOVE: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.BLACKLIST_SOURCE_TOGGLE: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.BLACKLIST_SYNC: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.USERS_BLOCK: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_UNBLOCK: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_BULK_BLOCK: PermissionMeta(resource="users", kind="write"),
+    Permission.AD_LINKS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_STATS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_USERS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_CREATE: PermissionMeta(resource="ad_links", kind="write"),
+    Permission.AD_LINKS_GENERATE_CODE: PermissionMeta(resource="ad_links", kind="write"),
+    Permission.AD_LINKS_UPDATE: PermissionMeta(resource="ad_links", kind="write"),
+    Permission.AD_LINKS_DELETE: PermissionMeta(resource="ad_links", kind="write"),
 }
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA) | {
@@ -252,6 +289,13 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.REFERRALS_SETTINGS_VIEW,
         Permission.REFERRALS_SETTINGS_MANAGE,
         Permission.REFERRALS_POINTS_MANAGE,
+        Permission.AD_LINKS_VIEW,
+        Permission.AD_LINKS_STATS_VIEW,
+        Permission.AD_LINKS_USERS_VIEW,
+        Permission.AD_LINKS_CREATE,
+        Permission.AD_LINKS_GENERATE_CODE,
+        Permission.AD_LINKS_UPDATE,
+        Permission.AD_LINKS_DELETE,
     },
     Role.USER: set(),
 }

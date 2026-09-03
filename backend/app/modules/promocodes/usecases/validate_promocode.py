@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from app.core.enums import PromocodeAvailability
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.promocodes.availability import assert_available_to
 from app.modules.promocodes.dto import PromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
@@ -49,28 +49,5 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto]):
             if existing is not None:
                 raise ValidationError(f"Promocode '{code}' already activated by this user")
 
-        await self._check_availability(actor, promo)
+        await assert_available_to(promo, actor, self._subscription_repository)
         return promo
-
-    async def _check_availability(self, actor: UserDto, promo: PromocodeDto) -> None:
-        if promo.availability is PromocodeAvailability.ALL:
-            return
-        if promo.availability is PromocodeAvailability.NEW:
-            has_sub = await self._subscription_repository.has_any_subscription(
-                actor.id, include_trial=False
-            )
-            if has_sub:
-                raise ValidationError(f"Promocode '{promo.code}' is for new users only")
-            return
-        if promo.availability is PromocodeAvailability.EXISTING:
-            has_sub = await self._subscription_repository.has_any_subscription(
-                actor.id, include_trial=False
-            )
-            if not has_sub:
-                raise ValidationError(f"Promocode '{promo.code}' is for existing users only")
-            return
-        if promo.availability is PromocodeAvailability.ALLOWED:
-            if actor.id not in promo.allowed_user_ids:
-                raise ValidationError(f"Promocode '{promo.code}' is not available to this user")
-            return
-        raise ValidationError(f"Promocode '{promo.code}' is not available to this user")

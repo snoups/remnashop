@@ -148,3 +148,17 @@ class SetPersonalDiscountRequest(BaseModel):
 
 class SecurityResponse(BaseModel):
     ip_allowlist: list[str]
+
+
+class BulkBlockRequest(BaseModel):
+    telegram_ids: list[int]
+
+
+class BulkBlockResponse(BaseModel):
+    blocked: int
+    added_to_list: int
+    skipped: int
+
+
+class UnblockAllResponse(BaseModel):
+    unblocked: int

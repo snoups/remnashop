@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from loguru import logger
 from sqlalchemy.exc import IntegrityError
@@ -7,8 +8,9 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
+from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import CreateUserDto, UserDto
-from app.modules.users.events import TelegramUserRegisteredEvent
+from app.modules.users.events import TelegramRegistrationBlockedEvent, TelegramUserRegisteredEvent
 from app.modules.users.repository import UserRepository
 
 
@@ -17,6 +19,8 @@ class RegisterTelegramUserDto:
     telegram_id: int
     name: str
     language: Locale
+    # Raw deep-link payload, opaque to `users` -- advertising resolves it.
+    ad_link_code: Optional[str] = None
 
 
 class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
@@ -28,10 +32,12 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
     def __init__(
         self,
         user_repository: UserRepository,
+        blacklist_repository: BlacklistRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
         self._user_repository = user_repository
+        self._blacklist_repository = blacklist_repository
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -40,6 +46,8 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
         if existing is not None:
             return existing
 
+        is_blocked = await self._blacklist_repository.is_blacklisted_telegram_id(data.telegram_id)
+
         try:
             async with self._uow:
                 user = await self._user_repository.create(
@@ -47,9 +55,15 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                         telegram_id=data.telegram_id,
                         name=data.name,
                         language=data.language,
+                        is_blocked=is_blocked,
                     )
                 )
-                await self._event_publisher.publish(TelegramUserRegisteredEvent(user=user))
+                if is_blocked:
+                    await self._event_publisher.publish(TelegramRegistrationBlockedEvent(user=user))
+                    return user
+                await self._event_publisher.publish(
+                    TelegramUserRegisteredEvent(user=user, ad_link_code=data.ad_link_code)
+                )
         except IntegrityError:
             # Lost a concurrent registration race (two updates from the same
             # brand-new telegram_id in flight at once) -- the winner's row

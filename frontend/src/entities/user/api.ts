@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
 import type { Permission, Role } from "@shared/types/rbac";
 
 export interface CurrentUser {
@@ -64,4 +64,20 @@ export function listUsers(filters: UserListFilters = {}): Promise<UserListPage> 
 
 export function deleteUser(userId: number): Promise<void> {
   return apiDelete<void>(`/users/${userId}`);
+}
+
+export function blockUser(userId: number): Promise<UserListItem> {
+  return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/block`, {});
+}
+
+export function unblockUser(userId: number): Promise<UserListItem> {
+  return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/unblock`, {});
+}
+
+export interface UnblockAllResult {
+  unblocked: number;
+}
+
+export function unblockAllUsers(): Promise<UnblockAllResult> {
+  return apiPost<UnblockAllResult, Record<string, never>>("/users/unblock-all", {});
 }

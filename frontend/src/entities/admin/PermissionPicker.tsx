@@ -1,4 +1,5 @@
 import {
+  Ban,
   Bot,
   Check,
   ChevronRight,
@@ -51,6 +52,7 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   user_sessions: Monitor,
   appearance: Palette,
   gateways: CreditCard,
+  blacklist: Ban,
 };
 
 function getResourceIcon(resource: string): LucideIcon {

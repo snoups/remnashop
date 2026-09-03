@@ -146,6 +146,7 @@ def test_every_catalog_permission_has_metadata() -> None:
         Permission.API_TOKENS_MANAGE,
         Permission.PRICING_RATES_MANAGE,
         Permission.PRICING_ANCHOR_MANAGE,
+        Permission.USERS_UNBLOCK_ALL,
     }
     assert set(Permission) - PERMISSION_METADATA.keys() == non_catalog
 
@@ -209,6 +210,13 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.REFERRALS_SETTINGS_VIEW,
         Permission.REFERRALS_SETTINGS_MANAGE,
         Permission.REFERRALS_POINTS_MANAGE,
+        Permission.AD_LINKS_VIEW,
+        Permission.AD_LINKS_STATS_VIEW,
+        Permission.AD_LINKS_USERS_VIEW,
+        Permission.AD_LINKS_CREATE,
+        Permission.AD_LINKS_GENERATE_CODE,
+        Permission.AD_LINKS_UPDATE,
+        Permission.AD_LINKS_DELETE,
     }
 
 
@@ -337,3 +345,39 @@ def test_backups_permissions_are_grantable_but_not_default_admin() -> None:
         assert permission in GRANTABLE_PERMISSIONS
         assert permission not in admin_default
         assert permission in owner_default
+
+
+def test_blacklist_permissions_are_owner_only_by_default() -> None:
+    for perm in (
+        Permission.BLACKLIST_VIEW,
+        Permission.BLACKLIST_SOURCES_VIEW,
+        Permission.BLACKLIST_ENTRY_ADD,
+        Permission.BLACKLIST_ENTRY_REMOVE,
+        Permission.BLACKLIST_SOURCE_ADD,
+        Permission.BLACKLIST_SOURCE_REMOVE,
+        Permission.BLACKLIST_SOURCE_TOGGLE,
+        Permission.BLACKLIST_SYNC,
+        Permission.USERS_BLOCK,
+        Permission.USERS_UNBLOCK,
+        Permission.USERS_BULK_BLOCK,
+        Permission.USERS_UNBLOCK_ALL,
+    ):
+        assert perm in ROLE_PERMISSIONS[Role.OWNER]
+        assert perm not in ROLE_PERMISSIONS[Role.ADMIN]
+
+
+def test_unblock_all_is_not_grantable() -> None:
+    assert Permission.USERS_UNBLOCK_ALL not in GRANTABLE_PERMISSIONS
+    assert Permission.BLACKLIST_ENTRY_ADD in GRANTABLE_PERMISSIONS
+
+
+def test_admin_role_has_ad_links_permissions() -> None:
+    assert Permission.AD_LINKS_VIEW in ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.AD_LINKS_CREATE in ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.AD_LINKS_UPDATE in ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.AD_LINKS_DELETE in ROLE_PERMISSIONS[Role.ADMIN]
+
+
+def test_ad_links_permissions_are_grantable() -> None:
+    assert Permission.AD_LINKS_VIEW in GRANTABLE_PERMISSIONS
+    assert Permission.AD_LINKS_CREATE in GRANTABLE_PERMISSIONS

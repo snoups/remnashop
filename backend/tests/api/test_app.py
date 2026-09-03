@@ -14,6 +14,7 @@ from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
+from app.modules.blacklist import get_blacklist_providers
 from app.modules.plans import get_plans_providers
 from app.modules.pricing import get_pricing_providers
 from app.modules.referrals import get_referrals_providers
@@ -202,6 +203,7 @@ async def protected_route_container(config: AppConfig) -> AsyncIterator[AsyncCon
         *get_settings_providers(),
         *get_subscriptions_providers(),
         *get_translations_providers(),
+        *get_blacklist_providers(),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
     yield container

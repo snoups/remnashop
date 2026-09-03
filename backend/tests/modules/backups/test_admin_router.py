@@ -30,6 +30,7 @@ from app.modules.backups.usecases import (
     UpdateBackupSettingsUseCase,
 )
 from app.modules.backups.usecases.create_backup_run import RunBackupDispatch
+from app.modules.blacklist import get_blacklist_providers
 from app.modules.settings import get_settings_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
@@ -80,6 +81,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_api_tokens_providers(),
         *get_settings_providers(),
         *get_translations_providers(),
+        *get_blacklist_providers(),
         _BackupsProvider(),
         _TestSessionProvider(session),
     ]

@@ -1,0 +1,33 @@
+from decimal import Decimal
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import ForeignKey, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.db.base import BaseSql
+from app.core.db.timestamp import TimestampMixin
+from app.core.enums import Currency
+
+if TYPE_CHECKING:
+    from app.core.db.models.ad_link_attribution import AdLinkAttribution
+
+
+class AdLink(BaseSql, TimestampMixin):
+    __tablename__ = "ad_links"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal(0), server_default="0")
+    cost_currency: Mapped[Currency] = mapped_column(default=Currency.USD, server_default="USD")
+    is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
+    note: Mapped[Optional[str]] = mapped_column(Text)
+    # No ondelete cascade to a deleted admin's other data -- just detach the
+    # attribution, same treatment Promocode gives reward_addon_id/reward_plan_id.
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+    attributions: Mapped[list["AdLinkAttribution"]] = relationship(
+        back_populates="ad_link",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )

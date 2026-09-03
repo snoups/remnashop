@@ -120,7 +120,8 @@
     "support": "Support",
     "admins": "Admins",
     "eventLog": "Event log",
-    "pricing": "Pricing"
+    "pricing": "Pricing",
+    "blacklist": "Blacklist"
   },
   "admins": {
     "title": "Admins",
@@ -182,6 +183,20 @@
       "button": "Delete user",
       "confirm": "Permanently delete {{name}}? This cannot be undone.",
       "error": "Failed to delete user."
+    },
+    "block": {
+      "button": "Block user",
+      "error": "Failed to block user."
+    },
+    "unblock": {
+      "button": "Unblock user",
+      "error": "Failed to unblock user."
+    },
+    "unblockAll": {
+      "button": "Unblock all",
+      "confirm": "Unblock every blocked user? This cannot be undone.",
+      "success": "Unblocked {{count}} user(s).",
+      "error": "Failed to unblock all users."
     },
     "details": {
       "button": "Details",
@@ -644,7 +659,19 @@
     "GATEWAYS_VIEW": "View payment gateways",
     "GATEWAYS_UPDATE": "Update gateway settings",
     "GATEWAYS_TOGGLE": "Enable/disable gateways",
-    "GATEWAYS_REORDER": "Reorder gateways"
+    "GATEWAYS_REORDER": "Reorder gateways",
+    "BLACKLIST_VIEW": "View blacklist",
+    "BLACKLIST_SOURCES_VIEW": "View blacklist sources",
+    "BLACKLIST_ENTRY_ADD": "Add blacklist entries",
+    "BLACKLIST_ENTRY_REMOVE": "Remove blacklist entries",
+    "BLACKLIST_SOURCE_ADD": "Add blacklist sources",
+    "BLACKLIST_SOURCE_REMOVE": "Remove blacklist sources",
+    "BLACKLIST_SOURCE_TOGGLE": "Enable/disable blacklist sources",
+    "BLACKLIST_SYNC": "Sync blacklist sources",
+    "USERS_BLOCK": "Block users",
+    "USERS_UNBLOCK": "Unblock users",
+    "USERS_BULK_BLOCK": "Bulk-block users",
+    "USERS_UNBLOCK_ALL": "Unblock all users"
   },
   "permissionCategories": {
     "botSettings": "Bot Settings",
@@ -656,7 +683,8 @@
     "userSessions": "User Sessions",
     "eventLog": "Event Log",
     "appearance": "Appearance",
-    "gateways": "Payment Gateways"
+    "gateways": "Payment Gateways",
+    "blacklist": "Blacklist"
   },
   "permissionPicker": {
     "read": "Read",
@@ -760,6 +788,44 @@
       "old": "Old",
       "new": "New",
       "empty": "No prices will change."
+    }
+  },
+  "blacklist": {
+    "loading": "Loading…",
+    "manual": {
+      "title": "Manual entries",
+      "description": "Telegram IDs and emails blocked from registering or logging in, added by hand.",
+      "kind": "Kind",
+      "kindTelegramId": "Telegram ID",
+      "kindEmail": "Email",
+      "valuePlaceholder": "Telegram ID or email",
+      "add": "Add",
+      "remove": "Remove",
+      "empty": "No manual entries yet.",
+      "loadError": "Failed to load the blacklist.",
+      "addError": "Failed to add the entry.",
+      "removeError": "Failed to remove the entry."
+    },
+    "sources": {
+      "title": "Sources",
+      "description": "External lists synced periodically to add entries to the blacklist automatically.",
+      "urlPlaceholder": "https://example.com/list.txt",
+      "namePlaceholder": "Name (optional)",
+      "add": "Add source",
+      "remove": "Remove source",
+      "removeConfirm": "Remove the source {{url}}? The identities it contributed leave the blacklist immediately; users already blocked stay blocked.",
+      "enabled": "Enabled",
+      "entriesCount": "{{count}} entries",
+      "lastSynced": "Last synced {{date}}",
+      "neverSynced": "Never synced",
+      "syncNow": "Sync now",
+      "syncStarted": "Sync started — the list will update shortly.",
+      "empty": "No sources added yet.",
+      "loadError": "Failed to load sources.",
+      "addError": "Failed to add the source.",
+      "removeError": "Failed to remove the source.",
+      "toggleError": "Failed to update the source.",
+      "syncError": "Failed to start the sync."
     }
   },
   "donate": {

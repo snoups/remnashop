@@ -22,7 +22,9 @@ from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.blacklist import get_blacklist_providers
 from app.modules.gateways import GatewaysRepository, get_gateways_providers
+from app.modules.payments.gateways.factory import PaymentGatewayFactory
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.plans import get_plans_providers
@@ -62,6 +64,7 @@ class _PaymentsProvider(Provider):
 
     payment_order_repository = provide(PaymentOrderRepository)
     create_checkout_use_case = provide(CreateCheckoutUseCase)
+    payment_gateway_factory = provide(PaymentGatewayFactory, scope=Scope.APP)
 
 
 @pytest.fixture
@@ -78,6 +81,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_settings_providers(),
         *get_subscriptions_providers(),
         *get_translations_providers(),
+        *get_blacklist_providers(),
         _PaymentsProvider(),
         _TestSessionProvider(session),
     ]
@@ -179,6 +183,7 @@ async def test_checkout_returns_confirmation_url_for_a_valid_plan(
     await gateways_repository.update_settings(
         PaymentGatewayType.YOOKASSA, {"shop_id": "1000", "api_key": "test_key"}
     )
+    await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

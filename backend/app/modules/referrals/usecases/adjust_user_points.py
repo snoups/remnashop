@@ -32,6 +32,11 @@ class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
         target = await self._user_repository.get_by_id(data.user_id)
         if target is None:
             raise NotFoundError(f"User '{data.user_id}' not found")
+
+        # Belt-and-braces: the authoritative floor lives in credit_points' own
+        # UPDATE predicate (two concurrent debits would both pass a check made
+        # here), but rejecting the obvious case up front keeps the common
+        # failure out of a transaction that would only be rolled back anyway.
         if target.points + data.delta < 0:
             raise ValidationError(f"Adjustment would take user '{data.user_id}' points below zero")
 

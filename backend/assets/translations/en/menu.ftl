@@ -35,6 +35,7 @@ ntf-common =
     .cooldown-active = Please wait until { $available_at } before repeating this action.
     .trial-unavailable = Trial is not available.
     .connect-not-available = Connection is not available.
+    .access-restricted = Access is restricted.
 
 ntf-promocode =
     .not-found = Promocode not found.

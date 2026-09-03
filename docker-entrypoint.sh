@@ -34,7 +34,7 @@ case "$TARGET" in
         # starts a single worker-gauges poller (see app/worker/lifespan.py) --
         # a second child process would collide on the port and double-sample
         # the gauges.
-        exec taskiq worker -w 1 app.worker.broker:broker app.worker.lifespan app.modules.event_log.tasks app.modules.translations.tasks app.modules.subscriptions.tasks app.modules.payments.tasks app.modules.auth.tasks app.modules.oauth.tasks app.modules.referrals.tasks app.modules.backups.tasks
+        exec taskiq worker -w 1 app.worker.broker:broker app.worker.lifespan app.modules.event_log.tasks app.modules.translations.tasks app.modules.subscriptions.tasks app.modules.payments.tasks app.modules.auth.tasks app.modules.oauth.tasks app.modules.referrals.tasks app.modules.backups.tasks app.modules.blacklist.tasks app.modules.advertising.tasks
         ;;
     scheduler)
         # Only includes modules with a schedule-labeled task -- not a full
@@ -44,7 +44,7 @@ case "$TARGET" in
         # so it's an operational dependency for retry timing: a scheduler outage
         # stalls (does not lose -- ListRedisScheduleSource recovers past
         # buckets) all pending retries.
-        exec taskiq scheduler app.worker.scheduler:scheduler app.modules.event_log.tasks app.modules.subscriptions.tasks app.modules.payments.tasks app.modules.auth.tasks app.modules.backups.tasks
+        exec taskiq scheduler app.worker.scheduler:scheduler app.modules.event_log.tasks app.modules.subscriptions.tasks app.modules.payments.tasks app.modules.auth.tasks app.modules.backups.tasks app.modules.blacklist.tasks
         ;;
     *)
         echo "Usage: docker-entrypoint.sh {api|telegram|worker|scheduler}" >&2

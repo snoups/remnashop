@@ -1,15 +1,20 @@
 from datetime import datetime
-from typing import Optional, cast
+from decimal import Decimal
+from typing import Final, Optional, cast
 
 from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.payment_order import PaymentOrder
 from app.core.db.timestamp import NOW_FUNC
-from app.core.enums import PaymentOrderStatus
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import NotFoundError
 from app.modules.payments.dto import DEFAULT_PAGE_SIZE, CreatePaymentOrderDto, PaymentOrderDto
 from app.modules.subscriptions import PlanSnapshot
+
+# asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
+# large attributed-user list still fits after other predicates are added.
+_MAX_IN_PARAMS: Final[int] = 20_000
 
 
 class PaymentOrderRepository:
@@ -158,3 +163,38 @@ class PaymentOrderRepository:
         )
         rows = (await self.session.scalars(stmt)).all()
         return [self._to_dto(row) for row in rows], int(total or 0)
+
+    async def sum_paid_final_price_by_user_ids(
+        self, user_ids: list[int]
+    ) -> dict[Currency, Decimal]:
+        if not user_ids:
+            return {}
+        totals: dict[Currency, Decimal] = {}
+        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
+            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+            stmt = (
+                select(PaymentOrder.currency, func.sum(PaymentOrder.final_price))
+                .where(
+                    PaymentOrder.user_id.in_(chunk),
+                    PaymentOrder.status == PaymentOrderStatus.PAID,
+                )
+                .group_by(PaymentOrder.currency)
+            )
+            rows = (await self.session.execute(stmt)).tuples()
+            for currency, amount in rows.all():
+                totals[currency] = totals.get(currency, Decimal(0)) + amount
+        return totals
+
+    async def list_user_ids_with_paid_order(self, user_ids: list[int]) -> set[int]:
+        if not user_ids:
+            return set()
+        paid: set[int] = set()
+        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
+            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+            stmt = select(PaymentOrder.user_id.distinct()).where(
+                PaymentOrder.user_id.in_(chunk),
+                PaymentOrder.status == PaymentOrderStatus.PAID,
+            )
+            result = await self.session.execute(stmt)
+            paid.update(result.scalars().all())
+        return paid

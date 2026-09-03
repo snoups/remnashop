@@ -31,6 +31,9 @@ class EventBus:
     def autodiscover(self) -> None:
         # Imported here, not at module level: modules/*/events.py sits downstream
         # of core, so importing it eagerly at import time would be circular.
+        from app.modules.advertising.events import (  # noqa: PLC0415
+            register_subscribers as register_advertising_subscribers,
+        )
         from app.modules.auth.events import (  # noqa: PLC0415
             register_subscribers as register_auth_subscribers,
         )
@@ -48,6 +51,7 @@ class EventBus:
         register_oauth_subscribers(self)
         register_referral_subscribers(self)
         register_translations_subscribers(self)
+        register_advertising_subscribers(self)
 
         handler_count = sum(len(handlers) for handlers in self._handlers.values())
         logger.debug(f"Event bus autodiscovery complete: {handler_count} handler(s) registered")

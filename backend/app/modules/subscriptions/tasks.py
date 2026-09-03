@@ -85,6 +85,7 @@ async def purchase_subscription(
             purchase_type=PurchaseType(purchase_type),
             target_subscription_id=target_subscription_id,
             idempotency_key=idempotency_key,
+            consumes_purchase_discount=True,
         ),
     )
 

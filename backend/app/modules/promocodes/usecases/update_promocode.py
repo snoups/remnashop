@@ -18,7 +18,16 @@ class UpdatePromocodeUseCase(UseCase[UpdatePromocodeDto, PromocodeDto]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: UpdatePromocodeDto) -> PromocodeDto:
-        if data.availability == PromocodeAvailability.ALLOWED and data.allowed_user_ids == []:
+        # Validate the merged result, not the patch on its own: a PATCH
+        # carrying only allowed_user_ids=[] leaves availability untouched, so
+        # checking the patch alone lets an already-ALLOWED promocode end up
+        # with an empty allowlist -- still active, but redeemable by nobody.
+        current = await self._promocode_repository.get_by_id(data.promocode_id)
+        availability = data.availability or current.availability
+        allowed_user_ids = (
+            data.allowed_user_ids if data.allowed_user_ids is not None else current.allowed_user_ids
+        )
+        if availability == PromocodeAvailability.ALLOWED and not allowed_user_ids:
             raise ValidationError("availability=ALLOWED requires at least one allowed user id")
 
         async with self._uow:

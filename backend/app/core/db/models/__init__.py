@@ -1,4 +1,6 @@
 from app.core.db.models.active_locale import ActiveLocale
+from app.core.db.models.ad_link import AdLink
+from app.core.db.models.ad_link_attribution import AdLinkAttribution
 from app.core.db.models.addon import AddOn
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
@@ -8,6 +10,8 @@ from app.core.db.models.appearance_settings import AppearanceSettings
 from app.core.db.models.backup_run import BackupRun
 from app.core.db.models.backup_settings import BackupSettings
 from app.core.db.models.banner import Banner
+from app.core.db.models.blacklist import Blacklist
+from app.core.db.models.blacklist_source import BlacklistSource
 from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.bot_translation import BotTranslation
@@ -34,6 +38,8 @@ from app.core.db.models.user_session import UserSession
 
 __all__ = [
     "ActiveLocale",
+    "AdLink",
+    "AdLinkAttribution",
     "AddOn",
     "AddOnEntitlement",
     "AddOnGrantIdempotency",
@@ -43,6 +49,8 @@ __all__ = [
     "BackupRun",
     "BackupSettings",
     "Banner",
+    "Blacklist",
+    "BlacklistSource",
     "BotCommand",
     "BotSettings",
     "BotTranslation",

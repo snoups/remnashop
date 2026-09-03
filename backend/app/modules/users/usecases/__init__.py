@@ -1,4 +1,6 @@
-from app.modules.users.dto import SetUserPersonalDiscountDto
+from app.modules.users.dto import BulkBlockResultDto, SetUserPersonalDiscountDto
+from app.modules.users.usecases.block_user import BlockUserUseCase
+from app.modules.users.usecases.bulk_block_users import BulkBlockUsersUseCase
 from app.modules.users.usecases.create_admin import CreateAdminDto, CreateAdminUseCase
 from app.modules.users.usecases.delete_admin import DeleteAdminDto, DeleteAdminUseCase
 from app.modules.users.usecases.delete_user import DeleteUserDto, DeleteUserUseCase
@@ -12,6 +14,8 @@ from app.modules.users.usecases.register_telegram_user import (
     RegisterTelegramUserUseCase,
 )
 from app.modules.users.usecases.set_user_personal_discount import SetUserPersonalDiscountUseCase
+from app.modules.users.usecases.unblock_all_users import UnblockAllUsersUseCase
+from app.modules.users.usecases.unblock_user import UnblockUserUseCase
 from app.modules.users.usecases.update_admin import UpdateAdminDto, UpdateAdminUseCase
 from app.modules.users.usecases.update_own_profile import (
     UpdateOwnProfileDto,
@@ -23,6 +27,9 @@ from app.modules.users.usecases.update_own_security_settings import (
 )
 
 __all__ = [
+    "BlockUserUseCase",
+    "BulkBlockResultDto",
+    "BulkBlockUsersUseCase",
     "CreateAdminDto",
     "CreateAdminUseCase",
     "DeleteAdminDto",
@@ -41,6 +48,8 @@ __all__ = [
     "RegisterTelegramUserUseCase",
     "SetUserPersonalDiscountDto",
     "SetUserPersonalDiscountUseCase",
+    "UnblockAllUsersUseCase",
+    "UnblockUserUseCase",
     "UpdateAdminDto",
     "UpdateAdminUseCase",
     "UpdateOwnProfileDto",

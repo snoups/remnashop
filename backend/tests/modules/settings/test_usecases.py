@@ -653,9 +653,10 @@ async def test_remove_locale_publishes_locale_deactivated_event(
     uow: UnitOfWork,
     session: AsyncSession,
     event_publisher: EventPublisher,
+    config: AppConfig,
 ) -> None:
     add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
-    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher)
+    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher, config)
     await add_use_case(OWNER, Locale.RU)
 
     await remove_use_case(OWNER, Locale.RU)
@@ -670,13 +671,32 @@ async def test_remove_locale_publishes_locale_deactivated_event(
     assert row.payload["locale"] == Locale.RU
 
 
-async def test_remove_locale_rejects_en(
-    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
+async def test_remove_locale_rejects_the_default_locale(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    config: AppConfig,
 ) -> None:
-    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher)
+    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher, config)
 
     with pytest.raises(ValidationError):
-        await remove_use_case(OWNER, Locale.EN)
+        await remove_use_case(OWNER, config.default_locale)
+
+
+async def test_remove_locale_rejects_a_non_en_default_locale(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    config: AppConfig,
+) -> None:
+    # The guard has to follow APP_DEFAULT_LOCALE, not a hardcoded `en`: the
+    # default locale is the TranslatorHub's root_locale, and losing it crashes
+    # the telegram process on startup rather than just dropping a language.
+    ru_default = config.model_copy(update={"default_locale": Locale.RU})
+    remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher, ru_default)
+
+    with pytest.raises(ValidationError):
+        await remove_use_case(OWNER, Locale.RU)
 
 
 async def test_regular_user_cannot_add_locale(

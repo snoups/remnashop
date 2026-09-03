@@ -120,3 +120,10 @@ class PromoteAdminDto:
 class SetUserPersonalDiscountDto:
     user_id: int
     percent: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class BulkBlockResultDto:
+    blocked: int
+    added_to_list: int
+    skipped: int

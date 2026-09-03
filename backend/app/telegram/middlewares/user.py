@@ -8,6 +8,7 @@ from app.core.config import AppConfig
 from app.core.constants import CONFIG_KEY, CONTAINER_KEY, USER_KEY
 from app.core.enums import MiddlewareEventType
 from app.modules.users import RegisterTelegramUserDto, RegisterTelegramUserUseCase
+from app.telegram.middlewares._codes import parse_ad_link_code
 from app.telegram.middlewares.base import EventTypedMiddleware
 
 
@@ -45,6 +46,7 @@ class UserMiddleware(EventTypedMiddleware):
                 telegram_id=aiogram_user.id,
                 name=aiogram_user.full_name,
                 language=config.default_locale,
+                ad_link_code=parse_ad_link_code(event),
             )
         )
         return await handler(event, data)

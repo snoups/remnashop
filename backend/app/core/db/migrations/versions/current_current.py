@@ -227,6 +227,55 @@ def upgrade() -> None:
         sa.UniqueConstraint("name", "locale", name="ux_banners_name_locale"),
     )
     op.create_table(
+        "blacklist",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column(
+            "blocked_telegram_ids", sa.ARRAY(sa.BigInteger()), server_default="{}", nullable=False
+        ),
+        sa.Column("blocked_emails", sa.ARRAY(sa.Text()), server_default="{}", nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "blacklist_sources",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("url", sa.Text(), nullable=False),
+        sa.Column("name", sa.Text(), nullable=True),
+        sa.Column("enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column(
+            "blocked_telegram_ids", sa.ARRAY(sa.BigInteger()), server_default="{}", nullable=False
+        ),
+        sa.Column("blocked_emails", sa.ARRAY(sa.Text()), server_default="{}", nullable=False),
+        sa.Column("last_synced_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("last_error", sa.Text(), nullable=True),
+        sa.Column("entries_count", sa.Integer(), server_default="0", nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("url"),
+    )
+    op.create_table(
         "bot_commands",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("command", sa.String(length=32), nullable=False),
@@ -691,6 +740,37 @@ def upgrade() -> None:
         postgresql_where=sa.text("role = 'OWNER'"),
     )
     op.create_table(
+        "ad_links",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("code", sa.String(length=64), nullable=False),
+        sa.Column("cost", sa.Numeric(precision=12, scale=2), server_default="0", nullable=False),
+        sa.Column(
+            "cost_currency",
+            sa.Enum("USD", "XTR", "RUB", name="currency"),
+            server_default="USD",
+            nullable=False,
+        ),
+        sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("note", sa.Text(), nullable=True),
+        sa.Column("created_by", sa.Integer(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_ad_links_code"), "ad_links", ["code"], unique=True)
+    op.create_table(
         "addon_price_overrides",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("addon_id", sa.Integer(), nullable=False),
@@ -1038,6 +1118,34 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_user_sessions_user_id"), "user_sessions", ["user_id"], unique=False)
     op.create_table(
+        "ad_link_attributions",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("ad_link_id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "channel",
+            sa.Enum("BOT", "WEBCABINET", name="adlinkchannel"),
+            server_default="BOT",
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["ad_link_id"], ["ad_links.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("user_id"),
+    )
+    op.create_index(
+        op.f("ix_ad_link_attributions_ad_link_id"),
+        "ad_link_attributions",
+        ["ad_link_id"],
+        unique=False,
+    )
+    op.create_table(
         "addon_entitlements",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("subscription_id", sa.Integer(), nullable=False),
@@ -1347,6 +1455,8 @@ def downgrade() -> None:
     op.drop_table("event_log_entries")
     op.drop_index(op.f("ix_addon_entitlements_subscription_id"), table_name="addon_entitlements")
     op.drop_table("addon_entitlements")
+    op.drop_index(op.f("ix_ad_link_attributions_ad_link_id"), table_name="ad_link_attributions")
+    op.drop_table("ad_link_attributions")
     op.drop_index(op.f("ix_user_sessions_user_id"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_revoked_at"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_refresh_token_hash"), table_name="user_sessions")
@@ -1382,6 +1492,8 @@ def downgrade() -> None:
     op.drop_table("api_tokens")
     op.drop_index(op.f("ix_addon_price_overrides_addon_id"), table_name="addon_price_overrides")
     op.drop_table("addon_price_overrides")
+    op.drop_index(op.f("ix_ad_links_code"), table_name="ad_links")
+    op.drop_table("ad_links")
     op.drop_index(
         "ux_users_single_owner", table_name="users", postgresql_where=sa.text("role = 'OWNER'")
     )
@@ -1405,6 +1517,8 @@ def downgrade() -> None:
     op.drop_table("bot_translations")
     op.drop_table("bot_settings")
     op.drop_table("bot_commands")
+    op.drop_table("blacklist_sources")
+    op.drop_table("blacklist")
     op.drop_table("banners")
     op.drop_table("backup_settings")
     op.drop_table("appearance_settings")

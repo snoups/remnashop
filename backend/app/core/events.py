@@ -49,8 +49,12 @@ class UserEvent(BaseEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class ActorTargetEvent(BaseEvent):
+class ActorEvent(BaseEvent):
     actor: UserDto
+
+
+@dataclass(frozen=True, kw_only=True)
+class ActorTargetEvent(ActorEvent):
     target: UserDto
 
 

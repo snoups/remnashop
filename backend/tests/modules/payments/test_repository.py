@@ -1,6 +1,8 @@
 from datetime import timedelta
 from decimal import Decimal
 
+import pytest
+
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -13,6 +15,8 @@ from app.core.utils.time import datetime_now
 from app.modules.payments.dto import CreatePaymentOrderDto
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.plans.repository import PlanRepository
+from app.modules.users.dto import CreateUserDto
+from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
@@ -255,3 +259,128 @@ async def test_mark_expired_pending_only_touches_expired_pending_rows(
     assert (await payment_order_repository.get_by_id(expired_paid.id)).status == (
         PaymentOrderStatus.PAID
     )
+
+
+async def test_sum_paid_final_price_by_user_ids_groups_by_currency(
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
+    user_repository: UserRepository,
+    plan_id: int,
+) -> None:
+    buyer_a = await user_repository.create(CreateUserDto(name="a", telegram_id=900_101))
+    buyer_b = await user_repository.create(CreateUserDto(name="b", telegram_id=900_102))
+
+    async with uow:
+        order_a = await payment_order_repository.create(
+            _order_dto(user_id=buyer_a.id, plan_id=plan_id, idempotency_key="sum-a")
+        )
+        order_b = await payment_order_repository.create(
+            _order_dto(user_id=buyer_b.id, plan_id=plan_id, idempotency_key="sum-b")
+        )
+    await payment_order_repository.mark_status(order_a.id, PaymentOrderStatus.PAID)
+    await payment_order_repository.mark_status(order_b.id, PaymentOrderStatus.PAID)
+
+    totals = await payment_order_repository.sum_paid_final_price_by_user_ids(
+        [buyer_a.id, buyer_b.id]
+    )
+
+    assert totals == {Currency.RUB: Decimal("1000")}
+
+
+async def test_sum_paid_final_price_by_user_ids_ignores_unpaid_and_unlisted_users(
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
+    user_repository: UserRepository,
+    plan_id: int,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="c", telegram_id=900_103))
+    unpaid_buyer = await user_repository.create(CreateUserDto(name="d", telegram_id=900_104))
+
+    async with uow:
+        paid = await payment_order_repository.create(
+            _order_dto(user_id=buyer.id, plan_id=plan_id, idempotency_key="sum-c")
+        )
+        await payment_order_repository.create(
+            _order_dto(user_id=unpaid_buyer.id, plan_id=plan_id, idempotency_key="sum-d")
+        )
+    await payment_order_repository.mark_status(paid.id, PaymentOrderStatus.PAID)
+
+    totals = await payment_order_repository.sum_paid_final_price_by_user_ids([buyer.id])
+
+    assert totals == {Currency.RUB: Decimal("500")}
+
+
+async def test_sum_paid_final_price_by_user_ids_empty_input_returns_empty_dict(
+    payment_order_repository: PaymentOrderRepository,
+) -> None:
+    assert await payment_order_repository.sum_paid_final_price_by_user_ids([]) == {}
+
+
+async def test_list_user_ids_with_paid_order(
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
+    user_repository: UserRepository,
+    plan_id: int,
+) -> None:
+    payer = await user_repository.create(CreateUserDto(name="e", telegram_id=900_105))
+    non_payer = await user_repository.create(CreateUserDto(name="f", telegram_id=900_106))
+
+    async with uow:
+        order = await payment_order_repository.create(
+            _order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="paid-e")
+        )
+    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+
+    paid_ids = await payment_order_repository.list_user_ids_with_paid_order(
+        [payer.id, non_payer.id]
+    )
+
+    assert paid_ids == {payer.id}
+
+
+async def test_user_id_queries_chunk_and_merge_beyond_the_in_param_cap(
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
+    user_repository: UserRepository,
+    plan_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.modules.payments.repository._MAX_IN_PARAMS", 2)
+
+    rub_buyers = [
+        await user_repository.create(CreateUserDto(name=f"rub{i}", telegram_id=900_200 + i))
+        for i in range(3)
+    ]
+    usd_buyers = [
+        await user_repository.create(CreateUserDto(name=f"usd{i}", telegram_id=900_210 + i))
+        for i in range(2)
+    ]
+
+    async with uow:
+        for i, buyer in enumerate(rub_buyers):
+            order = await payment_order_repository.create(
+                _order_dto(user_id=buyer.id, plan_id=plan_id, idempotency_key=f"chunk-rub-{i}")
+            )
+            await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+        for i, buyer in enumerate(usd_buyers):
+            order = await payment_order_repository.create(
+                CreatePaymentOrderDto(
+                    **{
+                        **_order_dto(
+                            user_id=buyer.id, plan_id=plan_id, idempotency_key=f"chunk-usd-{i}"
+                        ).__dict__,
+                        "currency": Currency.USD,
+                        "base_price": Decimal("100"),
+                        "final_price": Decimal("100"),
+                    }
+                )
+            )
+            await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+
+    all_ids = [b.id for b in rub_buyers + usd_buyers]
+
+    totals = await payment_order_repository.sum_paid_final_price_by_user_ids(all_ids)
+    assert totals == {Currency.RUB: Decimal("1500"), Currency.USD: Decimal("200")}
+
+    paid_ids = await payment_order_repository.list_user_ids_with_paid_order(all_ids)
+    assert paid_ids == set(all_ids)

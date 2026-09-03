@@ -6,6 +6,7 @@ import { DashboardLayout } from "@widgets/dashboard-layout/DashboardLayout";
 import {
   AdminsPage,
   ApiTokensPage,
+  BlacklistPage,
   AppearanceSettingsPage,
   BotSettingsPage,
   DashboardPage,
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: "profile", element: <ProfilePage /> },
       { path: "admins", element: <AdminsPage /> },
       { path: "users", element: <UsersPage /> },
+      { path: "blacklist", element: <BlacklistPage /> },
       { path: "pricing", element: <PricingPage /> },
       { path: "event-log", element: <EventLogPage /> },
     ],
