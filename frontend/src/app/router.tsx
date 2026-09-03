@@ -5,7 +5,9 @@ import { DashboardLayout } from "@widgets/dashboard-layout/DashboardLayout";
 
 import {
   AdminsPage,
+  AdvertisingPage,
   ApiTokensPage,
+  BackupsPage,
   BlacklistPage,
   AppearanceSettingsPage,
   BotSettingsPage,
@@ -16,9 +18,14 @@ import {
   LoginPage,
   NotFoundPage,
   OAuthCallbackPage,
+  PaymentsPage,
+  PlansPage,
   PricingPage,
+  PromocodesPage,
+  ReferralsPage,
   ProfilePage,
   SettingsPage,
+  SubscriptionsPage,
   UsersPage,
 } from "./lazy-pages";
 
@@ -58,6 +65,13 @@ export const router = createBrowserRouter([
       { path: "profile", element: <ProfilePage /> },
       { path: "admins", element: <AdminsPage /> },
       { path: "users", element: <UsersPage /> },
+      { path: "subscriptions", element: <SubscriptionsPage /> },
+      { path: "payments", element: <PaymentsPage /> },
+      { path: "plans", element: <PlansPage /> },
+      { path: "promocodes", element: <PromocodesPage /> },
+      { path: "referrals", element: <ReferralsPage /> },
+      { path: "advertising", element: <AdvertisingPage /> },
+      { path: "backups", element: <BackupsPage /> },
       { path: "blacklist", element: <BlacklistPage /> },
       { path: "pricing", element: <PricingPage /> },
       { path: "event-log", element: <EventLogPage /> },

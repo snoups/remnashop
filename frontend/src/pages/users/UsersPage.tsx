@@ -3,6 +3,7 @@ import {
   Ban,
   ChevronDown,
   Filter,
+  Gift,
   Inbox,
   Info,
   LaptopMinimal,
@@ -28,6 +29,7 @@ import {
 } from "@entities/user/api";
 import { deleteAdmin } from "@entities/admin/api";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
+import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
 import { UserSessionsDialog } from "@features/user-sessions/UserSessionsDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
@@ -91,6 +93,7 @@ export function UsersPage() {
   const currentUserId = currentUserState.kind === "ready" ? currentUserState.data.id : null;
   const [sessionsUser, setSessionsUser] = useState<UserListItem | null>(null);
   const [detailsUser, setDetailsUser] = useState<UserListItem | null>(null);
+  const [referralsUser, setReferralsUser] = useState<UserListItem | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
 
@@ -327,6 +330,13 @@ export function UsersPage() {
                         onClick: () => setSessionsUser(user),
                       });
                     }
+                    if (permissions.includes("REFERRALS_VIEW")) {
+                      menuItems.push({
+                        label: t("referrals.stats.button"),
+                        icon: Gift,
+                        onClick: () => setReferralsUser(user),
+                      });
+                    }
                     if (permissions.includes(user.is_blocked ? "USERS_UNBLOCK" : "USERS_BLOCK")) {
                       menuItems.push({
                         label: user.is_blocked ? t("users.unblock.button") : t("users.block.button"),
@@ -416,6 +426,15 @@ export function UsersPage() {
       )}
 
       {detailsUser && <UserDetailsDialog user={detailsUser} onClose={() => setDetailsUser(null)} />}
+
+      {referralsUser && (
+        <UserReferralsDialog
+          userId={referralsUser.id}
+          userName={referralsUser.name}
+          canAdjustPoints={permissions.includes("REFERRALS_POINTS_MANAGE")}
+          onClose={() => setReferralsUser(null)}
+        />
+      )}
     </div>
   );
 }

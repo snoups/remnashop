@@ -115,6 +115,10 @@
     "users": "Users",
     "plans": "Plans",
     "subscriptions": "Subscriptions",
+    "promocodes": "Promocodes",
+    "referrals": "Referrals",
+    "advertising": "Advertising",
+    "backups": "Backups",
     "servers": "Servers",
     "payments": "Payments",
     "support": "Support",
@@ -826,6 +830,447 @@
       "removeError": "Failed to remove the source.",
       "toggleError": "Failed to update the source.",
       "syncError": "Failed to start the sync."
+    }
+  },
+  "backups": {
+    "title": "Backups",
+    "loading": "Loading…",
+    "loadError": "Failed to load backups.",
+    "empty": "No backup runs yet.",
+    "kind": {
+      "DATABASE": "Database",
+      "ASSETS": "Assets"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "RUNNING": "Running",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed"
+    },
+    "settings": {
+      "enabledLabel": "Scheduled backups",
+      "intervalLabel": "Interval (hours)",
+      "maxFilesLabel": "Keep last",
+      "maxFilesHint": "files",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Settings saved.",
+      "error": "Failed to save settings.",
+      "runNow": "Run backup now",
+      "runKindLabel": "Kind",
+      "runStarted": "Backup started.",
+      "runError": "Failed to start the backup."
+    },
+    "runs": {
+      "title": "Backup runs",
+      "sizeUnknown": "—",
+      "downloadButton": "Download",
+      "downloadError": "Failed to download the backup.",
+      "deleteButton": "Delete run",
+      "deleteConfirm": "Permanently delete this backup run? This cannot be undone.",
+      "deleteError": "Failed to delete the backup run.",
+      "createdAt": "Created",
+      "finishedAt": "Finished",
+      "notFinished": "—",
+      "loadMore": "Show more",
+      "loadingMore": "Loading…"
+    }
+  },
+  "advertising": {
+    "title": "Advertising links",
+    "loading": "Loading…",
+    "loadError": "Failed to load advertising links.",
+    "empty": "No advertising links yet.",
+    "filters": {
+      "status": "Status",
+      "statusAll": "All",
+      "statusActive": "Active",
+      "statusInactive": "Inactive"
+    },
+    "fields": {
+      "cost": "Cost"
+    },
+    "pagination": {
+      "loadMore": "Show more",
+      "loadingMore": "Loading…"
+    },
+    "channel": {
+      "BOT": "Bot",
+      "WEBCABINET": "Web cabinet"
+    },
+    "create": {
+      "button": "New link",
+      "title": "New advertising link",
+      "nameLabel": "Name",
+      "codeLabel": "Code",
+      "codePlaceholder": "e.g. spring_launch",
+      "generate": "Generate",
+      "costLabel": "Cost",
+      "currencyLabel": "Currency",
+      "noteLabel": "Note",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Create",
+      "saving": "Creating…",
+      "saved": "Advertising link created.",
+      "error": "Failed to create the advertising link."
+    },
+    "edit": {
+      "button": "Edit",
+      "title": "Edit advertising link",
+      "nameLabel": "Name",
+      "costLabel": "Cost",
+      "currencyLabel": "Currency",
+      "activeLabel": "Active",
+      "noteLabel": "Note",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Advertising link updated.",
+      "error": "Failed to update the advertising link."
+    },
+    "delete": {
+      "button": "Delete link",
+      "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
+      "error": "Failed to delete the advertising link."
+    },
+    "stats": {
+      "button": "Stats",
+      "title": "Link stats",
+      "close": "Close",
+      "attributions": "Attributions",
+      "paidCount": "Paid",
+      "conversionRate": "Conversion",
+      "revenue": "Revenue",
+      "cost": "Cost",
+      "cpa": "CPA",
+      "roi": "ROI",
+      "none": "—",
+      "usersTitle": "Attributed users",
+      "usersEmpty": "No attributed users yet.",
+      "loadError": "Failed to load stats.",
+      "hasPaid": "Paid",
+      "notPaid": "Not paid",
+      "loadMore": "Show more",
+      "loadingMore": "Loading…"
+    }
+  },
+  "referrals": {
+    "title": "Referrals",
+    "loading": "Loading…",
+    "loadError": "Failed to load referral settings.",
+    "settings": {
+      "enabledLabel": "Referral program",
+      "maxLevelLabel": "Levels",
+      "accrualLabel": "Accrual strategy",
+      "accrual": {
+        "FIRST_PAYMENT": "First payment only",
+        "EVERY_PAYMENT": "Every payment"
+      },
+      "rewardTypeLabel": "Reward type",
+      "rewardType": {
+        "EXTRA_DAYS": "Extra days",
+        "POINTS": "Points"
+      },
+      "levelRewardLabel": "Level {{level}} reward",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Settings saved.",
+      "error": "Failed to save settings."
+    },
+    "stats": {
+      "button": "Referral stats",
+      "title": "Referral stats",
+      "close": "Close",
+      "referralCodeLabel": "Referral code",
+      "referrerLabel": "Referred by",
+      "pointsLabel": "Points",
+      "none": "—",
+      "levelCountLabel": "Level {{level}}",
+      "rewardsTitle": "Reward history",
+      "rewardsEmpty": "No rewards yet.",
+      "adjustLabel": "Adjust points",
+      "adjustPlaceholder": "e.g. 10 or -5",
+      "adjustButton": "Apply",
+      "adjustSaved": "Points adjusted.",
+      "adjustError": "Failed to adjust points.",
+      "loadError": "Failed to load referral stats."
+    }
+  },
+  "promocodes": {
+    "title": "Promocodes",
+    "loading": "Loading…",
+    "loadError": "Failed to load promocodes.",
+    "empty": "No promocodes yet.",
+    "noExpiry": "No expiry",
+    "unlimitedActivations": "Unlimited",
+    "rewardType": {
+      "DURATION": "Extra days",
+      "TRAFFIC": "Extra traffic",
+      "DEVICES": "Extra devices",
+      "SUBSCRIPTION": "Free subscription",
+      "PERSONAL_DISCOUNT": "Personal discount",
+      "PURCHASE_DISCOUNT": "Purchase discount"
+    },
+    "availability": {
+      "ALL": "Everyone",
+      "NEW": "New users",
+      "EXISTING": "Existing users",
+      "INVITED": "Invited only",
+      "ALLOWED": "Allow-listed only"
+    },
+    "fields": {
+      "activations": "Activations",
+      "expires": "Expires"
+    },
+    "create": {
+      "button": "New promocode",
+      "title": "New promocode",
+      "codeLabel": "Code",
+      "codePlaceholder": "e.g. WELCOME30",
+      "generate": "Generate",
+      "rewardTypeLabel": "Reward type",
+      "rewardDaysLabel": "Extra days",
+      "rewardPercentLabel": "Discount (%)",
+      "rewardAddonLabel": "Add-on",
+      "rewardAddonPlaceholder": "Select an add-on",
+      "rewardAddonEmpty": "No add-ons of this type exist yet",
+      "rewardPlanLabel": "Plan",
+      "rewardPlanPlaceholder": "Select a plan",
+      "rewardPlanEmpty": "No plans exist yet",
+      "rewardDurationDaysLabel": "Duration (days)",
+      "availabilityLabel": "Availability",
+      "allowedUserIdsLabel": "Allowed user IDs",
+      "allowedUserIdsHint": "One per line",
+      "expiresLabel": "Expires",
+      "expiresPlaceholder": "No expiry",
+      "clearDate": "Clear date",
+      "maxActivationsLabel": "Max activations",
+      "maxActivationsHint": "Empty = unlimited",
+      "reusableLabel": "Reusable by the same user",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Create",
+      "saving": "Creating…",
+      "saved": "Promocode created.",
+      "error": "Failed to create the promocode."
+    },
+    "edit": {
+      "button": "Edit",
+      "title": "Edit promocode",
+      "activeLabel": "Active",
+      "availabilityLabel": "Availability",
+      "allowedUserIdsLabel": "Allowed user IDs",
+      "allowedUserIdsHint": "One per line",
+      "expiresLabel": "Expires",
+      "expiresPlaceholder": "No expiry",
+      "clearDate": "Clear date",
+      "maxActivationsLabel": "Max activations",
+      "maxActivationsHint": "Empty = unlimited",
+      "reusableLabel": "Reusable by the same user",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Promocode updated.",
+      "error": "Failed to update the promocode."
+    },
+    "delete": {
+      "button": "Delete promocode",
+      "confirm": "Permanently delete \"{{code}}\"? This cannot be undone.",
+      "error": "Failed to delete the promocode."
+    }
+  },
+  "plans": {
+    "title": "Plans",
+    "loading": "Loading…",
+    "loadError": "Failed to load plans.",
+    "empty": "No plans yet.",
+    "unlimited": "Unlimited",
+    "reorderError": "Failed to reorder plans.",
+    "create": {
+      "button": "New plan"
+    },
+    "edit": {
+      "createTitle": "New plan",
+      "editTitle": "Edit plan",
+      "button": "Edit",
+      "publicCodeLabel": "Public code",
+      "publicCodePlaceholder": "e.g. premium",
+      "nameLabel": "Name",
+      "descriptionLabel": "Description",
+      "tagLabel": "Tag",
+      "typeLabel": "Type",
+      "type": {
+        "TRAFFIC": "Traffic",
+        "DEVICES": "Devices",
+        "BOTH": "Both",
+        "UNLIMITED": "Unlimited"
+      },
+      "strategyLabel": "Reset strategy",
+      "strategy": {
+        "NO_RESET": "No reset",
+        "DAY": "Daily",
+        "WEEK": "Weekly",
+        "MONTH": "Monthly",
+        "MONTH_ROLLING": "Monthly (rolling)"
+      },
+      "trafficLabel": "Traffic limit (GB)",
+      "trafficHint": "0 = unlimited",
+      "deviceLabel": "Device limit",
+      "deviceHint": "0 = unlimited",
+      "isTrialLabel": "Trial plan",
+      "isActiveLabel": "Active",
+      "durationsTitle": "Durations",
+      "durationsHint": "Per-currency price overrides are managed on the Pricing page.",
+      "daysLabel": "Days",
+      "basePriceLabel": "Base price",
+      "addDuration": "Add duration",
+      "removeDuration": "Remove",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Plan saved.",
+      "error": "Failed to save the plan."
+    },
+    "access": {
+      "button": "Access",
+      "title": "Plan access",
+      "availabilityLabel": "Availability",
+      "availability": {
+        "ALL": "Everyone",
+        "NEW": "New users",
+        "EXISTING": "Existing users",
+        "INVITED": "Invited only",
+        "ALLOWED": "Allow-listed only",
+        "LINK": "Via link only"
+      },
+      "telegramIdsLabel": "Allowed Telegram IDs",
+      "telegramIdsHint": "One per line",
+      "emailsLabel": "Allowed emails",
+      "emailsHint": "One per line",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Access updated.",
+      "error": "Failed to update access."
+    },
+    "delete": {
+      "button": "Delete plan",
+      "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
+      "error": "Failed to delete the plan."
+    }
+  },
+  "payments": {
+    "title": "Payments",
+    "loading": "Loading…",
+    "loadError": "Failed to load payments.",
+    "empty": "No payment orders found.",
+    "orderLabel": "Order #{{id}}",
+    "filters": {
+      "status": "Status",
+      "statusAll": "All statuses"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "PAID": "Paid",
+      "FAILED": "Failed",
+      "EXPIRED": "Expired",
+      "CANCELED": "Canceled"
+    },
+    "fields": {
+      "expires": "Expires"
+    },
+    "pagination": {
+      "loadMore": "Show more",
+      "loadingMore": "Loading…"
+    },
+    "purchaseType": {
+      "NEW": "New",
+      "RENEW": "Renewal",
+      "CHANGE": "Change"
+    },
+    "discountSource": {
+      "NONE": "None",
+      "PERSONAL": "Personal",
+      "PURCHASE": "Purchase"
+    },
+    "details": {
+      "button": "Details",
+      "close": "Close",
+      "user": "User",
+      "gateway": "Gateway",
+      "purchaseType": "Purchase type",
+      "targetSubscription": "Target subscription",
+      "externalPaymentId": "External payment ID",
+      "discount": "Discount",
+      "customerEmail": "Customer email",
+      "idempotencyKey": "Idempotency key",
+      "expiresAt": "Expires at",
+      "price": "Price",
+      "none": "—"
+    }
+  },
+  "subscriptions": {
+    "title": "Subscriptions",
+    "loading": "Loading…",
+    "loadError": "Failed to load subscriptions.",
+    "empty": "No subscriptions found.",
+    "trial": "Trial",
+    "unlimited": "Unlimited",
+    "userLabel": "User #{{id}}",
+    "filters": {
+      "status": "Status",
+      "statusAll": "All statuses"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "LIMITED": "Limited",
+      "EXPIRED": "Expired",
+      "DISABLED": "Disabled",
+      "DELETED": "Deleted"
+    },
+    "fields": {
+      "traffic": "Traffic",
+      "devices": "Devices",
+      "expires": "Expires",
+      "squads": "Squads: {{count}}"
+    },
+    "pagination": {
+      "loadMore": "Show more",
+      "loadingMore": "Loading…"
+    },
+    "edit": {
+      "button": "Edit",
+      "title": "Edit subscription",
+      "tagLabel": "Tag",
+      "tagPlaceholder": "e.g. vip",
+      "trafficLabel": "Traffic limit (GB)",
+      "trafficHint": "0 = unlimited",
+      "deviceLabel": "Device limit",
+      "deviceHint": "0 = unlimited",
+      "strategyLabel": "Reset strategy",
+      "strategy": {
+        "NO_RESET": "No reset",
+        "DAY": "Daily",
+        "WEEK": "Weekly",
+        "MONTH": "Monthly",
+        "MONTH_ROLLING": "Monthly (rolling)"
+      },
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Subscription updated.",
+      "error": "Failed to update the subscription."
+    },
+    "delete": {
+      "button": "Delete subscription",
+      "confirm": "Permanently delete subscription #{{id}}? This cannot be undone.",
+      "error": "Failed to delete the subscription."
     }
   },
   "donate": {

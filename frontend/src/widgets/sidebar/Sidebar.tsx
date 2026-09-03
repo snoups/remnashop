@@ -2,14 +2,18 @@ import {
   Ban,
   Coins,
   CreditCard,
+  Database,
+  Gift,
   LayoutGrid,
   Layers,
+  Link2,
   MessageSquare,
   ScrollText,
   Server,
   Settings,
   ShieldCheck,
   Tag,
+  Ticket,
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -31,10 +35,7 @@ const NAV_LINKS: { key: string; to: string; icon: ComponentType<{ className?: st
 ];
 
 const DISABLED_ITEMS: { key: string; icon: ComponentType<{ className?: string }> }[] = [
-  { key: "subscriptions", icon: Layers },
   { key: "servers", icon: Server },
-  { key: "payments", icon: CreditCard },
-  { key: "plans", icon: Tag },
   { key: "support", icon: MessageSquare },
 ];
 
@@ -126,6 +127,84 @@ export function Sidebar() {
           </MotionNavLink>
         )}
 
+        {permissions.includes("SUBSCRIPTIONS_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/subscriptions"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Layers} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.subscriptions")}</span>
+          </MotionNavLink>
+        )}
+
+        {permissions.includes("PLANS_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/plans"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Tag} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.plans")}</span>
+          </MotionNavLink>
+        )}
+
+        {permissions.includes("PROMOCODES_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/promocodes"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Ticket} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.promocodes")}</span>
+          </MotionNavLink>
+        )}
+
+        {permissions.includes("REFERRALS_SETTINGS_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/referrals"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Gift} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.referrals")}</span>
+          </MotionNavLink>
+        )}
+
+        {permissions.includes("AD_LINKS_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/advertising"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Link2} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.advertising")}</span>
+          </MotionNavLink>
+        )}
+
+        {permissions.includes("PAYMENTS_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/payments"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={CreditCard} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.payments")}</span>
+          </MotionNavLink>
+        )}
+
         {isOwner && (
           <MotionNavLink
             to="/dashboard/admins"
@@ -160,6 +239,18 @@ export function Sidebar() {
           >
             <BounceIcon icon={ScrollText} size={17} hoverSize={23.5} />
             <span className={LABEL_CLASSNAME}>{t("sidebar.eventLog")}</span>
+          </MotionNavLink>
+        )}
+        {permissions.includes("BACKUPS_VIEW") && (
+          <MotionNavLink
+            to="/dashboard/backups"
+            className={linkClassName}
+            initial="rest"
+            whileHover="hover"
+            {...tapProps}
+          >
+            <BounceIcon icon={Database} size={17} hoverSize={23.5} />
+            <span className={LABEL_CLASSNAME}>{t("sidebar.backups")}</span>
           </MotionNavLink>
         )}
 
