@@ -99,6 +99,22 @@ class PurchaseType(UpperStrEnum):
     CHANGE = auto()
 
 
+class ReferralLevel(IntEnum):
+    FIRST = auto()
+    SECOND = auto()
+    THIRD = auto()
+
+
+class ReferralRewardType(UpperStrEnum):
+    EXTRA_DAYS = auto()
+    POINTS = auto()
+
+
+class ReferralAccrualStrategy(UpperStrEnum):
+    FIRST_PAYMENT = auto()
+    EVERY_PAYMENT = auto()
+
+
 class PaymentOrderStatus(UpperStrEnum):
     PENDING = auto()
     PAID = auto()

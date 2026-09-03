@@ -21,6 +21,7 @@ from app.modules.payments.gateways.yookassa import YooKassaGateway
 from app.modules.payments.pricing import quote_price
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.plans import PlanRepository, is_plan_purchasable_by
+from app.modules.referrals import ReferralRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
     PlanSnapshot,
@@ -50,6 +51,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         payment_order_repository: PaymentOrderRepository,
         subscription_repository: SubscriptionRepository,
         settings_repository: SettingsRepository,
+        referral_repository: ReferralRepository,
         uow: UnitOfWork,
     ) -> None:
         self._plan_repository = plan_repository
@@ -58,6 +60,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         self._payment_order_repository = payment_order_repository
         self._subscription_repository = subscription_repository
         self._settings_repository = settings_repository
+        self._referral_repository = referral_repository
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
@@ -82,7 +85,10 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         has_purchase_history = await self._subscription_repository.has_any_subscription(
             user.id, include_trial=False
         )
-        if not is_plan_purchasable_by(plan, user, has_purchase_history=has_purchase_history):
+        has_referrer = await self._referral_repository.has_referrer(user.id)
+        if not is_plan_purchasable_by(
+            plan, user, has_purchase_history=has_purchase_history, has_referrer=has_referrer
+        ):
             raise ValidationError("Plan is not available for purchase")
 
         await self._validate_provisioning_preconditions(data)

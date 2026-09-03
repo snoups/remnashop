@@ -27,6 +27,7 @@ from app.modules.payments.dto import CreatePaymentOrderDto
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.handle_yookassa_webhook import HandleYooKassaWebhookUseCase
 from app.modules.plans import get_plans_providers
+from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.translations import get_translations_providers
@@ -62,6 +63,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_plans_providers(),
+        *get_referrals_providers(),
         *get_gateways_providers(),
         *get_settings_providers(),
         *get_translations_providers(),

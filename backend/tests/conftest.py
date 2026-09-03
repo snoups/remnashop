@@ -38,6 +38,7 @@ from app.modules.event_log.repository import EventLogRepository
 from app.modules.gateways.repository import GatewaysRepository
 from app.modules.plans.repository import PlanRepository
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -161,6 +162,11 @@ def gateways_repository(session: AsyncSession) -> GatewaysRepository:
 @pytest.fixture
 def translations_repository(session: AsyncSession) -> TranslationsRepository:
     return TranslationsRepository(session)
+
+
+@pytest.fixture
+def referral_repository(session: AsyncSession) -> ReferralRepository:
+    return ReferralRepository(session)
 
 
 @pytest.fixture

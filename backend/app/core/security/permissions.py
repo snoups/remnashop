@@ -76,6 +76,10 @@ class Permission(UpperStrEnum):
     PROMOCODES_GENERATE_CODE = auto()
     PAYMENTS_VIEW = auto()
     PAYMENTS_ORDER_VIEW = auto()
+    REFERRALS_VIEW = auto()
+    REFERRALS_SETTINGS_VIEW = auto()
+    REFERRALS_SETTINGS_MANAGE = auto()
+    REFERRALS_POINTS_MANAGE = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -145,6 +149,10 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PROMOCODES_GENERATE_CODE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PAYMENTS_VIEW: PermissionMeta(resource="payments", kind="read"),
     Permission.PAYMENTS_ORDER_VIEW: PermissionMeta(resource="payments", kind="read"),
+    Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_SETTINGS_VIEW: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_SETTINGS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
+    Permission.REFERRALS_POINTS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
 }
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA) | {
@@ -203,6 +211,10 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.USERS_DISCOUNT_MANAGE,
         Permission.PAYMENTS_VIEW,
         Permission.PAYMENTS_ORDER_VIEW,
+        Permission.REFERRALS_VIEW,
+        Permission.REFERRALS_SETTINGS_VIEW,
+        Permission.REFERRALS_SETTINGS_MANAGE,
+        Permission.REFERRALS_POINTS_MANAGE,
     },
     Role.USER: set(),
 }

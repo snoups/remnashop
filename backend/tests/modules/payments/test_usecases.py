@@ -33,6 +33,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.referrals import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions import (
     CreateSubscriptionDto,
@@ -72,6 +73,7 @@ def create_checkout_use_case(
     payment_order_repository: PaymentOrderRepository,
     subscription_repository: SubscriptionRepository,
     settings_repository: SettingsRepository,
+    referral_repository: ReferralRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
     monkeypatch: pytest.MonkeyPatch,
@@ -87,6 +89,7 @@ def create_checkout_use_case(
         payment_order_repository,
         subscription_repository,
         settings_repository,
+        referral_repository,
         uow,
     )
 
@@ -353,6 +356,57 @@ async def test_create_checkout_rejects_an_existing_availability_plan_for_a_fresh
                 gateway_type=PaymentGatewayType.YOOKASSA,
             ),
         )
+
+
+async def test_create_checkout_invited_plan_requires_a_referrer(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    fake_gateway: _FakeGateway,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+) -> None:
+    await plan_repository.update_access(
+        UpdatePlanAccessDto(
+            plan_id=plan.id,
+            availability=PlanAvailability.INVITED,
+            allowed_telegram_ids=[],
+            allowed_emails=[],
+        )
+    )
+
+    with pytest.raises(ValidationError):
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                user_id=actor.id,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+            ),
+        )
+
+    referrer = await user_repository.create(CreateUserDto(name="referrer", telegram_id=700_002))
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=actor.id, level=1
+    )
+
+    result = await create_checkout_use_case(
+        actor,
+        CreateCheckoutDto(
+            user_id=actor.id,
+            plan_id=plan.id,
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+        ),
+    )
+
+    assert result.confirmation_url == fake_gateway.confirmation_url
 
 
 async def test_create_checkout_rejects_an_inactive_plan(

@@ -16,6 +16,8 @@ from app.modules.plans.api import admin_router as plans_admin_router
 from app.modules.plans.api import public_router as plans_public_router
 from app.modules.promocodes.api import admin_router as promocodes_admin_router
 from app.modules.promocodes.api import public_router as promocodes_public_router
+from app.modules.referrals.api import admin_router as referrals_admin_router
+from app.modules.referrals.api import public_router as referrals_public_router
 from app.modules.settings.api import admin_router as settings_admin_router
 from app.modules.settings.api import router as settings_router
 from app.modules.subscriptions.api import addons_router as subscriptions_addons_router
@@ -38,6 +40,8 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     plans_public_router,
     promocodes_admin_router,
     promocodes_public_router,
+    referrals_admin_router,
+    referrals_public_router,
     subscriptions_admin_router,
     subscriptions_addons_router,
     subscriptions_webhook_router,

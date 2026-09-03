@@ -21,7 +21,9 @@ from app.modules.auth.events import (
     SessionTheftDetectedEvent,
     UserSessionRevokedByAdminEvent,
 )
+from app.modules.referrals.tasks import assign_referral_rewards_task
 from app.modules.settings.events import LocaleActivatedEvent, LocaleDeactivatedEvent
+from app.modules.subscriptions.events import SubscriptionPurchasedEvent, SubscriptionRenewedEvent
 from app.modules.translations.tasks import (
     copy_locale_translations_task,
     delete_locale_translations_task,
@@ -50,6 +52,8 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
         UserSessionRevokedByAdminEvent(actor=_USER, target=_TARGET, session_id=1),
         LocaleActivatedEvent(locale=Locale.RU),
         LocaleDeactivatedEvent(locale=Locale.RU),
+        SubscriptionPurchasedEvent(user=_USER, subscription_id=1, plan_id=1, purchase_type="NEW"),
+        SubscriptionRenewedEvent(user=_USER, subscription_id=1, duration_days=30),
     ]
 }
 
@@ -160,14 +164,15 @@ async def test_autodiscovered_handler_reads_its_real_payload_shape(
     # attribute -- a wrong key would only surface as a caught, logged
     # exception (EventBus.dispatch_stored) or, for the locale-deletion
     # handler, as a task that silently never fires. This proves each one
-    # still matches what OutboxEventPublisher actually writes. The two
-    # translations handlers .kiq() a taskiq task -- stubbed out here since
-    # actually reaching the broker is outside what this test is about.
+    # still matches what OutboxEventPublisher actually writes. Handlers that
+    # .kiq() a taskiq task are stubbed out here since actually reaching the
+    # broker is outside what this test is about.
     async def _noop_kiq(*args: Any, **kwargs: Any) -> None:
         return None
 
     monkeypatch.setattr(copy_locale_translations_task, "kiq", _noop_kiq)
     monkeypatch.setattr(delete_locale_translations_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(assign_referral_rewards_task, "kiq", _noop_kiq)
 
     bus = EventBus()
     bus.autodiscover()
@@ -186,3 +191,49 @@ async def test_autodiscovered_handler_reads_its_real_payload_shape(
     )
 
     assert await bus.dispatch_stored(stored) is None
+
+
+async def test_subscription_purchased_handler_kicks_referral_rewards_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    async def _capture_kiq(*args: Any, **kwargs: Any) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
+
+    bus = EventBus()
+    bus.autodiscover()
+    event = SubscriptionPurchasedEvent(
+        user=_USER, subscription_id=42, plan_id=1, purchase_type="NEW"
+    )
+    stored = _stored_probe_event(
+        category=event.category, event_type=event.event_type, payload=_build_payload(event)
+    )
+
+    await bus.dispatch_stored(stored)
+
+    assert calls == [{"user_id": _USER.id, "subscription_id": 42, "is_new_purchase": True}]
+
+
+async def test_subscription_renewed_handler_kicks_referral_rewards_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    async def _capture_kiq(*args: Any, **kwargs: Any) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
+
+    bus = EventBus()
+    bus.autodiscover()
+    event = SubscriptionRenewedEvent(user=_USER, subscription_id=42, duration_days=30)
+    stored = _stored_probe_event(
+        category=event.category, event_type=event.event_type, payload=_build_payload(event)
+    )
+
+    await bus.dispatch_stored(stored)
+
+    assert calls == [{"user_id": _USER.id, "subscription_id": 42, "is_new_purchase": False}]

@@ -21,6 +21,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.auth.repository
     app.modules.auth.dto
@@ -47,6 +48,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.settings.repository
     app.modules.settings.dto
@@ -73,6 +75,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.users.repository
     app.modules.users.dto
@@ -102,6 +105,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.event_log.repository
     app.modules.event_log.dto
@@ -131,6 +135,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.banners.repository
     app.modules.banners.dto
@@ -158,6 +163,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.api_tokens.repository
     app.modules.api_tokens.dto
@@ -184,6 +190,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.translations.repository
     app.modules.translations.dto
@@ -216,6 +223,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.gateways.repository
     app.modules.gateways.dto
@@ -243,6 +251,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.plans.repository
     app.modules.plans.dto
@@ -269,6 +278,7 @@ source_modules =
     app.modules.plans
     app.modules.promocodes
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.subscriptions.repository
     app.modules.subscriptions.addon_repository
@@ -299,6 +309,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.payments
+    app.modules.referrals
 forbidden_modules =
     app.modules.promocodes.repository
     app.modules.promocodes.dto
@@ -325,8 +336,36 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
+    app.modules.referrals
 forbidden_modules =
     app.modules.payments.repository
     app.modules.payments.dto
     app.modules.payments.di
     app.modules.payments.usecases
+
+[importlinter:contract:referrals-encapsulation]
+name = referrals module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.gateways
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+    app.modules.payments
+forbidden_modules =
+    app.modules.referrals.repository
+    app.modules.referrals.dto
+    app.modules.referrals.di
+    app.modules.referrals.usecases

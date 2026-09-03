@@ -19,6 +19,9 @@ from app.core.db.models.plan import Plan
 from app.core.db.models.plan_duration import PlanDuration
 from app.core.db.models.plan_price import PlanPrice
 from app.core.db.models.promocode import Promocode, PromocodeActivation
+from app.core.db.models.referral import Referral
+from app.core.db.models.referral_reward import ReferralReward
+from app.core.db.models.referral_settings import ReferralSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
@@ -48,6 +51,9 @@ __all__ = [
     "PlanPrice",
     "Promocode",
     "PromocodeActivation",
+    "Referral",
+    "ReferralReward",
+    "ReferralSettings",
     "ShopSettings",
     "Subscription",
     "SubscriptionPurchaseIdempotency",

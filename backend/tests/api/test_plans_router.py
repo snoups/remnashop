@@ -20,6 +20,7 @@ from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.plans import get_plans_providers
+from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.translations import get_translations_providers
@@ -56,6 +57,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_settings_providers(),
         *get_translations_providers(),
         *get_plans_providers(),
+        *get_referrals_providers(),
         _SubscriptionsProvider(),
         _TestSessionProvider(session),
     ]

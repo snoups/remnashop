@@ -20,6 +20,7 @@ from app.modules.plans import PlanRepository, is_plan_purchasable_by
 from app.modules.promocodes.dto import ActivatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeActivatedEvent
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.referrals import ReferralRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
     GrantAddOnDto,
@@ -49,6 +50,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         user_repository: UserRepository,
         purchase_subscription_use_case: PurchaseSubscriptionUseCase,
         grant_addon_use_case: GrantAddOnUseCase,
+        referral_repository: ReferralRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
@@ -59,6 +61,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         self._user_repository = user_repository
         self._purchase_subscription_use_case = purchase_subscription_use_case
         self._grant_addon_use_case = grant_addon_use_case
+        self._referral_repository = referral_repository
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -143,8 +146,10 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
             if actor.id not in promo.allowed_user_ids:
                 raise ValidationError(f"Promocode '{promo.code}' is not available to this user")
             return
-        # INVITED: no modules.referrals exists yet to check against -- always deny,
-        # same pattern ListActivePlansUseCase already uses for the same gap.
+        # PromocodeAvailability.INVITED (promocode redemption eligibility) is
+        # intentionally out of scope for the referrals module -- see
+        # docs/superpowers/specs/2026-08-31-referrals-design.md §10; always deny
+        # for now.
         raise ValidationError(f"Promocode '{promo.code}' is not available to this user")
 
     async def _apply_reward(
@@ -186,8 +191,12 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
                 has_purchase_history = await self._subscription_repository.has_any_subscription(
                     actor.id, include_trial=False
                 )
+                has_referrer = await self._referral_repository.has_referrer(actor.id)
                 if not is_plan_purchasable_by(
-                    plan, actor, has_purchase_history=has_purchase_history
+                    plan,
+                    actor,
+                    has_purchase_history=has_purchase_history,
+                    has_referrer=has_referrer,
                 ):
                     raise ValidationError(f"Plan '{plan.id}' is not available for purchase")
                 await self._purchase_subscription_use_case(

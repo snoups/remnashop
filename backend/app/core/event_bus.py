@@ -34,11 +34,15 @@ class EventBus:
         from app.modules.auth.events import (  # noqa: PLC0415
             register_subscribers as register_auth_subscribers,
         )
+        from app.modules.referrals.events import (  # noqa: PLC0415
+            register_subscribers as register_referral_subscribers,
+        )
         from app.modules.translations.events import (  # noqa: PLC0415
             register_subscribers as register_translations_subscribers,
         )
 
         register_auth_subscribers(self)
+        register_referral_subscribers(self)
         register_translations_subscribers(self)
 
         handler_count = sum(len(handlers) for handlers in self._handlers.values())

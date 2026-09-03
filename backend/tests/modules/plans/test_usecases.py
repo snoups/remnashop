@@ -30,6 +30,7 @@ from app.modules.plans.usecases import (
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
+from app.modules.referrals import ReferralRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -85,7 +86,9 @@ async def test_regular_user_cannot_list_all_plans(plan_repository: PlanRepositor
 
 
 async def test_regular_user_can_list_active_plans(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
@@ -95,7 +98,7 @@ async def test_regular_user_can_list_active_plans(
     await _add_minimal_squad(plan_repository, created.id)
     await _add_minimal_duration(plan_repository, created.id)
     await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     plans = await use_case(REGULAR_USER)
 
@@ -103,20 +106,24 @@ async def test_regular_user_can_list_active_plans(
 
 
 async def test_list_active_plans_excludes_inactive(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     assert await use_case(REGULAR_USER) == []
 
 
 async def test_list_active_plans_excludes_plan_restricted_to_other_actor(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
@@ -134,13 +141,15 @@ async def test_list_active_plans_excludes_plan_restricted_to_other_actor(
             allowed_emails=[],
         )
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     assert await use_case(REGULAR_USER) == []
 
 
 async def test_list_active_plans_includes_plan_allowed_for_actor_telegram_id(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
@@ -161,7 +170,7 @@ async def test_list_active_plans_includes_plan_allowed_for_actor_telegram_id(
     invited_user = UserDto(
         id=3, telegram_id=555, name="Invited", role=Role.USER, language=Locale.EN
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     plans = await use_case(invited_user)
 
@@ -169,7 +178,9 @@ async def test_list_active_plans_includes_plan_allowed_for_actor_telegram_id(
 
 
 async def test_list_active_plans_excludes_restricted_plan_for_synthetic_actor(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
@@ -190,13 +201,15 @@ async def test_list_active_plans_excludes_restricted_plan_for_synthetic_actor(
     token_actor = SyntheticActor(
         id=0, role=Role.USER, name="API Token: ci", is_privileged=True, log="[api_token:ci]"
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     assert await use_case(token_actor) == []
 
 
 async def test_list_active_plans_excludes_link_availability_plan(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
@@ -218,13 +231,15 @@ async def test_list_active_plans_excludes_link_availability_plan(
             allowed_emails=[],
         )
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     assert await use_case(REGULAR_USER) == []
 
 
 async def test_list_active_plans_includes_new_availability_plan_for_a_fresh_user(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
@@ -246,7 +261,7 @@ async def test_list_active_plans_includes_new_availability_plan_for_a_fresh_user
             allowed_emails=[],
         )
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     plans = await use_case(REGULAR_USER)
 
@@ -254,7 +269,9 @@ async def test_list_active_plans_includes_new_availability_plan_for_a_fresh_user
 
 
 async def test_list_active_plans_excludes_existing_availability_plan_for_a_fresh_user(
-    plan_repository: PlanRepository, subscription_repository: SubscriptionRepository
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
@@ -272,7 +289,7 @@ async def test_list_active_plans_excludes_existing_availability_plan_for_a_fresh
             allowed_emails=[],
         )
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     assert await use_case(REGULAR_USER) == []
 
@@ -280,6 +297,7 @@ async def test_list_active_plans_excludes_existing_availability_plan_for_a_fresh
 async def test_list_active_plans_includes_existing_availability_plan_for_a_returning_user(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
     user_repository: UserRepository,
 ) -> None:
     returning_user = await user_repository.create(CreateUserDto(name="Returning", telegram_id=920))
@@ -315,11 +333,52 @@ async def test_list_active_plans_includes_existing_availability_plan_for_a_retur
             allowed_emails=[],
         )
     )
-    use_case = ListActivePlansUseCase(plan_repository, subscription_repository)
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
 
     plans = await use_case(returning_user)
 
     assert [plan.id for plan in plans] == [created.id]
+
+
+async def test_invited_plan_visible_only_to_referred_users(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="INV",
+            name="Invite-only",
+            type=PlanType.UNLIMITED,
+            traffic_limit=0,
+            device_limit=0,
+        )
+    )
+    await _add_minimal_squad(plan_repository, created.id)
+    await _add_minimal_duration(plan_repository, created.id)
+    await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
+    await plan_repository.update_access(
+        UpdatePlanAccessDto(
+            plan_id=created.id,
+            availability=PlanAvailability.INVITED,
+            allowed_telegram_ids=[],
+            allowed_emails=[],
+        )
+    )
+    referrer = await user_repository.create(CreateUserDto(name="r", telegram_id=7001))
+    referred = await user_repository.create(CreateUserDto(name="ref", telegram_id=7002))
+    unreferred = await user_repository.create(CreateUserDto(name="u", telegram_id=7003))
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=referred.id, level=1
+    )
+    use_case = ListActivePlansUseCase(plan_repository, subscription_repository, referral_repository)
+
+    plans_for_referred = await use_case(referred)
+    plans_for_unreferred = await use_case(unreferred)
+
+    assert created.public_code in {p.public_code for p in plans_for_referred}
+    assert created.public_code not in {p.public_code for p in plans_for_unreferred}
 
 
 async def test_owner_can_create_plan(plan_repository: PlanRepository, uow: UnitOfWork) -> None:

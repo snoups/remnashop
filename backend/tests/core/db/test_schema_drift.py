@@ -19,6 +19,8 @@ from app.core.enums import (
     PromocodeAvailability,
     PromocodeRewardType,
     PurchaseType,
+    ReferralAccrualStrategy,
+    ReferralRewardType,
     Role,
     SubscriptionStatus,
 )
@@ -52,6 +54,8 @@ _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
     "promocodeavailability": PromocodeAvailability,
     "promocoderewardtype": PromocodeRewardType,
     "purchasetype": PurchaseType,
+    "referralaccrualstrategy": ReferralAccrualStrategy,
+    "referralrewardtype": ReferralRewardType,
     "subscriptionstatus": SubscriptionStatus,
     "trafficlimitstrategy": TrafficLimitStrategy,
     "user_role": Role,

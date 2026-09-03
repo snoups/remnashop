@@ -13,6 +13,7 @@ from app.core.di.providers import get_core_providers
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
 from app.modules.plans import get_plans_providers
+from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
@@ -52,6 +53,7 @@ async def webhook_container(
     providers = [
         *get_core_providers(),
         *get_plans_providers(),
+        *get_referrals_providers(),
         *get_settings_providers(),
         *get_translations_providers(),
         *get_subscriptions_providers(),
@@ -227,6 +229,7 @@ async def test_missing_webhook_secret_returns_503(config: AppConfig, session: As
     providers = [
         *get_core_providers(),
         *get_plans_providers(),
+        *get_referrals_providers(),
         *get_settings_providers(),
         *get_translations_providers(),
         *get_subscriptions_providers(),

@@ -36,6 +36,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.translations import get_translations_providers
@@ -72,6 +73,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_plans_providers(),
+        *get_referrals_providers(),
         *get_gateways_providers(),
         *get_settings_providers(),
         *get_translations_providers(),

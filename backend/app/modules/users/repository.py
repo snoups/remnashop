@@ -1,7 +1,10 @@
-from typing import Callable, Optional
+import secrets
+import string
+from decimal import Decimal
+from typing import Callable, Final, Optional
 
 from loguru import logger
-from sqlalchemy import ColumnElement, exists, func, or_, select
+from sqlalchemy import ColumnElement, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user import User
@@ -13,6 +16,10 @@ from app.modules.users.dto import (
     UpdateUserDto,
     UserDto,
 )
+
+_REFERRAL_CODE_ALPHABET: Final[str] = string.ascii_uppercase + string.digits
+_REFERRAL_CODE_LENGTH: Final[int] = 8
+_REFERRAL_CODE_MAX_ATTEMPTS: Final[int] = 5
 
 
 class UserRepository:
@@ -40,6 +47,8 @@ class UserRepository:
             permission_grants=data.permission_grants,
             permission_revokes=data.permission_revokes,
             ip_allowlist=data.ip_allowlist,
+            referral_code=await self._generate_referral_code(),
+            points=Decimal(0),
         )
 
         self.session.add(db_user)
@@ -48,6 +57,18 @@ class UserRepository:
         dto = self._convert_to_dto(db_user)
         logger.debug(f"New user {dto.log} created in database")
         return dto
+
+    async def _generate_referral_code(self) -> str:
+        # Check-then-use, not atomic against a concurrent insert of the same
+        # code -- same accepted tradeoff as GeneratePromocodeCodeUseCase.
+        # 36^8 candidates makes a real collision astronomically unlikely.
+        for _ in range(_REFERRAL_CODE_MAX_ATTEMPTS):
+            code = "".join(
+                secrets.choice(_REFERRAL_CODE_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH)
+            )
+            if await self.get_by_referral_code(code) is None:
+                return code
+        raise RuntimeError("Could not generate a unique referral code")
 
     async def get_by_id(self, user_id: int) -> Optional[UserDto]:
         stmt = select(User).where(User.id == user_id)
@@ -76,6 +97,18 @@ class UserRepository:
         stmt = select(User).where(User.username == username)
         db_user = await self.session.scalar(stmt)
         return self._convert_to_dto(db_user) if db_user else None
+
+    async def get_by_referral_code(self, code: str) -> Optional[UserDto]:
+        stmt = select(User).where(User.referral_code == code)
+        db_user = await self.session.scalar(stmt)
+        return self._convert_to_dto(db_user) if db_user else None
+
+    async def credit_points(self, user_id: int, amount: Decimal) -> None:
+        # Atomic UPDATE, not read-modify-write -- concurrent grants (two
+        # referral rewards landing at once) can't clobber each other.
+        stmt = update(User).where(User.id == user_id).values(points=User.points + amount)
+        await self.session.execute(stmt)
+        await self.session.flush()
 
     async def exists_with_role(self, role: Role) -> bool:
         stmt = select(exists().where(User.role == role))

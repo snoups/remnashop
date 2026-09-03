@@ -246,24 +246,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
-        "shop_settings",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("max_active_subscriptions", sa.Integer(), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_table(
         "bot_translations",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -471,6 +453,54 @@ def upgrade() -> None:
     op.create_index(op.f("ix_plans_order_index"), "plans", ["order_index"], unique=False)
     op.create_index(op.f("ix_plans_public_code"), "plans", ["public_code"], unique=True)
     op.create_table(
+        "referral_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("max_level", sa.SmallInteger(), server_default="1", nullable=False),
+        sa.Column(
+            "accrual_strategy",
+            sa.Enum("FIRST_PAYMENT", "EVERY_PAYMENT", name="referralaccrualstrategy"),
+            nullable=False,
+        ),
+        sa.Column(
+            "reward_type",
+            sa.Enum("EXTRA_DAYS", "POINTS", name="referralrewardtype"),
+            nullable=False,
+        ),
+        sa.Column("reward_amounts", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "shop_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("max_active_subscriptions", sa.Integer(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "users",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("telegram_id", sa.BigInteger(), nullable=True),
@@ -532,6 +562,8 @@ def upgrade() -> None:
         sa.Column("ip_allowlist", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("personal_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("purchase_discount", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("referral_code", sa.String(length=16), nullable=True),
+        sa.Column("points", sa.Numeric(precision=12, scale=2), server_default="0", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -550,6 +582,7 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "personal_discount BETWEEN 0 AND 100", name="ck_users_personal_discount_range"
         ),
+        sa.CheckConstraint("points >= 0", name="ck_users_points_non_negative"),
         sa.CheckConstraint(
             "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
         ),
@@ -557,6 +590,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
     op.create_index(op.f("ix_users_login"), "users", ["login"], unique=True)
+    op.create_index(op.f("ix_users_referral_code"), "users", ["referral_code"], unique=True)
     op.create_index(op.f("ix_users_role"), "users", ["role"], unique=False)
     op.create_index(op.f("ix_users_telegram_id"), "users", ["telegram_id"], unique=True)
     op.create_index(op.f("ix_users_username"), "users", ["username"], unique=False)
@@ -615,6 +649,7 @@ def upgrade() -> None:
                 "SETTINGS",
                 "SUBSCRIPTION",
                 "PROMOCODE",
+                "REFERRAL",
                 name="event_category",
             ),
             nullable=False,
@@ -738,6 +773,30 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_promocodes_code"), "promocodes", ["code"], unique=True)
+    op.create_table(
+        "referrals",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("referrer_id", sa.Integer(), nullable=True),
+        sa.Column("referred_id", sa.Integer(), nullable=False),
+        sa.Column("level", sa.SmallInteger(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.CheckConstraint("level BETWEEN 1 AND 3", name="ck_referrals_level_range"),
+        sa.ForeignKeyConstraint(["referred_id"], ["users.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["referrer_id"], ["users.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("referred_id", name="uq_referrals_referred_id"),
+    )
     op.create_table(
         "subscriptions",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -883,6 +942,7 @@ def upgrade() -> None:
                 "SETTINGS",
                 "SUBSCRIPTION",
                 "PROMOCODE",
+                "REFERRAL",
                 name="event_category",
             ),
             nullable=False,
@@ -978,11 +1038,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["plan_id"],
-            ["plans.id"],
-            ondelete="SET NULL",
-        ),
+        sa.ForeignKeyConstraint(["plan_id"], ["plans.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(
             ["target_subscription_id"],
             ["subscriptions.id"],
@@ -1036,6 +1092,36 @@ def upgrade() -> None:
     )
     op.create_index(
         op.f("ix_promocode_activations_user_id"), "promocode_activations", ["user_id"], unique=False
+    )
+    op.create_table(
+        "referral_rewards",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("referral_id", sa.Integer(), nullable=True),
+        sa.Column("referrer_id", sa.Integer(), nullable=True),
+        sa.Column("subscription_id", sa.Integer(), nullable=True),
+        sa.Column(
+            "type", sa.Enum("EXTRA_DAYS", "POINTS", name="referralrewardtype"), nullable=False
+        ),
+        sa.Column("amount", sa.Numeric(precision=12, scale=2), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["referral_id"], ["referrals.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["referrer_id"], ["users.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["subscription_id"], ["subscriptions.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "subscription_id", "referral_id", name="uq_referral_rewards_subscription_referral"
+        ),
     )
     op.create_table(
         "subscription_purchase_idempotency",
@@ -1101,6 +1187,7 @@ def downgrade() -> None:
         table_name="subscription_purchase_idempotency",
     )
     op.drop_table("subscription_purchase_idempotency")
+    op.drop_table("referral_rewards")
     op.drop_index(op.f("ix_promocode_activations_user_id"), table_name="promocode_activations")
     op.drop_index(op.f("ix_promocode_activations_promocode_id"), table_name="promocode_activations")
     op.drop_table("promocode_activations")
@@ -1127,6 +1214,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_subscriptions_remnawave_user_id"), table_name="subscriptions")
     op.drop_index(op.f("ix_subscriptions_expire_at"), table_name="subscriptions")
     op.drop_table("subscriptions")
+    op.drop_table("referrals")
     op.drop_index(op.f("ix_promocodes_code"), table_name="promocodes")
     op.drop_table("promocodes")
     op.drop_index(op.f("ix_plan_durations_plan_id"), table_name="plan_durations")
@@ -1148,16 +1236,18 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_users_username"), table_name="users")
     op.drop_index(op.f("ix_users_telegram_id"), table_name="users")
     op.drop_index(op.f("ix_users_role"), table_name="users")
+    op.drop_index(op.f("ix_users_referral_code"), table_name="users")
     op.drop_index(op.f("ix_users_login"), table_name="users")
     op.drop_index(op.f("ix_users_email"), table_name="users")
     op.drop_table("users")
+    op.drop_table("shop_settings")
+    op.drop_table("referral_settings")
     op.drop_index(op.f("ix_plans_public_code"), table_name="plans")
     op.drop_index(op.f("ix_plans_order_index"), table_name="plans")
     op.drop_index(op.f("ix_plans_name"), table_name="plans")
     op.drop_table("plans")
     op.drop_table("payment_gateways")
     op.drop_table("oauth_settings")
-    op.drop_table("shop_settings")
     op.drop_table("bot_translations")
     op.drop_table("bot_settings")
     op.drop_table("bot_commands")

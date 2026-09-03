@@ -3,7 +3,9 @@ from app.modules.plans.dto import PlanDto
 from app.modules.users import UserDto
 
 
-def is_plan_purchasable_by(plan: PlanDto, actor: UserDto, *, has_purchase_history: bool) -> bool:
+def is_plan_purchasable_by(
+    plan: PlanDto, actor: UserDto, *, has_purchase_history: bool, has_referrer: bool
+) -> bool:
     """Whether `actor` may purchase `plan` right now, given a specific plan_id
     -- gates every provisioning entry point (checkout, promocode SUBSCRIPTION
     reward), so a plan's availability/allowlist can't be bypassed by calling a
@@ -32,5 +34,6 @@ def is_plan_purchasable_by(plan: PlanDto, actor: UserDto, *, has_purchase_histor
         return has_purchase_history
     if plan.availability == PlanAvailability.LINK:
         return True
-    # INVITED: no modules.referrals exists yet to check against -- always deny.
+    if plan.availability == PlanAvailability.INVITED:
+        return has_referrer
     return False

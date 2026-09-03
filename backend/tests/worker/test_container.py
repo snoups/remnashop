@@ -10,8 +10,10 @@ from app.modules.auth import SessionRepository
 from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.payments.repository import PaymentOrderRepository
+from app.modules.referrals.repository import ReferralRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.translations.repository import TranslationsRepository
 from app.modules.users import UserRepository
 from app.worker.container import create_worker_container
@@ -103,4 +105,18 @@ async def test_worker_container_resolves_prune_stale_sessions_task_dependencies(
     async with container(scope=Scope.REQUEST) as request_container:
         await request_container.get(SessionRepository)
         await request_container.get(UnitOfWork)
+    await container.close()
+
+
+async def test_worker_container_resolves_assign_referral_rewards_task_dependencies(
+    config: AppConfig,
+) -> None:
+    container = create_worker_container(config)
+    async with container(scope=Scope.REQUEST) as request_container:
+        await request_container.get(ReferralRepository)
+        await request_container.get(UserRepository)
+        await request_container.get(SubscriptionRepository)
+        await request_container.get(PurchaseSubscriptionUseCase)
+        await request_container.get(UnitOfWork)
+        await request_container.get(EventPublisher)
     await container.close()

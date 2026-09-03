@@ -8,6 +8,7 @@ from app.core.enums import (
     AddOnType,
     Currency,
     Locale,
+    PlanAvailability,
     PlanType,
     PromocodeAvailability,
     PromocodeRewardType,
@@ -22,6 +23,7 @@ from app.modules.plans.dto import (
     SetPlanDurationDto,
     SetPlanDurationsDto,
     SetPlanPriceDto,
+    UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -36,6 +38,7 @@ from app.modules.promocodes.usecases import (
     ListPromocodesUseCase,
     UpdatePromocodeUseCase,
 )
+from app.modules.referrals import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import (
@@ -269,6 +272,7 @@ def _activate_use_case(
         user_repository,
         purchase_use_case,
         grant_addon_use_case,
+        ReferralRepository(promocode_repository.session),
         uow,
         event_publisher,
     )
@@ -353,6 +357,84 @@ async def test_activate_subscription_reward_creates_new_subscription(
     await use_case(actor, ActivatePromocodeDto(code="FREEPLAN"))
 
     active = await subscription_repository.get_active_by_user(actor.id)
+    assert len(active) == 1
+    assert active[0].plan_snapshot.plan_id == plan.id
+
+
+async def test_activate_subscription_reward_requires_a_referrer_for_invited_plan(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    referral_repository: ReferralRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    unreferred_actor = await user_repository.create(
+        CreateUserDto(name="Unreferred", telegram_id=302)
+    )
+    referred_actor = await user_repository.create(CreateUserDto(name="Referred", telegram_id=303))
+    referrer = await user_repository.create(CreateUserDto(name="Referrer", telegram_id=304))
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=referred_actor.id, level=1
+    )
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="invited-plan",
+            name="Invited Plan",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(
+                    days=30,
+                    order_index=0,
+                    prices=[SetPlanPriceDto(currency=Currency.RUB, price=Decimal("500.00"))],
+                )
+            ],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
+    await plan_repository.update_access(
+        UpdatePlanAccessDto(
+            plan_id=plan.id,
+            availability=PlanAvailability.INVITED,
+            allowed_telegram_ids=[],
+            allowed_emails=[],
+        )
+    )
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="INVITEDPLAN",
+            reward_type=PromocodeRewardType.SUBSCRIPTION,
+            reward_plan_id=plan.id,
+            reward_duration_days=30,
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(unreferred_actor, ActivatePromocodeDto(code="INVITEDPLAN"))
+
+    await use_case(referred_actor, ActivatePromocodeDto(code="INVITEDPLAN"))
+
+    active = await subscription_repository.get_active_by_user(referred_actor.id)
     assert len(active) == 1
     assert active[0].plan_snapshot.plan_id == plan.id
 

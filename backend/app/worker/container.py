@@ -5,6 +5,7 @@ from app.core.di.providers import get_core_providers
 from app.modules.auth import OAuthIdentityRepository, SessionRepository
 from app.modules.event_log import get_event_log_providers
 from app.modules.payments import PaymentOrderRepository
+from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.translations import get_translations_providers
@@ -50,6 +51,7 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
     providers = [
         *get_core_providers(),
         *get_event_log_providers(),
+        *get_referrals_providers(),
         *get_settings_providers(),
         *get_subscriptions_providers(),
         *get_translations_providers(),

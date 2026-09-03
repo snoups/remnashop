@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Final, Optional
 
 from app.core.constants import REMNASHOP_PREFIX, WEB_PREFIX
@@ -28,6 +29,9 @@ class UserDto(BaseDto, TimestampMixin):
     ip_allowlist: Optional[list[str]] = None
     personal_discount: int = 0
     purchase_discount: int = 0
+
+    referral_code: Optional[str] = None
+    points: Decimal = Decimal(0)
 
     @property
     def contact_label(self) -> str:

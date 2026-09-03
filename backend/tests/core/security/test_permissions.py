@@ -196,6 +196,10 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.USERS_DISCOUNT_MANAGE,
         Permission.PAYMENTS_VIEW,
         Permission.PAYMENTS_ORDER_VIEW,
+        Permission.REFERRALS_VIEW,
+        Permission.REFERRALS_SETTINGS_VIEW,
+        Permission.REFERRALS_SETTINGS_MANAGE,
+        Permission.REFERRALS_POINTS_MANAGE,
     }
 
 
@@ -295,3 +299,11 @@ def test_subscriptions_permissions_granted_to_admin_by_default() -> None:
     ):
         assert permission in admin_default
         assert permission in PERMISSION_METADATA
+
+
+def test_admin_role_has_all_referrals_permissions() -> None:
+    admin_perms = ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.REFERRALS_VIEW in admin_perms
+    assert Permission.REFERRALS_SETTINGS_VIEW in admin_perms
+    assert Permission.REFERRALS_SETTINGS_MANAGE in admin_perms
+    assert Permission.REFERRALS_POINTS_MANAGE in admin_perms

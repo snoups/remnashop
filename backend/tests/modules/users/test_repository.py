@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any
 
 from app.core.db.uow import UnitOfWork
@@ -210,3 +211,41 @@ async def test_delete_user_nulls_out_actor_id_on_their_own_event_log_entries(
     persisted = next(i for i in items if i.id == entry.id)
     assert persisted.actor_id is None
     assert persisted.actor_login == "willbedeleted10"
+
+
+async def test_create_assigns_a_unique_referral_code(user_repository: UserRepository) -> None:
+    first = await user_repository.create(CreateUserDto(name="a", telegram_id=1))
+    second = await user_repository.create(CreateUserDto(name="b", telegram_id=2))
+
+    assert first.referral_code is not None
+    assert second.referral_code is not None
+    assert first.referral_code != second.referral_code
+
+
+async def test_get_by_referral_code_returns_matching_user(
+    user_repository: UserRepository,
+) -> None:
+    created = await user_repository.create(CreateUserDto(name="a", telegram_id=3))
+
+    assert created.referral_code is not None
+    found = await user_repository.get_by_referral_code(created.referral_code)
+
+    assert found is not None
+    assert found.id == created.id
+
+
+async def test_get_by_referral_code_unknown_returns_none(
+    user_repository: UserRepository,
+) -> None:
+    assert await user_repository.get_by_referral_code("NOPE0000") is None
+
+
+async def test_credit_points_adds_to_existing_points(user_repository: UserRepository) -> None:
+    created = await user_repository.create(CreateUserDto(name="a", telegram_id=4))
+
+    await user_repository.credit_points(created.id, Decimal("15.50"))
+    await user_repository.credit_points(created.id, Decimal("4.50"))
+
+    updated = await user_repository.get_by_id(created.id)
+    assert updated is not None
+    assert updated.points == Decimal("20.00")
