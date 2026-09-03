@@ -4,7 +4,10 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.gateways.dto import PaymentGatewayDto, UpdateGatewaySettingsDto
-from app.modules.gateways.field_catalog import validate_gateway_field_keys
+from app.modules.gateways.field_catalog import (
+    validate_gateway_field_keys,
+    validate_gateway_field_values,
+)
 from app.modules.gateways.repository import GatewaysRepository
 from app.modules.users import UserDto
 
@@ -18,6 +21,7 @@ class UpdateGatewaySettingsUseCase(UseCase[UpdateGatewaySettingsDto, PaymentGate
 
     async def _execute(self, actor: UserDto, data: UpdateGatewaySettingsDto) -> PaymentGatewayDto:
         validate_gateway_field_keys(data.type, data.values)
+        validate_gateway_field_values(data.type, data.values)
 
         async with self._uow:
             gateway = await self._gateways_repository.update_settings(data.type, data.values)

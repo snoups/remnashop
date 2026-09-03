@@ -6,6 +6,7 @@ from app.modules.gateways.field_catalog import (
     GATEWAY_FIELD_CATALOG,
     is_gateway_configured,
     validate_gateway_field_keys,
+    validate_gateway_field_values,
 )
 
 
@@ -51,3 +52,24 @@ def test_validate_gateway_field_keys_rejects_unknown_key() -> None:
 
 def test_platega_payment_method_is_optional() -> None:
     assert is_gateway_configured(PaymentGatewayType.PLATEGA, {"merchant_id": "m1", "api_key": "k1"})
+
+
+def test_validate_gateway_field_values_accepts_a_known_currency() -> None:
+    validate_gateway_field_values(  # does not raise
+        PaymentGatewayType.CRYPTOMUS, {"currency": "RUB"}
+    )
+
+
+def test_validate_gateway_field_values_accepts_lowercase_currency() -> None:
+    validate_gateway_field_values(  # does not raise
+        PaymentGatewayType.CRYPTOMUS, {"currency": "usd"}
+    )
+
+
+def test_validate_gateway_field_values_rejects_an_unknown_currency() -> None:
+    with pytest.raises(ValidationError):
+        validate_gateway_field_values(PaymentGatewayType.CRYPTOMUS, {"currency": "EUR"})
+
+
+def test_validate_gateway_field_values_ignores_an_absent_currency() -> None:
+    validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"shop_id": "1"})  # does not raise

@@ -24,6 +24,20 @@ class PaymentGatewayType(UpperStrEnum):
     URLPAY = auto()
     WATA = auto()
     ROLLYPAY = auto()
+    ANTILOPAY = auto()
+    OVERPAY = auto()
+    PAYPALYCH = auto()
+    RIOPAY = auto()
+    AURAPAY = auto()
+    SEVERPAY = auto()
+    LAVA = auto()
+    CLOUDPAYMENTS = auto()
+    KASSAAI = auto()
+    PAYPEAR = auto()
+    ETOPLATEZHI = auto()
+    JUPITER = auto()
+    DONUT = auto()
+    TRIBUTE = auto()
 
 
 class PlanType(UpperStrEnum):

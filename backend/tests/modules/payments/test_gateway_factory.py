@@ -4,6 +4,7 @@ from app.core.config import AppConfig
 from app.core.enums import PaymentGatewayType
 from app.core.exceptions import ValidationError
 from app.modules.payments import PaymentGatewayFactory
+from app.modules.payments.gateways.registry import GATEWAY_REGISTRY
 from app.modules.payments.gateways.yookassa import YooKassaGateway
 
 
@@ -16,7 +17,12 @@ def test_build_returns_the_registered_adapter_wired_with_config(config: AppConfi
     assert gateway._return_url.startswith("https://")
 
 
-def test_build_rejects_an_unregistered_gateway(config: AppConfig) -> None:
+def test_build_rejects_an_unregistered_gateway(
+    config: AppConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Every currently-defined PaymentGatewayType has an adapter -- remove
+    # one to exercise the miss.
+    monkeypatch.delitem(GATEWAY_REGISTRY, PaymentGatewayType.YOOKASSA)
     factory = PaymentGatewayFactory(config)
     with pytest.raises(ValidationError):
-        factory.build(PaymentGatewayType.CRYPTOMUS, {})
+        factory.build(PaymentGatewayType.YOOKASSA, {})

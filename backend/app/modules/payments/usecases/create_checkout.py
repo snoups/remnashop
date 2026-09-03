@@ -68,7 +68,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
             raise ValidationError("Telegram Stars checkout runs in the bot, not the web API")
         if data.gateway_type not in GATEWAY_REGISTRY:
             raise ValidationError(f"Gateway '{data.gateway_type.value}' is not yet supported")
-        if data.currency is not gateway_currency(data.gateway_type):
+        gateway_settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
+        if data.currency is not gateway_currency(data.gateway_type, gateway_settings):
             raise ValidationError(
                 f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'"
             )
@@ -158,8 +159,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
             )
             return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
-        settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
-        gateway = self._gateway_factory.build(data.gateway_type, settings)
+        gateway = self._gateway_factory.build(data.gateway_type, gateway_settings)
         intent = await gateway.create_payment(order)
 
         async with self._uow:

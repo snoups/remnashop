@@ -27,6 +27,7 @@ from app.modules.gateways import get_gateways_providers
 from app.modules.payments.dto import CreatePaymentOrderDto
 from app.modules.payments.gateways.base import WebhookResult
 from app.modules.payments.gateways.factory import PaymentGatewayFactory
+from app.modules.payments.gateways.registry import GATEWAY_REGISTRY
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
 from app.modules.plans import get_plans_providers
@@ -97,12 +98,12 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_users_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
+        *get_blacklist_providers(),
         *get_plans_providers(),
         *get_referrals_providers(),
         *get_gateways_providers(),
         *get_settings_providers(),
         *get_translations_providers(),
-        *get_blacklist_providers(),
         _PaymentsProvider(),
         _TestSessionProvider(session),
     ]
@@ -149,10 +150,12 @@ async def test_unknown_gateway_type_returns_404(client) -> None:
     assert response.status_code == 404
 
 
-async def test_gateway_type_with_no_adapter_returns_404(client) -> None:
-    # Real PaymentGatewayFactory.build (not the stub) -- CRYPTOMUS is a valid
-    # enum value but has no entry in GATEWAY_REGISTRY.
-    response = await client.post("/api/v1/payments/cryptomus", content=b"{}")
+async def test_gateway_type_with_no_adapter_returns_404(client, monkeypatch) -> None:
+    # Real PaymentGatewayFactory.build (not the stub) -- every currently
+    # defined PaymentGatewayType has an adapter, so remove one to exercise
+    # the miss.
+    monkeypatch.delitem(GATEWAY_REGISTRY, PaymentGatewayType.YOOKASSA)
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
     assert response.status_code == 404
 
 

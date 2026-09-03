@@ -21,6 +21,7 @@ from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewaysRepository
 from app.modules.payments import PaymentGatewayFactory, PaymentIntent
 from app.modules.payments.dto import CreateCheckoutDto, PaymentOrderDto
+from app.modules.payments.gateways.registry import GATEWAY_REGISTRY
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.plans.dto import (
@@ -459,8 +460,15 @@ async def test_create_checkout_renew_rejects_a_target_belonging_to_another_user(
 
 
 async def test_checkout_rejects_an_unimplemented_gateway(
-    create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
+    create_checkout_use_case: CreateCheckoutUseCase,
+    actor: UserDto,
+    plan: PlanDto,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Every currently-defined PaymentGatewayType has an adapter -- remove
+    # one to exercise the miss. The checkout guard reads the real registry
+    # regardless of the fake factory this fixture injects.
+    monkeypatch.delitem(GATEWAY_REGISTRY, PaymentGatewayType.YOOKASSA)
     with pytest.raises(ValidationError):
         await create_checkout_use_case(
             actor,
@@ -470,7 +478,7 @@ async def test_checkout_rejects_an_unimplemented_gateway(
                 duration_days=30,
                 currency=Currency.RUB,
                 purchase_type=PurchaseType.NEW,
-                gateway_type=PaymentGatewayType.CRYPTOMUS,
+                gateway_type=PaymentGatewayType.YOOKASSA,
             ),
         )
 
