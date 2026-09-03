@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-import app.modules.auth.oauth.oidc as oidc_module
-from app.modules.auth.oauth.oidc import OIDCOAuthClient
+import app.modules.oauth.providers.oidc as oidc_module
+from app.modules.oauth.providers.oidc import OIDCOAuthClient
 
 
 async def _fake_assert_public_https_host(url: str) -> None:

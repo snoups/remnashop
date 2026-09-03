@@ -5,8 +5,8 @@ from app.core.enums import OAuthProvider
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.auth.events import OAuthIdentityDisconnectedEvent
-from app.modules.auth.repository import OAuthIdentityRepository
+from app.modules.oauth.events import OAuthIdentityDisconnectedEvent
+from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.users import UserDto
 
 

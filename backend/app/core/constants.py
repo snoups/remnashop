@@ -39,6 +39,12 @@ REDIS_KEY_PREFIX: Final[str] = "remnashop:"
 
 TELEGRAM_RESTART_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:restart"
 
+# Shared between auth's /refresh, /logout and oauth's /oauth/{provider}/callback --
+# oauth writes this cookie, auth reads it.
+REFRESH_COOKIE_NAME: Final[str] = "refresh_token"
+CSRF_COOKIE_NAME: Final[str] = "csrf_token"
+REFRESH_COOKIE_PATH: Final[str] = "/api/v1/auth"
+
 MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"
 CONFIG_KEY: Final[str] = "config"

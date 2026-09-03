@@ -7,12 +7,12 @@ from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.auth.dto import CreateOAuthIdentityDto, OAuthIdentityDto
-from app.modules.auth.events import OAuthIdentityConnectedEvent
-from app.modules.auth.oauth.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
-from app.modules.auth.oauth.registry import get_oauth_client
-from app.modules.auth.oauth.state_store import OAuthFlowPurpose, OAuthStateStore
-from app.modules.auth.repository import OAuthIdentityRepository
+from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthIdentityDto
+from app.modules.oauth.events import OAuthIdentityConnectedEvent
+from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
+from app.modules.oauth.providers.registry import get_oauth_client
+from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
 

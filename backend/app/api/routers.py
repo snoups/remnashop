@@ -3,12 +3,13 @@ from typing import Final
 from fastapi import APIRouter
 
 from app.modules.api_tokens.api import admin_router as api_tokens_admin_router
-from app.modules.auth.api import admin_router as auth_admin_router
 from app.modules.auth.api import router as auth_router
 from app.modules.auth.api import sessions_router as auth_sessions_router
 from app.modules.banners.api import admin_router as banners_admin_router
 from app.modules.event_log.api import event_log_admin_router
 from app.modules.gateways.api import admin_router as gateways_admin_router
+from app.modules.oauth.api import admin_router as oauth_admin_router
+from app.modules.oauth.api import router as oauth_router
 from app.modules.payments.api import admin_router as payments_admin_router
 from app.modules.payments.api import public_router as payments_public_router
 from app.modules.payments.api import webhook_router as payments_webhook_router
@@ -30,8 +31,9 @@ from app.modules.users.api import admins_router as users_admins_router
 # Each further module contributes its router here once it has an api/ package.
 ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_router,
-    auth_admin_router,
     auth_sessions_router,
+    oauth_router,
+    oauth_admin_router,
     users_admin_router,
     users_admins_router,
     settings_admin_router,

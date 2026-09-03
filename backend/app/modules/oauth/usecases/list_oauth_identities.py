@@ -1,7 +1,7 @@
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.auth.dto import OAuthIdentityDto
-from app.modules.auth.repository import OAuthIdentityRepository
+from app.modules.oauth.dto import OAuthIdentityDto
+from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.users import UserDto
 
 

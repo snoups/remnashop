@@ -2,8 +2,9 @@ from dishka import AsyncContainer, Provider, Scope, make_async_container
 
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
-from app.modules.auth import OAuthIdentityRepository, SessionRepository
+from app.modules.auth import SessionRepository
 from app.modules.event_log import get_event_log_providers
+from app.modules.oauth import OAuthIdentityRepository
 from app.modules.payments import PaymentOrderRepository
 from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
@@ -37,13 +38,14 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
 
     # SessionRepository is provided directly here, not via
     # app.modules.auth.get_auth_providers() -- that provider also registers
-    # the full OAuth/login usecase graph. The prune task only needs the
+    # the full login usecase graph. The prune task only needs the
     # repository.
     session_repository_provider = Provider(scope=Scope.REQUEST)
     session_repository_provider.provide(SessionRepository)
 
-    # Same reasoning as session_repository_provider above -- the OIDC-issuer
-    # cleanup task only needs the repository, not the full OAuth usecase graph.
+    # OAuthIdentityRepository is provided directly here, not via
+    # app.modules.oauth.get_oauth_providers() -- the OIDC-issuer cleanup task
+    # only needs the repository, not the full OAuth usecase graph.
     oauth_identity_repository_provider = Provider(scope=Scope.REQUEST)
     oauth_identity_repository_provider.provide(OAuthIdentityRepository)
 

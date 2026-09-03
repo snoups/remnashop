@@ -1,21 +1,14 @@
 from app.modules.auth.di import get_auth_providers
-from app.modules.auth.dto import AuthStatusDto, OAuthIdentityDto, SessionDto
-from app.modules.auth.repository import OAuthIdentityRepository, SessionRepository
+from app.modules.auth.dto import AuthStatusDto, SessionDto
+from app.modules.auth.repository import SessionRepository
+from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
 from app.modules.auth.usecases import (
     BootstrapOwnerUseCase,
     GetAuthStatusUseCase,
-    ListOAuthIdentitiesUseCase,
     ListSessionsUseCase,
     ListUserSessionsUseCase,
     LoginUseCase,
     LogoutUseCase,
-    OAuthCallbackDto,
-    OAuthConnectAuthorizeUseCase,
-    OAuthConnectCallbackUseCase,
-    OAuthDisconnectDto,
-    OAuthDisconnectUseCase,
-    OAuthLoginAuthorizeUseCase,
-    OAuthLoginCallbackUseCase,
     RefreshSessionUseCase,
     RevokeSessionDto,
     RevokeSessionUseCase,
@@ -27,26 +20,18 @@ __all__ = [
     "AuthStatusDto",
     "BootstrapOwnerUseCase",
     "GetAuthStatusUseCase",
-    "ListOAuthIdentitiesUseCase",
+    "IssuedSession",
     "ListSessionsUseCase",
     "ListUserSessionsUseCase",
     "LoginUseCase",
     "LogoutUseCase",
-    "OAuthCallbackDto",
-    "OAuthConnectAuthorizeUseCase",
-    "OAuthConnectCallbackUseCase",
-    "OAuthDisconnectDto",
-    "OAuthDisconnectUseCase",
-    "OAuthIdentityDto",
-    "OAuthIdentityRepository",
-    "OAuthLoginAuthorizeUseCase",
-    "OAuthLoginCallbackUseCase",
     "RefreshSessionUseCase",
     "RevokeSessionDto",
     "RevokeSessionUseCase",
     "RevokeUserSessionDto",
     "RevokeUserSessionUseCase",
     "SessionDto",
+    "SessionIssuer",
     "SessionRepository",
     "get_auth_providers",
 ]

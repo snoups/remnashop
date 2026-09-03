@@ -51,20 +51,6 @@ class StatusResponse(BaseModel):
     is_password_login_enabled: bool
 
 
-class OAuthAuthorizeResponse(BaseModel):
-    authorization_url: str
-
-
-class OAuthCallbackRequest(BaseModel):
-    code: str
-    state: str
-
-
-class OAuthIdentityResponse(BaseModel):
-    provider: str
-    external_login: Optional[str] = None
-
-
 class RefreshResponse(BaseModel):
     access_token: str
 

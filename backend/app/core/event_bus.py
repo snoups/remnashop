@@ -34,6 +34,9 @@ class EventBus:
         from app.modules.auth.events import (  # noqa: PLC0415
             register_subscribers as register_auth_subscribers,
         )
+        from app.modules.oauth.events import (  # noqa: PLC0415
+            register_subscribers as register_oauth_subscribers,
+        )
         from app.modules.referrals.events import (  # noqa: PLC0415
             register_subscribers as register_referral_subscribers,
         )
@@ -42,6 +45,7 @@ class EventBus:
         )
 
         register_auth_subscribers(self)
+        register_oauth_subscribers(self)
         register_referral_subscribers(self)
         register_translations_subscribers(self)
 

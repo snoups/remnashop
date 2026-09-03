@@ -1,7 +1,7 @@
 import base64
 import json
 
-from app.modules.auth.oauth.telegram import _decode_id_token_payload
+from app.modules.oauth.providers.telegram import _decode_id_token_payload
 
 
 def _build_id_token(payload: dict) -> str:

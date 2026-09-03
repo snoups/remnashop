@@ -5,12 +5,12 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
-from app.modules.auth.events import OAuthLoginFailedEvent, OAuthLoginSucceededEvent
-from app.modules.auth.oauth.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
-from app.modules.auth.oauth.registry import get_oauth_client
-from app.modules.auth.oauth.state_store import OAuthFlowPurpose, OAuthStateStore
-from app.modules.auth.repository import OAuthIdentityRepository
-from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
+from app.modules.auth import IssuedSession, SessionIssuer
+from app.modules.oauth.events import OAuthLoginFailedEvent, OAuthLoginSucceededEvent
+from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
+from app.modules.oauth.providers.registry import get_oauth_client
+from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto, UserRepository
 

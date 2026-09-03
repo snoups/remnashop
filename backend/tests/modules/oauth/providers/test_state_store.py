@@ -1,7 +1,7 @@
 from redis.asyncio import Redis
 
 from app.core.enums import OAuthProvider
-from app.modules.auth.oauth.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
 
 
 async def test_create_then_consume_roundtrips(redis: Redis) -> None:

@@ -1,9 +1,9 @@
 from app.core.enums import OAuthProvider
 from app.core.exceptions import AuthenticationError
-from app.modules.auth.oauth.base import OAuthProviderClient
-from app.modules.auth.oauth.github import GitHubOAuthClient
-from app.modules.auth.oauth.oidc import OIDCOAuthClient
-from app.modules.auth.oauth.telegram import TelegramOAuthClient
+from app.modules.oauth.providers.base import OAuthProviderClient
+from app.modules.oauth.providers.github import GitHubOAuthClient
+from app.modules.oauth.providers.oidc import OIDCOAuthClient
+from app.modules.oauth.providers.telegram import TelegramOAuthClient
 from app.modules.settings import OAuthSettingsDto
 
 

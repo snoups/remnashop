@@ -4,91 +4,10 @@ from typing import Final, Optional, cast
 from sqlalchemy import ColumnElement, CursorResult, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.user_session import UserSession
-from app.core.enums import OAuthProvider
-from app.modules.auth.dto import (
-    CreateOAuthIdentityDto,
-    CreateSessionDto,
-    OAuthIdentityDto,
-    SessionDto,
-)
+from app.modules.auth.dto import CreateSessionDto, SessionDto
 
 _ROTATION_GRACE_SECONDS: Final[int] = 30
-
-
-class OAuthIdentityRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    def _to_dto(self, row: OAuthIdentity) -> OAuthIdentityDto:
-        return OAuthIdentityDto.model_validate(row, from_attributes=True)
-
-    async def create(self, data: CreateOAuthIdentityDto) -> OAuthIdentityDto:
-        existing = await self.session.scalar(
-            select(OAuthIdentity).where(
-                OAuthIdentity.user_id == data.user_id, OAuthIdentity.provider == data.provider
-            )
-        )
-
-        if existing is not None:
-            existing.external_id = data.external_id
-            existing.external_login = data.external_login
-            await self.session.flush()
-            await self.session.refresh(existing)
-            return self._to_dto(existing)
-
-        row = OAuthIdentity(
-            user_id=data.user_id,
-            provider=data.provider,
-            external_id=data.external_id,
-            external_login=data.external_login,
-        )
-        self.session.add(row)
-        await self.session.flush()
-        return self._to_dto(row)
-
-    async def get_by_provider_external_id(
-        self,
-        provider: OAuthProvider,
-        external_id: str,
-    ) -> Optional[OAuthIdentityDto]:
-        stmt = select(OAuthIdentity).where(
-            OAuthIdentity.provider == provider, OAuthIdentity.external_id == external_id
-        )
-        row = await self.session.scalar(stmt)
-        return self._to_dto(row) if row else None
-
-    async def get_by_user_and_provider(
-        self,
-        user_id: int,
-        provider: OAuthProvider,
-    ) -> Optional[OAuthIdentityDto]:
-        stmt = select(OAuthIdentity).where(
-            OAuthIdentity.user_id == user_id, OAuthIdentity.provider == provider
-        )
-        row = await self.session.scalar(stmt)
-        return self._to_dto(row) if row else None
-
-    async def list_by_user(self, user_id: int) -> list[OAuthIdentityDto]:
-        stmt = select(OAuthIdentity).where(OAuthIdentity.user_id == user_id)
-        rows = await self.session.scalars(stmt)
-        return [self._to_dto(row) for row in rows]
-
-    async def delete_by_user_and_provider(self, user_id: int, provider: OAuthProvider) -> bool:
-        stmt = delete(OAuthIdentity).where(
-            OAuthIdentity.user_id == user_id,
-            OAuthIdentity.provider == provider,
-        )
-        result = await self.session.execute(stmt)
-        await self.session.flush()
-        return cast(CursorResult, result).rowcount > 0
-
-    async def delete_all_by_provider(self, provider: OAuthProvider) -> int:
-        stmt = delete(OAuthIdentity).where(OAuthIdentity.provider == provider)
-        result = await self.session.execute(stmt)
-        await self.session.flush()
-        return cast(CursorResult, result).rowcount
 
 
 class SessionRepository:

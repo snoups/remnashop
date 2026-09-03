@@ -12,14 +12,16 @@ from app.modules.auth.events import (
     BootstrapConflictEvent,
     LoginFailedEvent,
     LoginSucceededEvent,
-    OAuthIdentityConnectedEvent,
-    OAuthIdentityDisconnectedEvent,
-    OAuthLoginFailedEvent,
-    OAuthLoginSucceededEvent,
     OwnerBootstrappedEvent,
     SessionRevokedEvent,
     SessionTheftDetectedEvent,
     UserSessionRevokedByAdminEvent,
+)
+from app.modules.oauth.events import (
+    OAuthIdentityConnectedEvent,
+    OAuthIdentityDisconnectedEvent,
+    OAuthLoginFailedEvent,
+    OAuthLoginSucceededEvent,
 )
 from app.modules.referrals.tasks import assign_referral_rewards_task
 from app.modules.settings.events import LocaleActivatedEvent, LocaleDeactivatedEvent

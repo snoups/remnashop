@@ -31,11 +31,12 @@ from app.core.db.uow import UnitOfWork
 from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.ports import EventPublisher
 from app.modules.api_tokens.repository import ApiTokenRepository
-from app.modules.auth.oauth.state_store import OAuthStateStore
-from app.modules.auth.repository import OAuthIdentityRepository, SessionRepository
+from app.modules.auth.repository import SessionRepository
 from app.modules.banners.repository import BannerRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.gateways.repository import GatewaysRepository
+from app.modules.oauth.providers.state_store import OAuthStateStore
+from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.plans.repository import PlanRepository
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals.repository import ReferralRepository
