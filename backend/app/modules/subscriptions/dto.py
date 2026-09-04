@@ -217,3 +217,4 @@ class SyncSubscriptionStatusDto:
     remnawave_user_id: int
     status: SubscriptionStatus
     source: str
+    expire_at: Optional[datetime] = None

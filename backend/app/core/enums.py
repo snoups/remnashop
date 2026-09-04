@@ -303,3 +303,30 @@ class AppearanceImageFormat(StrEnum):
     JPG = auto()
     PNG = auto()
     WEBP = auto()
+
+
+class DialogWindowKind(StrEnum):
+    SEED = auto()
+    CUSTOM = auto()
+
+
+class DialogFlow(StrEnum):
+    MENU = auto()
+    PURCHASE = auto()
+    RENEWAL = auto()
+    CHANGE = auto()
+    SUBSCRIPTION = auto()
+    PROMOCODE = auto()
+    CUSTOM = auto()
+
+
+class ButtonLinkType(StrEnum):
+    ACTION = auto()
+    NAVIGATE = auto()
+    URL = auto()
+
+
+class ButtonStyleKind(StrEnum):
+    PRIMARY = auto()
+    SUCCESS = auto()
+    DANGER = auto()

@@ -2,7 +2,6 @@ import hashlib
 import hmac
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -13,13 +12,11 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://pay.crypt.bot/api"
-_TIMEOUT_S: Final[float] = 20.0
 _EXPIRES_IN_S: Final[int] = 1800
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class CryptoPayGateway(PaymentGateway):
@@ -36,10 +33,10 @@ class CryptoPayGateway(PaymentGateway):
             "paid_btn_url": self._return_url,
             "expires_in": _EXPIRES_IN_S,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/createInvoice",
             json=payload,
-            headers={"Crypto-Pay-API-Token": self._settings["api_key"]},
+            headers={"Crypto-Pay-API-Token": self._require("api_key")},
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
@@ -55,7 +52,7 @@ class CryptoPayGateway(PaymentGateway):
         signature = request.headers.get("crypto-pay-api-signature")
         if not signature:
             raise PaymentGatewayError("CryptoPay webhook missing signature header")
-        secret = hashlib.sha256(self._settings["api_key"].encode()).digest()
+        secret = hashlib.sha256(self._require("api_key").encode()).digest()
         expected = hmac.new(secret, request.body, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, signature):
             raise PaymentGatewayError("Invalid CryptoPay webhook signature")

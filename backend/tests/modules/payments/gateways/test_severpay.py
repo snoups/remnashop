@@ -54,7 +54,7 @@ def _gateway() -> SeverPayGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(severpay_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(severpay_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(body: dict[str, object], token: str = "sp-token") -> str:

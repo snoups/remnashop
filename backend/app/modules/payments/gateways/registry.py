@@ -69,10 +69,10 @@ def gateway_currency(gateway_type: PaymentGatewayType, settings: dict[str, str])
     if gateway_type not in GATEWAY_REGISTRY:
         return NON_HTTP_GATEWAY_CURRENCIES[gateway_type]
 
-    # Admin-configured override for gateways whose API accepts a currency per
-    # request (Cryptomus/Heleket/CryptoPay/WATA/Valutix) -- validated at write
-    # time in UpdateGatewaySettingsUseCase, so an invalid stored value here
-    # falls back to the class default rather than breaking checkout.
+    # Admin-configured currency override, applies to any gateway whose settings
+    # carry one -- validated at write time in UpdateGatewaySettingsUseCase, so
+    # an invalid stored value here falls back to the class default rather than
+    # breaking checkout.
     configured = settings.get("currency", "").strip()
     if configured:
         try:

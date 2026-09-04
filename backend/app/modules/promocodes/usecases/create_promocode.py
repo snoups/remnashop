@@ -3,10 +3,12 @@ from loguru import logger
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeAvailability, PromocodeRewardType
 from app.core.exceptions import ValidationError
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans import PlanRepository
 from app.modules.promocodes.dto import CreatePromocodeDto, PromocodeDto
+from app.modules.promocodes.events import PromocodeChangedEvent
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.subscriptions import AddOnRepository
 from app.modules.users import UserDto
@@ -21,11 +23,13 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
         addon_repository: AddOnRepository,
         plan_repository: PlanRepository,
         uow: UnitOfWork,
+        event_publisher: EventPublisher,
     ) -> None:
         self._promocode_repository = promocode_repository
         self._addon_repository = addon_repository
         self._plan_repository = plan_repository
         self._uow = uow
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: CreatePromocodeDto) -> PromocodeDto:
         await self._validate_reward(data)
@@ -34,6 +38,9 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
 
         async with self._uow:
             promo = await self._promocode_repository.create(data)
+            await self._event_publisher.publish(
+                PromocodeChangedEvent(user=actor, action="create", promocode_id=promo.id)
+            )
         logger.info(f"{actor.log} Created promocode '{promo.code}'")
         return promo
 

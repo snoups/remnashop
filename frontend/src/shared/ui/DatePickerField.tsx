@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { useClickOutside } from "@shared/lib/use-click-outside";
 
 interface DatePickerFieldProps {
   id?: string;
@@ -48,16 +49,7 @@ export function DatePickerField({ id, value, onChange, placeholder, clearAriaLab
     if (isOpen) setViewDate(parseIsoDate(value) ?? new Date());
   }, [isOpen, value]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setIsOpen(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  useClickOutside(ref, isOpen, () => setIsOpen(false));
 
   const today = new Date();
   const days = getMonthGrid(viewDate.getFullYear(), viewDate.getMonth());

@@ -52,7 +52,7 @@ def _gateway() -> PayMasterGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(paymaster_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(paymaster_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _webhook(body: dict[str, object]) -> WebhookRequest:

@@ -15,8 +15,8 @@ export interface CreatedApiToken {
   secret: string;
 }
 
-export function listApiTokens(): Promise<ApiToken[]> {
-  return apiGet<ApiToken[]>("/api-tokens");
+export function listApiTokens(signal?: AbortSignal): Promise<ApiToken[]> {
+  return apiGet<ApiToken[]>("/api-tokens", signal);
 }
 
 export function createApiToken(

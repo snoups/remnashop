@@ -13,7 +13,8 @@
     "serverUnreachableDescription": "Проверьте соединение или повторите попытку через некоторое время.",
     "serverErrorTitle": "Ошибка сервера",
     "serverErrorDescription": "Сервер ответил с ошибкой. Проверьте логи бэкенда.",
-    "retry": "Повторить"
+    "retry": "Повторить",
+    "invalidNumber": "Введите корректное число"
   },
   "auth": {
     "loginPageTitle": "Вход",
@@ -186,7 +187,9 @@
     "delete": {
       "button": "Удалить пользователя",
       "confirm": "Удалить {{name}} безвозвратно? Это действие нельзя отменить.",
-      "error": "Не удалось удалить пользователя."
+      "error": "Не удалось удалить пользователя.",
+      "confirmButton": "Удалить",
+      "cancelButton": "Отмена"
     },
     "block": {
       "button": "Заблокировать пользователя",
@@ -200,13 +203,15 @@
       "button": "Разблокировать всех",
       "confirm": "Разблокировать всех заблокированных пользователей? Это действие нельзя отменить.",
       "success": "Разблокировано пользователей: {{count}}.",
-      "error": "Не удалось разблокировать всех пользователей."
+      "error": "Не удалось разблокировать всех пользователей.",
+      "title": "Разблокировать всех пользователей",
+      "cancelButton": "Отмена"
     },
     "details": {
       "button": "Подробнее",
       "id": "ID",
       "login": "Логин",
-      "username": "Username",
+      "username": "Имя пользователя",
       "telegramId": "Telegram ID",
       "email": "Email",
       "language": "Язык",
@@ -244,6 +249,7 @@
       "secretTokenLabel": "Секретный токен вебхука",
       "secretTokenHint": "Telegram присылает его в заголовке каждого запроса вебхука; API сверяет значение перед тем как доверять запросу — так вебхук доступен только Telegram.",
       "generateSecretToken": "Сгенерировать",
+      "secretTokenCopied": "Скопировано",
       "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
       "save": "Сохранить",
       "saving": "Сохранение…",
@@ -634,6 +640,8 @@
     "BOT_SETTINGS_MANAGE": "Настройки бота",
     "BOT_COMMANDS_MANAGE": "Команды бота",
     "BOT_RESTART": "Перезапуск бота",
+    "SHOP_SETTINGS_VIEW": "Просмотр настроек магазина",
+    "SHOP_SETTINGS_MANAGE": "Настройки магазина",
     "OAUTH_SETTINGS_VIEW": "Просмотр настроек OAuth",
     "OAUTH_SETTINGS_MANAGE": "Настройки OAuth",
     "BANNERS_VIEW": "Просмотр баннеров",
@@ -652,6 +660,7 @@
     "EVENT_LOG_VIEW": "Журнал событий",
     "USERS_VIEW": "Просмотр пользователей",
     "USERS_DELETE": "Удаление пользователей",
+    "USERS_DISCOUNT_MANAGE": "Управление скидками пользователей",
     "USER_SESSIONS_VIEW": "Просмотр сессий пользователей",
     "USER_SESSIONS_REVOKE": "Отзыв сессий пользователей",
     "APPEARANCE_SETTINGS_MANAGE": "Настройки внешнего вида",
@@ -664,6 +673,51 @@
     "GATEWAYS_UPDATE": "Изменение настроек шлюзов",
     "GATEWAYS_TOGGLE": "Включение/выключение шлюзов",
     "GATEWAYS_REORDER": "Изменение порядка шлюзов",
+    "PLANS_VIEW": "Просмотр тарифов",
+    "PLANS_CREATE": "Создание тарифов",
+    "PLANS_UPDATE": "Изменение тарифов",
+    "PLANS_DELETE": "Удаление тарифов",
+    "PLANS_DURATIONS_MANAGE": "Управление сроками тарифов",
+    "PLANS_PRICE_OVERRIDE_MANAGE": "Управление переопределением цен тарифов",
+    "PLANS_DURATION_BASE_PRICE_MANAGE": "Управление базовыми ценами тарифов",
+    "PLANS_ACCESS_MANAGE": "Управление доступом к тарифам",
+    "PLANS_SQUADS_MANAGE": "Управление сквадами тарифов",
+    "PLANS_ORDER_MANAGE": "Изменение порядка тарифов",
+    "PRICING_VIEW": "Просмотр ценообразования",
+    "PRICING_PREVIEW_VIEW": "Предпросмотр изменений цен",
+    "PRICING_RATES_MANAGE": "Управление курсами валют",
+    "PRICING_ANCHOR_MANAGE": "Смена базовой валюты",
+    "PRICING_SETTINGS_MANAGE": "Управление настройками ценообразования",
+    "PRICING_BASE_ADJUST_MANAGE": "Массовая корректировка базовых цен",
+    "SUBSCRIPTIONS_VIEW": "Просмотр подписок",
+    "SUBSCRIPTIONS_UPDATE": "Изменение подписок",
+    "SUBSCRIPTIONS_SQUADS_MANAGE": "Управление сквадами подписок",
+    "SUBSCRIPTIONS_DELETE": "Удаление подписок",
+    "ADDONS_VIEW": "Просмотр дополнений",
+    "ADDONS_CREATE": "Создание дополнений",
+    "ADDONS_UPDATE": "Изменение дополнений",
+    "ADDONS_DELETE": "Удаление дополнений",
+    "ADDONS_PRICES_MANAGE": "Управление базовыми ценами дополнений",
+    "ADDONS_PRICE_OVERRIDE_MANAGE": "Управление переопределением цен дополнений",
+    "ADDONS_REORDER": "Изменение порядка дополнений",
+    "PROMOCODES_VIEW": "Просмотр промокодов",
+    "PROMOCODES_CREATE": "Создание промокодов",
+    "PROMOCODES_UPDATE": "Изменение промокодов",
+    "PROMOCODES_DELETE": "Удаление промокодов",
+    "PROMOCODES_GENERATE_CODE": "Генерация кодов промокодов",
+    "PAYMENTS_VIEW": "Просмотр платежей",
+    "PAYMENTS_ORDER_VIEW": "Просмотр деталей заказов",
+    "REFERRALS_VIEW": "Просмотр рефералов",
+    "REFERRALS_SETTINGS_VIEW": "Просмотр настроек рефералов",
+    "REFERRALS_SETTINGS_MANAGE": "Управление настройками рефералов",
+    "REFERRALS_POINTS_MANAGE": "Корректировка реферальных баллов",
+    "BACKUPS_VIEW": "Просмотр резервных копий",
+    "BACKUPS_SETTINGS_VIEW": "Просмотр настроек резервного копирования",
+    "BACKUPS_SETTINGS_MANAGE": "Управление настройками резервного копирования",
+    "BACKUPS_RUN_VIEW": "Просмотр запусков резервного копирования",
+    "BACKUPS_RUN_CREATE": "Запуск резервного копирования",
+    "BACKUPS_RUN_DOWNLOAD": "Скачивание резервных копий",
+    "BACKUPS_RUN_DELETE": "Удаление запусков резервного копирования",
     "BLACKLIST_VIEW": "Просмотр чёрного списка",
     "BLACKLIST_SOURCES_VIEW": "Просмотр источников чёрного списка",
     "BLACKLIST_ENTRY_ADD": "Добавление записей в чёрный список",
@@ -675,10 +729,18 @@
     "USERS_BLOCK": "Блокировка пользователей",
     "USERS_UNBLOCK": "Разблокировка пользователей",
     "USERS_BULK_BLOCK": "Массовая блокировка пользователей",
-    "USERS_UNBLOCK_ALL": "Разблокировка всех пользователей"
+    "USERS_UNBLOCK_ALL": "Разблокировка всех пользователей",
+    "AD_LINKS_VIEW": "Просмотр рекламных ссылок",
+    "AD_LINKS_STATS_VIEW": "Просмотр рекламной статистики",
+    "AD_LINKS_USERS_VIEW": "Просмотр привлечённых пользователей",
+    "AD_LINKS_CREATE": "Создание рекламных ссылок",
+    "AD_LINKS_GENERATE_CODE": "Генерация рекламных кодов",
+    "AD_LINKS_UPDATE": "Изменение рекламных ссылок",
+    "AD_LINKS_DELETE": "Удаление рекламных ссылок"
   },
   "permissionCategories": {
     "botSettings": "Настройки бота",
+    "shopSettings": "Настройки магазина",
     "oauthSettings": "Настройки OAuth",
     "banners": "Баннеры",
     "locales": "Локали",
@@ -688,7 +750,16 @@
     "eventLog": "Журнал событий",
     "appearance": "Внешний вид",
     "gateways": "Платёжные шлюзы",
-    "blacklist": "Чёрный список"
+    "plans": "Тарифы",
+    "pricing": "Ценообразование",
+    "subscriptions": "Подписки",
+    "addons": "Дополнения",
+    "promocodes": "Промокоды",
+    "payments": "Платежи",
+    "referrals": "Рефералы",
+    "backups": "Резервные копии",
+    "blacklist": "Чёрный список",
+    "adLinks": "Рекламные ссылки"
   },
   "permissionPicker": {
     "read": "Чтение",
@@ -708,6 +779,7 @@
     "telegramButton": "Telegram"
   },
   "pricing": {
+    "title": "Цены",
     "loading": "Загрузка данных о ценах…",
     "loadError": "Не удалось загрузить данные о ценах.",
     "rates": {
@@ -795,6 +867,7 @@
     }
   },
   "blacklist": {
+    "title": "Чёрный список",
     "loading": "Загрузка…",
     "manual": {
       "title": "Вручную добавленные записи",
@@ -829,7 +902,9 @@
       "addError": "Не удалось добавить источник.",
       "removeError": "Не удалось удалить источник.",
       "toggleError": "Не удалось обновить источник.",
-      "syncError": "Не удалось запустить синхронизацию."
+      "syncError": "Не удалось запустить синхронизацию.",
+      "removeConfirmButton": "Удалить",
+      "removeCancelButton": "Отмена"
     }
   },
   "backups": {
@@ -873,7 +948,9 @@
       "finishedAt": "Завершён",
       "notFinished": "—",
       "loadMore": "Показать ещё",
-      "loadingMore": "Загрузка…"
+      "loadingMore": "Загрузка…",
+      "deleteConfirmButton": "Удалить",
+      "deleteCancelButton": "Отмена"
     }
   },
   "advertising": {
@@ -933,7 +1010,9 @@
     "delete": {
       "button": "Удалить ссылку",
       "confirm": "Безвозвратно удалить «{{name}}»? Это действие нельзя отменить.",
-      "error": "Не удалось удалить ссылку."
+      "error": "Не удалось удалить ссылку.",
+      "confirmButton": "Удалить",
+      "cancelButton": "Отмена"
     },
     "stats": {
       "button": "Статистика",
@@ -1079,7 +1158,9 @@
     "delete": {
       "button": "Удалить промокод",
       "confirm": "Безвозвратно удалить промокод «{{code}}»? Это действие нельзя отменить.",
-      "error": "Не удалось удалить промокод."
+      "error": "Не удалось удалить промокод.",
+      "confirmButton": "Удалить",
+      "cancelButton": "Отмена"
     }
   },
   "plans": {
@@ -1161,7 +1242,9 @@
     "delete": {
       "button": "Удалить план",
       "confirm": "Безвозвратно удалить план «{{name}}»? Это действие нельзя отменить.",
-      "error": "Не удалось удалить план."
+      "error": "Не удалось удалить план.",
+      "confirmButton": "Удалить",
+      "cancelButton": "Отмена"
     }
   },
   "payments": {
@@ -1270,7 +1353,9 @@
     "delete": {
       "button": "Удалить подписку",
       "confirm": "Безвозвратно удалить подписку #{{id}}? Это действие нельзя отменить.",
-      "error": "Не удалось удалить подписку."
+      "error": "Не удалось удалить подписку.",
+      "confirmButton": "Удалить",
+      "cancelButton": "Отмена"
     }
   },
   "donate": {

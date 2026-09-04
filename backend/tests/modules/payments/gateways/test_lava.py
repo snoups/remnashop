@@ -54,7 +54,7 @@ def _gateway() -> LavaGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(lava_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(lava_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _webhook(body: dict[str, object], secret: str = "lava-webhook") -> WebhookRequest:

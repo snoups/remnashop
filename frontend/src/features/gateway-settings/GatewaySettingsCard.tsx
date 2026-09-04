@@ -1,4 +1,4 @@
-import { ChevronDown, CreditCard } from "lucide-react";
+import { ChevronDown, ChevronUp, CreditCard } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -111,7 +111,7 @@ export function GatewaySettingsCard({
             aria-label={t("settings.gateways.moveUp")}
             className="disabled:opacity-30"
           >
-            <span aria-hidden>&#9650;</span>
+            <ChevronUp className="size-4" aria-hidden />
           </button>
           <button
             type="button"
@@ -120,7 +120,7 @@ export function GatewaySettingsCard({
             aria-label={t("settings.gateways.moveDown")}
             className="disabled:opacity-30"
           >
-            <span aria-hidden>&#9660;</span>
+            <ChevronDown className="size-4" aria-hidden />
           </button>
         </div>
         {fields.length > 0 && (

@@ -1,9 +1,9 @@
 import hashlib
 import hmac
+from decimal import Decimal, InvalidOperation
 from typing import Final, Optional
 from urllib.parse import parse_qs
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -14,10 +14,10 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://pal24.pro/api/v1"
-_TIMEOUT_S: Final[float] = 20.0
 _PAID_STATUSES: Final[frozenset[str]] = frozenset({"PAID", "SUCCESS", "OVERPAID"})
 
 
@@ -33,25 +33,22 @@ def _parse_body(body: bytes) -> dict[str, str]:
     return {key: values[0] for key, values in form.items()}
 
 
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
-
-
 class PaypalychGateway(PaymentGateway):
     currency = Currency.RUB
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
             "amount": f"{order.final_price:.2f}",
-            "shop_id": self._settings["shop_id"],
+            "shop_id": self._require("shop_id"),
             "currency_in": order.currency.value,
             "type": "normal",
             "order_id": order.idempotency_key,
             "description": f"Order #{order.id}",
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/bill/create",
             json=payload,
-            headers={"Authorization": f"Bearer {self._settings['api_token']}"},
+            headers={"Authorization": f"Bearer {self._require('api_token')}"},
         )
         data = orjson.loads(response.content)
         if not data.get("success", response.status_code < 400):
@@ -85,7 +82,7 @@ class PaypalychGateway(PaymentGateway):
             )
 
         expected = (
-            hashlib.md5(f"{out_sum}:{inv_id}:{self._settings['signature_token']}".encode("utf-8"))
+            hashlib.md5(f"{out_sum}:{inv_id}:{self._require('signature_token')}".encode("utf-8"))
             .hexdigest()
             .upper()
         )
@@ -95,11 +92,17 @@ class PaypalychGateway(PaymentGateway):
         if status.upper() not in _PAID_STATUSES:
             return None
 
+        try:
+            amount = Decimal(str(out_sum))
+        except InvalidOperation:
+            amount = None
+
         provider_payment_id = data.get("TrsId")
         return WebhookResult(
             reference=inv_id,
             status=PaymentOrderStatus.PAID,
             provider_payment_id=provider_payment_id,
+            amount=amount,
         )
 
     def webhook_ack(self, result: Optional[WebhookResult]) -> str:

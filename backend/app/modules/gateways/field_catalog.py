@@ -199,12 +199,26 @@ def validate_gateway_field_keys(gateway_type: PaymentGatewayType, values: dict[s
 
 def validate_gateway_field_values(gateway_type: PaymentGatewayType, values: dict[str, str]) -> None:
     raw_currency = values.get(_CURRENCY_FIELD_KEY, "").strip()
-    if not raw_currency:
-        return
-    try:
-        Currency(raw_currency.upper())
-    except ValueError:
-        allowed = ", ".join(currency.value for currency in Currency)
-        raise ValidationError(
-            f"Invalid currency '{raw_currency}' for {gateway_type.value}; must be one of {allowed}"
-        ) from None
+    if raw_currency:
+        try:
+            Currency(raw_currency.upper())
+        except ValueError:
+            allowed = ", ".join(currency.value for currency in Currency)
+            raise ValidationError(
+                f"Invalid currency '{raw_currency}' for {gateway_type.value}; "
+                f"must be one of {allowed}"
+            ) from None
+
+    for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]:
+        if field_spec.kind is not GatewayFieldKind.NUMBER:
+            continue
+        raw_value = values.get(field_spec.key, "").strip()
+        if not raw_value:
+            continue
+        try:
+            int(raw_value)
+        except ValueError:
+            raise ValidationError(
+                f"Field '{field_spec.key}' for {gateway_type.value} must be a number, "
+                f"got '{raw_value}'"
+            ) from None

@@ -417,6 +417,31 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("currency"),
     )
     op.create_table(
+        "dialog_windows",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("key", sa.String(length=128), nullable=False),
+        sa.Column("kind", sa.String(length=16), nullable=False),
+        sa.Column("flow", sa.String(length=16), nullable=False),
+        sa.Column("banner_name", sa.String(length=32), nullable=True),
+        sa.Column("is_enabled", sa.Boolean(), server_default=sa.text("true"), nullable=False),
+        sa.Column("position", sa.Integer(), server_default=sa.text("0"), nullable=False),
+        sa.Column("default_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("key", name="ux_dialog_windows_key"),
+    )
+    op.create_table(
         "oauth_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -859,6 +884,42 @@ def upgrade() -> None:
     op.create_index(op.f("ix_backup_runs_kind"), "backup_runs", ["kind"], unique=False)
     op.create_index(op.f("ix_backup_runs_status"), "backup_runs", ["status"], unique=False)
     op.create_table(
+        "dialog_buttons",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("window_id", sa.Integer(), nullable=False),
+        sa.Column("row", sa.Integer(), nullable=False),
+        sa.Column("column", sa.Integer(), nullable=False),
+        sa.Column("text_key", sa.String(length=64), nullable=False),
+        sa.Column("icon_custom_emoji_id", sa.String(length=32), nullable=True),
+        sa.Column("style", sa.String(length=16), nullable=True),
+        sa.Column("visibility_condition", sa.String(length=64), nullable=True),
+        sa.Column("link_type", sa.String(length=16), nullable=False),
+        sa.Column("action_key", sa.String(length=64), nullable=True),
+        sa.Column("target_window_key", sa.String(length=128), nullable=True),
+        sa.Column("url_value", sa.Text(), nullable=True),
+        sa.Column("is_hidden", sa.Boolean(), server_default=sa.text("false"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["window_id"], ["dialog_windows.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "window_id", "row", "column", name="ux_dialog_buttons_window_row_column"
+        ),
+    )
+    op.create_index(
+        op.f("ix_dialog_buttons_window_id"), "dialog_buttons", ["window_id"], unique=False
+    )
+    op.create_table(
         "event_outbox",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -872,6 +933,7 @@ def upgrade() -> None:
                 "PROMOCODE",
                 "REFERRAL",
                 "PRICING",
+                "PLANS",
                 name="event_category",
             ),
             nullable=False,
@@ -1203,6 +1265,7 @@ def upgrade() -> None:
                 "PROMOCODE",
                 "REFERRAL",
                 "PRICING",
+                "PLANS",
                 name="event_category",
             ),
             nullable=False,
@@ -1513,6 +1576,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_event_outbox_event_type"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
     op.drop_table("event_outbox")
+    op.drop_index(op.f("ix_dialog_buttons_window_id"), table_name="dialog_buttons")
+    op.drop_table("dialog_buttons")
     op.drop_index(op.f("ix_backup_runs_status"), table_name="backup_runs")
     op.drop_index(op.f("ix_backup_runs_kind"), table_name="backup_runs")
     op.drop_table("backup_runs")
@@ -1541,6 +1606,7 @@ def downgrade() -> None:
     op.drop_table("plans")
     op.drop_table("payment_gateways")
     op.drop_table("oauth_settings")
+    op.drop_table("dialog_windows")
     op.drop_table("currency_rates")
     op.drop_table("bot_translations")
     op.drop_table("bot_settings")

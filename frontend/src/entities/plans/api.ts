@@ -37,8 +37,8 @@ export interface Plan {
   durations: PlanDuration[];
 }
 
-export function listPlans(): Promise<Plan[]> {
-  return apiGet<Plan[]>("/plans");
+export function listPlans(signal?: AbortSignal): Promise<Plan[]> {
+  return apiGet<Plan[]>("/plans", signal);
 }
 
 export interface CreatePlanRequest {

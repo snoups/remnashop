@@ -14,7 +14,7 @@ import {
   Unlock,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -38,6 +38,7 @@ import { toast } from "@shared/lib/toast";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import type { Role } from "@shared/types/rbac";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 type LoadState =
@@ -47,7 +48,6 @@ type LoadState =
 
 const ROLES: Role[] = ["USER", "ADMIN", "OWNER"];
 const FILTER_DEBOUNCE_MS = 200;
-const LOAD_MORE_STEP = 10;
 // Only surface the dimmed-loading state once a refetch has been in flight
 // this long -- most requests resolve well under it, so typing quickly no
 // longer flashes the list dim/opaque on every keystroke pause.
@@ -84,8 +84,12 @@ export function UsersPage() {
   const [searchInput, setSearchInput] = useState("");
   const [role, setRole] = useState("");
   const [isBlocked, setIsBlocked] = useState("");
-  const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Bumped on every primary load (mount, filter change, unblock-all); a
+  // load-more that started under an older value discards its result rather
+  // than appending stale rows to a list the effect has already replaced.
+  const loadGenRef = useRef(0);
 
   const currentUserState = useCurrentUser();
   const permissions =
@@ -94,6 +98,8 @@ export function UsersPage() {
   const [sessionsUser, setSessionsUser] = useState<UserListItem | null>(null);
   const [detailsUser, setDetailsUser] = useState<UserListItem | null>(null);
   const [referralsUser, setReferralsUser] = useState<UserListItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<UserListItem | null>(null);
+  const [isUnblockAllConfirmOpen, setIsUnblockAllConfirmOpen] = useState(false);
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
 
@@ -107,41 +113,51 @@ export function UsersPage() {
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const showFetchingTimeout = setTimeout(() => {
-      if (!cancelled) setIsFetching(true);
+      if (!controller.signal.aborted) setIsFetching(true);
     }, FETCH_INDICATOR_DELAY_MS);
-    setVisibleCount(DEFAULT_PAGE_SIZE);
-    listUsers({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE })
+    loadGenRef.current += 1;
+    setPage(1);
+    listUsers({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
       .then((result) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState({ kind: "ready", items: result.items, total: result.total });
         }
       })
       .catch(() => {
         // keep showing whatever's already on screen; only surface the error
         // state when there's nothing else to show
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
         }
       })
       .finally(() => {
         clearTimeout(showFetchingTimeout);
-        if (!cancelled) setIsFetching(false);
+        if (!controller.signal.aborted) setIsFetching(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(showFetchingTimeout);
     };
   }, [baseFilters]);
 
+  // Offset pagination + local optimistic edits (block/delete below) can drift
+  // a row at a page boundary; acceptable for an admin list with infrequent
+  // deletes. offset drift on boundary, switch to keyset if it bites.
   const handleLoadMore = async () => {
-    const nextCount = visibleCount + LOAD_MORE_STEP;
+    const gen = loadGenRef.current;
+    const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const result = await listUsers({ ...baseFilters, page: 1, pageSize: nextCount });
-      setState({ kind: "ready", items: result.items, total: result.total });
-      setVisibleCount(nextCount);
+      const result = await listUsers({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
+      if (gen !== loadGenRef.current) return;
+      setState((prev) =>
+        prev.kind === "ready"
+          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
+          : prev,
+      );
+      setPage(nextPage);
     } catch {
       // keep current items on failure; the load-more button stays available to retry
     } finally {
@@ -159,7 +175,6 @@ export function UsersPage() {
   };
 
   const handleDelete = async (user: UserListItem) => {
-    if (!window.confirm(t("users.delete.confirm", { name: user.name }))) return;
     try {
       if (user.role === "ADMIN") {
         await deleteAdmin(user.id);
@@ -200,11 +215,12 @@ export function UsersPage() {
   };
 
   const handleUnblockAll = async () => {
-    if (!window.confirm(t("users.unblockAll.confirm"))) return;
     try {
       const result = await unblockAllUsers();
       toast.success(t("users.unblockAll.success", { count: result.unblocked }));
-      const refetched = await listUsers({ ...baseFilters, page: 1, pageSize: visibleCount });
+      loadGenRef.current += 1;
+      setPage(1);
+      const refetched = await listUsers({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE });
       setState({ kind: "ready", items: refetched.items, total: refetched.total });
     } catch (err) {
       toast.error(getErrorMessage(err, t("users.unblockAll.error")));
@@ -219,7 +235,7 @@ export function UsersPage() {
         <div className="flex justify-end">
           <motion.button
             type="button"
-            onClick={() => void handleUnblockAll()}
+            onClick={() => setIsUnblockAllConfirmOpen(true)}
             {...bounceTap(bounceStrength)}
             className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] font-semibold text-foreground/90 transition-colors hover:bg-white/5"
           >
@@ -349,7 +365,7 @@ export function UsersPage() {
                         label: t("users.delete.button"),
                         icon: Trash2,
                         variant: "danger",
-                        onClick: () => void handleDelete(user),
+                        onClick: () => setPendingDelete(user),
                       });
                     }
 
@@ -433,6 +449,35 @@ export function UsersPage() {
           userName={referralsUser.name}
           canAdjustPoints={permissions.includes("REFERRALS_POINTS_MANAGE")}
           onClose={() => setReferralsUser(null)}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={t("users.delete.button")}
+          message={t("users.delete.confirm", { name: pendingDelete.name })}
+          confirmLabel={t("users.delete.confirmButton")}
+          cancelLabel={t("users.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            void handleDelete(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+
+      {isUnblockAllConfirmOpen && (
+        <ConfirmDialog
+          title={t("users.unblockAll.title")}
+          message={t("users.unblockAll.confirm")}
+          confirmLabel={t("users.unblockAll.button")}
+          cancelLabel={t("users.unblockAll.cancelButton")}
+          onConfirm={() => {
+            void handleUnblockAll();
+            setIsUnblockAllConfirmOpen(false);
+          }}
+          onCancel={() => setIsUnblockAllConfirmOpen(false)}
         />
       )}
     </div>

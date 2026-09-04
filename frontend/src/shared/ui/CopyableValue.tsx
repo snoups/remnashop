@@ -11,7 +11,7 @@ export function CopyableValue({ label, value, copyAria }: CopyableValueProps) {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(value).catch(() => {});
+    navigator.clipboard?.writeText(value).catch(() => {});
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 1500);
   };

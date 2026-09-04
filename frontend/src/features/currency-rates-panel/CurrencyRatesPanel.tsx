@@ -1,4 +1,4 @@
-import { Coins } from "lucide-react";
+import { Coins, Filter } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,8 +16,10 @@ import {
 import { PricingDiffList } from "@entities/pricing/PricingDiffList";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
+import { parseOptionalInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 const CURRENCIES: Currency[] = ["USD", "XTR", "RUB"];
 const ROUNDING_MODES: RoundingMode[] = ["INTEGER", "DECIMAL_2"];
@@ -34,8 +36,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
   const { t } = useTranslation();
   const userState = useCurrentUser();
   const canManageRates =
-    userState.kind === "ready" &&
-    (userState.data.role === "OWNER" || userState.data.role === "SYSTEM");
+    userState.kind === "ready" && userState.data.effective_permissions.includes("PRICING_RATES_MANAGE");
 
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -111,18 +112,29 @@ function RateRow({
 
   useEffect(() => setForm(toRowState(rate)), [rate]);
 
-  const buildBody = () => ({
-    rate: form.rate,
-    rounding_mode: form.rounding_mode,
-    charm_ending: form.charm_ending === "" ? null : Number(form.charm_ending),
-    min_amount: form.min_amount,
-  });
+  // undefined means the charm-ending field holds something that isn't a
+  // valid optional integer -- callers reject the submit instead of sending it.
+  const buildBody = () => {
+    const charmEnding = parseOptionalInt(form.charm_ending, 0);
+    if (charmEnding === undefined) return undefined;
+    return {
+      rate: form.rate,
+      rounding_mode: form.rounding_mode,
+      charm_ending: charmEnding,
+      min_amount: form.min_amount,
+    };
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    const body = buildBody();
+    if (!body) {
+      toast.error(t("errors.invalidNumber"));
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const preview = await previewPricingChange({ rate: { currency: rate.currency, ...buildBody() } });
+      const preview = await previewPricingChange({ rate: { currency: rate.currency, ...body } });
       setDiff(preview);
     } catch (err) {
       toast.error(getErrorMessage(err, t("pricing.rates.previewError")));
@@ -133,8 +145,11 @@ function RateRow({
 
   const handleConfirm = async () => {
     setDiff(null);
+    // form hasn't changed since the (already-validated) preview in handleSubmit
+    const body = buildBody();
+    if (!body) return;
     try {
-      await updateCurrencyRate(rate.currency, buildBody());
+      await updateCurrencyRate(rate.currency, body);
       toast.success(t("pricing.rates.saved"));
       onChanged();
     } catch (err) {
@@ -166,22 +181,19 @@ function RateRow({
             className={inputClassName}
           />
         </label>
-        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-          {t("pricing.rates.roundingModeLabel")}
-          <select
+        <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+          <span>{t("pricing.rates.roundingModeLabel")}</span>
+          <SelectDropdown
             value={form.rounding_mode}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, rounding_mode: event.target.value as RoundingMode }))
-            }
-            className={inputClassName}
-          >
-            {ROUNDING_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {t(`pricing.roundingModes.${mode}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(value) => setForm((prev) => ({ ...prev, rounding_mode: value as RoundingMode }))}
+            icon={Filter}
+            placeholder={t(`pricing.roundingModes.${form.rounding_mode}`)}
+            options={ROUNDING_MODES.map((mode) => ({
+              value: mode,
+              label: t(`pricing.roundingModes.${mode}`),
+            }))}
+          />
+        </div>
         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
           {t("pricing.rates.charmEndingLabel")}
           <input
@@ -271,17 +283,15 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
       <h3 className="text-sm font-bold text-foreground">{t("pricing.anchor.title")}</h3>
       <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.anchor.description")}</p>
       <div className="mt-2.5 flex items-center gap-2">
-        <select
-          value={selected}
-          onChange={(event) => setSelected(event.target.value as Currency)}
-          className={inputClassName}
-        >
-          {CURRENCIES.map((currency) => (
-            <option key={currency} value={currency}>
-              {currency}
-            </option>
-          ))}
-        </select>
+        <div className="w-40">
+          <SelectDropdown
+            value={selected}
+            onChange={(value) => setSelected(value as Currency)}
+            icon={Filter}
+            placeholder={selected}
+            options={CURRENCIES.map((currency) => ({ value: currency, label: currency }))}
+          />
+        </div>
         <button
           type="button"
           disabled={selected === anchorCurrency || isLoading}

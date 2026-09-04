@@ -1,12 +1,13 @@
 import { Bell, ChevronDown, LogOut, Search, User as UserIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { useClickOutside } from "@shared/lib/use-click-outside";
 import { usePageTitle } from "@shared/lib/use-page-title";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
@@ -38,19 +39,7 @@ export function Header({ onLogout }: HeaderProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!openPopover) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (!menuRef.current?.contains(target) && !notifRef.current?.contains(target)) {
-        setOpenPopover(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openPopover]);
+  useClickOutside([menuRef, notifRef], openPopover !== null, () => setOpenPopover(null));
 
   const initials = (login ?? "?").slice(0, 2).toUpperCase();
 

@@ -1,4 +1,3 @@
-from dataclasses import fields as dataclass_fields
 from decimal import Decimal
 from typing import Final
 
@@ -6,9 +5,11 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.errors import constraint_name
 from app.core.db.models.plan import Plan
 from app.core.db.models.plan_duration import PlanDuration
 from app.core.db.models.plan_price_override import PlanPriceOverride
+from app.core.db.partial_update import apply_partial_update
 from app.core.enums import PlanAvailability, PlanType
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.plans.dto import (
@@ -171,7 +172,7 @@ class PlanRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            constraint = getattr(error.orig, "constraint_name", None)
+            constraint = constraint_name(error)
             if constraint == "ix_plans_public_code":
                 raise ConflictError(
                     f"Plan with public_code '{data.public_code}' already exists"
@@ -186,12 +187,7 @@ class PlanRepository:
     async def update(self, data: UpdatePlanDto) -> PlanDto:
         row = await self._get_or_raise(data.plan_id)
 
-        for field in dataclass_fields(data):
-            if field.name == "plan_id":
-                continue
-            value = getattr(data, field.name)
-            if value is not None:
-                setattr(row, field.name, value)
+        apply_partial_update(row, data, skip=frozenset({"plan_id"}))
 
         row.traffic_limit, row.device_limit = _zero_irrelevant_limits(
             row.type, row.traffic_limit, row.device_limit
@@ -209,7 +205,7 @@ class PlanRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            constraint = getattr(error.orig, "constraint_name", None)
+            constraint = constraint_name(error)
             if constraint == "ix_plans_name":
                 raise ConflictError(f"Plan name '{data.name}' already exists") from error
             raise ConflictError("Plan could not be updated due to a conflicting value") from error
@@ -224,7 +220,7 @@ class PlanRepository:
             await self.session.execute(delete(Plan).where(Plan.id == plan_id))
             await self.session.flush()
         except IntegrityError as error:
-            constraint = getattr(error.orig, "constraint_name", None)
+            constraint = constraint_name(error)
             if constraint == "promocodes_reward_plan_id_fkey":
                 raise ConflictError(
                     f"Plan '{plan_id}' is still referenced by a promocode"

@@ -3,18 +3,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getSystemMetadata } from "@shared/api/system";
-import { useBounceStrength } from "@shared/lib/bounceState";
-import { BOOSTY_URL, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
+import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { BOOSTY_URL, COMMUNITY_URL, githubApiUrl, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
 import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
-
-const COMMUNITY_URL = "https://boosty.to/snoups/purchase/3778398?share=subscription_link";
-
-function repoApiUrl(repositoryUrl: string): string {
-  const path = new URL(repositoryUrl).pathname.replace(/^\//, "");
-  return `https://api.github.com/repos/${path}`;
-}
 
 const iconButtonClassName =
   "flex basis-[calc(50%-2px)] items-center justify-center rounded-full py-2.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground";
@@ -22,40 +15,38 @@ const iconButtonClassName =
 export function ExternalLinksRow() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
-  const [repositoryUrl, setRepositoryUrl] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
   const [stars, setStars] = useState<number | null>(null);
   const [isDonateOpen, setIsDonateOpen] = useState(false);
 
+  // Fetched once here and handed down to BuildInfoBadge as a prop, rather
+  // than each fetching it independently -- both mount together, so two
+  // independent effects meant two /system/metadata requests every time.
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
-    getSystemMetadata()
-      .then((metadata) => {
-        if (cancelled) return;
-        setRepositoryUrl(metadata.repository_url);
-        return fetch(repoApiUrl(metadata.repository_url))
+    getSystemMetadata(controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        setMetadata(data);
+        return fetch(githubApiUrl(data.repository_url), { signal: controller.signal })
           .then((response) => (response.ok ? (response.json() as Promise<{ stargazers_count: number }>) : null))
           .then((repo) => {
-            if (!cancelled && repo) setStars(repo.stargazers_count);
+            if (!controller.signal.aborted && repo) setStars(repo.stargazers_count);
           });
       })
       .catch(() => {});
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, []);
 
-  const tapProps = {
-    whileTap: { scale: 1 + 0.12 * bounceStrength },
-    transition: { type: "spring", stiffness: 500, damping: 15 },
-  } as const;
+  const tapProps = bounceTap(bounceStrength, 0.12);
 
   return (
     <>
-      {repositoryUrl && (
+      {metadata && (
         <motion.a
-          href={repositoryUrl}
+          href={metadata.repository_url}
           target="_blank"
           rel="noreferrer"
           aria-label={t("buildInfo.githubButton")}
@@ -73,7 +64,7 @@ export function ExternalLinksRow() {
         </motion.a>
       )}
 
-      <BuildInfoBadge />
+      <BuildInfoBadge metadata={metadata} />
 
       <motion.button
         type="button"

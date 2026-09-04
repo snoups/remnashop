@@ -23,11 +23,9 @@ def is_plan_purchasable_by(
     if plan.availability == PlanAvailability.ALL:
         return True
     if plan.availability == PlanAvailability.ALLOWED:
-        telegram_id = getattr(actor, "telegram_id", None)
-        email = getattr(actor, "email", None)
-        return (telegram_id is not None and telegram_id in plan.allowed_telegram_ids) or (
-            email is not None and email in plan.allowed_emails
-        )
+        return (
+            actor.telegram_id is not None and actor.telegram_id in plan.allowed_telegram_ids
+        ) or (actor.email is not None and actor.email in plan.allowed_emails)
     if plan.availability == PlanAvailability.NEW:
         return not has_purchase_history
     if plan.availability == PlanAvailability.EXISTING:

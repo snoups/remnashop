@@ -45,7 +45,6 @@ class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
             await self._event_publisher.publish(
                 UserPointsAdjustedEvent(actor=actor, target=target, delta=str(data.delta))
             )
-            await self._uow.commit()
 
         updated = await self._user_repository.get_by_id(data.user_id)
         if updated is None:

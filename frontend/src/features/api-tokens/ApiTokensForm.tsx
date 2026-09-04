@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { usePermissionCatalog } from "@entities/admin/permission-catalog";
+import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { type ApiToken, type CreatedApiToken, listApiTokens, revokeApiToken } from "@entities/api-tokens/api";
 import { CreateApiTokenDialog } from "@features/api-tokens/CreateApiTokenDialog";
 import { RevealSecretDialog } from "@features/api-tokens/RevealSecretDialog";

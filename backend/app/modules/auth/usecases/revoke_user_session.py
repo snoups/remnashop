@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from app.core.actor import SyntheticActor
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
@@ -40,7 +41,10 @@ class RevokeUserSessionUseCase(UseCase[RevokeUserSessionDto, None]):
         target = await self._user_repository.get_by_id(data.user_id)
         if target is None:
             raise NotFoundError("User not found")
-        if target.role >= actor.role:
+        # A SyntheticActor's authorization boundary is its permission grants
+        # (already checked above), not a role it doesn't meaningfully have --
+        # skip the hierarchy guard that protects real admins from each other.
+        if not isinstance(actor, SyntheticActor) and target.role >= actor.role:
             raise ConflictError("Cannot manage sessions for an equally or more privileged account")
 
         async with self._uow:

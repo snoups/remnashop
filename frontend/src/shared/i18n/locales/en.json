@@ -13,7 +13,8 @@
     "serverUnreachableDescription": "Check your connection or try again in a moment.",
     "serverErrorTitle": "Server error",
     "serverErrorDescription": "The server responded with an error. Check the backend logs.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "invalidNumber": "Enter a valid number"
   },
   "auth": {
     "loginPageTitle": "Sign in",
@@ -186,7 +187,9 @@
     "delete": {
       "button": "Delete user",
       "confirm": "Permanently delete {{name}}? This cannot be undone.",
-      "error": "Failed to delete user."
+      "error": "Failed to delete user.",
+      "confirmButton": "Delete",
+      "cancelButton": "Cancel"
     },
     "block": {
       "button": "Block user",
@@ -200,7 +203,9 @@
       "button": "Unblock all",
       "confirm": "Unblock every blocked user? This cannot be undone.",
       "success": "Unblocked {{count}} user(s).",
-      "error": "Failed to unblock all users."
+      "error": "Failed to unblock all users.",
+      "title": "Unblock all users",
+      "cancelButton": "Cancel"
     },
     "details": {
       "button": "Details",
@@ -244,6 +249,7 @@
       "secretTokenLabel": "Webhook secret token",
       "secretTokenHint": "Sent back by Telegram in every webhook request's header; the API checks it matches before trusting the request, so only Telegram can reach your webhook.",
       "generateSecretToken": "Generate",
+      "secretTokenCopied": "Copied",
       "placeholder": "Leave blank to keep the current value",
       "save": "Save",
       "saving": "Saving…",
@@ -634,6 +640,8 @@
     "BOT_SETTINGS_MANAGE": "Bot settings",
     "BOT_COMMANDS_MANAGE": "Bot commands",
     "BOT_RESTART": "Restart bot",
+    "SHOP_SETTINGS_VIEW": "View shop settings",
+    "SHOP_SETTINGS_MANAGE": "Shop settings",
     "OAUTH_SETTINGS_VIEW": "View OAuth settings",
     "OAUTH_SETTINGS_MANAGE": "OAuth settings",
     "BANNERS_VIEW": "View banners",
@@ -652,6 +660,7 @@
     "EVENT_LOG_VIEW": "Event log",
     "USERS_VIEW": "View users",
     "USERS_DELETE": "Delete users",
+    "USERS_DISCOUNT_MANAGE": "Manage user discounts",
     "USER_SESSIONS_VIEW": "View user sessions",
     "USER_SESSIONS_REVOKE": "Revoke user sessions",
     "APPEARANCE_SETTINGS_MANAGE": "Appearance settings",
@@ -664,6 +673,51 @@
     "GATEWAYS_UPDATE": "Update gateway settings",
     "GATEWAYS_TOGGLE": "Enable/disable gateways",
     "GATEWAYS_REORDER": "Reorder gateways",
+    "PLANS_VIEW": "View plans",
+    "PLANS_CREATE": "Create plans",
+    "PLANS_UPDATE": "Edit plans",
+    "PLANS_DELETE": "Delete plans",
+    "PLANS_DURATIONS_MANAGE": "Manage plan durations",
+    "PLANS_PRICE_OVERRIDE_MANAGE": "Manage plan price overrides",
+    "PLANS_DURATION_BASE_PRICE_MANAGE": "Manage plan base prices",
+    "PLANS_ACCESS_MANAGE": "Manage plan access",
+    "PLANS_SQUADS_MANAGE": "Manage plan squads",
+    "PLANS_ORDER_MANAGE": "Reorder plans",
+    "PRICING_VIEW": "View pricing",
+    "PRICING_PREVIEW_VIEW": "Preview pricing changes",
+    "PRICING_RATES_MANAGE": "Manage currency rates",
+    "PRICING_ANCHOR_MANAGE": "Change anchor currency",
+    "PRICING_SETTINGS_MANAGE": "Manage pricing settings",
+    "PRICING_BASE_ADJUST_MANAGE": "Bulk-adjust base prices",
+    "SUBSCRIPTIONS_VIEW": "View subscriptions",
+    "SUBSCRIPTIONS_UPDATE": "Edit subscriptions",
+    "SUBSCRIPTIONS_SQUADS_MANAGE": "Manage subscription squads",
+    "SUBSCRIPTIONS_DELETE": "Delete subscriptions",
+    "ADDONS_VIEW": "View add-ons",
+    "ADDONS_CREATE": "Create add-ons",
+    "ADDONS_UPDATE": "Edit add-ons",
+    "ADDONS_DELETE": "Delete add-ons",
+    "ADDONS_PRICES_MANAGE": "Manage add-on base prices",
+    "ADDONS_PRICE_OVERRIDE_MANAGE": "Manage add-on price overrides",
+    "ADDONS_REORDER": "Reorder add-ons",
+    "PROMOCODES_VIEW": "View promocodes",
+    "PROMOCODES_CREATE": "Create promocodes",
+    "PROMOCODES_UPDATE": "Edit promocodes",
+    "PROMOCODES_DELETE": "Delete promocodes",
+    "PROMOCODES_GENERATE_CODE": "Generate promocode codes",
+    "PAYMENTS_VIEW": "View payments",
+    "PAYMENTS_ORDER_VIEW": "View payment order details",
+    "REFERRALS_VIEW": "View referrals",
+    "REFERRALS_SETTINGS_VIEW": "View referral settings",
+    "REFERRALS_SETTINGS_MANAGE": "Manage referral settings",
+    "REFERRALS_POINTS_MANAGE": "Adjust referral points",
+    "BACKUPS_VIEW": "View backups",
+    "BACKUPS_SETTINGS_VIEW": "View backup settings",
+    "BACKUPS_SETTINGS_MANAGE": "Manage backup settings",
+    "BACKUPS_RUN_VIEW": "View backup runs",
+    "BACKUPS_RUN_CREATE": "Run backups",
+    "BACKUPS_RUN_DOWNLOAD": "Download backups",
+    "BACKUPS_RUN_DELETE": "Delete backup runs",
     "BLACKLIST_VIEW": "View blacklist",
     "BLACKLIST_SOURCES_VIEW": "View blacklist sources",
     "BLACKLIST_ENTRY_ADD": "Add blacklist entries",
@@ -675,10 +729,18 @@
     "USERS_BLOCK": "Block users",
     "USERS_UNBLOCK": "Unblock users",
     "USERS_BULK_BLOCK": "Bulk-block users",
-    "USERS_UNBLOCK_ALL": "Unblock all users"
+    "USERS_UNBLOCK_ALL": "Unblock all users",
+    "AD_LINKS_VIEW": "View advertising links",
+    "AD_LINKS_STATS_VIEW": "View advertising stats",
+    "AD_LINKS_USERS_VIEW": "View attributed users",
+    "AD_LINKS_CREATE": "Create advertising links",
+    "AD_LINKS_GENERATE_CODE": "Generate advertising codes",
+    "AD_LINKS_UPDATE": "Edit advertising links",
+    "AD_LINKS_DELETE": "Delete advertising links"
   },
   "permissionCategories": {
     "botSettings": "Bot Settings",
+    "shopSettings": "Shop Settings",
     "oauthSettings": "OAuth Settings",
     "banners": "Banners",
     "locales": "Locales",
@@ -688,7 +750,16 @@
     "eventLog": "Event Log",
     "appearance": "Appearance",
     "gateways": "Payment Gateways",
-    "blacklist": "Blacklist"
+    "plans": "Plans",
+    "pricing": "Pricing",
+    "subscriptions": "Subscriptions",
+    "addons": "Add-ons",
+    "promocodes": "Promocodes",
+    "payments": "Payments",
+    "referrals": "Referrals",
+    "backups": "Backups",
+    "blacklist": "Blacklist",
+    "adLinks": "Advertising Links"
   },
   "permissionPicker": {
     "read": "Read",
@@ -708,6 +779,7 @@
     "telegramButton": "Telegram"
   },
   "pricing": {
+    "title": "Pricing",
     "loading": "Loading pricing data…",
     "loadError": "Failed to load pricing data.",
     "rates": {
@@ -795,6 +867,7 @@
     }
   },
   "blacklist": {
+    "title": "Blacklist",
     "loading": "Loading…",
     "manual": {
       "title": "Manual entries",
@@ -829,7 +902,9 @@
       "addError": "Failed to add the source.",
       "removeError": "Failed to remove the source.",
       "toggleError": "Failed to update the source.",
-      "syncError": "Failed to start the sync."
+      "syncError": "Failed to start the sync.",
+      "removeConfirmButton": "Remove",
+      "removeCancelButton": "Cancel"
     }
   },
   "backups": {
@@ -873,7 +948,9 @@
       "finishedAt": "Finished",
       "notFinished": "—",
       "loadMore": "Show more",
-      "loadingMore": "Loading…"
+      "loadingMore": "Loading…",
+      "deleteConfirmButton": "Delete",
+      "deleteCancelButton": "Cancel"
     }
   },
   "advertising": {
@@ -933,7 +1010,9 @@
     "delete": {
       "button": "Delete link",
       "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
-      "error": "Failed to delete the advertising link."
+      "error": "Failed to delete the advertising link.",
+      "confirmButton": "Delete",
+      "cancelButton": "Cancel"
     },
     "stats": {
       "button": "Stats",
@@ -1079,7 +1158,9 @@
     "delete": {
       "button": "Delete promocode",
       "confirm": "Permanently delete \"{{code}}\"? This cannot be undone.",
-      "error": "Failed to delete the promocode."
+      "error": "Failed to delete the promocode.",
+      "confirmButton": "Delete",
+      "cancelButton": "Cancel"
     }
   },
   "plans": {
@@ -1161,7 +1242,9 @@
     "delete": {
       "button": "Delete plan",
       "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
-      "error": "Failed to delete the plan."
+      "error": "Failed to delete the plan.",
+      "confirmButton": "Delete",
+      "cancelButton": "Cancel"
     }
   },
   "payments": {
@@ -1270,7 +1353,9 @@
     "delete": {
       "button": "Delete subscription",
       "confirm": "Permanently delete subscription #{{id}}? This cannot be undone.",
-      "error": "Failed to delete the subscription."
+      "error": "Failed to delete the subscription.",
+      "confirmButton": "Delete",
+      "cancelButton": "Cancel"
     }
   },
   "donate": {

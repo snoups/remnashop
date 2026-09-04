@@ -14,8 +14,8 @@ import {
   User,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { motion } from "motion/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -27,8 +27,8 @@ import {
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { DatePickerField } from "@shared/ui/DatePickerField";
-import { DialogPortal } from "@shared/ui/DialogPortal";
 import { InfoRow } from "@shared/ui/InfoRow";
+import { Modal, useModalClose } from "@shared/ui/Modal";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 type LoadState =
@@ -44,7 +44,6 @@ const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], string> = {
   SETTINGS: "eventLog.filters.categorySettings",
 };
 const FILTER_DEBOUNCE_MS = 200;
-const LOAD_MORE_STEP = 10;
 // Only surface the dimmed-loading state once a refetch has been in flight
 // this long -- most requests resolve well under it, so typing quickly no
 // longer flashes the list dim/opaque on every keystroke pause.
@@ -85,7 +84,16 @@ interface EventDetailDialogProps {
 }
 
 function EventDetailDialog({ entry, onClose }: EventDetailDialogProps) {
+  return (
+    <Modal onClose={onClose} size="sm" scrollable>
+      <EventDetailDialogBody entry={entry} />
+    </Modal>
+  );
+}
+
+function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
   const { t } = useTranslation();
+  const close = useModalClose();
   const target = getTargetLogin(entry);
   const otherPayload = Object.fromEntries(
     Object.entries(entry.payload ?? {}).filter(([key]) => key !== PAYLOAD_TARGET_KEY),
@@ -94,108 +102,82 @@ function EventDetailDialog({ entry, onClose }: EventDetailDialogProps) {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopyPayload = () => {
-    navigator.clipboard.writeText(JSON.stringify(otherPayload, null, 2)).catch(() => {});
+    navigator.clipboard?.writeText(JSON.stringify(otherPayload, null, 2)).catch(() => {});
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 1500);
   };
 
   return (
-    <DialogPortal>
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
-        className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4"
-      >
+    <>
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+            <History className="size-4" />
+          </div>
+          {t(`eventLog.events.${entry.event_type}`)}
+        </h2>
         <button
           type="button"
-          aria-hidden
-          tabIndex={-1}
-          className="absolute inset-0 cursor-default"
-          onClick={onClose}
-        />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.94, y: 8 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="relative z-50 flex max-h-[85vh] w-full max-w-sm flex-col rounded-dialog border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150"
+          onClick={close}
+          aria-label={t("profile.edit.close")}
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
         >
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-                <History className="size-4" />
-              </div>
-              {t(`eventLog.events.${entry.event_type}`)}
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t("profile.edit.close")}
-              className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
+          <X className="size-4" />
+        </button>
+      </div>
 
-          <div className="flex flex-col gap-1 overflow-y-auto px-3 py-3">
-            <InfoRow icon={Clock} label={t("eventLog.columns.occurredAt")}>
-              {formatOccurredAt(entry.occurred_at)}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex flex-col gap-1 px-3 py-3">
+          <InfoRow icon={Clock} label={t("eventLog.columns.occurredAt")}>
+            {formatOccurredAt(entry.occurred_at)}
+          </InfoRow>
+          <InfoRow icon={Tag} label={t("eventLog.filters.category")}>
+            {isKnownCategory(entry.category) ? t(CATEGORY_LABEL_KEYS[entry.category]) : entry.category}
+          </InfoRow>
+          <InfoRow
+            icon={User}
+            label={t("eventLog.columns.actor")}
+            copyValue={entry.actor_login ?? entry.actor_name ?? undefined}
+          >
+            {entry.actor_login ?? entry.actor_name ?? "—"}
+            {entry.actor_id !== null && <span className="text-muted-foreground">#{entry.actor_id}</span>}
+          </InfoRow>
+          {target && (
+            <InfoRow icon={User} label={t("eventLog.detail.target")} copyValue={target}>
+              {target}
             </InfoRow>
-            <InfoRow icon={Tag} label={t("eventLog.filters.category")}>
-              {isKnownCategory(entry.category) ? t(CATEGORY_LABEL_KEYS[entry.category]) : entry.category}
-            </InfoRow>
-            <InfoRow
-              icon={User}
-              label={t("eventLog.columns.actor")}
-              copyValue={entry.actor_login ?? entry.actor_name ?? undefined}
-            >
-              {entry.actor_login ?? entry.actor_name ?? "—"}
-              {entry.actor_id !== null && (
-                <span className="text-muted-foreground">#{entry.actor_id}</span>
-              )}
-            </InfoRow>
-            {target && (
-              <InfoRow icon={User} label={t("eventLog.detail.target")} copyValue={target}>
-                {target}
-              </InfoRow>
-            )}
-            {entry.ip_address && (
-              <InfoRow icon={Globe} label={t("eventLog.detail.ip")} copyValue={entry.ip_address}>
-                {entry.ip_address}
-              </InfoRow>
-            )}
-          </div>
-
-          {hasOtherPayload && (
-            <div className="border-t border-border px-5 py-4">
-              <p className={fieldLabelClassName}>{t("eventLog.detail.payload")}</p>
-              <div className="relative mt-2">
-                <button
-                  type="button"
-                  onClick={handleCopyPayload}
-                  aria-label={t("eventLog.detail.copyPayload")}
-                  className="absolute right-2 top-2 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
-                >
-                  {isCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                </button>
-                <pre
-                  className={`overflow-x-auto rounded-xl border border-border p-3 pr-10 font-mono text-[11.5px] text-foreground/80 transition-colors ${
-                    isCopied ? "bg-success/10" : "bg-input/60"
-                  }`}
-                >
-                  {JSON.stringify(otherPayload, null, 2)}
-                </pre>
-              </div>
-            </div>
           )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-    </DialogPortal>
+          {entry.ip_address && (
+            <InfoRow icon={Globe} label={t("eventLog.detail.ip")} copyValue={entry.ip_address}>
+              {entry.ip_address}
+            </InfoRow>
+          )}
+        </div>
+
+        {hasOtherPayload && (
+          <div className="border-t border-border px-5 py-4">
+            <p className={fieldLabelClassName}>{t("eventLog.detail.payload")}</p>
+            <div className="relative mt-2">
+              <button
+                type="button"
+                onClick={handleCopyPayload}
+                aria-label={t("eventLog.detail.copyPayload")}
+                className="absolute right-2 top-2 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+              >
+                {isCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+              </button>
+              <pre
+                className={`overflow-x-auto rounded-xl border border-border p-3 pr-10 font-mono text-[11.5px] text-foreground/80 transition-colors ${
+                  isCopied ? "bg-success/10" : "bg-input/60"
+                }`}
+              >
+                {JSON.stringify(otherPayload, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -208,9 +190,12 @@ export function EventLogPage() {
   const [searchInput, setSearchInput] = useState("");
   const [dateFromInput, setDateFromInput] = useState("");
   const [dateToInput, setDateToInput] = useState("");
-  const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<EventLogEntry | null>(null);
+  // Bumped on every primary load; a load-more from before a filter change
+  // discards its result instead of appending to an already-replaced list.
+  const loadGenRef = useRef(0);
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
   const debouncedDateFrom = useDebouncedValue(dateFromInput, FILTER_DEBOUNCE_MS);
@@ -227,41 +212,48 @@ export function EventLogPage() {
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const showFetchingTimeout = setTimeout(() => {
-      if (!cancelled) setIsFetching(true);
+      if (!controller.signal.aborted) setIsFetching(true);
     }, FETCH_INDICATOR_DELAY_MS);
-    setVisibleCount(DEFAULT_PAGE_SIZE);
-    listEventLog({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE })
+    loadGenRef.current += 1;
+    setPage(1);
+    listEventLog({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
       .then((result) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState({ kind: "ready", items: result.items, total: result.total });
         }
       })
       .catch(() => {
         // keep showing whatever's already on screen; only surface the error
         // state when there's nothing else to show
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
         }
       })
       .finally(() => {
         clearTimeout(showFetchingTimeout);
-        if (!cancelled) setIsFetching(false);
+        if (!controller.signal.aborted) setIsFetching(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(showFetchingTimeout);
     };
   }, [baseFilters]);
 
   const handleLoadMore = async () => {
-    const nextCount = visibleCount + LOAD_MORE_STEP;
+    const gen = loadGenRef.current;
+    const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const result = await listEventLog({ ...baseFilters, page: 1, pageSize: nextCount });
-      setState({ kind: "ready", items: result.items, total: result.total });
-      setVisibleCount(nextCount);
+      const result = await listEventLog({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
+      if (gen !== loadGenRef.current) return;
+      setState((prev) =>
+        prev.kind === "ready"
+          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
+          : prev,
+      );
+      setPage(nextPage);
     } catch {
       // keep current items on failure; the load-more button stays available to retry
     } finally {

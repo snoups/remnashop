@@ -86,22 +86,27 @@ function BannerCell({ name, locale, meta, onChanged }: BannerCellProps) {
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
     let objectUrl: string | null = null;
 
-    fetchBannerImageBlob(name, locale)
+    fetchBannerImageBlob(name, locale, controller.signal)
       .then((blob) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         objectUrl = URL.createObjectURL(blob);
         setPreviewUrl(objectUrl);
       })
       .catch(() => {});
 
     return () => {
-      cancelled = true;
+      controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [name, locale, meta]);
+    // meta is a fresh object every time the parent's list reloads (even for
+    // banners that didn't change), so depending on it directly would refetch
+    // every cell's preview on any single upload/delete. size_bytes/content_type
+    // change when this cell's own file actually does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, locale, meta?.size_bytes, meta?.content_type]);
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

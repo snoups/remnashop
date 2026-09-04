@@ -28,13 +28,16 @@ export interface AdLinkListFilters {
   pageSize?: number;
 }
 
-export function listAdLinks(filters: AdLinkListFilters = {}): Promise<AdLinkListPage> {
+export function listAdLinks(
+  filters: AdLinkListFilters = {},
+  signal?: AbortSignal,
+): Promise<AdLinkListPage> {
   const params = new URLSearchParams();
   if (filters.isActive !== undefined) params.set("is_active", String(filters.isActive));
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
-  return apiGet<AdLinkListPage>(`/advertising/links?${params.toString()}`);
+  return apiGet<AdLinkListPage>(`/advertising/links?${params.toString()}`, signal);
 }
 
 export interface CreateAdLinkRequest {
@@ -84,8 +87,8 @@ export interface AdLinkStats {
   roi: string | null;
 }
 
-export function getAdLinkStats(adLinkId: number): Promise<AdLinkStats> {
-  return apiGet<AdLinkStats>(`/advertising/links/${adLinkId}/stats`);
+export function getAdLinkStats(adLinkId: number, signal?: AbortSignal): Promise<AdLinkStats> {
+  return apiGet<AdLinkStats>(`/advertising/links/${adLinkId}/stats`, signal);
 }
 
 export interface AttributedUser {
@@ -105,7 +108,8 @@ export function listAdLinkAttributedUsers(
   adLinkId: number,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
+  signal?: AbortSignal,
 ): Promise<AttributedUserPage> {
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
-  return apiGet<AttributedUserPage>(`/advertising/links/${adLinkId}/users?${params.toString()}`);
+  return apiGet<AttributedUserPage>(`/advertising/links/${adLinkId}/users?${params.toString()}`, signal);
 }

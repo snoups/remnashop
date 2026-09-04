@@ -53,7 +53,7 @@ def _gateway() -> UrlPayGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(urlpay_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(urlpay_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(currency: str, amount: str, shop_id: str, secret: str = "sign-secret") -> str:

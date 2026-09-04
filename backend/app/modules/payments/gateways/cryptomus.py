@@ -1,9 +1,9 @@
 import base64
 import hashlib
+import json
 from hmac import compare_digest
 from typing import ClassVar, Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -14,14 +14,12 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
     ip_in_networks,
 )
 
-_TIMEOUT_S: Final[float] = 20.0
 _LIFETIME_S: Final[int] = 1800
 _PAID_STATUSES: Final[frozenset[str]] = frozenset({"paid", "paid_over"})
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class CryptomusGateway(PaymentGateway):
@@ -31,7 +29,7 @@ class CryptomusGateway(PaymentGateway):
 
     def _sign(self, body: bytes) -> str:
         encoded = base64.b64encode(body).decode()
-        return hashlib.md5(f"{encoded}{self._settings['api_key']}".encode()).hexdigest()
+        return hashlib.md5(f"{encoded}{self._require('api_key')}".encode()).hexdigest()
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
@@ -45,11 +43,11 @@ class CryptomusGateway(PaymentGateway):
             "is_payment_multiple": False,
         }
         body = orjson.dumps(payload)
-        response = await _client.post(
+        response = await http_client.post(
             f"{self.API_BASE}/v1/payment",
             content=body,
             headers={
-                "merchant": self._settings["merchant_id"],
+                "merchant": self._require("merchant_id"),
                 "sign": self._sign(body),
                 "Content-Type": "application/json",
             },
@@ -71,9 +69,11 @@ class CryptomusGateway(PaymentGateway):
             raise PaymentGatewayError("Malformed Cryptomus webhook") from error
 
         received_sign = data.pop("sign", None)
-        if not received_sign or not compare_digest(
-            self._sign(orjson.dumps(data)), str(received_sign)
-        ):
+        # Cryptomus signs its own PHP json_encode() output (escapes non-ASCII by
+        # default) -- orjson doesn't escape it, so re-serializing with orjson
+        # can produce different bytes and fail a legitimate signature.
+        resigned = json.dumps(data, separators=(",", ":"), ensure_ascii=True).encode()
+        if not received_sign or not compare_digest(self._sign(resigned), str(received_sign)):
             raise PaymentGatewayError("Invalid Cryptomus webhook signature")
 
         order_ref = data.get("order_id")

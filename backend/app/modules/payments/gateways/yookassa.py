@@ -1,6 +1,5 @@
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -11,12 +10,11 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://api.yookassa.ru/v3"
-_TIMEOUT_S: Final[float] = 15.0
 
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 _STATUS_MAP: Final[dict[str, PaymentOrderStatus]] = {
     "succeeded": PaymentOrderStatus.PAID,
@@ -39,7 +37,7 @@ class YooKassaGateway(PaymentGateway):
     currency = Currency.RUB
 
     def _auth(self) -> tuple[str, str]:
-        return self._settings["shop_id"], self._settings["api_key"]
+        return self._require("shop_id"), self._require("api_key")
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         body: dict[str, object] = {
@@ -53,7 +51,7 @@ class YooKassaGateway(PaymentGateway):
         if receipt is not None:
             body["receipt"] = receipt
 
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/payments",
             json=body,
             auth=self._auth(),
@@ -84,10 +82,10 @@ class YooKassaGateway(PaymentGateway):
             provider_payment_id=str(obj["id"]) if obj.get("id") else None,
         )
 
-    async def verify_payment(self, order: PaymentOrderDto) -> bool:
+    async def verify_payment(self, order: PaymentOrderDto, result: WebhookResult) -> bool:
         if not order.external_payment_id:
             return False
-        response = await _client.get(
+        response = await http_client.get(
             f"{_API_BASE}/payments/{order.external_payment_id}", auth=self._auth()
         )
         response.raise_for_status()

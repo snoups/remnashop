@@ -5,7 +5,6 @@ import uuid
 from base64 import b64encode
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -16,14 +15,12 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
     ip_in_networks,
 )
 
 _API_BASE: Final[str] = "https://api.paypear.ru/v1"
-_TIMEOUT_S: Final[float] = 20.0
 _DEFAULT_PAYMENT_METHOD: Final[str] = "sbp"
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class PayPearGateway(PaymentGateway):
@@ -33,7 +30,7 @@ class PayPearGateway(PaymentGateway):
     trusted_networks = ("158.160.85.101/32",)
 
     def _basic_auth(self) -> str:
-        credentials = f"{self._settings['shop_id']}:{self._settings['secret_key']}"
+        credentials = f"{self._require('shop_id')}:{self._require('secret_key')}"
         return "Basic " + b64encode(credentials.encode("utf-8")).decode("utf-8")
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
@@ -45,7 +42,7 @@ class PayPearGateway(PaymentGateway):
             "confirmation": {"type": "redirect", "return_url": self._return_url},
             "webhook_url": self._webhook_url,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/payment/",
             json=payload,
             headers={
@@ -99,7 +96,7 @@ class PayPearGateway(PaymentGateway):
 
     def _verified(self, payload: dict[str, object], client_ip: Optional[str]) -> bool:
         signature = payload.get("signature")
-        secret = self._settings.get("secret_key")
+        secret = self._optional("secret_key")
         if signature and secret:
             without_sig = {key: value for key, value in payload.items() if key != "signature"}
             for body_to_sign in (

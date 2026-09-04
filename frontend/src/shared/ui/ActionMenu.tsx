@@ -1,8 +1,9 @@
 import { MoreVertical } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useRef, useState, type ComponentType } from "react";
 
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { useClickOutside } from "@shared/lib/use-click-outside";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 
 export interface ActionMenuItem {
@@ -21,16 +22,7 @@ export function ActionMenu({ items }: ActionMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const bounceStrength = useBounceStrength();
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setIsOpen(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  useClickOutside(ref, isOpen, () => setIsOpen(false));
 
   if (items.length === 0) return null;
 

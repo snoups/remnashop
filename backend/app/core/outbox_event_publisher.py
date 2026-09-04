@@ -4,19 +4,15 @@ from typing import Any, Final, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.actor import SyntheticActor
+from app.core.actor import Actor, SyntheticActor
 from app.core.db.models import EventOutboxEntry
 from app.core.events import ActorEvent, BaseEvent, UserEvent
 
-_SAFE_USER_FIELDS: Final[tuple[str, ...]] = ("id", "login", "name", "role")
 _SKIPPED_PAYLOAD_FIELDS: Final[set[str]] = {"event_id", "occurred_at", "ip_address"}
 
 
-def _sanitize_user(user: Any) -> dict[str, Any]:
-    return {
-        field: str(getattr(user, field, None)) if field == "role" else getattr(user, field, None)
-        for field in _SAFE_USER_FIELDS
-    }
+def _sanitize_user(user: Actor) -> dict[str, Any]:
+    return {"id": user.id, "login": user.login, "name": user.name, "role": str(user.role)}
 
 
 def _build_payload(event: BaseEvent) -> dict[str, Any]:
@@ -47,7 +43,7 @@ def _actor_fields(
     else:
         return None, None, None, None
     actor_id = actor.id if actor.id > 0 else None
-    return actor_id, getattr(actor, "login", None), actor.name, getattr(actor, "email", None)
+    return actor_id, actor.login, actor.name, actor.email
 
 
 class OutboxEventPublisher:

@@ -54,7 +54,7 @@ def _gateway(settings: dict[str, str] = _SETTINGS) -> RioPayGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(riopay_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(riopay_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(raw: bytes, secret: str = "rio-webhook-secret") -> str:

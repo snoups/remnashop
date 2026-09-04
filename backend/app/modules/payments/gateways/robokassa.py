@@ -1,4 +1,6 @@
 import hashlib
+import hmac
+from decimal import Decimal, InvalidOperation
 from typing import Final, Optional
 from urllib.parse import parse_qs, urlencode
 
@@ -30,16 +32,16 @@ class RobokassaGateway(PaymentGateway):
         signature = self._hash(
             ":".join(
                 [
-                    self._settings["merchant_login"],
+                    self._require("merchant_login"),
                     out_sum,
                     "0",
-                    self._settings["password1"],
+                    self._require("password1"),
                     *(f"{key}={shp_params[key]}" for key in sorted(shp_params)),
                 ]
             )
         )
         params = {
-            "MerchantLogin": self._settings["merchant_login"],
+            "MerchantLogin": self._require("merchant_login"),
             "OutSum": out_sum,
             "InvId": 0,
             "Description": f"Order #{order.id}",
@@ -71,14 +73,19 @@ class RobokassaGateway(PaymentGateway):
 
         expected = self._hash(
             ":".join(
-                [out_sum, inv_id, self._settings["password2"]]
+                [out_sum, inv_id, self._require("password2")]
                 + [f"{key}={shp_params[key]}" for key in sorted(shp_params)]
             )
         )
-        if expected != received_sign:
+        if not hmac.compare_digest(expected, received_sign):
             raise PaymentGatewayError("Invalid Robokassa webhook signature")
 
-        return WebhookResult(reference=order_ref, status=PaymentOrderStatus.PAID)
+        try:
+            amount = Decimal(out_sum)
+        except InvalidOperation:
+            amount = None
+
+        return WebhookResult(reference=order_ref, status=PaymentOrderStatus.PAID, amount=amount)
 
     def webhook_ack(self, result: Optional[WebhookResult]) -> str:
         return f"OK{self._last_inv_id or ''}"

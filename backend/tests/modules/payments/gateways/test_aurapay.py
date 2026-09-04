@@ -54,7 +54,7 @@ def _gateway() -> AuraPayGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(aurapay_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(aurapay_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(payload: dict[str, object], secret: str = "ap-secret") -> str:

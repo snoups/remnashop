@@ -52,7 +52,7 @@ def _gateway(settings: dict[str, str] = _SETTINGS) -> PlategaGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(platega_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(platega_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _webhook(body: dict[str, object], headers: dict[str, str]) -> WebhookRequest:

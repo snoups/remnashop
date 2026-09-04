@@ -58,7 +58,7 @@ def _gateway() -> CloudPaymentsGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(cloudpayments_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(cloudpayments_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _webhook(fields: dict[str, str], secret: str = "cp-secret") -> WebhookRequest:

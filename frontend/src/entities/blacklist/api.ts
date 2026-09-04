@@ -17,8 +17,8 @@ export interface BlacklistSource {
   last_error: string | null;
 }
 
-export function getBlacklist(): Promise<Blacklist> {
-  return apiGet<Blacklist>("/blacklist");
+export function getBlacklist(signal?: AbortSignal): Promise<Blacklist> {
+  return apiGet<Blacklist>("/blacklist", signal);
 }
 
 export function addBlacklistEntry(kind: BlacklistKind, value: string): Promise<Blacklist> {
@@ -35,8 +35,8 @@ export function removeBlacklistEntry(kind: BlacklistKind, value: string): Promis
   });
 }
 
-export function listBlacklistSources(): Promise<BlacklistSource[]> {
-  return apiGet<BlacklistSource[]>("/blacklist/sources");
+export function listBlacklistSources(signal?: AbortSignal): Promise<BlacklistSource[]> {
+  return apiGet<BlacklistSource[]>("/blacklist/sources", signal);
 }
 
 export function addBlacklistSource(url: string, name?: string): Promise<BlacklistSource> {

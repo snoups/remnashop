@@ -52,12 +52,17 @@ export function ReferralsPage() {
   };
 
   useEffect(() => {
-    getReferralSettings()
+    const controller = new AbortController();
+    getReferralSettings(controller.signal)
       .then((settings) => {
+        if (controller.signal.aborted) return;
         applySettings(settings);
         setState({ kind: "ready" });
       })
-      .catch(() => setState({ kind: "error" }));
+      .catch(() => {
+        if (!controller.signal.aborted) setState({ kind: "error" });
+      });
+    return () => controller.abort();
   }, []);
 
   const handleSubmit = async (event: FormEvent) => {

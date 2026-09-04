@@ -19,8 +19,8 @@ export interface UpdateAppearancePayload {
 }
 
 // Public endpoint, no auth required -- readable from the pre-login LoginPage too.
-export function getAppearance(): Promise<AppearanceSettings> {
-  return apiGet<AppearanceSettings>("/appearance");
+export function getAppearance(signal?: AbortSignal): Promise<AppearanceSettings> {
+  return apiGet<AppearanceSettings>("/appearance", signal);
 }
 
 export function updateAppearance(payload: UpdateAppearancePayload): Promise<AppearanceSettings> {

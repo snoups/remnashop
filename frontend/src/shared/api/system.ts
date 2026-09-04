@@ -11,6 +11,6 @@ export interface SystemMetadata {
   };
 }
 
-export function getSystemMetadata(): Promise<SystemMetadata> {
-  return apiGet<SystemMetadata>("/system/metadata");
+export function getSystemMetadata(signal?: AbortSignal): Promise<SystemMetadata> {
+  return apiGet<SystemMetadata>("/system/metadata", signal);
 }

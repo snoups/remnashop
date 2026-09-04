@@ -26,9 +26,10 @@ class UpdateBotSettingsDto:
 
 
 class ShopSettingsDto(BaseDto, TimestampMixin):
-    # None = unlimited. Default of 3 matches the row's own DB default, so a
-    # read before the row has ever been created still sees the same value it
-    # would once get-or-create runs.
+    # None = unlimited. Default of 3 matches the hardcoded cap this setting
+    # replaced (MAX_ACTIVE_SUBSCRIPTIONS_PER_USER) -- the column itself has no
+    # DB-level default (see core/db/models/shop_settings.py), so this is what
+    # covers the row-doesn't-exist-yet case.
     max_active_subscriptions: Optional[int] = 3
     device_single_reset_enabled: bool = True
     device_single_reset_cooldown_hours: int = 0

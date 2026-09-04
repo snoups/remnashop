@@ -4,7 +4,6 @@ import hmac
 from typing import Final, Optional
 from urllib.parse import parse_qs, unquote_plus
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -15,25 +14,24 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://api.cloudpayments.ru"
-_TIMEOUT_S: Final[float] = 20.0
 _PAID_STATUSES: Final[frozenset[str]] = frozenset({"Completed", "Authorized"})
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class CloudPaymentsGateway(PaymentGateway):
     currency = Currency.RUB
 
     def _basic_auth(self) -> str:
-        credentials = f"{self._settings['public_id']}:{self._settings['api_secret']}"
+        credentials = f"{self._require('public_id')}:{self._require('api_secret')}"
         return "Basic " + base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
-            "Amount": float(order.final_price),
+            "Amount": amount_to_float(order.final_price),
             "Currency": order.currency.value,
             "Description": f"Order #{order.id}",
             "AccountId": str(order.user_id),
@@ -41,7 +39,7 @@ class CloudPaymentsGateway(PaymentGateway):
             "SuccessRedirectUrl": self._return_url,
             "FailRedirectUrl": self._return_url,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/orders/create",
             json=payload,
             headers={"Authorization": self._basic_auth(), "Content-Type": "application/json"},
@@ -65,7 +63,7 @@ class CloudPaymentsGateway(PaymentGateway):
         signature = request.headers.get("content-hmac") or request.headers.get("x-content-hmac")
         if not signature:
             raise PaymentGatewayError("CloudPayments webhook missing Content-HMAC header")
-        secret = self._settings["api_secret"]
+        secret = self._require("api_secret")
         if not self._signature_matches(secret, request.body, signature):
             raise PaymentGatewayError("Invalid CloudPayments webhook signature")
 

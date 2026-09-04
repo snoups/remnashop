@@ -1,13 +1,14 @@
 import asyncio
 import ipaddress
 import socket
+from typing import Final, Union
 from urllib.parse import urlsplit
 
 from fastapi import Request
 
 from app.core.exceptions import ValidationError
 
-_TRUSTED_PROXY_NETWORKS = [
+_TRUSTED_PROXY_NETWORKS: Final[list[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]] = [
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("::1/128"),
     ipaddress.ip_network("10.0.0.0/8"),

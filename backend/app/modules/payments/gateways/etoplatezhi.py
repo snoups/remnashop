@@ -66,7 +66,7 @@ class EtoplatezhiGateway(PaymentGateway):
         entries = sorted(_flatten(params))
         message = ";".join(entries)
         digest = hmac.new(
-            self._settings["secret_key"].encode("utf-8"), message.encode("utf-8"), hashlib.sha512
+            self._require("secret_key").encode("utf-8"), message.encode("utf-8"), hashlib.sha512
         ).digest()
         return base64.b64encode(digest).decode("utf-8")
 
@@ -74,7 +74,7 @@ class EtoplatezhiGateway(PaymentGateway):
         # Etoplatezhi is a redirect-to-hosted-page gateway -- no create API
         # call, just a signed URL built client-side.
         params: dict[str, object] = {
-            "project_id": int(self._settings["project_id"]),
+            "project_id": int(self._require("project_id")),
             "payment_id": order.idempotency_key,
             "payment_amount": int(order.final_price * 100),
             "payment_currency": order.currency.value,

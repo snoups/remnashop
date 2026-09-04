@@ -16,7 +16,7 @@ from app.core.enums import (
 from app.core.exceptions import PaymentGatewayError
 from app.core.utils.time import datetime_now
 from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
+from app.modules.payments.gateways.base import WebhookRequest, WebhookResult
 from app.modules.payments.gateways.yookassa import YooKassaGateway
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
@@ -52,7 +52,7 @@ def _gateway() -> YooKassaGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(yookassa_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(yookassa_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 async def test_create_payment_sends_idempotence_key_ref_metadata_and_return_url(
@@ -191,7 +191,10 @@ async def test_verify_payment_true_only_on_succeeded_status(
         return httpx.Response(200, json={"id": "yk-payment-1", "status": "succeeded"})
 
     _patch_transport(monkeypatch, httpx.MockTransport(handler))
-    assert await _gateway().verify_payment(_order(external_payment_id="yk-payment-1")) is True
+    result = WebhookResult(reference="", status=PaymentOrderStatus.PAID)
+    assert (
+        await _gateway().verify_payment(_order(external_payment_id="yk-payment-1"), result) is True
+    )
 
 
 async def test_verify_payment_false_on_pending_status(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -199,4 +202,7 @@ async def test_verify_payment_false_on_pending_status(monkeypatch: pytest.Monkey
         return httpx.Response(200, json={"id": "yk-payment-1", "status": "pending"})
 
     _patch_transport(monkeypatch, httpx.MockTransport(handler))
-    assert await _gateway().verify_payment(_order(external_payment_id="yk-payment-1")) is False
+    result = WebhookResult(reference="", status=PaymentOrderStatus.PAID)
+    assert (
+        await _gateway().verify_payment(_order(external_payment_id="yk-payment-1"), result) is False
+    )

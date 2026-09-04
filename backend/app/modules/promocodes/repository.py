@@ -1,11 +1,12 @@
-from dataclasses import fields as dataclass_fields
 from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.errors import constraint_name
 from app.core.db.models.promocode import Promocode, PromocodeActivation
+from app.core.db.partial_update import apply_partial_update
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.promocodes.dto import (
     CreatePromocodeDto,
@@ -84,7 +85,7 @@ class PromocodeRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            constraint = getattr(error.orig, "constraint_name", None)
+            constraint = constraint_name(error)
             if constraint == "ix_promocodes_code":
                 raise ConflictError(f"Promocode with code '{data.code}' already exists") from error
             raise ConflictError(
@@ -97,12 +98,7 @@ class PromocodeRepository:
     async def update(self, data: UpdatePromocodeDto) -> PromocodeDto:
         row = await self._get_or_raise(data.promocode_id)
 
-        for field in dataclass_fields(data):
-            if field.name == "promocode_id":
-                continue
-            value = getattr(data, field.name)
-            if value is not None:
-                setattr(row, field.name, value)
+        apply_partial_update(row, data, skip=frozenset({"promocode_id"}))
 
         await self.session.flush()
         await self.session.refresh(row)

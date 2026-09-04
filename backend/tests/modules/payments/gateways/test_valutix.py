@@ -54,7 +54,7 @@ def _gateway() -> ValutixGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(valutix_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(valutix_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _signed_webhook(body: dict[str, object], token: str = "valutix-token") -> WebhookRequest:

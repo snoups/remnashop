@@ -97,15 +97,25 @@ function extractErrorMessage(body: unknown): string {
   return "Request failed";
 }
 
-async function request<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
-  const token = getAccessToken();
+// A single fetch attempt: turns a connection failure or a proxy gateway error
+// into NetworkError, otherwise returns the response alongside its parsed body
+// (null if there's no JSON). Both the initial request and the post-refresh
+// retry go through here so neither can leak a raw TypeError.
+async function sendRequest(
+  path: string,
+  init: RequestInit | undefined,
+  bearer: string | null,
+): Promise<{ response: Response; data: unknown }> {
   const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
 
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
-  } catch {
+  } catch (err) {
+    // A caller aborting via AbortSignal must propagate as-is, not surface as
+    // a "backend unreachable" toast.
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new NetworkError("Network request failed");
   }
 
@@ -113,25 +123,27 @@ async function request<TResponse>(path: string, init?: RequestInit): Promise<TRe
     throw new NetworkError("Backend unreachable");
   }
 
-  const data = await response.json().catch(() => null);
+  return { response, data: await response.json().catch(() => null) };
+}
+
+async function request<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
+  const token = getAccessToken();
+  const { response, data } = await sendRequest(path, init, token);
 
   if (!response.ok) {
     if (response.status === 401 && token) {
       const newAccessToken = await refreshOnce();
       if (newAccessToken) {
         saveAccessToken(newAccessToken);
-        const retryHeaders = new Headers(init?.headers);
-        retryHeaders.set("Authorization", `Bearer ${newAccessToken}`);
-        const retryResponse = await fetch(`${BASE_URL}${path}`, { ...init, headers: retryHeaders });
-        const retryData = await retryResponse.json().catch(() => null);
-        if (!retryResponse.ok) {
-          if (retryResponse.status === 401) {
+        const retry = await sendRequest(path, init, newAccessToken);
+        if (!retry.response.ok) {
+          if (retry.response.status === 401) {
             clearAccessToken();
             window.location.href = "/";
           }
-          throw new ApiError(retryResponse.status, extractErrorMessage(retryData));
+          throw new ApiError(retry.response.status, extractErrorMessage(retry.data));
         }
-        return retryData as TResponse;
+        return retry.data as TResponse;
       }
 
       clearAccessToken();
@@ -143,40 +155,60 @@ async function request<TResponse>(path: string, init?: RequestInit): Promise<TRe
   return data as TResponse;
 }
 
-export function apiGet<TResponse>(path: string): Promise<TResponse> {
-  return request<TResponse>(path);
+export function apiGet<TResponse>(path: string, signal?: AbortSignal): Promise<TResponse> {
+  return request<TResponse>(path, { signal });
 }
 
-export function apiPost<TResponse, TBody>(path: string, body: TBody): Promise<TResponse> {
+export function apiPost<TResponse, TBody>(
+  path: string,
+  body: TBody,
+  signal?: AbortSignal,
+): Promise<TResponse> {
   return request<TResponse>(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 }
 
-export function apiPut<TResponse, TBody>(path: string, body: TBody): Promise<TResponse> {
+export function apiPut<TResponse, TBody>(
+  path: string,
+  body: TBody,
+  signal?: AbortSignal,
+): Promise<TResponse> {
   return request<TResponse>(path, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 }
 
-export function apiPatch<TResponse, TBody>(path: string, body: TBody): Promise<TResponse> {
+export function apiPatch<TResponse, TBody>(
+  path: string,
+  body: TBody,
+  signal?: AbortSignal,
+): Promise<TResponse> {
   return request<TResponse>(path, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 }
 
-export function apiDelete<TResponse, TBody = never>(path: string, body?: TBody): Promise<TResponse> {
-  if (body === undefined) return request<TResponse>(path, { method: "DELETE" });
+export function apiDelete<TResponse, TBody = never>(
+  path: string,
+  body?: TBody,
+  signal?: AbortSignal,
+): Promise<TResponse> {
+  if (body === undefined) return request<TResponse>(path, { method: "DELETE", signal });
   return request<TResponse>(path, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 }
 

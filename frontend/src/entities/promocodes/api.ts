@@ -25,8 +25,8 @@ export interface Promocode {
   is_reusable: boolean;
 }
 
-export function listPromocodes(): Promise<Promocode[]> {
-  return apiGet<Promocode[]>("/promocodes");
+export function listPromocodes(signal?: AbortSignal): Promise<Promocode[]> {
+  return apiGet<Promocode[]>("/promocodes", signal);
 }
 
 export interface CreatePromocodeRequest {

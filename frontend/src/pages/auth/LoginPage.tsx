@@ -10,8 +10,7 @@ import { BrandMark } from "@entities/appearance/BrandMark";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
-import { ServerError } from "@widgets/server-error/ServerError";
-import { ServerUnreachable } from "@widgets/server-unreachable/ServerUnreachable";
+import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 
 export function LoginPage() {
   const { t } = useTranslation();

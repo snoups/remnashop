@@ -37,17 +37,34 @@ async def test_create_run_starts_pending(
     assert run.kind == BackupKind.DATABASE
 
 
-async def test_has_running_reflects_status(
+async def test_has_active_counts_pending_and_running(
     backup_repository: BackupRepository, uow: UnitOfWork
 ) -> None:
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
-    assert await backup_repository.has_running(BackupKind.DATABASE) is False
+    # PENDING already counts -- a second click before the worker picks this
+    # run up must not slip past the guard.
+    assert await backup_repository.has_active(BackupKind.DATABASE) is True
+    assert await backup_repository.has_active(BackupKind.ASSETS) is False
 
     async with uow:
         await backup_repository.mark_running(run.id)
-    assert await backup_repository.has_running(BackupKind.DATABASE) is True
-    assert await backup_repository.has_running(BackupKind.ASSETS) is False
+    assert await backup_repository.has_active(BackupKind.DATABASE) is True
+
+
+async def test_has_active_excludes_its_own_run_id(
+    backup_repository: BackupRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+    # run_backup() checks this for its own (still-PENDING) row -- it must not
+    # match itself, only some other concurrent run.
+    assert await backup_repository.has_active(BackupKind.DATABASE, exclude_run_id=run.id) is False
+
+    async with uow:
+        other = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+    assert await backup_repository.has_active(BackupKind.DATABASE, exclude_run_id=run.id) is True
+    assert await backup_repository.has_active(BackupKind.DATABASE, exclude_run_id=other.id) is True
 
 
 async def test_mark_completed_sets_terminal_fields(

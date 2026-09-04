@@ -13,8 +13,8 @@ export interface UpdateBotSettingsPayload {
   banners_enabled?: boolean;
 }
 
-export function getBotSettings(): Promise<BotSettings> {
-  return apiGet<BotSettings>("/settings/bot");
+export function getBotSettings(signal?: AbortSignal): Promise<BotSettings> {
+  return apiGet<BotSettings>("/settings/bot", signal);
 }
 
 export function updateBotSettings(payload: UpdateBotSettingsPayload): Promise<BotSettings> {
@@ -35,8 +35,8 @@ export interface UpdateBotCommandsResult {
   telegram_sync_failed: boolean;
 }
 
-export function getBotCommands(): Promise<BotCommandItem[]> {
-  return apiGet<BotCommandItem[]>("/settings/bot/commands");
+export function getBotCommands(signal?: AbortSignal): Promise<BotCommandItem[]> {
+  return apiGet<BotCommandItem[]>("/settings/bot/commands", signal);
 }
 
 export function updateBotCommands(commands: BotCommandItem[]): Promise<UpdateBotCommandsResult> {
@@ -72,8 +72,8 @@ export interface UpdateOAuthSettingsPayload {
   password_login_enabled?: boolean;
 }
 
-export function getOAuthSettings(): Promise<OAuthSettings> {
-  return apiGet<OAuthSettings>("/settings/oauth");
+export function getOAuthSettings(signal?: AbortSignal): Promise<OAuthSettings> {
+  return apiGet<OAuthSettings>("/settings/oauth", signal);
 }
 
 export function updateOAuthSettings(payload: UpdateOAuthSettingsPayload): Promise<OAuthSettings> {

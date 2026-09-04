@@ -65,7 +65,7 @@ def _gateway() -> WataGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(wata_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(wata_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(raw: bytes) -> str:

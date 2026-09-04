@@ -54,7 +54,7 @@ def _gateway() -> DonutGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(donut_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(donut_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(parts: list[tuple[str, object]], secret: str = "dnt-secret") -> str:
@@ -162,6 +162,55 @@ async def test_parse_webhook_invalid_signature_raises() -> None:
     }
     with pytest.raises(PaymentGatewayError):
         await _gateway().parse_webhook(_webhook(payload))
+
+
+async def test_verify_payment_accepts_full_amount() -> None:
+    payload: dict[str, object] = {
+        "token": "dnt-token",
+        "transaction_id": "dnt-1",
+        "order_id": "order-key-1",
+        "amount": {"value": "500.00", "currency": "RUB"},
+        "status": {"type": "success"},
+    }
+    payload["signature"] = _callback_signature(payload)
+    gateway = _gateway()
+    result = await gateway.parse_webhook(_webhook(payload))
+
+    assert result is not None
+    assert await gateway.verify_payment(_order(), result) is True
+
+
+async def test_verify_payment_rejects_an_underpayment() -> None:
+    payload: dict[str, object] = {
+        "token": "dnt-token",
+        "transaction_id": "dnt-1",
+        "order_id": "order-key-1",
+        "amount": {"value": "499.99", "currency": "RUB"},
+        "status": {"type": "success"},
+    }
+    payload["signature"] = _callback_signature(payload)
+    gateway = _gateway()
+    result = await gateway.parse_webhook(_webhook(payload))
+
+    assert result is not None
+    assert await gateway.verify_payment(_order(), result) is False
+
+
+async def test_verify_payment_rejects_a_recalculated_transfer() -> None:
+    payload: dict[str, object] = {
+        "token": "dnt-token",
+        "transaction_id": "dnt-1",
+        "order_id": "order-key-1",
+        "amount": {"value": "500.00", "currency": "RUB"},
+        "recalculated": True,
+        "status": {"type": "success"},
+    }
+    payload["signature"] = _callback_signature(payload)
+    gateway = _gateway()
+    result = await gateway.parse_webhook(_webhook(payload))
+
+    assert result is not None
+    assert await gateway.verify_payment(_order(), result) is False
 
 
 async def test_parse_webhook_pending_status_is_a_noop() -> None:

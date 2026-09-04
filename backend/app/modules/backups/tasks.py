@@ -35,7 +35,7 @@ async def run_backup(
     uow: UnitOfWork,
     config: AppConfig,
 ) -> None:
-    if await backup_repository.has_running(kind):
+    if await backup_repository.has_active(kind, exclude_run_id=run_id):
         async with uow:
             await backup_repository.mark_failed(
                 run_id, error=f"A '{kind.value}' backup is already running"

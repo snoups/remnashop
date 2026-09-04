@@ -13,6 +13,6 @@ export interface AddOnListItem {
   is_active: boolean;
 }
 
-export function listAddons(): Promise<AddOnListItem[]> {
-  return apiGet<AddOnListItem[]>("/addons");
+export function listAddons(signal?: AbortSignal): Promise<AddOnListItem[]> {
+  return apiGet<AddOnListItem[]>("/addons", signal);
 }

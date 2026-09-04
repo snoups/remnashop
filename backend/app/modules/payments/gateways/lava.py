@@ -2,7 +2,6 @@ import hashlib
 import hmac
 from typing import Any, Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -13,12 +12,11 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://api.lava.ru"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 def _canonical_json(payload: dict[str, Any]) -> bytes:
@@ -41,19 +39,19 @@ class LavaGateway(PaymentGateway):
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
-            "sum": round(float(order.final_price), 2),
+            "sum": amount_to_float(order.final_price),
             "orderId": order.idempotency_key,
-            "shopId": self._settings["shop_id"],
+            "shopId": self._require("shop_id"),
             "hookUrl": self._webhook_url,
             "successUrl": self._return_url,
             "failUrl": self._return_url,
         }
         body = orjson.dumps(payload)
         signature = hmac.new(
-            self._settings["secret_key"].encode("utf-8"), body, hashlib.sha256
+            self._require("secret_key").encode("utf-8"), body, hashlib.sha256
         ).hexdigest()
 
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/business/invoice/create",
             content=body,
             headers={
@@ -81,7 +79,7 @@ class LavaGateway(PaymentGateway):
         signature = request.headers.get("authorization")
         if not signature:
             raise PaymentGatewayError("Lava webhook missing Authorization header")
-        secret = self._settings["webhook_secret"].encode("utf-8")
+        secret = self._require("webhook_secret").encode("utf-8")
 
         if not self._signature_matches(secret, request.body, signature):
             raise PaymentGatewayError("Invalid Lava webhook signature")

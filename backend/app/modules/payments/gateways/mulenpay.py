@@ -1,9 +1,8 @@
 import hashlib
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from hmac import compare_digest
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -14,14 +13,12 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://mulenpay.ru/api"
-_TIMEOUT_S: Final[float] = 15.0
 _PAYMENT_SUBJECT: Final[int] = 4
 _PAYMENT_MODE: Final[int] = 4
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class MulenPayGateway(PaymentGateway):
@@ -30,8 +27,8 @@ class MulenPayGateway(PaymentGateway):
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         currency = order.currency.value.lower()
         amount = f"{order.final_price:.2f}"
-        shop_id = int(self._settings["shop_id"])
-        vat_code = self._settings.get("vat_code")
+        shop_id = int(self._require("shop_id"))
+        vat_code = self._optional("vat_code")
         payload: dict[str, object] = {
             "currency": currency,
             "amount": amount,
@@ -50,10 +47,10 @@ class MulenPayGateway(PaymentGateway):
                 }
             ],
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/v2/payments",
             json=payload,
-            headers={"Authorization": f"Bearer {self._settings['api_key']}"},
+            headers={"Authorization": f"Bearer {self._require('api_key')}"},
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
@@ -80,7 +77,13 @@ class MulenPayGateway(PaymentGateway):
 
         if data.get("payment_status") != "success":
             return None
-        return WebhookResult(reference=order_ref, status=PaymentOrderStatus.PAID)
+
+        try:
+            amount = Decimal(str(data.get("amount", "")))
+        except InvalidOperation:
+            amount = None
+
+        return WebhookResult(reference=order_ref, status=PaymentOrderStatus.PAID, amount=amount)
 
     def _signature_valid(self, data: dict[str, object]) -> bool:
         received_sign = data.get("sign")
@@ -91,9 +94,9 @@ class MulenPayGateway(PaymentGateway):
             amount = f"{Decimal(str(data.get('amount', ''))):.2f}"
         except Exception:  # noqa: BLE001 -- any unparseable amount fails verification
             return False
-        expected = self._sign(currency, amount, int(self._settings["shop_id"]))
+        expected = self._sign(currency, amount, int(self._require("shop_id")))
         return compare_digest(expected, str(received_sign))
 
     def _sign(self, currency: str, amount: str, shop_id: int) -> str:
-        raw = f"{currency}{amount}{shop_id}{self._settings['secret_key']}"
+        raw = f"{currency}{amount}{shop_id}{self._require('secret_key')}"
         return hashlib.sha1(raw.encode("utf-8")).hexdigest()

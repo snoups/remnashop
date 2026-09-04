@@ -12,7 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type AdLink, DEFAULT_PAGE_SIZE, deleteAdLink, listAdLinks } from "@entities/advertising/api";
@@ -24,11 +24,11 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: AdLink[]; total: number };
 
-const LOAD_MORE_STEP = 10;
 const FETCH_INDICATOR_DELAY_MS = 150;
 
 export function AdvertisingPage() {
@@ -37,11 +37,15 @@ export function AdvertisingPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
-  const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // Bumped on every primary load; a load-more from before a filter change
+  // discards its result instead of appending to an already-replaced list.
+  const loadGenRef = useRef(0);
   const [editingLink, setEditingLink] = useState<AdLink | null>(null);
   const [statsLink, setStatsLink] = useState<AdLink | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<AdLink | null>(null);
 
   const currentUserState = useCurrentUser();
   const permissions =
@@ -59,35 +63,45 @@ export function AdvertisingPage() {
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const showFetchingTimeout = setTimeout(() => {
-      if (!cancelled) setIsFetching(true);
+      if (!controller.signal.aborted) setIsFetching(true);
     }, FETCH_INDICATOR_DELAY_MS);
-    setVisibleCount(DEFAULT_PAGE_SIZE);
-    listAdLinks({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE })
+    loadGenRef.current += 1;
+    setPage(1);
+    listAdLinks({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
       .then((result) => {
-        if (!cancelled) setState({ kind: "ready", items: result.items, total: result.total });
+        if (!controller.signal.aborted) setState({ kind: "ready", items: result.items, total: result.total });
       })
       .catch(() => {
-        if (!cancelled) setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
+        if (!controller.signal.aborted) setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
       })
       .finally(() => {
         clearTimeout(showFetchingTimeout);
-        if (!cancelled) setIsFetching(false);
+        if (!controller.signal.aborted) setIsFetching(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(showFetchingTimeout);
     };
   }, [baseFilters]);
 
+  // Offset pagination + local optimistic edits (delete below) can drift a row
+  // at a page boundary; acceptable for an admin list with infrequent deletes.
+  // offset drift on boundary, switch to keyset if it bites.
   const handleLoadMore = async () => {
-    const nextCount = visibleCount + LOAD_MORE_STEP;
+    const gen = loadGenRef.current;
+    const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const result = await listAdLinks({ ...baseFilters, page: 1, pageSize: nextCount });
-      setState({ kind: "ready", items: result.items, total: result.total });
-      setVisibleCount(nextCount);
+      const result = await listAdLinks({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
+      if (gen !== loadGenRef.current) return;
+      setState((prev) =>
+        prev.kind === "ready"
+          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
+          : prev,
+      );
+      setPage(nextPage);
     } catch {
       // keep current items on failure; the load-more button stays available to retry
     } finally {
@@ -106,7 +120,6 @@ export function AdvertisingPage() {
   };
 
   const handleDelete = async (link: AdLink) => {
-    if (!window.confirm(t("advertising.delete.confirm", { name: link.name }))) return;
     try {
       await deleteAdLink(link.id);
       if (state.kind === "ready") {
@@ -122,7 +135,7 @@ export function AdvertisingPage() {
   };
 
   const handleCopy = (code: string) => {
-    void navigator.clipboard.writeText(code);
+    navigator.clipboard?.writeText(code).catch(() => {});
   };
 
   const hasMore = state.kind === "ready" && state.items.length < state.total;
@@ -214,7 +227,7 @@ export function AdvertisingPage() {
                         label: t("advertising.delete.button"),
                         icon: Trash2,
                         variant: "danger",
-                        onClick: () => void handleDelete(link),
+                        onClick: () => setPendingDelete(link),
                       });
                     }
 
@@ -305,6 +318,21 @@ export function AdvertisingPage() {
 
       {statsLink && (
         <AdLinkStatsDialog adLink={statsLink} canViewUsers={canViewUsers} onClose={() => setStatsLink(null)} />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={t("advertising.delete.button")}
+          message={t("advertising.delete.confirm", { name: pendingDelete.name })}
+          confirmLabel={t("advertising.delete.confirmButton")}
+          cancelLabel={t("advertising.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            void handleDelete(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );

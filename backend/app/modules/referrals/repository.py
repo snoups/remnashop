@@ -73,7 +73,10 @@ class ReferralRepository:
     ) -> ReferralDto:
         row = Referral(referrer_id=referrer_id, referred_id=referred_id, level=level)
         self.session.add(row)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as error:
+            raise ConflictError(f"User '{referred_id}' already has a referrer") from error
         return self._to_dto(row)
 
     async def count_by_level(self, referrer_id: int) -> dict[int, int]:

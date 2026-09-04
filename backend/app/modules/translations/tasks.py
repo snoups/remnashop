@@ -2,6 +2,7 @@ from dishka.integrations.taskiq import FromDishka, inject
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
+from app.modules.settings import SettingsRepository
 from app.modules.translations.repository import TranslationsRepository
 from app.worker.broker import broker
 
@@ -23,7 +24,14 @@ async def copy_locale_translations_task(
 async def delete_locale_translations_task(
     locale: str,
     repository: FromDishka[TranslationsRepository],
+    settings_repository: FromDishka[SettingsRepository],
     uow: FromDishka[UnitOfWork],
 ) -> None:
+    target = Locale(locale)
     async with uow:
-        await repository.delete_locale(Locale(locale))
+        # Deactivate->reactivate in quick succession can queue this delete
+        # after a later copy_locale_translations_task already repopulated the
+        # locale -- re-check current state instead of trusting task order.
+        if target in await settings_repository.list_active_locales():
+            return
+        await repository.delete_locale(target)

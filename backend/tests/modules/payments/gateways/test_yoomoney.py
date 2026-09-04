@@ -54,7 +54,7 @@ def _gateway(settings: dict[str, str] = _SETTINGS) -> YooMoneyGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(yoomoney_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(yoomoney_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _signed_body(secret: str, **fields: str) -> bytes:

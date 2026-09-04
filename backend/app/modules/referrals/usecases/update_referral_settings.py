@@ -20,6 +20,5 @@ class UpdateReferralSettingsUseCase(UseCase[UpdateReferralSettingsDto, ReferralS
     ) -> ReferralSettingsDto:
         async with self._uow:
             updated = await self._referral_repository.update_settings(data)
-            await self._uow.commit()
         logger.info(f"{actor.log} Updated referral settings")
         return updated

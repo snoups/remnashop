@@ -1,44 +1,26 @@
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getPriceBook, type PriceBook } from "@entities/pricing/api";
+import { getPriceBook } from "@entities/pricing/api";
 import { CurrencyRatesPanel } from "@features/currency-rates-panel/CurrencyRatesPanel";
 import { PricingMatrix } from "@features/pricing-matrix/PricingMatrix";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 
 export function PricingPage() {
   const { t } = useTranslation();
-  const [book, setBook] = useState<PriceBook | null>(null);
-  const [hasError, setHasError] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
+  const [state, reload] = useAsyncResource(getPriceBook);
 
-  useEffect(() => {
-    let cancelled = false;
-    getPriceBook()
-      .then((result) => {
-        if (!cancelled) setBook(result);
-      })
-      .catch(() => {
-        if (!cancelled) setHasError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadToken]);
-
-  const reload = () => setReloadToken((token) => token + 1);
-
-  if (hasError) {
+  if (state.kind === "error") {
     return <p className="text-sm text-error">{t("pricing.loadError")}</p>;
   }
 
-  if (!book) {
+  if (state.kind === "loading") {
     return <p className="text-sm text-muted-foreground">{t("pricing.loading")}</p>;
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <CurrencyRatesPanel book={book} onChanged={reload} />
-      <PricingMatrix book={book} onChanged={reload} />
+      <CurrencyRatesPanel book={state.data} onChanged={reload} />
+      <PricingMatrix book={state.data} onChanged={reload} />
     </div>
   );
 }

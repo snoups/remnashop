@@ -24,14 +24,42 @@ import { Link, NavLink } from "react-router-dom";
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { useCurrentUser } from "@entities/user/use-current-user";
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import type { Permission } from "@shared/types/rbac";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { ExternalLinksRow } from "@widgets/build-info/ExternalLinksRow";
 
 const MotionNavLink = motion.create(NavLink);
 
-const NAV_LINKS: { key: string; to: string; icon: ComponentType<{ className?: string }> }[] = [
-  { key: "overview", to: "/dashboard", icon: LayoutGrid },
+interface NavItem {
+  key: string;
+  to: string;
+  icon: ComponentType<{ className?: string }>;
+  end?: boolean;
+  // Omitted means always visible (overview, settings) -- everything else is
+  // gated behind the matching permission. ADMINS_MANAGE is never
+  // grantable/revocable per-user (see GRANTABLE_PERMISSIONS on the backend),
+  // always exactly "role is OWNER or SYSTEM", but checking the permission
+  // here keeps this in step with the rest of the list and doesn't quietly
+  // drop SYSTEM.
+  permission?: Permission;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { key: "overview", to: "/dashboard", icon: LayoutGrid, end: true },
+  { key: "users", to: "/dashboard/users", icon: Users, permission: "USERS_VIEW" },
+  { key: "blacklist", to: "/dashboard/blacklist", icon: Ban, permission: "BLACKLIST_VIEW" },
+  { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, permission: "SUBSCRIPTIONS_VIEW" },
+  { key: "plans", to: "/dashboard/plans", icon: Tag, permission: "PLANS_VIEW" },
+  { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, permission: "PROMOCODES_VIEW" },
+  { key: "referrals", to: "/dashboard/referrals", icon: Gift, permission: "REFERRALS_SETTINGS_VIEW" },
+  { key: "advertising", to: "/dashboard/advertising", icon: Link2, permission: "AD_LINKS_VIEW" },
+  { key: "payments", to: "/dashboard/payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
+  { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, permission: "ADMINS_MANAGE" },
+  { key: "pricing", to: "/dashboard/pricing", icon: Coins, permission: "PRICING_VIEW" },
+  { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, permission: "EVENT_LOG_VIEW" },
+  { key: "backups", to: "/dashboard/backups", icon: Database, permission: "BACKUPS_VIEW" },
+  { key: "settings", to: "/dashboard/settings", icon: Settings },
 ];
 
 const DISABLED_ITEMS: { key: string; icon: ComponentType<{ className?: string }> }[] = [
@@ -48,19 +76,25 @@ const linkClassName = ({ isActive }: { isActive: boolean }) =>
 // collapses to an icon rail instead (matches DESKTOP_BREAKPOINT elsewhere).
 const LABEL_CLASSNAME = "hidden lg:inline";
 
+function NavItemLink({ item, tapProps, label }: { item: NavItem; tapProps: ReturnType<typeof bounceTap>; label: string }) {
+  return (
+    <MotionNavLink to={item.to} end={item.end} className={linkClassName} initial="rest" whileHover="hover" {...tapProps}>
+      <BounceIcon icon={item.icon} size={17} hoverSize={23.5} />
+      <span className={LABEL_CLASSNAME}>{label}</span>
+    </MotionNavLink>
+  );
+}
+
 export function Sidebar() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
   const brandName = useBrandName();
   const userState = useCurrentUser();
-  const isOwner = userState.kind === "ready" && userState.data.role === "OWNER";
   const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const visibleItems = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission));
   // Bounce via `scale` (transform), not width/height — transform is layout-inert,
   // so a pressed row never pushes its neighbours.
-  const tapProps = {
-    whileTap: { scale: 1 + 0.05 * bounceStrength },
-    transition: { type: "spring", stiffness: 500, damping: 15 },
-  } as const;
+  const tapProps = bounceTap(bounceStrength);
 
   return (
     <aside className="flex h-screen w-[72px] shrink-0 flex-col overflow-y-auto p-2.5 lg:w-62 lg:p-3.5">
@@ -76,19 +110,8 @@ export function Sidebar() {
       </Link>
 
       <nav aria-label={t("header.dashboard")} className="flex flex-col gap-0.5">
-        {NAV_LINKS.map(({ key, to, icon: Icon }) => (
-          <MotionNavLink
-            key={key}
-            to={to}
-            end={to === "/dashboard"}
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Icon} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t(`sidebar.${key}`)}</span>
-          </MotionNavLink>
+        {visibleItems.slice(0, 1).map((item) => (
+          <NavItemLink key={item.key} item={item} tapProps={tapProps} label={t(`sidebar.${item.key}`)} />
         ))}
 
         {DISABLED_ITEMS.map(({ key, icon: Icon }) => (
@@ -101,169 +124,9 @@ export function Sidebar() {
           </span>
         ))}
 
-        {permissions.includes("USERS_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/users"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Users} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.users")}</span>
-          </MotionNavLink>
-        )}
-
-        {permissions.includes("BLACKLIST_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/blacklist"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Ban} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.blacklist")}</span>
-          </MotionNavLink>
-        )}
-
-        {permissions.includes("SUBSCRIPTIONS_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/subscriptions"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Layers} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.subscriptions")}</span>
-          </MotionNavLink>
-        )}
-
-        {permissions.includes("PLANS_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/plans"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Tag} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.plans")}</span>
-          </MotionNavLink>
-        )}
-
-        {permissions.includes("PROMOCODES_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/promocodes"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Ticket} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.promocodes")}</span>
-          </MotionNavLink>
-        )}
-
-        {permissions.includes("REFERRALS_SETTINGS_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/referrals"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Gift} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.referrals")}</span>
-          </MotionNavLink>
-        )}
-
-        {permissions.includes("AD_LINKS_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/advertising"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Link2} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.advertising")}</span>
-          </MotionNavLink>
-        )}
-
-        {permissions.includes("PAYMENTS_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/payments"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={CreditCard} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.payments")}</span>
-          </MotionNavLink>
-        )}
-
-        {isOwner && (
-          <MotionNavLink
-            to="/dashboard/admins"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={ShieldCheck} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.admins")}</span>
-          </MotionNavLink>
-        )}
-        {permissions.includes("PRICING_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/pricing"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Coins} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.pricing")}</span>
-          </MotionNavLink>
-        )}
-        {permissions.includes("EVENT_LOG_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/event-log"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={ScrollText} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.eventLog")}</span>
-          </MotionNavLink>
-        )}
-        {permissions.includes("BACKUPS_VIEW") && (
-          <MotionNavLink
-            to="/dashboard/backups"
-            className={linkClassName}
-            initial="rest"
-            whileHover="hover"
-            {...tapProps}
-          >
-            <BounceIcon icon={Database} size={17} hoverSize={23.5} />
-            <span className={LABEL_CLASSNAME}>{t("sidebar.backups")}</span>
-          </MotionNavLink>
-        )}
-
-        <MotionNavLink
-          to="/dashboard/settings"
-          className={linkClassName}
-          initial="rest"
-          whileHover="hover"
-          {...tapProps}
-        >
-          <BounceIcon icon={Settings} size={17} hoverSize={23.5} />
-          <span className={LABEL_CLASSNAME}>{t("sidebar.settings")}</span>
-        </MotionNavLink>
+        {visibleItems.slice(1).map((item) => (
+          <NavItemLink key={item.key} item={item} tapProps={tapProps} label={t(`sidebar.${item.key}`)} />
+        ))}
       </nav>
 
       <div className="mt-auto flex flex-wrap gap-1 border-t border-border pt-3.5">

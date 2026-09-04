@@ -1,15 +1,48 @@
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
 from app.core.config import AppConfig
+from app.core.db.models.active_locale import ActiveLocale
+from app.core.db.models.bot_translation import BotTranslation
 from app.core.enums import Locale, Role
+from app.modules.settings.repository import SettingsRepository
+from app.modules.translations.repository import TranslationsRepository
 from app.modules.users.dto import UserDto
 from app.telegram.i18n import get_translator, read_translator_hub
 
+_MESSAGE_ID = "test_i18n_hub_check"
+
 
 async def test_read_translator_hub_builds_a_working_hub(config: AppConfig) -> None:
-    hub = await read_translator_hub(config)
-    runner = hub.get_translator_by_locale(config.default_locale.value)
-    # Any real key already seeded (commands.ftl exists in both locales) --
-    # this just proves the hub resolves and Fluent parses without error.
-    assert runner is not None
+    # read_translator_hub opens its own engine (app/telegram/i18n.py), so this
+    # seeds through a genuinely separate, really-committed connection -- the
+    # rolled-back `session` fixture would be invisible to it, same class of
+    # gap covered in tests/modules/blacklist/test_cross_process.py.
+    locale = config.default_locale
+    engine = create_async_engine(config.database.dsn)
+    added_locale = False
+    try:
+        async with AsyncSession(engine, expire_on_commit=False) as seed_session:
+            settings_repository = SettingsRepository(seed_session)
+            if locale not in await settings_repository.list_active_locales():
+                await settings_repository.add_active_locale(locale)
+                added_locale = True
+            await TranslationsRepository(seed_session).seed_missing(locale, _MESSAGE_ID, "", "ok")
+            await seed_session.commit()
+
+        hub = await read_translator_hub(config)
+        runner = hub.get_translator_by_locale(locale.value)
+        assert runner is not None
+    finally:
+        async with engine.begin() as connection:
+            await connection.execute(
+                delete(BotTranslation).where(
+                    BotTranslation.locale == locale, BotTranslation.message_id == _MESSAGE_ID
+                )
+            )
+            if added_locale:
+                await connection.execute(delete(ActiveLocale).where(ActiveLocale.locale == locale))
+        await engine.dispose()
 
 
 def test_get_translator_resolves_by_user_language() -> None:

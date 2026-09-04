@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
+from app.core.enums import SubscriptionStatus
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto, SyncSubscriptionStatusDto
@@ -34,15 +35,33 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
             )
             if subscription is None:
                 return None
-            if subscription.status is data.status:
-                return subscription
 
             old_status = subscription.status
-            subscription = await self._lifecycle_service.sync_status(subscription.id, data.status)
+            status_drifted = subscription.status is not data.status
+            expire_at_drifted = (
+                data.expire_at is not None
+                and subscription.status is not SubscriptionStatus.DELETED
+                and subscription.expire_at != data.expire_at
+            )
+            if not status_drifted and not expire_at_drifted:
+                return subscription
 
-            if subscription.status is old_status:
-                # sync_status() no-op'd (already DELETED) -- SubscriptionState's
-                # own rule, not this usecase's; nothing changed, no event.
+            if status_drifted:
+                subscription = await self._lifecycle_service.sync_status(
+                    subscription.id, data.status
+                )
+            if expire_at_drifted and subscription.status is not SubscriptionStatus.DELETED:
+                # Panel is the source of truth for expire_at -- pulls a
+                # renewal that landed on the panel but never made it into our
+                # own commit back in sync (see reissue_subscription's
+                # analogous incident class). reactivate_on_renew() also flips
+                # a lapsed EXPIRED back to ACTIVE, matching a real renewal.
+                assert data.expire_at is not None
+                subscription = await self._lifecycle_service.renew(subscription.id, data.expire_at)
+
+            if subscription.status is old_status and not expire_at_drifted:
+                # sync_status() no-op'd (already DELETED) and nothing else
+                # moved -- SubscriptionState's own rule, not this usecase's.
                 return subscription
 
             await self._event_publisher.publish(

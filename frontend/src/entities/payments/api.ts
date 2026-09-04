@@ -43,13 +43,16 @@ export interface PaymentOrderListFilters {
   pageSize?: number;
 }
 
-export function listPaymentOrders(filters: PaymentOrderListFilters = {}): Promise<PaymentOrderListPage> {
+export function listPaymentOrders(
+  filters: PaymentOrderListFilters = {},
+  signal?: AbortSignal,
+): Promise<PaymentOrderListPage> {
   const params = new URLSearchParams();
   if (filters.status) params.set("status", filters.status);
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
-  return apiGet<PaymentOrderListPage>(`/payments/orders?${params.toString()}`);
+  return apiGet<PaymentOrderListPage>(`/payments/orders?${params.toString()}`, signal);
 }
 
 // Mirrors backend/app/core/enums.py's Currency.symbol.

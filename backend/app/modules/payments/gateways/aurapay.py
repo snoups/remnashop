@@ -2,7 +2,6 @@ import hashlib
 import hmac
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -13,12 +12,11 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://app.aurapay.tech"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class AuraPayGateway(PaymentGateway):
@@ -27,20 +25,20 @@ class AuraPayGateway(PaymentGateway):
     def _headers(self) -> dict[str, str]:
         return {
             "Content-Type": "application/json",
-            "X-ApiKey": self._settings["api_key"],
-            "X-ShopId": self._settings["shop_id"],
+            "X-ApiKey": self._require("api_key"),
+            "X-ShopId": self._require("shop_id"),
         }
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
-            "amount": float(order.final_price),
+            "amount": amount_to_float(order.final_price),
             "order_id": order.idempotency_key,
             "comment": f"Order #{order.id}",
             "success_url": self._return_url,
             "fail_url": self._return_url,
             "callback_url": self._webhook_url,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/invoice/create", json=payload, headers=self._headers()
         )
         response.raise_for_status()
@@ -89,7 +87,7 @@ class AuraPayGateway(PaymentGateway):
             str(data[key]) if data[key] is not None else "" for key in sorted(data)
         )
         expected = hmac.new(
-            self._settings["secret_key"].encode("utf-8"),
+            self._require("secret_key").encode("utf-8"),
             concatenated.encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()

@@ -57,8 +57,8 @@ export interface PricingDiff {
   affected_count: number;
 }
 
-export function getPriceBook(): Promise<PriceBook> {
-  return apiGet<PriceBook>("/pricing/book");
+export function getPriceBook(signal?: AbortSignal): Promise<PriceBook> {
+  return apiGet<PriceBook>("/pricing/book", signal);
 }
 
 export interface UpdateCurrencyRateBody {

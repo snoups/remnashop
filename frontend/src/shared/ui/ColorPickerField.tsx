@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
+
+import { useClickOutside } from "@shared/lib/use-click-outside";
 
 interface ColorPickerFieldProps {
   value: string;
@@ -17,16 +19,7 @@ export function ColorPickerField({ value, onChange, ariaLabel, displayValue }: C
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setIsOpen(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  useClickOutside(ref, isOpen, () => setIsOpen(false));
 
   return (
     <div ref={ref} className="relative">

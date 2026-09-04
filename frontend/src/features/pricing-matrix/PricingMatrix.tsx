@@ -1,4 +1,4 @@
-import { Lock, Table2, Unlock } from "lucide-react";
+import { Filter, Lock, Table2, Unlock } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +19,7 @@ import { PricingDiffList } from "@entities/pricing/PricingDiffList";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 const CURRENCIES: Currency[] = ["USD", "XTR", "RUB"];
 const BULK_SCOPES: BulkAdjustScope[] = ["ALL_PLANS", "ALL_ADDONS"];
@@ -285,20 +286,19 @@ function BulkAdjustButton({ onChanged }: { onChanged: () => void }) {
           onCancel={() => setStep("closed")}
         >
           <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-              {t("pricing.matrix.scopeLabel")}
-              <select
+            <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+              <span>{t("pricing.matrix.scopeLabel")}</span>
+              <SelectDropdown
                 value={scope}
-                onChange={(event) => setScope(event.target.value as BulkAdjustScope)}
-                className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-              >
-                {BULK_SCOPES.map((option) => (
-                  <option key={option} value={option}>
-                    {t(`pricing.matrix.scope.${option}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={(value) => setScope(value as BulkAdjustScope)}
+                icon={Filter}
+                placeholder={t(`pricing.matrix.scope.${scope}`)}
+                options={BULK_SCOPES.map((option) => ({
+                  value: option,
+                  label: t(`pricing.matrix.scope.${option}`),
+                }))}
+              />
+            </div>
             <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
               {t("pricing.matrix.factorLabel")}
               <input

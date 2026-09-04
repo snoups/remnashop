@@ -1,7 +1,6 @@
 from hmac import compare_digest
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -12,24 +11,23 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://app.platega.io"
 _SINGLE_METHOD_ENDPOINT: Final[str] = "transaction/process"
 _MULTI_METHOD_ENDPOINT: Final[str] = "v2/transaction/process"
-_TIMEOUT_S: Final[float] = 15.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class PlategaGateway(PaymentGateway):
     currency = Currency.RUB
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
-        payment_method = self._settings.get("payment_method")
+        payment_method = self._optional("payment_method")
         payload: dict[str, object] = {
             "paymentDetails": {
-                "amount": float(order.final_price),
+                "amount": amount_to_float(order.final_price),
                 "currency": order.currency.value,
             },
             "description": f"Order #{order.id}",
@@ -42,12 +40,12 @@ class PlategaGateway(PaymentGateway):
         else:
             endpoint = _MULTI_METHOD_ENDPOINT
 
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/{endpoint}",
             json=payload,
             headers={
-                "X-MerchantId": self._settings["merchant_id"],
-                "X-Secret": self._settings["api_key"],
+                "X-MerchantId": self._require("merchant_id"),
+                "X-Secret": self._require("api_key"),
             },
         )
         response.raise_for_status()
@@ -68,8 +66,8 @@ class PlategaGateway(PaymentGateway):
         secret = request.headers.get("x-secret")
         if not merchant_id or not secret:
             raise PaymentGatewayError("Platega webhook missing credential headers")
-        if not compare_digest(merchant_id, self._settings["merchant_id"]) or not compare_digest(
-            secret, self._settings["api_key"]
+        if not compare_digest(merchant_id, self._require("merchant_id")) or not compare_digest(
+            secret, self._require("api_key")
         ):
             raise PaymentGatewayError("Invalid Platega webhook credentials")
 

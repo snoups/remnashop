@@ -4,8 +4,8 @@ export interface SecuritySettings {
   ip_allowlist: string[];
 }
 
-export function getOwnSecurity(): Promise<SecuritySettings> {
-  return apiGet<SecuritySettings>("/users/me/security");
+export function getOwnSecurity(signal?: AbortSignal): Promise<SecuritySettings> {
+  return apiGet<SecuritySettings>("/users/me/security", signal);
 }
 
 export function updateOwnSecurity(ipAllowlist: string[]): Promise<SecuritySettings> {

@@ -8,28 +8,27 @@ export type AsyncState<T> =
   | { kind: "ready"; data: T };
 
 export function useAsyncResource<T>(
-  fetcher: () => Promise<T>,
+  fetcher: (signal: AbortSignal) => Promise<T>,
   onSuccess?: (data: T) => void,
 ): [AsyncState<T>, () => void, (data: T) => void] {
   const [state, setState] = useState<AsyncState<T>>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
-    fetcher()
+    fetcher(controller.signal)
       .then((data) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setState({ kind: "ready", data });
         onSuccess?.(data);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setState({ kind: "error", isNetworkError: err instanceof NetworkError });
+        if (controller.signal.aborted) return;
+        setState({ kind: "error", isNetworkError: err instanceof NetworkError });
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // fetcher/onSuccess are read once per effect run (mount, or an explicit
     // reload()) rather than tracked as dependencies -- every call site fetches
     // once and only refetches on demand via the returned reload(), matching

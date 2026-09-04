@@ -47,8 +47,8 @@ export interface UpdateAdminPayload {
   permission_revokes: Permission[];
 }
 
-export function listAdmins(): Promise<Admin[]> {
-  return apiGet<Admin[]>("/admins");
+export function listAdmins(signal?: AbortSignal): Promise<Admin[]> {
+  return apiGet<Admin[]>("/admins", signal);
 }
 
 export function createAdmin(payload: CreateAdminPayload): Promise<AdminWithPassword> {
@@ -69,4 +69,18 @@ export function demoteAdmin(userId: number): Promise<Admin> {
 
 export function deleteAdmin(userId: number): Promise<void> {
   return apiDelete<void>(`/admins/${userId}`);
+}
+
+export interface PermissionCatalogEntry {
+  permission: Permission;
+  resource: string;
+  kind: "read" | "write";
+}
+
+interface PermissionCatalogResponse {
+  entries: PermissionCatalogEntry[];
+}
+
+export function getPermissionCatalog(signal?: AbortSignal): Promise<PermissionCatalogEntry[]> {
+  return apiGet<PermissionCatalogResponse>("/permissions/catalog", signal).then((response) => response.entries);
 }

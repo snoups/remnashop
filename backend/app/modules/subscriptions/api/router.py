@@ -108,9 +108,13 @@ async def receive_remnawave_webhook(
         if payload.event == "user.deleted"
         else SubscriptionStatus(payload.data.status)
     )
+    is_deletion = target_status is SubscriptionStatus.DELETED
     await use_case.system(
         SyncSubscriptionStatusDto(
-            remnawave_user_id=payload.data.id, status=target_status, source="webhook"
+            remnawave_user_id=payload.data.id,
+            status=target_status,
+            source="webhook",
+            expire_at=None if is_deletion else payload.data.expire_at,
         )
     )
     return Response(status_code=status.HTTP_200_OK)

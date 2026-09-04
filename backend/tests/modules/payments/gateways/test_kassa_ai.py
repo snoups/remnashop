@@ -55,7 +55,7 @@ def _gateway() -> KassaAIGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(kassa_ai_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(kassa_ai_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _webhook(fields: dict[str, str]) -> WebhookRequest:

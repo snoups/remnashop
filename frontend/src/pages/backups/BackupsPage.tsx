@@ -28,7 +28,9 @@ import {
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
 
@@ -76,9 +78,10 @@ export function BackupsPage() {
   const [isStartingRun, setIsStartingRun] = useState(false);
 
   const [runsState, setRunsState] = useState<RunsState>({ kind: "loading" });
-  const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<BackupRun | null>(null);
 
   const currentUserState = useCurrentUser();
   const permissions =
@@ -89,34 +92,52 @@ export function BackupsPage() {
   const canDeleteRun = permissions.includes("BACKUPS_RUN_DELETE");
   const canViewRuns = permissions.includes("BACKUPS_RUN_VIEW");
 
-  const loadRuns = (pageSize: number) => {
-    listBackupRuns({ page: 1, pageSize })
-      .then((page) => setRunsState({ kind: "ready", items: page.items, total: page.total }))
-      .catch(() => setRunsState({ kind: "error" }));
+  const loadRuns = (signal?: AbortSignal) => {
+    setPage(1);
+    listBackupRuns({ page: 1, pageSize: DEFAULT_PAGE_SIZE }, signal)
+      .then((result) => {
+        if (!signal?.aborted) setRunsState({ kind: "ready", items: result.items, total: result.total });
+      })
+      .catch(() => {
+        if (!signal?.aborted) setRunsState({ kind: "error" });
+      });
   };
 
   useEffect(() => {
-    getBackupSettings()
+    const controller = new AbortController();
+    getBackupSettings(controller.signal)
       .then((settings) => {
+        if (controller.signal.aborted) return;
         setEnabled(settings.enabled);
         setIntervalHours(String(settings.interval_hours));
         setMaxFiles(String(settings.max_files));
         setSettingsState({ kind: "ready" });
       })
-      .catch(() => setSettingsState({ kind: "error" }));
+      .catch(() => {
+        if (!controller.signal.aborted) setSettingsState({ kind: "error" });
+      });
 
-    if (canViewRuns) loadRuns(DEFAULT_PAGE_SIZE);
+    if (canViewRuns) loadRuns(controller.signal);
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSaveSettings = async (event: FormEvent) => {
     event.preventDefault();
+
+    const parsedIntervalHours = parseRequiredInt(intervalHours, 1);
+    const parsedMaxFiles = parseRequiredInt(maxFiles, 1);
+    if (parsedIntervalHours === undefined || parsedMaxFiles === undefined) {
+      toast.error(t("errors.invalidNumber"));
+      return;
+    }
+
     setIsSavingSettings(true);
     try {
       const settings = await updateBackupSettings({
         enabled,
-        interval_hours: Math.max(1, Math.round(Number(intervalHours))),
-        max_files: Math.max(1, Math.round(Number(maxFiles))),
+        interval_hours: parsedIntervalHours,
+        max_files: parsedMaxFiles,
       });
       setEnabled(settings.enabled);
       setIntervalHours(String(settings.interval_hours));
@@ -144,13 +165,20 @@ export function BackupsPage() {
     }
   };
 
+  // Offset pagination + local optimistic edits (run-now prepends, delete
+  // removes) can drift a row at a page boundary; acceptable here.
+  // offset drift on boundary, switch to keyset if it bites.
   const handleLoadMore = async () => {
-    const nextCount = visibleCount + DEFAULT_PAGE_SIZE;
+    const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const page = await listBackupRuns({ page: 1, pageSize: nextCount });
-      setRunsState({ kind: "ready", items: page.items, total: page.total });
-      setVisibleCount(nextCount);
+      const result = await listBackupRuns({ page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
+      setRunsState((prev) =>
+        prev.kind === "ready"
+          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
+          : prev,
+      );
+      setPage(nextPage);
     } catch {
       // keep current items on failure; the load-more button stays available to retry
     } finally {
@@ -178,7 +206,6 @@ export function BackupsPage() {
   };
 
   const handleDelete = async (run: BackupRun) => {
-    if (!window.confirm(t("backups.runs.deleteConfirm"))) return;
     try {
       await deleteBackupRun(run.id);
       if (runsState.kind === "ready") {
@@ -366,7 +393,7 @@ export function BackupsPage() {
                             {canDeleteRun && (
                               <button
                                 type="button"
-                                onClick={() => void handleDelete(run)}
+                                onClick={() => setPendingDelete(run)}
                                 disabled={isRunning}
                                 aria-label={t("backups.runs.deleteButton")}
                                 className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-30"
@@ -402,6 +429,21 @@ export function BackupsPage() {
             </>
           )}
         </div>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={t("backups.runs.deleteButton")}
+          message={t("backups.runs.deleteConfirm")}
+          confirmLabel={t("backups.runs.deleteConfirmButton")}
+          cancelLabel={t("backups.runs.deleteCancelButton")}
+          danger
+          onConfirm={() => {
+            void handleDelete(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );

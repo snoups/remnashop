@@ -61,7 +61,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, str]):
             return gateway.webhook_ack(result)
 
         try:
-            verified = await gateway.verify_payment(order)
+            verified = await gateway.verify_payment(order, result)
         except Exception as error:  # noqa: BLE001 -- any verify failure is a gateway problem
             raise PaymentGatewayError("Could not verify payment") from error
         if not verified:

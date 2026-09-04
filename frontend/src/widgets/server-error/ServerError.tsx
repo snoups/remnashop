@@ -1,11 +1,17 @@
-import { ServerCrash } from "lucide-react";
+import { ServerCrash, Unplug, type LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 
-export function ServerError() {
+interface FullScreenErrorProps {
+  icon: LucideIcon;
+  titleKey: string;
+  descriptionKey: string;
+}
+
+function FullScreenError({ icon: Icon, titleKey, descriptionKey }: FullScreenErrorProps) {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
 
@@ -16,10 +22,10 @@ export function ServerError() {
       </div>
 
       <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-glass-border bg-surface/40 p-8 text-center shadow-2xl backdrop-blur-xl">
-        <ServerCrash className="size-12 shrink-0 text-error" />
+        <Icon className="size-12 shrink-0 text-error" />
         <div>
-          <h1 className="text-lg font-bold text-foreground">{t("errors.serverErrorTitle")}</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">{t("errors.serverErrorDescription")}</p>
+          <h1 className="text-lg font-bold text-foreground">{t(titleKey)}</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">{t(descriptionKey)}</p>
         </div>
         <motion.button
           type="button"
@@ -31,5 +37,15 @@ export function ServerError() {
         </motion.button>
       </div>
     </div>
+  );
+}
+
+export function ServerError() {
+  return <FullScreenError icon={ServerCrash} titleKey="errors.serverErrorTitle" descriptionKey="errors.serverErrorDescription" />;
+}
+
+export function ServerUnreachable() {
+  return (
+    <FullScreenError icon={Unplug} titleKey="errors.serverUnreachableTitle" descriptionKey="errors.serverUnreachableDescription" />
   );
 }

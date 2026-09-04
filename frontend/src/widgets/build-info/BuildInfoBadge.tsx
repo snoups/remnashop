@@ -1,10 +1,11 @@
 import { ArrowUpCircle, Check, Clock, Copy, GitBranch, GitCommit, Info, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
+import type { SystemMetadata } from "@shared/api/system";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { githubApiUrl, TELEGRAM_URL } from "@shared/lib/external-links";
 import { isNewerVersion } from "@shared/lib/version-compare";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
 import { InfoRow } from "@shared/ui/InfoRow";
@@ -14,36 +15,19 @@ interface GithubRelease {
   html_url: string;
 }
 
-const TELEGRAM_URL = "https://t.me/remna_shop";
-
-function repoApiUrl(repositoryUrl: string): string {
-  const path = new URL(repositoryUrl).pathname.replace(/^\//, "");
-  return `https://api.github.com/repos/${path}/releases/latest`;
+interface BuildInfoBadgeProps {
+  /** Fetched by the parent (ExternalLinksRow), which renders this alongside
+   * its own GitHub-star link off the same metadata -- fetching it again here
+   * would double the /system/metadata request on every sidebar mount. */
+  metadata: SystemMetadata | null;
 }
 
-export function BuildInfoBadge() {
+export function BuildInfoBadge({ metadata }: BuildInfoBadgeProps) {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
-  const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [latestRelease, setLatestRelease] = useState<GithubRelease | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    getSystemMetadata()
-      .then((data) => {
-        if (!cancelled) setMetadata(data);
-      })
-      .catch(() => {
-        if (!cancelled) setMetadata(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const isOfficialBuild = metadata?.git.is_official_build ?? false;
 
@@ -52,7 +36,7 @@ export function BuildInfoBadge() {
     // Only a real CI-built artifact is comparable against releases — skip for dev/local runs.
     if (!metadata || !isOfficialBuild || latestRelease) return;
 
-    fetch(repoApiUrl(metadata.repository_url))
+    fetch(githubApiUrl(metadata.repository_url, "/releases/latest"))
       .then((response) => (response.ok ? (response.json() as Promise<GithubRelease>) : null))
       .then((release) => setLatestRelease(release))
       .catch(() => setLatestRelease(null));

@@ -3,7 +3,6 @@ import hmac
 import uuid
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -14,12 +13,10 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://rollypay.io/api/v1"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class RollyPayGateway(PaymentGateway):
@@ -35,12 +32,12 @@ class RollyPayGateway(PaymentGateway):
             "success_redirect_url": self._return_url,
             "fail_redirect_url": self._return_url,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/payments",
             json=payload,
             headers={
                 "Content-Type": "application/json",
-                "X-API-Key": self._settings["api_key"],
+                "X-API-Key": self._require("api_key"),
                 "X-Nonce": uuid.uuid4().hex,
             },
         )
@@ -66,7 +63,7 @@ class RollyPayGateway(PaymentGateway):
 
         message = f"{timestamp}.{request.body.decode('utf-8')}"
         expected = hmac.new(
-            self._settings["signing_secret"].encode("utf-8"),
+            self._require("signing_secret").encode("utf-8"),
             message.encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()

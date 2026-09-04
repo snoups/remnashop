@@ -56,7 +56,6 @@ class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto]):
             await self._event_publisher.publish(
                 ReferralAttachedEvent(user=actor, referrer_id=referrer.id)
             )
-            await self._uow.commit()
 
         logger.info(f"{actor.log} Attached to referrer '{referrer.id}' at level '{level}'")
         return referrer

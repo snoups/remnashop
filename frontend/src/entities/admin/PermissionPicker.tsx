@@ -3,22 +3,32 @@ import {
   Bot,
   Check,
   ChevronRight,
+  Coins,
   CreditCard,
+  Database,
+  Gift,
   Globe,
   Image,
   KeyRound,
   Languages,
+  Layers,
+  Link2,
   Minus,
   Monitor,
+  Package,
   Palette,
   ScrollText,
   Shield,
+  Store,
+  Tag,
+  Ticket,
   Users,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { usePermissionCatalog, groupCatalogByResource } from "@entities/admin/permission-catalog";
+import { usePermissionCatalog, groupCatalogByResource } from "@entities/admin/use-permission-catalog";
 import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
 import type { Permission } from "@shared/types/rbac";
@@ -53,6 +63,16 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   appearance: Palette,
   gateways: CreditCard,
   blacklist: Ban,
+  shop_settings: Store,
+  plans: Tag,
+  pricing: Coins,
+  subscriptions: Layers,
+  addons: Package,
+  promocodes: Ticket,
+  payments: Wallet,
+  referrals: Gift,
+  backups: Database,
+  ad_links: Link2,
 };
 
 function getResourceIcon(resource: string): LucideIcon {

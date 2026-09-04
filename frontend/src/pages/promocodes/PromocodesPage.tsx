@@ -13,6 +13,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/Switch";
 
 type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: Promocode[] };
@@ -48,6 +49,7 @@ export function PromocodesPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPromocode, setEditingPromocode] = useState<Promocode | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Promocode | null>(null);
 
   const currentUserState = useCurrentUser();
   const permissions =
@@ -58,15 +60,29 @@ export function PromocodesPage() {
   const canGenerateCode = permissions.includes("PROMOCODES_GENERATE_CODE");
 
   useEffect(() => {
-    listPromocodes()
-      .then((items) => setState({ kind: "ready", items }))
-      .catch(() => setState({ kind: "error" }));
-    listAddons()
-      .then(setAddons)
-      .catch(() => setAddons([]));
-    listPlans()
-      .then(setPlans)
-      .catch(() => setPlans([]));
+    const controller = new AbortController();
+    listPromocodes(controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) setState({ kind: "ready", items });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setState({ kind: "error" });
+      });
+    listAddons(controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) setAddons(items);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAddons([]);
+      });
+    listPlans(controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) setPlans(items);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPlans([]);
+      });
+    return () => controller.abort();
   }, []);
 
   const handleSaved = (promo: Promocode) => {
@@ -94,7 +110,6 @@ export function PromocodesPage() {
   };
 
   const handleDelete = async (promo: Promocode) => {
-    if (!window.confirm(t("promocodes.delete.confirm", { code: promo.code }))) return;
     try {
       await deletePromocode(promo.id);
       if (state.kind === "ready") {
@@ -106,7 +121,7 @@ export function PromocodesPage() {
   };
 
   const handleCopy = (code: string) => {
-    void navigator.clipboard.writeText(code);
+    navigator.clipboard?.writeText(code).catch(() => {});
   };
 
   return (
@@ -163,7 +178,7 @@ export function PromocodesPage() {
                       label: t("promocodes.delete.button"),
                       icon: Trash2,
                       variant: "danger",
-                      onClick: () => void handleDelete(promo),
+                      onClick: () => setPendingDelete(promo),
                     });
                   }
 
@@ -249,6 +264,21 @@ export function PromocodesPage() {
           promocode={editingPromocode}
           onClose={() => setEditingPromocode(null)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={t("promocodes.delete.button")}
+          message={t("promocodes.delete.confirm", { code: pendingDelete.code })}
+          confirmLabel={t("promocodes.delete.confirmButton")}
+          cancelLabel={t("promocodes.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            void handleDelete(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
     </div>

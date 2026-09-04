@@ -3,7 +3,6 @@ import hmac
 import uuid
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -14,12 +13,11 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://severpay.io/api/merchant"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class SeverPayGateway(PaymentGateway):
@@ -28,23 +26,23 @@ class SeverPayGateway(PaymentGateway):
     def _sign(self, body: dict[str, object]) -> str:
         sorted_body = dict(sorted(body.items()))
         return hmac.new(
-            self._settings["token"].encode("utf-8"), orjson.dumps(sorted_body), hashlib.sha256
+            self._require("token").encode("utf-8"), orjson.dumps(sorted_body), hashlib.sha256
         ).hexdigest()
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload: dict[str, object] = {
             "order_id": order.idempotency_key,
-            "amount": float(order.final_price),
+            "amount": amount_to_float(order.final_price),
             "currency": order.currency.value,
             "client_email": order.customer_email or f"user{order.user_id}@vpn.local",
             "client_id": str(order.user_id),
             "url_return": self._return_url,
-            "mid": int(self._settings["mid"]),
+            "mid": int(self._require("mid")),
             "salt": uuid.uuid4().hex,
         }
         payload["sign"] = self._sign(payload)
 
-        response = await _client.post(f"{_API_BASE}/payin/create", json=payload)
+        response = await http_client.post(f"{_API_BASE}/payin/create", json=payload)
         response.raise_for_status()
         data = orjson.loads(response.content)
         if data.get("status") is not True:

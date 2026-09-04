@@ -170,7 +170,7 @@ def _patch_yookassa_transport(
     # The gateway reuses one module-level client rather than constructing one
     # per call -- swap that instance out for the duration of the test instead
     # of patching the AsyncClient constructor.
-    monkeypatch.setattr(yookassa_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(yookassa_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 async def test_checkout_returns_confirmation_url_for_a_valid_plan(

@@ -9,16 +9,16 @@ export interface Session {
   expires_at: string;
 }
 
-export function listOwnSessions(): Promise<Session[]> {
-  return apiGet<Session[]>("/auth/sessions");
+export function listOwnSessions(signal?: AbortSignal): Promise<Session[]> {
+  return apiGet<Session[]>("/auth/sessions", signal);
 }
 
 export function revokeOwnSession(sessionId: number): Promise<void> {
   return apiDelete<void>(`/auth/sessions/${sessionId}`);
 }
 
-export function listUserSessions(userId: number): Promise<Session[]> {
-  return apiGet<Session[]>(`/auth/sessions/users/${userId}`);
+export function listUserSessions(userId: number, signal?: AbortSignal): Promise<Session[]> {
+  return apiGet<Session[]>(`/auth/sessions/users/${userId}`, signal);
 }
 
 export function revokeUserSession(userId: number, sessionId: number): Promise<void> {

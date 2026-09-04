@@ -1,21 +1,7 @@
-import { apiGet } from "@shared/api/http";
+import { getPermissionCatalog, type PermissionCatalogEntry } from "@entities/admin/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { AsyncState } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
-
-export interface PermissionCatalogEntry {
-  permission: Permission;
-  resource: string;
-  kind: "read" | "write";
-}
-
-interface PermissionCatalogResponse {
-  entries: PermissionCatalogEntry[];
-}
-
-export function getPermissionCatalog(): Promise<PermissionCatalogEntry[]> {
-  return apiGet<PermissionCatalogResponse>("/permissions/catalog").then((response) => response.entries);
-}
 
 export function usePermissionCatalog(): AsyncState<PermissionCatalogEntry[]> {
   const [state] = useAsyncResource(getPermissionCatalog);

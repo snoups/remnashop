@@ -6,14 +6,14 @@ import { CurrentUserProvider } from "@entities/user/CurrentUserProvider";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { Header } from "@widgets/header/Header";
-import { ServerUnreachable } from "@widgets/server-unreachable/ServerUnreachable";
+import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 import { Sidebar } from "@widgets/sidebar/Sidebar";
 
 function DashboardShell({ onLogout }: { onLogout: () => void }) {
   const userState = useCurrentUser();
 
-  if (userState.kind === "error" && userState.isNetworkError) {
-    return <ServerUnreachable />;
+  if (userState.kind === "error") {
+    return userState.isNetworkError ? <ServerUnreachable /> : <ServerError />;
   }
 
   return (

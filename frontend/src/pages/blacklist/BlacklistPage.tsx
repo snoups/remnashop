@@ -21,6 +21,7 @@ import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
 
@@ -199,6 +200,7 @@ function BlacklistSourcesSection({ permissions, onSynced }: BlacklistSourcesSect
   const [sourceName, setSourceName] = useState("");
   const [isAddingSource, setIsAddingSource] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingRemoveSource, setPendingRemoveSource] = useState<BlacklistSource | null>(null);
 
   const handleAddSource = async () => {
     const url = sourceUrl.trim();
@@ -217,7 +219,6 @@ function BlacklistSourcesSection({ permissions, onSynced }: BlacklistSourcesSect
   };
 
   const handleRemoveSource = async (source: BlacklistSource) => {
-    if (!window.confirm(t("blacklist.sources.removeConfirm", { url: source.url }))) return;
     try {
       await removeBlacklistSource(source.id);
       setSources((sourcesState.kind === "ready" ? sourcesState.data : []).filter((s) => s.id !== source.id));
@@ -353,7 +354,7 @@ function BlacklistSourcesSection({ permissions, onSynced }: BlacklistSourcesSect
                     {permissions.includes("BLACKLIST_SOURCE_REMOVE") && (
                       <button
                         type="button"
-                        onClick={() => void handleRemoveSource(source)}
+                        onClick={() => setPendingRemoveSource(source)}
                         aria-label={t("blacklist.sources.remove")}
                         title={t("blacklist.sources.remove")}
                         className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-error/10 hover:text-error"
@@ -374,6 +375,21 @@ function BlacklistSourcesSection({ permissions, onSynced }: BlacklistSourcesSect
           </div>
         )}
       </div>
+
+      {pendingRemoveSource && (
+        <ConfirmDialog
+          title={t("blacklist.sources.remove")}
+          message={t("blacklist.sources.removeConfirm", { url: pendingRemoveSource.url })}
+          confirmLabel={t("blacklist.sources.removeConfirmButton")}
+          cancelLabel={t("blacklist.sources.removeCancelButton")}
+          danger
+          onConfirm={() => {
+            void handleRemoveSource(pendingRemoveSource);
+            setPendingRemoveSource(null);
+          }}
+          onCancel={() => setPendingRemoveSource(null)}
+        />
+      )}
     </div>
   );
 }

@@ -54,7 +54,7 @@ class _StubGateway:
     async def parse_webhook(self, request: object) -> Optional[WebhookResult]:
         return self._parse_result
 
-    async def verify_payment(self, order: object) -> bool:
+    async def verify_payment(self, order: object, result: object) -> bool:
         if self._verify_exc is not None:
             raise self._verify_exc
         return self._verify_result

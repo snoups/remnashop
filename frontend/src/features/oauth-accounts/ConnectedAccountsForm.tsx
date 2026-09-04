@@ -31,8 +31,11 @@ interface ConnectedAccountsData {
   oidcDisplayName: string | null;
 }
 
-async function loadConnectedAccountsData(): Promise<ConnectedAccountsData> {
-  const [identities, status] = await Promise.all([listConnectedAccounts(), getAuthStatus()]);
+async function loadConnectedAccountsData(signal?: AbortSignal): Promise<ConnectedAccountsData> {
+  const [identities, status] = await Promise.all([
+    listConnectedAccounts(signal),
+    getAuthStatus(signal),
+  ]);
   return { identities, oidcDisplayName: status.oidc_display_name };
 }
 

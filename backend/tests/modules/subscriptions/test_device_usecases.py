@@ -4,6 +4,7 @@ import pytest
 from remnapy import RemnawaveSDK
 from remnapy.enums import TrafficLimitStrategy
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.exceptions import CooldownError, NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
@@ -218,6 +219,7 @@ async def test_reissues_the_subscription_link(
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="reissuer"))
     subscription = await _create_active_subscription(subscription_repository, actor.id, 7006)
@@ -225,7 +227,7 @@ async def test_reissues_the_subscription_link(
         user_id=7006, username="reissue-test", expire_at=datetime_now()
     )
     use_case = ReissueSubscriptionUseCase(
-        subscription_repository, remnawave_sdk, settings_repository
+        subscription_repository, remnawave_sdk, settings_repository, uow
     )
 
     await use_case(actor)

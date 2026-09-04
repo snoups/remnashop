@@ -16,6 +16,8 @@ from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.bot_translation import BotTranslation
 from app.core.db.models.currency_rate import CurrencyRate
+from app.core.db.models.dialog_button import DialogButton
+from app.core.db.models.dialog_window import DialogWindow
 from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.models.oauth_identity import OAuthIdentity
@@ -55,6 +57,8 @@ __all__ = [
     "BotSettings",
     "BotTranslation",
     "CurrencyRate",
+    "DialogButton",
+    "DialogWindow",
     "EventLogEntry",
     "EventOutboxEntry",
     "OAuthIdentity",

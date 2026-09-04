@@ -26,6 +26,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.auth.repository
@@ -58,6 +59,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.settings.repository
@@ -90,6 +92,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.users.repository
@@ -125,6 +128,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.event_log.repository
@@ -160,6 +164,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.banners.repository
@@ -193,6 +198,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.api_tokens.repository
@@ -225,6 +231,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.translations.repository
@@ -263,6 +270,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.gateways.repository
@@ -296,6 +304,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.plans.repository
@@ -328,6 +337,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.subscriptions.repository
@@ -364,6 +374,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.promocodes.repository
@@ -396,6 +407,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.payments.repository
@@ -428,6 +440,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.oauth.repository
@@ -460,6 +473,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.referrals.repository
@@ -493,6 +507,7 @@ source_modules =
     app.modules.oauth
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.backups.repository
@@ -528,6 +543,7 @@ source_modules =
     app.modules.referrals
     app.modules.backups
     app.modules.blacklist
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.pricing.repository
@@ -561,6 +577,7 @@ source_modules =
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
+    app.modules.dialogs
     app.modules.advertising
 forbidden_modules =
     app.modules.blacklist.repository
@@ -598,6 +615,7 @@ source_modules =
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
+    app.modules.dialogs
 forbidden_modules =
     app.modules.advertising.repository
     app.modules.advertising.dto
@@ -607,3 +625,38 @@ forbidden_modules =
     app.modules.advertising.events
 ignore_imports =
     app.core.event_bus -> app.modules.advertising.events
+
+[importlinter:contract:dialogs-encapsulation]
+name = dialogs module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.gateways
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+    app.modules.payments
+    app.modules.oauth
+    app.modules.referrals
+    app.modules.backups
+    app.modules.pricing
+    app.modules.blacklist
+    app.modules.advertising
+forbidden_modules =
+    app.modules.dialogs.repository
+    app.modules.dialogs.dto
+    app.modules.dialogs.di
+    app.modules.dialogs.usecases
+    app.modules.dialogs.seed
+    app.modules.dialogs.catalog

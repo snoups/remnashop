@@ -7,6 +7,7 @@ from app.core.actor import SyntheticActor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, PlanAvailability, PlanType, Role, SubscriptionStatus
 from app.core.exceptions import PermissionDeniedError
+from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -36,7 +37,7 @@ from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
-OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+OWNER = UserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
@@ -374,8 +375,10 @@ async def test_invited_plan_visible_only_to_referred_users(
     assert created.public_code not in {p.public_code for p in plans_for_unreferred}
 
 
-async def test_owner_can_create_plan(plan_repository: PlanRepository, uow: UnitOfWork) -> None:
-    use_case = CreatePlanUseCase(plan_repository, uow)
+async def test_owner_can_create_plan(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    use_case = CreatePlanUseCase(plan_repository, uow, event_publisher)
 
     plan = await use_case(
         OWNER,
@@ -389,9 +392,9 @@ async def test_owner_can_create_plan(plan_repository: PlanRepository, uow: UnitO
 
 
 async def test_regular_user_cannot_create_plan(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    use_case = CreatePlanUseCase(plan_repository, uow)
+    use_case = CreatePlanUseCase(plan_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
@@ -406,13 +409,15 @@ async def test_regular_user_cannot_create_plan(
         )
 
 
-async def test_owner_can_update_plan(plan_repository: PlanRepository, uow: UnitOfWork) -> None:
+async def test_owner_can_update_plan(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = UpdatePlanUseCase(plan_repository, uow)
+    use_case = UpdatePlanUseCase(plan_repository, uow, event_publisher)
 
     updated = await use_case(OWNER, UpdatePlanDto(plan_id=created.id, traffic_limit=500))
 
@@ -420,26 +425,28 @@ async def test_owner_can_update_plan(plan_repository: PlanRepository, uow: UnitO
 
 
 async def test_regular_user_cannot_update_plan(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = UpdatePlanUseCase(plan_repository, uow)
+    use_case = UpdatePlanUseCase(plan_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, UpdatePlanDto(plan_id=created.id, traffic_limit=500))
 
 
-async def test_owner_can_delete_plan(plan_repository: PlanRepository, uow: UnitOfWork) -> None:
+async def test_owner_can_delete_plan(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = DeletePlanUseCase(plan_repository, uow)
+    use_case = DeletePlanUseCase(plan_repository, uow, event_publisher)
 
     await use_case(OWNER, created.id)
 
@@ -447,28 +454,28 @@ async def test_owner_can_delete_plan(plan_repository: PlanRepository, uow: UnitO
 
 
 async def test_regular_user_cannot_delete_plan(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = DeletePlanUseCase(plan_repository, uow)
+    use_case = DeletePlanUseCase(plan_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, created.id)
 
 
 async def test_owner_can_set_plan_durations(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = SetPlanDurationsUseCase(plan_repository, uow)
+    use_case = SetPlanDurationsUseCase(plan_repository, uow, event_publisher)
 
     updated = await use_case(
         OWNER,
@@ -482,28 +489,28 @@ async def test_owner_can_set_plan_durations(
 
 
 async def test_regular_user_cannot_set_plan_durations(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = SetPlanDurationsUseCase(plan_repository, uow)
+    use_case = SetPlanDurationsUseCase(plan_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, SetPlanDurationsDto(plan_id=created.id, durations=[]))
 
 
 async def test_owner_can_update_plan_access(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = UpdatePlanAccessUseCase(plan_repository, uow)
+    use_case = UpdatePlanAccessUseCase(plan_repository, uow, event_publisher)
 
     updated = await use_case(
         OWNER,
@@ -520,14 +527,14 @@ async def test_owner_can_update_plan_access(
 
 
 async def test_regular_user_cannot_update_plan_access(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = UpdatePlanAccessUseCase(plan_repository, uow)
+    use_case = UpdatePlanAccessUseCase(plan_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
@@ -542,14 +549,14 @@ async def test_regular_user_cannot_update_plan_access(
 
 
 async def test_owner_can_update_plan_squads(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = UpdatePlanSquadsUseCase(plan_repository, uow)
+    use_case = UpdatePlanSquadsUseCase(plan_repository, uow, event_publisher)
     squad = uuid4()
 
     updated = await use_case(
@@ -561,14 +568,14 @@ async def test_owner_can_update_plan_squads(
 
 
 async def test_regular_user_cannot_update_plan_squads(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = UpdatePlanSquadsUseCase(plan_repository, uow)
+    use_case = UpdatePlanSquadsUseCase(plan_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
@@ -577,7 +584,9 @@ async def test_regular_user_cannot_update_plan_squads(
         )
 
 
-async def test_owner_can_reorder_plans(plan_repository: PlanRepository, uow: UnitOfWork) -> None:
+async def test_owner_can_reorder_plans(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
     first = await plan_repository.create(
         CreatePlanDto(
             public_code="a", name="A", type=PlanType.BOTH, traffic_limit=100, device_limit=3
@@ -588,7 +597,7 @@ async def test_owner_can_reorder_plans(plan_repository: PlanRepository, uow: Uni
             public_code="b", name="B", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = ReorderPlansUseCase(plan_repository, uow)
+    use_case = ReorderPlansUseCase(plan_repository, uow, event_publisher)
 
     reordered = await use_case(OWNER, ReorderPlansDto(plan_ids=[second.id, first.id]))
 
@@ -596,14 +605,14 @@ async def test_owner_can_reorder_plans(plan_repository: PlanRepository, uow: Uni
 
 
 async def test_regular_user_cannot_reorder_plans(
-    plan_repository: PlanRepository, uow: UnitOfWork
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     created = await plan_repository.create(
         CreatePlanDto(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = ReorderPlansUseCase(plan_repository, uow)
+    use_case = ReorderPlansUseCase(plan_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, ReorderPlansDto(plan_ids=[created.id]))

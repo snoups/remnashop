@@ -2,7 +2,7 @@ import { PiggyBank, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { BOOSTY_URL, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { TelegramIcon } from "@shared/ui/BrandIcons";
@@ -15,10 +15,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
 
-  const tapProps = {
-    whileTap: { scale: 1 + 0.12 * bounceStrength },
-    transition: { type: "spring", stiffness: 500, damping: 15 },
-  } as const;
+  const tapProps = bounceTap(bounceStrength, 0.12);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-3xl">

@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import ReferralStatsDto
@@ -18,9 +16,9 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto]):
         counts = await self._referral_repository.count_by_level(actor.id)
         rewards = await self._referral_repository.list_rewards_by_referrer(actor.id)
         return ReferralStatsDto(
-            referral_code=getattr(actor, "referral_code", None),
+            referral_code=actor.referral_code,
             referrer_id=edge.referrer_id if edge is not None else None,
-            points=getattr(actor, "points", Decimal(0)),
+            points=actor.points,
             counts_by_level=counts,
             rewards=rewards,
         )

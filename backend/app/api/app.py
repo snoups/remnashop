@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Final
 
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -19,7 +20,7 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.exceptions import PermissionDeniedError
 
-FRONTEND_DIST: Path = Path("/opt/remnashop/frontend/dist")
+FRONTEND_DIST: Final[Path] = Path("/opt/remnashop/frontend/dist")
 
 
 def resolve_cors(origins: list[str]) -> tuple[list[str], bool]:

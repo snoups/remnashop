@@ -1,8 +1,8 @@
 import hashlib
 import hmac
+from decimal import Decimal, InvalidOperation
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -13,10 +13,10 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://gw.donut.business"
-_TIMEOUT_S: Final[float] = 20.0
 _OK_STATUSES: Final[frozenset[str]] = frozenset({"processing", "success", "created"})
 
 
@@ -26,15 +26,14 @@ def _sign(parts: list[tuple[str, object]], secret: str) -> str:
     return hmac.new(secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
-
-
 class DonutGateway(PaymentGateway):
     currency = Currency.RUB
+    _received_amount: Optional[Decimal] = None
+    _recalculated: bool = False
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload: dict[str, object] = {
-            "token": self._settings["token"],
+            "token": self._require("token"),
             "order_id": order.idempotency_key,
             "amount": {
                 "value": f"{order.final_price:.2f}",
@@ -46,12 +45,12 @@ class DonutGateway(PaymentGateway):
             "callback_url": self._webhook_url,
             "return_url": self._return_url,
         }
-        method_id = self._settings.get("method_id")
+        method_id = self._optional("method_id")
         if method_id:
             payload["method_id"] = method_id
         payload["signature"] = self._sign_payin(payload)
 
-        response = await _client.post(f"{_API_BASE}/p2p_payin", content=orjson.dumps(payload))
+        response = await http_client.post(f"{_API_BASE}/p2p_payin", content=orjson.dumps(payload))
         response.raise_for_status()
         data = orjson.loads(response.content)
 
@@ -78,7 +77,7 @@ class DonutGateway(PaymentGateway):
             ("customer.id", customer["id"]),
             ("redirect", payload["redirect"]),
         ]
-        return _sign(parts, self._settings["secret"])
+        return _sign(parts, self._require("secret"))
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
         try:
@@ -101,7 +100,7 @@ class DonutGateway(PaymentGateway):
             ("recalculated", payload.get("recalculated")),
             ("status.type", status.get("type")),
         ]
-        expected = _sign(parts, self._settings["secret"])
+        expected = _sign(parts, self._require("secret"))
         if not hmac.compare_digest(expected.lower(), str(received_sign).lower()):
             raise PaymentGatewayError("Invalid Donut webhook signature")
 
@@ -112,8 +111,20 @@ class DonutGateway(PaymentGateway):
 
         if status.get("type") != "success":
             return None
+
+        self._recalculated = bool(payload.get("recalculated"))
+        try:
+            self._received_amount = Decimal(str(amount.get("value")))
+        except InvalidOperation:
+            self._received_amount = None
+
         return WebhookResult(
             reference=str(order_ref),
             status=PaymentOrderStatus.PAID,
             provider_payment_id=str(transaction_id) if transaction_id else None,
         )
+
+    async def verify_payment(self, order: PaymentOrderDto, result: WebhookResult) -> bool:
+        if self._recalculated or self._received_amount is None:
+            return False
+        return self._received_amount >= order.final_price

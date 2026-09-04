@@ -7,6 +7,7 @@ import { bootstrapOwner } from "@entities/auth/api";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
+import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { FieldHint } from "@shared/ui/FieldHint";
@@ -17,9 +18,15 @@ const PASSWORD_CHARSET =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const GENERATED_PASSWORD_LENGTH = 32;
 
+// Regenerates on the rare miss instead of constructing a guaranteed-valid
+// string by position, so the output stays a uniform random draw over the
+// full charset -- at 32 characters the retry chance is astronomically low.
 function generatePassword(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(GENERATED_PASSWORD_LENGTH));
-  return Array.from(bytes, (byte) => PASSWORD_CHARSET[byte % PASSWORD_CHARSET.length]).join("");
+  let candidate: string;
+  do {
+    candidate = randomString(PASSWORD_CHARSET, GENERATED_PASSWORD_LENGTH);
+  } while (!PASSWORD_PATTERN.test(candidate));
+  return candidate;
 }
 
 interface BootstrapOwnerFormProps {
@@ -44,7 +51,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
     setConfirmPassword(generated);
 
     navigator.clipboard
-      .writeText(generated)
+      ?.writeText(generated)
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);

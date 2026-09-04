@@ -32,6 +32,14 @@ class Permission(UpperStrEnum):
     TRANSLATIONS_VIEW = auto()
     TRANSLATIONS_UPDATE = auto()
     TRANSLATIONS_RESET = auto()
+    DIALOGS_WINDOWS_VIEW = auto()
+    DIALOGS_CATALOG_VIEW = auto()
+    DIALOGS_WINDOWS_UPDATE = auto()
+    DIALOGS_WINDOWS_BUTTONS_UPDATE = auto()
+    DIALOGS_WINDOWS_CREATE = auto()
+    DIALOGS_WINDOWS_DELETE = auto()
+    DIALOGS_WINDOWS_RESET = auto()
+    DIALOGS_WINDOWS_RESET_ALL = auto()
     OWN_ACCOUNT_MANAGE = auto()
     ADMINS_MANAGE = auto()
     API_TOKENS_MANAGE = auto()
@@ -143,6 +151,14 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSLATIONS_VIEW: PermissionMeta(resource="translations", kind="read"),
     Permission.TRANSLATIONS_UPDATE: PermissionMeta(resource="translations", kind="write"),
     Permission.TRANSLATIONS_RESET: PermissionMeta(resource="translations", kind="write"),
+    Permission.DIALOGS_WINDOWS_VIEW: PermissionMeta(resource="dialogs", kind="read"),
+    Permission.DIALOGS_CATALOG_VIEW: PermissionMeta(resource="dialogs", kind="read"),
+    Permission.DIALOGS_WINDOWS_UPDATE: PermissionMeta(resource="dialogs", kind="write"),
+    Permission.DIALOGS_WINDOWS_BUTTONS_UPDATE: PermissionMeta(resource="dialogs", kind="write"),
+    Permission.DIALOGS_WINDOWS_CREATE: PermissionMeta(resource="dialogs", kind="write"),
+    Permission.DIALOGS_WINDOWS_DELETE: PermissionMeta(resource="dialogs", kind="write"),
+    Permission.DIALOGS_WINDOWS_RESET: PermissionMeta(resource="dialogs", kind="write"),
+    Permission.DIALOGS_WINDOWS_RESET_ALL: PermissionMeta(resource="dialogs", kind="write"),
     Permission.EVENT_LOG_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
@@ -200,7 +216,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BACKUPS_SETTINGS_MANAGE: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_RUN_CREATE: PermissionMeta(resource="backups", kind="write"),
-    Permission.BACKUPS_RUN_DOWNLOAD: PermissionMeta(resource="backups", kind="write"),
+    Permission.BACKUPS_RUN_DOWNLOAD: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_RUN_DELETE: PermissionMeta(resource="backups", kind="write"),
     Permission.BLACKLIST_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.BLACKLIST_SOURCES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
@@ -251,6 +267,14 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.TRANSLATIONS_VIEW,
         Permission.TRANSLATIONS_UPDATE,
         Permission.TRANSLATIONS_RESET,
+        Permission.DIALOGS_WINDOWS_VIEW,
+        Permission.DIALOGS_CATALOG_VIEW,
+        Permission.DIALOGS_WINDOWS_UPDATE,
+        Permission.DIALOGS_WINDOWS_BUTTONS_UPDATE,
+        Permission.DIALOGS_WINDOWS_CREATE,
+        Permission.DIALOGS_WINDOWS_DELETE,
+        Permission.DIALOGS_WINDOWS_RESET,
+        Permission.DIALOGS_WINDOWS_RESET_ALL,
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.PLANS_VIEW,
         Permission.PLANS_CREATE,

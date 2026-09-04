@@ -13,8 +13,8 @@ export interface TranslationEntry {
   default_value: string;
 }
 
-export function listActiveLocales(): Promise<ActiveLocalesResult> {
-  return apiGet<ActiveLocalesResult>("/settings/locales");
+export function listActiveLocales(signal?: AbortSignal): Promise<ActiveLocalesResult> {
+  return apiGet<ActiveLocalesResult>("/settings/locales", signal);
 }
 
 export function addLocale(locale: string): Promise<ActiveLocalesResult> {
@@ -25,8 +25,8 @@ export function removeLocale(locale: string): Promise<ActiveLocalesResult> {
   return apiDelete<ActiveLocalesResult>(`/settings/locales/${locale}`);
 }
 
-export function listTranslations(): Promise<TranslationEntry[]> {
-  return apiGet<TranslationEntry[]>("/translations");
+export function listTranslations(signal?: AbortSignal): Promise<TranslationEntry[]> {
+  return apiGet<TranslationEntry[]>("/translations", signal);
 }
 
 export function updateTranslation(

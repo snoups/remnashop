@@ -1,7 +1,6 @@
 from base64 import b64decode
 from typing import Final, Optional
 
-import httpx
 import orjson
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -16,12 +15,11 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://api.wata.pro/api/h2h"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class WataGateway(PaymentGateway):
@@ -30,17 +28,17 @@ class WataGateway(PaymentGateway):
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
             "type": "OneTime",
-            "amount": float(order.final_price),
+            "amount": amount_to_float(order.final_price),
             "currency": order.currency.value,
             "description": f"Order #{order.id}",
             "orderId": order.idempotency_key,
             "successRedirectUrl": self._return_url,
             "failRedirectUrl": self._return_url,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/links",
             json=payload,
-            headers={"Authorization": f"Bearer {self._settings['api_key']}"},
+            headers={"Authorization": f"Bearer {self._require('api_key')}"},
         )
         response.raise_for_status()
         payment_url = orjson.loads(response.content).get("url")
@@ -73,9 +71,9 @@ class WataGateway(PaymentGateway):
         return WebhookResult(reference=str(order_ref), status=PaymentOrderStatus.PAID)
 
     async def _fetch_public_key(self) -> RSAPublicKey:
-        response = await _client.get(
+        response = await http_client.get(
             f"{_API_BASE}/public-key",
-            headers={"Authorization": f"Bearer {self._settings['api_key']}"},
+            headers={"Authorization": f"Bearer {self._require('api_key')}"},
         )
         response.raise_for_status()
         pem = orjson.loads(response.content)["value"].encode()

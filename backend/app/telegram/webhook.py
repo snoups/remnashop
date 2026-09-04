@@ -1,6 +1,6 @@
 import asyncio
 import secrets
-from typing import Annotated, Any
+from typing import Annotated, Any, Final
 
 from aiogram import Bot, Dispatcher
 from aiogram.methods import TelegramMethod
@@ -9,7 +9,7 @@ from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import Body, FastAPI, Header, HTTPException, Response, status
 from loguru import logger
 
-_MAX_CONCURRENT_UPDATES = 100
+_MAX_CONCURRENT_UPDATES: Final[int] = 100
 
 
 class TelegramWebhookEndpoint:

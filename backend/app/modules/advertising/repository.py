@@ -1,15 +1,15 @@
-from dataclasses import fields as dataclass_fields
 from datetime import date
 from typing import Optional
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.ad_link import AdLink
 from app.core.db.models.ad_link_attribution import AdLinkAttribution
+from app.core.db.partial_update import apply_partial_update
 from app.core.enums import AdLinkChannel
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.advertising.dto import (
     AdLinkAttributionDto,
     AdLinkDto,
@@ -94,28 +94,34 @@ class AdLinkRepository:
 
     async def update(self, data: UpdateAdLinkDto) -> AdLinkDto:
         row = await self._get_or_raise(data.ad_link_id)
-        for field in dataclass_fields(data):
-            if field.name == "ad_link_id":
-                continue
-            value = getattr(data, field.name)
-            if value is not None:
-                setattr(row, field.name, value)
+        apply_partial_update(row, data, skip=frozenset({"ad_link_id"}))
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_dto(row)
 
-    async def delete(self, ad_link_id: int) -> None:
-        row = await self._get_or_raise(ad_link_id)
+    async def delete_if_no_attributions(self, ad_link_id: int) -> None:
+        # Lock the ad_link row before counting attributions: Postgres takes an
+        # implicit FOR KEY SHARE lock on it for any concurrent
+        # create_attribution INSERT (FK reference), so that insert blocks
+        # until this transaction commits/rolls back instead of racing the
+        # count-then-delete below (was a TOCTOU -- see PromocodeRepository's
+        # claim_activation for the same pattern).
+        locked = await self.session.execute(
+            select(AdLink).where(AdLink.id == ad_link_id).with_for_update()
+        )
+        try:
+            row = locked.scalar_one()
+        except NoResultFound as error:
+            raise NotFoundError(f"AdLink '{ad_link_id}' not found") from error
+
+        if await self.count_attributions(ad_link_id) > 0:
+            raise ValidationError(
+                f"AdLink '{ad_link_id}' has attributions and cannot be deleted -- "
+                "deactivate it instead"
+            )
+
         await self.session.delete(row)
         await self.session.flush()
-
-    async def has_attributions(self, ad_link_id: int) -> bool:
-        stmt = (
-            select(func.count())
-            .select_from(AdLinkAttribution)
-            .where(AdLinkAttribution.ad_link_id == ad_link_id)
-        )
-        return (await self.session.scalar(stmt) or 0) > 0
 
     async def create_attribution(
         self, *, ad_link_id: int, user_id: int, channel: AdLinkChannel

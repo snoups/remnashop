@@ -15,7 +15,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.core.security.permissions import PERMISSION_METADATA
+from app.core.security.permissions import PERMISSION_METADATA, ROLE_PERMISSIONS, Permission
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
@@ -118,3 +118,21 @@ async def test_permissions_catalog_returns_every_metadata_entry(
     for permission, meta in PERMISSION_METADATA.items():
         assert by_permission[permission.value]["resource"] == meta.resource
         assert by_permission[permission.value]["kind"] == meta.kind
+
+
+def test_dialogs_permissions_registered() -> None:
+    for perm in (
+        Permission.DIALOGS_WINDOWS_VIEW,
+        Permission.DIALOGS_CATALOG_VIEW,
+        Permission.DIALOGS_WINDOWS_UPDATE,
+        Permission.DIALOGS_WINDOWS_BUTTONS_UPDATE,
+        Permission.DIALOGS_WINDOWS_CREATE,
+        Permission.DIALOGS_WINDOWS_DELETE,
+        Permission.DIALOGS_WINDOWS_RESET,
+        Permission.DIALOGS_WINDOWS_RESET_ALL,
+    ):
+        assert perm in PERMISSION_METADATA
+        assert PERMISSION_METADATA[perm].resource == "dialogs"
+        assert perm in ROLE_PERMISSIONS[Role.ADMIN]
+    assert PERMISSION_METADATA[Permission.DIALOGS_WINDOWS_VIEW].kind == "read"
+    assert PERMISSION_METADATA[Permission.DIALOGS_WINDOWS_UPDATE].kind == "write"

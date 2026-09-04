@@ -28,7 +28,10 @@ export interface EventLogFilters {
   pageSize?: number;
 }
 
-export function listEventLog(filters: EventLogFilters = {}): Promise<EventLogPage> {
+export function listEventLog(
+  filters: EventLogFilters = {},
+  signal?: AbortSignal,
+): Promise<EventLogPage> {
   const params = new URLSearchParams();
   if (filters.category) params.set("category", filters.category);
   if (filters.search) params.set("search", filters.search);
@@ -37,5 +40,5 @@ export function listEventLog(filters: EventLogFilters = {}): Promise<EventLogPag
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
-  return apiGet<EventLogPage>(`/event-log?${params.toString()}`);
+  return apiGet<EventLogPage>(`/event-log?${params.toString()}`, signal);
 }

@@ -54,7 +54,7 @@ def _gateway() -> RollyPayGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(rollypay_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(rollypay_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _signed_webhook(

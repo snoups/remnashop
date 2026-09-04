@@ -2,7 +2,6 @@ import hashlib
 import hmac
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -13,12 +12,10 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://api.riopay.online"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class RioPayGateway(PaymentGateway):
@@ -31,11 +28,11 @@ class RioPayGateway(PaymentGateway):
             "purpose": f"Order #{order.id}",
             "successUrl": self._return_url,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/v1/orders",
             json=payload,
             headers={
-                "X-Api-Token": self._settings["api_token"],
+                "X-Api-Token": self._require("api_token"),
                 "Content-Type": "application/json",
             },
         )
@@ -62,7 +59,7 @@ class RioPayGateway(PaymentGateway):
 
         # RioPay's own docs default the webhook secret to the API token when
         # a dedicated one isn't configured.
-        secret = self._settings.get("webhook_secret") or self._settings["api_token"]
+        secret = self._optional("webhook_secret") or self._require("api_token")
         expected = hmac.new(secret.encode("utf-8"), request.body, hashlib.sha512).hexdigest()
         if not hmac.compare_digest(expected, signature):
             raise PaymentGatewayError("Invalid RioPay webhook signature")

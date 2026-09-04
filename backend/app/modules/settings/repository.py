@@ -1,4 +1,3 @@
-from dataclasses import fields as dataclass_fields
 from typing import Final, Optional, TypeVar
 
 from pydantic import SecretStr
@@ -12,6 +11,7 @@ from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
+from app.core.db.partial_update import apply_partial_update
 from app.core.enums import AppearanceImageKind, Locale
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
@@ -163,10 +163,7 @@ class SettingsRepository:
         # Same deliberate low-stakes tradeoff as update_bot_settings() above.
         row = await self._get_or_create_singleton(OAuthSettings)
 
-        for field in dataclass_fields(data):
-            value = getattr(data, field.name)
-            if value is not None:
-                setattr(row, field.name, value)
+        apply_partial_update(row, data)
 
         await self.session.flush()
         await self.session.refresh(row)

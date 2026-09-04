@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from remnapy import RemnawaveSDK
 
+from app.core.db.uow import UnitOfWork
 from app.core.exceptions import CooldownError, ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -19,10 +20,12 @@ class ReissueSubscriptionUseCase(UseCase[None, None]):
         subscription_repository: SubscriptionRepository,
         remnawave_sdk: RemnawaveSDK,
         settings_repository: SettingsRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._remnawave_sdk = remnawave_sdk
         self._settings_repository = settings_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> None:
         shop_settings = await self._settings_repository.get_shop_settings()
@@ -42,6 +45,7 @@ class ReissueSubscriptionUseCase(UseCase[None, None]):
         panel_user = await self._remnawave_sdk.users.revoke_user_subscription(
             subscription.remnawave_user_id
         )
-        await self._subscription_repository.mark_link_reset(
-            subscription.id, new_url=panel_user.subscription_url
-        )
+        async with self._uow:
+            await self._subscription_repository.mark_link_reset(
+                subscription.id, new_url=panel_user.subscription_url
+            )

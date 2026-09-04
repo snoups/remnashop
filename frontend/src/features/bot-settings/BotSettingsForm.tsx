@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { getErrorMessage } from "@shared/api/http";
 import { getBotSettings, restartBot, updateBotSettings } from "@entities/settings/api";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { FieldHint } from "@shared/ui/FieldHint";
@@ -20,8 +21,7 @@ const RESTART_COOLDOWN_SECONDS = 10;
 const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]{35}$/;
 
 function generateSecretToken(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(SECRET_TOKEN_LENGTH));
-  return Array.from(bytes, (byte) => SECRET_TOKEN_CHARSET[byte % SECRET_TOKEN_CHARSET.length]).join("");
+  return randomString(SECRET_TOKEN_CHARSET, SECRET_TOKEN_LENGTH);
 }
 
 export function BotSettingsForm() {
@@ -53,7 +53,7 @@ export function BotSettingsForm() {
   const handleGenerateSecretToken = () => {
     const generated = generateSecretToken();
     setSecretToken(generated);
-    navigator.clipboard.writeText(generated).catch(() => {});
+    navigator.clipboard?.writeText(generated).catch(() => {});
     setIsSecretCopied(true);
     setTimeout(() => setIsSecretCopied(false), 1500);
   };

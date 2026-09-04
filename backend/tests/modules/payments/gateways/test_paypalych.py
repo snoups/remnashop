@@ -58,7 +58,7 @@ def _gateway() -> PaypalychGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(paypalych_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(paypalych_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(out_sum: str, inv_id: str, token: str = "pal-sig-token") -> str:

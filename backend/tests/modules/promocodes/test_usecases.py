@@ -52,18 +52,19 @@ from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
 
-OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+OWNER = UserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
 async def test_owner_can_create_duration_promocode(
-    promocode_repository: PromocodeRepository, uow
+    promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
     use_case = CreatePromocodeUseCase(
         promocode_repository,
         AddOnRepository(promocode_repository.session),
         PlanRepository(promocode_repository.session),
         uow,
+        event_publisher,
     )
 
     promo = await use_case(
@@ -76,13 +77,14 @@ async def test_owner_can_create_duration_promocode(
 
 
 async def test_regular_user_cannot_create_promocode(
-    promocode_repository: PromocodeRepository, uow
+    promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
     use_case = CreatePromocodeUseCase(
         promocode_repository,
         AddOnRepository(promocode_repository.session),
         PlanRepository(promocode_repository.session),
         uow,
+        event_publisher,
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -93,13 +95,14 @@ async def test_regular_user_cannot_create_promocode(
 
 
 async def test_create_duration_promocode_requires_positive_reward(
-    promocode_repository: PromocodeRepository, uow
+    promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
     use_case = CreatePromocodeUseCase(
         promocode_repository,
         AddOnRepository(promocode_repository.session),
         PlanRepository(promocode_repository.session),
         uow,
+        event_publisher,
     )
 
     with pytest.raises(ValidationError):
@@ -110,7 +113,7 @@ async def test_create_duration_promocode_requires_positive_reward(
 
 
 async def test_create_traffic_promocode_requires_matching_addon_type(
-    promocode_repository: PromocodeRepository, uow
+    promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
     addon_repository = AddOnRepository(promocode_repository.session)
     devices_addon = await addon_repository.create(
@@ -119,7 +122,11 @@ async def test_create_traffic_promocode_requires_matching_addon_type(
         )
     )
     use_case = CreatePromocodeUseCase(
-        promocode_repository, addon_repository, PlanRepository(promocode_repository.session), uow
+        promocode_repository,
+        addon_repository,
+        PlanRepository(promocode_repository.session),
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(ValidationError):
@@ -134,7 +141,7 @@ async def test_create_traffic_promocode_requires_matching_addon_type(
 
 
 async def test_create_traffic_promocode_with_matching_addon_succeeds(
-    promocode_repository: PromocodeRepository, uow
+    promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
     addon_repository = AddOnRepository(promocode_repository.session)
     traffic_addon = await addon_repository.create(
@@ -143,7 +150,11 @@ async def test_create_traffic_promocode_with_matching_addon_succeeds(
         )
     )
     use_case = CreatePromocodeUseCase(
-        promocode_repository, addon_repository, PlanRepository(promocode_repository.session), uow
+        promocode_repository,
+        addon_repository,
+        PlanRepository(promocode_repository.session),
+        uow,
+        event_publisher,
     )
 
     promo = await use_case(
@@ -159,7 +170,7 @@ async def test_create_traffic_promocode_with_matching_addon_succeeds(
 
 
 async def test_create_subscription_promocode_requires_duration(
-    promocode_repository: PromocodeRepository, uow
+    promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
     plan_repository = PlanRepository(promocode_repository.session)
     plan = await plan_repository.create(
@@ -172,7 +183,11 @@ async def test_create_subscription_promocode_requires_duration(
         )
     )
     use_case = CreatePromocodeUseCase(
-        promocode_repository, AddOnRepository(promocode_repository.session), plan_repository, uow
+        promocode_repository,
+        AddOnRepository(promocode_repository.session),
+        plan_repository,
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(ValidationError):
@@ -186,17 +201,20 @@ async def test_create_subscription_promocode_requires_duration(
         )
 
 
-async def test_update_promocode_deactivates(promocode_repository: PromocodeRepository, uow) -> None:
+async def test_update_promocode_deactivates(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
     create_use_case = CreatePromocodeUseCase(
         promocode_repository,
         AddOnRepository(promocode_repository.session),
         PlanRepository(promocode_repository.session),
         uow,
+        event_publisher,
     )
     created = await create_use_case(
         OWNER, CreatePromocodeDto(code="TOGGLE", reward_type=PromocodeRewardType.DURATION, reward=5)
     )
-    update_use_case = UpdatePromocodeUseCase(promocode_repository, uow)
+    update_use_case = UpdatePromocodeUseCase(promocode_repository, uow, event_publisher)
 
     updated = await update_use_case(
         OWNER, UpdatePromocodeDto(promocode_id=created.id, is_active=False)
@@ -206,7 +224,7 @@ async def test_update_promocode_deactivates(promocode_repository: PromocodeRepos
 
 
 async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist(
-    promocode_repository: PromocodeRepository, uow
+    promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
     # The patch alone carries no availability, so the merged state -- not the
     # patch -- is what has to be validated: an ALLOWED promocode with an empty
@@ -216,6 +234,7 @@ async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist
         AddOnRepository(promocode_repository.session),
         PlanRepository(promocode_repository.session),
         uow,
+        event_publisher,
     )
     created = await create_use_case(
         OWNER,
@@ -227,7 +246,7 @@ async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist
             allowed_user_ids=[1],
         ),
     )
-    update_use_case = UpdatePromocodeUseCase(promocode_repository, uow)
+    update_use_case = UpdatePromocodeUseCase(promocode_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
         await update_use_case(
@@ -238,17 +257,20 @@ async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist
     assert unchanged.allowed_user_ids == [1]
 
 
-async def test_delete_promocode(promocode_repository: PromocodeRepository, uow) -> None:
+async def test_delete_promocode(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
     create_use_case = CreatePromocodeUseCase(
         promocode_repository,
         AddOnRepository(promocode_repository.session),
         PlanRepository(promocode_repository.session),
         uow,
+        event_publisher,
     )
     created = await create_use_case(
         OWNER, CreatePromocodeDto(code="DELME", reward_type=PromocodeRewardType.DURATION, reward=5)
     )
-    delete_use_case = DeletePromocodeUseCase(promocode_repository, uow)
+    delete_use_case = DeletePromocodeUseCase(promocode_repository, uow, event_publisher)
 
     await delete_use_case(OWNER, created.id)
 

@@ -12,7 +12,7 @@ export function InfoRow({ icon: Icon, label, children, copyValue }: InfoRowProps
 
   const handleCopy = () => {
     if (!copyValue) return;
-    navigator.clipboard.writeText(copyValue).catch(() => {});
+    navigator.clipboard?.writeText(copyValue).catch(() => {});
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 1500);
   };

@@ -29,8 +29,8 @@ export function oauthLoginCallback(
   return apiPost<AuthResult, OAuthCallbackPayload>(`/auth/oauth/${provider}/callback`, payload);
 }
 
-export function listConnectedAccounts(): Promise<OAuthIdentity[]> {
-  return apiGet<OAuthIdentity[]>("/auth/oauth");
+export function listConnectedAccounts(signal?: AbortSignal): Promise<OAuthIdentity[]> {
+  return apiGet<OAuthIdentity[]>("/auth/oauth", signal);
 }
 
 export function getOAuthConnectAuthorizeUrl(

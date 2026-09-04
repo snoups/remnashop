@@ -130,7 +130,6 @@ async def _grant_one_level(
                 type=reward_type,
                 amount=amount,
             )
-            await uow.commit()
     except ConflictError:
         logger.info(
             f"Referral reward for subscription '{subscription_id}' referral '{referral_id}' "
@@ -164,7 +163,6 @@ async def _grant_one_level(
                 user=referrer, level=level, reward_type=reward_type.value, amount=str(amount)
             )
         )
-        await uow.commit()
 
 
 @broker.task(retry_on_error=True, max_retries=3)

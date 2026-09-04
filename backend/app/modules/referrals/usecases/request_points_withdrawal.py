@@ -25,15 +25,13 @@ class RequestPointsWithdrawalUseCase(UseCase[RequestPointsWithdrawalDto, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: RequestPointsWithdrawalDto) -> None:
-        points = getattr(actor, "points", Decimal(0))
         if data.amount <= 0:
             raise ValidationError("Withdrawal amount must be positive")
-        if data.amount > points:
+        if data.amount > actor.points:
             raise ValidationError("Withdrawal amount exceeds current points")
 
         async with self._uow:
             await self._event_publisher.publish(
                 PointsWithdrawalRequestedEvent(user=actor, amount=str(data.amount))
             )
-            await self._uow.commit()
         logger.info(f"{actor.log} Requested points withdrawal of '{data.amount}'")

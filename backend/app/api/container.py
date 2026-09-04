@@ -8,6 +8,7 @@ from app.modules.auth import get_auth_providers
 from app.modules.backups import get_backups_providers
 from app.modules.banners import get_banners_providers
 from app.modules.blacklist import get_blacklist_providers
+from app.modules.dialogs import get_dialogs_providers
 from app.modules.event_log import get_event_log_providers
 from app.modules.gateways import get_gateways_providers
 from app.modules.oauth import get_oauth_providers
@@ -42,6 +43,7 @@ def create_api_container(config: AppConfig) -> AsyncContainer:
         *get_payments_providers(),
         *get_api_tokens_providers(),
         *get_translations_providers(),
+        *get_dialogs_providers(),
         *get_blacklist_providers(),
         *get_advertising_providers(),
     ]

@@ -162,7 +162,7 @@ async def update_me(
 
 @router.get("/me/security", response_model=SecurityResponse)
 async def get_own_security(actor: UserDto = Depends(require_admin)) -> SecurityResponse:
-    return SecurityResponse(ip_allowlist=getattr(actor, "ip_allowlist", None) or [])
+    return SecurityResponse(ip_allowlist=actor.ip_allowlist or [])
 
 
 @router.put("/me/security", response_model=SecurityResponse)

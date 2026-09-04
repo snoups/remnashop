@@ -1,14 +1,14 @@
 import { AlertTriangle, Clock, Eye, Globe, KeyRound, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createApiToken, type CreatedApiToken } from "@entities/api-tokens/api";
-import { usePermissionCatalog } from "@entities/admin/permission-catalog";
+import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
-import { DialogPortal } from "@shared/ui/DialogPortal";
+import { Modal, useModalClose } from "@shared/ui/Modal";
 import { PermissionPicker } from "@entities/admin/PermissionPicker";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import type { Permission } from "@shared/types/rbac";
@@ -35,8 +35,17 @@ const EXPIRY_OPTIONS = [
 ] as const;
 
 export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDialogProps) {
+  return (
+    <Modal onClose={onCancel} size="lg" scrollable>
+      <CreateApiTokenDialogBody onCreated={onCreated} />
+    </Modal>
+  );
+}
+
+function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps, "onCreated">) {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
+  const close = useModalClose();
   const catalogState = usePermissionCatalog();
   const [name, setName] = useState("");
   const [permissions, setPermissions] = useState<Set<Permission>>(new Set());
@@ -74,7 +83,7 @@ export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDial
     setIsSubmitting(true);
     try {
       const created = await createApiToken(
-        name,
+        name.trim(),
         Array.from(permissions),
         expiresInDays === "" ? null : Number(expiresInDays),
       );
@@ -87,132 +96,106 @@ export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDial
   };
 
   return (
-    <DialogPortal>
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
-        className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4"
-      >
+    <>
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+            <KeyRound className="size-4" />
+          </div>
+          {t("apiTokens.createTitle")}
+        </h2>
         <button
           type="button"
-          aria-hidden
-          tabIndex={-1}
-          className="absolute inset-0 cursor-default"
-          onClick={onCancel}
-        />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.94, y: 8 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="relative z-50 flex max-h-[85vh] w-full max-w-lg flex-col rounded-dialog border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150"
+          onClick={close}
+          aria-label={t("apiTokens.cancel")}
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
         >
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-                <KeyRound className="size-4" />
-              </div>
-              {t("apiTokens.createTitle")}
-            </h2>
-            <button
-              type="button"
-              onClick={onCancel}
-              aria-label={t("apiTokens.cancel")}
-              className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
+          <X className="size-4" />
+        </button>
+      </div>
+
+      <div className="mx-5 mt-4 flex shrink-0 items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+        <p className="text-[12px] leading-snug text-warning">{t("apiTokens.createNotice")}</p>
+      </div>
+
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex gap-2 px-5 pt-4">
+          <div className="flex-1">
+            <label className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("apiTokens.nameLabel")}
+            </label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={t("apiTokens.namePlaceholder")}
+              className="mt-1.5 w-full rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-foreground outline-none focus:border-primary"
+            />
           </div>
 
-          <div className="mx-5 mt-4 flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
-            <p className="text-[12px] leading-snug text-warning">{t("apiTokens.createNotice")}</p>
+          <div className="w-44 shrink-0">
+            <label className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("apiTokens.lifetimeLabel")}
+            </label>
+            <div className="mt-1.5">
+              <SelectDropdown
+                id="api-token-expiry"
+                value={expiresInDays}
+                onChange={setExpiresInDays}
+                icon={Clock}
+                placeholder={t("apiTokens.neverExpires")}
+                options={EXPIRY_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+              />
+            </div>
           </div>
+        </div>
 
-          <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-1 flex-col overflow-y-auto">
-            <div className="flex gap-2 px-5 pt-4">
-              <div className="flex-1">
-                <label className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("apiTokens.nameLabel")}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder={t("apiTokens.namePlaceholder")}
-                  className="mt-1.5 w-full rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-foreground outline-none focus:border-primary"
-                />
-              </div>
+        <div className="mt-4 flex items-center gap-2 px-5">
+          <button
+            type="button"
+            onClick={applyReadOnly}
+            className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-white/5"
+          >
+            <Eye className="size-3.5" />
+            {t("apiTokens.readOnly")}
+          </button>
+          <button
+            type="button"
+            onClick={applyFullAccess}
+            className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-white/5"
+          >
+            <Globe className="size-3.5" />
+            {t("apiTokens.fullAccess")}
+          </button>
+        </div>
 
-              <div className="w-44 shrink-0">
-                <label className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("apiTokens.lifetimeLabel")}
-                </label>
-                <div className="mt-1.5">
-                  <SelectDropdown
-                    id="api-token-expiry"
-                    value={expiresInDays}
-                    onChange={setExpiresInDays}
-                    icon={Clock}
-                    placeholder={t("apiTokens.neverExpires")}
-                    options={EXPIRY_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
-                  />
-                </div>
-              </div>
-            </div>
+        <div className="mt-3 px-5">
+          <div className="pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("apiTokens.permissionsLabel")}
+          </div>
+          <PermissionPicker mode="single" selected={permissions} onToggle={togglePermission} />
+        </div>
 
-            <div className="mt-4 flex items-center gap-2 px-5">
-              <button
-                type="button"
-                onClick={applyReadOnly}
-                className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-white/5"
-              >
-                <Eye className="size-3.5" />
-                {t("apiTokens.readOnly")}
-              </button>
-              <button
-                type="button"
-                onClick={applyFullAccess}
-                className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-white/5"
-              >
-                <Globe className="size-3.5" />
-                {t("apiTokens.fullAccess")}
-              </button>
-            </div>
-
-            <div className="mt-3 px-5">
-              <div className="pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {t("apiTokens.permissionsLabel")}
-              </div>
-              <PermissionPicker mode="single" selected={permissions} onToggle={togglePermission} />
-            </div>
-
-            <div className="flex gap-2 px-5 pb-5 pt-4">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
-              >
-                {t("apiTokens.cancel")}
-              </button>
-              <motion.button
-                type="submit"
-                disabled={isSubmitting || name.trim().length === 0}
-                {...bounceTap(bounceStrength)}
-                className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {t("apiTokens.submit")}
-              </motion.button>
-            </div>
-          </form>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-    </DialogPortal>
+        <div className="flex gap-2 px-5 pb-5 pt-4">
+          <button
+            type="button"
+            onClick={close}
+            className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
+          >
+            {t("apiTokens.cancel")}
+          </button>
+          <motion.button
+            type="submit"
+            disabled={isSubmitting || name.trim().length === 0}
+            {...bounceTap(bounceStrength)}
+            className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("apiTokens.submit")}
+          </motion.button>
+        </div>
+      </form>
+    </>
   );
 }

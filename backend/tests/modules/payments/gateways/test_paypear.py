@@ -55,7 +55,7 @@ def _gateway() -> PayPearGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(paypear_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(paypear_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(body: dict[str, object], secret: str = "pp-secret") -> str:

@@ -54,7 +54,7 @@ def _gateway() -> JupiterGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(jupiter_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(jupiter_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(parts: list[tuple[str, object]], secret: str = "jup-secret") -> str:

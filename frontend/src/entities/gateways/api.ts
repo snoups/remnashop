@@ -24,12 +24,12 @@ interface GatewayCatalogResponse {
   entries: GatewayCatalogEntry[];
 }
 
-export function listGateways(): Promise<Gateway[]> {
-  return apiGet<Gateway[]>("/gateways");
+export function listGateways(signal?: AbortSignal): Promise<Gateway[]> {
+  return apiGet<Gateway[]>("/gateways", signal);
 }
 
-export function getGatewayCatalog(): Promise<GatewayCatalogEntry[]> {
-  return apiGet<GatewayCatalogResponse>("/gateways/catalog").then(
+export function getGatewayCatalog(signal?: AbortSignal): Promise<GatewayCatalogEntry[]> {
+  return apiGet<GatewayCatalogResponse>("/gateways/catalog", signal).then(
     (response) => response.entries,
   );
 }

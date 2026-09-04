@@ -10,8 +10,8 @@ export interface BackupSettings {
   max_files: number;
 }
 
-export function getBackupSettings(): Promise<BackupSettings> {
-  return apiGet<BackupSettings>("/backups/settings");
+export function getBackupSettings(signal?: AbortSignal): Promise<BackupSettings> {
+  return apiGet<BackupSettings>("/backups/settings", signal);
 }
 
 export interface UpdateBackupSettingsRequest {
@@ -50,14 +50,17 @@ export interface BackupRunListFilters {
   pageSize?: number;
 }
 
-export function listBackupRuns(filters: BackupRunListFilters = {}): Promise<BackupRunListPage> {
+export function listBackupRuns(
+  filters: BackupRunListFilters = {},
+  signal?: AbortSignal,
+): Promise<BackupRunListPage> {
   const params = new URLSearchParams();
   if (filters.kind) params.set("kind", filters.kind);
   if (filters.status) params.set("status", filters.status);
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
-  return apiGet<BackupRunListPage>(`/backups/runs?${params.toString()}`);
+  return apiGet<BackupRunListPage>(`/backups/runs?${params.toString()}`, signal);
 }
 
 export function createBackupRun(kind: BackupKind): Promise<BackupRun> {

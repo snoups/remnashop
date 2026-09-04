@@ -1,4 +1,5 @@
 import pathlib
+from decimal import Decimal
 
 import pytest
 
@@ -8,6 +9,7 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
     ip_in_networks,
 )
 
@@ -23,6 +25,11 @@ def test_ip_in_networks_rejects_outside_cidr() -> None:
 def test_ip_in_networks_rejects_garbage_input() -> None:
     assert ip_in_networks("not-an-ip", ("91.227.144.0/24",)) is False
     assert ip_in_networks("91.227.144.54", ("bogus-net",)) is False
+
+
+def test_amount_to_float_rounds_to_two_places() -> None:
+    assert amount_to_float(Decimal("19.999")) == 20.0
+    assert amount_to_float(Decimal("500")) == 500.0
 
 
 def test_payment_gateway_is_abstract() -> None:

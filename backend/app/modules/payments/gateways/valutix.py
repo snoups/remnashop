@@ -2,7 +2,6 @@ import hashlib
 import hmac
 from typing import Final, Optional
 
-import httpx
 import orjson
 
 from app.core.enums import Currency, PaymentOrderStatus
@@ -13,12 +12,10 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://api.panel.valutix.kz"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class ValutixGateway(PaymentGateway):
@@ -34,10 +31,10 @@ class ValutixGateway(PaymentGateway):
             "callbackUrl": self._webhook_url,
             "currency": order.currency.value,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/v1/orders",
             json=payload,
-            headers={"X-Api-Token": self._settings["api_key"]},
+            headers={"X-Api-Token": self._require("api_key")},
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
@@ -56,7 +53,7 @@ class ValutixGateway(PaymentGateway):
         if not signature:
             raise PaymentGatewayError("Valutix webhook missing X-Signature header")
         expected = hmac.new(
-            self._settings["api_key"].encode("utf-8"), request.body, hashlib.sha512
+            self._require("api_key").encode("utf-8"), request.body, hashlib.sha512
         ).hexdigest()
         if not hmac.compare_digest(signature.lower(), expected):
             raise PaymentGatewayError("Invalid Valutix webhook signature")

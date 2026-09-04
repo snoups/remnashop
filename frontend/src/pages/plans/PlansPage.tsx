@@ -11,6 +11,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/Switch";
 
 type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: Plan[] };
@@ -27,6 +28,7 @@ export function PlansPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [editingPlan, setEditingPlan] = useState<Plan | null | "new">(null);
   const [accessPlan, setAccessPlan] = useState<Plan | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Plan | null>(null);
 
   const currentUserState = useCurrentUser();
   const permissions =
@@ -37,14 +39,18 @@ export function PlansPage() {
   const canManageAccess = permissions.includes("PLANS_ACCESS_MANAGE");
   const canReorder = permissions.includes("PLANS_ORDER_MANAGE");
 
-  const load = () => {
+  useEffect(() => {
+    const controller = new AbortController();
     setState({ kind: "loading" });
-    listPlans()
-      .then((items) => setState({ kind: "ready", items }))
-      .catch(() => setState({ kind: "error" }));
-  };
-
-  useEffect(load, []);
+    listPlans(controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) setState({ kind: "ready", items });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setState({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, []);
 
   const handleSaved = (plan: Plan) => {
     if (state.kind !== "ready") return;
@@ -88,7 +94,6 @@ export function PlansPage() {
   };
 
   const handleDelete = async (plan: Plan) => {
-    if (!window.confirm(t("plans.delete.confirm", { name: plan.name }))) return;
     try {
       await deletePlan(plan.id);
       if (state.kind === "ready") {
@@ -162,7 +167,7 @@ export function PlansPage() {
                       label: t("plans.delete.button"),
                       icon: Trash2,
                       variant: "danger",
-                      onClick: () => void handleDelete(plan),
+                      onClick: () => setPendingDelete(plan),
                     });
                   }
 
@@ -260,6 +265,21 @@ export function PlansPage() {
 
       {accessPlan && (
         <PlanAccessDialog plan={accessPlan} onClose={() => setAccessPlan(null)} onSaved={handleSaved} />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={t("plans.delete.button")}
+          message={t("plans.delete.confirm", { name: pendingDelete.name })}
+          confirmLabel={t("plans.delete.confirmButton")}
+          cancelLabel={t("plans.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            void handleDelete(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );

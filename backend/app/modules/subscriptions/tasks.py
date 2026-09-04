@@ -225,6 +225,7 @@ async def reconcile_subscriptions(
                 remnawave_user_id=subscription.remnawave_user_id,
                 status=SubscriptionStatus(panel_user.status),
                 source="reconcile",
+                expire_at=panel_user.expire_at,
             )
         )
 

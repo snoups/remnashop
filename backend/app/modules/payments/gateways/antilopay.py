@@ -1,8 +1,8 @@
 import base64
+import binascii
 import json
 from typing import Final, Optional
 
-import httpx
 import orjson
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -17,26 +17,25 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    amount_to_float,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://lk.antilopay.com/api/v2"
-_TIMEOUT_S: Final[float] = 20.0
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class AntilopayGateway(PaymentGateway):
     currency = Currency.RUB
 
     def _private_key(self) -> RSAPrivateKey:
-        der = base64.b64decode(self._settings["private_key"])
+        der = base64.b64decode(self._require("private_key"))
         key = serialization.load_der_private_key(der, password=None)
         if not isinstance(key, RSAPrivateKey):
             raise PaymentGatewayError("Antilopay private key is not an RSA key")
         return key
 
     def _public_key(self) -> RSAPublicKey:
-        der = base64.b64decode(self._settings["public_key"])
+        der = base64.b64decode(self._require("public_key"))
         key = serialization.load_der_public_key(der)
         if not isinstance(key, RSAPublicKey):
             raise PaymentGatewayError("Antilopay public key is not an RSA key")
@@ -48,8 +47,8 @@ class AntilopayGateway(PaymentGateway):
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
-            "project_identificator": self._settings["project_id"],
-            "amount": float(order.final_price),
+            "project_identificator": self._require("project_id"),
+            "amount": amount_to_float(order.final_price),
             "order_id": order.idempotency_key,
             "currency": order.currency.value.lower(),
             "product_name": f"Order #{order.id}",
@@ -61,12 +60,12 @@ class AntilopayGateway(PaymentGateway):
         }
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/payment/create",
             content=body,
             headers={
                 "Content-Type": "application/json",
-                "X-Apay-Secret-Id": self._settings["secret_id"],
+                "X-Apay-Secret-Id": self._require("secret_id"),
                 "X-Apay-Sign": self._sign(body),
                 "X-Apay-Sign-Version": "1",
             },
@@ -91,8 +90,12 @@ class AntilopayGateway(PaymentGateway):
         if not signature:
             raise PaymentGatewayError("Antilopay webhook missing X-Apay-Callback header")
         try:
+            decoded_signature = base64.b64decode(signature, validate=True)
+        except binascii.Error as error:
+            raise PaymentGatewayError("Malformed Antilopay webhook signature") from error
+        try:
             self._public_key().verify(
-                base64.b64decode(signature), request.body, padding.PKCS1v15(), hashes.SHA256()
+                decoded_signature, request.body, padding.PKCS1v15(), hashes.SHA256()
             )
         except InvalidSignature as error:
             raise PaymentGatewayError("Invalid Antilopay webhook signature") from error

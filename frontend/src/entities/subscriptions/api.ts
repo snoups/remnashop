@@ -32,13 +32,16 @@ export interface SubscriptionListFilters {
   pageSize?: number;
 }
 
-export function listSubscriptions(filters: SubscriptionListFilters = {}): Promise<SubscriptionListPage> {
+export function listSubscriptions(
+  filters: SubscriptionListFilters = {},
+  signal?: AbortSignal,
+): Promise<SubscriptionListPage> {
   const params = new URLSearchParams();
   if (filters.status) params.set("status", filters.status);
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
-  return apiGet<SubscriptionListPage>(`/subscriptions?${params.toString()}`);
+  return apiGet<SubscriptionListPage>(`/subscriptions?${params.toString()}`, signal);
 }
 
 export interface UpdateSubscriptionRequest {

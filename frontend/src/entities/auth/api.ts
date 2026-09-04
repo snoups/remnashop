@@ -26,8 +26,8 @@ export interface LoginPayload {
   password: string;
 }
 
-export function getAuthStatus(): Promise<AuthStatus> {
-  return apiGet<AuthStatus>("/auth/status");
+export function getAuthStatus(signal?: AbortSignal): Promise<AuthStatus> {
+  return apiGet<AuthStatus>("/auth/status", signal);
 }
 
 export function bootstrapOwner(payload: BootstrapOwnerPayload): Promise<AuthResult> {

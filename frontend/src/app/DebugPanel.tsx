@@ -152,7 +152,9 @@ export function DebugPanel() {
 
   useControls("Export", {
     "Copy values": button(() => {
-      void navigator.clipboard.writeText(buildExportText(shaderValues, paletteValues, cssValues, radiusValues));
+      navigator.clipboard
+        ?.writeText(buildExportText(shaderValues, paletteValues, cssValues, radiusValues))
+        .catch(() => {});
     }),
     "Reset all": button(() => {
       setShaderValues(SHADER_DEFAULTS);

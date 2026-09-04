@@ -2,7 +2,11 @@ import pytest
 
 from app.core.enums import (
     AddOnType,
+    ButtonLinkType,
+    ButtonStyleKind,
     Currency,
+    DialogFlow,
+    DialogWindowKind,
     OAuthProvider,
     PlanAvailability,
     PlanType,
@@ -60,3 +64,15 @@ def test_subscription_status_members() -> None:
 
 def test_addon_type_members() -> None:
     assert {member.value for member in AddOnType} == {"TRAFFIC", "DEVICES"}
+
+
+def test_dialog_enum_values_are_lowercase_names() -> None:
+    assert DialogWindowKind.SEED.value == "seed"
+    assert DialogFlow.SUBSCRIPTION.value == "subscription"
+    assert ButtonLinkType.NAVIGATE.value == "navigate"
+    assert ButtonStyleKind.DANGER.value == "danger"
+
+
+def test_button_style_kind_matches_telegram_style_names() -> None:
+    # aiogram InlineKeyboardButton.style accepts exactly these strings
+    assert {s.value for s in ButtonStyleKind} == {"primary", "success", "danger"}

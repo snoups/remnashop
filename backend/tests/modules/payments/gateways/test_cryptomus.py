@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import json
 from datetime import timedelta
 from decimal import Decimal
 
@@ -56,7 +57,7 @@ def _gateway() -> CryptomusGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(cryptomus_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(cryptomus_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(payload: dict[str, object], api_key: str = "api-secret") -> str:
@@ -126,6 +127,23 @@ async def test_parse_webhook_invalid_signature_raises() -> None:
     request = WebhookRequest(body=orjson.dumps(body), headers={}, query={}, client_ip=_TRUSTED_IP)
     with pytest.raises(PaymentGatewayError):
         await _gateway().parse_webhook(request)
+
+
+async def test_parse_webhook_matches_a_php_json_encode_style_signature() -> None:
+    # Cryptomus signs its own PHP json_encode() output, which escapes non-ASCII
+    # by default -- the payload here would sign differently if we re-serialized
+    # it with orjson (which doesn't escape unicode) instead of matching that.
+    payload = {"order_id": "order-key-1", "status": "paid", "note": "Оплата"}
+    encoded = base64.b64encode(
+        json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode()
+    ).decode()
+    body = {**payload, "sign": hashlib.md5(f"{encoded}api-secret".encode()).hexdigest()}
+    request = WebhookRequest(body=orjson.dumps(body), headers={}, query={}, client_ip=_TRUSTED_IP)
+
+    result = await _gateway().parse_webhook(request)
+
+    assert result is not None
+    assert result.status is PaymentOrderStatus.PAID
 
 
 async def test_parse_webhook_confirm_check_is_a_noop() -> None:

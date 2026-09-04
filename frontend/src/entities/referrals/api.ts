@@ -13,8 +13,8 @@ export interface ReferralSettings {
   reward_amounts: Record<string, string>;
 }
 
-export function getReferralSettings(): Promise<ReferralSettings> {
-  return apiGet<ReferralSettings>("/referrals/settings");
+export function getReferralSettings(signal?: AbortSignal): Promise<ReferralSettings> {
+  return apiGet<ReferralSettings>("/referrals/settings", signal);
 }
 
 export interface UpdateReferralSettingsRequest {
@@ -43,8 +43,8 @@ export interface ReferralStats {
   rewards: ReferralReward[];
 }
 
-export function getUserReferralStats(userId: number): Promise<ReferralStats> {
-  return apiGet<ReferralStats>(`/users/${userId}/referrals`);
+export function getUserReferralStats(userId: number, signal?: AbortSignal): Promise<ReferralStats> {
+  return apiGet<ReferralStats>(`/users/${userId}/referrals`, signal);
 }
 
 export function adjustUserPoints(userId: number, delta: string): Promise<ReferralStats> {

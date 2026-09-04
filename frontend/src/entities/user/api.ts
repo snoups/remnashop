@@ -15,8 +15,8 @@ export interface UpdateOwnProfileRequest {
   new_password?: string;
 }
 
-export function getCurrentUser(): Promise<CurrentUser> {
-  return apiGet<CurrentUser>("/users/me");
+export function getCurrentUser(signal?: AbortSignal): Promise<CurrentUser> {
+  return apiGet<CurrentUser>("/users/me", signal);
 }
 
 export function updateOwnProfile(payload: UpdateOwnProfileRequest): Promise<CurrentUser> {
@@ -51,7 +51,10 @@ export interface UserListFilters {
   pageSize?: number;
 }
 
-export function listUsers(filters: UserListFilters = {}): Promise<UserListPage> {
+export function listUsers(
+  filters: UserListFilters = {},
+  signal?: AbortSignal,
+): Promise<UserListPage> {
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
   if (filters.role) params.set("role", filters.role);
@@ -59,7 +62,7 @@ export function listUsers(filters: UserListFilters = {}): Promise<UserListPage> 
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
-  return apiGet<UserListPage>(`/users?${params.toString()}`);
+  return apiGet<UserListPage>(`/users?${params.toString()}`, signal);
 }
 
 export function deleteUser(userId: number): Promise<void> {

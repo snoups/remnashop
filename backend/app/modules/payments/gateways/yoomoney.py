@@ -1,9 +1,8 @@
 import hashlib
 import hmac
+from decimal import Decimal, InvalidOperation
 from typing import Final, Optional
 from urllib.parse import parse_qs, quote
-
-import httpx
 
 from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
@@ -13,13 +12,11 @@ from app.modules.payments.gateways.base import (
     PaymentIntent,
     WebhookRequest,
     WebhookResult,
+    http_client,
 )
 
 _API_BASE: Final[str] = "https://yoomoney.ru"
-_TIMEOUT_S: Final[float] = 15.0
 _TEST_NOTIFICATION: Final[str] = "test-notification"
-
-_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_TIMEOUT_S)
 
 
 class YooMoneyGateway(PaymentGateway):
@@ -27,14 +24,14 @@ class YooMoneyGateway(PaymentGateway):
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
-            "receiver": self._settings["wallet_id"],
+            "receiver": self._require("wallet_id"),
             "quickpay-form": "button",
             "paymentType": "AC",
             "sum": f"{order.final_price:.2f}",
             "label": order.idempotency_key,
             "successURL": self._return_url,
         }
-        response = await _client.post(
+        response = await http_client.post(
             f"{_API_BASE}/quickpay/confirm.xml", data=payload, follow_redirects=True
         )
         response.raise_for_status()
@@ -57,10 +54,18 @@ class YooMoneyGateway(PaymentGateway):
         if not label:
             raise PaymentGatewayError("YooMoney webhook missing 'label'")
 
+        # 'amount' is YooMoney's standard http-notification field for what the
+        # sender actually paid (as opposed to 'withdraw_amount', net of fees).
+        try:
+            amount = Decimal(str(data.get("amount", "")))
+        except InvalidOperation:
+            amount = None
+
         return WebhookResult(
             reference=label,
             status=PaymentOrderStatus.PAID,
             provider_payment_id=data.get("operation_id"),
+            amount=amount,
         )
 
     def _signature_valid(self, data: dict[str, str]) -> bool:
@@ -70,7 +75,7 @@ class YooMoneyGateway(PaymentGateway):
         sign_str = "&".join(
             f"{key}={quote(value, safe='')}" for key, value in sorted(data.items()) if key != "sign"
         )
-        secret = self._settings["secret_key"]
+        secret = self._require("secret_key")
         computed_sign = hmac.new(
             secret.encode("utf-8"), sign_str.encode("utf-8"), hashlib.sha256
         ).hexdigest()

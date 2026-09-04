@@ -81,7 +81,7 @@ def _gateway() -> AntilopayGateway:
 
 
 def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(antilopay_module, "_client", httpx.AsyncClient(transport=handler))
+    monkeypatch.setattr(antilopay_module, "http_client", httpx.AsyncClient(transport=handler))
 
 
 def _sign(raw_body: bytes) -> str:
@@ -154,6 +154,15 @@ async def test_parse_webhook_invalid_signature_raises() -> None:
         headers={"x-apay-callback": base64.b64encode(b"garbage").decode()},
         query={},
         client_ip=None,
+    )
+    with pytest.raises(PaymentGatewayError):
+        await _gateway().parse_webhook(request)
+
+
+async def test_parse_webhook_malformed_signature_header_raises() -> None:
+    body = json.dumps({"type": "payment", "order_id": "order-key-1", "status": "SUCCESS"}).encode()
+    request = WebhookRequest(
+        body=body, headers={"x-apay-callback": "not-valid-base64!!"}, query={}, client_ip=None
     )
     with pytest.raises(PaymentGatewayError):
         await _gateway().parse_webhook(request)

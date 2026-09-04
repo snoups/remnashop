@@ -9,5 +9,10 @@ export function setOAuthFlow(purpose: OAuthFlowPurpose): void {
 export function consumeOAuthFlow(): { purpose: OAuthFlowPurpose } | null {
   const raw = sessionStorage.getItem(STORAGE_KEY);
   sessionStorage.removeItem(STORAGE_KEY);
-  return raw ? (JSON.parse(raw) as { purpose: OAuthFlowPurpose }) : null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as { purpose: OAuthFlowPurpose };
+  } catch {
+    return null;
+  }
 }

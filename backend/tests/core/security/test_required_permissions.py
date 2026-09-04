@@ -5,6 +5,16 @@ from app.core.usecase import UseCase
 from app.modules.banners.usecases.delete_banner import DeleteBannerUseCase
 from app.modules.banners.usecases.get_banner_image import GetBannerImageUseCase
 from app.modules.banners.usecases.upload_banner import UploadBannerUseCase
+from app.modules.dialogs.usecases import (
+    CreateCustomDialogWindowUseCase,
+    DeleteCustomDialogWindowUseCase,
+    GetDialogCatalogUseCase,
+    ListDialogWindowsUseCase,
+    ResetAllDialogsUseCase,
+    ResetDialogWindowUseCase,
+    UpdateDialogWindowButtonsUseCase,
+    UpdateDialogWindowUseCase,
+)
 from app.modules.gateways.usecases.list_gateways import ListGatewaysUseCase
 from app.modules.gateways.usecases.reorder_gateways import ReorderGatewaysUseCase
 from app.modules.gateways.usecases.toggle_gateway_active import ToggleGatewayActiveUseCase
@@ -46,6 +56,14 @@ from app.modules.users.usecases.set_user_personal_discount import (
             SetPlanDurationBasePriceUseCase,
             Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
         ),
+        (ListDialogWindowsUseCase, Permission.DIALOGS_WINDOWS_VIEW),
+        (GetDialogCatalogUseCase, Permission.DIALOGS_CATALOG_VIEW),
+        (UpdateDialogWindowUseCase, Permission.DIALOGS_WINDOWS_UPDATE),
+        (UpdateDialogWindowButtonsUseCase, Permission.DIALOGS_WINDOWS_BUTTONS_UPDATE),
+        (CreateCustomDialogWindowUseCase, Permission.DIALOGS_WINDOWS_CREATE),
+        (DeleteCustomDialogWindowUseCase, Permission.DIALOGS_WINDOWS_DELETE),
+        (ResetDialogWindowUseCase, Permission.DIALOGS_WINDOWS_RESET),
+        (ResetAllDialogsUseCase, Permission.DIALOGS_WINDOWS_RESET_ALL),
     ],
 )
 def test_split_usecase_requires_expected_permission(

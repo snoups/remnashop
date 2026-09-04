@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronDown, CreditCard, Filter, Inbox, Info, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -22,7 +22,6 @@ type LoadState =
   | { kind: "ready"; items: PaymentOrderItem[]; total: number };
 
 const STATUSES: PaymentOrderStatus[] = ["PENDING", "PAID", "FAILED", "EXPIRED", "CANCELED"];
-const LOAD_MORE_STEP = 10;
 const FETCH_INDICATOR_DELAY_MS = 150;
 
 const STATUS_BADGE_CLASSNAME: Record<PaymentOrderStatus, string> = {
@@ -43,9 +42,12 @@ export function PaymentsPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [status, setStatus] = useState("");
-  const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [detailsOrder, setDetailsOrder] = useState<PaymentOrderItem | null>(null);
+  // Bumped on every primary load; a load-more from before a filter change
+  // discards its result instead of appending to an already-replaced list.
+  const loadGenRef = useRef(0);
 
   const currentUserState = useCurrentUser();
   const permissions =
@@ -58,39 +60,46 @@ export function PaymentsPage() {
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     const showFetchingTimeout = setTimeout(() => {
-      if (!cancelled) setIsFetching(true);
+      if (!controller.signal.aborted) setIsFetching(true);
     }, FETCH_INDICATOR_DELAY_MS);
-    setVisibleCount(DEFAULT_PAGE_SIZE);
-    listPaymentOrders({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE })
+    loadGenRef.current += 1;
+    setPage(1);
+    listPaymentOrders({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
       .then((result) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState({ kind: "ready", items: result.items, total: result.total });
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
         }
       })
       .finally(() => {
         clearTimeout(showFetchingTimeout);
-        if (!cancelled) setIsFetching(false);
+        if (!controller.signal.aborted) setIsFetching(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(showFetchingTimeout);
     };
   }, [baseFilters]);
 
   const handleLoadMore = async () => {
-    const nextCount = visibleCount + LOAD_MORE_STEP;
+    const gen = loadGenRef.current;
+    const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const result = await listPaymentOrders({ ...baseFilters, page: 1, pageSize: nextCount });
-      setState({ kind: "ready", items: result.items, total: result.total });
-      setVisibleCount(nextCount);
+      const result = await listPaymentOrders({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
+      if (gen !== loadGenRef.current) return;
+      setState((prev) =>
+        prev.kind === "ready"
+          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
+          : prev,
+      );
+      setPage(nextPage);
     } catch {
       // keep current items on failure; the load-more button stays available to retry
     } finally {

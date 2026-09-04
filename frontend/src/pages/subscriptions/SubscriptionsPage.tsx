@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronDown, Filter, Inbox, Layers, Loader2, Pencil, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -16,6 +16,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 type LoadState =
@@ -24,7 +25,6 @@ type LoadState =
   | { kind: "ready"; items: SubscriptionListItem[]; total: number };
 
 const STATUSES: SubscriptionStatus[] = ["ACTIVE", "LIMITED", "EXPIRED", "DISABLED", "DELETED"];
-const LOAD_MORE_STEP = 10;
 // Only surface the dimmed-loading state once a refetch has been in flight
 // this long -- matches UsersPage's own debounce-flash guard.
 const FETCH_INDICATOR_DELAY_MS = 150;
@@ -55,9 +55,14 @@ export function SubscriptionsPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [status, setStatus] = useState("");
-  const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Bumped on every primary load (mount, filter change); a load-more that
+  // started under an older value discards its result instead of appending
+  // stale rows to a list the effect has already replaced.
+  const loadGenRef = useRef(0);
   const [editingSubscription, setEditingSubscription] = useState<SubscriptionListItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<SubscriptionListItem | null>(null);
 
   const currentUserState = useCurrentUser();
   const permissions =
@@ -73,39 +78,49 @@ export function SubscriptionsPage() {
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    loadGenRef.current += 1;
     const showFetchingTimeout = setTimeout(() => {
-      if (!cancelled) setIsFetching(true);
+      if (!controller.signal.aborted) setIsFetching(true);
     }, FETCH_INDICATOR_DELAY_MS);
-    setVisibleCount(DEFAULT_PAGE_SIZE);
-    listSubscriptions({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE })
+    setPage(1);
+    listSubscriptions({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
       .then((result) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState({ kind: "ready", items: result.items, total: result.total });
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
         }
       })
       .finally(() => {
         clearTimeout(showFetchingTimeout);
-        if (!cancelled) setIsFetching(false);
+        if (!controller.signal.aborted) setIsFetching(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(showFetchingTimeout);
     };
   }, [baseFilters]);
 
+  // Offset pagination + local optimistic edits (delete below) can drift a row
+  // at a page boundary; acceptable for an admin list with infrequent deletes.
+  // offset drift on boundary, switch to keyset if it bites.
   const handleLoadMore = async () => {
-    const nextCount = visibleCount + LOAD_MORE_STEP;
+    const gen = loadGenRef.current;
+    const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const result = await listSubscriptions({ ...baseFilters, page: 1, pageSize: nextCount });
-      setState({ kind: "ready", items: result.items, total: result.total });
-      setVisibleCount(nextCount);
+      const result = await listSubscriptions({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
+      if (gen !== loadGenRef.current) return;
+      setState((prev) =>
+        prev.kind === "ready"
+          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
+          : prev,
+      );
+      setPage(nextPage);
     } catch {
       // keep current items on failure; the load-more button stays available to retry
     } finally {
@@ -123,7 +138,6 @@ export function SubscriptionsPage() {
   };
 
   const handleDelete = async (subscription: SubscriptionListItem) => {
-    if (!window.confirm(t("subscriptions.delete.confirm", { id: subscription.id }))) return;
     try {
       await deleteSubscription(subscription.id);
       if (state.kind === "ready") {
@@ -206,7 +220,7 @@ export function SubscriptionsPage() {
                         label: t("subscriptions.delete.button"),
                         icon: Trash2,
                         variant: "danger",
-                        onClick: () => void handleDelete(subscription),
+                        onClick: () => setPendingDelete(subscription),
                       });
                     }
 
@@ -302,6 +316,21 @@ export function SubscriptionsPage() {
           subscription={editingSubscription}
           onClose={() => setEditingSubscription(null)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={t("subscriptions.delete.button")}
+          message={t("subscriptions.delete.confirm", { id: pendingDelete.id })}
+          confirmLabel={t("subscriptions.delete.confirmButton")}
+          cancelLabel={t("subscriptions.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            void handleDelete(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
     </div>
