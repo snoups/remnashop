@@ -93,17 +93,23 @@ export function Header({ onLogout }: HeaderProps) {
             onClick={() => setOpenPopover((open) => (open === "user" ? null : "user"))}
             aria-haspopup="menu"
             aria-expanded={openPopover === "user"}
-            {...bounceTap(bounceStrength)}
-            className="flex h-9 items-center gap-2.5 rounded-full pr-1 transition-colors hover:bg-white/[0.05]"
+            initial="rest"
+            whileTap="tap"
+            className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1"
           >
-            <div className="flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas">
+            <motion.span
+              aria-hidden
+              variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+              className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.05]"
+            />
+            <div className="relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas">
               {login ? initials : <UserIcon className="size-4" />}
             </div>
-            <div className="hidden text-left leading-tight sm:block">
+            <div className="relative z-10 hidden text-left leading-tight sm:block">
               <span className="block text-[13px] font-semibold text-foreground">{login ?? t("header.account")}</span>
               {role && <span className="block text-[11.5px] text-muted-foreground">{t(`roles.${role}`)}</span>}
             </div>
-            <ChevronDown className={`size-3.5 text-muted-foreground transition-transform ${openPopover === "user" ? "rotate-180" : ""}`} />
+            <ChevronDown className={`relative z-10 size-3.5 text-muted-foreground transition-transform ${openPopover === "user" ? "rotate-180" : ""}`} />
           </motion.button>
 
           <AnimatePresence>

@@ -1,33 +1,51 @@
-import { ArrowUpCircle, Check, Clock, Copy, GitBranch, GitCommit, Info, X } from "lucide-react";
+import { ArrowUpCircle, Check, Clock, Copy, GitBranch, GitCommit, Info, Star, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { SystemMetadata } from "@shared/api/system";
+import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { githubApiUrl, TELEGRAM_URL } from "@shared/lib/external-links";
 import { isNewerVersion } from "@shared/lib/version-compare";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
+import { BounceIcon } from "@shared/ui/BounceIcon";
 import { InfoRow } from "@shared/ui/InfoRow";
+import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 
 interface GithubRelease {
   tag_name: string;
   html_url: string;
 }
 
-interface BuildInfoBadgeProps {
-  /** Fetched by the parent (ExternalLinksRow), which renders this alongside
-   * its own GitHub-star link off the same metadata -- fetching it again here
-   * would double the /system/metadata request on every sidebar mount. */
-  metadata: SystemMetadata | null;
-}
+const footerLinkClassName =
+  "flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-glass-border hover:bg-white/[0.06] hover:text-primary";
 
-export function BuildInfoBadge({ metadata }: BuildInfoBadgeProps) {
+export function BuildInfoBadge() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
+  const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
+  const [stars, setStars] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [latestRelease, setLatestRelease] = useState<GithubRelease | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getSystemMetadata(controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        setMetadata(data);
+        return fetch(githubApiUrl(data.repository_url), { signal: controller.signal })
+          .then((response) => (response.ok ? (response.json() as Promise<{ stargazers_count: number }>) : null))
+          .then((repo) => {
+            if (!controller.signal.aborted && repo) setStars(repo.stargazers_count);
+          });
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, []);
 
   const isOfficialBuild = metadata?.git.is_official_build ?? false;
 
@@ -64,11 +82,13 @@ export function BuildInfoBadge({ metadata }: BuildInfoBadgeProps) {
         onClick={handleOpen}
         aria-label={t("buildInfo.title")}
         title={t("buildInfo.title")}
-        className="flex basis-[calc(50%-2px)] items-center justify-center gap-1.5 rounded-full py-2.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+        className={SIDEBAR_PILL_CLASSNAME}
+        initial="rest"
+        whileHover="hover"
         {...bounceTap(bounceStrength)}
       >
-        <Info className="size-5" fill="currentColor" stroke="var(--color-canvas)" />
-        <span className="font-mono text-[11px] font-medium">{currentVersion}</span>
+        <BounceIcon icon={Info} size={17} hoverSize={23.5} />
+        <span className={`${LABEL_CLASSNAME} font-mono`}>{currentVersion}</span>
       </motion.button>
 
       <AnimatePresence>
@@ -185,7 +205,7 @@ export function BuildInfoBadge({ metadata }: BuildInfoBadgeProps) {
                   target="_blank"
                   rel="noreferrer"
                   {...bounceTap(bounceStrength)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-white/[0.06]"
+                  className={footerLinkClassName}
                 >
                   <TelegramIcon className="size-4" />
                   {t("buildInfo.telegramButton")}
@@ -195,10 +215,16 @@ export function BuildInfoBadge({ metadata }: BuildInfoBadgeProps) {
                   target="_blank"
                   rel="noreferrer"
                   {...bounceTap(bounceStrength)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-white/[0.06]"
+                  className={footerLinkClassName}
                 >
                   <GithubIcon className="size-4" />
                   {t("buildInfo.githubButton")}
+                  {stars !== null && (
+                    <span className="flex items-center gap-0.5 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[11px] font-semibold text-foreground">
+                      <Star className="size-2.5" />
+                      {stars}
+                    </span>
+                  )}
                 </motion.a>
               </div>
             </div>

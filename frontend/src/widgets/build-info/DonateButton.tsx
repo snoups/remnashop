@@ -1,96 +1,38 @@
-import { Crown, PiggyBank, Star, Wallet, X } from "lucide-react";
+import { Crown, PiggyBank, Wallet, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
-import { BOOSTY_URL, COMMUNITY_URL, githubApiUrl, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
-import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
-import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
+import { BOOSTY_URL, COMMUNITY_URL, YOOKASSA_URL } from "@shared/lib/external-links";
+import { BounceIcon } from "@shared/ui/BounceIcon";
+import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 
-const iconButtonClassName =
-  "flex basis-[calc(50%-2px)] items-center justify-center rounded-full py-2.5 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground";
-
-export function ExternalLinksRow() {
+export function DonateButton() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
-  const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
-  const [stars, setStars] = useState<number | null>(null);
-  const [isDonateOpen, setIsDonateOpen] = useState(false);
-
-  // Fetched once here and handed down to BuildInfoBadge as a prop, rather
-  // than each fetching it independently -- both mount together, so two
-  // independent effects meant two /system/metadata requests every time.
-  useEffect(() => {
-    const controller = new AbortController();
-
-    getSystemMetadata(controller.signal)
-      .then((data) => {
-        if (controller.signal.aborted) return;
-        setMetadata(data);
-        return fetch(githubApiUrl(data.repository_url), { signal: controller.signal })
-          .then((response) => (response.ok ? (response.json() as Promise<{ stargazers_count: number }>) : null))
-          .then((repo) => {
-            if (!controller.signal.aborted && repo) setStars(repo.stargazers_count);
-          });
-      })
-      .catch(() => {});
-
-    return () => controller.abort();
-  }, []);
+  const [isOpen, setIsOpen] = useState(false);
 
   const tapProps = bounceTap(bounceStrength, 0.12);
 
   return (
     <>
-      {metadata && (
-        <motion.a
-          href={metadata.repository_url}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={t("buildInfo.githubButton")}
-          title={t("buildInfo.githubButton")}
-          className={`${iconButtonClassName} gap-2.5`}
-          {...tapProps}
-        >
-          <GithubIcon className="size-4" />
-          {stars !== null && (
-            <span className="flex items-center gap-0.5 text-[11px] font-medium">
-              <Star className="size-3" />
-              {stars}
-            </span>
-          )}
-        </motion.a>
-      )}
-
-      <BuildInfoBadge metadata={metadata} />
-
       <motion.button
         type="button"
-        onClick={() => setIsDonateOpen(true)}
+        onClick={() => setIsOpen(true)}
         aria-label={t("donate.button")}
         title={t("donate.button")}
-        className={iconButtonClassName}
-        {...tapProps}
+        className={SIDEBAR_PILL_CLASSNAME}
+        initial="rest"
+        whileHover="hover"
+        {...bounceTap(bounceStrength)}
       >
-        <Crown className="size-4" fill="currentColor" />
+        <BounceIcon icon={Crown} size={17} hoverSize={23.5} />
+        <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>
       </motion.button>
 
-      <motion.a
-        href={TELEGRAM_URL}
-        target="_blank"
-        rel="noreferrer"
-        aria-label={t("buildInfo.telegramButton")}
-        title={t("buildInfo.telegramButton")}
-        className={iconButtonClassName}
-        {...tapProps}
-      >
-        <TelegramIcon className="size-4" />
-      </motion.a>
-
       <AnimatePresence>
-        {isDonateOpen && (
+        {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -103,7 +45,7 @@ export function ExternalLinksRow() {
               aria-hidden
               tabIndex={-1}
               className="absolute inset-0 cursor-default"
-              onClick={() => setIsDonateOpen(false)}
+              onClick={() => setIsOpen(false)}
             />
 
             <motion.div
@@ -122,7 +64,7 @@ export function ExternalLinksRow() {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setIsDonateOpen(false)}
+                  onClick={() => setIsOpen(false)}
                   aria-label={t("profile.edit.close")}
                   className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
                 >

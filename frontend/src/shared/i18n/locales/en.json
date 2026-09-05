@@ -50,8 +50,30 @@
     }
   },
   "dashboard": {
-    "welcomeTitle": "Welcome to the Remnashop Dashboard",
-    "welcomeSubtitle": "This is a draft shell — real pages (Users, Plans…) aren't all built yet."
+    "loadError": "Couldn't load the overview. Try refreshing.",
+    "periodDays": "{{count}}d",
+    "stats": {
+      "totalUsers": "Total users",
+      "newToday": "New today",
+      "activeSubscriptions": "Active subscriptions",
+      "paidOrders": "Paid orders",
+      "revenue": "Revenue"
+    },
+    "charts": {
+      "revenue": "Revenue",
+      "registrations": "Registrations"
+    },
+    "recentEvents": "Recent events",
+    "viewAllEvents": "View all",
+    "noEvents": "No events yet",
+    "botStatus": "Bot",
+    "botConfigured": "Configured",
+    "botNotConfigured": "Not configured",
+    "quickLinks": {
+      "createPlan": "Create plan",
+      "createPromocode": "Create promocode",
+      "createAdmin": "Create admin"
+    }
   },
   "eventLog": {
     "title": "Event log",
@@ -119,14 +141,9 @@
     "promocodes": "Promocodes",
     "referrals": "Referrals",
     "advertising": "Advertising",
-    "backups": "Backups",
-    "servers": "Servers",
     "payments": "Payments",
-    "support": "Support",
     "admins": "Admins",
-    "eventLog": "Event log",
-    "pricing": "Pricing",
-    "blacklist": "Blacklist"
+    "eventLog": "Event log"
   },
   "admins": {
     "title": "Admins",
@@ -186,7 +203,7 @@
     },
     "delete": {
       "button": "Delete user",
-      "confirm": "Permanently delete {{name}}? This cannot be undone.",
+      "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
       "error": "Failed to delete user.",
       "confirmButton": "Delete",
       "cancelButton": "Cancel"
@@ -235,11 +252,14 @@
       "bot": "Telegram Bot",
       "apiTokens": "API Tokens",
       "appearance": "Appearance",
-      "gateways": "Gateways"
+      "gateways": "Gateways",
+      "backups": "Backups",
+      "blacklist": "Blacklist",
+      "pricing": "Pricing"
     },
     "bot": {
       "title": "Telegram Bot",
-      "description": "Telegram bot configuration",
+      "description": "Telegram bot configuration.",
       "loading": "Loading…",
       "loadErrorBadge": "error",
       "configured": "configured",
@@ -292,7 +312,7 @@
     },
     "banners": {
       "title": "Banners",
-      "description": "Set up banners for every bot screen",
+      "description": "Set up banners for every bot screen.",
       "loading": "Loading…",
       "loadError": "Failed to load banners.",
       "upload": "Upload",
@@ -304,7 +324,7 @@
     },
     "appearance": {
       "title": "Appearance",
-      "description": "Configure the dashboard's accent color and branding",
+      "description": "Configure the dashboard's accent color and branding.",
       "loading": "Loading…",
       "loadError": "Failed to load appearance settings.",
       "section": {
@@ -424,6 +444,22 @@
         "rescueCommandValue": "docker exec -it <api-container> python -m app.cli",
         "rescueNote": "After it starts, choose \"Enable password authentication\"."
       }
+    },
+    "shop": {
+      "title": "Shop",
+      "description": "Per-user subscription limits and device/link reset rules.",
+      "loading": "Loading…",
+      "loadError": "Failed to load shop settings.",
+      "maxActiveSubscriptionsLabel": "Max active subscriptions per user",
+      "unlimitedPlaceholder": "Unlimited",
+      "deviceSingleResetLabel": "Single device reset",
+      "deviceAllResetLabel": "Reset all devices",
+      "linkResetLabel": "Subscription link reset",
+      "cooldownHoursLabel": "Cooldown, h",
+      "invalidInput": "Check the entered values",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved."
     },
     "gateways": {
       "loading": "Loading…",
@@ -779,7 +815,6 @@
     "telegramButton": "Telegram"
   },
   "pricing": {
-    "title": "Pricing",
     "loading": "Loading pricing data…",
     "loadError": "Failed to load pricing data.",
     "rates": {
@@ -867,7 +902,6 @@
     }
   },
   "blacklist": {
-    "title": "Blacklist",
     "loading": "Loading…",
     "manual": {
       "title": "Manual entries",
@@ -908,7 +942,6 @@
     }
   },
   "backups": {
-    "title": "Backups",
     "loading": "Loading…",
     "loadError": "Failed to load backups.",
     "empty": "No backup runs yet.",

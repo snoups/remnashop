@@ -2,7 +2,10 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.payment_order import PaymentOrder
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -384,3 +387,90 @@ async def test_user_id_queries_chunk_and_merge_beyond_the_in_param_cap(
 
     paid_ids = await payment_order_repository.list_user_ids_with_paid_order(all_ids)
     assert paid_ids == set(all_ids)
+
+
+async def test_count_paid_since_excludes_pending_and_old_orders(
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        old_order = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="count-paid-old")
+        )
+    await payment_order_repository.mark_status(old_order.id, PaymentOrderStatus.PAID)
+    # updated_at is a server default -- Postgres now() is frozen for the
+    # whole test transaction, so two rows created moments apart in the same
+    # test get an IDENTICAL updated_at. Force the "old" row back in time
+    # (same idiom as tests/modules/subscriptions/test_repository.py's
+    # test_delete_stale_idempotency_keys_removes_only_old_rows) so `since`
+    # below has something real to exclude.
+    now = datetime_now()
+    await session.execute(
+        update(PaymentOrder)
+        .where(PaymentOrder.id == old_order.id)
+        .values(updated_at=now - timedelta(days=1))
+    )
+    since = now - timedelta(hours=1)
+    async with uow:
+        new_paid = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="count-paid-new")
+        )
+        pending = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="count-paid-pending")
+        )
+    await payment_order_repository.mark_status(new_paid.id, PaymentOrderStatus.PAID)
+
+    count = await payment_order_repository.count_paid_since(since)
+
+    assert count == 1
+    assert pending.status == PaymentOrderStatus.PENDING
+
+
+async def test_sum_paid_final_price_since_groups_by_currency(
+    payment_order_repository: PaymentOrderRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    # A generous past `since` (not datetime_now() captured mid-test) --
+    # see the note on Postgres's frozen-per-transaction now() above.
+    since = datetime_now() - timedelta(days=1)
+    async with uow:
+        rub_order = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="sum-rub")
+        )
+        usd_order_data = _order_dto(
+            user_id=user_id, plan_id=plan_id, idempotency_key="sum-usd"
+        ).__dict__
+        usd_order = await payment_order_repository.create(
+            CreatePaymentOrderDto(
+                **{
+                    **usd_order_data,
+                    "currency": Currency.USD,
+                    "base_price": Decimal("5"),
+                    "final_price": Decimal("5"),
+                }
+            )
+        )
+    await payment_order_repository.mark_status(rub_order.id, PaymentOrderStatus.PAID)
+    await payment_order_repository.mark_status(usd_order.id, PaymentOrderStatus.PAID)
+
+    totals = await payment_order_repository.sum_paid_final_price_since(since)
+
+    assert totals == {Currency.RUB: Decimal("500"), Currency.USD: Decimal("5")}
+
+
+async def test_daily_paid_revenue_by_currency_groups_by_day_and_currency(
+    payment_order_repository: PaymentOrderRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    since = datetime_now() - timedelta(days=1)
+    async with uow:
+        order = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="daily-rev")
+        )
+    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+
+    daily = await payment_order_repository.daily_paid_revenue_by_currency(since)
+
+    total_revenue = sum(amount for by_currency in daily.values() for amount in by_currency.values())
+    assert total_revenue == Decimal("500")

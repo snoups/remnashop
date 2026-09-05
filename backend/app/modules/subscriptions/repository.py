@@ -159,6 +159,16 @@ class SubscriptionRepository:
             self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows
         ], int(total or 0)
 
+    async def count_active(self) -> int:
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(Subscription)
+                .where(Subscription.status.in_(_ACTIVE_STATUSES))
+            )
+            or 0
+        )
+
     async def get_active_by_user(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)

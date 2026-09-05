@@ -79,3 +79,23 @@ export function getOAuthSettings(signal?: AbortSignal): Promise<OAuthSettings> {
 export function updateOAuthSettings(payload: UpdateOAuthSettingsPayload): Promise<OAuthSettings> {
   return apiPut<OAuthSettings, UpdateOAuthSettingsPayload>("/settings/oauth", payload);
 }
+
+export interface ShopSettings {
+  max_active_subscriptions: number | null;
+  device_single_reset_enabled: boolean;
+  device_single_reset_cooldown_hours: number;
+  device_all_reset_enabled: boolean;
+  device_all_reset_cooldown_hours: number;
+  link_reset_enabled: boolean;
+  link_reset_cooldown_hours: number;
+}
+
+export type UpdateShopSettingsPayload = ShopSettings;
+
+export function getShopSettings(signal?: AbortSignal): Promise<ShopSettings> {
+  return apiGet<ShopSettings>("/settings/shop", signal);
+}
+
+export function updateShopSettings(payload: UpdateShopSettingsPayload): Promise<ShopSettings> {
+  return apiPut<ShopSettings, UpdateShopSettingsPayload>("/settings/shop", payload);
+}

@@ -52,7 +52,6 @@ function LocaleTab({ locale, isActive, onSelect }: LocaleTabProps) {
       <motion.span
         aria-hidden
         variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
-        transition={{ type: "spring", stiffness: 500, damping: 15 }}
         className={`absolute inset-0 rounded-full transition-colors ${
           isActive ? "bg-accent" : "group-hover:bg-white/[0.06]"
         }`}

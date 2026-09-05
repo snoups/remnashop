@@ -1,5 +1,6 @@
 import secrets
 import string
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Callable, Final, Optional, cast
 
@@ -297,3 +298,27 @@ class UserRepository:
         await self.session.delete(db_user)
         await self.session.flush()
         return True
+
+    async def count_by_role(self, role: Role) -> int:
+        return int(await self.session.scalar(select(func.count()).where(User.role == role)) or 0)
+
+    async def count_new_since(self, cutoff: datetime, role: Role) -> int:
+        return int(
+            await self.session.scalar(
+                select(func.count()).where(User.role == role, User.created_at >= cutoff)
+            )
+            or 0
+        )
+
+    async def count_registrations_by_day(
+        self, since: datetime, role: Role
+    ) -> list[tuple[date, int]]:
+        day_col = func.date(func.timezone("UTC", User.created_at))
+        stmt = (
+            select(day_col, func.count())
+            .where(User.role == role, User.created_at >= since)
+            .group_by(day_col)
+            .order_by(day_col)
+        )
+        rows = (await self.session.execute(stmt)).tuples()
+        return list(rows.all())

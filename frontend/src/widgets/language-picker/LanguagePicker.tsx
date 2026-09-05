@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@shared/i18n";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
@@ -15,12 +14,12 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 export function LanguagePicker() {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const bounceStrength = useBounceStrength();
   const ref = useRef<HTMLDivElement>(null);
 
   useClickOutside(ref, isOpen, () => setIsOpen(false));
 
   const currentLanguage = (i18n.resolvedLanguage ?? "en") as SupportedLanguage;
+  const currentLanguageLabel = currentLanguage.toUpperCase();
 
   const handleSelect = (language: SupportedLanguage) => {
     void i18n.changeLanguage(language);
@@ -29,18 +28,30 @@ export function LanguagePicker() {
 
   return (
     <div ref={ref} className="relative shrink-0">
+      {/* Straight from the Motion for React gestures guide: whileHover/whileTap
+          scale directly on the interactive element, will-change for a GPU
+          layer. One deviation: the border lives on a static sibling instead
+          of the button itself -- a rounded border stretched via `transform`
+          rasterizes and visibly thickens at the curved ends in Chrome, with
+          no combination of transform/will-change tricks avoiding it (see git
+          log for what was tried). `inset-0` tracks the button's layout box,
+          which `scale` never changes (it only repaints, doesn't reflow), so
+          this stays put regardless of the button's hover/tap scale. */}
       <motion.button
         type="button"
         aria-label={t("language.label")}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
-        {...bounceTap(bounceStrength, 0.1)}
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-3 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        style={{ willChange: "transform" }}
+        className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
       >
         <Languages className="size-4 shrink-0" />
-        {currentLanguage.toUpperCase()}
+        {currentLanguageLabel}
       </motion.button>
+      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full border border-glass-border" />
 
       <AnimatePresence>
         {isOpen && (

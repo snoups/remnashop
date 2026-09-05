@@ -40,7 +40,11 @@ export function BounceIcon({ icon: Icon, size, hoverSize, className = "" }: Boun
     <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
       <motion.span
         className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-        variants={{ rest: { width: size, height: size }, hover: { width: scaledHover, height: scaledHover } }}
+        variants={{
+          rest: { width: size, height: size },
+          hover: { width: scaledHover, height: scaledHover },
+          tap: { width: scaledHover, height: scaledHover },
+        }}
         // Critically damped (damping = 2·sqrt(stiffness) at mass 1): avoids
         // the overshoot an underdamped spring settling from rest would have.
         // Doesn't cover a spring retargeted mid-flight (rapid hover in/out),

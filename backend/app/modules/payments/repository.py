@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Final, Optional, cast
 
@@ -198,3 +198,45 @@ class PaymentOrderRepository:
             result = await self.session.execute(stmt)
             paid.update(result.scalars().all())
         return paid
+
+    async def count_paid_since(self, since: datetime) -> int:
+        return int(
+            await self.session.scalar(
+                select(func.count()).where(
+                    PaymentOrder.status == PaymentOrderStatus.PAID,
+                    PaymentOrder.updated_at >= since,
+                )
+            )
+            or 0
+        )
+
+    async def sum_paid_final_price_since(self, since: datetime) -> dict[Currency, Decimal]:
+        stmt = (
+            select(PaymentOrder.currency, func.sum(PaymentOrder.final_price))
+            .where(
+                PaymentOrder.status == PaymentOrderStatus.PAID,
+                PaymentOrder.updated_at >= since,
+            )
+            .group_by(PaymentOrder.currency)
+        )
+        rows = (await self.session.execute(stmt)).tuples()
+        return dict(rows.all())
+
+    async def daily_paid_revenue_by_currency(
+        self, since: datetime
+    ) -> dict[date, dict[Currency, Decimal]]:
+        day_col = func.date(func.timezone("UTC", PaymentOrder.updated_at))
+        stmt = (
+            select(day_col, PaymentOrder.currency, func.sum(PaymentOrder.final_price))
+            .where(
+                PaymentOrder.status == PaymentOrderStatus.PAID,
+                PaymentOrder.updated_at >= since,
+            )
+            .group_by(day_col, PaymentOrder.currency)
+            .order_by(day_col)
+        )
+        rows = (await self.session.execute(stmt)).tuples()
+        result: dict[date, dict[Currency, Decimal]] = {}
+        for day, currency, amount in rows.all():
+            result.setdefault(day, {})[currency] = amount
+        return result

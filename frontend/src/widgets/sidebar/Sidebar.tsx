@@ -1,15 +1,10 @@
 import {
-  Ban,
-  Coins,
   CreditCard,
-  Database,
   Gift,
   LayoutGrid,
   Layers,
   Link2,
-  MessageSquare,
   ScrollText,
-  Server,
   Settings,
   ShieldCheck,
   Tag,
@@ -27,7 +22,9 @@ import { useCurrentUser } from "@entities/user/use-current-user";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import type { Permission } from "@shared/types/rbac";
 import { BounceIcon } from "@shared/ui/BounceIcon";
-import { ExternalLinksRow } from "@widgets/build-info/ExternalLinksRow";
+import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
+import { DonateButton } from "@widgets/build-info/DonateButton";
+import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 
 const MotionNavLink = motion.create(NavLink);
 
@@ -48,7 +45,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: "overview", to: "/dashboard", icon: LayoutGrid, end: true },
   { key: "users", to: "/dashboard/users", icon: Users, permission: "USERS_VIEW" },
-  { key: "blacklist", to: "/dashboard/blacklist", icon: Ban, permission: "BLACKLIST_VIEW" },
   { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, permission: "SUBSCRIPTIONS_VIEW" },
   { key: "plans", to: "/dashboard/plans", icon: Tag, permission: "PLANS_VIEW" },
   { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, permission: "PROMOCODES_VIEW" },
@@ -56,25 +52,14 @@ const NAV_ITEMS: NavItem[] = [
   { key: "advertising", to: "/dashboard/advertising", icon: Link2, permission: "AD_LINKS_VIEW" },
   { key: "payments", to: "/dashboard/payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
   { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, permission: "ADMINS_MANAGE" },
-  { key: "pricing", to: "/dashboard/pricing", icon: Coins, permission: "PRICING_VIEW" },
   { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, permission: "EVENT_LOG_VIEW" },
-  { key: "backups", to: "/dashboard/backups", icon: Database, permission: "BACKUPS_VIEW" },
   { key: "settings", to: "/dashboard/settings", icon: Settings },
-];
-
-const DISABLED_ITEMS: { key: string; icon: ComponentType<{ className?: string }> }[] = [
-  { key: "servers", icon: Server },
-  { key: "support", icon: MessageSquare },
 ];
 
 const linkClassName = ({ isActive }: { isActive: boolean }) =>
   isActive
     ? "flex items-center justify-center gap-2.5 rounded-full bg-accent py-2.5 pl-3.5 pr-2.5 text-[13.5px] font-semibold text-primary lg:justify-start"
-    : "flex items-center justify-center gap-2.5 rounded-full py-2.5 pl-3.5 pr-2.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground lg:justify-start";
-
-// Below `lg` there's no room for text labels next to the icons — the sidebar
-// collapses to an icon rail instead (matches DESKTOP_BREAKPOINT elsewhere).
-const LABEL_CLASSNAME = "hidden lg:inline";
+    : SIDEBAR_PILL_CLASSNAME;
 
 function NavItemLink({ item, tapProps, label }: { item: NavItem; tapProps: ReturnType<typeof bounceTap>; label: string }) {
   return (
@@ -114,23 +99,14 @@ export function Sidebar() {
           <NavItemLink key={item.key} item={item} tapProps={tapProps} label={t(`sidebar.${item.key}`)} />
         ))}
 
-        {DISABLED_ITEMS.map(({ key, icon: Icon }) => (
-          <span
-            key={key}
-            className="flex cursor-not-allowed items-center justify-center gap-2.5 rounded-full py-2.5 pl-3.5 pr-2.5 text-[13.5px] font-medium text-muted-foreground/40 lg:justify-start"
-          >
-            <Icon className="size-[17px] shrink-0" />
-            <span className={LABEL_CLASSNAME}>{t(`sidebar.${key}`)}</span>
-          </span>
-        ))}
-
         {visibleItems.slice(1).map((item) => (
           <NavItemLink key={item.key} item={item} tapProps={tapProps} label={t(`sidebar.${item.key}`)} />
         ))}
       </nav>
 
-      <div className="mt-auto flex flex-wrap gap-1 border-t border-border pt-3.5">
-        <ExternalLinksRow />
+      <div className="mt-auto flex flex-col gap-0.5 border-t border-border pt-3.5">
+        <BuildInfoBadge />
+        <DonateButton />
       </div>
     </aside>
   );

@@ -1,8 +1,12 @@
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
 import pytest
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.events import EventCategory
@@ -301,3 +305,51 @@ async def test_list_by_ids_empty_input_returns_empty_list(
     user_repository: UserRepository,
 ) -> None:
     assert await user_repository.list_by_ids([]) == []
+
+
+async def test_count_by_role_only_counts_that_role(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    await _create_user(user_repository, uow, telegram_id=810_001, role=Role.USER)
+    await _create_user(user_repository, uow, telegram_id=810_002, role=Role.USER)
+    await _create_user(user_repository, uow, login="admin-810", role=Role.ADMIN)
+
+    assert await user_repository.count_by_role(Role.USER) == 2
+    assert await user_repository.count_by_role(Role.ADMIN) == 1
+
+
+async def test_count_new_since_excludes_users_created_before_cutoff(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    old_user = await _create_user(user_repository, uow, telegram_id=810_101, role=Role.USER)
+    new_user = await _create_user(user_repository, uow, telegram_id=810_102, role=Role.USER)
+    # created_at is a server default -- Postgres now() is frozen for the
+    # whole test transaction, so two rows created moments apart in the same
+    # test get an IDENTICAL created_at. Force the "old" row back in time
+    # (same idiom as tests/modules/subscriptions/test_repository.py's
+    # test_delete_stale_idempotency_keys_removes_only_old_rows) so the
+    # cutoff below has something real to exclude.
+    now = datetime_now()
+    await session.execute(
+        update(User).where(User.id == old_user.id).values(created_at=now - timedelta(days=1))
+    )
+    cutoff = now - timedelta(hours=1)
+
+    assert old_user.created_at is not None
+    assert new_user.created_at is not None
+    count = await user_repository.count_new_since(cutoff, Role.USER)
+
+    assert count == 1
+
+
+async def test_count_registrations_by_day_groups_and_excludes_before_since(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    since = datetime_now() - timedelta(days=1)
+    await _create_user(user_repository, uow, telegram_id=810_201, role=Role.USER)
+    await _create_user(user_repository, uow, telegram_id=810_202, role=Role.USER)
+    await _create_user(user_repository, uow, login="admin-810-2", role=Role.ADMIN)
+
+    rows = await user_repository.count_registrations_by_day(since, Role.USER)
+
+    assert sum(count for _day, count in rows) == 2

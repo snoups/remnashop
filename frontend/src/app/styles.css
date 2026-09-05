@@ -162,3 +162,13 @@ textarea::-webkit-resizer {
   mask-position: left top, right top;
   mask-repeat: no-repeat, no-repeat;
 }
+
+/* Scrolls without reserving the app-wide scrollbar's height/width -- for
+   compact strips (e.g. a pill tab bar) where that would visibly grow the box. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

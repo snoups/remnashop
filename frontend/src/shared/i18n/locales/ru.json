@@ -45,13 +45,35 @@
     },
     "welcome": {
       "title": "Добро пожаловать в Remnashop",
-      "description": "Remnashop — телеграм-бот для продажи VPN-подписок поверх Remnawave, который развивается силами энтузиастов в свободное время. Если проект оказался полезен, поддержка очень приветствуется.",
+      "description": "Remnashop — Telegram бот для продажи VPN-подписок поверх Remnawave, который развивается силами энтузиастов в свободное время. Если проект оказался полезен, поддержка очень приветствуется.",
       "continueButton": "Продолжить в панель"
     }
   },
   "dashboard": {
-    "welcomeTitle": "Добро пожаловать в панель управления Remnashop",
-    "welcomeSubtitle": "Это черновой каркас — реальные страницы (Пользователи, Планы…) ещё не все построены."
+    "loadError": "Не удалось загрузить обзор. Попробуйте обновить страницу.",
+    "periodDays": "{{count}} дн.",
+    "stats": {
+      "totalUsers": "Всего пользователей",
+      "newToday": "Новых сегодня",
+      "activeSubscriptions": "Активные подписки",
+      "paidOrders": "Оплаченные заказы",
+      "revenue": "Доход"
+    },
+    "charts": {
+      "revenue": "Доход",
+      "registrations": "Регистрации"
+    },
+    "recentEvents": "Последние события",
+    "viewAllEvents": "Все события",
+    "noEvents": "Событий пока нет",
+    "botStatus": "Бот",
+    "botConfigured": "Настроен",
+    "botNotConfigured": "Не настроен",
+    "quickLinks": {
+      "createPlan": "Создать план",
+      "createPromocode": "Создать промокод",
+      "createAdmin": "Создать админа"
+    }
   },
   "eventLog": {
     "title": "Журнал событий",
@@ -93,8 +115,8 @@
       "BootstrapConflictEvent": "Попытка bootstrap (владелец уже существует)",
       "OAuthLoginSucceededEvent": "Вход через OAuth",
       "OAuthLoginFailedEvent": "Неудачная попытка входа через OAuth",
-      "OAuthIdentityConnectedEvent": "Подключён OAuth-аккаунт",
-      "OAuthIdentityDisconnectedEvent": "Отключён OAuth-аккаунт",
+      "OAuthIdentityConnectedEvent": "Подключён OAuth аккаунт",
+      "OAuthIdentityDisconnectedEvent": "Отключён OAuth аккаунт",
       "SessionRevokedEvent": "Сессия отозвана",
       "SessionTheftDetectedEvent": "Обнаружена кража сессии",
       "UserSessionRevokedByAdminEvent": "Сессия пользователя отозвана администратором",
@@ -119,14 +141,9 @@
     "promocodes": "Промокоды",
     "referrals": "Рефералы",
     "advertising": "Реклама",
-    "backups": "Бэкапы",
-    "servers": "Серверы",
     "payments": "Платежи",
-    "support": "Обращения",
     "admins": "Администраторы",
-    "eventLog": "Журнал событий",
-    "pricing": "Цены",
-    "blacklist": "Чёрный список"
+    "eventLog": "Журнал событий"
   },
   "admins": {
     "title": "Администраторы",
@@ -186,7 +203,7 @@
     },
     "delete": {
       "button": "Удалить пользователя",
-      "confirm": "Удалить {{name}} безвозвратно? Это действие нельзя отменить.",
+      "confirm": "Безвозвратно удалить «{{name}}»? Это действие нельзя отменить.",
       "error": "Не удалось удалить пользователя.",
       "confirmButton": "Удалить",
       "cancelButton": "Отмена"
@@ -233,13 +250,16 @@
     "tabs": {
       "general": "Общие",
       "bot": "Telegram бот",
-      "apiTokens": "API-токены",
+      "apiTokens": "API токены",
       "appearance": "Внешний вид",
-      "gateways": "Шлюзы"
+      "gateways": "Платёжные шлюзы",
+      "backups": "Резервное копирование",
+      "blacklist": "Чёрный список",
+      "pricing": "Ценообразование"
     },
     "bot": {
       "title": "Telegram бот",
-      "description": "Конфигурация Telegram-бота",
+      "description": "Конфигурация Telegram бота",
       "loading": "Загрузка…",
       "loadErrorBadge": "ошибка",
       "configured": "настроен",
@@ -292,7 +312,7 @@
     },
     "banners": {
       "title": "Баннеры",
-      "description": "Установка баннеров для каждого окна бота",
+      "description": "Установка баннеров для каждого окна бота.",
       "loading": "Загрузка…",
       "loadError": "Не удалось загрузить баннеры.",
       "upload": "Загрузить",
@@ -304,7 +324,7 @@
     },
     "appearance": {
       "title": "Внешний вид",
-      "description": "Настройка внешнего вида и брендинга",
+      "description": "Настройка внешнего вида и брендинга.",
       "loading": "Загрузка…",
       "loadError": "Не удалось загрузить настройки внешнего вида.",
       "section": {
@@ -340,7 +360,7 @@
       "resetError": "Не удалось сбросить настройки внешнего вида."
     },
     "oauth": {
-      "title": "OAuth-провайдеры",
+      "title": "OAuth провайдеры",
       "description": "Управление способами входа в панель управления.",
       "loading": "Загрузка…",
       "loadError": "Не удалось загрузить текущий статус.",
@@ -356,7 +376,7 @@
       "oidcClientIdLabel": "ID клиента OIDC",
       "oidcClientSecretLabel": "Секрет клиента OIDC",
       "passwordLoginLabel": "Вход по паролю",
-      "passwordLoginDescription": "Прежде чем выключать, убедитесь, что хотя бы один OAuth-провайдер работает.",
+      "passwordLoginDescription": "Прежде чем выключать, убедитесь, что хотя бы один OAuth провайдер работает.",
       "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
       "save": "Сохранить",
       "saving": "Сохранение…",
@@ -366,7 +386,7 @@
       "copy": "Копировать",
       "telegramGuide": {
         "title": "Telegram OAuth2",
-        "intro": "Для настройки функции «Вход через Telegram» вам необходим Telegram-бот, также необходимо дополнительно настроить бота, чтобы функция работала корректно.",
+        "intro": "Для настройки функции «Вход через Telegram» вам необходим Telegram бот, также необходимо дополнительно настроить бота, чтобы функция работала корректно.",
         "botSetupTitle": "Настройка бота",
         "botSetupSteps": [
           "Откройте @BotFather",
@@ -409,7 +429,7 @@
         "title": "OpenID Connect (SSO)",
         "intro": "Подходит любой OIDC-совместимый провайдер — Keycloak, Authentik, Zitadel, Auth0, PocketID и другие. Издатель должен отдавать стандартный endpoint /.well-known/openid-configuration.",
         "callbackTitle": "Создание приложения у провайдера",
-        "callbackIntro": "При создании приложения у OIDC-провайдера укажите Redirect URI, указанный ниже.",
+        "callbackIntro": "При создании приложения у OIDC провайдера укажите Redirect URI, указанный ниже.",
         "callbackCommentLabel": "Замените YOUR_REMNASHOP_DOMAIN на адрес вашей панели",
         "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/oidc",
         "callbackNote": "Не забудьте заменить YOUR_REMNASHOP_DOMAIN на корректный адрес панели.",
@@ -424,6 +444,22 @@
         "rescueCommandValue": "docker exec -it <api-container> python -m app.cli",
         "rescueNote": "После запуска выберите пункт «Enable password authentication»."
       }
+    },
+    "shop": {
+      "title": "Магазин",
+      "description": "Лимиты подписок на пользователя и правила сброса устройств/ссылки.",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить настройки магазина.",
+      "maxActiveSubscriptionsLabel": "Максимум активных подписок на пользователя",
+      "unlimitedPlaceholder": "Без ограничений",
+      "deviceSingleResetLabel": "Сброс одного устройства",
+      "deviceAllResetLabel": "Сброс всех устройств",
+      "linkResetLabel": "Сброс ссылки подписки",
+      "cooldownHoursLabel": "Кулдаун, ч",
+      "invalidInput": "Проверьте введённые значения",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "saved": "Сохранено."
     },
     "gateways": {
       "loading": "Загрузка…",
@@ -459,7 +495,7 @@
       "fields": {
         "YOOKASSA": {
           "shop_id": "ID магазина",
-          "api_key": "API-ключ",
+          "api_key": "API ключ",
           "customer": "Email клиента (для чека)",
           "vat_code": "Код НДС"
         },
@@ -469,36 +505,36 @@
         },
         "CRYPTOMUS": {
           "merchant_id": "ID мерчанта",
-          "api_key": "API-ключ"
+          "api_key": "API ключ"
         },
         "HELEKET": {
           "merchant_id": "ID мерчанта",
-          "api_key": "API-ключ"
+          "api_key": "API ключ"
         },
         "CRYPTOPAY": {
-          "api_key": "API-ключ"
+          "api_key": "API ключ"
         },
         "FREEKASSA": {
           "shop_id": "ID магазина",
-          "api_key": "API-ключ",
+          "api_key": "API ключ",
           "secret_word_2": "Секретное слово №2",
           "payment_system_id": "ID платёжной системы",
           "customer_email": "Email клиента",
           "customer_ip": "IP клиента"
         },
         "MULENPAY": {
-          "api_key": "API-ключ",
+          "api_key": "API ключ",
           "secret_key": "Секретный ключ",
           "shop_id": "ID магазина",
           "vat_code": "Код НДС"
         },
         "PAYMASTER": {
           "merchant_id": "ID мерчанта",
-          "api_key": "API-ключ"
+          "api_key": "API ключ"
         },
         "PLATEGA": {
           "merchant_id": "ID мерчанта",
-          "api_key": "API-ключ",
+          "api_key": "API ключ",
           "payment_method": "ID способа оплаты"
         },
         "ROBOKASSA": {
@@ -508,30 +544,30 @@
         },
         "URLPAY": {
           "shop_id": "ID магазина",
-          "api_key": "API-ключ",
+          "api_key": "API ключ",
           "secret_key": "Секретный ключ",
           "vat_code": "Код НДС"
         },
         "WATA": {
-          "api_key": "API-ключ"
+          "api_key": "API ключ"
         },
         "VALUTIX": {
-          "api_key": "API-ключ"
+          "api_key": "API ключ"
         },
         "ROLLYPAY": {
-          "api_key": "API-ключ"
+          "api_key": "API ключ"
         }
       }
     }
   },
   "apiTokens": {
-    "title": "API-токены",
+    "title": "API токены",
     "description": "Управление API токенами для доступа из кода.",
     "loading": "Загрузка…",
     "loadError": "Не удалось загрузить.",
     "empty": "API токены не найдены",
     "create": "Создать токен",
-    "createTitle": "Создать API-токен",
+    "createTitle": "Создать API токен",
     "createNotice": "Секрет токена показывается только один раз, сразу после создания — сохраните его в надёжном месте.",
     "nameLabel": "Название",
     "namePlaceholder": "например, ci-deploy",
@@ -557,7 +593,7 @@
     "neverUsed": "Ещё не использовался",
     "createdAt": "Создан {{date}}",
     "revoke": "Отозвать",
-    "revokeTitle": "Отозвать API-токен",
+    "revokeTitle": "Отозвать API токен",
     "revokeConfirm": "Любой скрипт или интеграция, использующие этот токен, немедленно потеряют доступ.",
     "revokeError": "Не удалось отозвать токен."
   },
@@ -656,7 +692,7 @@
     "TRANSLATIONS_RESET": "Сброс переводов",
     "OWN_ACCOUNT_MANAGE": "Свой аккаунт",
     "ADMINS_MANAGE": "Управление администраторами",
-    "API_TOKENS_MANAGE": "Управление API-токенами",
+    "API_TOKENS_MANAGE": "Управление API токенами",
     "EVENT_LOG_VIEW": "Журнал событий",
     "USERS_VIEW": "Просмотр пользователей",
     "USERS_DELETE": "Удаление пользователей",
@@ -673,16 +709,16 @@
     "GATEWAYS_UPDATE": "Изменение настроек шлюзов",
     "GATEWAYS_TOGGLE": "Включение/выключение шлюзов",
     "GATEWAYS_REORDER": "Изменение порядка шлюзов",
-    "PLANS_VIEW": "Просмотр тарифов",
-    "PLANS_CREATE": "Создание тарифов",
-    "PLANS_UPDATE": "Изменение тарифов",
-    "PLANS_DELETE": "Удаление тарифов",
-    "PLANS_DURATIONS_MANAGE": "Управление сроками тарифов",
-    "PLANS_PRICE_OVERRIDE_MANAGE": "Управление переопределением цен тарифов",
-    "PLANS_DURATION_BASE_PRICE_MANAGE": "Управление базовыми ценами тарифов",
-    "PLANS_ACCESS_MANAGE": "Управление доступом к тарифам",
-    "PLANS_SQUADS_MANAGE": "Управление сквадами тарифов",
-    "PLANS_ORDER_MANAGE": "Изменение порядка тарифов",
+    "PLANS_VIEW": "Просмотр планов",
+    "PLANS_CREATE": "Создание планов",
+    "PLANS_UPDATE": "Изменение планов",
+    "PLANS_DELETE": "Удаление планов",
+    "PLANS_DURATIONS_MANAGE": "Управление сроками планов",
+    "PLANS_PRICE_OVERRIDE_MANAGE": "Управление переопределением цен планов",
+    "PLANS_DURATION_BASE_PRICE_MANAGE": "Управление базовыми ценами планов",
+    "PLANS_ACCESS_MANAGE": "Управление доступом к планам",
+    "PLANS_SQUADS_MANAGE": "Управление сквадами планов",
+    "PLANS_ORDER_MANAGE": "Изменение порядка планов",
     "PRICING_VIEW": "Просмотр ценообразования",
     "PRICING_PREVIEW_VIEW": "Предпросмотр изменений цен",
     "PRICING_RATES_MANAGE": "Управление курсами валют",
@@ -750,7 +786,7 @@
     "eventLog": "Журнал событий",
     "appearance": "Внешний вид",
     "gateways": "Платёжные шлюзы",
-    "plans": "Тарифы",
+    "plans": "Планы",
     "pricing": "Ценообразование",
     "subscriptions": "Подписки",
     "addons": "Дополнения",
@@ -779,7 +815,6 @@
     "telegramButton": "Telegram"
   },
   "pricing": {
-    "title": "Цены",
     "loading": "Загрузка данных о ценах…",
     "loadError": "Не удалось загрузить данные о ценах.",
     "rates": {
@@ -828,24 +863,24 @@
     },
     "matrix": {
       "title": "Матрица цен",
-      "description": "Базовые цены и переопределения по валютам для каждого срока тарифа и допа.",
+      "description": "Базовые цены и переопределения по валютам для каждого срока плана и допа.",
       "item": "Позиция",
       "basePrice": "Базовая цена",
-      "plansSection": "Тарифы",
+      "plansSection": "Планы",
       "addonsSection": "Допы",
-      "empty": "Пока нет ни тарифов, ни допов.",
+      "empty": "Пока нет ни планов, ни допов.",
       "pinned": "Закреплённое переопределение",
       "clearPin": "Снять переопределение",
       "anchorReadOnly": "Якорная валюта — редактируется в колонке базовой цены",
       "saved": "Цена обновлена.",
       "saveError": "Не удалось обновить цену.",
-      "planNotFound": "Не удалось определить тариф для этой строки.",
+      "planNotFound": "Не удалось определить план для этой строки.",
       "bulkAdjust": "Массовое изменение",
       "bulkAdjustTitle": "Массовое изменение базовых цен",
       "bulkAdjustDescription": "Умножить базовые цены на коэффициент во всей выбранной области.",
       "scopeLabel": "Область",
       "scope": {
-        "ALL_PLANS": "Все сроки тарифов",
+        "ALL_PLANS": "Все сроки планов",
         "ALL_ADDONS": "Все допы"
       },
       "factorLabel": "Коэффициент",
@@ -867,7 +902,6 @@
     }
   },
   "blacklist": {
-    "title": "Чёрный список",
     "loading": "Загрузка…",
     "manual": {
       "title": "Вручную добавленные записи",
@@ -908,7 +942,6 @@
     }
   },
   "backups": {
-    "title": "Бэкапы",
     "loading": "Загрузка…",
     "loadError": "Не удалось загрузить бэкапы.",
     "empty": "Пока нет ни одного запуска.",
@@ -1038,7 +1071,7 @@
   "referrals": {
     "title": "Рефералы",
     "loading": "Загрузка…",
-    "loadError": "Не удалось загрузить настройки рефералки.",
+    "loadError": "Не удалось загрузить настройки реферальной программы.",
     "settings": {
       "enabledLabel": "Реферальная программа",
       "maxLevelLabel": "Уровни",
@@ -1230,7 +1263,7 @@
       },
       "telegramIdsLabel": "Разрешённые Telegram ID",
       "telegramIdsHint": "По одному на строку",
-      "emailsLabel": "Разрешённые email",
+      "emailsLabel": "Разрешённые Email",
       "emailsHint": "По одному на строку",
       "cancel": "Отмена",
       "close": "Закрыть",
@@ -1274,7 +1307,7 @@
     "purchaseType": {
       "NEW": "Новая покупка",
       "RENEW": "Продление",
-      "CHANGE": "Смена тарифа"
+      "CHANGE": "Смена плана"
     },
     "discountSource": {
       "NONE": "Нет",

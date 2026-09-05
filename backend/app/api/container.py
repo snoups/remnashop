@@ -12,6 +12,7 @@ from app.modules.dialogs import get_dialogs_providers
 from app.modules.event_log import get_event_log_providers
 from app.modules.gateways import get_gateways_providers
 from app.modules.oauth import get_oauth_providers
+from app.modules.overview import get_overview_providers
 from app.modules.payments import get_payments_providers
 from app.modules.plans import get_plans_providers
 from app.modules.pricing import get_pricing_providers
@@ -46,5 +47,6 @@ def create_api_container(config: AppConfig) -> AsyncContainer:
         *get_dialogs_providers(),
         *get_blacklist_providers(),
         *get_advertising_providers(),
+        *get_overview_providers(),
     ]
     return make_async_container(*providers, context=context)

@@ -565,3 +565,45 @@ async def test_delete_stale_idempotency_keys_removes_only_old_rows(
         (await session.scalars(select(SubscriptionPurchaseIdempotency.key))).all()
     )
     assert remaining_purchase == {"new-p"}
+
+
+async def test_count_active_counts_active_disabled_and_limited_but_not_expired_or_deleted(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=820_001,
+        remnawave_user_id=820_001,
+        status=SubscriptionStatus.ACTIVE,
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=820_002,
+        remnawave_user_id=820_002,
+        status=SubscriptionStatus.DISABLED,
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=820_003,
+        remnawave_user_id=820_003,
+        status=SubscriptionStatus.LIMITED,
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=820_004,
+        remnawave_user_id=820_004,
+        status=SubscriptionStatus.EXPIRED,
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=820_005,
+        remnawave_user_id=820_005,
+        status=SubscriptionStatus.DELETED,
+    )
+
+    assert await subscription_repository.count_active() == 3
