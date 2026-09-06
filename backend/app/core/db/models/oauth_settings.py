@@ -29,6 +29,11 @@ class OAuthSettings(BaseSql, TimestampMixin):
         Boolean(), default=True, server_default="true"
     )
 
+    passkey_enabled: Mapped[bool] = mapped_column(Boolean(), default=False, server_default="false")
+    # Not secrets -- same reasoning as oidc_issuer_url/oidc_display_name above.
+    passkey_rp_id: Mapped[Optional[str]] = mapped_column(String(255))
+    passkey_origin: Mapped[Optional[str]] = mapped_column(String(512))
+
     # Not secrets -- the issuer URL and button label are both visible in the
     # browser (redirect target / login page copy), so plain columns, no EncryptedString.
     oidc_issuer_url: Mapped[Optional[str]] = mapped_column(String(512))

@@ -108,6 +108,36 @@ async def test_get_oauth_settings_defaults_to_unconfigured(
     assert settings.password_login_enabled is True
 
 
+async def test_get_oauth_settings_passkey_defaults_to_disabled(
+    settings_repository: SettingsRepository,
+) -> None:
+    settings = await settings_repository.get_oauth_settings()
+
+    assert settings.passkey_enabled is False
+    assert settings.passkey_rp_id is None
+    assert not settings.is_passkey_configured
+    assert not settings.is_passkey_usable
+
+
+async def test_update_then_get_oauth_settings_roundtrips_passkey_fields(
+    settings_repository: SettingsRepository,
+) -> None:
+    await settings_repository.update_oauth_settings(
+        UpdateOAuthSettingsDto(
+            passkey_enabled=True,
+            passkey_rp_id="example.com",
+            passkey_origin="https://example.com",
+        )
+    )
+
+    settings = await settings_repository.get_oauth_settings()
+    assert settings.passkey_enabled is True
+    assert settings.passkey_rp_id == "example.com"
+    assert settings.passkey_origin == "https://example.com"
+    assert settings.is_passkey_configured
+    assert settings.is_passkey_usable
+
+
 async def test_password_login_toggle_roundtrips(
     settings_repository: SettingsRepository,
 ) -> None:

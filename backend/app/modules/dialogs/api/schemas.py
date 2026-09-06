@@ -2,7 +2,14 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import BannerName, ButtonLinkType, ButtonStyleKind, DialogFlow, DialogWindowKind
+from app.core.enums import (
+    BannerName,
+    ButtonLinkType,
+    ButtonStyleKind,
+    DialogFlow,
+    DialogWindowKind,
+    Locale,
+)
 
 
 class DialogButtonItem(BaseModel):
@@ -33,6 +40,7 @@ class DialogCatalogResponse(BaseModel):
     action_keys: list[str]
     condition_keys: list[str]
     variable_keys: list[str]
+    text_variable_keys: list[str]
     seed_window_keys: list[str]
     navigable_window_keys: list[str]
 
@@ -63,3 +71,14 @@ class ReplaceButtonsRequest(BaseModel):
 class CreateCustomWindowRequest(BaseModel):
     title_text: str = Field(min_length=1, max_length=4096)
     banner_name: Optional[BannerName] = None
+
+
+class UpdateDialogTextRequest(BaseModel):
+    value: str = Field(max_length=4096)
+
+
+class DialogTextResponse(BaseModel):
+    locale: Locale
+    message_id: str
+    value: str
+    default_value: str

@@ -2,17 +2,20 @@ from typing import Any, Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.api.dependencies.admin import require_admin
+from app.core.enums import Locale
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.dialogs.api.schemas import (
     CreateCustomWindowRequest,
     DialogButtonInput,
     DialogButtonItem,
     DialogCatalogResponse,
+    DialogTextResponse,
     DialogWindowResponse,
     ReplaceButtonsRequest,
+    UpdateDialogTextRequest,
     UpdateDialogWindowRequest,
 )
 from app.modules.dialogs.dto import (
@@ -29,6 +32,8 @@ from app.modules.dialogs.usecases import (
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
+    UpdateDialogTextInput,
+    UpdateDialogTextUseCase,
     UpdateDialogWindowButtonsInput,
     UpdateDialogWindowButtonsUseCase,
     UpdateDialogWindowInput,
@@ -74,6 +79,7 @@ def _to_catalog_response(catalog: DialogCatalogDto) -> DialogCatalogResponse:
         action_keys=catalog.action_keys,
         condition_keys=catalog.condition_keys,
         variable_keys=catalog.variable_keys,
+        text_variable_keys=catalog.text_variable_keys,
         seed_window_keys=catalog.seed_window_keys,
         navigable_window_keys=catalog.navigable_window_keys,
     )
@@ -220,6 +226,38 @@ async def reset_window(
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     return _to_window_response(window)
+
+
+@router.put("/text/{locale}/{message_id}", response_model=DialogTextResponse)
+@inject
+async def update_dialog_text(
+    locale: Locale,
+    message_id: str,
+    payload: UpdateDialogTextRequest,
+    use_case: FromDishka[UpdateDialogTextUseCase],
+    actor: UserDto = Depends(require_admin),
+    attribute_id: str = Query(default=""),
+) -> DialogTextResponse:
+    try:
+        entry = await use_case(
+            actor,
+            UpdateDialogTextInput(
+                locale=locale,
+                message_id=message_id,
+                attribute_id=attribute_id,
+                value=payload.value,
+            ),
+        )
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return DialogTextResponse(
+        locale=entry.locale,
+        message_id=entry.message_id,
+        value=entry.value,
+        default_value=entry.default_value,
+    )
 
 
 @router.post("/reset", status_code=status.HTTP_204_NO_CONTENT)

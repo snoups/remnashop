@@ -12,6 +12,7 @@ class AuthStatusDto:
     oauth_providers: dict[OAuthProvider, bool]
     oidc_display_name: Optional[str]
     password_login_enabled: bool
+    is_passkey_login_enabled: bool
 
 
 class SessionDto(BaseDto, TimestampMixin):

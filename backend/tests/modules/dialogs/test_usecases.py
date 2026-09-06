@@ -16,6 +16,7 @@ from app.modules.dialogs.usecases import (
     UpdateDialogWindowUseCase,
 )
 from app.modules.dialogs.usecases.create_custom_window import CreateCustomDialogWindowInput
+from app.modules.dialogs.usecases.update_text import UpdateDialogTextInput, UpdateDialogTextUseCase
 from app.modules.dialogs.usecases.update_window import UpdateDialogWindowInput
 from app.modules.dialogs.usecases.update_window_buttons import UpdateDialogWindowButtonsInput
 from app.modules.users.dto import UserDto
@@ -47,7 +48,8 @@ _SNAPSHOT = {
 @pytest.fixture(autouse=True)
 def _catalog():
     catalog._reset_for_tests()
-    catalog.register_action("get_trial", lambda: None)
+    catalog.register_action_key("get_trial")
+    catalog.bind_action_handler("get_trial", lambda: None)
     catalog.register_condition("is_trial_eligible", lambda: None)
     yield
     catalog._reset_for_tests()
@@ -110,7 +112,8 @@ async def test_update_buttons_rejects_unknown_action(dialog_repository, uow, red
 async def test_update_buttons_rejects_action_not_belonging_to_this_seed_window(
     dialog_repository, uow, redis
 ) -> None:
-    catalog.register_action("other_action", lambda: None)
+    catalog.register_action_key("other_action")
+    catalog.bind_action_handler("other_action", lambda: None)
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
     with pytest.raises(ValidationError):
@@ -311,3 +314,152 @@ async def test_reset_all_restores_every_seed_window(
     await use_case(OWNER, None)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     assert [b.text_key for b in window.buttons] == ["btn-menu.trial"]
+
+
+def _register_text_window(*text_keys: str) -> None:
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.text_window",
+            flow=DialogFlow.MENU,
+            text_keys=text_keys,
+            banner_name=None,
+        )
+    )
+
+
+async def test_update_dialog_text_allows_known_variable(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    catalog.register_variable("name", lambda data: data.get("name", ""))
+    _register_text_window("msg-window-greeting")
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "msg-window-greeting", "", "Hi!")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    updated = await use_case(
+        OWNER,
+        UpdateDialogTextInput(
+            locale=Locale.EN,
+            message_id="msg-window-greeting",
+            attribute_id="",
+            value="Hi, { $name }!",
+        ),
+    )
+    assert updated.value == "Hi, { $name }!"
+
+
+async def test_update_dialog_text_edits_attribute_keyed_button_label(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.main",
+            flow=DialogFlow.MENU,
+            text_keys=("msg-main-menu",),
+            banner_name=BannerName.MENU,
+            buttons=(
+                catalog.CatalogButton(
+                    key="subscription",
+                    text_key="btn-menu.subscription",
+                    link_type=ButtonLinkType.NAVIGATE,
+                    target_window_key="menu.main",
+                ),
+            ),
+        )
+    )
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "btn-menu", "subscription", "Sub")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    updated = await use_case(
+        OWNER,
+        UpdateDialogTextInput(
+            locale=Locale.EN,
+            message_id="btn-menu",
+            attribute_id="subscription",
+            value="Subscription",
+        ),
+    )
+    assert updated.value == "Subscription"
+    assert updated.attribute_id == "subscription"
+
+
+async def test_update_dialog_text_rejects_non_dialog_message_id(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "command", "menu", "Menu")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdateDialogTextInput(
+                locale=Locale.EN, message_id="command", attribute_id="menu", value="Open menu"
+            ),
+        )
+
+
+async def test_update_dialog_text_rejects_unknown_variable(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    _register_text_window("msg-window-greeting2")
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "msg-window-greeting2", "", "Hi!")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdateDialogTextInput(
+                locale=Locale.EN,
+                message_id="msg-window-greeting2",
+                attribute_id="",
+                value="Hi, { $made_up }!",
+            ),
+        )
+
+
+async def test_update_dialog_text_rejects_newlines(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    _register_text_window("msg-window-greeting3")
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "msg-window-greeting3", "", "Hi!")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdateDialogTextInput(
+                locale=Locale.EN,
+                message_id="msg-window-greeting3",
+                attribute_id="",
+                value="Hi\nthere",
+            ),
+        )

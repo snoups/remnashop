@@ -180,6 +180,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.DIALOGS_WINDOWS_DELETE,
         Permission.DIALOGS_WINDOWS_RESET,
         Permission.DIALOGS_WINDOWS_RESET_ALL,
+        Permission.DIALOGS_TEXT_UPDATE,
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.PLANS_VIEW,
         Permission.PLANS_CREATE,

@@ -32,7 +32,11 @@ def _catalog():
 async def test_seed_is_idempotent(
     dialog_repository: DialogRepository, translations_repository, settings_repository
 ) -> None:
-    await settings_repository.add_active_locale(Locale.EN)
+    # This test runs against a real, shared dev database (not necessarily empty --
+    # the real api/telegram services may have already activated 'en'), so check
+    # first rather than assuming a pristine locale table.
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
     await ensure_dialogs_seeded(dialog_repository, translations_repository, settings_repository)
     await ensure_dialogs_seeded(dialog_repository, translations_repository, settings_repository)
 

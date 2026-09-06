@@ -41,7 +41,10 @@
     "oauth": {
       "continueWith": "Continue with {{provider}}",
       "invalidCallback": "Invalid OAuth callback",
-      "completingSignIn": "Completing sign-in…"
+      "completingSignIn": "Completing sign-in…",
+      "passkeySignIn": "Sign in with a passkey",
+      "passkeyCancelled": "Passkey sign-in was cancelled",
+      "passkeyNotSupported": "Passkeys are not supported on this device or browser"
     },
     "welcome": {
       "title": "Welcome to Remnashop",
@@ -377,6 +380,13 @@
       "oidcClientSecretLabel": "OIDC client secret",
       "passwordLoginLabel": "Password login",
       "passwordLoginDescription": "Allow signing in with login and password. Make sure at least one OAuth provider works before disabling this.",
+      "passkeyTitle": "Passkeys",
+      "passkeyDescription": "Sign in with Touch ID, Windows Hello, or a security key instead of a password.",
+      "passkeyRpIdLabel": "Relying Party ID",
+      "passkeyRpIdPlaceholder": "example.com",
+      "passkeyOriginLabel": "Origin",
+      "passkeyOriginPlaceholder": "https://example.com",
+      "passkeyManageButton": "Manage passkeys",
       "placeholder": "Leave blank to keep the current value",
       "save": "Save",
       "saving": "Saving…",
@@ -632,6 +642,28 @@
       "notConnected": "Not connected",
       "connect": "Connect",
       "disconnect": "Disconnect"
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Devices you can sign in with instead of your password.",
+      "loading": "Loading…",
+      "loadError": "Failed to load.",
+      "empty": "No passkeys registered yet.",
+      "addButton": "Add a passkey",
+      "adding": "Waiting for your device…",
+      "namePrompt": "Name this passkey",
+      "namePlaceholder": "e.g. MacBook Touch ID",
+      "rename": "Rename",
+      "delete": "Delete",
+      "deleteTitle": "Delete passkey",
+      "deleteConfirm": "This device will no longer be able to sign in with this passkey.",
+      "lastUsed": "Last used {{date}}",
+      "neverUsed": "Never used",
+      "notSupported": "Passkeys are not supported on this device or browser.",
+      "cancelled": "Passkey registration was cancelled.",
+      "addError": "Failed to add passkey.",
+      "deleteError": "Failed to delete passkey.",
+      "renameError": "Failed to rename passkey."
     },
     "accountSecurity": {
       "title": "IP allowlist",

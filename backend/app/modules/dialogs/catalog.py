@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final, Optional
@@ -5,6 +6,13 @@ from typing import Final, Optional
 from app.core.enums import BannerName, ButtonLinkType, ButtonStyleKind, DialogFlow
 
 Resolver = Callable[..., object]
+
+# Fluent variable identifiers are plain identifiers -- no dots. The catalog's
+# own dotted keys (e.g. "subscription.url") are only ever used by the render
+# engine's own ${var} substitution in url_value, which is unrelated to Fluent
+# and has no such restriction; this filters them out of what's offered for use
+# inside real Fluent `{ $var }` text.
+_FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -32,6 +40,7 @@ class CatalogWindow:
 
 
 _WINDOWS: Final[dict[str, CatalogWindow]] = {}
+_ACTION_KEYS: Final[set[str]] = set()
 _ACTIONS: Final[dict[str, Resolver]] = {}
 _CONDITIONS: Final[dict[str, Resolver]] = {}
 _VARIABLES: Final[dict[str, Resolver]] = {}
@@ -47,15 +56,36 @@ def register_window(window: CatalogWindow) -> None:
     _register(_WINDOWS, window.key, window, "window")  # type: ignore[arg-type]
 
 
-def register_action(key: str, handler: Resolver) -> None:
-    _register(_ACTIONS, key, handler, "action")  # type: ignore[arg-type]
+def register_action_key(key: str) -> None:
+    if key in _ACTION_KEYS:
+        raise ValueError(f"Duplicate action key: {key}")
+    _ACTION_KEYS.add(key)
+
+
+def bind_action_handler(key: str, handler: Resolver) -> None:
+    # Requires the key to already be declared via register_action_key -- this is
+    # what lets an action be a deliberately-declared thing usable for validation
+    # (e.g. from the api process, which never binds a handler) rather than
+    # something that becomes valid merely because some window's button mentions it.
+    if key not in _ACTION_KEYS:
+        raise ValueError(f"Cannot bind handler to unregistered action key: {key}")
+    if key in _ACTIONS:
+        raise ValueError(f"Action handler already bound: {key}")
+    _ACTIONS[key] = handler
 
 
 def register_condition(key: str, resolver: Resolver) -> None:
     _register(_CONDITIONS, key, resolver, "condition")  # type: ignore[arg-type]
 
 
+_RESERVED_VARIABLE_NAMES: Final[frozenset[str]] = frozenset({"key", "self"})
+
+
 def register_variable(key: str, resolver: Resolver) -> None:
+    if key in _RESERVED_VARIABLE_NAMES:
+        # These collide with runner.get(key, **kwargs)'s own positional params
+        # -> "got multiple values for argument" at render time.
+        raise ValueError(f"Reserved variable name: {key}")
     _register(_VARIABLES, key, resolver, "variable")  # type: ignore[arg-type]
 
 
@@ -71,8 +101,12 @@ def get_window(key: str) -> CatalogWindow:
     return _WINDOWS[key]
 
 
+def has_action_handler(key: str) -> bool:
+    return key in _ACTIONS
+
+
 def action_keys() -> frozenset[str]:
-    return frozenset(_ACTIONS)
+    return frozenset(_ACTION_KEYS)
 
 
 def condition_keys() -> frozenset[str]:
@@ -83,12 +117,20 @@ def variable_keys() -> frozenset[str]:
     return frozenset(_VARIABLES)
 
 
+def text_variable_keys() -> frozenset[str]:
+    return frozenset(key for key in _VARIABLES if _FLUENT_IDENTIFIER_RE.match(key))
+
+
 def get_action(key: str) -> Resolver:
     return _ACTIONS[key]
 
 
 def get_condition(key: str) -> Resolver:
     return _CONDITIONS[key]
+
+
+def get_variable(key: str) -> Resolver:
+    return _VARIABLES[key]
 
 
 def window_snapshot(key: str) -> dict:
@@ -118,6 +160,7 @@ def window_snapshot(key: str) -> dict:
 def _reset_for_tests() -> None:
     # test-only: flow catalog modules register at import time and are never unregistered in prod
     _WINDOWS.clear()
+    _ACTION_KEYS.clear()
     _ACTIONS.clear()
     _CONDITIONS.clear()
     _VARIABLES.clear()

@@ -28,6 +28,7 @@ dependencies = [
     "authlib~=1.6.5",
     "qrcode[pil]>=8.2",
     "pyjwt>=2.13.0",
+    "webauthn~=2.8.0",
     "greenlet>=3.3.0",
     "prometheus-fastapi-instrumentator>=7.1.0",
 ]

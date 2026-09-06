@@ -335,6 +335,21 @@ async def test_status_reflects_password_login_toggle(
     assert result.password_login_enabled is False
 
 
+async def test_get_auth_status_reports_passkey_login_enabled(
+    user_repository: UserRepository, settings_repository: SettingsRepository
+) -> None:
+    await settings_repository.update_oauth_settings(
+        UpdateOAuthSettingsDto(
+            passkey_enabled=True, passkey_rp_id="example.com", passkey_origin="https://example.com"
+        )
+    )
+    use_case = GetAuthStatusUseCase(user_repository, settings_repository)
+
+    status = await use_case.execute()
+
+    assert status.is_passkey_login_enabled is True
+
+
 async def test_login_publishes_success_and_failure_events(
     user_repository: UserRepository,
     uow: UnitOfWork,

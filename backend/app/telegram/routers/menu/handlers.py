@@ -4,7 +4,7 @@ from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
-from aiogram_dialog.widgets.kbd import Button
+from aiogram_dialog.widgets.kbd import Button, Keyboard
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub
@@ -44,7 +44,7 @@ async def on_start_command(message: Message, user: UserDto, dialog_manager: Dial
 @inject
 async def on_get_trial(
     callback: CallbackQuery,
-    widget: Button,
+    widget: Keyboard,
     dialog_manager: DialogManager,
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     activate_trial_subscription: FromDishka[ActivateTrialSubscriptionUseCase],
@@ -90,7 +90,7 @@ async def on_device_delete_request(
 @inject
 async def on_device_delete_confirm(
     callback: CallbackQuery,
-    widget: Button,
+    widget: Keyboard,
     dialog_manager: DialogManager,
     delete_device: FromDishka[DeleteDeviceUseCase],
     i18n: FromDishka[TranslatorHub],
@@ -115,7 +115,7 @@ async def on_device_delete_confirm(
 @inject
 async def on_device_delete_all_confirm(
     callback: CallbackQuery,
-    widget: Button,
+    widget: Keyboard,
     dialog_manager: DialogManager,
     delete_all_devices: FromDishka[DeleteAllDevicesUseCase],
     i18n: FromDishka[TranslatorHub],
@@ -137,7 +137,7 @@ async def on_device_delete_all_confirm(
 @inject
 async def on_reissue_subscription_confirm(
     callback: CallbackQuery,
-    widget: Button,
+    widget: Keyboard,
     dialog_manager: DialogManager,
     reissue_subscription: FromDishka[ReissueSubscriptionUseCase],
     i18n: FromDishka[TranslatorHub],

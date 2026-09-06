@@ -15,6 +15,8 @@ from app.modules.gateways.api import admin_router as gateways_admin_router
 from app.modules.oauth.api import admin_router as oauth_admin_router
 from app.modules.oauth.api import router as oauth_router
 from app.modules.overview.api import admin_router as overview_admin_router
+from app.modules.passkeys.api import admin_router as passkeys_admin_router
+from app.modules.passkeys.api import router as passkeys_router
 from app.modules.payments.api import admin_router as payments_admin_router
 from app.modules.payments.api import public_router as payments_public_router
 from app.modules.payments.api import webhook_router as payments_webhook_router
@@ -40,6 +42,8 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_sessions_router,
     oauth_router,
     oauth_admin_router,
+    passkeys_router,
+    passkeys_admin_router,
     users_admin_router,
     users_admins_router,
     settings_admin_router,

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { BootstrapOwnerForm } from "@features/bootstrap-owner/BootstrapOwnerForm";
 import { LoginForm } from "@features/login/LoginForm";
 import { OAuthLoginButtons } from "@features/oauth-login/OAuthLoginButtons";
+import { PasskeyLoginButton } from "@features/passkey-login/PasskeyLoginButton";
 import { getAuthStatus } from "@entities/auth/api";
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
@@ -55,6 +56,12 @@ export function LoginPage() {
             oidcDisplayName={state.data.oidc_display_name}
           />
         )}
+
+        {state.kind === "ready" &&
+          state.data.is_login_allowed &&
+          state.data.is_passkey_login_enabled && (
+            <PasskeyLoginButton onSuccess={goToDashboard} />
+          )}
       </div>
     </div>
   );

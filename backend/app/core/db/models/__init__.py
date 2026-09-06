@@ -22,6 +22,7 @@ from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.oauth_settings import OAuthSettings
+from app.core.db.models.passkey_credential import PasskeyCredential
 from app.core.db.models.payment_gateway import PaymentGateway
 from app.core.db.models.payment_order import PaymentOrder
 from app.core.db.models.plan import Plan
@@ -63,6 +64,7 @@ __all__ = [
     "EventOutboxEntry",
     "OAuthIdentity",
     "OAuthSettings",
+    "PasskeyCredential",
     "PaymentGateway",
     "PaymentOrder",
     "Plan",

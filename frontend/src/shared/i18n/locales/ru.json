@@ -41,7 +41,10 @@
     "oauth": {
       "continueWith": "Продолжить через {{provider}}",
       "invalidCallback": "Некорректный OAuth callback",
-      "completingSignIn": "Завершаем вход…"
+      "completingSignIn": "Завершаем вход…",
+      "passkeySignIn": "Войти с помощью пасскея",
+      "passkeyCancelled": "Вход с пасскеем отменён",
+      "passkeyNotSupported": "Пасскеи не поддерживаются на этом устройстве или в браузере"
     },
     "welcome": {
       "title": "Добро пожаловать в Remnashop",
@@ -377,6 +380,13 @@
       "oidcClientSecretLabel": "Секрет клиента OIDC",
       "passwordLoginLabel": "Вход по паролю",
       "passwordLoginDescription": "Прежде чем выключать, убедитесь, что хотя бы один OAuth провайдер работает.",
+      "passkeyTitle": "Пасскеи",
+      "passkeyDescription": "Вход через Touch ID, Windows Hello или ключ безопасности вместо пароля.",
+      "passkeyRpIdLabel": "Relying Party ID",
+      "passkeyRpIdPlaceholder": "example.com",
+      "passkeyOriginLabel": "Origin",
+      "passkeyOriginPlaceholder": "https://example.com",
+      "passkeyManageButton": "Управление пасскеями",
       "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
       "save": "Сохранить",
       "saving": "Сохранение…",
@@ -632,6 +642,28 @@
       "notConnected": "Не подключён",
       "connect": "Подключить",
       "disconnect": "Отключить"
+    },
+    "passkeys": {
+      "title": "Пасскеи",
+      "description": "Устройства, с которых можно входить вместо пароля.",
+      "loading": "Загрузка…",
+      "loadError": "Не удалось загрузить.",
+      "empty": "Пасскеи ещё не добавлены.",
+      "addButton": "Добавить пасскей",
+      "adding": "Ожидание устройства…",
+      "namePrompt": "Название пасскея",
+      "namePlaceholder": "например, MacBook Touch ID",
+      "rename": "Переименовать",
+      "delete": "Удалить",
+      "deleteTitle": "Удалить пасскей",
+      "deleteConfirm": "Это устройство больше не сможет входить с помощью этого пасскея.",
+      "lastUsed": "Использован {{date}}",
+      "neverUsed": "Не использовался",
+      "notSupported": "Пасскеи не поддерживаются на этом устройстве или в браузере.",
+      "cancelled": "Регистрация пасскея отменена.",
+      "addError": "Не удалось добавить пасскей.",
+      "deleteError": "Не удалось удалить пасскей.",
+      "renameError": "Не удалось переименовать пасскей."
     },
     "accountSecurity": {
       "title": "Список разрешённых IP",

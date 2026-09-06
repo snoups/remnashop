@@ -464,6 +464,9 @@ def upgrade() -> None:
         sa.Column("telegram_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("oidc_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("password_login_enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("passkey_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("passkey_rp_id", sa.String(length=255), nullable=True),
+        sa.Column("passkey_origin", sa.String(length=512), nullable=True),
         sa.Column("oidc_issuer_url", sa.String(length=512), nullable=True),
         sa.Column("oidc_display_name", sa.String(length=100), nullable=True),
         sa.Column(
@@ -989,6 +992,42 @@ def upgrade() -> None:
     )
     op.create_index(
         op.f("ix_oauth_identities_user_id"), "oauth_identities", ["user_id"], unique=False
+    )
+    op.create_table(
+        "passkey_credentials",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("credential_id", sa.String(length=255), nullable=False),
+        sa.Column("public_key", sa.LargeBinary(), nullable=False),
+        sa.Column("sign_count", sa.Integer(), nullable=False),
+        sa.Column("transports", sa.ARRAY(sa.String()), nullable=True),
+        sa.Column("device_type", sa.String(length=32), nullable=False),
+        sa.Column("backed_up", sa.Boolean(), nullable=False),
+        sa.Column("name", sa.String(length=100), nullable=True),
+        sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_passkey_credentials_credential_id"),
+        "passkey_credentials",
+        ["credential_id"],
+        unique=True,
+    )
+    op.create_index(
+        op.f("ix_passkey_credentials_user_id"), "passkey_credentials", ["user_id"], unique=False
     )
     op.create_table(
         "plan_durations",
@@ -1570,6 +1609,9 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_plan_durations_plan_id"), table_name="plan_durations")
     op.drop_index(op.f("ix_plan_durations_order_index"), table_name="plan_durations")
     op.drop_table("plan_durations")
+    op.drop_index(op.f("ix_passkey_credentials_user_id"), table_name="passkey_credentials")
+    op.drop_index(op.f("ix_passkey_credentials_credential_id"), table_name="passkey_credentials")
+    op.drop_table("passkey_credentials")
     op.drop_index(op.f("ix_oauth_identities_user_id"), table_name="oauth_identities")
     op.drop_table("oauth_identities")
     op.drop_index(op.f("ix_event_outbox_processed_at"), table_name="event_outbox")

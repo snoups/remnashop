@@ -19,6 +19,7 @@ class GetDialogCatalogUseCase(UseCase[None, DialogCatalogDto]):
             action_keys=sorted(catalog.action_keys()),
             condition_keys=sorted(catalog.condition_keys()),
             variable_keys=sorted(catalog.variable_keys()),
+            text_variable_keys=sorted(catalog.text_variable_keys()),
             seed_window_keys=sorted(w.key for w in catalog.all_windows()),
             navigable_window_keys=navigable,
         )

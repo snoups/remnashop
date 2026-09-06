@@ -7,6 +7,7 @@ from app.modules.dialogs.usecases.get_catalog import GetDialogCatalogUseCase
 from app.modules.dialogs.usecases.list_windows import ListDialogWindowsUseCase
 from app.modules.dialogs.usecases.reset_all import ResetAllDialogsUseCase
 from app.modules.dialogs.usecases.reset_window import ResetDialogWindowUseCase
+from app.modules.dialogs.usecases.update_text import UpdateDialogTextInput, UpdateDialogTextUseCase
 from app.modules.dialogs.usecases.update_window import (
     UpdateDialogWindowInput,
     UpdateDialogWindowUseCase,
@@ -24,6 +25,8 @@ __all__ = [
     "ListDialogWindowsUseCase",
     "ResetAllDialogsUseCase",
     "ResetDialogWindowUseCase",
+    "UpdateDialogTextInput",
+    "UpdateDialogTextUseCase",
     "UpdateDialogWindowButtonsInput",
     "UpdateDialogWindowButtonsUseCase",
     "UpdateDialogWindowInput",

@@ -7,6 +7,7 @@ export interface AuthStatus {
   oauth_providers: Record<string, boolean>;
   oidc_display_name: string | null;
   is_password_login_enabled: boolean;
+  is_passkey_login_enabled: boolean;
 }
 
 export interface AuthResult {

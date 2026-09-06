@@ -20,6 +20,7 @@ import { GithubOAuthGuideDialog } from "./GithubOAuthGuideDialog";
 import { OidcOAuthGuideDialog } from "./OidcOAuthGuideDialog";
 import { PasswordLoginGuideDialog } from "./PasswordLoginGuideDialog";
 import { TelegramOAuthGuideDialog } from "./TelegramOAuthGuideDialog";
+import { PasskeysManageDialog } from "@features/passkeys/PasskeysManageDialog";
 
 type Provider = "github" | "telegram" | "oidc";
 
@@ -35,6 +36,9 @@ export function OAuthSettingsForm() {
   const [oidcIssuerUrl, setOidcIssuerUrl] = useState("");
   const [oidcClientId, setOidcClientId] = useState("");
   const [oidcClientSecret, setOidcClientSecret] = useState("");
+  const [passkeyRpId, setPasskeyRpId] = useState("");
+  const [passkeyOrigin, setPasskeyOrigin] = useState("");
+  const [isManagingPasskeys, setIsManagingPasskeys] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -48,7 +52,9 @@ export function OAuthSettingsForm() {
       !oidcDisplayName &&
       !oidcIssuerUrl &&
       !oidcClientId &&
-      !oidcClientSecret
+      !oidcClientSecret &&
+      !passkeyRpId &&
+      !passkeyOrigin
     ) {
       toast.error(t("settings.oauth.errorEmptyFields"));
       return;
@@ -65,6 +71,8 @@ export function OAuthSettingsForm() {
         oidc_issuer_url: oidcIssuerUrl || undefined,
         oidc_client_id: oidcClientId || undefined,
         oidc_client_secret: oidcClientSecret || undefined,
+        passkey_rp_id: passkeyRpId || undefined,
+        passkey_origin: passkeyOrigin || undefined,
       });
       setData(settings);
       setGithubClientId("");
@@ -75,6 +83,8 @@ export function OAuthSettingsForm() {
       setOidcIssuerUrl("");
       setOidcClientId("");
       setOidcClientSecret("");
+      setPasskeyRpId("");
+      setPasskeyOrigin("");
       toast.success(t("settings.oauth.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
@@ -188,6 +198,16 @@ export function OAuthSettingsForm() {
                 },
               ]}
             />
+            <PasskeyPanel
+              isConfigured={state.data.is_passkey_configured}
+              isEnabled={state.data.is_passkey_enabled}
+              rpId={passkeyRpId}
+              origin={passkeyOrigin}
+              onRpIdChange={setPasskeyRpId}
+              onOriginChange={setPasskeyOrigin}
+              onToggled={setData}
+              onManage={() => setIsManagingPasskeys(true)}
+            />
           </div>
 
           <div className="mt-2 border-t border-white/[0.08] pt-2">
@@ -206,6 +226,9 @@ export function OAuthSettingsForm() {
             {isSubmitting ? t("settings.oauth.saving") : t("settings.oauth.save")}
           </motion.button>
         </form>
+      )}
+      {isManagingPasskeys && (
+        <PasskeysManageDialog onClose={() => setIsManagingPasskeys(false)} />
       )}
     </div>
   );
@@ -327,6 +350,140 @@ function ProviderPanel({
                   />
                 </div>
               ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+interface PasskeyPanelProps {
+  isConfigured: boolean;
+  isEnabled: boolean;
+  rpId: string;
+  origin: string;
+  onRpIdChange: (value: string) => void;
+  onOriginChange: (value: string) => void;
+  onToggled: (settings: OAuthSettings) => void;
+  onManage: () => void;
+}
+
+function PasskeyPanel({
+  isConfigured,
+  isEnabled,
+  rpId,
+  origin,
+  onRpIdChange,
+  onOriginChange,
+  onToggled,
+  onManage,
+}: PasskeyPanelProps) {
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+
+  const handleToggle = async (next: boolean) => {
+    setIsToggling(true);
+    try {
+      const settings = await updateOAuthSettings({ passkey_enabled: next });
+      onToggled(settings);
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  return (
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsOpen((open) => !open)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          setIsOpen((open) => !open);
+        }}
+        className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
+      >
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
+          <KeyRound className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-foreground">
+            {t("settings.oauth.passkeyTitle")}
+          </p>
+          <p className="text-[12px]">
+            {isConfigured ? (
+              <span className="text-success">{t("settings.oauth.configured")}</span>
+            ) : (
+              <span className="text-warning">{t("settings.oauth.notConfigured")}</span>
+            )}
+          </p>
+        </div>
+        <span className="flex size-6 shrink-0 items-center justify-center">
+          <ChevronDown
+            className={`size-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
+        </span>
+        <div className="flex" onClick={(event) => event.stopPropagation()}>
+          <Switch
+            checked={isEnabled}
+            onChange={(value) => void handleToggle(value)}
+            disabled={isToggling || !isConfigured}
+            ariaLabel={t("settings.oauth.enableAria", { provider: t("settings.oauth.passkeyTitle") })}
+          />
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
+              <p className="text-[12.5px] text-muted-foreground">
+                {t("settings.oauth.passkeyDescription")}
+              </p>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-foreground/80">
+                  {t("settings.oauth.passkeyRpIdLabel")}
+                </label>
+                <input
+                  type="text"
+                  value={rpId}
+                  onChange={(event) => onRpIdChange(event.target.value)}
+                  placeholder={t("settings.oauth.passkeyRpIdPlaceholder")}
+                  autoComplete="off"
+                  className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-foreground/80">
+                  {t("settings.oauth.passkeyOriginLabel")}
+                </label>
+                <input
+                  type="text"
+                  value={origin}
+                  onChange={(event) => onOriginChange(event.target.value)}
+                  placeholder={t("settings.oauth.passkeyOriginPlaceholder")}
+                  autoComplete="off"
+                  className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={onManage}
+                className="w-fit rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5"
+              >
+                {t("settings.oauth.passkeyManageButton")}
+              </button>
             </div>
           </motion.div>
         )}

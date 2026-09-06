@@ -113,7 +113,8 @@ async def _owner_headers(
 @pytest.fixture(autouse=True)
 def _catalog() -> Iterator[None]:
     catalog._reset_for_tests()
-    catalog.register_action("get_trial", lambda: None)
+    catalog.register_action_key("get_trial")
+    catalog.bind_action_handler("get_trial", lambda: None)
     yield
     catalog._reset_for_tests()
 
@@ -344,3 +345,75 @@ async def test_reset_window_and_reset_all(
 
     reset_all_resp = await client.post(f"{API_V1}/dialogs/reset", headers=headers)
     assert reset_all_resp.status_code == 204
+
+
+async def test_update_dialog_text_requires_permission(
+    client: httpx.AsyncClient, settings_repository, translations_repository
+) -> None:
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "msg-router-test", "", "Hi!")
+
+    response = await client.put(
+        f"{API_V1}/dialogs/text/en/msg-router-test", json={"value": "Hi there!"}
+    )
+    assert response.status_code == 401
+
+
+async def test_update_dialog_text_updates_value(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    settings_repository,
+    translations_repository,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.router_text",
+            flow=DialogFlow.MENU,
+            text_keys=("msg-router-window-text",),
+            banner_name=None,
+        )
+    )
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "msg-router-window-text", "", "Hi!")
+
+    response = await client.put(
+        f"{API_V1}/dialogs/text/en/msg-router-window-text",
+        json={"value": "Hi there!"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["value"] == "Hi there!"
+
+
+async def test_update_dialog_text_missing_key_is_404(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    settings_repository,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.router_ghost",
+            flow=DialogFlow.MENU,
+            text_keys=("msg-router-ghost-text",),
+            banner_name=None,
+        )
+    )
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+
+    response = await client.put(
+        f"{API_V1}/dialogs/text/en/msg-router-ghost-text",
+        json={"value": "Hi there!"},
+        headers=headers,
+    )
+    assert response.status_code == 404

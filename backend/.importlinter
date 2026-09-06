@@ -22,6 +22,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -56,6 +57,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -90,6 +92,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -127,6 +130,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -164,6 +168,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -199,6 +204,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -233,6 +239,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -273,6 +280,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -308,6 +316,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -342,6 +351,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -380,6 +390,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -414,6 +425,7 @@ source_modules =
     app.modules.subscriptions
     app.modules.promocodes
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -437,6 +449,7 @@ source_modules =
     app.telegram
     app.worker
     app.modules.auth
+    app.modules.passkeys
     app.modules.settings
     app.modules.users
     app.modules.event_log
@@ -483,6 +496,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.backups
     app.modules.pricing
     app.modules.blacklist
@@ -519,6 +533,7 @@ source_modules =
     app.modules.payments
     app.modules.referrals
     app.modules.oauth
+    app.modules.passkeys
     app.modules.pricing
     app.modules.blacklist
     app.modules.dialogs
@@ -555,6 +570,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.blacklist
@@ -590,6 +606,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -628,6 +645,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -666,6 +684,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -678,7 +697,6 @@ forbidden_modules =
     app.modules.dialogs.di
     app.modules.dialogs.usecases
     app.modules.dialogs.seed
-    app.modules.dialogs.catalog
 
 [importlinter:contract:overview-encapsulation]
 name = overview module internals are private
@@ -702,6 +720,7 @@ source_modules =
     app.modules.promocodes
     app.modules.payments
     app.modules.oauth
+    app.modules.passkeys
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -712,3 +731,39 @@ forbidden_modules =
     app.modules.overview.dto
     app.modules.overview.di
     app.modules.overview.usecases
+
+[importlinter:contract:passkeys-encapsulation]
+name = passkeys module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.oauth
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.banners
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.gateways
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+    app.modules.payments
+    app.modules.referrals
+    app.modules.backups
+    app.modules.pricing
+    app.modules.blacklist
+    app.modules.dialogs
+    app.modules.advertising
+    app.modules.overview
+forbidden_modules =
+    app.modules.passkeys.repository
+    app.modules.passkeys.dto
+    app.modules.passkeys.di
+    app.modules.passkeys.usecases
+    app.modules.passkeys.challenge_store

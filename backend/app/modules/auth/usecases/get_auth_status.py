@@ -25,4 +25,5 @@ class GetAuthStatusUseCase:
                 oauth_settings.oidc_display_name if oauth_settings.is_oidc_usable else None
             ),
             password_login_enabled=oauth_settings.password_login_enabled,
+            is_passkey_login_enabled=oauth_settings.is_passkey_usable,
         )

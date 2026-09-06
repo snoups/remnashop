@@ -70,5 +70,6 @@ class DialogCatalogDto:
     action_keys: list[str]
     condition_keys: list[str]
     variable_keys: list[str]
+    text_variable_keys: list[str]
     seed_window_keys: list[str]
     navigable_window_keys: list[str]

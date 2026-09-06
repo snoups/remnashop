@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.metrics import register_db_pool_metrics
-from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded
+from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository, ensure_translations_seeded
 from app.worker.broker import broker
@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings_repository = await startup_container.get(SettingsRepository)
         uow = await startup_container.get(UnitOfWork)
         async with uow:
+            register_all_flow_metadata()
             await ensure_translations_seeded(config, translations_repository, settings_repository)
 
             dialog_repository = await startup_container.get(DialogRepository)

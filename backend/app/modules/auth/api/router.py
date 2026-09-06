@@ -102,6 +102,7 @@ async def get_status(use_case: FromDishka[GetAuthStatusUseCase]) -> StatusRespon
         },
         oidc_display_name=result.oidc_display_name,
         is_password_login_enabled=result.password_login_enabled,
+        is_passkey_login_enabled=result.is_passkey_login_enabled,
     )
 
 

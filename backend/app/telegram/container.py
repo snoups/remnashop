@@ -13,6 +13,7 @@ from app.modules.promocodes import get_promocodes_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.users import get_users_providers
+from app.telegram.dialogs.di import DialogConfigProvider
 
 
 def create_aiogram_container(
@@ -37,5 +38,6 @@ def create_aiogram_container(
         *get_promocodes_providers(),
         *get_plans_providers(),
         *get_blacklist_providers(),
+        DialogConfigProvider(),
     ]
     return make_async_container(*providers, context=context)

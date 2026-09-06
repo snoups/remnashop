@@ -8,6 +8,7 @@ from app.modules.dialogs.usecases import (
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
+    UpdateDialogTextUseCase,
     UpdateDialogWindowButtonsUseCase,
     UpdateDialogWindowUseCase,
 )
@@ -19,6 +20,7 @@ class DialogsProvider(Provider):
     dialog_repository = provide(DialogRepository)
     list_dialog_windows_use_case = provide(ListDialogWindowsUseCase)
     get_dialog_catalog_use_case = provide(GetDialogCatalogUseCase)
+    update_dialog_text_use_case = provide(UpdateDialogTextUseCase)
     update_dialog_window_use_case = provide(UpdateDialogWindowUseCase)
     update_dialog_window_buttons_use_case = provide(UpdateDialogWindowButtonsUseCase)
     create_custom_dialog_window_use_case = provide(CreateCustomDialogWindowUseCase)

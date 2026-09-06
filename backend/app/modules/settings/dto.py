@@ -78,6 +78,9 @@ class OAuthSettingsDto(BaseDto, TimestampMixin):
     oidc_display_name: Optional[str] = None
     oidc_enabled: bool = False
     password_login_enabled: bool = True
+    passkey_enabled: bool = False
+    passkey_rp_id: Optional[str] = None
+    passkey_origin: Optional[str] = None
 
     @property
     def is_github_configured(self) -> bool:
@@ -110,6 +113,14 @@ class OAuthSettingsDto(BaseDto, TimestampMixin):
     def is_oidc_usable(self) -> bool:
         return self.is_oidc_configured and self.oidc_enabled
 
+    @property
+    def is_passkey_configured(self) -> bool:
+        return self.passkey_rp_id is not None and self.passkey_origin is not None
+
+    @property
+    def is_passkey_usable(self) -> bool:
+        return self.is_passkey_configured and self.passkey_enabled
+
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateOAuthSettingsDto:
@@ -125,6 +136,9 @@ class UpdateOAuthSettingsDto:
     oidc_display_name: Optional[str] = None
     oidc_enabled: Optional[bool] = None
     password_login_enabled: Optional[bool] = None
+    passkey_enabled: Optional[bool] = None
+    passkey_rp_id: Optional[str] = None
+    passkey_origin: Optional[str] = None
 
 
 class AppearanceSettingsDto(BaseDto, TimestampMixin):

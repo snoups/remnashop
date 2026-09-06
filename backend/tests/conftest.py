@@ -39,6 +39,8 @@ from app.modules.event_log.repository import EventLogRepository
 from app.modules.gateways.repository import GatewaysRepository
 from app.modules.oauth.providers.state_store import OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
+from app.modules.passkeys.challenge_store import PasskeyChallengeStore
+from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
 from app.modules.promocodes.repository import PromocodeRepository
@@ -101,6 +103,11 @@ def user_repository(session: AsyncSession) -> UserRepository:
 @pytest.fixture
 def oauth_identity_repository(session: AsyncSession) -> OAuthIdentityRepository:
     return OAuthIdentityRepository(session)
+
+
+@pytest.fixture
+def passkey_repository(session: AsyncSession) -> PasskeyRepository:
+    return PasskeyRepository(session)
 
 
 @pytest.fixture
@@ -198,6 +205,11 @@ async def redis(config: AppConfig) -> AsyncIterator[Redis]:
 @pytest.fixture
 def oauth_state_store(redis: Redis) -> OAuthStateStore:
     return OAuthStateStore(redis)
+
+
+@pytest.fixture
+def redis_challenge_store(redis: Redis) -> PasskeyChallengeStore:
+    return PasskeyChallengeStore(redis)
 
 
 @pytest.fixture

@@ -49,6 +49,7 @@ class StatusResponse(BaseModel):
     oauth_providers: dict[str, bool]
     oidc_display_name: Optional[str] = None
     is_password_login_enabled: bool
+    is_passkey_login_enabled: bool
 
 
 class RefreshResponse(BaseModel):

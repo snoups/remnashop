@@ -1,0 +1,394 @@
+from typing import Any
+
+import pytest
+from webauthn.helpers import base64url_to_bytes, bytes_to_base64url
+
+from app.core.db.uow import UnitOfWork
+from app.core.enums import Locale, Role
+from app.core.exceptions import AuthenticationError, NotFoundError
+from app.modules.auth import SessionIssuer
+from app.modules.passkeys.challenge_store import PasskeyChallengeStore
+from app.modules.passkeys.dto import (
+    CreatePasskeyCredentialDto,
+    RenamePasskeyDto,
+    VerifyPasskeyRegistrationDto,
+)
+from app.modules.passkeys.repository import PasskeyRepository
+from app.modules.passkeys.usecases.delete_passkey import DeletePasskeyUseCase
+from app.modules.passkeys.usecases.get_authentication_options import (
+    GetPasskeyAuthenticationOptionsUseCase,
+)
+from app.modules.passkeys.usecases.get_registration_options import (
+    GetPasskeyRegistrationOptionsUseCase,
+)
+from app.modules.passkeys.usecases.list_passkeys import ListPasskeysUseCase
+from app.modules.passkeys.usecases.rename_passkey import RenamePasskeyUseCase
+from app.modules.passkeys.usecases.verify_authentication import (
+    VerifyPasskeyAuthenticationUseCase,
+)
+from app.modules.passkeys.usecases.verify_registration import VerifyPasskeyRegistrationUseCase
+from app.modules.settings.dto import UpdateOAuthSettingsDto
+from app.modules.settings.repository import SettingsRepository
+from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.repository import UserRepository
+
+RP_ID = "example.com"
+ORIGIN = "https://example.com"
+
+
+async def _create_user(
+    user_repository: UserRepository, uow: UnitOfWork, login: str, role: Role = Role.OWNER
+) -> UserDto:
+    # OWNER is singular (a DB partial unique index enforces it) -- a test
+    # creating a second user (e.g. Task 6's "other") must pass role=Role.ADMIN
+    # explicitly. Unlike Task 2's repository-only tests, role matters here:
+    # these are usecase tests, and an actor needs a role that actually holds
+    # Permission.OWN_ACCOUNT_MANAGE (OWNER and ADMIN both do, USER does not).
+    async with uow:
+        user = await user_repository.create(
+            CreateUserDto(login=login, name=login, role=role, language=Locale.EN)
+        )
+        await uow.commit()
+    return user
+
+
+async def _enable_passkeys(settings_repository: SettingsRepository) -> None:
+    await settings_repository.update_oauth_settings(
+        UpdateOAuthSettingsDto(passkey_enabled=True, passkey_rp_id=RP_ID, passkey_origin=ORIGIN)
+    )
+
+
+def _fake_registration_credential(challenge: bytes) -> dict[str, Any]:
+    # A syntactically valid RegistrationResponseJSON-shaped dict signed by a
+    # real, throwaway software authenticator would require an actual WebAuthn
+    # client -- out of reach in a unit test. Instead we exercise the
+    # usecase's error paths (disabled/unconfigured settings, missing/expired
+    # challenge) directly, and leave "does a real browser response verify"
+    # to the manual end-to-end check called out in the spec's Verification
+    # section, matching how WebAuthn signature verification itself is
+    # exercised in these tests via a deliberately-invalid credential.
+    return {
+        "id": "not-a-real-credential",
+        "rawId": bytes_to_base64url(b"not-a-real-credential"),
+        "response": {
+            "attestationObject": bytes_to_base64url(b"invalid"),
+            "clientDataJSON": bytes_to_base64url(
+                (
+                    '{"type":"webauthn.create","challenge":"'
+                    + bytes_to_base64url(challenge)
+                    + '","origin":"'
+                    + ORIGIN
+                    + '"}'
+                ).encode()
+            ),
+            "transports": ["internal"],
+        },
+        "type": "public-key",
+        "clientExtensionResults": {},
+    }
+
+
+async def test_get_registration_options_rejects_when_disabled(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    use_case = GetPasskeyRegistrationOptionsUseCase(
+        settings_repository, passkey_repository, redis_challenge_store
+    )
+
+    with pytest.raises(AuthenticationError):
+        await use_case(actor)
+
+
+async def test_get_registration_options_returns_json_when_enabled(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    await _enable_passkeys(settings_repository)
+    use_case = GetPasskeyRegistrationOptionsUseCase(
+        settings_repository, passkey_repository, redis_challenge_store
+    )
+
+    options_json = await use_case(actor)
+
+    assert '"rp"' in options_json
+    assert RP_ID in options_json
+
+
+async def test_verify_registration_rejects_expired_challenge(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    await _enable_passkeys(settings_repository)
+    use_case = VerifyPasskeyRegistrationUseCase(
+        settings_repository, passkey_repository, redis_challenge_store, uow
+    )
+
+    credential = _fake_registration_credential(b"some-challenge")
+    with pytest.raises(AuthenticationError, match="challenge"):
+        await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
+
+
+async def test_verify_registration_rejects_invalid_response(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    await _enable_passkeys(settings_repository)
+    challenge = b"a-real-looking-challenge"
+    await redis_challenge_store.store_registration_challenge(actor.id, challenge)
+
+    use_case = VerifyPasskeyRegistrationUseCase(
+        settings_repository, passkey_repository, redis_challenge_store, uow
+    )
+    credential = _fake_registration_credential(challenge)
+
+    with pytest.raises(AuthenticationError, match="verified"):
+        await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
+
+    # The challenge is consumed even on a failed verification -- a second
+    # attempt against the same (now-expired) challenge must also fail as
+    # "expired", not silently retry.
+    with pytest.raises(AuthenticationError, match="challenge"):
+        await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
+
+
+def _create_passkey_dto(user_id: int, credential_id: str = "cred-1") -> CreatePasskeyCredentialDto:
+    return CreatePasskeyCredentialDto(
+        user_id=user_id,
+        credential_id=credential_id,
+        public_key=b"pubkey",
+        sign_count=0,
+        transports=None,
+        device_type="single_device",
+        backed_up=False,
+        name="My laptop",
+    )
+
+
+async def test_list_passkeys_returns_only_actors_own(
+    passkey_repository: PasskeyRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    other = await _create_user(user_repository, uow, "other", role=Role.ADMIN)
+    await passkey_repository.create(_create_passkey_dto(actor.id, "cred-actor"))
+    await passkey_repository.create(_create_passkey_dto(other.id, "cred-other"))
+
+    use_case = ListPasskeysUseCase(passkey_repository)
+    result = await use_case(actor)
+
+    assert len(result) == 1
+    assert result[0].credential_id == "cred-actor"
+
+
+async def test_rename_passkey_updates_name(
+    passkey_repository: PasskeyRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    created = await passkey_repository.create(_create_passkey_dto(actor.id))
+
+    use_case = RenamePasskeyUseCase(passkey_repository, uow)
+    renamed = await use_case(actor, RenamePasskeyDto(id=created.id, name="New name"))
+
+    assert renamed.name == "New name"
+
+
+async def test_rename_passkey_rejects_other_users_passkey(
+    passkey_repository: PasskeyRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    owner = await _create_user(user_repository, uow, "owner")
+    other = await _create_user(user_repository, uow, "other", role=Role.ADMIN)
+    created = await passkey_repository.create(_create_passkey_dto(owner.id))
+
+    use_case = RenamePasskeyUseCase(passkey_repository, uow)
+    with pytest.raises(NotFoundError):
+        await use_case(other, RenamePasskeyDto(id=created.id, name="Hijacked"))
+
+
+async def test_delete_passkey_removes_it(
+    passkey_repository: PasskeyRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    created = await passkey_repository.create(_create_passkey_dto(actor.id))
+
+    use_case = DeletePasskeyUseCase(passkey_repository, uow)
+    await use_case(actor, created.id)
+
+    assert await passkey_repository.get_by_id_and_user(created.id, actor.id) is None
+
+
+async def test_delete_passkey_rejects_other_users_passkey(
+    passkey_repository: PasskeyRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    owner = await _create_user(user_repository, uow, "owner")
+    other = await _create_user(user_repository, uow, "other", role=Role.ADMIN)
+    created = await passkey_repository.create(_create_passkey_dto(owner.id))
+
+    use_case = DeletePasskeyUseCase(passkey_repository, uow)
+    with pytest.raises(NotFoundError):
+        await use_case(other, created.id)
+
+
+CLIENT_IP = "203.0.113.1"
+USER_AGENT = "pytest"
+
+
+async def test_get_authentication_options_rejects_when_disabled(
+    settings_repository: SettingsRepository, redis_challenge_store: PasskeyChallengeStore
+) -> None:
+    use_case = GetPasskeyAuthenticationOptionsUseCase(settings_repository, redis_challenge_store)
+    with pytest.raises(AuthenticationError):
+        await use_case.execute()
+
+
+async def test_get_authentication_options_returns_json_when_enabled(
+    settings_repository: SettingsRepository, redis_challenge_store: PasskeyChallengeStore
+) -> None:
+    await _enable_passkeys(settings_repository)
+    use_case = GetPasskeyAuthenticationOptionsUseCase(settings_repository, redis_challenge_store)
+
+    options_json = await use_case.execute()
+    assert RP_ID in options_json
+
+
+async def test_verify_authentication_rejects_unknown_credential_id(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
+    session_repository,
+    config,
+) -> None:
+    await _enable_passkeys(settings_repository)
+    session_issuer = SessionIssuer(session_repository, uow, config)
+    use_case = VerifyPasskeyAuthenticationUseCase(
+        settings_repository,
+        passkey_repository,
+        user_repository,
+        redis_challenge_store,
+        session_issuer,
+    )
+
+    credential = {
+        "id": "unknown-credential",
+        "rawId": bytes_to_base64url(b"unknown-credential"),
+        "response": {
+            "authenticatorData": bytes_to_base64url(b"auth-data"),
+            "clientDataJSON": bytes_to_base64url(
+                b'{"type":"webauthn.get","challenge":"xyz","origin":"' + ORIGIN.encode() + b'"}'
+            ),
+            "signature": bytes_to_base64url(b"sig"),
+        },
+        "type": "public-key",
+        "clientExtensionResults": {},
+    }
+
+    with pytest.raises(AuthenticationError, match="not recognized"):
+        await use_case.execute(credential, CLIENT_IP, USER_AGENT)
+
+
+async def test_verify_authentication_rejects_unknown_challenge(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
+    session_repository,
+    config,
+) -> None:
+    await _enable_passkeys(settings_repository)
+    actor = await _create_user(user_repository, uow, "owner")
+    created = await passkey_repository.create(_create_passkey_dto(actor.id, "known-credential"))
+
+    session_issuer = SessionIssuer(session_repository, uow, config)
+    use_case = VerifyPasskeyAuthenticationUseCase(
+        settings_repository,
+        passkey_repository,
+        user_repository,
+        redis_challenge_store,
+        session_issuer,
+    )
+
+    credential = {
+        "id": created.credential_id,
+        "rawId": bytes_to_base64url(base64url_to_bytes(created.credential_id)),
+        "response": {
+            "authenticatorData": bytes_to_base64url(b"auth-data"),
+            "clientDataJSON": bytes_to_base64url(
+                b'{"type":"webauthn.get","challenge":"never-stored","origin":"'
+                + ORIGIN.encode()
+                + b'"}'
+            ),
+            "signature": bytes_to_base64url(b"sig"),
+        },
+        "type": "public-key",
+        "clientExtensionResults": {},
+    }
+
+    with pytest.raises(AuthenticationError, match="[Cc]hallenge"):
+        await use_case.execute(credential, CLIENT_IP, USER_AGENT)
+
+
+async def test_verify_authentication_rejects_malformed_credential_structure(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
+    session_repository,
+    config,
+) -> None:
+    await _enable_passkeys(settings_repository)
+    actor = await _create_user(user_repository, uow, "owner")
+    created = await passkey_repository.create(_create_passkey_dto(actor.id, "known-credential"))
+
+    challenge = bytes_to_base64url(b"a-real-challenge")
+    await redis_challenge_store.store_authentication_challenge(challenge)
+
+    session_issuer = SessionIssuer(session_repository, uow, config)
+    use_case = VerifyPasskeyAuthenticationUseCase(
+        settings_repository,
+        passkey_repository,
+        user_repository,
+        redis_challenge_store,
+        session_issuer,
+    )
+
+    # rawId deliberately omitted -- webauthn's parse_authentication_credential_json
+    # raises InvalidJSONStructure here, a sibling of InvalidAuthenticationResponse
+    # the usecase must also catch.
+    credential = {
+        "id": created.credential_id,
+        "response": {
+            "authenticatorData": bytes_to_base64url(b"auth-data"),
+            "clientDataJSON": bytes_to_base64url(
+                b'{"type":"webauthn.get","challenge":"'
+                + challenge.encode()
+                + b'","origin":"'
+                + ORIGIN.encode()
+                + b'"}'
+            ),
+            "signature": bytes_to_base64url(b"sig"),
+        },
+        "type": "public-key",
+        "clientExtensionResults": {},
+    }
+
+    with pytest.raises(AuthenticationError):
+        await use_case.execute(credential, CLIENT_IP, USER_AGENT)

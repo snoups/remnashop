@@ -1,9 +1,11 @@
 from aiogram_dialog import Dialog, Window
-from aiogram_dialog.widgets.kbd import Button, ListGroup, Row, Start, SwitchTo, Url
+from aiogram_dialog.widgets.kbd import Button, ListGroup, Row, Start
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
+from app.telegram.dialogs.catalog_menu import register_menu_catalog
+from app.telegram.dialogs.keyboard import ConfigKeyboard
 from app.telegram.routers.menu.getters import (
     device_confirm_delete_all_getter,
     device_confirm_delete_getter,
@@ -11,41 +13,16 @@ from app.telegram.routers.menu.getters import (
     devices_getter,
     menu_getter,
 )
-from app.telegram.routers.menu.handlers import (
-    on_device_delete_all_confirm,
-    on_device_delete_confirm,
-    on_device_delete_request,
-    on_get_trial,
-    on_reissue_subscription_confirm,
-)
+from app.telegram.routers.menu.handlers import on_device_delete_request
 from app.telegram.states import MainMenu, Subscription
+
+register_menu_catalog()
 
 main = Window(
     DynamicMedia("banner"),
     Format("{menu_text}"),
+    ConfigKeyboard(window_key="menu.main"),
     Row(
-        Url(
-            text=Format("{connect_text}"),
-            id="connect",
-            url=Format("{connect_url}"),
-            when=F["connectable"] & F["connect_url"],
-        ),
-    ),
-    Row(
-        Button(
-            text=Format("{trial_text}"),
-            id="trial",
-            on_click=on_get_trial,
-            when=F["trial_available"],
-        ),
-    ),
-    Row(
-        SwitchTo(
-            text=Format("{devices_text}"),
-            id="devices",
-            state=MainMenu.DEVICES,
-            when=F["has_device_limit"],
-        ),
         Start(
             text=Format("{subscription_text}"),
             id="subscription",
@@ -67,22 +44,7 @@ devices = Window(
         items="devices",
         when=F["has_devices"],
     ),
-    Row(
-        SwitchTo(
-            text=Format("{delete_all_text}"),
-            id="delete_all",
-            state=MainMenu.DEVICE_CONFIRM_DELETE_ALL,
-            when=F["has_devices"],
-        ),
-    ),
-    Row(
-        SwitchTo(
-            text=Format("{reissue_text}"), id="reissue", state=MainMenu.DEVICE_CONFIRM_REISSUE
-        ),
-    ),
-    Row(
-        SwitchTo(text=Format("{back_text}"), id="back", state=MainMenu.MAIN),
-    ),
+    ConfigKeyboard(window_key="menu.devices"),
     state=MainMenu.DEVICES,
     getter=devices_getter,
 )
@@ -90,14 +52,7 @@ devices = Window(
 device_confirm_delete = Window(
     DynamicMedia("banner"),
     Format("{confirm_message}"),
-    Row(
-        Button(
-            text=Format("{confirm_delete_text}"),
-            id="confirm_delete",
-            on_click=on_device_delete_confirm,
-        ),
-        SwitchTo(text=Format("{back_text}"), id="cancel", state=MainMenu.DEVICES),
-    ),
+    ConfigKeyboard(window_key="menu.device_confirm_delete"),
     state=MainMenu.DEVICE_CONFIRM_DELETE,
     getter=device_confirm_delete_getter,
 )
@@ -105,14 +60,7 @@ device_confirm_delete = Window(
 device_confirm_delete_all = Window(
     DynamicMedia("banner"),
     Format("{confirm_message}"),
-    Row(
-        Button(
-            text=Format("{confirm_delete_text}"),
-            id="confirm_delete_all",
-            on_click=on_device_delete_all_confirm,
-        ),
-        SwitchTo(text=Format("{back_text}"), id="cancel", state=MainMenu.DEVICES),
-    ),
+    ConfigKeyboard(window_key="menu.device_confirm_delete_all"),
     state=MainMenu.DEVICE_CONFIRM_DELETE_ALL,
     getter=device_confirm_delete_all_getter,
 )
@@ -120,14 +68,7 @@ device_confirm_delete_all = Window(
 device_confirm_reissue = Window(
     DynamicMedia("banner"),
     Format("{confirm_message}"),
-    Row(
-        Button(
-            text=Format("{confirm_reissue_text}"),
-            id="confirm_reissue",
-            on_click=on_reissue_subscription_confirm,
-        ),
-        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=MainMenu.DEVICES),
-    ),
+    ConfigKeyboard(window_key="menu.device_confirm_reissue"),
     state=MainMenu.DEVICE_CONFIRM_REISSUE,
     getter=device_confirm_reissue_getter,
 )

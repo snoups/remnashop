@@ -12,6 +12,7 @@ from app.modules.dialogs.usecases import (
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
+    UpdateDialogTextUseCase,
     UpdateDialogWindowButtonsUseCase,
     UpdateDialogWindowUseCase,
 )
@@ -64,6 +65,7 @@ from app.modules.users.usecases.set_user_personal_discount import (
         (DeleteCustomDialogWindowUseCase, Permission.DIALOGS_WINDOWS_DELETE),
         (ResetDialogWindowUseCase, Permission.DIALOGS_WINDOWS_RESET),
         (ResetAllDialogsUseCase, Permission.DIALOGS_WINDOWS_RESET_ALL),
+        (UpdateDialogTextUseCase, Permission.DIALOGS_TEXT_UPDATE),
     ],
 )
 def test_split_usecase_requires_expected_permission(

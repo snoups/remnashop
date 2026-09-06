@@ -71,6 +71,10 @@ class OAuthSettingsResponse(BaseModel):
     is_oidc_enabled: bool
     oidc_display_name: Optional[str] = None
     is_password_login_enabled: bool
+    is_passkey_configured: bool
+    is_passkey_enabled: bool
+    passkey_rp_id: Optional[str] = None
+    passkey_origin: Optional[str] = None
 
 
 class UpdateOAuthSettingsRequest(BaseModel):
@@ -86,6 +90,9 @@ class UpdateOAuthSettingsRequest(BaseModel):
     oidc_display_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     oidc_enabled: Optional[bool] = None
     password_login_enabled: Optional[bool] = None
+    passkey_enabled: Optional[bool] = None
+    passkey_rp_id: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    passkey_origin: Optional[str] = Field(default=None, pattern=r"^https?://.+", max_length=512)
 
 
 class ActiveLocalesResponse(BaseModel):

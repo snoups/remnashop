@@ -35,6 +35,8 @@ def test_oauth_settings_response_carries_oidc_fields() -> None:
         is_oidc_enabled=True,
         oidc_display_name="Keycloak",
         is_password_login_enabled=True,
+        is_passkey_configured=False,
+        is_passkey_enabled=False,
     )
 
     assert response.is_oidc_configured

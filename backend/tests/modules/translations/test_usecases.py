@@ -1,4 +1,5 @@
 import pytest
+from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
@@ -46,9 +47,12 @@ async def test_owner_can_update_translation_value(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     await _seed(settings_repository, translations_repository)
-    use_case = UpdateTranslationUseCase(translations_repository, settings_repository, uow, config)
+    use_case = UpdateTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
 
     updated = await use_case(
         OWNER,
@@ -66,9 +70,12 @@ async def test_update_translation_rejects_invalid_fluent_syntax(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     await _seed(settings_repository, translations_repository)
-    use_case = UpdateTranslationUseCase(translations_repository, settings_repository, uow, config)
+    use_case = UpdateTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
 
     with pytest.raises(ValidationError):
         await use_case(
@@ -88,9 +95,12 @@ async def test_update_translation_rejects_placeables(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     await _seed(settings_repository, translations_repository)
-    use_case = UpdateTranslationUseCase(translations_repository, settings_repository, uow, config)
+    use_case = UpdateTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
 
     with pytest.raises(ValidationError):
         await use_case(
@@ -110,9 +120,12 @@ async def test_update_translation_raises_not_found_for_unknown_key(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     await _seed(settings_repository, translations_repository)
-    use_case = UpdateTranslationUseCase(translations_repository, settings_repository, uow, config)
+    use_case = UpdateTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
 
     with pytest.raises(NotFoundError):
         await use_case(
@@ -128,9 +141,12 @@ async def test_reset_translation_raises_not_found_for_unknown_key(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     await _seed(settings_repository, translations_repository)
-    use_case = ResetTranslationUseCase(translations_repository, settings_repository, uow, config)
+    use_case = ResetTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
 
     with pytest.raises(NotFoundError):
         await use_case(
@@ -145,6 +161,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     from aiogram import Bot  # noqa: PLC0415
     from aiogram.methods.set_my_commands import SetMyCommands  # noqa: PLC0415
@@ -162,7 +179,9 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
 
     monkeypatch.setattr(Bot, "__call__", _capturing_call)
 
-    use_case = UpdateTranslationUseCase(translations_repository, settings_repository, uow, config)
+    use_case = UpdateTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
     await use_case(
         OWNER,
         UpdateTranslationInput(
@@ -179,10 +198,11 @@ async def test_owner_can_reset_translation_to_default(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     await _seed(settings_repository, translations_repository)
     update_use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config
+        translations_repository, settings_repository, uow, config, redis
     )
     await update_use_case(
         OWNER,
@@ -191,7 +211,7 @@ async def test_owner_can_reset_translation_to_default(
         ),
     )
     reset_use_case = ResetTranslationUseCase(
-        translations_repository, settings_repository, uow, config
+        translations_repository, settings_repository, uow, config, redis
     )
 
     reset = await reset_use_case(
@@ -206,9 +226,12 @@ async def test_regular_user_cannot_update_translation(
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    redis: Redis,
 ) -> None:
     await _seed(settings_repository, translations_repository)
-    use_case = UpdateTranslationUseCase(translations_repository, settings_repository, uow, config)
+    use_case = UpdateTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(

@@ -151,6 +151,9 @@ class SettingsRepository:
             oidc_display_name=row.oidc_display_name,
             oidc_enabled=row.oidc_enabled,
             password_login_enabled=row.password_login_enabled,
+            passkey_enabled=row.passkey_enabled,
+            passkey_rp_id=row.passkey_rp_id,
+            passkey_origin=row.passkey_origin,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )

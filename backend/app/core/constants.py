@@ -39,6 +39,7 @@ REDIS_KEY_PREFIX: Final[str] = "remnashop:"
 
 TELEGRAM_RESTART_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:restart"
 DIALOG_CONFIG_CHANGED_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:dialog-config-changed"
+TRANSLATION_CHANGED_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:translation-changed"
 
 # Shared between auth's /refresh, /logout and oauth's /oauth/{provider}/callback --
 # oauth writes this cookie, auth reads it.

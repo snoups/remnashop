@@ -55,6 +55,10 @@ export interface OAuthSettings {
   is_oidc_enabled: boolean;
   oidc_display_name: string | null;
   is_password_login_enabled: boolean;
+  is_passkey_configured: boolean;
+  is_passkey_enabled: boolean;
+  passkey_rp_id: string | null;
+  passkey_origin: string | null;
 }
 
 export interface UpdateOAuthSettingsPayload {
@@ -70,6 +74,9 @@ export interface UpdateOAuthSettingsPayload {
   oidc_display_name?: string;
   oidc_enabled?: boolean;
   password_login_enabled?: boolean;
+  passkey_enabled?: boolean;
+  passkey_rp_id?: string;
+  passkey_origin?: string;
 }
 
 export function getOAuthSettings(signal?: AbortSignal): Promise<OAuthSettings> {

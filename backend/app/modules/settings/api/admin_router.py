@@ -205,6 +205,10 @@ async def get_oauth_settings(
         is_oidc_enabled=settings.oidc_enabled,
         oidc_display_name=settings.oidc_display_name,
         is_password_login_enabled=settings.password_login_enabled,
+        is_passkey_configured=settings.is_passkey_configured,
+        is_passkey_enabled=settings.passkey_enabled,
+        passkey_rp_id=settings.passkey_rp_id,
+        passkey_origin=settings.passkey_origin,
     )
 
 
@@ -230,6 +234,9 @@ async def update_oauth_settings(
             oidc_display_name=payload.oidc_display_name,
             oidc_enabled=payload.oidc_enabled,
             password_login_enabled=payload.password_login_enabled,
+            passkey_enabled=payload.passkey_enabled,
+            passkey_rp_id=payload.passkey_rp_id,
+            passkey_origin=payload.passkey_origin,
         ),
     )
     return OAuthSettingsResponse(
@@ -241,6 +248,10 @@ async def update_oauth_settings(
         is_oidc_enabled=settings.oidc_enabled,
         oidc_display_name=settings.oidc_display_name,
         is_password_login_enabled=settings.password_login_enabled,
+        is_passkey_configured=settings.is_passkey_configured,
+        is_passkey_enabled=settings.passkey_enabled,
+        passkey_rp_id=settings.passkey_rp_id,
+        passkey_origin=settings.passkey_origin,
     )
 
 
