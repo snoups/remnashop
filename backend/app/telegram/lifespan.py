@@ -9,9 +9,11 @@ from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from fluentogram import TranslatorHub
 from loguru import logger
+from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository
@@ -57,10 +59,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     translator_hub = await container.get(TranslatorHub)
     translation_task = asyncio.create_task(listen_for_translation_changes(config, translator_hub))
 
+    redis = await container.get(Redis)
+    runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "telegram"))
+
     await endpoint.startup()
 
     yield
 
+    runtime_heartbeat_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await runtime_heartbeat_task
     dialog_config_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await dialog_config_task

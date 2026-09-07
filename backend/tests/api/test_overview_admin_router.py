@@ -144,6 +144,7 @@ async def test_get_overview_default_days_is_seven(
 
     assert response.status_code == 200
     assert response.json()["days"] == 7
+    assert response.json()["runtime"] == []
 
 
 async def test_get_overview_rejects_an_invalid_days_value(

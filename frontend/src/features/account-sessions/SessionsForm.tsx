@@ -10,6 +10,7 @@ import { clearAccessToken, getSessionId } from "@shared/lib/token-storage";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Spinner } from "@shared/ui/Spinner";
 
 export function SessionsForm() {
   const { t } = useTranslation();
@@ -46,7 +47,7 @@ export function SessionsForm() {
       </div>
 
       <div className="mt-3">
-        {state.kind === "loading" && <p className="text-sm text-muted-foreground">{t("sessions.loading")}</p>}
+        {state.kind === "loading" && <Spinner />}
         {state.kind === "error" && <p className="text-sm text-error">{t("sessions.loadError")}</p>}
         {state.kind === "ready" && (
           <SessionList

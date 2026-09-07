@@ -1,4 +1,4 @@
-import { AlertCircle, Filter, Loader2 } from "lucide-react";
+import { AlertCircle, Filter } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
 type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready" };
@@ -92,12 +93,7 @@ export function ReferralsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        {state.kind === "loading" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <p className="text-sm">{t("referrals.loading")}</p>
-          </div>
-        )}
+        {state.kind === "loading" && <Spinner className="py-12" />}
         {state.kind === "error" && (
           <div className="flex flex-col items-center gap-2 py-12 text-error">
             <AlertCircle className="size-5" />

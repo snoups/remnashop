@@ -1,10 +1,10 @@
-import { KeyRound, Link2 } from "lucide-react";
+import { startRegistration } from "@simplewebauthn/browser";
+import { Fingerprint, KeyRound, Link2, Pencil, Trash2, X } from "lucide-react";
 import { motion } from "motion/react";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getAuthStatus } from "@entities/auth/api";
-import { getErrorMessage } from "@shared/api/http";
 import {
   disconnectOAuth,
   getOAuthConnectAuthorizeUrl,
@@ -12,11 +12,22 @@ import {
   type OAuthIdentity,
   type OAuthProvider,
 } from "@entities/auth/oauth";
+import {
+  deletePasskey,
+  getPasskeyRegistrationOptions,
+  getPasskeys,
+  renamePasskey,
+  verifyPasskeyRegistration,
+  type Passkey,
+} from "@entities/auth/passkeys";
+import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { setOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
+import { Modal, useModalClose } from "@shared/ui/Modal";
+import { Spinner } from "@shared/ui/Spinner";
 
 const PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
@@ -29,14 +40,16 @@ const PROVIDER_ICONS: Record<OAuthProvider, ComponentType<{ className?: string }
 interface ConnectedAccountsData {
   identities: OAuthIdentity[];
   oidcDisplayName: string | null;
+  passkeys: Passkey[];
 }
 
 async function loadConnectedAccountsData(signal?: AbortSignal): Promise<ConnectedAccountsData> {
-  const [identities, status] = await Promise.all([
+  const [identities, status, passkeys] = await Promise.all([
     listConnectedAccounts(signal),
     getAuthStatus(signal),
+    getPasskeys(signal),
   ]);
-  return { identities, oidcDisplayName: status.oidc_display_name };
+  return { identities, oidcDisplayName: status.oidc_display_name, passkeys };
 }
 
 export function ConnectedAccountsForm() {
@@ -85,7 +98,7 @@ export function ConnectedAccountsForm() {
 
       <div className="mt-3 flex flex-col">
         {state.kind === "loading" && (
-          <p className="text-sm text-muted-foreground">{t("profile.oauthAccounts.loading")}</p>
+          <Spinner />
         )}
         {state.kind === "error" && (
           <p className="text-sm text-error">{t("profile.oauthAccounts.loadError")}</p>
@@ -129,7 +142,183 @@ export function ConnectedAccountsForm() {
               </div>
             );
           })}
+        {state.kind === "ready" && <PasskeyRow passkeys={state.data.passkeys} onChange={reload} />}
       </div>
     </div>
+  );
+}
+
+interface PasskeyRowProps {
+  passkeys: Passkey[];
+  onChange: () => void;
+}
+
+function PasskeyRow({ passkeys, onChange }: PasskeyRowProps) {
+  const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
+  const [isAdding, setIsAdding] = useState(false);
+  const [isManaging, setIsManaging] = useState(false);
+
+  const handleAdd = async () => {
+    setIsAdding(true);
+    try {
+      const optionsJSON = await getPasskeyRegistrationOptions();
+      const response = await startRegistration({ optionsJSON: optionsJSON as never });
+      const name = window.prompt(t("profile.passkeys.namePrompt"), "") || null;
+      await verifyPasskeyRegistration(response as unknown as Record<string, unknown>, name);
+      onChange();
+    } catch (err) {
+      if (err instanceof Error && err.name === "NotAllowedError") {
+        toast.error(t("profile.passkeys.cancelled"));
+      } else if (err instanceof Error && err.name === "NotSupportedError") {
+        toast.error(t("profile.passkeys.notSupported"));
+      } else {
+        toast.error(getErrorMessage(err, t("profile.passkeys.addError")));
+      }
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
+      <div className="flex items-center gap-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
+          <Fingerprint className="size-4" />
+        </div>
+        <div>
+          <p className="text-[13px] font-medium text-foreground">{t("profile.passkeys.title")}</p>
+          <p className="text-[12px] text-muted-foreground">
+            {passkeys.length > 0
+              ? t("profile.oauthAccounts.connected")
+              : t("profile.oauthAccounts.notConnected")}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        {passkeys.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setIsManaging(true)}
+            className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5"
+          >
+            {t("profile.passkeys.manage")}
+          </button>
+        )}
+        <motion.button
+          type="button"
+          onClick={() => void handleAdd()}
+          disabled={isAdding}
+          {...bounceTap(bounceStrength)}
+          className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isAdding ? t("profile.passkeys.adding") : t("profile.passkeys.addButton")}
+        </motion.button>
+      </div>
+
+      {isManaging && (
+        <Modal onClose={() => setIsManaging(false)} size="sm">
+          <PasskeysManageDialogBody passkeys={passkeys} onChange={onChange} />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+interface PasskeysManageDialogBodyProps {
+  passkeys: Passkey[];
+  onChange: () => void;
+}
+
+function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBodyProps) {
+  const { t } = useTranslation();
+  const close = useModalClose();
+
+  const handleRename = async (passkey: Passkey) => {
+    const name = window.prompt(t("profile.passkeys.namePrompt"), passkey.name);
+    if (!name || name === passkey.name) return;
+    try {
+      await renamePasskey(passkey.id, name);
+      onChange();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("profile.passkeys.renameError")));
+    }
+  };
+
+  const handleDelete = async (passkey: Passkey) => {
+    if (!window.confirm(t("profile.passkeys.deleteConfirm"))) return;
+    try {
+      await deletePasskey(passkey.id);
+      onChange();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("profile.passkeys.deleteError")));
+    }
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+            <Fingerprint className="size-4" />
+          </div>
+          {t("profile.passkeys.title")}
+        </h2>
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t("profile.passkeys.close")}
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-1 px-5 pb-5 pt-4">
+        {passkeys.length === 0 && (
+          <p className="text-sm text-muted-foreground">{t("profile.passkeys.empty")}</p>
+        )}
+        {passkeys.map((passkey) => (
+          <div
+            key={passkey.id}
+            className="flex items-center justify-between gap-3 rounded-full py-1.5 hover:bg-white/[0.04]"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
+                <Fingerprint className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-foreground">{passkey.name}</p>
+                <p className="text-[12px] text-muted-foreground">
+                  {passkey.last_used_at
+                    ? t("profile.passkeys.lastUsed", {
+                        date: new Date(passkey.last_used_at).toLocaleDateString(),
+                      })
+                    : t("profile.passkeys.neverUsed")}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              <button
+                type="button"
+                onClick={() => void handleRename(passkey)}
+                aria-label={t("profile.passkeys.rename")}
+                className="rounded-full p-1.5 text-foreground/70 hover:bg-white/5 hover:text-foreground"
+              >
+                <Pencil className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete(passkey)}
+                aria-label={t("profile.passkeys.delete")}
+                className="rounded-full p-1.5 text-error/80 hover:bg-white/5 hover:text-error"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

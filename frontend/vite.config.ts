@@ -17,6 +17,13 @@ export default defineConfig({
       "@shared": fileURLToPath(new URL("./src/shared", import.meta.url)),
     },
   },
+  optimizeDeps: {
+    // recharts pulls in a dozen d3-* packages -- without eager pre-bundling
+    // Vite discovers them lazily on first visit to a page that imports it
+    // (the overview dashboard), triggering a mid-navigation "bundling
+    // dependencies" pass that stalls every in-flight request for 10-20s+.
+    include: ["recharts"],
+  },
   server: {
     proxy: {
       "/api": {

@@ -10,6 +10,7 @@ import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
 // Telegram's secret_token requirement: 1-256 chars, only A-Z, a-z, 0-9, "_", "-".
@@ -120,9 +121,7 @@ export function BotSettingsForm() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-foreground">{t("settings.bot.title")}</h2>
-            {state.kind === "loading" && (
-              <p className="text-[12.5px] text-muted-foreground">{t("settings.bot.loading")}</p>
-            )}
+            {state.kind === "loading" && <Spinner className="justify-start" />}
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.bot.description")}</p>
           </div>
           {state.kind === "ready" && (

@@ -9,6 +9,7 @@ import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { parseOptionalInt, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
 const inputClassName =
@@ -90,7 +91,7 @@ export function ShopSettingsForm() {
       </div>
 
       {state.kind === "loading" && (
-        <p className="mt-4 text-sm text-muted-foreground">{t("settings.shop.loading")}</p>
+        <Spinner className="mt-4" />
       )}
       {state.kind === "error" && (
         <p className="mt-4 text-sm text-error">{t("settings.shop.loadError")}</p>

@@ -20,6 +20,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { toast } from "@shared/lib/toast";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
 const ACCEPTED_FILE_TYPES = "image/jpeg,image/png,image/webp";
@@ -284,9 +285,7 @@ export function AppearanceSettingsForm() {
         </div>
         <div>
           <h2 className="text-sm font-bold text-foreground">{t("settings.appearance.title")}</h2>
-          {state.kind === "loading" && (
-            <p className="text-[12.5px] text-muted-foreground">{t("settings.appearance.loading")}</p>
-          )}
+          {state.kind === "loading" && <Spinner className="justify-start" />}
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.appearance.description")}</p>
         </div>
       </div>

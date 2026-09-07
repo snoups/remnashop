@@ -12,6 +12,7 @@ import {
   BlacklistPage,
   BotSettingsPage,
   DashboardPage,
+  DialogsPage,
   EventLogPage,
   GatewaysSettingsPage,
   GeneralSettingsPage,
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: "dialogs", element: <DialogsPage /> },
       {
         path: "settings",
         element: <SettingsPage />,

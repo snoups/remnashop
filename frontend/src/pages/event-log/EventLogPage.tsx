@@ -30,6 +30,7 @@ import { DatePickerField } from "@shared/ui/DatePickerField";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { Modal, useModalClose } from "@shared/ui/Modal";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Spinner } from "@shared/ui/Spinner";
 
 type LoadState =
   | { kind: "loading" }
@@ -328,12 +329,7 @@ export function EventLogPage() {
         {state.kind === "ready" && isFetching && (
           <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
         )}
-        {state.kind === "loading" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <p className="text-sm">{t("eventLog.loading")}</p>
-          </div>
-        )}
+        {state.kind === "loading" && <Spinner className="py-12" />}
         {state.kind === "error" && (
           <div className="flex flex-col items-center gap-2 py-12 text-error">
             <AlertCircle className="size-5" />
@@ -404,6 +400,7 @@ export function EventLogPage() {
                       type="button"
                       onClick={() => void handleLoadMore()}
                       disabled={isLoadingMore}
+                      aria-label={isLoadingMore ? t("eventLog.pagination.loadingMore") : undefined}
                       {...bounceTap(bounceStrength)}
                       className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -412,9 +409,7 @@ export function EventLogPage() {
                       ) : (
                         <ChevronDown className="size-3.5" />
                       )}
-                      {isLoadingMore
-                        ? t("eventLog.pagination.loadingMore")
-                        : t("eventLog.pagination.loadMore")}
+                      {!isLoadingMore && t("eventLog.pagination.loadMore")}
                     </motion.button>
                   </div>
                 )}

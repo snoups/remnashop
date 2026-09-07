@@ -14,6 +14,7 @@ import {
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Spinner } from "@shared/ui/Spinner";
 
 const BANNER_NAMES = [
   "default",
@@ -221,7 +222,7 @@ export function BannerSettingsForm() {
 
       <div className="mt-4 flex flex-col gap-4">
         {state.kind === "loading" && (
-          <p className="text-sm text-muted-foreground">{t("settings.banners.loading")}</p>
+          <Spinner />
         )}
         {state.kind === "error" && (
           <p className="text-sm text-error">{t("settings.banners.loadError")}</p>

@@ -1,14 +1,15 @@
-import { Bell, ChevronDown, LogOut, Search, User as UserIcon } from "lucide-react";
+import { Bell, ChevronDown, LogOut, RefreshCw, Search, User as UserIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { usePageTitle } from "@shared/lib/use-page-title";
+import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 
@@ -32,6 +33,15 @@ export function Header({ onLogout }: HeaderProps) {
   const brandName = useBrandName();
   const pageTitle = usePageTitle(brandName);
   const bounceStrength = useBounceStrength();
+  const location = useLocation();
+  const isOverviewPage = location.pathname === "/dashboard" || location.pathname === "/dashboard/";
+  const { refresh } = useRefreshSignal();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = useCallback(() => {
+    refresh();
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  }, [refresh]);
   const userState = useCurrentUser();
   const login = userState.kind === "ready" ? userState.data.login : null;
   const role = userState.kind === "ready" ? userState.data.role : null;
@@ -45,7 +55,22 @@ export function Header({ onLogout }: HeaderProps) {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-5 px-8 py-5">
-      <span className="text-[21px] font-bold tracking-tight text-foreground">{pageTitle}</span>
+      <div className="flex items-center gap-2.5">
+        <span className="text-[21px] font-bold tracking-tight text-foreground">{pageTitle}</span>
+        {isOverviewPage && (
+          <motion.button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title={t("dashboard.refresh")}
+            aria-label={t("dashboard.refresh")}
+            {...bounceTap(bounceStrength, 0.12)}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`size-[15px] ${isRefreshing ? "animate-spin" : ""}`} />
+          </motion.button>
+        )}
+      </div>
 
       <div className="flex flex-1 items-center justify-end gap-3.5">
         <motion.label
@@ -93,13 +118,11 @@ export function Header({ onLogout }: HeaderProps) {
             onClick={() => setOpenPopover((open) => (open === "user" ? null : "user"))}
             aria-haspopup="menu"
             aria-expanded={openPopover === "user"}
-            initial="rest"
-            whileTap="tap"
+            {...bounceTap(bounceStrength, 0.05)}
             className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1"
           >
-            <motion.span
+            <span
               aria-hidden
-              variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
               className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.05]"
             />
             <div className="relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas">

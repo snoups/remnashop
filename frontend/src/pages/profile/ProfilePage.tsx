@@ -10,6 +10,7 @@ import { SecurityForm } from "@features/account-security/SecurityForm";
 import { logout } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { clearAccessToken } from "@shared/lib/token-storage";
+import { Spinner } from "@shared/ui/Spinner";
 import { useCurrentUser } from "@entities/user/use-current-user";
 
 export function ProfilePage() {
@@ -29,7 +30,7 @@ export function ProfilePage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-        {state.kind === "loading" && <p className="text-sm text-muted-foreground">{t("profile.loading")}</p>}
+        {state.kind === "loading" && <Spinner />}
         {state.kind === "error" && <p className="text-sm text-error">{t("profile.loadError")}</p>}
         {state.kind === "ready" && (
           <div className="flex items-center gap-4">

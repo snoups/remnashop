@@ -10,6 +10,7 @@ import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
+import { Spinner } from "@shared/ui/Spinner";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 
@@ -40,7 +41,7 @@ export function LoginPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{brandName}</h1>
         </div>
 
-        {state.kind === "loading" && <p className="text-muted-foreground">{t("auth.loading")}</p>}
+        {state.kind === "loading" && <Spinner />}
 
         {state.kind === "ready" && state.data.is_register_allowed && (
           <BootstrapOwnerForm onSuccess={goToDashboard} />

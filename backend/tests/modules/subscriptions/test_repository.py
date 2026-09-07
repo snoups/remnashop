@@ -607,3 +607,81 @@ async def test_count_active_counts_active_disabled_and_limited_but_not_expired_o
     )
 
     assert await subscription_repository.count_active() == 3
+
+
+async def test_count_by_status_groups_live_rows_and_excludes_deleted(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    for offset, status in enumerate(
+        (
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.LIMITED,
+            SubscriptionStatus.EXPIRED,
+            SubscriptionStatus.DELETED,
+        )
+    ):
+        await create_subscription(
+            subscription_repository,
+            user_repository,
+            telegram_id=821_000 + offset,
+            remnawave_user_id=821_000 + offset,
+            status=status,
+        )
+
+    assert await subscription_repository.count_by_status() == {
+        SubscriptionStatus.ACTIVE: 2,
+        SubscriptionStatus.LIMITED: 1,
+        SubscriptionStatus.EXPIRED: 1,
+    }
+
+
+async def test_count_expiring_between_only_counts_live_rows_in_the_window(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    now = datetime_now()
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=822_001,
+        remnawave_user_id=822_001,
+        status=SubscriptionStatus.ACTIVE,
+        expire_at=now + timedelta(days=3),
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=822_002,
+        remnawave_user_id=822_002,
+        status=SubscriptionStatus.LIMITED,
+        expire_at=now + timedelta(days=6),
+    )
+    # outside the window
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=822_003,
+        remnawave_user_id=822_003,
+        status=SubscriptionStatus.ACTIVE,
+        expire_at=now + timedelta(days=20),
+    )
+    # already lapsed, still ACTIVE-status
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=822_004,
+        remnawave_user_id=822_004,
+        status=SubscriptionStatus.ACTIVE,
+        expire_at=now - timedelta(days=1),
+    )
+    # terminal status inside the window
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=822_005,
+        remnawave_user_id=822_005,
+        status=SubscriptionStatus.EXPIRED,
+        expire_at=now + timedelta(days=2),
+    )
+
+    assert await subscription_repository.count_expiring_between(now, now + timedelta(days=7)) == 2

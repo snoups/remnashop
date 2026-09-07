@@ -50,7 +50,7 @@ export function GithubOAuthGuideDialog() {
           {t("settings.oauth.githubGuide.settingsTitle")}
         </h3>
         <p className="mt-2">
-          {withEmphasis(t("settings.oauth.githubGuide.settingsBody"), ["Client ID", "Client Secret"])}
+          {withEmphasis(t("settings.oauth.githubGuide.settingsBody"), ["Client ID", "Client secret"])}
         </p>
       </div>
     </GuideDialog>

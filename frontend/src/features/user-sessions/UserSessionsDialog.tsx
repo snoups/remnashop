@@ -10,6 +10,7 @@ import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Modal, useModalClose } from "@shared/ui/Modal";
+import { Spinner } from "@shared/ui/Spinner";
 
 interface UserSessionsDialogProps {
   userId: number;
@@ -102,7 +103,7 @@ function UserSessionsDialogBody({ userId, userName }: Pick<UserSessionsDialogPro
           </div>
         ) : (
           <>
-            {state.kind === "loading" && <p className="text-sm text-muted-foreground">{t("sessions.loading")}</p>}
+            {state.kind === "loading" && <Spinner />}
             {state.kind === "error" && <p className="text-sm text-error">{t("sessions.loadError")}</p>}
             {state.kind === "ready" && <SessionList sessions={state.data} onRequestRevoke={setPendingRevoke} />}
           </>

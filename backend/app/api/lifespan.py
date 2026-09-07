@@ -1,14 +1,18 @@
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from prometheus_client import REGISTRY
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.metrics import register_db_pool_metrics
+from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository, ensure_translations_seeded
@@ -20,6 +24,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     container: AsyncContainer = app.state.dishka_container
     engine = await container.get(AsyncEngine)
     register_db_pool_metrics(engine, registry=REGISTRY)
+
+    redis = await container.get(Redis)
+    runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "api"))
 
     async with container(scope=Scope.REQUEST) as startup_container:
         config = await startup_container.get(AppConfig)
@@ -37,5 +44,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
+    runtime_heartbeat_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await runtime_heartbeat_task
     await broker.shutdown()
     await container.close()

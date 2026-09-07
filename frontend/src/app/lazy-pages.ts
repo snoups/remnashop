@@ -22,6 +22,9 @@ export const BotSettingsPage = lazy(() =>
 export const DashboardPage = lazy(() =>
   import("@pages/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
+export const DialogsPage = lazy(() =>
+  import("@pages/dialogs/DialogsPage").then((m) => ({ default: m.DialogsPage })),
+);
 export const EventLogPage = lazy(() =>
   import("@pages/event-log/EventLogPage").then((m) => ({ default: m.EventLogPage })),
 );

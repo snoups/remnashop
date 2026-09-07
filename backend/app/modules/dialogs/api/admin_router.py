@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from app.api.dependencies.admin import require_admin
 from app.core.enums import Locale
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.modules.dialogs import catalog
 from app.modules.dialogs.api.schemas import (
     CreateCustomWindowRequest,
     DialogButtonInput,
@@ -63,6 +64,12 @@ def _to_button_item(button: DialogButtonDto) -> DialogButtonItem:
 
 
 def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
+    if catalog.has_window(window.key):
+        text_keys = list(catalog.get_window(window.key).text_keys)
+    else:
+        # Custom windows aren't in the in-process catalog -- their text key
+        # follows the fixed naming convention create_custom_window.py uses.
+        text_keys = [f"msg-dialog-{window.key}"]
     return DialogWindowResponse(
         key=window.key,
         kind=window.kind,
@@ -70,6 +77,7 @@ def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
         banner_name=window.banner_name,
         is_enabled=window.is_enabled,
         position=window.position,
+        text_keys=text_keys,
         buttons=[_to_button_item(button) for button in window.buttons],
     )
 

@@ -12,6 +12,7 @@ import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Spinner } from "@shared/ui/Spinner";
 
 export function ApiTokensForm() {
   const { t } = useTranslation();
@@ -60,7 +61,7 @@ export function ApiTokensForm() {
       </div>
 
       <div className="mt-3">
-        {state.kind === "loading" && <p className="text-sm text-muted-foreground">{t("apiTokens.loading")}</p>}
+        {state.kind === "loading" && <Spinner />}
         {state.kind === "error" && <p className="text-sm text-error">{t("apiTokens.loadError")}</p>}
         {state.kind === "ready" && state.data.length === 0 && (
           <p className="text-sm text-muted-foreground">{t("apiTokens.empty")}</p>

@@ -1,4 +1,4 @@
-import { AlertCircle, Info, KeyRound, LaptopMinimal, Loader2, UserMinus } from "lucide-react";
+import { AlertCircle, Info, KeyRound, LaptopMinimal, UserMinus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -15,6 +15,7 @@ import { useCurrentUser } from "@entities/user/use-current-user";
 import type { Role } from "@shared/types/rbac";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Spinner } from "@shared/ui/Spinner";
 
 const ROLE_BADGE_CLASSNAME: Record<Role, string> = {
   USER: "border-border bg-white/[0.04] text-muted-foreground",
@@ -62,12 +63,7 @@ export function AdminsPage() {
       </div>
 
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        {state.kind === "loading" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <p className="text-sm">{t("admins.loading")}</p>
-          </div>
-        )}
+        {state.kind === "loading" && <Spinner className="py-12" />}
         {state.kind === "error" && (
           <div className="flex flex-col items-center gap-2 py-12 text-error">
             <AlertCircle className="size-5" />

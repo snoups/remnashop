@@ -10,6 +10,7 @@ const PAGE_TITLE_BY_PATH: { prefix: string; key: string }[] = [
   { prefix: "/dashboard/admins", key: "admins.title" },
   { prefix: "/dashboard/event-log", key: "eventLog.title" },
   { prefix: "/dashboard/users", key: "users.title" },
+  { prefix: "/dashboard/dialogs", key: "dialogs.title" },
   { prefix: "/dashboard/subscriptions", key: "subscriptions.title" },
   { prefix: "/dashboard/payments", key: "payments.title" },
   { prefix: "/dashboard/plans", key: "plans.title" },

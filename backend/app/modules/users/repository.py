@@ -310,6 +310,14 @@ class UserRepository:
             or 0
         )
 
+    async def earliest_registration(self, role: Role) -> Optional[date]:
+        earliest = await self.session.scalar(
+            select(func.min(func.date(func.timezone("UTC", User.created_at)))).where(
+                User.role == role
+            )
+        )
+        return cast(Optional[date], earliest)
+
     async def count_registrations_by_day(
         self, since: datetime, role: Role
     ) -> list[tuple[date, int]]:

@@ -1,4 +1,4 @@
-import { ChevronDown, KeyRound, Lock } from "lucide-react";
+import { ChevronDown, FingerprintPattern, KeyRound, KeySquare, RectangleEllipsis } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,13 +14,14 @@ import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
 import { GithubOAuthGuideDialog } from "./GithubOAuthGuideDialog";
 import { OidcOAuthGuideDialog } from "./OidcOAuthGuideDialog";
+import { PasskeyGuideDialog } from "./PasskeyGuideDialog";
 import { PasswordLoginGuideDialog } from "./PasswordLoginGuideDialog";
 import { TelegramOAuthGuideDialog } from "./TelegramOAuthGuideDialog";
-import { PasskeysManageDialog } from "@features/passkeys/PasskeysManageDialog";
 
 type Provider = "github" | "telegram" | "oidc";
 
@@ -38,7 +39,6 @@ export function OAuthSettingsForm() {
   const [oidcClientSecret, setOidcClientSecret] = useState("");
   const [passkeyRpId, setPasskeyRpId] = useState("");
   const [passkeyOrigin, setPasskeyOrigin] = useState("");
-  const [isManagingPasskeys, setIsManagingPasskeys] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -106,7 +106,7 @@ export function OAuthSettingsForm() {
       </div>
 
       {state.kind === "loading" && (
-        <p className="mt-4 text-sm text-muted-foreground">{t("settings.oauth.loading")}</p>
+        <Spinner className="mt-4" />
       )}
       {state.kind === "error" && (
         <p className="mt-4 text-sm text-error">{t("settings.oauth.loadError")}</p>
@@ -125,16 +125,15 @@ export function OAuthSettingsForm() {
               fields={[
                 {
                   key: "github_client_id",
-                  label: t("settings.oauth.githubClientIdLabel"),
+                  label: t("settings.oauth.clientIdLabel"),
                   value: githubClientId,
                   onChange: setGithubClientId,
                 },
                 {
                   key: "github_client_secret",
-                  label: t("settings.oauth.githubClientSecretLabel"),
+                  label: t("settings.oauth.clientSecretLabel"),
                   value: githubClientSecret,
                   onChange: setGithubClientSecret,
-                  type: "password",
                 },
               ]}
             />
@@ -149,22 +148,21 @@ export function OAuthSettingsForm() {
               fields={[
                 {
                   key: "telegram_client_id",
-                  label: t("settings.oauth.telegramClientIdLabel"),
+                  label: t("settings.oauth.clientIdLabel"),
                   value: telegramClientId,
                   onChange: setTelegramClientId,
                 },
                 {
                   key: "telegram_client_secret",
-                  label: t("settings.oauth.telegramClientSecretLabel"),
+                  label: t("settings.oauth.clientSecretLabel"),
                   value: telegramClientSecret,
                   onChange: setTelegramClientSecret,
-                  type: "password",
                 },
               ]}
             />
             <ProviderPanel
               provider="oidc"
-              icon={KeyRound}
+              icon={KeySquare}
               label={state.data.oidc_display_name ?? t("profile.oauthAccounts.oidcFallback")}
               isConfigured={state.data.is_oidc_configured}
               isEnabled={state.data.is_oidc_enabled}
@@ -185,16 +183,15 @@ export function OAuthSettingsForm() {
                 },
                 {
                   key: "oidc_client_id",
-                  label: t("settings.oauth.oidcClientIdLabel"),
+                  label: t("settings.oauth.clientIdLabel"),
                   value: oidcClientId,
                   onChange: setOidcClientId,
                 },
                 {
                   key: "oidc_client_secret",
-                  label: t("settings.oauth.oidcClientSecretLabel"),
+                  label: t("settings.oauth.clientSecretLabel"),
                   value: oidcClientSecret,
                   onChange: setOidcClientSecret,
-                  type: "password",
                 },
               ]}
             />
@@ -206,7 +203,6 @@ export function OAuthSettingsForm() {
               onRpIdChange={setPasskeyRpId}
               onOriginChange={setPasskeyOrigin}
               onToggled={setData}
-              onManage={() => setIsManagingPasskeys(true)}
             />
           </div>
 
@@ -227,9 +223,6 @@ export function OAuthSettingsForm() {
           </motion.button>
         </form>
       )}
-      {isManagingPasskeys && (
-        <PasskeysManageDialog onClose={() => setIsManagingPasskeys(false)} />
-      )}
     </div>
   );
 }
@@ -239,7 +232,6 @@ interface ProviderField {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "password";
 }
 
 interface ProviderPanelProps {
@@ -341,7 +333,7 @@ function ProviderPanel({
                 <div key={field.key} className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-foreground/80">{field.label}</label>
                   <input
-                    type={field.type ?? "text"}
+                    type="text"
                     value={field.value}
                     onChange={(event) => field.onChange(event.target.value)}
                     placeholder={t("settings.oauth.placeholder")}
@@ -366,7 +358,6 @@ interface PasskeyPanelProps {
   onRpIdChange: (value: string) => void;
   onOriginChange: (value: string) => void;
   onToggled: (settings: OAuthSettings) => void;
-  onManage: () => void;
 }
 
 function PasskeyPanel({
@@ -377,7 +368,6 @@ function PasskeyPanel({
   onRpIdChange,
   onOriginChange,
   onToggled,
-  onManage,
 }: PasskeyPanelProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -409,7 +399,7 @@ function PasskeyPanel({
         className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-          <KeyRound className="size-4" />
+          <FingerprintPattern className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-foreground">
@@ -428,6 +418,7 @@ function PasskeyPanel({
             className={`size-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
           />
         </span>
+        <PasskeyGuideDialog />
         <div className="flex" onClick={(event) => event.stopPropagation()}>
           <Switch
             checked={isEnabled}
@@ -448,9 +439,6 @@ function PasskeyPanel({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
-              <p className="text-[12.5px] text-muted-foreground">
-                {t("settings.oauth.passkeyDescription")}
-              </p>
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-foreground/80">
                   {t("settings.oauth.passkeyRpIdLabel")}
@@ -459,7 +447,7 @@ function PasskeyPanel({
                   type="text"
                   value={rpId}
                   onChange={(event) => onRpIdChange(event.target.value)}
-                  placeholder={t("settings.oauth.passkeyRpIdPlaceholder")}
+                  placeholder={t("settings.oauth.placeholder")}
                   autoComplete="off"
                   className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
                 />
@@ -472,18 +460,11 @@ function PasskeyPanel({
                   type="text"
                   value={origin}
                   onChange={(event) => onOriginChange(event.target.value)}
-                  placeholder={t("settings.oauth.passkeyOriginPlaceholder")}
+                  placeholder={t("settings.oauth.placeholder")}
                   autoComplete="off"
                   className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
                 />
               </div>
-              <button
-                type="button"
-                onClick={onManage}
-                className="w-fit rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5"
-              >
-                {t("settings.oauth.passkeyManageButton")}
-              </button>
             </div>
           </motion.div>
         )}
@@ -516,7 +497,7 @@ function PasswordLoginToggle({ isEnabled, onToggled }: PasswordLoginToggleProps)
   return (
     <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-        <Lock className="size-4" />
+        <RectangleEllipsis className="size-4" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-medium text-foreground">

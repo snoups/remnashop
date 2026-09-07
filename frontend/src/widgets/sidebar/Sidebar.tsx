@@ -4,6 +4,7 @@ import {
   LayoutGrid,
   Layers,
   Link2,
+  MessageSquare,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -45,6 +46,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: "overview", to: "/dashboard", icon: LayoutGrid, end: true },
   { key: "users", to: "/dashboard/users", icon: Users, permission: "USERS_VIEW" },
+  { key: "dialogs", to: "/dashboard/dialogs", icon: MessageSquare, permission: "DIALOGS_WINDOWS_VIEW" },
   { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, permission: "SUBSCRIPTIONS_VIEW" },
   { key: "plans", to: "/dashboard/plans", icon: Tag, permission: "PLANS_VIEW" },
   { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, permission: "PROMOCODES_VIEW" },

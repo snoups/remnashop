@@ -347,6 +347,51 @@ async def test_reset_window_and_reset_all(
     assert reset_all_resp.status_code == 204
 
 
+async def test_window_response_includes_text_keys_for_seed_window(
+    client: httpx.AsyncClient,
+    dialog_repository: DialogRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.text_keys_test",
+            flow=DialogFlow.MENU,
+            text_keys=("msg-text-keys-test",),
+            banner_name=None,
+        )
+    )
+    await dialog_repository.upsert_seed(
+        "menu.text_keys_test", DialogFlow.MENU, None, {"banner_name": None, "buttons": []}
+    )
+    await uow.commit()
+
+    response = await client.get(f"{API_V1}/dialogs/windows/menu.text_keys_test", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["text_keys"] == ["msg-text-keys-test"]
+
+
+async def test_window_response_includes_text_keys_for_custom_window(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    create_resp = await client.post(
+        f"{API_V1}/dialogs/windows",
+        headers=headers,
+        json={"title_text": "Custom title"},
+    )
+    assert create_resp.status_code == 201
+    key = create_resp.json()["key"]
+    assert create_resp.json()["text_keys"] == [f"msg-dialog-{key}"]
+
+
 async def test_update_dialog_text_requires_permission(
     client: httpx.AsyncClient, settings_repository, translations_repository
 ) -> None:

@@ -169,6 +169,30 @@ class SubscriptionRepository:
             or 0
         )
 
+    async def count_by_status(self) -> dict[SubscriptionStatus, int]:
+        rows = (
+            await self.session.execute(
+                select(Subscription.status, func.count())
+                .where(Subscription.status != SubscriptionStatus.DELETED)
+                .group_by(Subscription.status)
+            )
+        ).tuples()
+        return dict(rows.all())
+
+    async def count_expiring_between(self, start: datetime, end: datetime) -> int:
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(Subscription)
+                .where(
+                    Subscription.status.in_(_ACTIVE_STATUSES),
+                    Subscription.expire_at >= start,
+                    Subscription.expire_at < end,
+                )
+            )
+            or 0
+        )
+
     async def get_active_by_user(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)

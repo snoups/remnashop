@@ -8,6 +8,7 @@ import { type BotCommandItem, getBotCommands, updateBotCommands } from "@entitie
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
 type Row = BotCommandItem & { id: number };
@@ -100,7 +101,7 @@ export function BotCommandsForm() {
 
       <div className="mt-4 flex flex-col gap-4">
         {state.kind === "loading" && (
-          <p className="text-sm text-muted-foreground">{t("settings.botCommands.loading")}</p>
+          <Spinner />
         )}
         {state.kind === "error" && (
           <p className="text-sm text-error">{t("settings.botCommands.loadError")}</p>

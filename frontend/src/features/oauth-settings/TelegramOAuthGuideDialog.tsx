@@ -75,8 +75,7 @@ export function TelegramOAuthGuideDialog() {
         <p className="mt-2">
           {withEmphasis(t("settings.oauth.telegramGuide.accessSetupIntro"), [
             "Client ID",
-            "Client Secret",
-            "Frontend Domain",
+            "Client secret",
           ])}
         </p>
         <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5">

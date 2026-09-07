@@ -191,6 +191,7 @@ function AdLinkStatsDialogBody({
                       type="button"
                       onClick={() => void handleLoadMore()}
                       disabled={isLoadingMore}
+                      aria-label={isLoadingMore ? t("advertising.stats.loadingMore") : undefined}
                       {...bounceTap(bounceStrength)}
                       className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-[12.5px] text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -199,7 +200,7 @@ function AdLinkStatsDialogBody({
                       ) : (
                         <ChevronDown className="size-3.5" />
                       )}
-                      {isLoadingMore ? t("advertising.stats.loadingMore") : t("advertising.stats.loadMore")}
+                      {!isLoadingMore && t("advertising.stats.loadMore")}
                     </motion.button>
                   </div>
                 )}

@@ -54,28 +54,49 @@
   },
   "dashboard": {
     "loadError": "Couldn't load the overview. Try refreshing.",
+    "refresh": "Refresh data",
     "periodDays": "{{count}}d",
+    "periodAll": "All time",
     "stats": {
-      "totalUsers": "Total users",
-      "newToday": "New today",
-      "activeSubscriptions": "Active subscriptions",
-      "paidOrders": "Paid orders",
-      "revenue": "Revenue"
+      "totalUsers": "Total users"
     },
     "charts": {
       "revenue": "Revenue",
-      "registrations": "Registrations"
+      "registrations": "Registrations",
+      "online": "Online",
+      "onlineValue": "Users",
+      "subscriptions": "Subscription distribution"
+    },
+    "subscriptions": {
+      "active": "Active",
+      "limited": "Limited",
+      "expired": "Expired",
+      "expiringSoon": "Expiring (7d)",
+      "disabled": "Disabled"
     },
     "recentEvents": "Recent events",
     "viewAllEvents": "View all",
     "noEvents": "No events yet",
-    "botStatus": "Bot",
-    "botConfigured": "Configured",
-    "botNotConfigured": "Not configured",
-    "quickLinks": {
-      "createPlan": "Create plan",
-      "createPromocode": "Create promocode",
-      "createAdmin": "Create admin"
+    "runtime": {
+      "title": "Runtime",
+      "memory": "Memory",
+      "uptime": "Uptime",
+      "eventLoop": "Event loop",
+      "eventLoopDelay": "Delay",
+      "eventLoopP99": "P99",
+      "ramUsage": "RAM usage",
+      "totalRam": "Total RAM",
+      "durationDays": "{{count}}d",
+      "durationHours": "{{count}}h",
+      "durationMinutes": "{{count}}m",
+      "units": {
+        "byte": "B",
+        "kilobyte": "KB",
+        "megabyte": "MB",
+        "gigabyte": "GB",
+        "terabyte": "TB",
+        "millisecond": "ms"
+      }
     }
   },
   "eventLog": {
@@ -139,6 +160,7 @@
     "overview": "Overview",
     "settings": "Settings",
     "users": "Users",
+    "dialogs": "Dialogs",
     "plans": "Plans",
     "subscriptions": "Subscriptions",
     "promocodes": "Promocodes",
@@ -370,23 +392,23 @@
       "configured": "configured",
       "notConfigured": "not configured",
       "enableAria": "Enable {{provider}}",
-      "githubClientIdLabel": "GitHub client ID",
-      "githubClientSecretLabel": "GitHub client secret",
-      "telegramClientIdLabel": "Telegram client ID",
-      "telegramClientSecretLabel": "Telegram client secret",
+      "clientIdLabel": "Client ID",
+      "clientSecretLabel": "Client secret",
       "oidcDisplayNameLabel": "Display name",
-      "oidcIssuerUrlLabel": "OIDC issuer URL",
-      "oidcClientIdLabel": "OIDC client ID",
-      "oidcClientSecretLabel": "OIDC client secret",
+      "oidcIssuerUrlLabel": "Issuer URL",
       "passwordLoginLabel": "Password login",
       "passwordLoginDescription": "Allow signing in with login and password. Make sure at least one OAuth provider works before disabling this.",
       "passkeyTitle": "Passkeys",
-      "passkeyDescription": "Sign in with Touch ID, Windows Hello, or a security key instead of a password.",
-      "passkeyRpIdLabel": "Relying Party ID",
-      "passkeyRpIdPlaceholder": "example.com",
+      "passkeyRpIdLabel": "Domain",
       "passkeyOriginLabel": "Origin",
-      "passkeyOriginPlaceholder": "https://example.com",
-      "passkeyManageButton": "Manage passkeys",
+      "passkeyGuide": {
+        "title": "Passkeys",
+        "intro": "Passkeys let admins sign in with Touch ID, Windows Hello, or a security key instead of a password. The two settings below tie a passkey to this exact site — get them wrong and passkeys will fail to register or sign in.",
+        "rpIdTitle": "Domain",
+        "rpIdBody": "The domain the dashboard is served from, without a protocol or port — for example example.com.",
+        "originTitle": "Origin",
+        "originBody": "The exact URL the dashboard loads from, protocol included — for example https://example.com."
+      },
       "placeholder": "Leave blank to keep the current value",
       "save": "Save",
       "saving": "Saving…",
@@ -411,7 +433,7 @@
         "redirectUrisLabel": "Redirect URIs",
         "redirectUrisValue": "https://remnashop.domain.com/oauth2/callback/telegram",
         "accessSetupTitle": "Setting up access",
-        "accessSetupIntro": "After filling in the Client ID, Client Secret, and Frontend Domain, you need to list the admin IDs allowed to sign in.",
+        "accessSetupIntro": "After filling in the Client ID and Client secret, you need to list the admin IDs allowed to sign in.",
         "accessSetupSteps": [
           "From the account you want to grant access, message @Get_myidrobot",
           "The bot replies with your ID -- enter it into the corresponding field"
@@ -433,7 +455,7 @@
         "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/github",
         "callbackNote": "Don't forget to replace YOUR_REMNASHOP_DOMAIN with your panel's actual address.",
         "settingsTitle": "OAuth2 settings in Remnashop",
-        "settingsBody": "Once the OAuth app is created, copy the Client ID and Client Secret. Paste them into the corresponding fields."
+        "settingsBody": "Once the OAuth app is created, copy the Client ID and Client secret. Paste them into the corresponding fields."
       },
       "oidcGuide": {
         "title": "OpenID Connect (SSO)",
@@ -444,7 +466,7 @@
         "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/oidc",
         "callbackNote": "Don't forget to replace YOUR_REMNASHOP_DOMAIN with your actual panel domain.",
         "settingsTitle": "OIDC settings in Remnashop",
-        "settingsBody": "Enter your provider's Issuer URL along with the Client ID and Client Secret you received. The display name is used as the label on the login button."
+        "settingsBody": "Enter your provider's Issuer URL along with the Client ID and Client secret you received. The display name is used as the label on the login button."
       },
       "passwordLoginGuide": {
         "title": "Password login",
@@ -630,8 +652,8 @@
       "saved": "Profile updated."
     },
     "oauthAccounts": {
-      "title": "Connected accounts",
-      "description": "Sign in with a linked GitHub or Telegram account instead of your password.",
+      "title": "Sign-in methods",
+      "description": "Sign in without a password — using a linked account or a passkey.",
       "loading": "Loading…",
       "loadError": "Failed to load.",
       "github": "GitHub",
@@ -651,6 +673,8 @@
       "empty": "No passkeys registered yet.",
       "addButton": "Add a passkey",
       "adding": "Waiting for your device…",
+      "manage": "Manage",
+      "close": "Close",
       "namePrompt": "Name this passkey",
       "namePlaceholder": "e.g. MacBook Touch ID",
       "rename": "Rename",
@@ -1098,6 +1122,38 @@
       "notPaid": "Not paid",
       "loadMore": "Show more",
       "loadingMore": "Loading…"
+    }
+  },
+  "dialogs": {
+    "title": "Bot dialogs",
+    "loading": "Loading…",
+    "loadError": "Failed to load dialog windows.",
+    "windowList": {
+      "seedSection": "Menu",
+      "customSection": "Custom windows",
+      "empty": "No custom windows yet."
+    },
+    "canvas": {
+      "noBanner": "No banner",
+      "noText": "(no text set)",
+      "emptyButtons": "This window has no buttons."
+    },
+    "inspector": {
+      "windowTitle": "Window settings",
+      "bannerLabel": "Banner",
+      "bannerNone": "None",
+      "enabledLabel": "Enabled",
+      "enabledHint": "Disabled windows can't be navigated to from the bot.",
+      "resetWindow": "Reset this window",
+      "resetWindowConfirm": "Reset \"{{key}}\" to its default banner and buttons? This can't be undone.",
+      "resetWindowConfirmButton": "Reset",
+      "resetWindowCancelButton": "Cancel",
+      "resetAll": "Reset all to defaults",
+      "resetAllConfirm": "Reset every dialog window to its shipped default? This can't be undone.",
+      "resetAllConfirmButton": "Reset all",
+      "resetAllCancelButton": "Cancel",
+      "saved": "Saved.",
+      "resetDone": "Reset to defaults."
     }
   },
   "referrals": {

@@ -23,6 +23,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
 // Sync is fire-and-forget on the backend -- give it a moment to finish before
@@ -136,7 +137,7 @@ export function BlacklistPage() {
 
         <div className="mt-3">
           {blacklistState.kind === "loading" && (
-            <p className="text-sm text-muted-foreground">{t("blacklist.loading")}</p>
+            <Spinner />
           )}
           {blacklistState.kind === "error" && (
             <p className="text-sm text-error">{t("blacklist.manual.loadError")}</p>
@@ -312,9 +313,7 @@ function BlacklistSourcesSection({ permissions, onSynced }: BlacklistSourcesSect
       )}
 
       <div className="mt-3">
-        {sourcesState.kind === "loading" && (
-          <p className="text-sm text-muted-foreground">{t("blacklist.loading")}</p>
-        )}
+        {sourcesState.kind === "loading" && <Spinner />}
         {sourcesState.kind === "error" && (
           <p className="text-sm text-error">{t("blacklist.sources.loadError")}</p>
         )}

@@ -43,7 +43,7 @@ export function OidcOAuthGuideDialog() {
           {withEmphasis(t("settings.oauth.oidcGuide.settingsBody"), [
             "Issuer URL",
             "Client ID",
-            "Client Secret",
+            "Client secret",
           ])}
         </p>
       </div>

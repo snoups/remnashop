@@ -29,6 +29,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { usePermissionCatalog, groupCatalogByResource } from "@entities/admin/use-permission-catalog";
+import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
 import type { Permission } from "@shared/types/rbac";
@@ -118,7 +119,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (catalogState.kind === "loading") {
-    return <p className="text-sm text-muted-foreground">{t("apiTokens.loading")}</p>;
+    return <Spinner />;
   }
   if (catalogState.kind === "error") {
     return <p className="text-sm text-error">{t("apiTokens.loadError")}</p>;

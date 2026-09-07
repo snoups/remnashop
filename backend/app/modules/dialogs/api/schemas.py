@@ -33,6 +33,7 @@ class DialogWindowResponse(BaseModel):
     banner_name: Optional[BannerName] = None
     is_enabled: bool
     position: int
+    text_keys: list[str]
     buttons: list[DialogButtonItem]
 
 

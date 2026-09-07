@@ -8,6 +8,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Spinner } from "@shared/ui/Spinner";
 
 export function SecurityForm() {
   const { t } = useTranslation();
@@ -43,7 +44,7 @@ export function SecurityForm() {
       </div>
 
       {state.kind === "loading" && (
-        <p className="mt-4 text-sm text-muted-foreground">{t("profile.accountSecurity.loading")}</p>
+        <Spinner className="mt-4" />
       )}
       {state.kind === "error" && (
         <p className="mt-4 text-sm text-error">{t("profile.accountSecurity.loadError")}</p>

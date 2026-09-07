@@ -10,6 +10,7 @@ import {
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Spinner } from "@shared/ui/Spinner";
 
 import { GatewaySettingsCard } from "./GatewaySettingsCard";
 
@@ -32,7 +33,7 @@ export function GatewaysSettingsList() {
   }
 
   if (state.kind === "loading") {
-    return <p className="text-sm text-muted-foreground">{t("settings.gateways.loading")}</p>;
+    return <Spinner />;
   }
 
   const { gateways, catalog } = state.data;

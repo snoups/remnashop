@@ -12,6 +12,7 @@ from taskiq import TaskiqEvents, TaskiqState
 from app.core.config import AppConfig
 from app.core.event_bus import EventBus
 from app.core.metrics import register_db_pool_metrics
+from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.worker.broker import RETRY_SCHEDULE_PREFIX, broker
 from app.worker.container import create_worker_container
 from app.worker.metrics import WORKER_METRICS_REGISTRY, poll_worker_gauges
@@ -35,6 +36,7 @@ async def _setup_worker_container(state: TaskiqState) -> None:
     state.worker_gauges_task = asyncio.create_task(
         poll_worker_gauges(redis, broker.queue_name, RETRY_SCHEDULE_PREFIX)
     )
+    state.runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "worker"))
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)
@@ -44,6 +46,11 @@ async def _close_worker_container(state: TaskiqState) -> None:
         worker_gauges_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await worker_gauges_task
+    runtime_heartbeat_task = getattr(state, "runtime_heartbeat_task", None)
+    if runtime_heartbeat_task is not None:
+        runtime_heartbeat_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await runtime_heartbeat_task
     container: Optional[AsyncContainer] = getattr(state, "worker_container", None)
     if container is None:
         return

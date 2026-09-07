@@ -13,6 +13,7 @@ import {
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { PaymentOrderDetailsDialog } from "@features/payment-order-details/PaymentOrderDetailsDialog";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { Spinner } from "@shared/ui/Spinner";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
@@ -136,12 +137,7 @@ export function PaymentsPage() {
         {state.kind === "ready" && isFetching && (
           <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
         )}
-        {state.kind === "loading" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <p className="text-sm">{t("payments.loading")}</p>
-          </div>
-        )}
+        {state.kind === "loading" && <Spinner className="py-12" />}
         {state.kind === "error" && (
           <div className="flex flex-col items-center gap-2 py-12 text-error">
             <AlertCircle className="size-5" />
@@ -230,6 +226,7 @@ export function PaymentsPage() {
                       type="button"
                       onClick={() => void handleLoadMore()}
                       disabled={isLoadingMore}
+                      aria-label={isLoadingMore ? t("payments.pagination.loadingMore") : undefined}
                       {...bounceTap(bounceStrength)}
                       className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -238,7 +235,7 @@ export function PaymentsPage() {
                       ) : (
                         <ChevronDown className="size-3.5" />
                       )}
-                      {isLoadingMore ? t("payments.pagination.loadingMore") : t("payments.pagination.loadMore")}
+                      {!isLoadingMore && t("payments.pagination.loadMore")}
                     </motion.button>
                   </div>
                 )}

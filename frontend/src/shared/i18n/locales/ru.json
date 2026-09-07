@@ -42,9 +42,9 @@
       "continueWith": "Продолжить через {{provider}}",
       "invalidCallback": "Некорректный OAuth callback",
       "completingSignIn": "Завершаем вход…",
-      "passkeySignIn": "Войти с помощью пасскея",
-      "passkeyCancelled": "Вход с пасскеем отменён",
-      "passkeyNotSupported": "Пасскеи не поддерживаются на этом устройстве или в браузере"
+      "passkeySignIn": "Войти с помощью Passkey",
+      "passkeyCancelled": "Вход через Passkey отменён",
+      "passkeyNotSupported": "Passkey не поддерживается на этом устройстве или в браузере"
     },
     "welcome": {
       "title": "Добро пожаловать в Remnashop",
@@ -54,28 +54,49 @@
   },
   "dashboard": {
     "loadError": "Не удалось загрузить обзор. Попробуйте обновить страницу.",
+    "refresh": "Обновить данные",
     "periodDays": "{{count}} дн.",
+    "periodAll": "Всё время",
     "stats": {
-      "totalUsers": "Всего пользователей",
-      "newToday": "Новых сегодня",
-      "activeSubscriptions": "Активные подписки",
-      "paidOrders": "Оплаченные заказы",
-      "revenue": "Доход"
+      "totalUsers": "Всего пользователей"
     },
     "charts": {
       "revenue": "Доход",
-      "registrations": "Регистрации"
+      "registrations": "Регистрации",
+      "online": "Онлайн",
+      "onlineValue": "Пользователи",
+      "subscriptions": "Подписки"
+    },
+    "subscriptions": {
+      "active": "Активные",
+      "limited": "Ограниченные",
+      "expired": "Истёкшие",
+      "expiringSoon": "Истекают (7д)",
+      "disabled": "Отключенные"
     },
     "recentEvents": "Последние события",
     "viewAllEvents": "Все события",
     "noEvents": "Событий пока нет",
-    "botStatus": "Бот",
-    "botConfigured": "Настроен",
-    "botNotConfigured": "Не настроен",
-    "quickLinks": {
-      "createPlan": "Создать план",
-      "createPromocode": "Создать промокод",
-      "createAdmin": "Создать админа"
+    "runtime": {
+      "title": "Состояние системы",
+      "memory": "Память",
+      "uptime": "Аптайм",
+      "eventLoop": "Event loop",
+      "eventLoopDelay": "Задержка",
+      "eventLoopP99": "P99",
+      "ramUsage": "Использование ОЗУ",
+      "totalRam": "Всего ОЗУ",
+      "durationDays": "{{count}} дн.",
+      "durationHours": "{{count}} ч",
+      "durationMinutes": "{{count}} мин",
+      "units": {
+        "byte": "Б",
+        "kilobyte": "КБ",
+        "megabyte": "МБ",
+        "gigabyte": "ГБ",
+        "terabyte": "ТБ",
+        "millisecond": "мс"
+      }
     }
   },
   "eventLog": {
@@ -139,6 +160,7 @@
     "overview": "Обзор",
     "settings": "Настройки",
     "users": "Пользователи",
+    "dialogs": "Диалоги",
     "plans": "Планы",
     "subscriptions": "Подписки",
     "promocodes": "Промокоды",
@@ -370,23 +392,23 @@
       "configured": "настроен",
       "notConfigured": "не настроен",
       "enableAria": "Включить {{provider}}",
-      "githubClientIdLabel": "ID клиента GitHub",
-      "githubClientSecretLabel": "Секрет клиента GitHub",
-      "telegramClientIdLabel": "ID клиента Telegram",
-      "telegramClientSecretLabel": "Секрет клиента Telegram",
-      "oidcDisplayNameLabel": "Отображаемое имя",
-      "oidcIssuerUrlLabel": "URL издателя OIDC",
-      "oidcClientIdLabel": "ID клиента OIDC",
-      "oidcClientSecretLabel": "Секрет клиента OIDC",
+      "clientIdLabel": "Client ID",
+      "clientSecretLabel": "Client secret",
+      "oidcDisplayNameLabel": "Display name",
+      "oidcIssuerUrlLabel": "Issuer URL",
       "passwordLoginLabel": "Вход по паролю",
       "passwordLoginDescription": "Прежде чем выключать, убедитесь, что хотя бы один OAuth провайдер работает.",
-      "passkeyTitle": "Пасскеи",
-      "passkeyDescription": "Вход через Touch ID, Windows Hello или ключ безопасности вместо пароля.",
-      "passkeyRpIdLabel": "Relying Party ID",
-      "passkeyRpIdPlaceholder": "example.com",
+      "passkeyTitle": "Passkey",
+      "passkeyRpIdLabel": "Domain",
       "passkeyOriginLabel": "Origin",
-      "passkeyOriginPlaceholder": "https://example.com",
-      "passkeyManageButton": "Управление пасскеями",
+      "passkeyGuide": {
+        "title": "Passkey",
+        "intro": "Passkey позволяет админам входить через Touch ID, Windows Hello или ключ безопасности вместо пароля. Два параметра ниже привязывают Passkey к конкретному сайту — если указать их неверно, регистрация или вход не сработают.",
+        "rpIdTitle": "Domain",
+        "rpIdBody": "Домен, с которого отдаётся дашборд, без протокола и порта — например, example.com.",
+        "originTitle": "Origin",
+        "originBody": "Точный URL, с которого загружается дашборд, включая протокол — например, https://example.com."
+      },
       "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
       "save": "Сохранить",
       "saving": "Сохранение…",
@@ -411,7 +433,7 @@
         "redirectUrisLabel": "Redirect URIs",
         "redirectUrisValue": "https://remnashop.domain.com/oauth2/callback/telegram",
         "accessSetupTitle": "Настройка доступа",
-        "accessSetupIntro": "После заполнения Client ID, Client Secret и Frontend Domain вам необходимо указать список ID администраторов, для которых будет доступен вход.",
+        "accessSetupIntro": "После заполнения Client ID и Client secret вам необходимо указать список ID администраторов, для которых будет доступен вход.",
         "accessSetupSteps": [
           "С нужного аккаунта запустите бота @Get_myidrobot",
           "В ответ бот пришлёт ваш ID — введите его в соответствующее поле"
@@ -433,7 +455,7 @@
         "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/github",
         "callbackNote": "Не забудьте заменить YOUR_REMNASHOP_DOMAIN на корректный адрес панели.",
         "settingsTitle": "Настройки OAuth2 в Remnashop",
-        "settingsBody": "После создания OAuth2 приложения — скопируйте Client ID и Client Secret. Вставьте эти данные в соответствующем разделе."
+        "settingsBody": "После создания OAuth2 приложения — скопируйте Client ID и Client secret. Вставьте эти данные в соответствующем разделе."
       },
       "oidcGuide": {
         "title": "OpenID Connect (SSO)",
@@ -444,7 +466,7 @@
         "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/oidc",
         "callbackNote": "Не забудьте заменить YOUR_REMNASHOP_DOMAIN на корректный адрес панели.",
         "settingsTitle": "Настройки OIDC в Remnashop",
-        "settingsBody": "Укажите Issuer URL вашего провайдера, а также полученные Client ID и Client Secret. Отображаемое имя используется как подпись кнопки входа на странице логина."
+        "settingsBody": "Укажите Issuer URL вашего провайдера, а также полученные Client ID и Client secret. Отображаемое имя используется как подпись кнопки входа на странице логина."
       },
       "passwordLoginGuide": {
         "title": "Вход по паролю",
@@ -630,8 +652,8 @@
       "saved": "Профиль обновлён."
     },
     "oauthAccounts": {
-      "title": "Подключённые аккаунты",
-      "description": "Входите через привязанный аккаунт GitHub или Telegram вместо пароля.",
+      "title": "Способы входа",
+      "description": "Входите без пароля — через привязанный аккаунт или Passkey.",
       "loading": "Загрузка…",
       "loadError": "Не удалось загрузить.",
       "github": "GitHub",
@@ -644,26 +666,28 @@
       "disconnect": "Отключить"
     },
     "passkeys": {
-      "title": "Пасскеи",
+      "title": "Passkey",
       "description": "Устройства, с которых можно входить вместо пароля.",
       "loading": "Загрузка…",
       "loadError": "Не удалось загрузить.",
-      "empty": "Пасскеи ещё не добавлены.",
-      "addButton": "Добавить пасскей",
+      "empty": "Passkey ещё не добавлены.",
+      "addButton": "Добавить Passkey",
       "adding": "Ожидание устройства…",
-      "namePrompt": "Название пасскея",
+      "manage": "Управление",
+      "close": "Закрыть",
+      "namePrompt": "Название Passkey",
       "namePlaceholder": "например, MacBook Touch ID",
       "rename": "Переименовать",
       "delete": "Удалить",
-      "deleteTitle": "Удалить пасскей",
-      "deleteConfirm": "Это устройство больше не сможет входить с помощью этого пасскея.",
+      "deleteTitle": "Удалить Passkey",
+      "deleteConfirm": "Это устройство больше не сможет входить с помощью этого Passkey.",
       "lastUsed": "Использован {{date}}",
       "neverUsed": "Не использовался",
-      "notSupported": "Пасскеи не поддерживаются на этом устройстве или в браузере.",
-      "cancelled": "Регистрация пасскея отменена.",
-      "addError": "Не удалось добавить пасскей.",
-      "deleteError": "Не удалось удалить пасскей.",
-      "renameError": "Не удалось переименовать пасскей."
+      "notSupported": "Passkey не поддерживается на этом устройстве или в браузере.",
+      "cancelled": "Регистрация Passkey отменена.",
+      "addError": "Не удалось добавить Passkey.",
+      "deleteError": "Не удалось удалить Passkey.",
+      "renameError": "Не удалось переименовать Passkey."
     },
     "accountSecurity": {
       "title": "Список разрешённых IP",
@@ -1098,6 +1122,38 @@
       "notPaid": "Не оплатил",
       "loadMore": "Показать ещё",
       "loadingMore": "Загрузка…"
+    }
+  },
+  "dialogs": {
+    "title": "Диалоги бота",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить окна диалогов.",
+    "windowList": {
+      "seedSection": "Меню",
+      "customSection": "Кастомные окна",
+      "empty": "Кастомных окон пока нет."
+    },
+    "canvas": {
+      "noBanner": "Нет баннера",
+      "noText": "(текст не задан)",
+      "emptyButtons": "В этом окне нет кнопок."
+    },
+    "inspector": {
+      "windowTitle": "Настройки окна",
+      "bannerLabel": "Баннер",
+      "bannerNone": "Нет",
+      "enabledLabel": "Включено",
+      "enabledHint": "На отключённые окна нельзя перейти из бота.",
+      "resetWindow": "Сбросить это окно",
+      "resetWindowConfirm": "Сбросить «{{key}}» к дефолтному баннеру и кнопкам? Отменить нельзя.",
+      "resetWindowConfirmButton": "Сбросить",
+      "resetWindowCancelButton": "Отмена",
+      "resetAll": "Сбросить всё к дефолту",
+      "resetAllConfirm": "Сбросить все окна диалогов к дефолту? Отменить нельзя.",
+      "resetAllConfirmButton": "Сбросить всё",
+      "resetAllCancelButton": "Отмена",
+      "saved": "Сохранено.",
+      "resetDone": "Сброшено к дефолту."
     }
   },
   "referrals": {

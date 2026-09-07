@@ -4,6 +4,7 @@ import { getPriceBook } from "@entities/pricing/api";
 import { CurrencyRatesPanel } from "@features/currency-rates-panel/CurrencyRatesPanel";
 import { PricingMatrix } from "@features/pricing-matrix/PricingMatrix";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Spinner } from "@shared/ui/Spinner";
 
 export function PricingPage() {
   const { t } = useTranslation();
@@ -14,7 +15,7 @@ export function PricingPage() {
   }
 
   if (state.kind === "loading") {
-    return <p className="text-sm text-muted-foreground">{t("pricing.loading")}</p>;
+    return <Spinner />;
   }
 
   return (

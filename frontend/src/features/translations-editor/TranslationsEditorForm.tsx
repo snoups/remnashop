@@ -12,6 +12,7 @@ import {
 } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Spinner } from "@shared/ui/Spinner";
 
 interface Row {
   messageId: string;
@@ -93,7 +94,7 @@ export function TranslationsEditorForm() {
         )}
 
         {rowsState.kind === "loading" && (
-          <p className="text-sm text-muted-foreground">{t("settings.translationsEditor.loading")}</p>
+          <Spinner />
         )}
         {rowsState.kind === "error" && (
           <p className="text-sm text-error">{t("settings.translationsEditor.loadError")}</p>
