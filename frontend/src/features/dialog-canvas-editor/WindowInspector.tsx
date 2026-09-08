@@ -2,13 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogWindow } from "@entities/dialogs/api";
-import { resetAll, resetWindow, updateWindow } from "@entities/dialogs/api";
+import { BANNER_OPTIONS, resetAll, resetWindow, updateWindow } from "@entities/dialogs/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-
-const BANNER_OPTIONS = ["default", "menu", "dashboard", "subscription", "referral", "promocode", "devices"];
 
 interface WindowInspectorProps {
   window: DialogWindow;

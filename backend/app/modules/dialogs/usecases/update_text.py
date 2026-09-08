@@ -17,8 +17,6 @@ from app.modules.translations import (
 )
 from app.modules.users import UserDto
 
-_CUSTOM_WINDOW_TEXT_KEY_PREFIX = "msg-dialog-custom."
-
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateDialogTextInput:
@@ -57,7 +55,7 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
         if data.attribute_id:
             full_key = f"{data.message_id}.{data.attribute_id}"
         if full_key not in _catalog_text_keys() and not full_key.startswith(
-            _CUSTOM_WINDOW_TEXT_KEY_PREFIX
+            catalog.CUSTOM_TEXT_KEY_PREFIX
         ):
             # This endpoint's relaxed placeable rule is dialogs-scoped -- it must
             # not become a back door for editing arbitrary translations rows

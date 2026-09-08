@@ -330,3 +330,9 @@ class UserRepository:
         )
         rows = (await self.session.execute(stmt)).tuples()
         return list(rows.all())
+
+    async def list_ids_registered_since(self, since: datetime, role: Role) -> list[int]:
+        result = await self.session.execute(
+            select(User.id).where(User.role == role, User.created_at >= since)
+        )
+        return list(result.scalars().all())

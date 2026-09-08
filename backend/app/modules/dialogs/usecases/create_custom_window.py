@@ -42,7 +42,7 @@ class CreateCustomDialogWindowUseCase(UseCase[CreateCustomDialogWindowInput, Dia
     async def _execute(
         self, actor: UserDto, data: CreateCustomDialogWindowInput
     ) -> DialogWindowDto:
-        key = f"custom.{uuid4().hex}"
+        key = f"custom-{uuid4().hex}"
         text_key = f"msg-dialog-{key}"
         locales = await self._settings_repository.list_active_locales()
         async with self._uow:

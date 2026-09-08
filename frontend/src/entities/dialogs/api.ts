@@ -67,8 +67,40 @@ export interface DialogButtonInput {
   is_hidden?: boolean;
 }
 
+export function toButtonInput(button: DialogButtonItem): DialogButtonInput {
+  return {
+    row: button.row,
+    column: button.column,
+    text_key: button.text_key,
+    link_type: button.link_type,
+    icon_custom_emoji_id: button.icon_custom_emoji_id,
+    style: button.style,
+    visibility_condition: button.visibility_condition,
+    action_key: button.action_key,
+    target_window_key: button.target_window_key,
+    url_value: button.url_value,
+    is_hidden: button.is_hidden,
+  };
+}
+
 export function windowTextKeys(window: DialogWindow): string[] {
   return [...window.text_keys, ...window.buttons.map((button) => button.text_key)];
+}
+
+export const BANNER_OPTIONS = [
+  "default",
+  "menu",
+  "dashboard",
+  "subscription",
+  "referral",
+  "promocode",
+  "devices",
+];
+
+export function splitTextKey(key: string): { messageId: string; attributeId: string } {
+  const dotIndex = key.lastIndexOf(".");
+  if (dotIndex === -1) return { messageId: key, attributeId: "" };
+  return { messageId: key.slice(0, dotIndex), attributeId: key.slice(dotIndex + 1) };
 }
 
 export function listWindows(signal?: AbortSignal): Promise<DialogWindow[]> {

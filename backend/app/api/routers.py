@@ -3,6 +3,7 @@ from typing import Final
 from fastapi import APIRouter
 
 from app.modules.advertising.api import admin_router as advertising_admin_router
+from app.modules.analytics.api import admin_router as analytics_admin_router
 from app.modules.api_tokens.api import admin_router as api_tokens_admin_router
 from app.modules.auth.api import router as auth_router
 from app.modules.auth.api import sessions_router as auth_sessions_router
@@ -72,5 +73,6 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     translations_admin_router,
     dialogs_admin_router,
     advertising_admin_router,
+    analytics_admin_router,
     overview_admin_router,
 )

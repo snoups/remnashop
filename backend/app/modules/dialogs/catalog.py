@@ -14,6 +14,12 @@ Resolver = Callable[..., object]
 # inside real Fluent `{ $var }` text.
 _FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
+# The namespace for admin-authored dialog text that has no catalog registration
+# of its own: a custom window's body, or a freshly-added button's label. Must
+# stay dash-separated, not dot-separated -- see create_custom_window.py's key
+# generation for why a dot here fails Fluent's identifier grammar.
+CUSTOM_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-custom-"
+
 
 @dataclass(frozen=True, kw_only=True)
 class CatalogButton:

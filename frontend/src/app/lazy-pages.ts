@@ -4,6 +4,9 @@ export const AdminsPage = lazy(() => import("@pages/admins/AdminsPage").then((m)
 export const AdvertisingPage = lazy(() =>
   import("@pages/advertising/AdvertisingPage").then((m) => ({ default: m.AdvertisingPage })),
 );
+export const AnalyticsPage = lazy(() =>
+  import("@pages/analytics/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
+);
 export const ApiTokensPage = lazy(() =>
   import("@pages/settings/ApiTokensPage").then((m) => ({ default: m.ApiTokensPage })),
 );

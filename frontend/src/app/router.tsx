@@ -6,6 +6,7 @@ import { DashboardLayout } from "@widgets/dashboard-layout/DashboardLayout";
 import {
   AdminsPage,
   AdvertisingPage,
+  AnalyticsPage,
   ApiTokensPage,
   AppearanceSettingsPage,
   BackupsPage,
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
       { path: "promocodes", element: <PromocodesPage /> },
       { path: "referrals", element: <ReferralsPage /> },
       { path: "advertising", element: <AdvertisingPage /> },
+      { path: "analytics", element: <AnalyticsPage /> },
       { path: "event-log", element: <EventLogPage /> },
     ],
   },

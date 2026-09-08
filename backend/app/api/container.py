@@ -3,6 +3,7 @@ from dishka import AsyncContainer, make_async_container
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
 from app.modules.advertising import get_advertising_providers
+from app.modules.analytics import get_analytics_providers
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.backups import get_backups_providers
@@ -49,6 +50,7 @@ def create_api_container(config: AppConfig) -> AsyncContainer:
         *get_dialogs_providers(),
         *get_blacklist_providers(),
         *get_advertising_providers(),
+        *get_analytics_providers(),
         *get_overview_providers(),
     ]
     return make_async_container(*providers, context=context)

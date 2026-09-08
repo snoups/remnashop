@@ -88,9 +88,13 @@ async def test_update_window_changes_banner_and_enabled(
     assert result.banner_name == BannerName.MENU
 
 
-async def test_update_buttons_rejects_unknown_action(dialog_repository, uow, redis) -> None:
+async def test_update_buttons_rejects_unknown_action(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -110,12 +114,14 @@ async def test_update_buttons_rejects_unknown_action(dialog_repository, uow, red
 
 
 async def test_update_buttons_rejects_action_not_belonging_to_this_seed_window(
-    dialog_repository, uow, redis
+    dialog_repository, translations_repository, settings_repository, uow, redis
 ) -> None:
     catalog.register_action_key("other_action")
     catalog.bind_action_handler("other_action", lambda: None)
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -135,10 +141,12 @@ async def test_update_buttons_rejects_action_not_belonging_to_this_seed_window(
 
 
 async def test_update_buttons_rejects_action_on_custom_window(
-    dialog_repository, uow, redis
+    dialog_repository, translations_repository, settings_repository, uow, redis
 ) -> None:
     window = await dialog_repository.create_custom_window("custom.abc", CreateCustomWindowDto())
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -157,9 +165,13 @@ async def test_update_buttons_rejects_action_on_custom_window(
         )
 
 
-async def test_update_buttons_rejects_duplicate_position(dialog_repository, uow, redis) -> None:
+async def test_update_buttons_rejects_duplicate_position(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -186,10 +198,12 @@ async def test_update_buttons_rejects_duplicate_position(dialog_repository, uow,
 
 
 async def test_update_buttons_rejects_unknown_visibility_condition(
-    dialog_repository, uow, redis
+    dialog_repository, translations_repository, settings_repository, uow, redis
 ) -> None:
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -209,9 +223,13 @@ async def test_update_buttons_rejects_unknown_visibility_condition(
         )
 
 
-async def test_update_buttons_rejects_url_without_value(dialog_repository, uow, redis) -> None:
+async def test_update_buttons_rejects_url_without_value(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -227,10 +245,12 @@ async def test_update_buttons_rejects_url_without_value(dialog_repository, uow, 
 
 
 async def test_update_buttons_rejects_unknown_navigate_target(
-    dialog_repository, uow, redis
+    dialog_repository, translations_repository, settings_repository, uow, redis
 ) -> None:
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -249,9 +269,13 @@ async def test_update_buttons_rejects_unknown_navigate_target(
         )
 
 
-async def test_update_buttons_allows_added_url_button(dialog_repository, uow, redis) -> None:
+async def test_update_buttons_allows_added_url_button(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     result = await use_case(
         OWNER,
         UpdateDialogWindowButtonsInput(
@@ -284,7 +308,7 @@ async def test_create_custom_window_seeds_translation(
         dialog_repository, translations_repository, settings_repository, uow, redis
     )
     result = await use_case(OWNER, CreateCustomDialogWindowInput(title_text="Hello"))
-    assert result.key.startswith("custom.")
+    assert result.key.startswith("custom-")
     assert result.kind == DialogWindowKind.CUSTOM
 
 
@@ -463,3 +487,67 @@ async def test_update_dialog_text_rejects_newlines(
                 value="Hi\nthere",
             ),
         )
+
+
+async def test_update_buttons_seeds_translation_for_new_custom_text_key(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
+    await _seed(dialog_repository)
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    new_key = f"{catalog.CUSTOM_TEXT_KEY_PREFIX}abc123"
+    await use_case(
+        OWNER,
+        UpdateDialogWindowButtonsInput(
+            key="menu.main",
+            buttons=[
+                DialogButtonInputDto(
+                    row=0,
+                    column=0,
+                    text_key="btn-menu.trial",
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="get_trial",
+                ),
+                DialogButtonInputDto(
+                    row=1,
+                    column=0,
+                    text_key=new_key,
+                    link_type=ButtonLinkType.URL,
+                    url_value="https://h",
+                ),
+            ],
+        ),
+    )
+    entries = await translations_repository.list_by_locale(Locale.EN)
+    assert any(e.message_id == new_key and e.value == "" for e in entries)
+
+
+async def test_update_buttons_does_not_seed_unrelated_new_key(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
+    await _seed(dialog_repository)
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    await use_case(
+        OWNER,
+        UpdateDialogWindowButtonsInput(
+            key="menu.main",
+            buttons=[
+                DialogButtonInputDto(
+                    row=0,
+                    column=0,
+                    text_key="btn-menu.freeform",
+                    link_type=ButtonLinkType.URL,
+                    url_value="https://h",
+                ),
+            ],
+        ),
+    )
+    entries = await translations_repository.list_by_locale(Locale.EN)
+    assert not any(e.message_id == "btn-menu.freeform" for e in entries)

@@ -226,6 +226,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.AD_LINKS_GENERATE_CODE,
         Permission.AD_LINKS_UPDATE,
         Permission.AD_LINKS_DELETE,
+        Permission.ANALYTICS_VIEW,
     }
 
 

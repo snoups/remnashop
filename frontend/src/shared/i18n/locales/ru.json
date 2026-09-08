@@ -99,6 +99,27 @@
       }
     }
   },
+  "analytics": {
+    "title": "Аналитика",
+    "loading": "Загрузка…",
+    "loadError": "Не удалось загрузить аналитику. Попробуйте обновить страницу.",
+    "kpi": {
+      "revenue": "Выручка",
+      "mrr": "MRR",
+      "arpu": "ARPU",
+      "activeSubscriptions": "Активные подписки",
+      "paidOrders": "Оплаченные заказы",
+      "conversionRate": "Регистрация → оплата"
+    },
+    "churn": {
+      "title": "Отток",
+      "rate": "Доля оттока",
+      "retention": "Доля удержания",
+      "prevActive": "Активных на начало периода",
+      "stillActive": "Остались активны",
+      "churned": "Отток"
+    }
+  },
   "eventLog": {
     "title": "Журнал событий",
     "loading": "Загрузка…",
@@ -167,6 +188,7 @@
     "referrals": "Рефералы",
     "advertising": "Реклама",
     "payments": "Платежи",
+    "analytics": "Аналитика",
     "admins": "Администраторы",
     "eventLog": "Журнал событий"
   },
@@ -828,7 +850,8 @@
     "AD_LINKS_CREATE": "Создание рекламных ссылок",
     "AD_LINKS_GENERATE_CODE": "Генерация рекламных кодов",
     "AD_LINKS_UPDATE": "Изменение рекламных ссылок",
-    "AD_LINKS_DELETE": "Удаление рекламных ссылок"
+    "AD_LINKS_DELETE": "Удаление рекламных ссылок",
+    "ANALYTICS_VIEW": "Просмотр аналитики"
   },
   "permissionCategories": {
     "botSettings": "Настройки бота",
@@ -851,7 +874,8 @@
     "referrals": "Рефералы",
     "backups": "Резервные копии",
     "blacklist": "Чёрный список",
-    "adLinks": "Рекламные ссылки"
+    "adLinks": "Рекламные ссылки",
+    "analytics": "Аналитика"
   },
   "permissionPicker": {
     "read": "Чтение",
@@ -1131,7 +1155,17 @@
     "windowList": {
       "seedSection": "Меню",
       "customSection": "Кастомные окна",
-      "empty": "Кастомных окон пока нет."
+      "empty": "Кастомных окон пока нет.",
+      "addWindow": "Добавить окно",
+      "addWindowMessage": "Кастомные окна создаются пустыми -- добавьте кнопки после создания.",
+      "addWindowConfirm": "Создать",
+      "addWindowCancel": "Отмена",
+      "addWindowTitlePlaceholder": "Текст заголовка окна",
+      "deleteWindow": "Удалить окно",
+      "deleteWindowConfirm": "Удалить «{{key}}»? Отменить нельзя.",
+      "deleteWindowConfirmButton": "Удалить",
+      "deleteWindowCancelButton": "Отмена",
+      "deleted": "Окно удалено."
     },
     "canvas": {
       "noBanner": "Нет баннера",
@@ -1153,7 +1187,33 @@
       "resetAllConfirmButton": "Сбросить всё",
       "resetAllCancelButton": "Отмена",
       "saved": "Сохранено.",
-      "resetDone": "Сброшено к дефолту."
+      "resetDone": "Сброшено к дефолту.",
+      "textTitle": "Текст сообщения",
+      "textSave": "Сохранить",
+      "textReset": "Сбросить к дефолту",
+      "buttonTitle": "Кнопка",
+      "buttonLabel": "Текст",
+      "buttonStyle": "Стиль",
+      "buttonStyleNone": "Нет",
+      "buttonIcon": "ID кастомного эмодзи",
+      "buttonCondition": "Условие видимости",
+      "buttonConditionNone": "Видна всегда",
+      "buttonLinkType": "Тип действия",
+      "buttonActionHint": "Привязана к действию «{{key}}» -- у кнопок-действий нельзя сменить действие, только стиль/позицию/видимость.",
+      "buttonTarget": "Окно перехода",
+      "buttonTargetNone": "Выберите окно",
+      "buttonUrl": "Ссылка",
+      "buttonHidden": "Скрыта",
+      "buttonDelete": "Удалить кнопку",
+      "buttonAdd": "Добавить кнопку",
+      "buttonsSave": "Сохранить кнопки",
+      "buttonsDiscard": "Отменить изменения",
+      "buttonLabelPending": "Сначала сохраните сетку кнопок, чтобы можно было редактировать этот текст.",
+      "discardSwitchConfirm": "Отменить несохранённые изменения кнопок и переключиться на другое окно?",
+      "discardSwitchConfirmButton": "Отменить и переключиться"
+    },
+    "simulator": {
+      "title": "Симуляция условий"
     }
   },
   "referrals": {

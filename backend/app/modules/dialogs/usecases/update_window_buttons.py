@@ -11,6 +11,8 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto, DialogWindowDto
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases._publish import publish_dialog_change
+from app.modules.settings import SettingsRepository
+from app.modules.translations import TranslationsRepository
 from app.modules.users import UserDto
 
 
@@ -23,8 +25,17 @@ class UpdateDialogWindowButtonsInput:
 class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsInput, DialogWindowDto]):
     required_permission = Permission.DIALOGS_WINDOWS_BUTTONS_UPDATE
 
-    def __init__(self, dialog_repository: DialogRepository, uow: UnitOfWork, redis: Redis) -> None:
+    def __init__(
+        self,
+        dialog_repository: DialogRepository,
+        translations_repository: TranslationsRepository,
+        settings_repository: SettingsRepository,
+        uow: UnitOfWork,
+        redis: Redis,
+    ) -> None:
         self._dialog_repository = dialog_repository
+        self._translations_repository = translations_repository
+        self._settings_repository = settings_repository
         self._uow = uow
         self._redis = redis
 
@@ -48,7 +59,14 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsInput, D
             seen.add(pos)
             self._validate_button(button, window, navigable, seed_actions)
 
+        locales = await self._settings_repository.list_active_locales()
         async with self._uow:
+            for button in data.buttons:
+                if button.text_key.startswith(catalog.CUSTOM_TEXT_KEY_PREFIX):
+                    for locale in locales:
+                        await self._translations_repository.seed_missing(
+                            locale, button.text_key, "", ""
+                        )
             updated = await self._dialog_repository.replace_buttons(data.key, data.buttons)
         await publish_dialog_change(self._redis)
         return updated

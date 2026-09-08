@@ -11,7 +11,7 @@ from app.core.db.models import AddOnGrantIdempotency, SubscriptionPurchaseIdempo
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.subscription import Subscription
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AddOnType, SubscriptionStatus
+from app.core.enums import AddOnType, Currency, SubscriptionStatus
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.addon_repository import AddOnRepository
@@ -685,3 +685,91 @@ async def test_count_expiring_between_only_counts_live_rows_in_the_window(
     )
 
     assert await subscription_repository.count_expiring_between(now, now + timedelta(days=7)) == 2
+
+
+async def test_count_churn_window_counts_pre_window_subscriptions_only(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    session: AsyncSession,
+) -> None:
+    window_start = datetime_now() - timedelta(days=7)
+
+    retained = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=824_001,
+        remnawave_user_id=824_001,
+        status=SubscriptionStatus.ACTIVE,
+        expire_at=datetime_now() + timedelta(days=60),
+    )
+    await session.execute(
+        update(Subscription)
+        .where(Subscription.id == retained.id)
+        .values(created_at=window_start - timedelta(days=10))
+    )
+    churned = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=824_002,
+        remnawave_user_id=824_002,
+        status=SubscriptionStatus.EXPIRED,
+        expire_at=datetime_now() + timedelta(days=1),
+    )
+    await session.execute(
+        update(Subscription)
+        .where(Subscription.id == churned.id)
+        .values(created_at=window_start - timedelta(days=10))
+    )
+    # created inside the window -- must be excluded from prev_active entirely
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=824_003,
+        remnawave_user_id=824_003,
+        status=SubscriptionStatus.ACTIVE,
+        expire_at=datetime_now() + timedelta(days=30),
+    )
+
+    prev_active, still_active = await subscription_repository.count_churn_window(window_start)
+
+    assert prev_active == 2
+    assert still_active == 1
+
+
+async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inactive(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=825_001,
+        remnawave_user_id=825_001,
+        status=SubscriptionStatus.ACTIVE,
+        price_paid=Decimal("300"),
+        currency=Currency.RUB,
+        duration_days=30,
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=825_002,
+        remnawave_user_id=825_002,
+        status=SubscriptionStatus.ACTIVE,
+        price_paid=Decimal("180"),
+        currency=Currency.RUB,
+        duration_days=90,  # normalizes to 180 / 90 * 30 = 60
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=825_003,
+        remnawave_user_id=825_003,
+        status=SubscriptionStatus.EXPIRED,
+        price_paid=Decimal("999"),
+        currency=Currency.RUB,
+        duration_days=30,
+    )
+
+    result = await subscription_repository.sum_active_mrr_by_currency()
+
+    assert result == {Currency.RUB: Decimal("360")}

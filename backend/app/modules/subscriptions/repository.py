@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Final, Optional, cast
 
-from sqlalchemy import CursorResult, delete, func, select
+from sqlalchemy import CursorResult, Numeric, delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +10,7 @@ from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
-from app.core.enums import AddOnType, SubscriptionStatus
+from app.core.enums import AddOnType, Currency, SubscriptionStatus
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import SubscriptionState
@@ -192,6 +193,35 @@ class SubscriptionRepository:
             )
             or 0
         )
+
+    async def count_churn_window(self, window_start: datetime) -> tuple[int, int]:
+        row = (
+            await self.session.execute(
+                select(
+                    func.count(),
+                    func.count().filter(Subscription.status == SubscriptionStatus.ACTIVE),
+                )
+                .select_from(Subscription)
+                .where(
+                    Subscription.created_at < window_start,
+                    Subscription.status != SubscriptionStatus.DELETED,
+                    Subscription.expire_at >= window_start,
+                )
+            )
+        ).one()
+        return int(row[0]), int(row[1])
+
+    async def sum_active_mrr_by_currency(self) -> dict[Currency, Decimal]:
+        currency_col = Subscription.plan_snapshot["currency"].astext
+        price_col = Subscription.plan_snapshot["price_paid"].astext.cast(Numeric)
+        duration_col = Subscription.plan_snapshot["duration_days"].astext.cast(Numeric)
+        stmt = (
+            select(currency_col, func.sum(price_col / duration_col * 30))
+            .where(Subscription.status == SubscriptionStatus.ACTIVE)
+            .group_by(currency_col)
+        )
+        rows = (await self.session.execute(stmt)).tuples()
+        return {Currency(currency): amount for currency, amount in rows.all()}
 
     async def get_active_by_user(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(

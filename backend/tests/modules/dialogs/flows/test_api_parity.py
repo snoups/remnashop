@@ -84,7 +84,9 @@ async def test_update_buttons_accepts_a_real_action_from_metadata_alone(
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     assert window.kind == DialogWindowKind.SEED
 
-    use_case = UpdateDialogWindowButtonsUseCase(dialog_repository, uow, redis)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
     # This is the exact round trip the telegram-render-engine review found broken:
     # read a seed window's own action key back through the admin API's write path.
     updated = await use_case(

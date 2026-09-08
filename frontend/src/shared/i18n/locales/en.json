@@ -99,6 +99,27 @@
       }
     }
   },
+  "analytics": {
+    "title": "Analytics",
+    "loading": "Loading…",
+    "loadError": "Couldn't load analytics. Try refreshing.",
+    "kpi": {
+      "revenue": "Revenue",
+      "mrr": "MRR",
+      "arpu": "ARPU",
+      "activeSubscriptions": "Active subscriptions",
+      "paidOrders": "Paid orders",
+      "conversionRate": "Registration → payment"
+    },
+    "churn": {
+      "title": "Churn",
+      "rate": "Churn rate",
+      "retention": "Retention rate",
+      "prevActive": "Active at window start",
+      "stillActive": "Still active",
+      "churned": "Churned"
+    }
+  },
   "eventLog": {
     "title": "Event log",
     "loading": "Loading…",
@@ -167,6 +188,7 @@
     "referrals": "Referrals",
     "advertising": "Advertising",
     "payments": "Payments",
+    "analytics": "Analytics",
     "admins": "Admins",
     "eventLog": "Event log"
   },
@@ -828,7 +850,8 @@
     "AD_LINKS_CREATE": "Create advertising links",
     "AD_LINKS_GENERATE_CODE": "Generate advertising codes",
     "AD_LINKS_UPDATE": "Edit advertising links",
-    "AD_LINKS_DELETE": "Delete advertising links"
+    "AD_LINKS_DELETE": "Delete advertising links",
+    "ANALYTICS_VIEW": "View analytics"
   },
   "permissionCategories": {
     "botSettings": "Bot Settings",
@@ -851,7 +874,8 @@
     "referrals": "Referrals",
     "backups": "Backups",
     "blacklist": "Blacklist",
-    "adLinks": "Advertising Links"
+    "adLinks": "Advertising Links",
+    "analytics": "Analytics"
   },
   "permissionPicker": {
     "read": "Read",
@@ -1131,7 +1155,17 @@
     "windowList": {
       "seedSection": "Menu",
       "customSection": "Custom windows",
-      "empty": "No custom windows yet."
+      "empty": "No custom windows yet.",
+      "addWindow": "Add window",
+      "addWindowMessage": "Custom windows start empty -- add buttons after creating it.",
+      "addWindowConfirm": "Create",
+      "addWindowCancel": "Cancel",
+      "addWindowTitlePlaceholder": "Window title text",
+      "deleteWindow": "Delete window",
+      "deleteWindowConfirm": "Delete \"{{key}}\"? This can't be undone.",
+      "deleteWindowConfirmButton": "Delete",
+      "deleteWindowCancelButton": "Cancel",
+      "deleted": "Window deleted."
     },
     "canvas": {
       "noBanner": "No banner",
@@ -1153,7 +1187,33 @@
       "resetAllConfirmButton": "Reset all",
       "resetAllCancelButton": "Cancel",
       "saved": "Saved.",
-      "resetDone": "Reset to defaults."
+      "resetDone": "Reset to defaults.",
+      "textTitle": "Message text",
+      "textSave": "Save",
+      "textReset": "Reset to default",
+      "buttonTitle": "Button",
+      "buttonLabel": "Label",
+      "buttonStyle": "Style",
+      "buttonStyleNone": "None",
+      "buttonIcon": "Custom emoji icon ID",
+      "buttonCondition": "Visibility condition",
+      "buttonConditionNone": "Always visible",
+      "buttonLinkType": "Action type",
+      "buttonActionHint": "Bound to action \"{{key}}\" -- action buttons keep their action, only style/position/visibility are editable.",
+      "buttonTarget": "Target window",
+      "buttonTargetNone": "Choose a window",
+      "buttonUrl": "URL",
+      "buttonHidden": "Hidden",
+      "buttonDelete": "Delete button",
+      "buttonAdd": "Add button",
+      "buttonsSave": "Save buttons",
+      "buttonsDiscard": "Discard changes",
+      "buttonLabelPending": "Save the button grid first to unlock editing this label.",
+      "discardSwitchConfirm": "Discard unsaved button changes and switch windows?",
+      "discardSwitchConfirmButton": "Discard and switch"
+    },
+    "simulator": {
+      "title": "Simulate conditions"
     }
   },
   "referrals": {

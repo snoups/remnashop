@@ -353,3 +353,21 @@ async def test_count_registrations_by_day_groups_and_excludes_before_since(
     rows = await user_repository.count_registrations_by_day(since, Role.USER)
 
     assert sum(count for _day, count in rows) == 2
+
+
+async def test_list_ids_registered_since_excludes_before_since_and_other_roles(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    since = datetime_now() - timedelta(days=1)
+    in_window = await _create_user(user_repository, uow, telegram_id=810_301, role=Role.USER)
+    outside_window = await _create_user(user_repository, uow, telegram_id=810_302, role=Role.USER)
+    await session.execute(
+        update(User)
+        .where(User.id == outside_window.id)
+        .values(created_at=since - timedelta(days=1))
+    )
+    await _create_user(user_repository, uow, login="admin-810-3", role=Role.ADMIN)
+
+    ids = await user_repository.list_ids_registered_since(since, Role.USER)
+
+    assert ids == [in_window.id]

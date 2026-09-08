@@ -1,5 +1,4 @@
 import { AlertCircle, Cpu, Loader2, Users } from "lucide-react";
-import type { ComponentType } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -30,10 +29,10 @@ import type {
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
+import { PeriodToggle } from "@shared/ui/PeriodToggle";
+import { StatCard } from "@shared/ui/StatCard";
 
 type OverviewState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Overview };
-
-const PERIOD_OPTIONS: OverviewPeriodDays[] = [7, 30, 90, 0];
 
 export function fillDailySeries<T extends { day: string }>(
   sparse: T[],
@@ -50,54 +49,6 @@ export function fillDailySeries<T extends { day: string }>(
     result.push(byDay.get(key) ?? emptyValue(key));
   }
   return result;
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-surface/40 p-4">
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="size-5" />
-        </div>
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-      </div>
-      <span className="text-2xl font-bold text-foreground">{value}</span>
-    </div>
-  );
-}
-
-function PeriodToggle({
-  value,
-  onChange,
-}: {
-  value: OverviewPeriodDays;
-  onChange: (days: OverviewPeriodDays) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div className="inline-flex rounded-full border border-border p-0.5">
-      {PERIOD_OPTIONS.map((days) => (
-        <button
-          key={days}
-          type="button"
-          onClick={() => onChange(days)}
-          className={`rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${
-            value === days ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {days === 0 ? t("dashboard.periodAll") : t("dashboard.periodDays", { count: days })}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function TrendChart({
