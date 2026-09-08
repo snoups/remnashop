@@ -118,6 +118,37 @@
       "prevActive": "Active at window start",
       "stillActive": "Still active",
       "churned": "Churned"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "funnel": "Funnel",
+      "cohorts": "Cohorts",
+      "ltv": "LTV"
+    },
+    "funnel": {
+      "title": "Conversion funnel",
+      "loadError": "Couldn't load the funnel. Try refreshing.",
+      "steps": {
+        "registered": "Registered",
+        "trial": "Started trial",
+        "first_paid": "First paid purchase",
+        "repeat_paid": "Repeat paid purchase"
+      },
+      "ofStart": "of registered",
+      "ofPrevious": "of previous step"
+    },
+    "cohorts": {
+      "title": "Cohort retention",
+      "loadError": "Couldn't load cohorts. Try refreshing.",
+      "empty": "No registrations in this window yet.",
+      "cohortColumn": "Cohort",
+      "sizeColumn": "Users"
+    },
+    "ltv": {
+      "title": "Lifetime value distribution",
+      "loadError": "Couldn't load LTV distribution. Try refreshing.",
+      "empty": "No paying users yet.",
+      "usersAxis": "Users"
     }
   },
   "eventLog": {
@@ -1153,9 +1184,6 @@
     "loading": "Loading…",
     "loadError": "Failed to load dialog windows.",
     "windowList": {
-      "seedSection": "Menu",
-      "customSection": "Custom windows",
-      "empty": "No custom windows yet.",
       "addWindow": "Add window",
       "addWindowMessage": "Custom windows start empty -- add buttons after creating it.",
       "addWindowConfirm": "Create",
@@ -1185,7 +1213,6 @@
       "resetAll": "Reset all to defaults",
       "resetAllConfirm": "Reset every dialog window to its shipped default? This can't be undone.",
       "resetAllConfirmButton": "Reset all",
-      "resetAllCancelButton": "Cancel",
       "saved": "Saved.",
       "resetDone": "Reset to defaults.",
       "textTitle": "Message text",
@@ -1211,9 +1238,6 @@
       "buttonLabelPending": "Save the button grid first to unlock editing this label.",
       "discardSwitchConfirm": "Discard unsaved button changes and switch windows?",
       "discardSwitchConfirmButton": "Discard and switch"
-    },
-    "simulator": {
-      "title": "Simulate conditions"
     }
   },
   "referrals": {

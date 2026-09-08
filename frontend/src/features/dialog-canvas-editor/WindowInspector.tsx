@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogWindow } from "@entities/dialogs/api";
-import { BANNER_OPTIONS, resetAll, resetWindow, updateWindow } from "@entities/dialogs/api";
+import { BANNER_OPTIONS, resetWindow, updateWindow } from "@entities/dialogs/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
@@ -11,18 +11,15 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 interface WindowInspectorProps {
   window: DialogWindow;
   onWindowUpdated: (window: DialogWindow) => void;
-  onResetAll: () => void;
 }
 
-export function WindowInspector({ window, onWindowUpdated, onResetAll }: WindowInspectorProps) {
+export function WindowInspector({ window, onWindowUpdated }: WindowInspectorProps) {
   const { t } = useTranslation();
   const currentUserState = useCurrentUser();
   const permissions = currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
   const canUpdate = permissions.includes("DIALOGS_WINDOWS_UPDATE");
   const canReset = permissions.includes("DIALOGS_WINDOWS_RESET");
-  const canResetAll = permissions.includes("DIALOGS_WINDOWS_RESET_ALL");
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
 
   const handleBannerChange = async (value: string) => {
     try {
@@ -49,17 +46,6 @@ export function WindowInspector({ window, onWindowUpdated, onResetAll }: WindowI
     try {
       const updated = await resetWindow(window.key);
       onWindowUpdated(updated);
-      toast.success(t("dialogs.inspector.resetDone"));
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
-    }
-  };
-
-  const handleResetAll = async () => {
-    setIsResetAllConfirmOpen(false);
-    try {
-      await resetAll();
-      onResetAll();
       toast.success(t("dialogs.inspector.resetDone"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
@@ -114,15 +100,6 @@ export function WindowInspector({ window, onWindowUpdated, onResetAll }: WindowI
           {t("dialogs.inspector.resetWindow")}
         </button>
       ) : null}
-      {canResetAll ? (
-        <button
-          type="button"
-          onClick={() => setIsResetAllConfirmOpen(true)}
-          className="rounded-full border border-white/[0.12] px-3 py-2 text-[12.5px] text-error hover:bg-white/[0.06]"
-        >
-          {t("dialogs.inspector.resetAll")}
-        </button>
-      ) : null}
       {isResetConfirmOpen && (
         <ConfirmDialog
           title={t("dialogs.inspector.resetWindow")}
@@ -132,17 +109,6 @@ export function WindowInspector({ window, onWindowUpdated, onResetAll }: WindowI
           danger
           onConfirm={() => void handleResetWindow()}
           onCancel={() => setIsResetConfirmOpen(false)}
-        />
-      )}
-      {isResetAllConfirmOpen && (
-        <ConfirmDialog
-          title={t("dialogs.inspector.resetAll")}
-          message={t("dialogs.inspector.resetAllConfirm")}
-          confirmLabel={t("dialogs.inspector.resetAllConfirmButton")}
-          cancelLabel={t("dialogs.inspector.resetAllCancelButton")}
-          danger
-          onConfirm={() => void handleResetAll()}
-          onCancel={() => setIsResetAllConfirmOpen(false)}
         />
       )}
     </div>

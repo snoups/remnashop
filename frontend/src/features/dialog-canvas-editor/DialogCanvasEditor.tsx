@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { RotateCcw } from "lucide-react";
 
 import { fetchBannerImageBlob } from "@entities/banners/api";
 import {
@@ -8,6 +9,7 @@ import {
   getCatalog,
   listWindows,
   replaceButtons,
+  resetAll,
   toButtonInput,
   windowTextKeys,
   type DialogButtonItem,
@@ -18,14 +20,16 @@ import { listActiveLocales, listTranslations, type TranslationEntry } from "@ent
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { ButtonInspector } from "@features/dialog-canvas-editor/ButtonInspector";
-import { ConditionSimulator } from "@features/dialog-canvas-editor/ConditionSimulator";
 import { DialogCanvas } from "@features/dialog-canvas-editor/DialogCanvas";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import { WindowInspector } from "@features/dialog-canvas-editor/WindowInspector";
 import { WindowSwitcher } from "@features/dialog-canvas-editor/WindowSwitcher";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
+import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import { AnchoredPopover } from "@shared/ui/AnchoredPopover";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Modal } from "@shared/ui/Modal";
 
 export type Selection = { kind: "window" } | { kind: "text" } | { kind: "button"; textKey: string };
 
@@ -38,6 +42,47 @@ function useSelectedWindow(windows: DialogWindow[], selectedKey: string | null):
   return windows.find((window) => window.key === selectedKey) ?? null;
 }
 
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setIsDesktop(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return isDesktop;
+}
+
+/** Anchors `children` next to `anchorEl` on desktop; below the `lg` breakpoint,
+ * renders the same content through the app's standard `Modal` instead, since a
+ * canvas-anchored popover doesn't have room to make sense on a narrow screen. */
+function SelectionPopover({
+  anchorEl,
+  onClose,
+  children,
+}: {
+  anchorEl: HTMLElement | null;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const isDesktop = useIsDesktop();
+  if (isDesktop) {
+    return (
+      <AnchoredPopover anchorEl={anchorEl} onClose={onClose}>
+        {children}
+      </AnchoredPopover>
+    );
+  }
+  if (!anchorEl) return null;
+  return (
+    <Modal onClose={onClose} size="sm" scrollable>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">{children}</div>
+    </Modal>
+  );
+}
+
 export function DialogCanvasEditor() {
   const { t } = useTranslation();
   const currentUserState = useCurrentUser();
@@ -48,12 +93,13 @@ export function DialogCanvasEditor() {
   const [catalogState] = useAsyncResource(getCatalog);
   const catalog: DialogCatalog | null = catalogState.kind === "ready" ? catalogState.data : null;
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [selection, setSelection] = useState<Selection>({ kind: "window" });
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [previewLocale, setPreviewLocale] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [pendingButtons, setPendingButtons] = useState<DialogButtonItem[] | null>(null);
-  const [conditionToggles, setConditionToggles] = useState<Record<string, boolean>>({});
   const [pendingWindowSwitch, setPendingWindowSwitch] = useState<string | null>(null);
+  const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
 
   const windows = windowsState.kind === "ready" ? windowsState.data : [];
   const activeLocales = localesState.kind === "ready" ? localesState.data.active : [];
@@ -73,9 +119,9 @@ export function DialogCanvasEditor() {
   }, [localesState, previewLocale]);
 
   useEffect(() => {
-    setSelection({ kind: "window" });
+    setSelection(null);
+    setAnchorEl(null);
     setPendingButtons(null);
-    setConditionToggles({});
   }, [selectedKey]);
 
   useEffect(() => {
@@ -129,18 +175,25 @@ export function DialogCanvasEditor() {
   const buttons = pendingButtons ?? selectedWindow?.buttons ?? [];
   const isDirty = pendingButtons !== null;
   const canEditButtons = permissions.includes("DIALOGS_WINDOWS_BUTTONS_UPDATE");
-  const referencedConditions = [
-    ...new Set(buttons.map((b) => b.visibility_condition).filter((c): c is string => c !== null)),
-  ];
+
+  const handleSelect = (next: Selection, anchor: HTMLElement) => {
+    setSelection(next);
+    setAnchorEl(anchor);
+  };
+
+  const handleClosePopover = () => {
+    setSelection(null);
+    setAnchorEl(null);
+  };
 
   const handleButtonChange = (updated: DialogButtonItem) => {
     setPendingButtons(buttons.map((b) => (b.row === updated.row && b.column === updated.column ? updated : b)));
   };
 
   const handleButtonDelete = () => {
-    if (selection.kind !== "button") return;
+    if (selection?.kind !== "button") return;
     setPendingButtons(buttons.filter((b) => b.text_key !== selection.textKey));
-    setSelection({ kind: "window" });
+    handleClosePopover();
   };
 
   const handleSaveButtons = async () => {
@@ -160,6 +213,7 @@ export function DialogCanvasEditor() {
 
   const canCreateWindow = permissions.includes("DIALOGS_WINDOWS_CREATE");
   const canDeleteWindow = permissions.includes("DIALOGS_WINDOWS_DELETE");
+  const canResetAll = permissions.includes("DIALOGS_WINDOWS_RESET_ALL");
 
   const handleCreateWindow = async (titleText: string, bannerName: string | null) => {
     try {
@@ -183,6 +237,17 @@ export function DialogCanvasEditor() {
     }
   };
 
+  const handleResetAll = async () => {
+    setIsResetAllConfirmOpen(false);
+    try {
+      await resetAll();
+      reloadWindows();
+      toast.success(t("dialogs.inspector.resetDone"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    }
+  };
+
   const handleAddButton = () => {
     if (!catalog || catalog.navigable_window_keys.length === 0) return;
     const rows = buttons.map((b) => b.row);
@@ -201,7 +266,6 @@ export function DialogCanvasEditor() {
       is_hidden: false,
     };
     setPendingButtons([...buttons, newButton]);
-    setSelection({ kind: "button", textKey: newButton.text_key });
   };
 
   const handleSelectWindow = (key: string) => {
@@ -212,18 +276,31 @@ export function DialogCanvasEditor() {
     setSelectedKey(key);
   };
 
+  const resetAllMenuItems: ActionMenuItem[] = [];
+  if (canResetAll) {
+    resetAllMenuItems.push({
+      label: t("dialogs.inspector.resetAll"),
+      icon: RotateCcw,
+      variant: "danger",
+      onClick: () => setIsResetAllConfirmOpen(true),
+    });
+  }
+
   return (
-    <div className="flex flex-col gap-4 lg:flex-row">
-      <WindowSwitcher
-        windows={windows}
-        selectedKey={selectedKey}
-        onSelect={handleSelectWindow}
-        canCreate={canCreateWindow}
-        canDelete={canDeleteWindow}
-        onCreate={(title, banner) => void handleCreateWindow(title, banner)}
-        onDelete={(key) => void handleDeleteWindow(key)}
-      />
-      <div className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <WindowSwitcher
+          windows={windows}
+          selectedKey={selectedKey}
+          onSelect={handleSelectWindow}
+          canCreate={canCreateWindow}
+          canDelete={canDeleteWindow}
+          onCreate={(title, banner) => void handleCreateWindow(title, banner)}
+          onDelete={(key) => void handleDeleteWindow(key)}
+        />
+        <ActionMenu items={resetAllMenuItems} />
+      </div>
+      <div className="mx-auto w-full max-w-sm">
         {activeLocales.length > 1 && (
           <select
             className="mb-3 rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[12.5px] text-foreground"
@@ -244,8 +321,7 @@ export function DialogCanvasEditor() {
             textByKey={textByKey}
             bannerUrl={bannerUrl}
             selection={selection}
-            onSelect={setSelection}
-            conditionToggles={conditionToggles}
+            onSelect={handleSelect}
             canEditButtons={canEditButtons}
             onReorderButtons={setPendingButtons}
           />
@@ -277,60 +353,60 @@ export function DialogCanvasEditor() {
             </button>
           </div>
         )}
-        <ConditionSimulator
-          conditions={referencedConditions}
-          toggles={conditionToggles}
-          onToggle={(condition, value) => setConditionToggles((current) => ({ ...current, [condition]: value }))}
-        />
       </div>
-      {selectedWindow && selection.kind === "window" ? (
-        <WindowInspector
-          window={selectedWindow}
-          onWindowUpdated={(updated) => {
-            setWindowsData(windows.map((w) => (w.key === updated.key ? updated : w)));
-          }}
-          onResetAll={reloadWindows}
-        />
-      ) : null}
-      {selectedWindow && selection.kind === "text" && previewLocale && entriesState.kind === "ready" ? (
-        <div className="w-full shrink-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 lg:w-64">
-          <h3 className="mb-3 text-[13px] font-semibold text-foreground">{t("dialogs.inspector.textTitle")}</h3>
-          <TextEditorPanel
-            textKey={selectedWindow.text_keys[0] ?? ""}
-            entries={entries}
-            locales={activeLocales}
-            activeLocale={previewLocale}
-            onActiveLocaleChange={setPreviewLocale}
-            variableKeys={catalog?.text_variable_keys ?? []}
-            canUpdate={permissions.includes("DIALOGS_TEXT_UPDATE")}
-            canReset={permissions.includes("TRANSLATIONS_RESET")}
-            onSaved={handleEntrySaved}
+      {selectedWindow && selection?.kind === "window" ? (
+        <SelectionPopover anchorEl={anchorEl} onClose={handleClosePopover}>
+          <WindowInspector
+            window={selectedWindow}
+            onWindowUpdated={(updated) => {
+              setWindowsData(windows.map((w) => (w.key === updated.key ? updated : w)));
+            }}
           />
-        </div>
+        </SelectionPopover>
       ) : null}
-      {selectedWindow && selection.kind === "button" && catalog && previewLocale && entriesState.kind === "ready" ? (
-        (() => {
-          const button = buttons.find((b) => b.text_key === selection.textKey);
-          if (!button) return null;
-          return (
-            <ButtonInspector
-              button={button}
-              windowKind={selectedWindow.kind}
-              catalog={catalog}
+      {selectedWindow && selection?.kind === "text" && previewLocale && entriesState.kind === "ready" ? (
+        <SelectionPopover anchorEl={anchorEl} onClose={handleClosePopover}>
+          <div className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <h3 className="mb-3 text-[13px] font-semibold text-foreground">{t("dialogs.inspector.textTitle")}</h3>
+            <TextEditorPanel
+              textKey={selectedWindow.text_keys[0] ?? ""}
               entries={entries}
               locales={activeLocales}
               activeLocale={previewLocale}
               onActiveLocaleChange={setPreviewLocale}
-              canEditText={permissions.includes("DIALOGS_TEXT_UPDATE")}
-              canResetText={permissions.includes("TRANSLATIONS_RESET")}
-              canEditButtons={canEditButtons}
-              onEntrySaved={handleEntrySaved}
-              onChange={handleButtonChange}
-              onDelete={handleButtonDelete}
+              variableKeys={catalog?.text_variable_keys ?? []}
+              canUpdate={permissions.includes("DIALOGS_TEXT_UPDATE")}
+              canReset={permissions.includes("TRANSLATIONS_RESET")}
+              onSaved={handleEntrySaved}
             />
-          );
-        })()
+          </div>
+        </SelectionPopover>
       ) : null}
+      {selectedWindow && selection?.kind === "button" && catalog && previewLocale && entriesState.kind === "ready"
+        ? (() => {
+            const button = buttons.find((b) => b.text_key === selection.textKey);
+            if (!button) return null;
+            return (
+              <SelectionPopover anchorEl={anchorEl} onClose={handleClosePopover}>
+                <ButtonInspector
+                  button={button}
+                  windowKind={selectedWindow.kind}
+                  catalog={catalog}
+                  entries={entries}
+                  locales={activeLocales}
+                  activeLocale={previewLocale}
+                  onActiveLocaleChange={setPreviewLocale}
+                  canEditText={permissions.includes("DIALOGS_TEXT_UPDATE")}
+                  canResetText={permissions.includes("TRANSLATIONS_RESET")}
+                  canEditButtons={canEditButtons}
+                  onEntrySaved={handleEntrySaved}
+                  onChange={handleButtonChange}
+                  onDelete={handleButtonDelete}
+                />
+              </SelectionPopover>
+            );
+          })()
+        : null}
       {pendingWindowSwitch && (
         <ConfirmDialog
           title={t("dialogs.inspector.buttonsDiscard")}
@@ -343,6 +419,17 @@ export function DialogCanvasEditor() {
             setPendingWindowSwitch(null);
           }}
           onCancel={() => setPendingWindowSwitch(null)}
+        />
+      )}
+      {isResetAllConfirmOpen && (
+        <ConfirmDialog
+          title={t("dialogs.inspector.resetAll")}
+          message={t("dialogs.inspector.resetAllConfirm")}
+          confirmLabel={t("dialogs.inspector.resetAllConfirmButton")}
+          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          danger
+          onConfirm={() => void handleResetAll()}
+          onCancel={() => setIsResetAllConfirmOpen(false)}
         />
       )}
     </div>

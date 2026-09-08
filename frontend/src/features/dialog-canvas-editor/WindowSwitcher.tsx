@@ -14,7 +14,7 @@ interface WindowSwitcherProps {
   onDelete: (key: string) => void;
 }
 
-function WindowRow({
+function WindowChip({
   window,
   isSelected,
   canDelete,
@@ -30,16 +30,14 @@ function WindowRow({
   const { t } = useTranslation();
   return (
     <div
-      className={`flex items-center gap-1 rounded-full px-1 transition-colors ${
-        isSelected ? "bg-accent" : "hover:bg-white/[0.06]"
+      className={`flex items-center gap-0.5 rounded-full border px-1 transition-colors ${
+        isSelected ? "border-primary/40 bg-accent" : "border-white/[0.12] hover:bg-white/[0.06]"
       }`}
     >
       <button
         type="button"
         onClick={onSelect}
-        className={`block flex-1 truncate px-2 py-2 text-left text-[13px] ${
-          isSelected ? "text-primary" : "text-foreground/80"
-        }`}
+        className={`whitespace-nowrap px-2.5 py-1.5 text-[12.5px] ${isSelected ? "text-primary" : "text-foreground/80"}`}
       >
         {window.key}
       </button>
@@ -48,7 +46,7 @@ function WindowRow({
           type="button"
           onClick={onDelete}
           aria-label={t("dialogs.windowList.deleteWindow")}
-          className="px-1.5 text-[13px] text-muted-foreground hover:text-error"
+          className="pr-1.5 text-[13px] text-muted-foreground hover:text-error"
         >
           ×
         </button>
@@ -67,54 +65,36 @@ export function WindowSwitcher({ windows, selectedKey, onSelect, canCreate, canD
   const [bannerName, setBannerName] = useState("");
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-3 lg:w-56">
-      <div>
-        <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("dialogs.windowList.seedSection")}
-        </p>
-        <div className="flex flex-col gap-0.5">
-          {seedWindows.map((window) => (
-            <WindowRow
-              key={window.key}
-              window={window}
-              isSelected={window.key === selectedKey}
-              canDelete={false}
-              onSelect={() => onSelect(window.key)}
-              onDelete={() => {}}
-            />
-          ))}
-        </div>
-      </div>
-      <div>
-        <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("dialogs.windowList.customSection")}
-        </p>
-        <div className="flex flex-col gap-0.5">
-          {customWindows.length === 0 ? (
-            <p className="px-3 text-[12.5px] text-muted-foreground">{t("dialogs.windowList.empty")}</p>
-          ) : (
-            customWindows.map((window) => (
-              <WindowRow
-                key={window.key}
-                window={window}
-                isSelected={window.key === selectedKey}
-                canDelete={canDelete}
-                onSelect={() => onSelect(window.key)}
-                onDelete={() => setDeleteTarget(window.key)}
-              />
-            ))
-          )}
-        </div>
-        {canCreate && (
-          <button
-            type="button"
-            onClick={() => setIsCreateOpen(true)}
-            className="mt-1.5 w-full rounded-lg border border-dashed border-white/[0.12] py-1.5 text-[12px] text-foreground/70 hover:bg-white/[0.06]"
-          >
-            {t("dialogs.windowList.addWindow")}
-          </button>
-        )}
-      </div>
+    <div className="flex flex-1 flex-wrap items-center gap-1.5">
+      {seedWindows.map((window) => (
+        <WindowChip
+          key={window.key}
+          window={window}
+          isSelected={window.key === selectedKey}
+          canDelete={false}
+          onSelect={() => onSelect(window.key)}
+          onDelete={() => {}}
+        />
+      ))}
+      {customWindows.map((window) => (
+        <WindowChip
+          key={window.key}
+          window={window}
+          isSelected={window.key === selectedKey}
+          canDelete={canDelete}
+          onSelect={() => onSelect(window.key)}
+          onDelete={() => setDeleteTarget(window.key)}
+        />
+      ))}
+      {canCreate && (
+        <button
+          type="button"
+          onClick={() => setIsCreateOpen(true)}
+          className="whitespace-nowrap rounded-full border border-dashed border-white/[0.12] px-3 py-1.5 text-[12px] text-foreground/70 hover:bg-white/[0.06]"
+        >
+          {t("dialogs.windowList.addWindow")}
+        </button>
+      )}
       {isCreateOpen && (
         <ConfirmDialog
           title={t("dialogs.windowList.addWindow")}

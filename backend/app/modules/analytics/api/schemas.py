@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -30,3 +31,37 @@ class AnalyticsResponse(BaseModel):
     days: int
     kpi: AnalyticsKpiResponse
     churn: ChurnSnapshotResponse
+
+
+class FunnelStepResponse(BaseModel):
+    key: str
+    count: int
+    pct_of_start: float
+    pct_of_prev: float
+
+
+class FunnelResponse(BaseModel):
+    days: int
+    steps: list[FunnelStepResponse]
+
+
+class CohortRowResponse(BaseModel):
+    cohort: str
+    cohort_size: int
+    retention_by_month: list[float]
+
+
+class CohortsResponse(BaseModel):
+    cohorts: list[CohortRowResponse]
+
+
+class LtvBucketResponse(BaseModel):
+    label: str
+    lower_bound: Decimal
+    upper_bound: Optional[Decimal]
+    users: int
+
+
+class LtvDistributionResponse(BaseModel):
+    report_currency: Currency
+    buckets: list[LtvBucketResponse]

@@ -336,3 +336,12 @@ class UserRepository:
             select(User.id).where(User.role == role, User.created_at >= since)
         )
         return list(result.scalars().all())
+
+    async def list_id_and_registration_date_since(
+        self, since: datetime, role: Role
+    ) -> list[tuple[int, date]]:
+        day_col = func.date(func.timezone("UTC", User.created_at))
+        result = await self.session.execute(
+            select(User.id, day_col).where(User.role == role, User.created_at >= since)
+        )
+        return list(result.tuples().all())

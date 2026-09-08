@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Optional
 
 from app.core.dto import BaseDto
 from app.core.enums import Currency
@@ -40,3 +40,42 @@ class AnalyticsDto(BaseDto):
     days: int
     kpi: AnalyticsKpiDto
     churn: ChurnSnapshotDto
+
+
+class FunnelStepDto(BaseDto):
+    key: str
+    count: int
+    pct_of_start: float
+    pct_of_prev: float
+
+
+class FunnelDto(BaseDto):
+    days: int
+    steps: list[FunnelStepDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetFunnelDto:
+    days: AnalyticsDays = 7
+
+
+class CohortRowDto(BaseDto):
+    cohort: str
+    cohort_size: int
+    retention_by_month: list[float]
+
+
+class CohortsDto(BaseDto):
+    cohorts: list[CohortRowDto]
+
+
+class LtvBucketDto(BaseDto):
+    label: str
+    lower_bound: Decimal
+    upper_bound: Optional[Decimal]
+    users: int
+
+
+class LtvDistributionDto(BaseDto):
+    report_currency: Currency
+    buckets: list[LtvBucketDto]

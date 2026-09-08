@@ -474,3 +474,69 @@ async def test_daily_paid_revenue_by_currency_groups_by_day_and_currency(
 
     total_revenue = sum(amount for by_currency in daily.values() for amount in by_currency.values())
     assert total_revenue == Decimal("500")
+
+
+async def test_list_user_ids_with_multiple_paid_orders_requires_more_than_one(
+    payment_order_repository: PaymentOrderRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    single_payer = await user_repository.create(CreateUserDto(name="Single", telegram_id=900_101))
+
+    async with uow:
+        first = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="multi-1")
+        )
+        second = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="multi-2")
+        )
+        only = await payment_order_repository.create(
+            _order_dto(user_id=single_payer.id, plan_id=plan_id, idempotency_key="multi-3")
+        )
+    await payment_order_repository.mark_status(first.id, PaymentOrderStatus.PAID)
+    await payment_order_repository.mark_status(second.id, PaymentOrderStatus.PAID)
+    await payment_order_repository.mark_status(only.id, PaymentOrderStatus.PAID)
+
+    result = await payment_order_repository.list_user_ids_with_multiple_paid_orders(
+        [user_id, single_payer.id]
+    )
+
+    assert result == {user_id}
+
+
+async def test_list_paid_user_month_pairs_dedupes_within_a_month_and_respects_since(
+    payment_order_repository: PaymentOrderRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        early_this_month = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="pairs-1")
+        )
+        later_this_month = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="pairs-2")
+        )
+        too_old = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="pairs-3")
+        )
+    await payment_order_repository.mark_status(early_this_month.id, PaymentOrderStatus.PAID)
+    await payment_order_repository.mark_status(later_this_month.id, PaymentOrderStatus.PAID)
+    await payment_order_repository.mark_status(too_old.id, PaymentOrderStatus.PAID)
+    await session.execute(
+        update(PaymentOrder)
+        .where(PaymentOrder.id == too_old.id)
+        .values(updated_at=datetime_now() - timedelta(days=400))
+    )
+
+    pairs = await payment_order_repository.list_paid_user_month_pairs(
+        [user_id], datetime_now() - timedelta(days=60)
+    )
+
+    assert len(pairs) == 1
+    result_user_id, month = pairs[0]
+    assert result_user_id == user_id
+    assert month == datetime_now().date().replace(day=1)

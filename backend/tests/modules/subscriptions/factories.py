@@ -64,6 +64,7 @@ async def create_subscription(
     remnawave_user_id: int,
     status: SubscriptionStatus = SubscriptionStatus.ACTIVE,
     expire_at: Optional[datetime] = None,
+    is_trial: bool = False,
     **snapshot_overrides: Any,
 ) -> SubscriptionDto:
     """Creates a user and a subscription for it in one call. `telegram_id`
@@ -76,6 +77,7 @@ async def create_subscription(
             user_id=user.id,
             remnawave_user_id=remnawave_user_id,
             status=status,
+            is_trial=is_trial,
             traffic_limit=100,
             device_limit=3,
             expire_at=expire_at or (datetime_now() + timedelta(days=30)),

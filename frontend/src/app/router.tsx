@@ -6,6 +6,10 @@ import { DashboardLayout } from "@widgets/dashboard-layout/DashboardLayout";
 import {
   AdminsPage,
   AdvertisingPage,
+  AnalyticsCohortsPage,
+  AnalyticsFunnelPage,
+  AnalyticsLtvPage,
+  AnalyticsOverviewPage,
   AnalyticsPage,
   ApiTokensPage,
   AppearanceSettingsPage,
@@ -77,7 +81,16 @@ export const router = createBrowserRouter([
       { path: "promocodes", element: <PromocodesPage /> },
       { path: "referrals", element: <ReferralsPage /> },
       { path: "advertising", element: <AdvertisingPage /> },
-      { path: "analytics", element: <AnalyticsPage /> },
+      {
+        path: "analytics",
+        element: <AnalyticsPage />,
+        children: [
+          { index: true, element: <AnalyticsOverviewPage /> },
+          { path: "funnel", element: <AnalyticsFunnelPage /> },
+          { path: "cohorts", element: <AnalyticsCohortsPage /> },
+          { path: "ltv", element: <AnalyticsLtvPage /> },
+        ],
+      },
       { path: "event-log", element: <EventLogPage /> },
     ],
   },

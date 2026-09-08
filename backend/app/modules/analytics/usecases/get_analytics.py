@@ -2,7 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Final
 
-from app.core.enums import Currency, Role, SubscriptionStatus
+from app.core.enums import Role, SubscriptionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -12,24 +12,13 @@ from app.modules.analytics.dto import (
     ChurnSnapshotDto,
     GetAnalyticsDto,
 )
+from app.modules.analytics.window import convert_amount, resolve_since
 from app.modules.payments import PaymentOrderRepository
-from app.modules.pricing import CurrencyRateTable, PricingRepository
+from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.users import UserDto, UserRepository
 
 _ALL_TIME_CHURN_WINDOW_DAYS: Final[int] = 30
-
-
-def _convert(
-    amount: Decimal, from_currency: Currency, to_currency: Currency, rates: CurrencyRateTable
-) -> Decimal:
-    # Display-only reporting conversion, same shape as overview's own
-    # _convert() -- not app.modules.pricing.resolve_price, no rounding/charm-
-    # ending rules apply to a report number.
-    if from_currency == to_currency:
-        return amount
-    anchor_amount = amount / rates.for_currency(from_currency).rate
-    return anchor_amount * rates.for_currency(to_currency).rate
 
 
 class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
@@ -48,14 +37,8 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
         self._pricing_repository = pricing_repository
 
     async def _execute(self, actor: UserDto, data: GetAnalyticsDto) -> AnalyticsDto:
+        since = await resolve_since(self._user_repository, data.days)
         today_start = datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today = today_start.date()
-        if data.days == 0:
-            first_registration = await self._user_repository.earliest_registration(Role.USER)
-            start_date = first_registration or today
-        else:
-            start_date = today - timedelta(days=data.days - 1)
-        since = today_start - timedelta(days=(today - start_date).days)
 
         rate_table = await self._pricing_repository.get_rate_table()
         report_currency = rate_table.anchor
@@ -69,7 +52,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
         )
         total_revenue = sum(
             (
-                _convert(amount, currency, report_currency, rate_table)
+                convert_amount(amount, currency, report_currency, rate_table)
                 for currency, amount in total_revenue_by_currency.items()
             ),
             start=Decimal(0),
@@ -78,7 +61,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
         mrr_by_currency = await self._subscription_repository.sum_active_mrr_by_currency()
         mrr = sum(
             (
-                _convert(amount, currency, report_currency, rate_table)
+                convert_amount(amount, currency, report_currency, rate_table)
                 for currency, amount in mrr_by_currency.items()
             ),
             start=Decimal(0),

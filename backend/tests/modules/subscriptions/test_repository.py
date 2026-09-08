@@ -773,3 +773,30 @@ async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inacti
     result = await subscription_repository.sum_active_mrr_by_currency()
 
     assert result == {Currency.RUB: Decimal("360")}
+
+
+async def test_list_user_ids_with_trial_filters_by_is_trial_and_membership(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    trial_sub = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=826_001,
+        remnawave_user_id=826_001,
+        status=SubscriptionStatus.ACTIVE,
+        is_trial=True,
+    )
+    paid_sub = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=826_002,
+        remnawave_user_id=826_002,
+        status=SubscriptionStatus.ACTIVE,
+        is_trial=False,
+    )
+
+    result = await subscription_repository.list_user_ids_with_trial(
+        [trial_sub.user_id, paid_sub.user_id]
+    )
+
+    assert result == {trial_sub.user_id}

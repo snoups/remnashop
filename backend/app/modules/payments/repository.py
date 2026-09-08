@@ -199,6 +199,61 @@ class PaymentOrderRepository:
             paid.update(result.scalars().all())
         return paid
 
+    async def list_user_ids_with_multiple_paid_orders(self, user_ids: list[int]) -> set[int]:
+        if not user_ids:
+            return set()
+        repeat_payers: set[int] = set()
+        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
+            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+            stmt = (
+                select(PaymentOrder.user_id)
+                .where(
+                    PaymentOrder.user_id.in_(chunk),
+                    PaymentOrder.status == PaymentOrderStatus.PAID,
+                )
+                .group_by(PaymentOrder.user_id)
+                .having(func.count() > 1)
+            )
+            result = await self.session.execute(stmt)
+            repeat_payers.update(result.scalars().all())
+        return repeat_payers
+
+    async def list_paid_user_month_pairs(
+        self, user_ids: list[int], since: datetime
+    ) -> list[tuple[int, date]]:
+        if not user_ids:
+            return []
+        month_col = func.date(
+            func.date_trunc("month", func.timezone("UTC", PaymentOrder.updated_at))
+        )
+        pairs: list[tuple[int, date]] = []
+        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
+            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+            stmt = (
+                select(PaymentOrder.user_id, month_col)
+                .where(
+                    PaymentOrder.user_id.in_(chunk),
+                    PaymentOrder.status == PaymentOrderStatus.PAID,
+                    PaymentOrder.updated_at >= since,
+                )
+                .distinct()
+            )
+            result = await self.session.execute(stmt)
+            pairs.extend(result.tuples().all())
+        return pairs
+
+    async def sum_paid_final_price_per_user(self) -> dict[int, dict[Currency, Decimal]]:
+        stmt = (
+            select(PaymentOrder.user_id, PaymentOrder.currency, func.sum(PaymentOrder.final_price))
+            .where(PaymentOrder.status == PaymentOrderStatus.PAID)
+            .group_by(PaymentOrder.user_id, PaymentOrder.currency)
+        )
+        rows = (await self.session.execute(stmt)).tuples()
+        totals: dict[int, dict[Currency, Decimal]] = {}
+        for user_id, currency, amount in rows.all():
+            totals.setdefault(user_id, {})[currency] = amount
+        return totals
+
     async def count_paid_since(self, since: datetime) -> int:
         return int(
             await self.session.scalar(

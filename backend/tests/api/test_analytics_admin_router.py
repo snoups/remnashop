@@ -205,3 +205,126 @@ async def test_admin_without_analytics_view_is_denied(
     response = await client.get(f"{API_V1}/analytics/overview", headers=headers)
 
     assert response.status_code == 403
+
+
+async def test_owner_can_get_funnel_with_valid_days(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/analytics/funnel?days=30", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["days"] == 30
+    assert len(response.json()["steps"]) == 4
+
+
+async def test_get_funnel_default_days_is_seven(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/analytics/funnel", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["days"] == 7
+
+
+async def test_get_funnel_rejects_an_invalid_days_value(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/analytics/funnel?days=5", headers=headers)
+
+    assert response.status_code == 422
+
+
+async def test_admin_without_analytics_view_is_denied_on_funnel(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_analytics_view_headers(
+        user_repository, session_repository, uow, config
+    )
+
+    response = await client.get(f"{API_V1}/analytics/funnel", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_get_cohorts(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/analytics/cohorts", headers=headers)
+
+    assert response.status_code == 200
+    assert len(response.json()["cohorts"]) == 12
+
+
+async def test_admin_without_analytics_view_is_denied_on_cohorts(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_analytics_view_headers(
+        user_repository, session_repository, uow, config
+    )
+
+    response = await client.get(f"{API_V1}/analytics/cohorts", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_get_ltv_distribution(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/analytics/ltv-distribution", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["buckets"] == []
+
+
+async def test_admin_without_analytics_view_is_denied_on_ltv_distribution(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_analytics_view_headers(
+        user_repository, session_repository, uow, config
+    )
+
+    response = await client.get(f"{API_V1}/analytics/ltv-distribution", headers=headers)
+
+    assert response.status_code == 403

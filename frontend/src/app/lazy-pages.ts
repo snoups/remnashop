@@ -4,6 +4,18 @@ export const AdminsPage = lazy(() => import("@pages/admins/AdminsPage").then((m)
 export const AdvertisingPage = lazy(() =>
   import("@pages/advertising/AdvertisingPage").then((m) => ({ default: m.AdvertisingPage })),
 );
+export const AnalyticsCohortsPage = lazy(() =>
+  import("@pages/analytics/AnalyticsCohortsPage").then((m) => ({ default: m.AnalyticsCohortsPage })),
+);
+export const AnalyticsFunnelPage = lazy(() =>
+  import("@pages/analytics/AnalyticsFunnelPage").then((m) => ({ default: m.AnalyticsFunnelPage })),
+);
+export const AnalyticsLtvPage = lazy(() =>
+  import("@pages/analytics/AnalyticsLtvPage").then((m) => ({ default: m.AnalyticsLtvPage })),
+);
+export const AnalyticsOverviewPage = lazy(() =>
+  import("@pages/analytics/AnalyticsOverviewPage").then((m) => ({ default: m.AnalyticsOverviewPage })),
+);
 export const AnalyticsPage = lazy(() =>
   import("@pages/analytics/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
 );

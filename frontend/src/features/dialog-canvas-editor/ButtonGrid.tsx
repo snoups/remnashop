@@ -8,9 +8,8 @@ import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEdito
 interface ButtonGridProps {
   buttons: DialogButtonItem[];
   textByKey: Record<string, string>;
-  selection: Selection;
-  onSelect: (selection: Selection) => void;
-  conditionToggles: Record<string, boolean>;
+  selection: Selection | null;
+  onSelect: (selection: Selection, anchor: HTMLElement) => void;
   emptyLabel: string;
   canEdit: boolean;
   onReorder: (next: DialogButtonItem[]) => void;
@@ -81,7 +80,7 @@ function CanvasButton({
   textByKey: Record<string, string>;
   isSelected: boolean;
   isEffectivelyHidden: boolean;
-  onClick: () => void;
+  onClick: (anchor: HTMLElement) => void;
   draggable: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
@@ -96,7 +95,7 @@ function CanvasButton({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       type="button"
-      onClick={onClick}
+      onClick={(event) => onClick(event.currentTarget)}
       {...attributes}
       {...listeners}
       className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${borderClassName} ${
@@ -118,7 +117,6 @@ function Row({
   textByKey,
   selection,
   onSelect,
-  conditionToggles,
   canEdit,
   isPlaceholder,
   placeholderLabel,
@@ -126,9 +124,8 @@ function Row({
   id: string;
   buttons: DialogButtonItem[];
   textByKey: Record<string, string>;
-  selection: Selection;
-  onSelect: (selection: Selection) => void;
-  conditionToggles: Record<string, boolean>;
+  selection: Selection | null;
+  onSelect: (selection: Selection, anchor: HTMLElement) => void;
   canEdit: boolean;
   isPlaceholder: boolean;
   placeholderLabel?: string;
@@ -152,14 +149,9 @@ function Row({
               button={button}
               textByKey={textByKey}
               draggable={canEdit}
-              isSelected={selection.kind === "button" && selection.textKey === button.text_key}
-              isEffectivelyHidden={
-                button.is_hidden ||
-                (button.visibility_condition
-                  ? (conditionToggles[button.visibility_condition] ?? true) === false
-                  : false)
-              }
-              onClick={() => onSelect({ kind: "button", textKey: button.text_key })}
+              isSelected={selection?.kind === "button" && selection.textKey === button.text_key}
+              isEffectivelyHidden={button.is_hidden}
+              onClick={(anchor) => onSelect({ kind: "button", textKey: button.text_key }, anchor)}
             />
           ))}
         </SortableContext>
@@ -173,7 +165,6 @@ export function ButtonGrid({
   textByKey,
   selection,
   onSelect,
-  conditionToggles,
   emptyLabel,
   canEdit,
   onReorder,
@@ -234,7 +225,6 @@ export function ButtonGrid({
             textByKey={textByKey}
             selection={selection}
             onSelect={onSelect}
-            conditionToggles={conditionToggles}
             canEdit={canEdit}
             isPlaceholder={false}
           />
@@ -246,7 +236,6 @@ export function ButtonGrid({
             textByKey={textByKey}
             selection={selection}
             onSelect={onSelect}
-            conditionToggles={conditionToggles}
             canEdit={canEdit}
             isPlaceholder
           />

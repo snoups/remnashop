@@ -36,6 +36,10 @@ _ACTIVE_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
 # _PLAN_DURATIONS_LOCK_KEY = 8221939).
 _SUBSCRIPTION_PURCHASE_CAP_LOCK_KEY: Final[int] = 8221940
 
+# asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
+# large registered-cohort list still fits after other predicates are added.
+_MAX_IN_PARAMS: Final[int] = 20_000
+
 
 class SubscriptionRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -222,6 +226,20 @@ class SubscriptionRepository:
         )
         rows = (await self.session.execute(stmt)).tuples()
         return {Currency(currency): amount for currency, amount in rows.all()}
+
+    async def list_user_ids_with_trial(self, user_ids: list[int]) -> set[int]:
+        if not user_ids:
+            return set()
+        trial_users: set[int] = set()
+        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
+            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+            stmt = select(Subscription.user_id.distinct()).where(
+                Subscription.user_id.in_(chunk),
+                Subscription.is_trial.is_(True),
+            )
+            result = await self.session.execute(stmt)
+            trial_users.update(result.scalars().all())
+        return trial_users
 
     async def get_active_by_user(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(

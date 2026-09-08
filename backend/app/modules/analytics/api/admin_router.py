@@ -10,9 +10,20 @@ from app.modules.analytics.api.schemas import (
     AnalyticsKpiResponse,
     AnalyticsResponse,
     ChurnSnapshotResponse,
+    CohortRowResponse,
+    CohortsResponse,
+    FunnelResponse,
+    FunnelStepResponse,
+    LtvBucketResponse,
+    LtvDistributionResponse,
 )
-from app.modules.analytics.dto import AnalyticsDays, GetAnalyticsDto
-from app.modules.analytics.usecases import GetAnalyticsUseCase
+from app.modules.analytics.dto import AnalyticsDays, GetAnalyticsDto, GetFunnelDto
+from app.modules.analytics.usecases import (
+    GetAnalyticsUseCase,
+    GetCohortRetentionUseCase,
+    GetFunnelUseCase,
+    GetLtvDistributionUseCase,
+)
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -57,4 +68,66 @@ async def get_analytics_overview(
             churn_rate=analytics.churn.churn_rate,
             retention_rate=analytics.churn.retention_rate,
         ),
+    )
+
+
+@router.get("/funnel", response_model=FunnelResponse)
+@inject
+async def get_analytics_funnel(
+    use_case: FromDishka[GetFunnelUseCase],
+    actor: UserDto = Depends(require_admin),
+    days: AnalyticsPeriodDays = AnalyticsPeriodDays.SEVEN,
+) -> FunnelResponse:
+    funnel = await use_case(actor, GetFunnelDto(days=cast(AnalyticsDays, int(days))))
+    return FunnelResponse(
+        days=funnel.days,
+        steps=[
+            FunnelStepResponse(
+                key=step.key,
+                count=step.count,
+                pct_of_start=step.pct_of_start,
+                pct_of_prev=step.pct_of_prev,
+            )
+            for step in funnel.steps
+        ],
+    )
+
+
+@router.get("/cohorts", response_model=CohortsResponse)
+@inject
+async def get_analytics_cohorts(
+    use_case: FromDishka[GetCohortRetentionUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> CohortsResponse:
+    cohorts = await use_case(actor)
+    return CohortsResponse(
+        cohorts=[
+            CohortRowResponse(
+                cohort=row.cohort,
+                cohort_size=row.cohort_size,
+                retention_by_month=row.retention_by_month,
+            )
+            for row in cohorts.cohorts
+        ]
+    )
+
+
+@router.get("/ltv-distribution", response_model=LtvDistributionResponse)
+@inject
+async def get_analytics_ltv_distribution(
+    use_case: FromDishka[GetLtvDistributionUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> LtvDistributionResponse:
+    distribution = await use_case(actor)
+    return LtvDistributionResponse(
+        report_currency=distribution.report_currency,
+        buckets=[
+            LtvBucketResponse(
+                label=bucket.label,
+                lower_bound=bucket.lower_bound,
+                upper_bound=bucket.upper_bound,
+                users=bucket.users,
+            )
+            for bucket in distribution.buckets
+        ],
     )

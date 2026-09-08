@@ -371,3 +371,24 @@ async def test_list_ids_registered_since_excludes_before_since_and_other_roles(
     ids = await user_repository.list_ids_registered_since(since, Role.USER)
 
     assert ids == [in_window.id]
+
+
+async def test_list_id_and_registration_date_since_pairs_id_with_utc_date(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    since = datetime_now() - timedelta(days=1)
+    in_window = await _create_user(user_repository, uow, telegram_id=810_401, role=Role.USER)
+    outside_window = await _create_user(user_repository, uow, telegram_id=810_402, role=Role.USER)
+    await session.execute(
+        update(User)
+        .where(User.id == outside_window.id)
+        .values(created_at=since - timedelta(days=1))
+    )
+    await _create_user(user_repository, uow, login="admin-810-4", role=Role.ADMIN)
+
+    pairs = await user_repository.list_id_and_registration_date_since(since, Role.USER)
+
+    assert len(pairs) == 1
+    user_id, registered_on = pairs[0]
+    assert user_id == in_window.id
+    assert registered_on == datetime_now().date()

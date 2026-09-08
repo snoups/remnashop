@@ -9,9 +9,8 @@ interface DialogCanvasProps {
   buttons: DialogButtonItem[];
   textByKey: Record<string, string>;
   bannerUrl: string | null;
-  selection: Selection;
-  onSelect: (selection: Selection) => void;
-  conditionToggles: Record<string, boolean>;
+  selection: Selection | null;
+  onSelect: (selection: Selection, anchor: HTMLElement) => void;
   canEditButtons: boolean;
   onReorderButtons: (next: DialogButtonItem[]) => void;
 }
@@ -23,7 +22,6 @@ export function DialogCanvas({
   bannerUrl,
   selection,
   onSelect,
-  conditionToggles,
   canEditButtons,
   onReorderButtons,
 }: DialogCanvasProps) {
@@ -33,9 +31,9 @@ export function DialogCanvas({
     <div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
       <button
         type="button"
-        onClick={() => onSelect({ kind: "window" })}
+        onClick={(event) => onSelect({ kind: "window" }, event.currentTarget)}
         className={`flex h-32 w-full items-center justify-center border-b border-dashed border-white/[0.12] bg-white/[0.02] ${
-          selection.kind === "window" ? "ring-2 ring-inset ring-primary" : ""
+          selection?.kind === "window" ? "ring-2 ring-inset ring-primary" : ""
         }`}
       >
         {bannerUrl ? (
@@ -46,9 +44,9 @@ export function DialogCanvas({
       </button>
       <button
         type="button"
-        onClick={() => onSelect({ kind: "text" })}
+        onClick={(event) => onSelect({ kind: "text" }, event.currentTarget)}
         className={`block w-full whitespace-pre-line px-3 py-2.5 text-left text-[13.5px] leading-relaxed text-foreground ${
-          selection.kind === "text" ? "ring-2 ring-inset ring-primary" : ""
+          selection?.kind === "text" ? "ring-2 ring-inset ring-primary" : ""
         }`}
       >
         {window.text_keys[0] && textByKey[window.text_keys[0]] ? (
@@ -62,7 +60,6 @@ export function DialogCanvas({
         textByKey={textByKey}
         selection={selection}
         onSelect={onSelect}
-        conditionToggles={conditionToggles}
         emptyLabel={t("dialogs.canvas.emptyButtons")}
         canEdit={canEditButtons}
         onReorder={onReorderButtons}
