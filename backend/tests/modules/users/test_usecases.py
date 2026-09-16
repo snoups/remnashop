@@ -1,7 +1,11 @@
+from datetime import timedelta
+from typing import Optional
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry, User
 from app.core.db.uow import UnitOfWork
@@ -11,9 +15,14 @@ from app.core.ports import EventPublisher
 from app.core.security import hash_password
 from app.core.security.password import PASSWORD_MIN_LENGTH
 from app.core.security.permissions import Permission
+from app.core.security.session_token import hash_refresh_token
+from app.core.utils.time import datetime_now
+from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import SessionIssuer
 from app.modules.blacklist import BlacklistRepository
+from app.modules.passkeys.dto import CreatePasskeyCredentialDto
+from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.events import (
     AdminCreatedEvent,
@@ -27,6 +36,7 @@ from app.modules.users.events import (
 )
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
+    BlockUserUseCase,
     CreateAdminDto,
     CreateAdminUseCase,
     DeleteAdminDto,
@@ -575,6 +585,8 @@ async def test_owner_can_demote_admin(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
@@ -587,7 +599,9 @@ async def test_owner_can_demote_admin(
         ),
     )
 
-    demote_use_case = DemoteAdminUseCase(user_repository, uow, event_publisher)
+    demote_use_case = DemoteAdminUseCase(
+        user_repository, uow, event_publisher, session_repository, passkey_repository
+    )
     demoted = await demote_use_case(OWNER, DemoteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
 
     assert demoted.role == Role.USER
@@ -599,16 +613,26 @@ async def test_owner_can_demote_admin(
 
 
 async def test_demote_admin_unknown_id_raises_not_found(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
-    demote_use_case = DemoteAdminUseCase(user_repository, uow, event_publisher)
+    demote_use_case = DemoteAdminUseCase(
+        user_repository, uow, event_publisher, session_repository, passkey_repository
+    )
 
     with pytest.raises(NotFoundError):
         await demote_use_case(OWNER, DemoteAdminDto(user_id=999_999, client_ip="127.0.0.1"))
 
 
 async def test_demote_admin_rejects_targeting_owner(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
     async with uow:
         owner_row = await user_repository.create(
@@ -618,7 +642,9 @@ async def test_demote_admin_rejects_targeting_owner(
         )
         await uow.commit()
 
-    demote_use_case = DemoteAdminUseCase(user_repository, uow, event_publisher)
+    demote_use_case = DemoteAdminUseCase(
+        user_repository, uow, event_publisher, session_repository, passkey_repository
+    )
 
     with pytest.raises(ConflictError):
         await demote_use_case(OWNER, DemoteAdminDto(user_id=owner_row.id, client_ip="127.0.0.1"))
@@ -629,6 +655,8 @@ async def test_demote_admin_preserves_customer_identity(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
     async with uow:
         await user_repository.create(
@@ -650,7 +678,9 @@ async def test_demote_admin_preserves_customer_identity(
         ),
     )
 
-    demote_use_case = DemoteAdminUseCase(user_repository, uow, event_publisher)
+    demote_use_case = DemoteAdminUseCase(
+        user_repository, uow, event_publisher, session_repository, passkey_repository
+    )
     demoted = await demote_use_case(OWNER, DemoteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
 
     assert demoted.telegram_id == 777
@@ -935,13 +965,17 @@ async def test_demote_admin_publishes_admin_demoted_event(
     config: AppConfig,
     event_publisher: EventPublisher,
     session: AsyncSession,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evt4", name="X")
     )
 
-    demote_use_case = DemoteAdminUseCase(user_repository, uow, event_publisher)
+    demote_use_case = DemoteAdminUseCase(
+        user_repository, uow, event_publisher, session_repository, passkey_repository
+    )
     await demote_use_case(OWNER, DemoteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
 
     rows = await _outbox_rows(session, AdminDemotedEvent.__name__)
@@ -1207,16 +1241,61 @@ async def test_owner_can_delete_regular_user(
         )
         await uow.commit()
 
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
     await delete_use_case(OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
 
     assert await user_repository.get_by_id(target.id) is None
 
 
+class _NoopRevoker:
+    def __init__(self, error: Optional[Exception] = None) -> None:
+        self.revoked: list[int] = []
+        self._error = error
+
+    async def revoke_all_by_user(self, user_id: int) -> None:
+        if self._error is not None:
+            raise self._error
+        self.revoked.append(user_id)
+
+
+async def test_delete_user_revokes_panel_access_first(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="Regular14", role=Role.USER, language=Locale.EN)
+        )
+    revoker = _NoopRevoker()
+
+    await DeleteUserUseCase(user_repository, uow, event_publisher, revoker)(
+        OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1")
+    )
+
+    assert revoker.revoked == [target.id]
+
+
+async def test_delete_user_keeps_the_user_when_panel_revocation_fails(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    # the local row must not vanish while VPN access still works
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="Regular15", role=Role.USER, language=Locale.EN)
+        )
+    revoker = _NoopRevoker(error=RuntimeError("panel down"))
+
+    with pytest.raises(RuntimeError):
+        await DeleteUserUseCase(user_repository, uow, event_publisher, revoker)(
+            OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1")
+        )
+
+    assert await user_repository.get_by_id(target.id) is not None
+
+
 async def test_delete_user_unknown_id_raises_not_found(
     user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
 
     with pytest.raises(NotFoundError):
         await delete_use_case(OWNER, DeleteUserDto(user_id=999_999, client_ip="127.0.0.1"))
@@ -1233,7 +1312,7 @@ async def test_delete_user_rejects_admin_target(
         )
         await uow.commit()
 
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
 
     with pytest.raises(ConflictError):
         await delete_use_case(OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
@@ -1251,7 +1330,7 @@ async def test_delete_user_rejects_self_delete(
         await uow.commit()
     self_actor = self_user.model_copy(update={"permission_grants": ["USERS_DELETE"]})
 
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
 
     with pytest.raises(ConflictError):
         await delete_use_case(
@@ -1270,7 +1349,7 @@ async def test_admin_without_delete_user_grant_is_denied(
         )
         await uow.commit()
 
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
 
     with pytest.raises(PermissionDeniedError):
         await delete_use_case(ADMIN, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
@@ -1288,7 +1367,7 @@ async def test_admin_with_delete_user_grant_can_delete_regular_user(
         await uow.commit()
 
     granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_DELETE"]})
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
     await delete_use_case(granted_admin, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
 
     assert await user_repository.get_by_id(target.id) is None
@@ -1306,7 +1385,7 @@ async def test_delete_user_publishes_user_deleted_event(
         )
         await uow.commit()
 
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
     await delete_use_case(OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
 
     rows = await _outbox_rows(session, UserDeletedEvent.__name__)
@@ -1341,7 +1420,7 @@ async def test_delete_user_twice_raises_not_found_on_second_call(
         )
         await uow.commit()
 
-    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteUserUseCase(user_repository, uow, event_publisher, _NoopRevoker())
     await delete_use_case(OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
 
     with pytest.raises(NotFoundError):
@@ -1410,3 +1489,104 @@ async def test_owner_can_set_discount_on_staff_account(
     result = await use_case(OWNER, SetUserPersonalDiscountDto(user_id=target.id, percent=10))
 
     assert result.personal_discount == 10
+
+
+async def test_demote_admin_revokes_sessions_and_passkeys(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
+) -> None:
+    create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
+    admin, _ = await create_use_case(
+        OWNER,
+        CreateAdminDto(
+            client_ip="127.0.0.1",
+            login="losesaccess",
+            name="X",
+            permission_grants=[Permission.OWN_ACCOUNT_MANAGE],
+        ),
+    )
+    async with uow:
+        await session_repository.create(
+            CreateSessionDto(
+                user_id=admin.id,
+                refresh_token_hash=hash_refresh_token("still-valid"),
+                ip_address="203.0.113.1",
+                user_agent="pytest",
+                expires_at=datetime_now() + timedelta(days=30),
+            )
+        )
+        await passkey_repository.create(
+            CreatePasskeyCredentialDto(
+                user_id=admin.id,
+                credential_id="cred-demote",
+                public_key=b"pubkey",
+                sign_count=0,
+                transports=None,
+                device_type="single_device",
+                backed_up=False,
+                name="Laptop",
+            )
+        )
+
+    demote_use_case = DemoteAdminUseCase(
+        user_repository, uow, event_publisher, session_repository, passkey_repository
+    )
+    await demote_use_case(OWNER, DemoteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
+
+    assert await session_repository.list_active_by_user(admin.id) == []
+    assert await passkey_repository.list_by_user(admin.id) == []
+
+
+async def test_block_user_allows_an_api_token_actor_to_block_a_plain_user(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # An API token authenticates as a synthetic actor with Role.USER; the
+    # guard must key on the target being staff, not on outranking them.
+    token_actor = SyntheticActor(
+        id=0,
+        role=Role.USER,
+        name="API Token: ops",
+        is_privileged=True,
+        log="[api_token:ops]",
+        permission_grants=[Permission.USERS_BLOCK.value],
+    )
+    async with uow:
+        target = await user_repository.create(CreateUserDto(name="customer", telegram_id=9100))
+
+    use_case = BlockUserUseCase(user_repository, blacklist_repository, uow, event_publisher)
+    blocked = await use_case(token_actor, target.id)
+
+    assert blocked.is_blocked is True
+
+
+async def test_block_user_still_refuses_an_api_token_against_staff(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    token_actor = SyntheticActor(
+        id=0,
+        role=Role.USER,
+        name="API Token: ops",
+        is_privileged=True,
+        log="[api_token:ops]",
+        permission_grants=[Permission.USERS_BLOCK.value],
+    )
+    create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
+    admin, _ = await create_use_case(
+        OWNER,
+        CreateAdminDto(client_ip="127.0.0.1", login="staffmember", name="X", permission_grants=[]),
+    )
+
+    use_case = BlockUserUseCase(user_repository, blacklist_repository, uow, event_publisher)
+    with pytest.raises(PermissionDeniedError):
+        await use_case(token_actor, admin.id)

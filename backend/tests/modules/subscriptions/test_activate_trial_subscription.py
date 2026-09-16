@@ -16,6 +16,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -70,6 +71,7 @@ async def test_activates_a_trial_and_spends_the_flag(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
 
@@ -103,8 +105,78 @@ async def test_rejects_when_the_flag_is_already_spent(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
 
     with pytest.raises(ValidationError):
         await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+
+
+async def test_a_second_activation_with_a_stale_actor_is_rejected(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # A double tap: both updates loaded the user before either spent the
+    # flag, so both carry is_trial_available=True.
+    plan = await _create_trial_plan(plan_repository)
+    actor = await user_repository.create(CreateUserDto(name="trial-double-tap"))
+    purchase_use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+    )
+    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
+    first = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+
+    with pytest.raises(ValidationError):
+        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+
+    active = await subscription_repository.get_active_by_user(actor.id)
+    assert [sub.id for sub in active] == [first.id]
+
+
+async def test_a_failed_activation_gives_the_trial_back(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = await _create_trial_plan(plan_repository)
+    actor = await user_repository.create(CreateUserDto(name="trial-panel-down"))
+    purchase_use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+    )
+
+    async def _panel_down(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("panel down")
+
+    monkeypatch.setattr(remnawave_sdk.users, "create_user", _panel_down)
+    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
+
+    with pytest.raises(RuntimeError):
+        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+
+    reloaded = await user_repository.get_by_id(actor.id)
+    assert reloaded is not None and reloaded.is_trial_available is True

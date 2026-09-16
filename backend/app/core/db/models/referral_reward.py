@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Numeric, UniqueConstraint
+from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
@@ -12,9 +12,9 @@ from app.core.enums import ReferralRewardType
 class ReferralReward(BaseSql, TimestampMixin):
     __tablename__ = "referral_rewards"
     __table_args__ = (
-        UniqueConstraint(
-            "subscription_id", "referral_id", name="uq_referral_rewards_subscription_referral"
-        ),
+        # one reward per paid order per chain hop -- a subscription's renewals
+        # are separate payments
+        UniqueConstraint("payment_key", "referral_id", name="uq_referral_rewards_payment_referral"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -28,5 +28,7 @@ class ReferralReward(BaseSql, TimestampMixin):
     subscription_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("subscriptions.id", ondelete="SET NULL")
     )
+    # PaymentOrder.idempotency_key of the payment that earned this reward
+    payment_key: Mapped[str] = mapped_column(String(36))
     type: Mapped[ReferralRewardType]
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))

@@ -4,6 +4,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
+from app.core.utils.time import truncate_to_ms
 from app.modules.subscriptions.dto import SubscriptionDto, SyncSubscriptionStatusDto
 from app.modules.subscriptions.events import SubscriptionStatusSyncedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
@@ -41,7 +42,7 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
             expire_at_drifted = (
                 data.expire_at is not None
                 and subscription.status is not SubscriptionStatus.DELETED
-                and subscription.expire_at != data.expire_at
+                and truncate_to_ms(subscription.expire_at) != truncate_to_ms(data.expire_at)
             )
             if not status_drifted and not expire_at_drifted:
                 return subscription
@@ -54,10 +55,12 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
                 # Panel is the source of truth for expire_at -- pulls a
                 # renewal that landed on the panel but never made it into our
                 # own commit back in sync (see reissue_subscription's
-                # analogous incident class). reactivate_on_renew() also flips
-                # a lapsed EXPIRED back to ACTIVE, matching a real renewal.
+                # analogous incident class). Status stays whatever the panel
+                # reported alongside -- a renewal arrives as ACTIVE on its own.
                 assert data.expire_at is not None
-                subscription = await self._lifecycle_service.renew(subscription.id, data.expire_at)
+                subscription = await self._lifecycle_service.sync_expire_at(
+                    subscription.id, data.expire_at
+                )
 
             if subscription.status is old_status and not expire_at_drifted:
                 # sync_status() no-op'd (already DELETED) and nothing else

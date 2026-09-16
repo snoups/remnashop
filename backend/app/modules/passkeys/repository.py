@@ -64,6 +64,13 @@ class PasskeyRepository:
         row.last_used_at = datetime.now(timezone.utc)
         await self.session.flush()
 
+    async def delete_all_by_user(self, user_id: int) -> int:
+        result = await self.session.execute(
+            delete(PasskeyCredential).where(PasskeyCredential.user_id == user_id)
+        )
+        await self.session.flush()
+        return cast(CursorResult, result).rowcount
+
     async def delete_by_id_and_user(self, id: int, user_id: int) -> bool:
         stmt = delete(PasskeyCredential).where(
             PasskeyCredential.id == id, PasskeyCredential.user_id == user_id

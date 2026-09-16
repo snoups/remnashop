@@ -203,6 +203,9 @@ class PurchaseSubscriptionDto:
     # it must not burn a discount the customer never got to use. Not derivable
     # from price_paid == 0: a 100%-off checkout is free AND spent the discount.
     consumes_purchase_discount: bool = False
+    # False for a paid checkout order: the cap was enforced at checkout, and
+    # refusing after the charge leaves the customer paid with nothing.
+    enforce_subscription_cap: bool = True
 
 
 @dataclass(frozen=True, kw_only=True)

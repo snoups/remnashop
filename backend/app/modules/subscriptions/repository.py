@@ -269,6 +269,21 @@ class SubscriptionRepository:
         count = await self.session.scalar(stmt)
         return bool(count)
 
+    async def has_paid_subscription_before(self, user_id: int, subscription_id: int) -> bool:
+        """Whether a non-trial subscription other than this one already exists
+        -- "is this the user's first paid subscription", where
+        has_any_subscription would also count the one just created."""
+        stmt = (
+            select(func.count())
+            .select_from(Subscription)
+            .where(
+                Subscription.user_id == user_id,
+                Subscription.id != subscription_id,
+                Subscription.is_trial.is_(False),
+            )
+        )
+        return bool(await self.session.scalar(stmt))
+
     async def get_by_remnawave_user_id(self, remnawave_user_id: int) -> Optional[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)
@@ -503,6 +518,31 @@ class SubscriptionRepository:
         if row is not None:
             row.subscription_id = subscription_id
             await self.session.flush()
+
+    async def get_pending_renew_expire_at(self, key: str) -> Optional[datetime]:
+        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
+        if row is None or row.subscription_id is not None:
+            return None
+        return row.renew_expire_at
+
+    async def pin_renew_expire_at(self, key: str, expire_at: datetime) -> None:
+        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
+        if row is not None:
+            row.renew_expire_at = expire_at
+            await self.session.flush()
+
+    async def lock_idempotency_key(self, key: str) -> Optional[SubscriptionDto]:
+        """Serializes completion of one purchase; returns its subscription if
+        another attempt already finished it."""
+        row = await self.session.scalar(
+            select(SubscriptionPurchaseIdempotency)
+            .where(SubscriptionPurchaseIdempotency.key == key)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if row is None or row.subscription_id is None:
+            return None
+        return await self.get_by_id(row.subscription_id)
 
     async def release_idempotency_key(self, key: str) -> None:
         row = await self.session.get(SubscriptionPurchaseIdempotency, key)

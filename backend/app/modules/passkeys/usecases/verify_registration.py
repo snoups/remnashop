@@ -4,6 +4,7 @@ from webauthn.helpers.exceptions import WebAuthnException
 
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import AuthenticationError
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
@@ -12,6 +13,7 @@ from app.modules.passkeys.dto import (
     PasskeyCredentialDto,
     VerifyPasskeyRegistrationDto,
 )
+from app.modules.passkeys.events import PasskeyRegisteredEvent
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
@@ -26,11 +28,13 @@ class VerifyPasskeyRegistrationUseCase(UseCase[VerifyPasskeyRegistrationDto, Pas
         passkey_repository: PasskeyRepository,
         challenge_store: PasskeyChallengeStore,
         uow: UnitOfWork,
+        event_publisher: EventPublisher,
     ) -> None:
         self._settings_repository = settings_repository
         self._passkey_repository = passkey_repository
         self._challenge_store = challenge_store
         self._uow = uow
+        self._event_publisher = event_publisher
 
     async def _execute(
         self, actor: UserDto, data: VerifyPasskeyRegistrationDto
@@ -63,7 +67,7 @@ class VerifyPasskeyRegistrationUseCase(UseCase[VerifyPasskeyRegistrationDto, Pas
         transports = data.credential.get("response", {}).get("transports")
 
         async with self._uow:
-            return await self._passkey_repository.create(
+            credential = await self._passkey_repository.create(
                 CreatePasskeyCredentialDto(
                     user_id=actor.id,
                     credential_id=bytes_to_base64url(verification.credential_id),
@@ -75,3 +79,7 @@ class VerifyPasskeyRegistrationUseCase(UseCase[VerifyPasskeyRegistrationDto, Pas
                     name=data.name or "Passkey",
                 )
             )
+            await self._event_publisher.publish(
+                PasskeyRegisteredEvent(user=actor, credential_name=credential.name)
+            )
+        return credential

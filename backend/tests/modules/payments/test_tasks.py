@@ -1,7 +1,10 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from sqlalchemy import update
+
 import app.modules.payments.tasks as tasks_module
+from app.core.db.models.payment_order import PaymentOrder
 from app.core.enums import (
     Currency,
     DiscountSource,
@@ -14,6 +17,7 @@ from app.core.utils.time import datetime_now
 from app.modules.payments.dto import CreatePaymentOrderDto
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.tasks import prune_expired_payment_orders, reconcile_paid_orders
+from app.modules.subscriptions import IDEMPOTENCY_KEY_RETENTION_DAYS
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -93,6 +97,7 @@ async def test_reconcile_paid_orders_redispatches_when_no_subscription_is_linked
     await reconcile_paid_orders(
         payment_order_repository=payment_order_repository,
         subscription_repository=subscription_repository,
+        uow=uow,
         grace_period=timedelta(seconds=0),
     )
 
@@ -140,6 +145,7 @@ async def test_reconcile_paid_orders_skips_when_a_subscription_is_already_linked
     await reconcile_paid_orders(
         payment_order_repository=payment_order_repository,
         subscription_repository=subscription_repository,
+        uow=uow,
         grace_period=timedelta(seconds=0),
     )
 
@@ -169,6 +175,121 @@ async def test_reconcile_paid_orders_ignores_orders_that_are_not_paid(
     await reconcile_paid_orders(
         payment_order_repository=payment_order_repository,
         subscription_repository=subscription_repository,
+        uow=uow,
+        grace_period=timedelta(seconds=0),
+    )
+
+    assert dispatched == []
+
+
+async def _create_linked_paid_order(
+    payment_order_repository: PaymentOrderRepository,
+    subscription_repository: SubscriptionRepository,
+    uow,
+    *,
+    user_id: int,
+    plan_id: int,
+    idempotency_key: str,
+    remnawave_user_id: int,
+):
+    async with uow:
+        order = await payment_order_repository.create(
+            _paid_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=idempotency_key)
+        )
+        await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+        subscription = await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=user_id,
+                remnawave_user_id=remnawave_user_id,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime_now(),
+                url=f"https://fake-panel.test/sub/{remnawave_user_id}",
+                plan_snapshot=make_plan_snapshot(),
+            )
+        )
+        await subscription_repository.claim_idempotency_key(idempotency_key)
+        await subscription_repository.link_idempotency_key(idempotency_key, subscription.id)
+    return order
+
+
+async def test_reconcile_paid_orders_does_not_redispatch_after_idempotency_keys_are_pruned(
+    payment_order_repository: PaymentOrderRepository,
+    subscription_repository: SubscriptionRepository,
+    uow,
+    user_id,
+    plan_id,
+    monkeypatch,
+) -> None:
+    await _create_linked_paid_order(
+        payment_order_repository,
+        subscription_repository,
+        uow,
+        user_id=user_id,
+        plan_id=plan_id,
+        idempotency_key="recon-pruned",
+        remnawave_user_id=555002,
+    )
+
+    dispatched: list[dict[str, object]] = []
+
+    async def _fake_kiq(**kwargs: object) -> None:
+        dispatched.append(kwargs)
+
+    monkeypatch.setattr(tasks_module.purchase_subscription_task, "kiq", _fake_kiq)
+
+    await reconcile_paid_orders(
+        payment_order_repository=payment_order_repository,
+        subscription_repository=subscription_repository,
+        uow=uow,
+        grace_period=timedelta(seconds=0),
+    )
+    async with uow:
+        await subscription_repository.delete_stale_idempotency_keys(
+            datetime_now() + timedelta(days=1)
+        )
+    await reconcile_paid_orders(
+        payment_order_repository=payment_order_repository,
+        subscription_repository=subscription_repository,
+        uow=uow,
+        grace_period=timedelta(seconds=0),
+    )
+
+    assert dispatched == []
+
+
+async def test_reconcile_paid_orders_skips_orders_older_than_the_idempotency_retention(
+    payment_order_repository: PaymentOrderRepository,
+    subscription_repository: SubscriptionRepository,
+    session,
+    uow,
+    user_id,
+    plan_id,
+    monkeypatch,
+) -> None:
+    async with uow:
+        order = await payment_order_repository.create(
+            _paid_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="recon-too-old")
+        )
+        await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await session.execute(
+        update(PaymentOrder)
+        .where(PaymentOrder.id == order.id)
+        .values(updated_at=datetime_now() - timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS))
+    )
+
+    dispatched: list[dict[str, object]] = []
+
+    async def _fake_kiq(**kwargs: object) -> None:
+        dispatched.append(kwargs)
+
+    monkeypatch.setattr(tasks_module.purchase_subscription_task, "kiq", _fake_kiq)
+
+    await reconcile_paid_orders(
+        payment_order_repository=payment_order_repository,
+        subscription_repository=subscription_repository,
+        uow=uow,
         grace_period=timedelta(seconds=0),
     )
 

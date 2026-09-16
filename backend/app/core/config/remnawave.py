@@ -1,8 +1,7 @@
 from typing import Optional
 
 from httpx import Cookies
-from pydantic import SecretStr, field_validator
-from pydantic_core.core_schema import FieldValidationInfo
+from pydantic import SecretStr, ValidationInfo, field_validator
 
 from app.core.config.base import BaseConfig
 from app.core.config.validators import validate_not_change_me
@@ -53,7 +52,7 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
     @field_validator("token", "webhook_secret")
     @classmethod
     def validate_optional_secret(
-        cls, field: Optional[SecretStr], info: FieldValidationInfo
+        cls, field: Optional[SecretStr], info: ValidationInfo
     ) -> Optional[SecretStr]:
         if field is None:
             return field

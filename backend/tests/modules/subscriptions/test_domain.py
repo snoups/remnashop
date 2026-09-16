@@ -142,3 +142,19 @@ def test_reactivate_on_renew_rejects_deleted() -> None:
 
     with pytest.raises(ValidationError):
         state.reactivate_on_renew(datetime(2026, 10, 1))  # noqa: DTZ001
+
+
+def test_sync_expire_at_never_changes_status() -> None:
+    state = _state(status=SubscriptionStatus.EXPIRED, expire_at=datetime(2026, 1, 1))  # noqa: DTZ001
+    new_expire_at = datetime(2026, 2, 1)  # noqa: DTZ001
+
+    result = state.sync_expire_at(new_expire_at)
+
+    assert result.status is SubscriptionStatus.EXPIRED
+    assert result.expire_at == new_expire_at
+
+
+def test_sync_expire_at_is_a_noop_when_already_deleted() -> None:
+    state = _state(status=SubscriptionStatus.DELETED, expire_at=datetime(2026, 1, 1))  # noqa: DTZ001
+
+    assert state.sync_expire_at(datetime(2026, 2, 1)) is state  # noqa: DTZ001

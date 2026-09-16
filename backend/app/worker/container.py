@@ -10,6 +10,7 @@ from app.modules.event_log import get_event_log_providers
 from app.modules.oauth import OAuthIdentityRepository
 from app.modules.payments import PaymentOrderRepository
 from app.modules.plans import PlanRepository
+from app.modules.pricing import PricingRepository
 from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscriptions_providers
@@ -85,6 +86,13 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
     ad_link_repository_provider = Provider(scope=Scope.REQUEST)
     ad_link_repository_provider.provide(AdLinkRepository)
 
+    # PricingRepository is provided directly here, not via
+    # app.modules.pricing.get_pricing_providers() -- that provider also
+    # registers the admin pricing usecase graph. PurchaseSubscriptionUseCase
+    # only needs the rate table to convert a cross-currency CHANGE credit.
+    pricing_repository_provider = Provider(scope=Scope.REQUEST)
+    pricing_repository_provider.provide(PricingRepository)
+
     context = {AppConfig: config}
     providers = [
         *get_core_providers(),
@@ -101,5 +109,6 @@ def create_worker_container(config: AppConfig) -> AsyncContainer:
         plan_repository_provider,
         blacklist_repository_provider,
         ad_link_repository_provider,
+        pricing_repository_provider,
     ]
     return make_async_container(*providers, context=context)

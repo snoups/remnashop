@@ -1,18 +1,27 @@
 import asyncio
 import contextlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+import httpx
 import pytest
 from remnapy import RemnawaveSDK
 from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
-from app.core.db.models import Plan, Subscription, User
+from app.core.db.models import EventOutboxEntry, Plan, Subscription, User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AddOnType, Currency, PlanType, PurchaseType, Role, SubscriptionStatus
+from app.core.enums import (
+    AddOnType,
+    Currency,
+    PlanType,
+    PurchaseType,
+    Role,
+    RoundingMode,
+    SubscriptionStatus,
+)
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
@@ -25,6 +34,8 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing.dto import UpdateCurrencyRateDto
+from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import (
@@ -39,6 +50,7 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.remnawave import FakeUserStore
 from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
 
 
@@ -87,6 +99,7 @@ async def test_new_purchase_creates_subscription_with_real_remnawave_identity(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     subscription = await use_case(
@@ -136,6 +149,7 @@ async def test_new_purchase_forbidden_for_a_different_users_actor(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -178,6 +192,7 @@ async def test_owner_can_purchase_on_behalf_of_another_user(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     subscription = await use_case(
@@ -216,6 +231,7 @@ async def test_new_purchase_rejects_target_subscription_id(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     with pytest.raises(ValidationError):
@@ -254,6 +270,7 @@ async def test_new_purchase_blocked_at_concurrent_subscription_cap(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -271,6 +288,48 @@ async def test_new_purchase_blocked_at_concurrent_subscription_cap(
 
     with pytest.raises(ValidationError):
         await use_case(buyer, dto)
+
+
+async def test_new_purchase_at_the_cap_never_touches_the_panel(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    buyer = await _create_buyer(user_repository, 408)
+    plan = await _create_plan(plan_repository, "capnopanel")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+    )
+    dto = PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot_from_plan(
+            plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+        ),
+        duration_days=30,
+        price_paid=Decimal("299.00"),
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+    )
+    for _ in range(3):
+        await use_case(buyer, dto)
+    panel_users_before = len(remnawave_store)
+
+    with pytest.raises(ValidationError):
+        await use_case(buyer, dto)
+
+    assert len(remnawave_store) == panel_users_before
 
 
 async def test_renew_extends_expire_at_and_calls_remnawave_extend(
@@ -292,6 +351,7 @@ async def test_renew_extends_expire_at_and_calls_remnawave_extend(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     original = await use_case(
         buyer,
@@ -345,6 +405,7 @@ async def test_renew_requires_target_subscription_id(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     with pytest.raises(ValidationError):
@@ -383,6 +444,7 @@ async def test_renew_rejects_target_belonging_to_another_user(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     other_subscription = await use_case(
         other_buyer,
@@ -435,6 +497,7 @@ async def test_renew_rejects_target_on_a_different_plan(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     original = await use_case(
         buyer,
@@ -486,6 +549,7 @@ async def test_renew_rejects_a_deleted_target(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     original = await use_case(
         buyer,
@@ -539,6 +603,7 @@ async def test_change_applies_proration_credit_as_extra_days(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     old_subscription = await use_case(
         buyer,
@@ -598,6 +663,79 @@ async def test_change_applies_proration_credit_as_extra_days(
     )
 
 
+async def test_change_converts_proration_credit_across_currencies(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    pricing_repository: PricingRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()  # seeds the rate rows
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("100"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    buyer = await _create_buyer(user_repository, 427)
+    old_plan = await _create_plan(plan_repository, "changefxold")
+    new_plan = await _create_plan(plan_repository, "changefxnew")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        pricing_repository,
+    )
+    old_subscription = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                old_plan, price_paid=Decimal("300"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    # 300 RUB of credit at RUB=100 is 3 USD; the new plan costs 3 USD / 30 days,
+    # so the credit buys 30 days -- not 300 / 0.1 = 3000.
+    changed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                new_plan, price_paid=Decimal("3.00"), currency=Currency.USD, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("3.00"),
+            base_price=Decimal("3.00"),
+            currency=Currency.USD,
+            purchase_type=PurchaseType.CHANGE,
+            target_subscription_id=old_subscription.id,
+        ),
+    )
+
+    expected_days = 30 + 30
+    assert (changed.expire_at - datetime_now()).days in (
+        expected_days - 2,
+        expected_days - 1,
+        expected_days,
+    )
+
+
 async def test_change_credit_converts_at_list_price_not_the_discounted_price(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
@@ -618,6 +756,7 @@ async def test_change_credit_converts_at_list_price_not_the_discounted_price(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     old_subscription = await use_case(
         buyer,
@@ -694,6 +833,7 @@ async def test_change_requires_target_subscription_id(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     with pytest.raises(ValidationError):
@@ -751,6 +891,7 @@ async def test_change_from_trial_gives_no_credit(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     trial_subscription = await use_case(
         buyer,
@@ -831,6 +972,7 @@ async def test_concurrent_new_purchases_never_exceed_the_cap(
             UnitOfWork(session),
             _NoopEventPublisher(),
             SubscriptionLifecycleService(repo),
+            PricingRepository(session),
         )
         try:
             await use_case(
@@ -952,6 +1094,7 @@ async def test_purchase_with_same_idempotency_key_returns_existing_subscription(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -992,6 +1135,7 @@ async def test_purchase_failure_after_panel_call_disables_the_panel_user(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     disabled_ids: list[int] = []
@@ -1045,6 +1189,7 @@ async def test_renew_reactivates_an_expired_subscription(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     purchased = await use_case(
         buyer,
@@ -1101,6 +1246,7 @@ async def test_renew_with_same_idempotency_key_returns_existing_subscription(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     purchased = await use_case(
         buyer,
@@ -1155,6 +1301,7 @@ async def test_purchase_with_idempotency_key_can_retry_after_a_failed_attempt(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -1207,6 +1354,7 @@ async def test_idempotency_key_is_released_after_a_panel_call_failure(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -1258,6 +1406,7 @@ async def test_purchase_new_clears_purchase_discount(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     async with uow:
         await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
@@ -1301,6 +1450,7 @@ async def test_renew_clears_purchase_discount(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     original = await use_case(
         buyer,
@@ -1361,6 +1511,7 @@ async def test_change_does_not_reparent_addon_entitlement_to_the_new_row(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     old_subscription = await use_case(
         buyer,
@@ -1438,6 +1589,7 @@ async def test_trial_upgrade_does_not_reparent_addon_entitlement_to_the_new_row(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     trial = await use_case(
         buyer,
@@ -1513,6 +1665,7 @@ async def test_new_purchase_upgrades_an_active_trial_in_place(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     trial = await use_case(
@@ -1581,6 +1734,7 @@ async def test_new_purchase_without_a_trial_still_mints_a_fresh_panel_user(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     subscription = await use_case(
@@ -1622,6 +1776,7 @@ async def test_change_clears_purchase_discount(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     old_subscription = await use_case(
         buyer,
@@ -1699,6 +1854,7 @@ async def test_new_purchase_provisions_the_plans_traffic_limit_strategy_on_the_p
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
 
     subscription = await use_case(
@@ -1720,7 +1876,12 @@ async def test_new_purchase_provisions_the_plans_traffic_limit_strategy_on_the_p
     assert subscription.traffic_limit_strategy is TrafficLimitStrategy.MONTH
 
 
-async def test_a_failed_renew_keeps_the_idempotency_key_so_extend_is_never_replayed(
+def _to_ms(value: datetime) -> datetime:
+    # the real panel stores milliseconds; the fake keeps whatever it was given
+    return value.replace(microsecond=value.microsecond // 1000 * 1000)
+
+
+async def _renew_fixture(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
@@ -1728,12 +1889,18 @@ async def test_a_failed_renew_keeps_the_idempotency_key_so_extend_is_never_repla
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-) -> None:
-    # extend_user is cumulative: releasing the key after it has already landed
-    # would let the reconcile sweep (or taskiq's own retry) grant a second
-    # duration for a single payment.
-    buyer = await _create_buyer(user_repository, 432)
-    plan = await _create_plan(plan_repository, "renew-retry")
+    *,
+    telegram_id: int,
+    public_code: str,
+) -> tuple[
+    PurchaseSubscriptionUseCase,
+    SubscriptionLifecycleService,
+    UserDto,
+    SubscriptionDto,
+    PurchaseSubscriptionDto,
+]:
+    buyer = await _create_buyer(user_repository, telegram_id)
+    plan = await _create_plan(plan_repository, public_code)
     lifecycle = SubscriptionLifecycleService(subscription_repository)
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
@@ -1743,6 +1910,7 @@ async def test_a_failed_renew_keeps_the_idempotency_key_so_extend_is_never_repla
         uow,
         event_publisher,
         lifecycle,
+        PricingRepository(subscription_repository.session),
     )
     snapshot = snapshot_from_plan(
         plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
@@ -1758,13 +1926,6 @@ async def test_a_failed_renew_keeps_the_idempotency_key_so_extend_is_never_repla
             purchase_type=PurchaseType.NEW,
         ),
     )
-    before = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
-
-    async def _fail(*_args: object, **_kwargs: object) -> SubscriptionDto:
-        raise RuntimeError("DB write failed after the panel call landed")
-
-    lifecycle.renew = _fail  # type: ignore[method-assign]
-    key = uuid4().hex
     renewal = PurchaseSubscriptionDto(
         user_id=buyer.id,
         plan_snapshot=snapshot,
@@ -1773,19 +1934,98 @@ async def test_a_failed_renew_keeps_the_idempotency_key_so_extend_is_never_repla
         currency=Currency.RUB,
         purchase_type=PurchaseType.RENEW,
         target_subscription_id=original.id,
-        idempotency_key=key,
+        idempotency_key=uuid4().hex,
     )
+    return use_case, lifecycle, buyer, original, renewal
+
+
+async def test_a_renew_whose_db_write_failed_is_completed_by_the_retry_without_extending_twice(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    use_case, lifecycle, buyer, original, renewal = await _renew_fixture(
+        plan_repository,
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        telegram_id=432,
+        public_code="renew-retry",
+    )
+    before = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
+
+    real_renew = lifecycle.renew
+
+    async def _fail(*_args: object, **_kwargs: object) -> SubscriptionDto:
+        raise RuntimeError("DB write failed after the panel call landed")
+
+    lifecycle.renew = _fail  # type: ignore[method-assign]
     with pytest.raises(RuntimeError):
         await use_case(buyer, renewal)
-
     after_first = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
-    assert after_first == before + timedelta(days=30)
+    assert after_first == _to_ms(before + timedelta(days=30))
 
-    # The retry must refuse outright, not extend a second time.
-    with pytest.raises(ValidationError, match="already in progress"):
-        await use_case(buyer, renewal)
+    lifecycle.renew = real_renew  # type: ignore[method-assign]
+    renewed = await use_case(buyer, renewal)
+
     after_retry = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
     assert after_retry == after_first
+    assert renewed.expire_at == after_first
+    assert renewal.idempotency_key is not None
+    linked = await subscription_repository.get_subscription_by_idempotency_key(
+        renewal.idempotency_key
+    )
+    assert linked is not None and linked.id == original.id
+    # a third delivery is a plain replay of the finished purchase
+    assert (await use_case(buyer, renewal)).id == original.id
+
+
+async def test_a_renew_whose_panel_response_was_lost_is_not_applied_twice(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use_case, _, buyer, original, renewal = await _renew_fixture(
+        plan_repository,
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        telegram_id=434,
+        public_code="renew-lost-response",
+    )
+    before = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
+
+    real_update = remnawave_sdk.users.update_user
+
+    async def _landed_then_lost(*args: object, **kwargs: object) -> object:
+        await real_update(*args, **kwargs)  # type: ignore[arg-type]
+        raise httpx.ReadTimeout("response lost after the panel applied the write")
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", _landed_then_lost)
+    with pytest.raises(httpx.ReadTimeout):
+        await use_case(buyer, renewal)
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", real_update)
+
+    renewed = await use_case(buyer, renewal)
+
+    after = (await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)).expire_at
+    assert after == _to_ms(before + timedelta(days=30))
+    assert renewed.expire_at == after
 
 
 async def test_a_system_grant_does_not_consume_the_purchase_discount(
@@ -1809,6 +2049,7 @@ async def test_a_system_grant_does_not_consume_the_purchase_discount(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     async with uow:
         await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
@@ -1830,3 +2071,54 @@ async def test_a_system_grant_does_not_consume_the_purchase_discount(
     updated = await user_repository.get_by_id(buyer.id)
     assert updated is not None
     assert updated.purchase_discount == 15
+
+
+async def test_only_a_paid_purchase_event_carries_the_payment_key(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    # referrals rewards key off payment_key: a paid order has one, a
+    # trial/promocode/referral grant does not
+    buyer = await _create_buyer(user_repository, 435)
+    plan = await _create_plan(plan_repository, "payment-key")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+    )
+    snapshot = snapshot_from_plan(
+        plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+    )
+    for key in ("paid-order-key", None):
+        await use_case(
+            buyer,
+            PurchaseSubscriptionDto(
+                user_id=buyer.id,
+                plan_snapshot=snapshot,
+                duration_days=30,
+                price_paid=Decimal("299.00"),
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                idempotency_key=key,
+            ),
+        )
+
+    rows = (
+        await session.scalars(
+            select(EventOutboxEntry)
+            .where(EventOutboxEntry.event_type == "SubscriptionPurchasedEvent")
+            .order_by(EventOutboxEntry.id)
+        )
+    ).all()
+    assert [row.payload["payment_key"] for row in rows] == ["paid-order-key", None]

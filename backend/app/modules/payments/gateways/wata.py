@@ -1,4 +1,5 @@
 from base64 import b64decode
+from time import monotonic
 from typing import Final, Optional
 
 import orjson
@@ -20,6 +21,15 @@ from app.modules.payments.gateways.base import (
 )
 
 _API_BASE: Final[str] = "https://api.wata.pro/api/h2h"
+_PUBLIC_KEY_TTL_S: Final[float] = 3600.0
+
+# Keyed by api_key, not per instance: the factory builds a fresh gateway for
+# every request, so an instance-level cache would never be reused.
+_public_key_cache: dict[str, tuple[float, RSAPublicKey]] = {}
+
+
+def clear_public_key_cache() -> None:
+    _public_key_cache.clear()
 
 
 class WataGateway(PaymentGateway):
@@ -51,8 +61,6 @@ class WataGateway(PaymentGateway):
         if not signature:
             raise PaymentGatewayError("WATA webhook missing X-Signature header")
 
-        # fetches WATA's public key on every webhook; add a TTL cache
-        # if webhook volume ever makes the extra GET matter.
         public_key = await self._fetch_public_key()
         try:
             public_key.verify(
@@ -71,13 +79,19 @@ class WataGateway(PaymentGateway):
         return WebhookResult(reference=str(order_ref), status=PaymentOrderStatus.PAID)
 
     async def _fetch_public_key(self) -> RSAPublicKey:
+        api_key = self._require("api_key")
+        cached = _public_key_cache.get(api_key)
+        if cached is not None and cached[0] > monotonic():
+            return cached[1]
+
         response = await http_client.get(
             f"{_API_BASE}/public-key",
-            headers={"Authorization": f"Bearer {self._require('api_key')}"},
+            headers={"Authorization": f"Bearer {api_key}"},
         )
         response.raise_for_status()
         pem = orjson.loads(response.content)["value"].encode()
         key = serialization.load_pem_public_key(pem)
         if not isinstance(key, RSAPublicKey):
             raise PaymentGatewayError("WATA public key is not an RSA key")
+        _public_key_cache[api_key] = (monotonic() + _PUBLIC_KEY_TTL_S, key)
         return key

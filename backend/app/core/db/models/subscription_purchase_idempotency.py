@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import ForeignKey
@@ -14,3 +15,7 @@ class SubscriptionPurchaseIdempotency(BaseSql, TimestampMixin):
     subscription_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("subscriptions.id", ondelete="CASCADE"), index=True
     )
+    # RENEW only: the absolute expiry this purchase writes to the panel, pinned
+    # before the panel call so a retry re-applies the same value instead of
+    # extending a second time.
+    renew_expire_at: Mapped[Optional[datetime]]

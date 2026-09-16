@@ -122,6 +122,28 @@ async def test_parse_webhook_valid_signature_returns_paid_result() -> None:
     assert result.provider_payment_id == "op-1"
 
 
+async def test_parse_webhook_reads_the_amount_debited_from_the_sender() -> None:
+    # 'amount' is what reached the receiver (fee already deducted), so reading
+    # it would reject a payment the customer was charged in full for.
+    body = _signed_body(
+        "test-secret",
+        label="order-key-1",
+        operation_id="op-1",
+        amount="485.00",
+        withdraw_amount="500.00",
+        currency="643",
+        datetime="2026-09-02T12:00:00Z",
+        sender="",
+        codepro="false",
+        notification_type="p2p-incoming",
+    )
+
+    result = await _gateway().parse_webhook(_webhook(body))
+
+    assert result is not None
+    assert result.amount == Decimal("500.00")
+
+
 async def test_parse_webhook_invalid_signature_raises() -> None:
     body = urlencode({"label": "order-key-1", "sign": "not-the-real-signature"}).encode()
 

@@ -20,7 +20,9 @@ from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
+from app.modules.passkeys import get_passkey_providers
 from app.modules.settings import get_settings_providers
+from app.modules.subscriptions import get_subscription_revoker_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -53,7 +55,9 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
     providers = [
         *get_core_providers(),
         *get_users_providers(),
+        *get_subscription_revoker_providers(),
         *get_auth_providers(),
+        *get_passkey_providers(),
         *get_settings_providers(),
         *get_api_tokens_providers(),
         *get_translations_providers(),

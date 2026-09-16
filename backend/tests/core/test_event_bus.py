@@ -25,7 +25,11 @@ from app.modules.oauth.events import (
 )
 from app.modules.referrals.tasks import assign_referral_rewards_task
 from app.modules.settings.events import LocaleActivatedEvent, LocaleDeactivatedEvent
-from app.modules.subscriptions.events import SubscriptionPurchasedEvent, SubscriptionRenewedEvent
+from app.modules.subscriptions.events import (
+    SubscriptionChangedEvent,
+    SubscriptionPurchasedEvent,
+    SubscriptionRenewedEvent,
+)
 from app.modules.translations.tasks import (
     copy_locale_translations_task,
     delete_locale_translations_task,
@@ -208,7 +212,7 @@ async def test_subscription_purchased_handler_kicks_referral_rewards_task(
     bus = EventBus()
     bus.autodiscover()
     event = SubscriptionPurchasedEvent(
-        user=_USER, subscription_id=42, plan_id=1, purchase_type="NEW"
+        user=_USER, subscription_id=42, plan_id=1, purchase_type="NEW", payment_key="order-1"
     )
     stored = _stored_probe_event(
         category=event.category, event_type=event.event_type, payload=_build_payload(event)
@@ -216,7 +220,14 @@ async def test_subscription_purchased_handler_kicks_referral_rewards_task(
 
     await bus.dispatch_stored(stored)
 
-    assert calls == [{"user_id": _USER.id, "subscription_id": 42, "is_new_purchase": True}]
+    assert calls == [
+        {
+            "user_id": _USER.id,
+            "subscription_id": 42,
+            "is_new_purchase": True,
+            "payment_key": "order-1",
+        }
+    ]
 
 
 async def test_subscription_renewed_handler_kicks_referral_rewards_task(
@@ -231,11 +242,80 @@ async def test_subscription_renewed_handler_kicks_referral_rewards_task(
 
     bus = EventBus()
     bus.autodiscover()
-    event = SubscriptionRenewedEvent(user=_USER, subscription_id=42, duration_days=30)
+    event = SubscriptionRenewedEvent(
+        user=_USER, subscription_id=42, duration_days=30, payment_key="order-2"
+    )
     stored = _stored_probe_event(
         category=event.category, event_type=event.event_type, payload=_build_payload(event)
     )
 
     await bus.dispatch_stored(stored)
 
-    assert calls == [{"user_id": _USER.id, "subscription_id": 42, "is_new_purchase": False}]
+    assert calls == [
+        {
+            "user_id": _USER.id,
+            "subscription_id": 42,
+            "is_new_purchase": False,
+            "payment_key": "order-2",
+        }
+    ]
+
+
+async def test_subscription_changed_handler_kicks_referral_rewards_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    async def _capture_kiq(*args: Any, **kwargs: Any) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
+
+    bus = EventBus()
+    bus.autodiscover()
+    event = SubscriptionChangedEvent(
+        user=_USER,
+        subscription_id=43,
+        previous_subscription_id=42,
+        previous_plan_snapshot={},
+        payment_key="order-3",
+    )
+    stored = _stored_probe_event(
+        category=event.category, event_type=event.event_type, payload=_build_payload(event)
+    )
+
+    await bus.dispatch_stored(stored)
+
+    assert calls == [
+        {
+            "user_id": _USER.id,
+            "subscription_id": 43,
+            "is_new_purchase": False,
+            "payment_key": "order-3",
+        }
+    ]
+
+
+async def test_unpaid_subscription_events_do_not_kick_referral_rewards_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # promocode / referral / trial grants carry no payment_key -- not a payment
+    calls: list[dict[str, Any]] = []
+
+    async def _capture_kiq(*args: Any, **kwargs: Any) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
+
+    bus = EventBus()
+    bus.autodiscover()
+    for event in (
+        SubscriptionPurchasedEvent(user=_USER, subscription_id=42, plan_id=1, purchase_type="NEW"),
+        SubscriptionRenewedEvent(user=_USER, subscription_id=42, duration_days=30),
+    ):
+        stored = _stored_probe_event(
+            category=event.category, event_type=event.event_type, payload=_build_payload(event)
+        )
+        await bus.dispatch_stored(stored)
+
+    assert calls == []

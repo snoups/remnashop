@@ -2,9 +2,10 @@ import asyncio
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.core.db.models import EventOutboxEntry, Subscription
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SubscriptionStatus
 from app.core.exceptions import PermissionDeniedError
@@ -247,3 +248,114 @@ async def test_concurrent_syncs_on_the_same_row_serialize_last_writer_wins(
                     text("DELETE FROM users WHERE id = :id"), {"id": created.user_id}
                 )
                 await cleanup_conn.commit()
+
+
+async def _synced_event_count(session: AsyncSession) -> int:
+    return int(
+        await session.scalar(
+            select(func.count())
+            .select_from(EventOutboxEntry)
+            .where(EventOutboxEntry.event_type == "SubscriptionStatusSyncedEvent")
+        )
+        or 0
+    )
+
+
+async def test_sync_keeps_the_panels_expired_status_when_expire_at_moved_too(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await _create_subscription(
+        subscription_repository, user_repository, 71010, SubscriptionStatus.ACTIVE
+    )
+    use_case = SyncSubscriptionStatusUseCase(
+        subscription_repository,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+    panel_expire_at = datetime_now() - timedelta(minutes=1)
+
+    result = await use_case.system(
+        SyncSubscriptionStatusDto(
+            remnawave_user_id=71010,
+            status=SubscriptionStatus.EXPIRED,
+            source="reconcile",
+            expire_at=panel_expire_at,
+        )
+    )
+
+    assert result is not None
+    assert result.status is SubscriptionStatus.EXPIRED
+    assert result.expire_at == panel_expire_at
+
+
+async def test_sync_reactivates_when_the_panel_reports_a_renewal(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await _create_subscription(
+        subscription_repository, user_repository, 71011, SubscriptionStatus.EXPIRED
+    )
+    use_case = SyncSubscriptionStatusUseCase(
+        subscription_repository,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+    panel_expire_at = datetime_now() + timedelta(days=60)
+
+    result = await use_case.system(
+        SyncSubscriptionStatusDto(
+            remnawave_user_id=71011,
+            status=SubscriptionStatus.ACTIVE,
+            source="reconcile",
+            expire_at=panel_expire_at,
+        )
+    )
+
+    assert result is not None
+    assert result.status is SubscriptionStatus.ACTIVE
+    assert result.expire_at == panel_expire_at
+
+
+async def test_sync_ignores_a_sub_millisecond_expire_at_difference(
+    session: AsyncSession,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # The panel stores milliseconds; a locally written expire_at can carry
+    # microseconds, and that alone must not count as drift on every sweep.
+    subscription_id = await _create_subscription(
+        subscription_repository, user_repository, 71012, SubscriptionStatus.ACTIVE
+    )
+    stored = await subscription_repository.get_by_id(subscription_id)
+    local_expire_at = stored.expire_at.replace(microsecond=123456)
+    await session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription_id)
+        .values(expire_at=local_expire_at)
+    )
+    use_case = SyncSubscriptionStatusUseCase(
+        subscription_repository,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+
+    await use_case.system(
+        SyncSubscriptionStatusDto(
+            remnawave_user_id=71012,
+            status=SubscriptionStatus.ACTIVE,
+            source="reconcile",
+            expire_at=local_expire_at.replace(microsecond=123000),
+        )
+    )
+
+    assert await _synced_event_count(session) == 0

@@ -8,6 +8,7 @@ from app.modules.blacklist import get_blacklist_providers
 from app.modules.passkeys import get_passkey_providers
 from app.modules.passkeys.usecases import ListPasskeysUseCase
 from app.modules.settings import get_settings_providers
+from app.modules.subscriptions import get_subscription_revoker_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 
@@ -30,6 +31,7 @@ async def test_passkey_providers_resolve_list_use_case(
     container = make_async_container(
         *get_core_providers(),
         *get_users_providers(),
+        *get_subscription_revoker_providers(),
         *get_auth_providers(),
         *get_settings_providers(),
         *get_blacklist_providers(),

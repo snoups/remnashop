@@ -94,6 +94,7 @@ class ReferralRepository:
         referral_id: int,
         referrer_id: int,
         subscription_id: int,
+        payment_key: str,
         type: ReferralRewardType,
         amount: Decimal,
     ) -> ReferralRewardDto:
@@ -101,6 +102,7 @@ class ReferralRepository:
             referral_id=referral_id,
             referrer_id=referrer_id,
             subscription_id=subscription_id,
+            payment_key=payment_key,
             type=type,
             amount=amount,
         )
@@ -109,8 +111,7 @@ class ReferralRepository:
             await self.session.flush()
         except IntegrityError as error:
             raise ConflictError(
-                f"Reward already granted for subscription '{subscription_id}' "
-                f"and referral '{referral_id}'"
+                f"Reward already granted for payment '{payment_key}' and referral '{referral_id}'"
             ) from error
         return self._reward_to_dto(row)
 

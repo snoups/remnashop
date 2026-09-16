@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -137,13 +137,18 @@ class PromocodeRepository:
                 raise ValidationError(f"Promocode '{promocode_row.code}' activation limit reached")
 
         if not promocode_row.is_reusable:
-            existing = await self.session.execute(
-                select(PromocodeActivation).where(
-                    PromocodeActivation.promocode_id == promocode_id,
-                    PromocodeActivation.user_id == user_id,
+            # exists(), not scalar_one_or_none(): a code toggled from reusable
+            # to single-use leaves users with several activations, and asking
+            # for exactly one there raises instead of refusing the claim.
+            already_activated = await self.session.scalar(
+                select(
+                    exists().where(
+                        PromocodeActivation.promocode_id == promocode_id,
+                        PromocodeActivation.user_id == user_id,
+                    )
                 )
             )
-            if existing.scalar_one_or_none() is not None:
+            if already_activated:
                 raise ValidationError(
                     f"Promocode '{promocode_row.code}' already activated by this user"
                 )
@@ -168,10 +173,13 @@ class PromocodeRepository:
         self, promocode_id: int, user_id: int
     ) -> Optional[PromocodeActivationDto]:
         result = await self.session.execute(
-            select(PromocodeActivation).where(
+            select(PromocodeActivation)
+            .where(
                 PromocodeActivation.promocode_id == promocode_id,
                 PromocodeActivation.user_id == user_id,
             )
+            .order_by(PromocodeActivation.activated_at.desc())
+            .limit(1)
         )
         row = result.scalar_one_or_none()
         return self._activation_to_dto(row) if row is not None else None

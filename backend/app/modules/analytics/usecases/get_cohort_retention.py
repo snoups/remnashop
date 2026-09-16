@@ -29,7 +29,7 @@ def _months_between(start: date, end: date) -> int:
 
 
 class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
-    required_permission = Permission.ANALYTICS_VIEW
+    required_permission = Permission.ANALYTICS_COHORTS_VIEW
 
     def __init__(
         self, user_repository: UserRepository, payment_order_repository: PaymentOrderRepository

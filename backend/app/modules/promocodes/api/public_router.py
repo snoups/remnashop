@@ -2,7 +2,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies.public import get_current_actor
+from app.api.dependencies.public import get_current_user
 from app.api.dependencies.rate_limit import rate_limit
 from app.core.constants import TIME_1M
 from app.core.exceptions import NotFoundError, RemnawavePanelUnavailableError, ValidationError
@@ -34,7 +34,7 @@ def _to_response(promo: PromocodeDto) -> PublicPromocodeResponse:
 async def activate_promocode(
     payload: ActivatePromocodeRequest,
     use_case: FromDishka[ActivatePromocodeUseCase],
-    actor: UserDto = Depends(get_current_actor),
+    actor: UserDto = Depends(get_current_user),
 ) -> PublicPromocodeResponse:
     try:
         promo = await use_case(

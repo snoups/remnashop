@@ -2,7 +2,9 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies.public import get_current_actor
+from app.api.dependencies.public import get_current_user
+from app.api.dependencies.rate_limit import rate_limit
+from app.core.constants import TIME_1H
 from app.core.exceptions import ValidationError
 from app.modules.referrals.api.schemas import (
     AttachReferralRequest,
@@ -39,7 +41,7 @@ def _stats_to_response(dto: ReferralStatsDto) -> ReferralStatsResponse:
 @inject
 async def get_my_referral_stats(
     use_case: FromDishka[GetOwnReferralStatsUseCase],
-    actor: UserDto = Depends(get_current_actor),
+    actor: UserDto = Depends(get_current_user),
 ) -> ReferralStatsResponse:
     return _stats_to_response(await use_case(actor))
 
@@ -49,7 +51,7 @@ async def get_my_referral_stats(
 async def attach_referral(
     payload: AttachReferralRequest,
     use_case: FromDishka[AttachReferralUseCase],
-    actor: UserDto = Depends(get_current_actor),
+    actor: UserDto = Depends(get_current_user),
 ) -> None:
     try:
         await use_case(actor, AttachReferralDto(code=payload.code))
@@ -57,12 +59,17 @@ async def attach_referral(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
 
-@router.post("/withdraw", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/withdraw",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # each request is an audit-log row an admin works through by hand
+    dependencies=[Depends(rate_limit(key="points_withdraw", limit=5, window_seconds=TIME_1H))],
+)
 @inject
 async def withdraw_points(
     payload: WithdrawPointsRequest,
     use_case: FromDishka[RequestPointsWithdrawalUseCase],
-    actor: UserDto = Depends(get_current_actor),
+    actor: UserDto = Depends(get_current_user),
 ) -> None:
     try:
         await use_case(actor, RequestPointsWithdrawalDto(amount=payload.amount))

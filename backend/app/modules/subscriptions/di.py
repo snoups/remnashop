@@ -1,8 +1,10 @@
 from dishka import Provider, Scope, provide
 
+from app.core.ports import SubscriptionRevoker
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.usecases import (
     ActivateTrialSubscriptionUseCase,
     CreateAddOnUseCase,
@@ -55,5 +57,17 @@ class SubscriptionsProvider(Provider):
     sync_subscription_status_use_case = provide(SyncSubscriptionStatusUseCase)
 
 
+class SubscriptionRevokerProvider(Provider):
+    scope = Scope.REQUEST
+
+    subscription_revoker = provide(PanelSubscriptionRevoker, provides=SubscriptionRevoker)
+
+
+def get_subscription_revoker_providers() -> list[Provider]:
+    # Separate from SubscriptionsProvider so a container wiring users'
+    # DeleteUserUseCase doesn't need the whole subscriptions graph.
+    return [SubscriptionRevokerProvider()]
+
+
 def get_subscriptions_providers() -> list[Provider]:
-    return [SubscriptionsProvider()]
+    return [SubscriptionsProvider(), *get_subscription_revoker_providers()]

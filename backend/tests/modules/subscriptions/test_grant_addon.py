@@ -21,6 +21,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import CreateAddOnDto, GrantAddOnDto, PurchaseSubscriptionDto
@@ -73,6 +74,7 @@ async def _create_subscription(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     subscription = await use_case(
         buyer,

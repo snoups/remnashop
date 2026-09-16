@@ -94,6 +94,7 @@ async def test_create_reward_persists_amount(
         referral_id=edge.id,
         referrer_id=referrer_id,
         subscription_id=subscription_id,
+        payment_key="order-1",
         type=ReferralRewardType.POINTS,
         amount=Decimal("12.50"),
     )
@@ -103,7 +104,7 @@ async def test_create_reward_persists_amount(
     assert reward.subscription_id == subscription_id
 
 
-async def test_create_reward_rejects_duplicate_subscription_referral_pair(
+async def test_create_reward_rejects_duplicate_payment_referral_pair(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
@@ -118,6 +119,16 @@ async def test_create_reward_rejects_duplicate_subscription_referral_pair(
         referral_id=edge.id,
         referrer_id=referrer_id,
         subscription_id=subscription_id,
+        payment_key="order-1",
+        type=ReferralRewardType.POINTS,
+        amount=Decimal("12.50"),
+    )
+    # another payment for the same subscription is a separate reward
+    await referral_repository.create_reward(
+        referral_id=edge.id,
+        referrer_id=referrer_id,
+        subscription_id=subscription_id,
+        payment_key="order-2",
         type=ReferralRewardType.POINTS,
         amount=Decimal("12.50"),
     )
@@ -127,6 +138,7 @@ async def test_create_reward_rejects_duplicate_subscription_referral_pair(
             referral_id=edge.id,
             referrer_id=referrer_id,
             subscription_id=subscription_id,
+            payment_key="order-1",
             type=ReferralRewardType.POINTS,
             amount=Decimal("12.50"),
         )

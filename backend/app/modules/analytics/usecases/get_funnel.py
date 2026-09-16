@@ -13,7 +13,7 @@ _STEP_KEYS: Final[tuple[str, str, str, str]] = ("registered", "trial", "first_pa
 
 
 class GetFunnelUseCase(UseCase[GetFunnelDto, FunnelDto]):
-    required_permission = Permission.ANALYTICS_VIEW
+    required_permission = Permission.ANALYTICS_FUNNEL_VIEW
 
     def __init__(
         self,

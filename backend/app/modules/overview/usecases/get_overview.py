@@ -35,7 +35,7 @@ _T = TypeVar("_T", int, Decimal)
 
 # day below this span, monthly above -- weekly granularity skipped
 # as a third code path nobody asked hard for.
-_MONTHLY_THRESHOLD_DAYS: Final = 90
+_MONTHLY_THRESHOLD_DAYS: Final[int] = 90
 
 
 def _iter_months(start: date, end: date) -> Iterator[date]:

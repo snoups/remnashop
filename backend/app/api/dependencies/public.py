@@ -3,7 +3,7 @@ from typing import Optional
 import jwt
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import HTTPException, Request, Security, status
+from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 
@@ -15,7 +15,7 @@ from app.core.security import decode_access_token, hash_refresh_token
 from app.core.utils.http import is_ip_allowed, resolve_client_ip
 from app.modules.api_tokens import ApiTokenRepository
 from app.modules.auth import SessionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserDto, UserRepository
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -98,4 +98,18 @@ async def get_current_actor(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Access denied from this IP address"
         )
 
+    return actor
+
+
+async def get_current_user(actor: Actor = Depends(get_current_actor)) -> UserDto:
+    """Customer-facing routes: the actor must be a real user row. An API token
+    authenticates staff automation and has no customer identity behind it --
+    without this it reaches a self-service route as user id 0 and fails on a
+    foreign key instead of being refused."""
+    if not isinstance(actor, UserDto):
+        logger.warning(f"Non-user actor {actor.log} denied access to a customer endpoint")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This endpoint is available to user accounts only",
+        )
     return actor

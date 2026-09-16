@@ -29,7 +29,11 @@ class BlockUserUseCase(UseCase[int, UserDto]):
         target = await self._user_repository.get_by_id(user_id)
         if target is None:
             raise NotFoundError(f"User {user_id} not found")
-        if not actor.role > target.role:
+        # Not a role comparison: an API token authenticates as a synthetic
+        # actor with Role.USER, so `actor.role > target.role` refused it every
+        # target, including the plain users its own scopes cover. What has to
+        # hold is that staff are only ever acted on from above.
+        if target.is_privileged and not actor.role > target.role:
             raise PermissionDeniedError
 
         async with self._uow:

@@ -87,6 +87,18 @@ class PaymentGateway(ABC):
         Raise PaymentGatewayError on a verification failure."""
 
     async def verify_payment(self, order: PaymentOrderDto, result: WebhookResult) -> bool:
+        # amount=None means this adapter doesn't parse one -- either the
+        # provider's callback carries no amount, or its docs don't pin down
+        # whether the field is gross or net of fees. Guessing there is worse
+        # than not checking: a net-of-fees field would reject real payments
+        # after the customer was charged (yoomoney's 'amount' is exactly that
+        # field, which is why its adapter reads 'withdraw_amount' instead).
+        # Where a payer picks the amount themselves -- YooMoney's quickpay
+        # form takes both `sum` and `label` from whoever opens it -- this
+        # check is the only thing standing between them and underpaying, so
+        # an adapter on such a gateway has to parse one. The order is always
+        # looked up within the gateway the callback arrived on, so a cheap
+        # payment can't be pointed at an order priced in another currency.
         if result.amount is None:
             return True
         return result.amount >= order.final_price

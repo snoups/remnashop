@@ -1,13 +1,19 @@
 from dataclasses import dataclass
 
+from app.core.enums import PromocodeRewardType
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.promocodes.availability import assert_available_to
+from app.modules.plans import PlanRepository
+from app.modules.promocodes.availability import (
+    assert_available_to,
+    assert_subscription_reward_grantable,
+)
 from app.modules.promocodes.dto import PromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
+from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.users import UserDto
 
@@ -25,10 +31,14 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto]):
         promocode_repository: PromocodeRepository,
         subscription_repository: SubscriptionRepository,
         referral_repository: ReferralRepository,
+        plan_repository: PlanRepository,
+        settings_repository: SettingsRepository,
     ) -> None:
         self._promocode_repository = promocode_repository
         self._subscription_repository = subscription_repository
         self._referral_repository = referral_repository
+        self._plan_repository = plan_repository
+        self._settings_repository = settings_repository
 
     async def _execute(self, actor: UserDto, data: ValidatePromocodeDto) -> PromocodeDto:
         code = data.code.strip().upper()
@@ -50,4 +60,13 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto]):
                 raise ValidationError(f"Promocode '{code}' already activated by this user")
 
         await assert_available_to(promo, actor, self._subscription_repository)
+        if promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
+            await assert_subscription_reward_grantable(
+                promo,
+                actor,
+                self._plan_repository,
+                self._subscription_repository,
+                self._referral_repository,
+                self._settings_repository,
+            )
         return promo

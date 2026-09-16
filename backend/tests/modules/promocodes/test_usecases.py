@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 
+import app.modules.promocodes.usecases.activate_promocode as activate_promocode_module
 from app.core.enums import (
     AddOnType,
     Currency,
@@ -27,6 +28,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing.repository import PricingRepository
 from app.modules.promocodes.dto import ActivatePromocodeDto, CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.usecases import (
@@ -47,7 +49,7 @@ from app.modules.subscriptions.dto import (
 )
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
+from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
@@ -314,13 +316,7 @@ def _activate_use_case(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
-    )
-    grant_addon_use_case = GrantAddOnUseCase(
-        subscription_repository,
-        AddOnRepository(promocode_repository.session),
-        remnawave_sdk,
-        uow,
-        event_publisher,
+        PricingRepository(subscription_repository.session),
     )
     return ActivatePromocodeUseCase(
         promocode_repository,
@@ -329,7 +325,6 @@ def _activate_use_case(
         settings_repository,
         user_repository,
         purchase_use_case,
-        grant_addon_use_case,
         ReferralRepository(promocode_repository.session),
         uow,
         event_publisher,
@@ -411,6 +406,63 @@ async def test_activate_subscription_reward_creates_new_subscription(
     active = await subscription_repository.get_active_by_user(actor.id)
     assert len(active) == 1
     assert active[0].plan_snapshot.plan_id == plan.id
+
+
+async def test_activate_subscription_reward_for_unavailable_plan_does_not_spend_the_code(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    # A plan the actor can't get is a deterministic refusal -- it must not
+    # burn a single-use code the actor could redeem once the plan is back.
+    actor = await user_repository.create(CreateUserDto(name="Carol", telegram_id=305))
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="paused-plan",
+            name="Paused Plan",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="PAUSEDPLAN",
+            reward_type=PromocodeRewardType.SUBSCRIPTION,
+            reward_plan_id=plan.id,
+            reward_duration_days=30,
+            max_activations=1,
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(actor, ActivatePromocodeDto(code="PAUSEDPLAN"))
+    assert await promocode_repository.get_activations_count(promo.id) == 0
+
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
+    await use_case(actor, ActivatePromocodeDto(code="PAUSEDPLAN"))
+    assert len(await subscription_repository.get_active_by_user(actor.id)) == 1
 
 
 async def test_activate_subscription_reward_requires_a_referrer_for_invited_plan(
@@ -749,6 +801,7 @@ async def test_activate_duration_reward_extends_subscription_expiry(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     subscription = await purchase_use_case(
         actor,
@@ -783,13 +836,14 @@ async def test_activate_duration_reward_extends_subscription_expiry(
     assert updated.expire_at > expire_before
 
 
-async def test_activate_traffic_reward_grants_addon_to_subscription(
+async def test_activate_traffic_reward_dispatches_the_addon_grant(
     promocode_repository: PromocodeRepository,
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     remnawave_sdk,
     uow,
     event_publisher,
+    monkeypatch,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="Dave", telegram_id=303))
     plan_repository = PlanRepository(promocode_repository.session)
@@ -820,6 +874,7 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
     )
     subscription = await purchase_use_case(
         actor,
@@ -856,12 +911,28 @@ async def test_activate_traffic_reward_grants_addon_to_subscription(
         event_publisher,
     )
 
+    dispatched: list[dict[str, object]] = []
+
+    async def _fake_kiq(**kwargs: object) -> None:
+        dispatched.append(kwargs)
+
+    monkeypatch.setattr(activate_promocode_module.grant_addon_task, "kiq", _fake_kiq)
+
     await use_case(
         actor, ActivatePromocodeDto(code="TRAFFICBOOST", target_subscription_id=subscription.id)
     )
 
-    updated = await subscription_repository.get_by_id(subscription.id)
-    assert updated.effective_traffic_limit == traffic_before + traffic_addon.amount
+    assert len(dispatched) == 1
+    assert dispatched[0]["subscription_id"] == subscription.id
+    assert dispatched[0]["addon_id"] == traffic_addon.id
+    activation = await promocode_repository.get_activation_by_user(
+        (await promocode_repository.get_by_code("TRAFFICBOOST")).id, actor.id
+    )
+    assert activation is not None
+    assert dispatched[0]["idempotency_key"] == f"promocode-activation:{activation.id}"
+    # The grant itself is the task's job now, so nothing changed here yet.
+    unchanged = await subscription_repository.get_by_id(subscription.id)
+    assert unchanged.effective_traffic_limit == traffic_before
 
 
 async def test_activate_promocode_applies_personal_discount(

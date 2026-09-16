@@ -54,3 +54,25 @@ async def test_discover_raises_key_error_on_non_dict_json(monkeypatch: pytest.Mo
 
     with pytest.raises(KeyError):
         await client._discover()
+
+
+async def test_discover_does_not_follow_a_redirect_off_the_issuer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The SSRF guard only vets the issuer's own host, so a followed redirect
+    # would carry this server-side request to an unvetted one.
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        if request.url.host == "idp.example.com":
+            return httpx.Response(302, headers={"location": "http://169.254.169.254/latest/meta"})
+        return httpx.Response(200, json={"authorization_endpoint": "http://169.254.169.254/auth"})
+
+    _patch_transport(monkeypatch, httpx.MockTransport(handler))
+    client = OIDCOAuthClient("https://idp.example.com", "client-id", "client-secret")
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await client._discover()
+
+    assert requested == ["https://idp.example.com/.well-known/openid-configuration"]

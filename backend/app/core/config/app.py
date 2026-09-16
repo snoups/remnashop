@@ -1,9 +1,8 @@
-import re
 from pathlib import Path
 from typing import Self
 
-from pydantic import Field, SecretStr, field_validator
-from pydantic_core.core_schema import FieldValidationInfo
+from cryptography.fernet import Fernet
+from pydantic import Field, SecretStr, ValidationInfo, field_validator
 
 from app.core.config.base import BaseConfig
 from app.core.config.bot import BotConfig
@@ -57,7 +56,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
 
     @field_validator("domain")
     @classmethod
-    def validate_domain(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
+    def validate_domain(cls, field: SecretStr, info: ValidationInfo) -> SecretStr:
         validate_not_change_me(field, info)
 
         if not is_valid_domain(field.get_secret_value()):
@@ -67,17 +66,25 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
 
     @field_validator("crypt_key")
     @classmethod
-    def validate_crypt_key(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
+    def validate_crypt_key(cls, field: SecretStr, info: ValidationInfo) -> SecretStr:
         validate_not_change_me(field, info)
 
-        if not re.match(r"^[A-Za-z0-9+/=]{44}$", field.get_secret_value()):
-            raise ValueError("APP_CRYPT_KEY must be a valid 44-character Base64 string")
+        # Handed to Fernet as-is, so let Fernet decide: a base64 pattern match
+        # accepted keys it rejects (padding in the wrong place) and rejected
+        # the url-safe alphabet Fernet.generate_key() actually emits.
+        try:
+            Fernet(field.get_secret_value().encode())
+        except (ValueError, TypeError) as error:
+            raise ValueError(
+                "APP_CRYPT_KEY must be a valid Fernet key (32 base64-encoded bytes), "
+                "e.g. from `openssl rand -base64 32`"
+            ) from error
 
         return field
 
     @field_validator("jwt_secret")
     @classmethod
-    def validate_jwt_secret(cls, field: SecretStr, info: FieldValidationInfo) -> SecretStr:
+    def validate_jwt_secret(cls, field: SecretStr, info: ValidationInfo) -> SecretStr:
         validate_not_change_me(field, info)
 
         if len(field.get_secret_value()) < 32:

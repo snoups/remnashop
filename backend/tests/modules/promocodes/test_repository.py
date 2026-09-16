@@ -314,3 +314,33 @@ async def test_get_activation_by_user(
     activation = await promocode_repository.get_activation_by_user(promo.id, user.id)
     assert activation is not None
     assert activation.user_id == user.id
+
+
+async def test_claim_activation_refuses_a_repeat_after_reusable_was_turned_off(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="WASREUSABLE",
+            reward_type=PromocodeRewardType.PERSONAL_DISCOUNT,
+            reward=10,
+            is_reusable=True,
+        )
+    )
+    user_id = await _create_user(user_repository, 1099)
+    await promocode_repository.claim_activation(
+        promocode_id=promo.id, user_id=user_id, subscription_id=None
+    )
+    await promocode_repository.claim_activation(
+        promocode_id=promo.id, user_id=user_id, subscription_id=None
+    )
+    await promocode_repository.update(UpdatePromocodeDto(promocode_id=promo.id, is_reusable=False))
+
+    # Two activations on record: asking for exactly one here used to raise
+    # MultipleResultsFound instead of refusing the claim.
+    with pytest.raises(ValidationError):
+        await promocode_repository.claim_activation(
+            promocode_id=promo.id, user_id=user_id, subscription_id=None
+        )
+
+    assert await promocode_repository.get_activation_by_user(promo.id, user_id) is not None

@@ -22,6 +22,7 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.gateways import get_gateways_providers
 from app.modules.overview import get_overview_providers
+from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.payments import get_payments_providers
 from app.modules.plans import get_plans_providers
 from app.modules.pricing import get_pricing_providers
@@ -51,6 +52,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
     providers = [
         *get_core_providers(),
         *get_users_providers(),
+        *get_passkey_revoker_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_blacklist_providers(),

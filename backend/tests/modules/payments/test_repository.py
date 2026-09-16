@@ -176,7 +176,9 @@ async def test_list_paid_awaiting_reconciliation_only_returns_paid_orders(
             _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-recon-pending")
         )
 
-    awaiting = await payment_order_repository.list_paid_awaiting_reconciliation(datetime_now())
+    awaiting = await payment_order_repository.list_paid_awaiting_reconciliation(
+        datetime_now(), since=datetime_now() - timedelta(days=1)
+    )
     assert [order.id for order in awaiting] == [paid.id]
 
 
@@ -192,7 +194,53 @@ async def test_list_paid_awaiting_reconciliation_excludes_orders_paid_too_recent
     # A cutoff before this order was even created -- its updated_at is after
     # the cutoff, so it hasn't cleared the grace period yet.
     cutoff = datetime_now() - timedelta(minutes=5)
-    awaiting = await payment_order_repository.list_paid_awaiting_reconciliation(cutoff)
+    awaiting = await payment_order_repository.list_paid_awaiting_reconciliation(
+        cutoff, since=cutoff - timedelta(days=1)
+    )
+    assert paid.id not in [order.id for order in awaiting]
+
+
+async def test_list_paid_awaiting_reconciliation_excludes_fulfilled_orders(
+    payment_order_repository: PaymentOrderRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    async with uow:
+        paid = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-recon-fulfilled")
+        )
+        paid = await payment_order_repository.mark_status(paid.id, PaymentOrderStatus.PAID)
+        await payment_order_repository.mark_fulfilled(paid.id)
+
+    fetched = await payment_order_repository.get_by_id(paid.id)
+    # updated_at drives revenue-by-day analytics -- fulfilment must not move it
+    assert fetched.updated_at == paid.updated_at
+
+    awaiting = await payment_order_repository.list_paid_awaiting_reconciliation(
+        datetime_now(), since=datetime_now() - timedelta(days=1)
+    )
+    assert paid.id not in [order.id for order in awaiting]
+
+
+async def test_list_paid_awaiting_reconciliation_excludes_orders_before_since(
+    payment_order_repository: PaymentOrderRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        paid = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-recon-old")
+        )
+        await payment_order_repository.mark_status(paid.id, PaymentOrderStatus.PAID)
+    await session.execute(
+        update(PaymentOrder)
+        .where(PaymentOrder.id == paid.id)
+        .values(updated_at=datetime_now() - timedelta(days=10))
+    )
+
+    awaiting = await payment_order_repository.list_paid_awaiting_reconciliation(
+        datetime_now(), since=datetime_now() - timedelta(days=6)
+    )
     assert paid.id not in [order.id for order in awaiting]
 
 
@@ -540,3 +588,37 @@ async def test_list_paid_user_month_pairs_dedupes_within_a_month_and_respects_si
     result_user_id, month = pairs[0]
     assert result_user_id == user_id
     assert month == datetime_now().date().replace(day=1)
+
+
+async def test_lookups_are_scoped_to_the_gateway(
+    payment_order_repository: PaymentOrderRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    async with uow:
+        created = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-scope")
+        )
+        await payment_order_repository.mark_status(
+            created.id, PaymentOrderStatus.PENDING, external_payment_id="shared-id"
+        )
+
+    by_key = await payment_order_repository.get_by_idempotency_key(
+        "key-scope", gateway_type=created.gateway_type
+    )
+    assert by_key is not None and by_key.id == created.id
+    assert (
+        await payment_order_repository.get_by_idempotency_key(
+            "key-scope", gateway_type=PaymentGatewayType.YOOMONEY
+        )
+        is None
+    )
+
+    by_external = await payment_order_repository.get_by_external_payment_id(
+        "shared-id", gateway_type=created.gateway_type
+    )
+    assert by_external is not None and by_external.id == created.id
+    assert (
+        await payment_order_repository.get_by_external_payment_id(
+            "shared-id", gateway_type=PaymentGatewayType.YOOMONEY
+        )
+        is None
+    )

@@ -20,7 +20,8 @@ from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.core.utils.time import datetime_now
+from app.core.utils.time import datetime_now, truncate_to_ms
+from app.modules.pricing import PricingRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.domain import calculate_proration_credit
 from app.modules.subscriptions.dto import (
@@ -56,6 +57,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         uow: UnitOfWork,
         event_publisher: EventPublisher,
         lifecycle_service: SubscriptionLifecycleService,
+        pricing_repository: PricingRepository,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._user_repository = user_repository
@@ -64,43 +66,47 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         self._uow = uow
         self._event_publisher = event_publisher
         self._lifecycle_service = lifecycle_service
+        self._pricing_repository = pricing_repository
 
     async def _execute(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         if data.user_id != actor.id and not actor.is_privileged:
             raise PermissionDeniedError
 
         if data.idempotency_key is not None:
-            existing = await self._claim_or_return_existing(data.idempotency_key)
+            existing = await self._claim_or_return_existing(
+                data.idempotency_key, data.purchase_type
+            )
             if existing is not None:
                 return existing
 
         # Releasing the key lets a retry (taskiq's own, or the reconcile sweep)
-        # start over from scratch -- correct only while nothing non-idempotent
-        # has hit the panel yet. extend_user is cumulative, so a RENEW that
-        # already called it must NOT be replayed: a second run would grant a
-        # second duration for one payment. _purchase_new mints a fresh panel
-        # user per attempt (and disables the failed one) and _change writes an
-        # absolute expire_at, so both stay safe to retry all the way through.
-        panel_extend_landed = False
+        # start over from scratch. A RENEW keeps its key once its target
+        # expire_at is pinned: the retry then resumes with that same absolute
+        # value instead of computing a new one. _purchase_new mints a fresh
+        # panel user per attempt (and disables the failed one) and _change
+        # writes an absolute expire_at, so both stay safe to start over.
+        keep_key = False
 
-        def mark_panel_extend_landed() -> None:
-            nonlocal panel_extend_landed
-            panel_extend_landed = True
+        def mark_key_kept() -> None:
+            nonlocal keep_key
+            keep_key = True
 
         try:
             if data.purchase_type is PurchaseType.NEW:
                 return await self._purchase_new(actor, data)
             if data.purchase_type is PurchaseType.RENEW:
-                return await self._renew(actor, data, mark_panel_extend_landed)
+                return await self._renew(actor, data, mark_key_kept)
             if data.purchase_type is PurchaseType.CHANGE:
                 return await self._change(actor, data)
             raise NotImplementedError(f"purchase_type '{data.purchase_type}' not yet implemented")
         except Exception:
-            if not panel_extend_landed:
+            if not keep_key:
                 await self._release_idempotency_key_best_effort(data.idempotency_key)
             raise
 
-    async def _claim_or_return_existing(self, key: str) -> Optional[SubscriptionDto]:
+    async def _claim_or_return_existing(
+        self, key: str, purchase_type: PurchaseType
+    ) -> Optional[SubscriptionDto]:
         async with self._uow:
             claimed = await self._subscription_repository.claim_idempotency_key(key)
         if claimed:
@@ -108,6 +114,11 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         existing = await self._subscription_repository.get_subscription_by_idempotency_key(key)
         if existing is not None:
             return existing
+        if (
+            purchase_type is PurchaseType.RENEW
+            and await self._subscription_repository.get_pending_renew_expire_at(key) is not None
+        ):
+            return None  # resume -- _renew re-applies the pinned expire_at
         raise ValidationError(f"Purchase with idempotency_key '{key}' is already in progress")
 
     async def _clear_purchase_discount(self, data: PurchaseSubscriptionDto) -> None:
@@ -143,6 +154,11 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         if active_trial is not None:
             return await self._upgrade_trial_in_place(actor, data, active_trial)
 
+        # Unlocked pre-check so a purchase that's deterministically over the cap
+        # never mints a panel user; the locked re-check below closes the race.
+        if data.enforce_subscription_cap:
+            await self._assert_under_subscription_cap(data.user_id, lock=False)
+
         plan = data.plan_snapshot
         username = _build_panel_username(data.user_id)
         expire_at = datetime_now() + timedelta(days=data.duration_days)
@@ -161,22 +177,14 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
 
         try:
             async with self._uow:
-                # Must come before the count-check below: FOR UPDATE on
-                # get_active_by_user_for_update only locks rows that already
-                # exist, so without this advisory lock two concurrent calls
-                # here could both observe the same under-cap count and both
-                # insert, silently exceeding the cap.
-                await self._subscription_repository.acquire_purchase_cap_lock(data.user_id)
-                shop_settings = await self._settings_repository.get_shop_settings()
-                max_active = shop_settings.max_active_subscriptions
-                if max_active is not None:
-                    active = await self._subscription_repository.get_active_by_user_for_update(
-                        data.user_id
-                    )
-                    if len(active) >= max_active:
-                        raise ValidationError(
-                            f"User '{data.user_id}' is already at the concurrent-subscription cap"
-                        )
+                if data.enforce_subscription_cap:
+                    # Must come before the count-check below: FOR UPDATE on
+                    # get_active_by_user_for_update only locks rows that already
+                    # exist, so without this advisory lock two concurrent calls
+                    # here could both observe the same under-cap count and both
+                    # insert, silently exceeding the cap.
+                    await self._subscription_repository.acquire_purchase_cap_lock(data.user_id)
+                    await self._assert_under_subscription_cap(data.user_id, lock=True)
                 subscription = await self._subscription_repository.create(
                     self._to_create_dto(data, panel_user)
                 )
@@ -190,6 +198,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         subscription_id=subscription.id,
                         plan_id=plan.plan_id,
                         purchase_type=data.purchase_type.value,
+                        payment_key=data.idempotency_key,
                     )
                 )
                 await self._clear_purchase_discount(data)
@@ -207,6 +216,18 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             f"{actor.log} Purchased subscription '{subscription.id}' (plan '{plan.plan_id}', NEW)"
         )
         return subscription
+
+    async def _assert_under_subscription_cap(self, user_id: int, *, lock: bool) -> None:
+        shop_settings = await self._settings_repository.get_shop_settings()
+        max_active = shop_settings.max_active_subscriptions
+        if max_active is None:
+            return
+        if lock:
+            active = await self._subscription_repository.get_active_by_user_for_update(user_id)
+        else:
+            active = await self._subscription_repository.get_active_by_user(user_id)
+        if len(active) >= max_active:
+            raise ValidationError(f"User '{user_id}' is already at the concurrent-subscription cap")
 
     async def _upgrade_trial_in_place(
         self, actor: UserDto, data: PurchaseSubscriptionDto, trial: SubscriptionDto
@@ -250,6 +271,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         subscription_id=subscription.id,
                         plan_id=plan.plan_id,
                         purchase_type=data.purchase_type.value,
+                        payment_key=data.idempotency_key,
                     )
                 )
                 await self._clear_purchase_discount(data)
@@ -280,7 +302,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         self,
         actor: UserDto,
         data: PurchaseSubscriptionDto,
-        on_panel_extend: Callable[[], None],
+        keep_key: Callable[[], None],
     ) -> SubscriptionDto:
         if data.target_subscription_id is None:
             raise ValidationError("target_subscription_id is required for a RENEW")
@@ -298,12 +320,25 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         if target.plan_snapshot.plan_id != data.plan_snapshot.plan_id:
             raise ValidationError("Renewing a different plan is a CHANGE, not a RENEW")
 
-        panel_user = await self._remnawave_sdk.users.extend_user(
-            target.remnawave_user_id, ExtendUserRequestDto(days=data.duration_days)
-        )
-        on_panel_extend()
+        if data.idempotency_key is None:
+            # No retry path re-runs a keyless grant, so the panel's own atomic
+            # relative extend is safe here.
+            panel_user = await self._remnawave_sdk.users.extend_user(
+                target.remnawave_user_id, ExtendUserRequestDto(days=data.duration_days)
+            )
+            expire_at = panel_user.expire_at
+        else:
+            expire_at = await self._apply_pinned_renewal(
+                target, data.idempotency_key, data.duration_days, keep_key
+            )
 
         async with self._uow:
+            if data.idempotency_key is not None:
+                finished = await self._subscription_repository.lock_idempotency_key(
+                    data.idempotency_key
+                )
+                if finished is not None:
+                    return finished
             locked = await self._subscription_repository.get_by_id_for_update(target.id)
             if locked.status is SubscriptionStatus.DELETED:
                 # Deleted (e.g. by a concurrent CHANGE or admin delete) while
@@ -313,14 +348,17 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 # pass corrects the panel-vs-local mismatch), so no cleanup
                 # here, just refuse to reactivate.
                 raise ValidationError("Subscription was deleted while this renewal was in flight")
-            subscription = await self._lifecycle_service.renew(locked.id, panel_user.expire_at)
+            subscription = await self._lifecycle_service.renew(locked.id, expire_at)
             if data.idempotency_key is not None:
                 await self._subscription_repository.link_idempotency_key(
                     data.idempotency_key, subscription.id
                 )
             await self._event_publisher.publish(
                 SubscriptionRenewedEvent(
-                    user=actor, subscription_id=subscription.id, duration_days=data.duration_days
+                    user=actor,
+                    subscription_id=subscription.id,
+                    duration_days=data.duration_days,
+                    payment_key=data.idempotency_key,
                 )
             )
             await self._clear_purchase_discount(data)
@@ -329,6 +367,41 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             f"{actor.log} Renewed subscription '{subscription.id}' by {data.duration_days}d"
         )
         return subscription
+
+    async def _apply_pinned_renewal(
+        self,
+        target: SubscriptionDto,
+        key: str,
+        duration_days: int,
+        keep_key: Callable[[], None],
+    ) -> datetime:
+        # Same result as the panel's extend (max(expire_at, now) + days, and an
+        # EXPIRED user flips to ACTIVE on a future expireAt), but written as an
+        # absolute value pinned before the call -- a lost response or a failed
+        # commit is retried with that value instead of extending again.
+        # a keyless extend landing between the read and the write
+        # below is overwritten, and on resume an extension that pushed the
+        # panel past the pinned value masks an unlanded write. A panel-side
+        # idempotency token would close both.
+        pinned = await self._subscription_repository.get_pending_renew_expire_at(key)
+        if pinned is None:
+            panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
+            base = max(panel_user.expire_at, datetime_now())
+            # ms-truncated so the pinned value compares equal to the panel's
+            pinned = truncate_to_ms(base + timedelta(days=duration_days))
+            async with self._uow:
+                await self._subscription_repository.pin_renew_expire_at(key, pinned)
+            keep_key()
+        else:
+            keep_key()
+            panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
+            if panel_user.expire_at >= pinned:
+                return pinned
+
+        await self._remnawave_sdk.users.update_user(
+            UpdateUserRequestDto(id=target.remnawave_user_id, expire_at=pinned)
+        )
+        return pinned
 
     async def _change(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         if data.target_subscription_id is None:
@@ -356,6 +429,13 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             is_trial=old.is_trial,
             now=now,
         )
+        if old.plan_snapshot.currency is not data.currency:
+            rates = await self._pricing_repository.get_rate_table()
+            credit = (
+                credit
+                / rates.for_currency(old.plan_snapshot.currency).rate
+                * rates.for_currency(data.currency).rate
+            )
         # Denominator is the list price (data.base_price), so the credit
         # converts at list rate -- at the promo-discounted rate a 90%-off
         # checkout would buy 10x the credit days it's worth.
@@ -405,6 +485,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         subscription_id=updated.id,
                         previous_subscription_id=old.id,
                         previous_plan_snapshot=old.plan_snapshot.to_json(),
+                        payment_key=data.idempotency_key,
                     )
                 )
                 await self._clear_purchase_discount(data)

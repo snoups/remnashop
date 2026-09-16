@@ -24,6 +24,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.gateways import GatewaysRepository, get_gateways_providers
+from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.payments.gateways.factory import PaymentGatewayFactory
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
@@ -72,6 +73,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
     providers = [
         *get_core_providers(),
         *get_users_providers(),
+        *get_passkey_revoker_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_plans_providers(),

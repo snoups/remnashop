@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Optional
 
 from app.core.events import EventCategory, SystemEvent, UserEvent
 
@@ -10,6 +10,8 @@ class SubscriptionPurchasedEvent(UserEvent):
     subscription_id: int
     plan_id: int
     purchase_type: str
+    # The paid order's idempotency key; None for trial/promocode/referral grants.
+    payment_key: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -17,6 +19,7 @@ class SubscriptionRenewedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
     subscription_id: int
     duration_days: int
+    payment_key: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -25,6 +28,7 @@ class SubscriptionChangedEvent(UserEvent):
     subscription_id: int
     previous_subscription_id: int
     previous_plan_snapshot: dict[str, Any]
+    payment_key: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

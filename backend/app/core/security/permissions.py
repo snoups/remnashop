@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 class Permission(UpperStrEnum):
     PUBLIC = auto()
     ANALYTICS_VIEW = auto()
+    ANALYTICS_FUNNEL_VIEW = auto()
+    ANALYTICS_COHORTS_VIEW = auto()
+    ANALYTICS_LTV_VIEW = auto()
     BOT_SETTINGS_VIEW = auto()
     BOT_COMMANDS_VIEW = auto()
     BOT_SETTINGS_MANAGE = auto()
@@ -240,6 +243,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.AD_LINKS_UPDATE: PermissionMeta(resource="ad_links", kind="write"),
     Permission.AD_LINKS_DELETE: PermissionMeta(resource="ad_links", kind="write"),
     Permission.ANALYTICS_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_FUNNEL_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_COHORTS_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_LTV_VIEW: PermissionMeta(resource="analytics", kind="read"),
 }
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA) | {
@@ -326,6 +332,9 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.AD_LINKS_UPDATE,
         Permission.AD_LINKS_DELETE,
         Permission.ANALYTICS_VIEW,
+        Permission.ANALYTICS_FUNNEL_VIEW,
+        Permission.ANALYTICS_COHORTS_VIEW,
+        Permission.ANALYTICS_LTV_VIEW,
     },
     Role.USER: set(),
 }

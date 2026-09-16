@@ -44,7 +44,7 @@ def _bucketize(sorted_totals: list[Decimal], boundaries: list[Decimal]) -> list[
 
 
 class GetLtvDistributionUseCase(UseCase[None, LtvDistributionDto]):
-    required_permission = Permission.ANALYTICS_VIEW
+    required_permission = Permission.ANALYTICS_LTV_VIEW
 
     def __init__(
         self,

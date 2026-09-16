@@ -47,6 +47,11 @@ class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto]):
         if await self._referral_repository.has_referrer(actor.id):
             raise ValidationError(f"User '{actor.id}' already has a referrer")
 
+        if await self._is_in_own_downline(
+            referrer.id, actor_id=actor.id, max_level=settings.max_level
+        ):
+            raise ValidationError("Cannot use the referral code of your own referral")
+
         level = await self._compute_level(referrer.id, max_level=settings.max_level)
 
         async with self._uow:
@@ -59,6 +64,20 @@ class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto]):
 
         logger.info(f"{actor.log} Attached to referrer '{referrer.id}' at level '{level}'")
         return referrer
+
+    async def _is_in_own_downline(self, referrer_id: int, *, actor_id: int, max_level: int) -> bool:
+        # Walking up from the referrer: meeting the actor means attaching would
+        # close a cycle, and the pair would then earn off each other forever.
+        # Bounded by max_level -- a longer chain can't reward across the loop.
+        current_id = referrer_id
+        for _ in range(max_level):
+            if current_id == actor_id:
+                return True
+            edge = await self._referral_repository.get_by_referred_id(current_id)
+            if edge is None or edge.referrer_id is None:
+                return False
+            current_id = edge.referrer_id
+        return current_id == actor_id
 
     async def _compute_level(self, referrer_id: int, *, max_level: int) -> int:
         parent_edge = await self._referral_repository.get_by_referred_id(referrer_id)

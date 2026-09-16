@@ -47,3 +47,9 @@ async def test_hash_is_salted() -> None:
     password = "same-password-used-twice-1234567890"
 
     assert await hash_password(password, "pepper") != await hash_password(password, "pepper")
+
+
+async def test_verify_password_refuses_a_hash_without_a_salt_separator() -> None:
+    # A hand-edited row or a restored foreign dump: refuse the login instead
+    # of raising out of the request.
+    assert await verify_password("whatever", "not-a-valid-hash", "pepper") is False

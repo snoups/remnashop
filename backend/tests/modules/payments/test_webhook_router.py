@@ -24,6 +24,7 @@ from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.gateways import get_gateways_providers
+from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.payments.dto import CreatePaymentOrderDto
 from app.modules.payments.gateways.base import WebhookResult
 from app.modules.payments.gateways.factory import PaymentGatewayFactory
@@ -33,7 +34,7 @@ from app.modules.payments.usecases.handle_payment_webhook import HandlePaymentWe
 from app.modules.plans import get_plans_providers
 from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import SubscriptionRepository, get_subscription_revoker_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -46,12 +47,16 @@ class _StubGateway:
         parse_result: Optional[WebhookResult],
         verify_result: bool = True,
         verify_exc: Optional[BaseException] = None,
+        parse_exc: Optional[BaseException] = None,
     ) -> None:
         self._parse_result = parse_result
         self._verify_result = verify_result
         self._verify_exc = verify_exc
+        self._parse_exc = parse_exc
 
     async def parse_webhook(self, request: object) -> Optional[WebhookResult]:
+        if self._parse_exc is not None:
+            raise self._parse_exc
         return self._parse_result
 
     async def verify_payment(self, order: object, result: object) -> bool:
@@ -96,6 +101,8 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
     providers = [
         *get_core_providers(),
         *get_users_providers(),
+        *get_subscription_revoker_providers(),
+        *get_passkey_revoker_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_blacklist_providers(),
@@ -274,6 +281,57 @@ async def test_webhook_gateway_exception_returns_502(
             parse_result=WebhookResult(reference="wh-key-3", status=PaymentOrderStatus.PAID),
             verify_exc=ConnectionError("simulated network failure"),
         ),
+    )
+
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+    assert response.status_code == 502
+
+
+async def test_webhook_from_another_gateway_never_touches_the_order(
+    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    # A YooMoney callback naming a YooKassa order's reference: the payer picks
+    # both `label` and `sum` on a quickpay form, so this is reachable.
+    async with uow:
+        order = await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-5")
+        )
+
+    _install_stub(
+        monkeypatch,
+        _StubGateway(
+            parse_result=WebhookResult(
+                reference="wh-key-5", status=PaymentOrderStatus.PAID, provider_payment_id="ym-1"
+            )
+        ),
+    )
+
+    dispatched: list[dict[str, object]] = []
+
+    async def _fake_kiq(**kwargs: object) -> None:
+        dispatched.append(kwargs)
+
+    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
+
+    response = await client.post("/api/v1/payments/yoomoney", content=b"{}")
+
+    assert response.status_code == 200
+    fetched = await payment_order_repository.get_by_id(order.id)
+    assert fetched.status is PaymentOrderStatus.PENDING
+    assert dispatched == []
+
+
+async def test_webhook_parse_error_returns_502(
+    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-6")
+        )
+
+    _install_stub(
+        monkeypatch,
+        _StubGateway(parse_result=None, parse_exc=ValueError("adapter leaked a parse error")),
     )
 
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")

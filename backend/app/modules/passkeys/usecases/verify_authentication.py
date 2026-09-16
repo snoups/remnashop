@@ -5,9 +5,15 @@ from webauthn import verify_authentication_response
 from webauthn.helpers import base64url_to_bytes
 from webauthn.helpers.exceptions import WebAuthnException
 
+from app.core.db.uow import UnitOfWork
 from app.core.exceptions import AuthenticationError
+from app.core.ports import EventPublisher
 from app.modules.auth import IssuedSession, SessionIssuer
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
+from app.modules.passkeys.events import (
+    PasskeyLoginFailedEvent,
+    PasskeyLoginSucceededEvent,
+)
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto, UserRepository
@@ -31,25 +37,38 @@ class VerifyPasskeyAuthenticationUseCase:
         user_repository: UserRepository,
         challenge_store: PasskeyChallengeStore,
         session_issuer: SessionIssuer,
+        uow: UnitOfWork,
+        event_publisher: EventPublisher,
     ) -> None:
         self._settings_repository = settings_repository
         self._passkey_repository = passkey_repository
         self._user_repository = user_repository
         self._challenge_store = challenge_store
         self._session_issuer = session_issuer
+        self._uow = uow
+        self._event_publisher = event_publisher
+
+    async def _fail(
+        self, message: str, client_ip: str, credential_id: Optional[str] = None
+    ) -> AuthenticationError:
+        async with self._uow:
+            await self._event_publisher.publish(
+                PasskeyLoginFailedEvent(ip_address=client_ip, credential_id=credential_id)
+            )
+        return AuthenticationError(message)
 
     async def execute(
         self, credential: dict[str, Any], client_ip: str, user_agent: Optional[str]
     ) -> tuple[UserDto, IssuedSession]:
         settings = await self._settings_repository.get_oauth_settings()
         if not settings.passkey_enabled:
-            raise AuthenticationError("Passkeys are not enabled")
+            raise await self._fail("Passkeys are not enabled", client_ip)
         if settings.passkey_rp_id is None or settings.passkey_origin is None:
-            raise AuthenticationError("Passkeys are not configured")
+            raise await self._fail("Passkeys are not configured", client_ip)
 
         credential_id = credential.get("id")
         if not isinstance(credential_id, str):
-            raise AuthenticationError("Invalid passkey credential")
+            raise await self._fail("Invalid passkey credential", client_ip)
 
         # credential_id is a WebAuthn-generated, effectively-unguessable
         # identifier (unlike a login name), so looking it up before running
@@ -57,13 +76,15 @@ class VerifyPasskeyAuthenticationUseCase:
         # oracle the way an unknown *login* would be in LoginUseCase.
         stored = await self._passkey_repository.get_by_credential_id(credential_id)
         if stored is None:
-            raise AuthenticationError("Passkey not recognized")
+            raise await self._fail("Passkey not recognized", client_ip, credential_id)
 
         challenge = _read_client_data_challenge(credential)
         if challenge is None or not await self._challenge_store.consume_authentication_challenge(
             challenge
         ):
-            raise AuthenticationError("Authentication challenge not found or expired")
+            raise await self._fail(
+                "Authentication challenge not found or expired", client_ip, credential_id
+            )
 
         try:
             verification = verify_authentication_response(
@@ -80,16 +101,24 @@ class VerifyPasskeyAuthenticationUseCase:
                 require_user_verification=True,
             )
         except WebAuthnException as error:
-            raise AuthenticationError("Passkey authentication could not be verified") from error
+            raise await self._fail(
+                "Passkey authentication could not be verified", client_ip, credential_id
+            ) from error
 
         user = await self._user_repository.get_by_id(stored.user_id)
         # Same generic message whether the user record is gone or blocked --
         # matches LoginUseCase/OAuthLoginCallbackUseCase's no-enumeration rule.
         if user is None or user.is_blocked:
-            raise AuthenticationError("Passkey not recognized")
+            raise await self._fail("Passkey not recognized", client_ip, credential_id)
 
         await self._passkey_repository.update_after_authentication(
             stored.id, verification.new_sign_count
         )
         issued = await self._session_issuer.issue(user.id, client_ip, user_agent)
+        async with self._uow:
+            await self._event_publisher.publish(
+                PasskeyLoginSucceededEvent(
+                    user=user, credential_name=stored.name, ip_address=client_ip
+                )
+            )
         return user, issued

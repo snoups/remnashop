@@ -148,3 +148,29 @@ async def test_parse_webhook_declined_status_is_a_noop(monkeypatch: pytest.Monke
         WebhookRequest(body=raw, headers={"x-signature": _sign(raw)}, query={}, client_ip=None)
     )
     assert result is None
+
+
+async def test_public_key_is_fetched_once_for_repeat_webhooks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A new gateway instance is built per request, so the cache has to outlive
+    # the instance or every webhook pays for an extra round-trip.
+    wata_module.clear_public_key_cache()
+    raw = json.dumps({"orderId": "order-key-1", "transactionStatus": "Paid"}).encode()
+    fetches = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal fetches
+        fetches += 1
+        return _public_key_response()
+
+    _patch_transport(monkeypatch, httpx.MockTransport(handler))
+    request = WebhookRequest(
+        body=raw, headers={"x-signature": _sign(raw)}, query={}, client_ip=None
+    )
+
+    assert await _gateway().parse_webhook(request) is not None
+    assert await _gateway().parse_webhook(request) is not None
+
+    assert fetches == 1
+    wata_module.clear_public_key_cache()

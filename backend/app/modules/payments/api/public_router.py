@@ -2,7 +2,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies.public import get_current_actor
+from app.api.dependencies.public import get_current_user
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.modules.payments.api.schemas import CheckoutResponse, CreateCheckoutRequest
 from app.modules.payments.dto import CreateCheckoutDto
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 async def create_checkout(
     payload: CreateCheckoutRequest,
     use_case: FromDishka[CreateCheckoutUseCase],
-    actor: UserDto = Depends(get_current_actor),
+    actor: UserDto = Depends(get_current_user),
 ) -> CheckoutResponse:
     try:
         result = await use_case(

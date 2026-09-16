@@ -6,6 +6,7 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
@@ -14,15 +15,20 @@ from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.security import create_access_token, hash_refresh_token
+from app.core.security.permissions import Permission
 from app.modules.api_tokens import get_api_tokens_providers
+from app.modules.api_tokens.dto import CreateApiTokenDto
+from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
+from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.referrals import get_referrals_providers
 from app.modules.referrals.dto import UpdateReferralSettingsDto
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings import get_settings_providers
+from app.modules.subscriptions import get_subscription_revoker_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -46,6 +52,8 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
     providers = [
         *get_core_providers(),
         *get_users_providers(),
+        *get_subscription_revoker_providers(),
+        *get_passkey_revoker_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_settings_providers(),
@@ -186,3 +194,63 @@ async def test_withdraw_points_rejects_amount_above_points(
         headers=headers,
     )
     assert response.status_code == 400
+
+
+async def test_withdraw_points_is_rate_limited_per_ip(
+    config: AppConfig,
+    test_container: AsyncContainer,
+    actor: tuple[UserDto, dict[str, str]],
+    redis: Redis,
+) -> None:
+    # Each request is an audit-log row an admin reads to process payouts --
+    # an unthrottled endpoint lets one user bury real requests.
+    _, headers = actor
+    app = get_app(config)
+    setup_dishka(test_container, app)
+    key = "remnashop:ratelimit:points_withdraw:203.0.113.30"
+    await redis.delete(key)
+
+    transport = httpx.ASGITransport(app=app, client=("203.0.113.30", 12345))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        responses = [
+            await client.post(
+                f"{API_V1}/referrals/withdraw", json={"amount": "10.00"}, headers=headers
+            )
+            for _ in range(6)
+        ]
+
+    await redis.delete(key)
+
+    assert [r.status_code for r in responses] == [400] * 5 + [429]
+
+
+async def test_api_token_cannot_use_customer_endpoints(
+    client: httpx.AsyncClient,
+    api_token_repository: ApiTokenRepository,
+    referrer: tuple[UserDto, dict[str, str]],
+    uow: UnitOfWork,
+    enabled_referrals: None,
+) -> None:
+    # An API token is a staff credential with no customer identity behind it:
+    # reaching a self-service route lands as user_id=0 and fails on a foreign
+    # key instead of a clear refusal.
+    referrer_user, _ = referrer
+    secret = "test-api-token-secret"
+    async with uow:
+        await api_token_repository.create(
+            CreateApiTokenDto(
+                name="script",
+                token_hash=hash_refresh_token(secret),
+                permissions=[Permission.USERS_VIEW],
+                created_by_user_id=None,
+                expires_at=None,
+            )
+        )
+
+    response = await client.post(
+        f"{API_V1}/referrals/attach",
+        json={"code": referrer_user.referral_code},
+        headers={"Authorization": f"Bearer {secret}"},
+    )
+
+    assert response.status_code == 403

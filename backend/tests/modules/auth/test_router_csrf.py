@@ -12,7 +12,9 @@ from app.core.constants import API_V1
 from app.core.di.providers import get_core_providers
 from app.modules.auth import get_auth_providers
 from app.modules.blacklist import get_blacklist_providers
+from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.settings import get_settings_providers
+from app.modules.subscriptions import get_subscription_revoker_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 
@@ -37,6 +39,8 @@ async def auth_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_core_providers(),
         *get_auth_providers(),
         *get_users_providers(),
+        *get_subscription_revoker_providers(),
+        *get_passkey_revoker_providers(),
         *get_settings_providers(),
         *get_translations_providers(),
         *get_blacklist_providers(),

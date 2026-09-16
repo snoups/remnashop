@@ -90,6 +90,13 @@ class SubscriptionState:
             return self
         return replace(self, status=target)
 
+    def sync_expire_at(self, new_expire_at: datetime) -> SubscriptionState:
+        """Applies a panel-driven expire_at. Status is never inferred from it --
+        the panel reports its own status alongside (see sync_status)."""
+        if self.status is SubscriptionStatus.DELETED:
+            return self
+        return replace(self, expire_at=new_expire_at)
+
     def reactivate_on_renew(self, new_expire_at: datetime) -> SubscriptionState:
         """A successful renewal always extends expire_at, and reactivates
         an EXPIRED subscription back to ACTIVE (the natural "lapsed, paid

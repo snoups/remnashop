@@ -882,7 +882,10 @@
     "AD_LINKS_GENERATE_CODE": "Generate advertising codes",
     "AD_LINKS_UPDATE": "Edit advertising links",
     "AD_LINKS_DELETE": "Delete advertising links",
-    "ANALYTICS_VIEW": "View analytics"
+    "ANALYTICS_VIEW": "View analytics",
+    "ANALYTICS_FUNNEL_VIEW": "View conversion funnel",
+    "ANALYTICS_COHORTS_VIEW": "View cohort retention",
+    "ANALYTICS_LTV_VIEW": "View LTV distribution"
   },
   "permissionCategories": {
     "botSettings": "Bot Settings",

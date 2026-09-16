@@ -20,6 +20,8 @@ class Actor(Protocol):
     ip_allowlist: Optional[list[str]]
     referral_code: Optional[str]
     points: Decimal
+    password_hash: Optional[str]
+    is_trial_available: bool
 
     @property
     def is_privileged(self) -> bool: ...
@@ -43,3 +45,5 @@ class SyntheticActor:
     ip_allowlist: Optional[list[str]] = None
     referral_code: Optional[str] = None
     points: Decimal = Decimal(0)
+    password_hash: Optional[str] = None
+    is_trial_available: bool = False

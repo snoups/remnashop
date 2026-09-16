@@ -14,6 +14,16 @@ class SessionRevoker(Protocol):
 
 
 @runtime_checkable
+class SubscriptionRevoker(Protocol):
+    async def revoke_all_by_user(self, user_id: int) -> None: ...
+
+
+@runtime_checkable
+class PasskeyRevoker(Protocol):
+    async def delete_all_by_user(self, user_id: int) -> int: ...
+
+
+@runtime_checkable
 class TranslatorRunner(Protocol):
     def get(self, key: str, obj: Any = None, **kwargs: Any) -> str: ...
 

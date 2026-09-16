@@ -22,6 +22,13 @@ class GatewayFieldSpec:
 
 
 GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ...]]] = {
+    # No settings of its own (the bot token is all it would need) -- which also
+    # means is_gateway_configured() is vacuously True, so this can be toggled
+    # active while nothing implements it: there's no adapter in
+    # GATEWAY_REGISTRY and no pre_checkout_query/successful_payment handler in
+    # app/telegram. Harmless today (no customer-facing gateway list exists yet,
+    # and create_checkout refuses this type outright); wire the bot side up
+    # before a storefront starts offering it.
     PaymentGatewayType.TELEGRAM_STARS: (),
     PaymentGatewayType.YOOKASSA: (
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),

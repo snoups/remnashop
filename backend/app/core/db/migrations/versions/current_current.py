@@ -1402,6 +1402,7 @@ def upgrade() -> None:
         sa.Column("customer_email", sa.String(length=255), nullable=True),
         sa.Column("idempotency_key", sa.String(length=36), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("fulfilled_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -1421,7 +1422,9 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("external_payment_id"),
+        sa.UniqueConstraint(
+            "gateway_type", "external_payment_id", name="ux_payment_orders_gateway_external_id"
+        ),
         sa.UniqueConstraint("idempotency_key"),
     )
     op.create_index(
@@ -1479,6 +1482,7 @@ def upgrade() -> None:
         sa.Column("referral_id", sa.Integer(), nullable=True),
         sa.Column("referrer_id", sa.Integer(), nullable=True),
         sa.Column("subscription_id", sa.Integer(), nullable=True),
+        sa.Column("payment_key", sa.String(length=36), nullable=False),
         sa.Column(
             "type", sa.Enum("EXTRA_DAYS", "POINTS", name="referralrewardtype"), nullable=False
         ),
@@ -1500,13 +1504,14 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["subscription_id"], ["subscriptions.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
-            "subscription_id", "referral_id", name="uq_referral_rewards_subscription_referral"
+            "payment_key", "referral_id", name="uq_referral_rewards_payment_referral"
         ),
     )
     op.create_table(
         "subscription_purchase_idempotency",
         sa.Column("key", sa.String(), nullable=False),
         sa.Column("subscription_id", sa.Integer(), nullable=True),
+        sa.Column("renew_expire_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

@@ -54,10 +54,12 @@ class YooMoneyGateway(PaymentGateway):
         if not label:
             raise PaymentGatewayError("YooMoney webhook missing 'label'")
 
-        # 'amount' is YooMoney's standard http-notification field for what the
-        # sender actually paid (as opposed to 'withdraw_amount', net of fees).
+        # 'withdraw_amount' is what the sender was debited; 'amount' is what
+        # reached the receiver, i.e. net of the transfer fee -- checking the
+        # latter against the order price rejects a real payment whenever the
+        # fee comes off the receiver's side.
         try:
-            amount = Decimal(str(data.get("amount", "")))
+            amount = Decimal(str(data.get("withdraw_amount", "")))
         except InvalidOperation:
             amount = None
 

@@ -49,11 +49,18 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, str]):
         settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
         gateway = self._gateway_factory.build(data.gateway_type, settings)
 
-        result = await gateway.parse_webhook(data.request)
+        try:
+            result = await gateway.parse_webhook(data.request)
+        except PaymentGatewayError:
+            raise
+        except Exception as error:  # noqa: BLE001 -- an adapter that leaks its own parse
+            # errors still owes the caller the documented contract (see
+            # PaymentGateway.parse_webhook), not a 500 with a stack trace.
+            raise PaymentGatewayError("Could not parse webhook") from error
         if result is None:
             return gateway.webhook_ack(None)
 
-        order = await self._resolve_order(result)
+        order = await self._resolve_order(data.gateway_type, result)
         if order is None or order.status in _TERMINAL_STATUSES:
             return gateway.webhook_ack(result)
 
@@ -87,13 +94,22 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, str]):
 
         return gateway.webhook_ack(result)
 
-    async def _resolve_order(self, result: WebhookResult) -> Optional[PaymentOrderDto]:
+    async def _resolve_order(
+        self, gateway_type: PaymentGatewayType, result: WebhookResult
+    ) -> Optional[PaymentOrderDto]:
+        # Scoped to the gateway the callback arrived on: a reference is only
+        # meaningful within the gateway that was handed it, and a payer who
+        # controls one (YooMoney's quickpay form lets the sender pick `label`
+        # and `sum` freely) could otherwise point a cheap payment at an order
+        # priced in another gateway's currency.
         if result.reference:
-            order = await self._payment_order_repository.get_by_idempotency_key(result.reference)
+            order = await self._payment_order_repository.get_by_idempotency_key(
+                result.reference, gateway_type=gateway_type
+            )
             if order is not None:
                 return order
         if result.provider_payment_id:
             return await self._payment_order_repository.get_by_external_payment_id(
-                result.provider_payment_id
+                result.provider_payment_id, gateway_type=gateway_type
             )
         return None

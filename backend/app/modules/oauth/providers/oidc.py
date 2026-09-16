@@ -20,7 +20,11 @@ class OIDCOAuthClient:
         # Re-checked here, not just at settings-save time, to shrink the
         # DNS-rebinding TOCTOU window -- see assert_public_https_host.
         await assert_public_https_host(self._issuer_url)
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        # No redirects: the guard above only vets the issuer's own host, and a
+        # redirect would carry this server-side request to an unvetted one
+        # (link-local metadata, anything on the internal network). OIDC
+        # Discovery serves the document at the issuer itself.
+        async with httpx.AsyncClient(follow_redirects=False) as client:
             response = await client.get(f"{self._issuer_url}{_DISCOVERY_PATH}")
             response.raise_for_status()
             try:

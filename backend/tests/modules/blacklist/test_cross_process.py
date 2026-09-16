@@ -23,7 +23,9 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.blacklist.tasks import reconcile_blacklist
+from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.settings import get_settings_providers
+from app.modules.subscriptions import get_subscription_revoker_providers
 from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto
@@ -91,6 +93,8 @@ async def test_api_written_entry_is_visible_to_a_separate_session(config: AppCon
             container = make_async_container(
                 *get_core_providers(),
                 *get_users_providers(),
+                *get_subscription_revoker_providers(),
+                *get_passkey_revoker_providers(),
                 *get_auth_providers(),
                 *get_api_tokens_providers(),
                 *get_settings_providers(),

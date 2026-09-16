@@ -1,3 +1,4 @@
+from contextlib import suppress
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -32,45 +33,45 @@ class ActivateTrialSubscriptionUseCase(UseCase[ActivateTrialSubscriptionDto, Sub
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: ActivateTrialSubscriptionDto) -> SubscriptionDto:
-        if not actor.is_trial_available:
+        # Spend the flag before provisioning, not after: actor is loaded per
+        # request, so two concurrent taps both read is_trial_available=True.
+        async with self._uow:
+            claimed = await self._user_repository.spend_trial(actor.id)
+        if not claimed:
             raise ValidationError(f"Trial is not available for user '{actor.id}'")
 
         plan = data.plan
-        subscription = await self._purchase_subscription_use_case(
-            actor,
-            PurchaseSubscriptionDto(
-                user_id=actor.id,
-                plan_snapshot=PlanSnapshot(
-                    plan_id=plan.id,
-                    public_code=plan.public_code,
-                    name=plan.name,
+        try:
+            return await self._purchase_subscription_use_case(
+                actor,
+                PurchaseSubscriptionDto(
+                    user_id=actor.id,
+                    plan_snapshot=PlanSnapshot(
+                        plan_id=plan.id,
+                        public_code=plan.public_code,
+                        name=plan.name,
+                        price_paid=Decimal(0),
+                        currency=Currency.USD,
+                        duration_days=data.duration_days,
+                        traffic_limit=plan.traffic_limit,
+                        device_limit=plan.device_limit,
+                        traffic_limit_strategy=plan.traffic_limit_strategy,
+                        is_trial=True,
+                        internal_squads=plan.internal_squads,
+                        external_squad=plan.external_squad,
+                    ),
+                    duration_days=data.duration_days,
                     price_paid=Decimal(0),
                     currency=Currency.USD,
-                    duration_days=data.duration_days,
-                    traffic_limit=plan.traffic_limit,
-                    device_limit=plan.device_limit,
-                    traffic_limit_strategy=plan.traffic_limit_strategy,
-                    is_trial=True,
-                    internal_squads=plan.internal_squads,
-                    external_squad=plan.external_squad,
+                    purchase_type=PurchaseType.NEW,
                 ),
-                duration_days=data.duration_days,
-                price_paid=Decimal(0),
-                currency=Currency.USD,
-                purchase_type=PurchaseType.NEW,
-            ),
-        )
-
-        # Not atomic with the purchase above (which already committed in its
-        # own transaction) -- if this write fails, is_trial_available stays
-        # True with a working trial subscription already in place. Trial
-        # detection is by subscription state, not this flag, so a retry
-        # wouldn't be blocked by the existing trial and would silently
-        # refresh it indefinitely, never consuming the flag. Narrow window,
-        # accepted rather than restructuring PurchaseSubscriptionUseCase's
-        # own transaction boundary for it.
-        async with self._uow:
-            await self._user_repository.update_fields(
-                actor.id, UpdateUserDto(is_trial_available=False)
             )
-        return subscription
+        except Exception:
+            # _purchase_new disables the panel user it minted on failure, so
+            # nothing was granted -- give the trial back for a retry.
+            with suppress(Exception):
+                async with self._uow:
+                    await self._user_repository.update_fields(
+                        actor.id, UpdateUserDto(is_trial_available=True)
+                    )
+            raise

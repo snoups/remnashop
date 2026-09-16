@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
-from sqlalchemy import ForeignKey, Index, Numeric, String
+from sqlalchemy import ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,8 +19,17 @@ from app.core.enums import (
 
 class PaymentOrder(BaseSql, TimestampMixin):
     __tablename__ = "payment_orders"
-    # Backs the prune_expired_payment_orders cron sweep's status+expires_at scan.
-    __table_args__ = (Index("ix_payment_orders_status_expires_at", "status", "expires_at"),)
+    __table_args__ = (
+        # Backs the prune_expired_payment_orders cron sweep's status+expires_at scan.
+        Index("ix_payment_orders_status_expires_at", "status", "expires_at"),
+        # Per gateway, not global: providers mint their own id namespaces and
+        # two of them handing out the same id must not collide (it would fail
+        # the checkout that writes the second one, leaving a payment the
+        # customer can still complete against an order with no external id).
+        UniqueConstraint(
+            "gateway_type", "external_payment_id", name="ux_payment_orders_gateway_external_id"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -39,7 +48,7 @@ class PaymentOrder(BaseSql, TimestampMixin):
     target_subscription_id: Mapped[Optional[int]] = mapped_column(ForeignKey("subscriptions.id"))
 
     gateway_type: Mapped[PaymentGatewayType]
-    external_payment_id: Mapped[Optional[str]] = mapped_column(String(128), unique=True)
+    external_payment_id: Mapped[Optional[str]] = mapped_column(String(128))
     status: Mapped[PaymentOrderStatus] = mapped_column(
         default=PaymentOrderStatus.PENDING, server_default="PENDING"
     )
@@ -55,3 +64,7 @@ class PaymentOrder(BaseSql, TimestampMixin):
     idempotency_key: Mapped[str] = mapped_column(String(36), unique=True)
 
     expires_at: Mapped[datetime]
+    # Set by reconcile_paid_orders once a PAID order's subscription is found --
+    # the durable "provisioned" record, unlike the idempotency key it's read
+    # from (pruned after IDEMPOTENCY_KEY_RETENTION_DAYS).
+    fulfilled_at: Mapped[Optional[datetime]]

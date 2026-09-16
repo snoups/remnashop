@@ -882,7 +882,10 @@
     "AD_LINKS_GENERATE_CODE": "Генерация рекламных кодов",
     "AD_LINKS_UPDATE": "Изменение рекламных ссылок",
     "AD_LINKS_DELETE": "Удаление рекламных ссылок",
-    "ANALYTICS_VIEW": "Просмотр аналитики"
+    "ANALYTICS_VIEW": "Просмотр аналитики",
+    "ANALYTICS_FUNNEL_VIEW": "Просмотр воронки конверсии",
+    "ANALYTICS_COHORTS_VIEW": "Просмотр удержания когорт",
+    "ANALYTICS_LTV_VIEW": "Просмотр распределения LTV"
   },
   "permissionCategories": {
     "botSettings": "Настройки бота",

@@ -6,6 +6,8 @@ import secrets
 import string
 from typing import Final
 
+from loguru import logger
+
 PASSWORD_MIN_LENGTH: Final[int] = 24
 # Same rule bootstrap/create-admin/change-password all validate against --
 # centralized here (not core/constants.py) to avoid a circular import with
@@ -47,7 +49,12 @@ async def hash_password(password: str, secret: str) -> str:
 
 
 async def verify_password(password: str, password_hash: str, secret: str) -> bool:
-    salt, expected = password_hash.split(":", 1)
+    salt, separator, expected = password_hash.partition(":")
+    if not separator:
+        # Only reachable from a hand-edited row or a restored foreign dump --
+        # refuse the login rather than failing the request.
+        logger.warning("Stored password hash is not in the '<salt>:<digest>' format")
+        return False
     digest = await asyncio.to_thread(_derive, _pepper(password, secret), salt)
     return hmac.compare_digest(digest, expected)
 

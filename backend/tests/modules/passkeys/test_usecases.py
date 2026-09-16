@@ -6,6 +6,7 @@ from webauthn.helpers import base64url_to_bytes, bytes_to_base64url
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.exceptions import AuthenticationError, NotFoundError
+from app.core.ports import EventPublisher
 from app.modules.auth import SessionIssuer
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.dto import (
@@ -129,11 +130,12 @@ async def test_verify_registration_rejects_expired_challenge(
     redis_challenge_store: PasskeyChallengeStore,
     user_repository: UserRepository,
     uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
     actor = await _create_user(user_repository, uow, "owner")
     await _enable_passkeys(settings_repository)
     use_case = VerifyPasskeyRegistrationUseCase(
-        settings_repository, passkey_repository, redis_challenge_store, uow
+        settings_repository, passkey_repository, redis_challenge_store, uow, event_publisher
     )
 
     credential = _fake_registration_credential(b"some-challenge")
@@ -147,6 +149,7 @@ async def test_verify_registration_rejects_invalid_response(
     redis_challenge_store: PasskeyChallengeStore,
     user_repository: UserRepository,
     uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
     actor = await _create_user(user_repository, uow, "owner")
     await _enable_passkeys(settings_repository)
@@ -154,7 +157,7 @@ async def test_verify_registration_rejects_invalid_response(
     await redis_challenge_store.store_registration_challenge(actor.id, challenge)
 
     use_case = VerifyPasskeyRegistrationUseCase(
-        settings_repository, passkey_repository, redis_challenge_store, uow
+        settings_repository, passkey_repository, redis_challenge_store, uow, event_publisher
     )
     credential = _fake_registration_credential(challenge)
 
@@ -221,25 +224,31 @@ async def test_rename_passkey_rejects_other_users_passkey(
 
 
 async def test_delete_passkey_removes_it(
-    passkey_repository: PasskeyRepository, user_repository: UserRepository, uow: UnitOfWork
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
     actor = await _create_user(user_repository, uow, "owner")
     created = await passkey_repository.create(_create_passkey_dto(actor.id))
 
-    use_case = DeletePasskeyUseCase(passkey_repository, uow)
+    use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher)
     await use_case(actor, created.id)
 
     assert await passkey_repository.get_by_id_and_user(created.id, actor.id) is None
 
 
 async def test_delete_passkey_rejects_other_users_passkey(
-    passkey_repository: PasskeyRepository, user_repository: UserRepository, uow: UnitOfWork
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
     owner = await _create_user(user_repository, uow, "owner")
     other = await _create_user(user_repository, uow, "other", role=Role.ADMIN)
     created = await passkey_repository.create(_create_passkey_dto(owner.id))
 
-    use_case = DeletePasskeyUseCase(passkey_repository, uow)
+    use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher)
     with pytest.raises(NotFoundError):
         await use_case(other, created.id)
 
@@ -274,6 +283,7 @@ async def test_verify_authentication_rejects_unknown_credential_id(
     uow: UnitOfWork,
     session_repository,
     config,
+    event_publisher: EventPublisher,
 ) -> None:
     await _enable_passkeys(settings_repository)
     session_issuer = SessionIssuer(session_repository, uow, config)
@@ -283,6 +293,8 @@ async def test_verify_authentication_rejects_unknown_credential_id(
         user_repository,
         redis_challenge_store,
         session_issuer,
+        uow,
+        event_publisher,
     )
 
     credential = {
@@ -311,6 +323,7 @@ async def test_verify_authentication_rejects_unknown_challenge(
     uow: UnitOfWork,
     session_repository,
     config,
+    event_publisher: EventPublisher,
 ) -> None:
     await _enable_passkeys(settings_repository)
     actor = await _create_user(user_repository, uow, "owner")
@@ -323,6 +336,8 @@ async def test_verify_authentication_rejects_unknown_challenge(
         user_repository,
         redis_challenge_store,
         session_issuer,
+        uow,
+        event_publisher,
     )
 
     credential = {
@@ -353,6 +368,7 @@ async def test_verify_authentication_rejects_malformed_credential_structure(
     uow: UnitOfWork,
     session_repository,
     config,
+    event_publisher: EventPublisher,
 ) -> None:
     await _enable_passkeys(settings_repository)
     actor = await _create_user(user_repository, uow, "owner")
@@ -368,6 +384,8 @@ async def test_verify_authentication_rejects_malformed_credential_structure(
         user_repository,
         redis_challenge_store,
         session_issuer,
+        uow,
+        event_publisher,
     )
 
     # rawId deliberately omitted -- webauthn's parse_authentication_credential_json

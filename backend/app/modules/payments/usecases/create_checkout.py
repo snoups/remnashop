@@ -177,10 +177,10 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
             raise ValidationError(f"Gateway '{gateway_type.value}' is not available")
 
     async def _validate_provisioning_preconditions(self, data: CreateCheckoutDto) -> None:
-        # Belt-and-braces: PurchaseSubscriptionUseCase re-checks all of this
-        # under its own lock. Checking here too means an order that would
-        # deterministically fail provisioning never gets the customer charged;
-        # the TOCTOU window until the worker runs is the usecase's problem.
+        # Belt-and-braces: PurchaseSubscriptionUseCase re-checks the target
+        # subscription under its own lock. The concurrent-subscription cap is
+        # enforced only here -- a paid order is provisioned even if the cap
+        # filled up before the worker ran (enforce_subscription_cap=False).
         if data.purchase_type is PurchaseType.NEW:
             if data.target_subscription_id is not None:
                 raise ValidationError("target_subscription_id is forbidden for a NEW purchase")

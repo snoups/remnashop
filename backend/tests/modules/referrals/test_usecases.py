@@ -156,6 +156,38 @@ async def test_attach_referral_rejects_second_attach(
         await use_case(referred, AttachReferralDto(code=referrer_b.referral_code))
 
 
+async def test_attach_referral_rejects_a_mutual_cycle(
+    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
+) -> None:
+    # A invited B; B's code must not attach A back -- that pair would earn
+    # from each other's payments forever.
+    await _enabled_settings(referral_repository)
+    a = await _create_user(user_repository, 3021)
+    b = await _create_user(user_repository, 3022)
+    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
+    await use_case(b, AttachReferralDto(code=a.referral_code))
+
+    with pytest.raises(ValidationError):
+        await use_case(a, AttachReferralDto(code=b.referral_code))
+
+    assert await referral_repository.get_by_referred_id(a.id) is None
+
+
+async def test_attach_referral_rejects_a_deeper_cycle(
+    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
+) -> None:
+    await _enabled_settings(referral_repository)
+    a = await _create_user(user_repository, 3023)
+    b = await _create_user(user_repository, 3024)
+    c = await _create_user(user_repository, 3025)
+    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
+    await use_case(b, AttachReferralDto(code=a.referral_code))
+    await use_case(c, AttachReferralDto(code=b.referral_code))
+
+    with pytest.raises(ValidationError):
+        await use_case(a, AttachReferralDto(code=c.referral_code))
+
+
 async def test_attach_referral_rejects_when_system_disabled(
     referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
 ) -> None:
@@ -312,6 +344,7 @@ async def test_get_own_referral_stats_includes_reward_history(
         referral_id=edge.id,
         referrer_id=referrer.id,
         subscription_id=subscription_id,
+        payment_key="order-1",
         type=ReferralRewardType.POINTS,
         amount=Decimal("7.50"),
     )
@@ -373,6 +406,7 @@ async def test_get_user_referral_stats_includes_reward_history(
         referral_id=edge.id,
         referrer_id=referrer.id,
         subscription_id=subscription_id,
+        payment_key="order-1",
         type=ReferralRewardType.POINTS,
         amount=Decimal("9"),
     )

@@ -57,9 +57,10 @@ broker.add_middlewares(
         # raised before the request leaves the process, so a retry is provably
         # safe. Real transport errors (httpx.HTTPError, remnapy ServerError)
         # stay non-retryable: a POST/PATCH that landed but lost its response
-        # would double-apply -- PurchaseSubscriptionUseCase._renew's relative
-        # extend_user, orphan panel users from _purchase_new/_change. Widening
-        # this needs those paths made idempotent first.
+        # would double-apply -- orphan panel users from
+        # PurchaseSubscriptionUseCase._purchase_new, and the keyless (promocode/
+        # referral) relative extend_user in _renew. Widening this needs those
+        # paths made idempotent first.
         types_of_exceptions=(RemnawavePanelUnavailableError,),
     ),
     TaskMetricsMiddleware(),

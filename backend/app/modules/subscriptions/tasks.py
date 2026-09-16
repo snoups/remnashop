@@ -14,6 +14,7 @@ from app.core.exceptions import NotFoundError, RemnawavePanelUnavailableError
 from app.core.ports import EventPublisher
 from app.core.utils.lock import cron_lock
 from app.core.utils.time import datetime_now
+from app.modules.pricing import PricingRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import (
@@ -37,7 +38,7 @@ from app.worker.broker import broker
 # deleting a still-resendable key turns a replay into a fresh claim (double
 # charge + double provisioning). Re-check against the real provider(s) once
 # modules/gateways has a transaction model.
-_IDEMPOTENCY_KEY_RETENTION_DAYS: Final[int] = 7
+IDEMPOTENCY_KEY_RETENTION_DAYS: Final[int] = 7
 _RECONCILE_LOCK_TTL_S: Final[int] = 29 * 60
 
 
@@ -50,6 +51,7 @@ async def purchase_subscription(
     event_publisher: EventPublisher,
     user_repository: UserRepository,
     lifecycle_service: SubscriptionLifecycleService,
+    pricing_repository: PricingRepository,
     user_id: int,
     plan_snapshot: dict,
     duration_days: int,
@@ -72,6 +74,7 @@ async def purchase_subscription(
         uow,
         event_publisher,
         lifecycle_service,
+        pricing_repository,
     )
     return await use_case(
         actor,
@@ -86,6 +89,7 @@ async def purchase_subscription(
             target_subscription_id=target_subscription_id,
             idempotency_key=idempotency_key,
             consumes_purchase_discount=True,
+            enforce_subscription_cap=False,
         ),
     )
 
@@ -127,6 +131,7 @@ async def purchase_subscription_task(
     event_publisher: FromDishka[EventPublisher],
     user_repository: FromDishka[UserRepository],
     lifecycle_service: FromDishka[SubscriptionLifecycleService],
+    pricing_repository: FromDishka[PricingRepository],
     target_subscription_id: Optional[int] = None,
     base_price: Optional[str] = None,
     idempotency_key: Optional[str] = None,
@@ -139,6 +144,7 @@ async def purchase_subscription_task(
         event_publisher=event_publisher,
         user_repository=user_repository,
         lifecycle_service=lifecycle_service,
+        pricing_repository=pricing_repository,
         user_id=user_id,
         plan_snapshot=plan_snapshot,
         duration_days=duration_days,
@@ -262,12 +268,12 @@ async def prune_subscription_idempotency_task(
     uow: FromDishka[UnitOfWork],
 ) -> None:
     async with uow:
-        cutoff = datetime_now() - timedelta(days=_IDEMPOTENCY_KEY_RETENTION_DAYS)
+        cutoff = datetime_now() - timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS)
         (
             purchase_deleted,
             addon_deleted,
         ) = await subscription_repository.delete_stale_idempotency_keys(cutoff)
     logger.info(
         f"Pruned {purchase_deleted} purchase + {addon_deleted} addon idempotency key(s) "
-        f"older than {_IDEMPOTENCY_KEY_RETENTION_DAYS}d"
+        f"older than {IDEMPOTENCY_KEY_RETENTION_DAYS}d"
     )

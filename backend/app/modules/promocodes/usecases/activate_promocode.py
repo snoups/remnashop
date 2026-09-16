@@ -15,27 +15,36 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.plans import PlanRepository, is_plan_purchasable_by
-from app.modules.promocodes.availability import assert_available_to
+from app.modules.plans import PlanDto, PlanRepository
+from app.modules.promocodes.availability import (
+    assert_available_to,
+    assert_subscription_reward_grantable,
+)
 from app.modules.promocodes.dto import ActivatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeActivatedEvent
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
-    GrantAddOnDto,
-    GrantAddOnUseCase,
     PlanSnapshot,
     PurchaseSubscriptionDto,
     PurchaseSubscriptionUseCase,
     SubscriptionDto,
     SubscriptionRepository,
+    grant_addon_task,
 )
 from app.modules.users import UpdateUserDto, UserDto, UserRepository
 
 _TARGET_REQUIRED_REWARDS: Final[frozenset[PromocodeRewardType]] = frozenset(
     {PromocodeRewardType.DURATION, PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES}
 )
+
+
+def _addon_grant_key(activation_id: int) -> str:
+    # Keyed on the activation, not on (promocode, user): a reusable code is
+    # activated more than once by the same person, and each of those
+    # activations earns its own grant.
+    return f"promocode-activation:{activation_id}"
 
 
 class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
@@ -49,7 +58,6 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         settings_repository: SettingsRepository,
         user_repository: UserRepository,
         purchase_subscription_use_case: PurchaseSubscriptionUseCase,
-        grant_addon_use_case: GrantAddOnUseCase,
         referral_repository: ReferralRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
@@ -60,7 +68,6 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         self._settings_repository = settings_repository
         self._user_repository = user_repository
         self._purchase_subscription_use_case = purchase_subscription_use_case
-        self._grant_addon_use_case = grant_addon_use_case
         self._referral_repository = referral_repository
         self._uow = uow
         self._event_publisher = event_publisher
@@ -77,6 +84,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         await assert_available_to(promo, actor, self._subscription_repository)
 
         target: Optional[SubscriptionDto] = None
+        reward_plan: Optional[PlanDto] = None
         if promo.reward_type in _TARGET_REQUIRED_REWARDS:
             if data.target_subscription_id is None:
                 raise ValidationError("target_subscription_id is required for this promocode")
@@ -91,16 +99,23 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
             if target.status is not SubscriptionStatus.ACTIVE:
                 raise ValidationError("target_subscription_id must be an active subscription")
         elif promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
-            await self._check_subscription_cap(actor)
+            reward_plan = await assert_subscription_reward_grantable(
+                promo,
+                actor,
+                self._plan_repository,
+                self._subscription_repository,
+                self._referral_repository,
+                self._settings_repository,
+            )
 
         async with self._uow:
-            await self._promocode_repository.claim_activation(
+            activation = await self._promocode_repository.claim_activation(
                 promocode_id=promo.id,
                 user_id=actor.id,
                 subscription_id=target.id if target is not None else None,
             )
 
-        await self._apply_reward(actor, promo, target)
+        await self._apply_reward(actor, promo, target, reward_plan, activation.id)
 
         async with self._uow:
             await self._event_publisher.publish(
@@ -112,19 +127,13 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         logger.info(f"{actor.log} Activated promocode '{promo.code}'")
         return promo
 
-    async def _check_subscription_cap(self, actor: UserDto) -> None:
-        shop_settings = await self._settings_repository.get_shop_settings()
-        max_active = shop_settings.max_active_subscriptions
-        if max_active is None:
-            return
-        active = await self._subscription_repository.get_active_by_user(actor.id)
-        if len(active) >= max_active:
-            raise ValidationError(
-                f"User '{actor.id}' is already at the concurrent-subscription cap"
-            )
-
     async def _apply_reward(
-        self, actor: UserDto, promo: PromocodeDto, target: Optional[SubscriptionDto]
+        self,
+        actor: UserDto,
+        promo: PromocodeDto,
+        target: Optional[SubscriptionDto],
+        reward_plan: Optional[PlanDto],
+        activation_id: int,
     ) -> None:
         try:
             if promo.reward_type is PromocodeRewardType.DURATION:
@@ -149,27 +158,20 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
             elif promo.reward_type in (PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES):
                 assert target is not None
                 assert promo.reward_addon_id is not None
-                await self._grant_addon_use_case.system(
-                    GrantAddOnDto(subscription_id=target.id, addon_id=promo.reward_addon_id)
+                # Dispatched, not applied inline: granting writes the
+                # entitlement and then pushes the new limit to the panel, and
+                # a panel failure in between leaves the two out of step with
+                # the code already spent. The task retries, and its key makes
+                # a redelivery land once.
+                await grant_addon_task.kiq(  # type: ignore[call-overload]
+                    subscription_id=target.id,
+                    addon_id=promo.reward_addon_id,
+                    idempotency_key=_addon_grant_key(activation_id),
                 )
             elif promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
-                assert promo.reward_plan_id is not None
+                assert reward_plan is not None
                 assert promo.reward_duration_days is not None
-                plan = await self._plan_repository.get_by_id(promo.reward_plan_id)
-                # Same purchasability gate a direct checkout applies -- a
-                # promocode grants a plan, it doesn't bypass whether that
-                # plan is still active/available to this actor.
-                has_purchase_history = await self._subscription_repository.has_any_subscription(
-                    actor.id, include_trial=False
-                )
-                has_referrer = await self._referral_repository.has_referrer(actor.id)
-                if not is_plan_purchasable_by(
-                    plan,
-                    actor,
-                    has_purchase_history=has_purchase_history,
-                    has_referrer=has_referrer,
-                ):
-                    raise ValidationError(f"Plan '{plan.id}' is not available for purchase")
+                plan = reward_plan
                 await self._purchase_subscription_use_case(
                     actor,
                     PurchaseSubscriptionDto(

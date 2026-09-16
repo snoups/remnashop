@@ -22,6 +22,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.gateways import get_gateways_providers
+from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.payments import get_payments_providers
 from app.modules.plans import get_plans_providers
 from app.modules.pricing import get_pricing_providers
@@ -51,6 +52,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
     providers = [
         *get_core_providers(),
         *get_users_providers(),
+        *get_passkey_revoker_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
         *get_blacklist_providers(),
@@ -111,28 +113,30 @@ async def _owner_headers(
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _admin_without_analytics_view_headers(
+async def _admin_without_permission_headers(
     user_repository: UserRepository,
     session_repository: SessionRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    permission: str,
 ) -> dict[str, str]:
+    login = f"analytics-{permission.lower()}"
     async with uow:
         user = await user_repository.create(
             CreateUserDto(
-                login="analyticstestadmin",
+                login=login,
                 password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
-                name="analyticstestadmin",
+                name=login,
                 role=Role.ADMIN,
                 language=Locale.EN,
-                permission_revokes=["ANALYTICS_VIEW"],
+                permission_revokes=[permission],
             )
         )
         await uow.commit()
     session = await session_repository.create(
         CreateSessionDto(
             user_id=user.id,
-            refresh_token_hash=hash_refresh_token("test-refresh-token-analytics-admin"),
+            refresh_token_hash=hash_refresh_token(f"test-refresh-token-{login}"),
             ip_address="127.0.0.1",
             user_agent=None,
             expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
@@ -198,8 +202,8 @@ async def test_admin_without_analytics_view_is_denied(
     uow: UnitOfWork,
     config: AppConfig,
 ) -> None:
-    headers = await _admin_without_analytics_view_headers(
-        user_repository, session_repository, uow, config
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_VIEW"
     )
 
     response = await client.get(f"{API_V1}/analytics/overview", headers=headers)
@@ -259,8 +263,8 @@ async def test_admin_without_analytics_view_is_denied_on_funnel(
     uow: UnitOfWork,
     config: AppConfig,
 ) -> None:
-    headers = await _admin_without_analytics_view_headers(
-        user_repository, session_repository, uow, config
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_FUNNEL_VIEW"
     )
 
     response = await client.get(f"{API_V1}/analytics/funnel", headers=headers)
@@ -290,8 +294,8 @@ async def test_admin_without_analytics_view_is_denied_on_cohorts(
     uow: UnitOfWork,
     config: AppConfig,
 ) -> None:
-    headers = await _admin_without_analytics_view_headers(
-        user_repository, session_repository, uow, config
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_COHORTS_VIEW"
     )
 
     response = await client.get(f"{API_V1}/analytics/cohorts", headers=headers)
@@ -321,8 +325,8 @@ async def test_admin_without_analytics_view_is_denied_on_ltv_distribution(
     uow: UnitOfWork,
     config: AppConfig,
 ) -> None:
-    headers = await _admin_without_analytics_view_headers(
-        user_repository, session_repository, uow, config
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_LTV_VIEW"
     )
 
     response = await client.get(f"{API_V1}/analytics/ltv-distribution", headers=headers)

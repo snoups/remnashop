@@ -16,6 +16,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import CreateAddOnDto, CreateSubscriptionDto
@@ -84,6 +85,7 @@ async def test_purchase_subscription_task_body_creates_a_subscription(
         event_publisher=event_publisher,
         user_repository=user_repository,
         lifecycle_service=SubscriptionLifecycleService(subscription_repository),
+        pricing_repository=PricingRepository(subscription_repository.session),
         user_id=buyer.id,
         plan_snapshot=make_plan_snapshot(
             plan_id=plan.id, price_paid=Decimal("299.00"), currency=Currency.RUB
@@ -96,6 +98,52 @@ async def test_purchase_subscription_task_body_creates_a_subscription(
     )
 
     assert subscription.user_id == buyer.id
+
+
+async def test_purchase_subscription_task_body_provisions_a_paid_order_past_the_cap(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # The cap is enforced at checkout; once the customer has paid, the order
+    # is honoured even if the cap filled up in the meantime.
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=443))
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="task-cap",
+            name="task-cap",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+        )
+    )
+    for attempt in range(4):
+        await purchase_subscription(
+            subscription_repository=subscription_repository,
+            settings_repository=settings_repository,
+            remnawave_sdk=remnawave_sdk,
+            uow=uow,
+            event_publisher=event_publisher,
+            user_repository=user_repository,
+            lifecycle_service=SubscriptionLifecycleService(subscription_repository),
+            pricing_repository=PricingRepository(subscription_repository.session),
+            user_id=buyer.id,
+            plan_snapshot=make_plan_snapshot(
+                plan_id=plan.id, price_paid=Decimal("299.00"), currency=Currency.RUB
+            ).to_json(),
+            duration_days=30,
+            price_paid="299.00",
+            currency=Currency.RUB.value,
+            purchase_type=PurchaseType.NEW.value,
+            target_subscription_id=None,
+            idempotency_key=f"task-cap-{attempt}",
+        )
+
+    assert len(await subscription_repository.get_active_by_user(buyer.id)) == 4
 
 
 async def test_grant_addon_task_body_grants_an_entitlement(
@@ -136,6 +184,7 @@ async def test_grant_addon_task_body_grants_an_entitlement(
         event_publisher=event_publisher,
         user_repository=user_repository,
         lifecycle_service=SubscriptionLifecycleService(subscription_repository),
+        pricing_repository=PricingRepository(subscription_repository.session),
         user_id=buyer.id,
         plan_snapshot=make_plan_snapshot(
             plan_id=plan.id, price_paid=Decimal("299.00"), currency=Currency.RUB

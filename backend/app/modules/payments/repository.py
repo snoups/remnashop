@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.payment_order import PaymentOrder
 from app.core.db.timestamp import NOW_FUNC
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency, PaymentGatewayType, PaymentOrderStatus
 from app.core.exceptions import NotFoundError
 from app.modules.payments.dto import DEFAULT_PAGE_SIZE, CreatePaymentOrderDto, PaymentOrderDto
 from app.modules.subscriptions import PlanSnapshot
@@ -73,16 +73,25 @@ class PaymentOrderRepository:
             raise NotFoundError(f"PaymentOrder '{order_id}' not found")
         return self._to_dto(row)
 
-    async def get_by_idempotency_key(self, key: str) -> Optional[PaymentOrderDto]:
-        row = await self.session.scalar(
-            select(PaymentOrder).where(PaymentOrder.idempotency_key == key)
-        )
+    async def get_by_idempotency_key(
+        self, key: str, *, gateway_type: Optional[PaymentGatewayType] = None
+    ) -> Optional[PaymentOrderDto]:
+        filters = [PaymentOrder.idempotency_key == key]
+        if gateway_type is not None:
+            filters.append(PaymentOrder.gateway_type == gateway_type)
+        row = await self.session.scalar(select(PaymentOrder).where(*filters))
         return self._to_dto(row) if row is not None else None
 
-    async def get_by_external_payment_id(self, external_id: str) -> Optional[PaymentOrderDto]:
-        row = await self.session.scalar(
-            select(PaymentOrder).where(PaymentOrder.external_payment_id == external_id)
-        )
+    async def get_by_external_payment_id(
+        self, external_id: str, *, gateway_type: Optional[PaymentGatewayType] = None
+    ) -> Optional[PaymentOrderDto]:
+        # external_payment_id is unique per gateway, not globally -- two
+        # providers can hand out the same id, so a caller that knows which
+        # gateway it is asking about passes it.
+        filters = [PaymentOrder.external_payment_id == external_id]
+        if gateway_type is not None:
+            filters.append(PaymentOrder.gateway_type == gateway_type)
+        row = await self.session.scalar(select(PaymentOrder).where(*filters))
         return self._to_dto(row) if row is not None else None
 
     async def mark_status(
@@ -127,20 +136,29 @@ class PaymentOrderRepository:
         )
         return cast(CursorResult, result).rowcount
 
-    async def list_paid_awaiting_reconciliation(self, cutoff: datetime) -> list[PaymentOrderDto]:
-        # unbounded scan of every PAID order ever marked before
-        # `cutoff` -- fine at this project's current scale (no production
-        # traffic yet). Add a lower bound on created_at (or an index-assisted
-        # cursor) if this table grows large enough for the scan to matter.
+    async def list_paid_awaiting_reconciliation(
+        self, cutoff: datetime, *, since: datetime
+    ) -> list[PaymentOrderDto]:
         rows = (
             await self.session.scalars(
                 select(PaymentOrder).where(
                     PaymentOrder.status == PaymentOrderStatus.PAID,
+                    PaymentOrder.fulfilled_at.is_(None),
                     PaymentOrder.updated_at <= cutoff,
+                    PaymentOrder.updated_at >= since,
                 )
             )
         ).all()
         return [self._to_dto(row) for row in rows]
+
+    async def mark_fulfilled(self, order_id: int) -> None:
+        # updated_at is the paid-at timestamp every revenue query groups by --
+        # pinned to itself, since Core update() still applies its onupdate.
+        await self.session.execute(
+            update(PaymentOrder)
+            .where(PaymentOrder.id == order_id, PaymentOrder.fulfilled_at.is_(None))
+            .values(fulfilled_at=NOW_FUNC, updated_at=PaymentOrder.updated_at)
+        )
 
     async def list_paginated(
         self,

@@ -9,7 +9,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.utils.lock import cron_lock
 from app.core.utils.time import datetime_now
 from app.modules.payments.repository import PaymentOrderRepository
-from app.modules.subscriptions import SubscriptionRepository, purchase_subscription_task
+from app.modules.subscriptions import (
+    IDEMPOTENCY_KEY_RETENTION_DAYS,
+    SubscriptionRepository,
+    purchase_subscription_task,
+)
 from app.worker.broker import broker
 
 # Grace period between an order becoming PAID and this sweep considering it
@@ -17,6 +21,9 @@ from app.worker.broker import broker
 # complete before we second-guess it.
 _RECONCILIATION_GRACE_PERIOD: Final[timedelta] = timedelta(minutes=10)
 _RECONCILE_LOCK_TTL_S: Final[int] = 14 * 60
+# Must stay inside the idempotency-key retention: past it, a key-less order
+# looks unprovisioned and a redispatch would provision it a second time.
+_RECONCILIATION_WINDOW: Final[timedelta] = timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS - 1)
 
 
 async def prune_expired_payment_orders(
@@ -40,10 +47,13 @@ async def reconcile_paid_orders(
     *,
     payment_order_repository: PaymentOrderRepository,
     subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
     grace_period: timedelta = _RECONCILIATION_GRACE_PERIOD,
 ) -> None:
-    cutoff = datetime_now() - grace_period
-    stuck = await payment_order_repository.list_paid_awaiting_reconciliation(cutoff)
+    now = datetime_now()
+    stuck = await payment_order_repository.list_paid_awaiting_reconciliation(
+        now - grace_period, since=now - _RECONCILIATION_WINDOW
+    )
 
     redispatched = 0
     for order in stuck:
@@ -51,6 +61,8 @@ async def reconcile_paid_orders(
             order.idempotency_key
         )
         if existing is not None:
+            async with uow:
+                await payment_order_repository.mark_fulfilled(order.id)
             continue
 
         # Same idempotency_key as the original attempt -- safe to redispatch
@@ -81,6 +93,7 @@ async def reconcile_paid_orders(
 async def reconcile_paid_orders_task(
     payment_order_repository: FromDishka[PaymentOrderRepository],
     subscription_repository: FromDishka[SubscriptionRepository],
+    uow: FromDishka[UnitOfWork],
     redis: FromDishka[Redis],
 ) -> None:
     async with cron_lock(
@@ -92,4 +105,5 @@ async def reconcile_paid_orders_task(
         await reconcile_paid_orders(
             payment_order_repository=payment_order_repository,
             subscription_repository=subscription_repository,
+            uow=uow,
         )

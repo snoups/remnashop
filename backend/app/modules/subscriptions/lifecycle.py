@@ -42,6 +42,14 @@ class SubscriptionLifecycleService:
         new_state = state.sync_status(target)
         return await self._subscription_repository.apply_state(new_state)
 
+    async def sync_expire_at(
+        self, subscription_id: int, new_expire_at: datetime
+    ) -> SubscriptionDto:
+        dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
+        state = _dto_to_state(dto)
+        new_state = state.sync_expire_at(new_expire_at)
+        return await self._subscription_repository.apply_state(new_state)
+
     async def renew(self, subscription_id: int, new_expire_at: datetime) -> SubscriptionDto:
         dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
         state = _dto_to_state(dto)

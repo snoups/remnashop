@@ -10,6 +10,11 @@ def datetime_now() -> datetime:
     return datetime.now(tz=TIMEZONE)
 
 
+def truncate_to_ms(value: datetime) -> datetime:
+    # Remnawave stores timestamps with millisecond precision
+    return value.replace(microsecond=value.microsecond // 1000 * 1000)
+
+
 def range_start_utc(value: Optional[datetime]) -> Optional[datetime]:
     # A bare "YYYY-MM-DD" (e.g. from an <input type="date">) parses into a
     # naive datetime -- treat it as UTC rather than the server's local

@@ -24,6 +24,11 @@ _REFERRAL_CODE_LENGTH: Final[int] = 8
 _REFERRAL_CODE_MAX_ATTEMPTS: Final[int] = 5
 
 
+# asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
+# large bulk-block batch still fits after other predicates are added.
+_MAX_IN_PARAMS: Final[int] = 20_000
+
+
 class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -85,6 +90,16 @@ class UserRepository:
         db_user = await self.session.scalar(stmt)
         return self._convert_to_dto(db_user) if db_user else None
 
+    async def list_by_telegram_ids(self, telegram_ids: list[int]) -> list[UserDto]:
+        if not telegram_ids:
+            return []
+        users: list[UserDto] = []
+        for start in range(0, len(telegram_ids), _MAX_IN_PARAMS):
+            chunk = telegram_ids[start : start + _MAX_IN_PARAMS]
+            stmt = select(User).where(User.telegram_id.in_(chunk))
+            users.extend(self._convert_to_dto(row) for row in (await self.session.scalars(stmt)))
+        return users
+
     async def get_by_email(self, email: str) -> Optional[UserDto]:
         stmt = select(User).where(User.email == email)
         db_user = await self.session.scalar(stmt)
@@ -120,6 +135,17 @@ class UserRepository:
         await self.session.flush()
         if cast(CursorResult, result).rowcount == 0:
             raise ValidationError(f"Adjustment would take user '{user_id}' points below zero")
+
+    async def spend_trial(self, user_id: int) -> bool:
+        # Atomic claim: of two concurrent callers only one sees rowcount 1.
+        stmt = (
+            update(User)
+            .where(User.id == user_id, User.is_trial_available.is_(True))
+            .values(is_trial_available=False)
+        )
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+        return cast(CursorResult, result).rowcount == 1
 
     async def exists_with_role(self, role: Role) -> bool:
         stmt = select(exists().where(User.role == role))

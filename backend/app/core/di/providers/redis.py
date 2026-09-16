@@ -26,5 +26,5 @@ class RedisProvider(Provider):
         yield client
 
         logger.debug("Closing Redis client and disconnecting pool")
-        await client.close()
+        await client.aclose()
         await connection_pool.disconnect()
