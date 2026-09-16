@@ -24,7 +24,8 @@ class UpdateCurrencyRateUseCase(UseCase[UpdateCurrencyRateDto, list[CurrencyRate
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: UpdateCurrencyRateDto) -> list[CurrencyRateDto]:
-        old_row = (await self._pricing_repository.get_rate_table()).for_currency(data.currency)
+        async with self._uow:
+            old_row = (await self._pricing_repository.get_rate_table()).for_currency(data.currency)
 
         async with self._uow:
             await self._pricing_repository.update_rate(data)
@@ -37,6 +38,7 @@ class UpdateCurrencyRateUseCase(UseCase[UpdateCurrencyRateDto, list[CurrencyRate
                 )
             )
 
-        table = await self._pricing_repository.get_rate_table()
-        logger.info(f"{actor.log} Updated currency rate for '{data.currency}'")
-        return list(table.rows.values())
+        async with self._uow:
+            table = await self._pricing_repository.get_rate_table()
+            logger.info(f"{actor.log} Updated currency rate for '{data.currency}'")
+            return list(table.rows.values())

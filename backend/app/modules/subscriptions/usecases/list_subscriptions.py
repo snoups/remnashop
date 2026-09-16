@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -19,12 +20,14 @@ class ListSubscriptionsInput:
 class ListSubscriptionsUseCase(UseCase[ListSubscriptionsInput, tuple[list[SubscriptionDto], int]]):
     required_permission = Permission.SUBSCRIPTIONS_VIEW
 
-    def __init__(self, subscription_repository: SubscriptionRepository) -> None:
+    def __init__(self, subscription_repository: SubscriptionRepository, uow: UnitOfWork) -> None:
         self._subscription_repository = subscription_repository
+        self._uow = uow
 
     async def _execute(
         self, actor: UserDto, data: ListSubscriptionsInput
     ) -> tuple[list[SubscriptionDto], int]:
-        return await self._subscription_repository.list_paginated(
-            status=data.status, page=data.page, page_size=data.page_size
-        )
+        async with self._uow:
+            return await self._subscription_repository.list_paginated(
+                status=data.status, page=data.page, page_size=data.page_size
+            )

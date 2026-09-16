@@ -30,17 +30,23 @@ def _create_dto(name: str = "traffic-10gb") -> CreateAddOnDto:
     return CreateAddOnDto(name=name, type=AddOnType.TRAFFIC, amount=10, base_price=Decimal("1.99"))
 
 
-async def test_owner_can_list_addons(addon_repository: AddOnRepository) -> None:
+async def test_owner_can_list_addons(
+    addon_repository: AddOnRepository,
+    uow: UnitOfWork,
+) -> None:
     await addon_repository.create(_create_dto())
-    use_case = ListAddOnsUseCase(addon_repository)
+    use_case = ListAddOnsUseCase(addon_repository, uow)
 
     addons = await use_case(OWNER)
 
     assert len(addons) == 1
 
 
-async def test_regular_user_cannot_list_addons(addon_repository: AddOnRepository) -> None:
-    use_case = ListAddOnsUseCase(addon_repository)
+async def test_regular_user_cannot_list_addons(
+    addon_repository: AddOnRepository,
+    uow: UnitOfWork,
+) -> None:
+    use_case = ListAddOnsUseCase(addon_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER)

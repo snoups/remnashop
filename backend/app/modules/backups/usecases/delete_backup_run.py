@@ -17,7 +17,8 @@ class DeleteBackupRunUseCase(UseCase[int, None]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: int) -> None:
-        run = await self._backup_repository.get_run(data)
+        async with self._uow:
+            run = await self._backup_repository.get_run(data)
         async with self._uow:
             await self._backup_repository.delete_run(data)
         # unlink only after the row deletion has committed -- a rolled-back

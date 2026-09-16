@@ -1,3 +1,4 @@
+from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import ReferralSettingsDto
@@ -8,8 +9,10 @@ from app.modules.users import UserDto
 class GetReferralSettingsUseCase(UseCase[None, ReferralSettingsDto]):
     required_permission = Permission.REFERRALS_SETTINGS_VIEW
 
-    def __init__(self, referral_repository: ReferralRepository) -> None:
+    def __init__(self, referral_repository: ReferralRepository, uow: UnitOfWork) -> None:
         self._referral_repository = referral_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> ReferralSettingsDto:
-        return await self._referral_repository.get_settings()
+        async with self._uow:
+            return await self._referral_repository.get_settings()

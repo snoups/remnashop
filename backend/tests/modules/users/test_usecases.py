@@ -707,7 +707,7 @@ async def test_list_admins_returns_admins_and_owner(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="listedadmin", name="X")
     )
 
-    list_use_case = ListAdminsUseCase(user_repository)
+    list_use_case = ListAdminsUseCase(user_repository, uow)
     admins = await list_use_case(OWNER)
 
     logins = {a.login for a in admins}
@@ -716,8 +716,11 @@ async def test_list_admins_returns_admins_and_owner(
     assert "Regular" not in {a.name for a in admins}
 
 
-async def test_regular_user_cannot_list_admins(user_repository: UserRepository) -> None:
-    list_use_case = ListAdminsUseCase(user_repository)
+async def test_regular_user_cannot_list_admins(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    list_use_case = ListAdminsUseCase(user_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await list_use_case(REGULAR_USER)
@@ -741,7 +744,7 @@ async def test_list_users_excludes_admins_and_owner(
         )
         await uow.commit()
 
-    list_use_case = ListUsersUseCase(user_repository)
+    list_use_case = ListUsersUseCase(user_repository, uow)
     users, _total = await list_use_case(OWNER, ListUsersInput())
 
     names = {u.name for u in users}
@@ -766,7 +769,7 @@ async def test_admin_with_view_users_grant_does_not_see_admins_or_owner(
         await uow.commit()
 
     granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_VIEW"]})
-    list_use_case = ListUsersUseCase(user_repository)
+    list_use_case = ListUsersUseCase(user_repository, uow)
 
     users, _total = await list_use_case(granted_admin, ListUsersInput())
 
@@ -791,7 +794,7 @@ async def test_owner_with_include_staff_sees_admins_and_owner(
         )
         await uow.commit()
 
-    list_use_case = ListUsersUseCase(user_repository)
+    list_use_case = ListUsersUseCase(user_repository, uow)
     users, _total = await list_use_case(OWNER, ListUsersInput(include_staff=True))
 
     names = {u.name for u in users}
@@ -800,9 +803,10 @@ async def test_owner_with_include_staff_sees_admins_and_owner(
 
 async def test_admin_with_view_users_grant_cannot_use_include_staff(
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_VIEW"]})
-    list_use_case = ListUsersUseCase(user_repository)
+    list_use_case = ListUsersUseCase(user_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await list_use_case(granted_admin, ListUsersInput(include_staff=True))
@@ -810,8 +814,9 @@ async def test_admin_with_view_users_grant_cannot_use_include_staff(
 
 async def test_admin_without_view_users_grant_cannot_list_users(
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
-    list_use_case = ListUsersUseCase(user_repository)
+    list_use_case = ListUsersUseCase(user_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await list_use_case(ADMIN)
@@ -827,7 +832,7 @@ async def test_admin_with_view_users_grant_can_list_users(
         await uow.commit()
 
     granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_VIEW"]})
-    list_use_case = ListUsersUseCase(user_repository)
+    list_use_case = ListUsersUseCase(user_repository, uow)
 
     everyone, _total = await list_use_case(granted_admin, ListUsersInput())
 

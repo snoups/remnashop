@@ -1,3 +1,4 @@
+from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans.dto import PlanDto
@@ -8,8 +9,10 @@ from app.modules.users import UserDto
 class ListPlansUseCase(UseCase[None, list[PlanDto]]):
     required_permission = Permission.PLANS_VIEW
 
-    def __init__(self, plan_repository: PlanRepository) -> None:
+    def __init__(self, plan_repository: PlanRepository, uow: UnitOfWork) -> None:
         self._plan_repository = plan_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> list[PlanDto]:
-        return await self._plan_repository.list_all()
+        async with self._uow:
+            return await self._plan_repository.list_all()

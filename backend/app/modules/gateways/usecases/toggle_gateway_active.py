@@ -18,9 +18,10 @@ class ToggleGatewayActiveUseCase(UseCase[PaymentGatewayType, PaymentGatewayDto])
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: PaymentGatewayType) -> PaymentGatewayDto:
-        current = await self._gateways_repository.get_by_type(data)
-        if not current.is_active and not current.is_configured:
-            raise ValidationError(f"Gateway '{data.value}' is not configured")
+        async with self._uow:
+            current = await self._gateways_repository.get_by_type(data)
+            if not current.is_active and not current.is_configured:
+                raise ValidationError(f"Gateway '{data.value}' is not configured")
 
         async with self._uow:
             gateway = await self._gateways_repository.set_active(data, not current.is_active)

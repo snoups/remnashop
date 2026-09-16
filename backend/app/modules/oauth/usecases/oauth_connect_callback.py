@@ -47,17 +47,18 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto]):
     async def _execute(self, actor: UserDto, data: OAuthCallbackDto) -> OAuthIdentityDto:
         state_data = await self._state_store.consume(data.state)
 
-        if (
-            state_data is None
-            or state_data.purpose != OAuthFlowPurpose.CONNECT
-            or state_data.provider != data.provider
-            or state_data.user_id != actor.id
-        ):
-            raise AuthenticationError("Invalid or expired OAuth state")
+        async with self._uow:
+            if (
+                state_data is None
+                or state_data.purpose != OAuthFlowPurpose.CONNECT
+                or state_data.provider != data.provider
+                or state_data.user_id != actor.id
+            ):
+                raise AuthenticationError("Invalid or expired OAuth state")
 
-        settings = await self._settings_repository.get_oauth_settings()
-        client = get_oauth_client(data.provider, settings)
-        redirect_uri = build_redirect_uri(self._config.domain.get_secret_value(), data.provider)
+            settings = await self._settings_repository.get_oauth_settings()
+            client = get_oauth_client(data.provider, settings)
+            redirect_uri = build_redirect_uri(self._config.domain.get_secret_value(), data.provider)
         try:
             external_id, external_login = await client.fetch_identity(
                 redirect_uri,
@@ -67,11 +68,12 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto]):
         except OAUTH_EXCHANGE_ERRORS as error:
             raise AuthenticationError("Failed to exchange OAuth code") from error
 
-        existing = await self._oauth_identity_repository.get_by_provider_external_id(
-            data.provider, external_id
-        )
-        if existing is not None and existing.user_id != actor.id:
-            raise ConflictError("This account is already linked to another user")
+        async with self._uow:
+            existing = await self._oauth_identity_repository.get_by_provider_external_id(
+                data.provider, external_id
+            )
+            if existing is not None and existing.user_id != actor.id:
+                raise ConflictError("This account is already linked to another user")
 
         async with self._uow:
             identity = await self._oauth_identity_repository.create(

@@ -22,9 +22,10 @@ class DeletePasskeyUseCase(UseCase[int, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: int) -> None:
-        credential = await self._passkey_repository.get_by_id_and_user(data, actor.id)
-        if credential is None:
-            raise NotFoundError("Passkey not found")
+        async with self._uow:
+            credential = await self._passkey_repository.get_by_id_and_user(data, actor.id)
+            if credential is None:
+                raise NotFoundError("Passkey not found")
 
         async with self._uow:
             deleted = await self._passkey_repository.delete_by_id_and_user(data, actor.id)

@@ -25,24 +25,25 @@ class BulkBlockUsersUseCase(UseCase[list[int], BulkBlockResultDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, telegram_ids: list[int]) -> BulkBlockResultDto:
-        known_ids: list[int] = []
-        unknown_ids: list[int] = []
-        skipped = 0
-        # One query for the whole batch: a per-id lookup meant thousands of
-        # round-trips inside a single request on a large list.
-        targets = {
-            user.telegram_id: user
-            for user in await self._user_repository.list_by_telegram_ids(telegram_ids)
-            if user.telegram_id is not None
-        }
-        for telegram_id in telegram_ids:
-            target = targets.get(telegram_id)
-            if target is None:
-                unknown_ids.append(telegram_id)
-            elif not target.is_privileged or actor.role > target.role:
-                known_ids.append(telegram_id)
-            else:
-                skipped += 1
+        async with self._uow:
+            known_ids: list[int] = []
+            unknown_ids: list[int] = []
+            skipped = 0
+            # One query for the whole batch: a per-id lookup meant thousands of
+            # round-trips inside a single request on a large list.
+            targets = {
+                user.telegram_id: user
+                for user in await self._user_repository.list_by_telegram_ids(telegram_ids)
+                if user.telegram_id is not None
+            }
+            for telegram_id in telegram_ids:
+                target = targets.get(telegram_id)
+                if target is None:
+                    unknown_ids.append(telegram_id)
+                elif not target.is_privileged or actor.role > target.role:
+                    known_ids.append(telegram_id)
+                else:
+                    skipped += 1
 
         async with self._uow:
             blocked_user_ids = await self._user_repository.bulk_block_by_telegram_ids(known_ids)

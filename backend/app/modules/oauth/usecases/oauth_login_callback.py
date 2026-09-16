@@ -57,9 +57,10 @@ class OAuthLoginCallbackUseCase:
                 )
             raise AuthenticationError("Invalid or expired OAuth state")
 
-        settings = await self._settings_repository.get_oauth_settings()
-        client = get_oauth_client(provider, settings)
-        redirect_uri = build_redirect_uri(self._config.domain.get_secret_value(), provider)
+        async with self._uow:
+            settings = await self._settings_repository.get_oauth_settings()
+            client = get_oauth_client(provider, settings)
+            redirect_uri = build_redirect_uri(self._config.domain.get_secret_value(), provider)
         try:
             external_id, _ = await client.fetch_identity(
                 redirect_uri, code, state_data.code_verifier
@@ -71,9 +72,10 @@ class OAuthLoginCallbackUseCase:
                 )
             raise AuthenticationError("Failed to exchange OAuth code") from error
 
-        identity = await self._oauth_identity_repository.get_by_provider_external_id(
-            provider, external_id
-        )
+        async with self._uow:
+            identity = await self._oauth_identity_repository.get_by_provider_external_id(
+                provider, external_id
+            )
         if identity is None:
             async with self._uow:
                 await self._event_publisher.publish(
@@ -81,7 +83,8 @@ class OAuthLoginCallbackUseCase:
                 )
             raise AuthenticationError("This account is not linked to any user")
 
-        user = await self._user_repository.get_by_id(identity.user_id)
+        async with self._uow:
+            user = await self._user_repository.get_by_id(identity.user_id)
         # Same message whether the user record is gone or the account is
         # blocked -- distinguishing the two would leak blocked-status to an
         # unauthenticated caller, same reasoning as LoginUseCase's own check.

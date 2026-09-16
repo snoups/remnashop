@@ -30,11 +30,12 @@ class RevokeSessionUseCase(UseCase[RevokeSessionDto, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: RevokeSessionDto) -> None:
-        session = await self._session_repository.get_active_by_id(data.session_id)
-        if session is None or session.user_id != actor.id:
-            # Same message whether it doesn't exist or belongs to someone else --
-            # don't leak which case it was.
-            raise NotFoundError("Session not found")
+        async with self._uow:
+            session = await self._session_repository.get_active_by_id(data.session_id)
+            if session is None or session.user_id != actor.id:
+                # Same message whether it doesn't exist or belongs to someone else --
+                # don't leak which case it was.
+                raise NotFoundError("Session not found")
 
         async with self._uow:
             await self._session_repository.revoke_by_id(data.session_id)

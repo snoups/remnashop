@@ -16,7 +16,8 @@ async def _delete_appearance_image(
     uow: UnitOfWork,
     kind: AppearanceImageKind,
 ) -> AppearanceSettingsDto:
-    meta = await settings_repository.get_appearance_image_meta(kind)
+    async with uow:
+        meta = await settings_repository.get_appearance_image_meta(kind)
     if meta is None:
         raise NotFoundError(f"Appearance image not set: {kind}")
 

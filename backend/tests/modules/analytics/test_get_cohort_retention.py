@@ -47,10 +47,12 @@ def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> Crea
 
 
 async def test_actor_without_analytics_view_is_denied(
-    user_repository: UserRepository, payment_order_repository: PaymentOrderRepository
+    user_repository: UserRepository,
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository)
+    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor)
@@ -75,7 +77,7 @@ async def test_cohort_retention_month_zero_vs_month_one(
     # updated_at is a server default -- this order lands in the current
     # calendar month, proving month-0 retention without needing to backdate.
 
-    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository)
+    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository, uow)
     result = await use_case(OWNER)
 
     current_month_key = datetime_now().strftime("%Y-%m")
@@ -85,7 +87,9 @@ async def test_cohort_retention_month_zero_vs_month_one(
 
 
 async def test_cohort_retention_earliest_since_is_timezone_aware(
-    user_repository: UserRepository, payment_order_repository: PaymentOrderRepository
+    user_repository: UserRepository,
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
 ) -> None:
     captured: dict[str, datetime] = {}
     original = user_repository.list_id_and_registration_date_since
@@ -96,7 +100,7 @@ async def test_cohort_retention_earliest_since_is_timezone_aware(
 
     user_repository.list_id_and_registration_date_since = _spy  # type: ignore[method-assign]
 
-    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository)
+    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository, uow)
     await use_case(OWNER)
 
     assert captured["since"].tzinfo is not None

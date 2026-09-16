@@ -84,9 +84,10 @@ async def _rub_catalog_price(
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     pricing_repository: PricingRepository,
+    uow: UnitOfWork,
 ) -> Decimal:
     list_active_plans = ListActivePlansUseCase(
-        plan_repository, subscription_repository, referral_repository
+        plan_repository, subscription_repository, referral_repository, uow
     )
     plans = await list_active_plans(OWNER)
     catalog_plan = next(p for p in plans if p.id == plan.id)
@@ -168,7 +169,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     )
 
     catalog_price = await _rub_catalog_price(
-        plan, plan_repository, subscription_repository, referral_repository, pricing_repository
+        plan, plan_repository, subscription_repository, referral_repository, pricing_repository, uow
     )
     assert catalog_price == Decimal("200")  # 2.00 * 100
 
@@ -198,7 +199,7 @@ async def test_switch_anchor_leaves_catalog_stable(
     plan = await _create_active_plan(plan_repository, "integration-anchor-plan")
 
     before = await _rub_catalog_price(
-        plan, plan_repository, subscription_repository, referral_repository, pricing_repository
+        plan, plan_repository, subscription_repository, referral_repository, pricing_repository, uow
     )
 
     await SwitchAnchorCurrencyUseCase(
@@ -206,7 +207,7 @@ async def test_switch_anchor_leaves_catalog_stable(
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
 
     after = await _rub_catalog_price(
-        plan, plan_repository, subscription_repository, referral_repository, pricing_repository
+        plan, plan_repository, subscription_repository, referral_repository, pricing_repository, uow
     )
 
     assert abs(after - before) <= Decimal("1")

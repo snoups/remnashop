@@ -109,17 +109,18 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
     ) -> Optional[SubscriptionDto]:
         async with self._uow:
             claimed = await self._subscription_repository.claim_idempotency_key(key)
-        if claimed:
-            return None
-        existing = await self._subscription_repository.get_subscription_by_idempotency_key(key)
-        if existing is not None:
-            return existing
-        if (
-            purchase_type is PurchaseType.RENEW
-            and await self._subscription_repository.get_pending_renew_expire_at(key) is not None
-        ):
-            return None  # resume -- _renew re-applies the pinned expire_at
-        raise ValidationError(f"Purchase with idempotency_key '{key}' is already in progress")
+        async with self._uow:
+            if claimed:
+                return None
+            existing = await self._subscription_repository.get_subscription_by_idempotency_key(key)
+            if existing is not None:
+                return existing
+            if (
+                purchase_type is PurchaseType.RENEW
+                and await self._subscription_repository.get_pending_renew_expire_at(key) is not None
+            ):
+                return None  # resume -- _renew re-applies the pinned expire_at
+            raise ValidationError(f"Purchase with idempotency_key '{key}' is already in progress")
 
     async def _clear_purchase_discount(self, data: PurchaseSubscriptionDto) -> None:
         # A discount is spent by being quoted against a price, so only a real
@@ -140,17 +141,18 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 await self._subscription_repository.release_idempotency_key(key)
 
     async def _purchase_new(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
-        if data.target_subscription_id is not None:
-            raise ValidationError("target_subscription_id is forbidden for a NEW purchase")
+        async with self._uow:
+            if data.target_subscription_id is not None:
+                raise ValidationError("target_subscription_id is forbidden for a NEW purchase")
 
-        active_trial = next(
-            (
-                sub
-                for sub in await self._subscription_repository.get_active_by_user(data.user_id)
-                if sub.is_trial
-            ),
-            None,
-        )
+            active_trial = next(
+                (
+                    sub
+                    for sub in await self._subscription_repository.get_active_by_user(data.user_id)
+                    if sub.is_trial
+                ),
+                None,
+            )
         if active_trial is not None:
             return await self._upgrade_trial_in_place(actor, data, active_trial)
 
@@ -304,21 +306,22 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         data: PurchaseSubscriptionDto,
         keep_key: Callable[[], None],
     ) -> SubscriptionDto:
-        if data.target_subscription_id is None:
-            raise ValidationError("target_subscription_id is required for a RENEW")
+        async with self._uow:
+            if data.target_subscription_id is None:
+                raise ValidationError("target_subscription_id is required for a RENEW")
 
-        # Validate unlocked, call the panel, THEN lock+re-validate+apply --
-        # never hold a row lock across the SDK round-trip (core/db/uow.py's
-        # own convention: a remote call inside `async with self._uow:` risks
-        # holding a Postgres lock for the panel's full timeout). Matches
-        # _purchase_new/_change's shape below, not the one this replaces.
-        target = await self._subscription_repository.get_by_id(data.target_subscription_id)
-        if target.status is SubscriptionStatus.DELETED:
-            raise ValidationError("Cannot renew a deleted subscription")
-        if target.user_id != data.user_id:
-            raise ValidationError("target_subscription_id does not belong to this user")
-        if target.plan_snapshot.plan_id != data.plan_snapshot.plan_id:
-            raise ValidationError("Renewing a different plan is a CHANGE, not a RENEW")
+            # Validate unlocked, call the panel, THEN lock+re-validate+apply --
+            # never hold a row lock across the SDK round-trip (core/db/uow.py's
+            # own convention: a remote call inside `async with self._uow:` risks
+            # holding a Postgres lock for the panel's full timeout). Matches
+            # _purchase_new/_change's shape below, not the one this replaces.
+            target = await self._subscription_repository.get_by_id(data.target_subscription_id)
+            if target.status is SubscriptionStatus.DELETED:
+                raise ValidationError("Cannot renew a deleted subscription")
+            if target.user_id != data.user_id:
+                raise ValidationError("target_subscription_id does not belong to this user")
+            if target.plan_snapshot.plan_id != data.plan_snapshot.plan_id:
+                raise ValidationError("Renewing a different plan is a CHANGE, not a RENEW")
 
         if data.idempotency_key is None:
             # No retry path re-runs a keyless grant, so the panel's own atomic
@@ -383,7 +386,8 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         # below is overwritten, and on resume an extension that pushed the
         # panel past the pinned value masks an unlanded write. A panel-side
         # idempotency token would close both.
-        pinned = await self._subscription_repository.get_pending_renew_expire_at(key)
+        async with self._uow:
+            pinned = await self._subscription_repository.get_pending_renew_expire_at(key)
         if pinned is None:
             panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
             base = max(panel_user.expire_at, datetime_now())
@@ -404,45 +408,48 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         return pinned
 
     async def _change(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
-        if data.target_subscription_id is None:
-            raise ValidationError("target_subscription_id is required for a CHANGE")
-        if data.duration_days <= 0:
-            raise ValidationError("duration_days must be positive")
+        async with self._uow:
+            if data.target_subscription_id is None:
+                raise ValidationError("target_subscription_id is required for a CHANGE")
+            if data.duration_days <= 0:
+                raise ValidationError("duration_days must be positive")
 
-        old = await self._subscription_repository.get_by_id(data.target_subscription_id)
-        if old.user_id != data.user_id:
-            raise ValidationError("target_subscription_id does not belong to this user")
-        if old.status is SubscriptionStatus.DELETED:
-            raise ValidationError("Cannot change a deleted subscription")
+            old = await self._subscription_repository.get_by_id(data.target_subscription_id)
+            if old.user_id != data.user_id:
+                raise ValidationError("target_subscription_id does not belong to this user")
+            if old.status is SubscriptionStatus.DELETED:
+                raise ValidationError("Cannot change a deleted subscription")
 
-        plan = data.plan_snapshot
+            plan = data.plan_snapshot
 
-        now = datetime_now()
-        # Pure function of `old`'s own fields -- computable up front, before
-        # the panel is ever touched, so it gets the CORRECT final expire_at
-        # the first time. No provisional value, no post-hoc reconciliation,
-        # no panel/DB mismatch.
-        credit = calculate_proration_credit(
-            price_paid=old.plan_snapshot.price_paid,
-            duration_days=old.plan_snapshot.duration_days,
-            expire_at=old.expire_at,
-            is_trial=old.is_trial,
-            now=now,
-        )
-        if old.plan_snapshot.currency is not data.currency:
-            rates = await self._pricing_repository.get_rate_table()
-            credit = (
-                credit
-                / rates.for_currency(old.plan_snapshot.currency).rate
-                * rates.for_currency(data.currency).rate
+            now = datetime_now()
+            # Pure function of `old`'s own fields -- computable up front, before
+            # the panel is ever touched, so it gets the CORRECT final expire_at
+            # the first time. No provisional value, no post-hoc reconciliation,
+            # no panel/DB mismatch.
+            credit = calculate_proration_credit(
+                price_paid=old.plan_snapshot.price_paid,
+                duration_days=old.plan_snapshot.duration_days,
+                expire_at=old.expire_at,
+                is_trial=old.is_trial,
+                now=now,
             )
-        # Denominator is the list price (data.base_price), so the credit
-        # converts at list rate -- at the promo-discounted rate a 90%-off
-        # checkout would buy 10x the credit days it's worth.
-        proration_denominator = data.base_price if data.base_price is not None else data.price_paid
-        daily_rate_new = proration_denominator / Decimal(data.duration_days)
-        credit_days = int(credit / daily_rate_new) if daily_rate_new > 0 else 0
-        final_expire_at = now + timedelta(days=data.duration_days + credit_days)
+            if old.plan_snapshot.currency is not data.currency:
+                rates = await self._pricing_repository.get_rate_table()
+                credit = (
+                    credit
+                    / rates.for_currency(old.plan_snapshot.currency).rate
+                    * rates.for_currency(data.currency).rate
+                )
+            # Denominator is the list price (data.base_price), so the credit
+            # converts at list rate -- at the promo-discounted rate a 90%-off
+            # checkout would buy 10x the credit days it's worth.
+            proration_denominator = (
+                data.base_price if data.base_price is not None else data.price_paid
+            )
+            daily_rate_new = proration_denominator / Decimal(data.duration_days)
+            credit_days = int(credit / daily_rate_new) if daily_rate_new > 0 else 0
+            final_expire_at = now + timedelta(days=data.duration_days + credit_days)
 
         # Reuses old's own panel identity (same UUID, same subscription_url
         # the client may already have) instead of minting a new one -- only

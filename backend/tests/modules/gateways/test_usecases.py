@@ -17,14 +17,20 @@ OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Loc
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
-async def test_owner_can_list_gateways(gateways_repository: GatewaysRepository) -> None:
-    use_case = ListGatewaysUseCase(gateways_repository)
+async def test_owner_can_list_gateways(
+    gateways_repository: GatewaysRepository,
+    uow: UnitOfWork,
+) -> None:
+    use_case = ListGatewaysUseCase(gateways_repository, uow)
     gateways = await use_case(OWNER)
     assert len(gateways) == len(list(PaymentGatewayType))
 
 
-async def test_regular_user_cannot_list_gateways(gateways_repository: GatewaysRepository) -> None:
-    use_case = ListGatewaysUseCase(gateways_repository)
+async def test_regular_user_cannot_list_gateways(
+    gateways_repository: GatewaysRepository,
+    uow: UnitOfWork,
+) -> None:
+    use_case = ListGatewaysUseCase(gateways_repository, uow)
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER)
 

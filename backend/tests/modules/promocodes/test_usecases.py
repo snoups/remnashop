@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 import app.modules.promocodes.usecases.activate_promocode as activate_promocode_module
+from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AddOnType,
     Currency,
@@ -281,8 +282,9 @@ async def test_delete_promocode(
 
 async def test_list_promocodes_requires_view_permission(
     promocode_repository: PromocodeRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = ListPromocodesUseCase(promocode_repository)
+    use_case = ListPromocodesUseCase(promocode_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER)
@@ -290,8 +292,9 @@ async def test_list_promocodes_requires_view_permission(
 
 async def test_generate_promocode_code_returns_unique_code(
     promocode_repository: PromocodeRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = GeneratePromocodeCodeUseCase(promocode_repository)
+    use_case = GeneratePromocodeCodeUseCase(promocode_repository, uow)
 
     code = await use_case(OWNER)
 

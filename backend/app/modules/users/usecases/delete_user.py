@@ -33,13 +33,14 @@ class DeleteUserUseCase(UseCase[DeleteUserDto, None]):
         self._subscription_revoker = subscription_revoker
 
     async def _execute(self, actor: UserDto, data: DeleteUserDto) -> None:
-        target = await self._user_repository.get_by_id(data.user_id)
-        if target is None:
-            raise NotFoundError("User not found")
-        if target.role != Role.USER:
-            raise ConflictError("Target is not a deletable user")
-        if target.id == actor.id:
-            raise ConflictError("Cannot delete your own account")
+        async with self._uow:
+            target = await self._user_repository.get_by_id(data.user_id)
+            if target is None:
+                raise NotFoundError("User not found")
+            if target.role != Role.USER:
+                raise ConflictError("Target is not a deletable user")
+            if target.id == actor.id:
+                raise ConflictError("Cannot delete your own account")
 
         # The cascade below drops the subscription rows, not the panel users
         # behind them -- revoke those first or the deleted customer keeps VPN

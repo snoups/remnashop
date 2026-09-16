@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PriceAdjustScope
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
@@ -28,46 +29,49 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
         plan_repository: PlanRepository,
         addon_repository: AddOnRepository,
         pricing_repository: PricingRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._plan_repository = plan_repository
         self._addon_repository = addon_repository
         self._pricing_repository = pricing_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: PricingChangePreviewDto) -> PricingDiffDto:
-        set_count = sum(x is not None for x in (data.rate, data.anchor, data.adjust))
-        if set_count != 1:
-            raise ValidationError("Exactly one of rate/anchor/adjust must be set")
+        async with self._uow:
+            set_count = sum(x is not None for x in (data.rate, data.anchor, data.adjust))
+            if set_count != 1:
+                raise ValidationError("Exactly one of rate/anchor/adjust must be set")
 
-        table = await self._pricing_repository.get_rate_table()
-        plans = await self._plan_repository.list_all()
-        addons = await self._addon_repository.list_all()
+            table = await self._pricing_repository.get_rate_table()
+            plans = await self._plan_repository.list_all()
+            addons = await self._addon_repository.list_all()
 
-        projected_table, plan_base_prices, addon_base_prices = self._project(
-            table, plans, addons, data
-        )
+            projected_table, plan_base_prices, addon_base_prices = self._project(
+                table, plans, addons, data
+            )
 
-        changes: list[PricingDiffRow] = []
-        for plan in plans:
-            for duration in plan.durations:
+            changes: list[PricingDiffRow] = []
+            for plan in plans:
+                for duration in plan.durations:
+                    changes += self._diff_row(
+                        label=f"{plan.name} / {duration.days}d",
+                        old_base=duration.base_price,
+                        new_base=plan_base_prices.get(duration.id, duration.base_price),
+                        overrides_by_currency={o.currency: o.price for o in duration.overrides},
+                        old_table=table,
+                        new_table=projected_table,
+                    )
+            for addon in addons:
                 changes += self._diff_row(
-                    label=f"{plan.name} / {duration.days}d",
-                    old_base=duration.base_price,
-                    new_base=plan_base_prices.get(duration.id, duration.base_price),
-                    overrides_by_currency={o.currency: o.price for o in duration.overrides},
+                    label=addon.name,
+                    old_base=addon.base_price,
+                    new_base=addon_base_prices.get(addon.id, addon.base_price),
+                    overrides_by_currency={o.currency: o.price for o in addon.overrides},
                     old_table=table,
                     new_table=projected_table,
                 )
-        for addon in addons:
-            changes += self._diff_row(
-                label=addon.name,
-                old_base=addon.base_price,
-                new_base=addon_base_prices.get(addon.id, addon.base_price),
-                overrides_by_currency={o.currency: o.price for o in addon.overrides},
-                old_table=table,
-                new_table=projected_table,
-            )
 
-        return PricingDiffDto(changes=changes, affected_count=len(changes))
+            return PricingDiffDto(changes=changes, affected_count=len(changes))
 
     def _diff_row(
         self,

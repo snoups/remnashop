@@ -22,7 +22,8 @@ class DeleteSubscriptionUseCase(UseCase[int, None]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: int) -> None:
-        subscription = await self._subscription_repository.get_by_id(data)
+        async with self._uow:
+            subscription = await self._subscription_repository.get_by_id(data)
 
         # Revoke the panel identity before the local row is marked deleted --
         # if the panel call fails, it propagates and the row stays visibly

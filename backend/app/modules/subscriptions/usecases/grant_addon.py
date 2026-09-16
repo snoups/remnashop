@@ -35,7 +35,8 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: GrantAddOnDto) -> SubscriptionDto:
-        addon = await self._addon_repository.get_by_id(data.addon_id)
+        async with self._uow:
+            addon = await self._addon_repository.get_by_id(data.addon_id)
 
         async with self._uow:
             subscription = await self._subscription_repository.grant_entitlement(

@@ -89,7 +89,7 @@ async def test_list_returns_created_tokens_without_secret(
     event_publisher: EventPublisher,
 ) -> None:
     create_use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
-    list_use_case = ListApiTokensUseCase(api_token_repository)
+    list_use_case = ListApiTokensUseCase(api_token_repository, uow)
 
     await create_use_case(
         owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
@@ -108,7 +108,7 @@ async def test_revoke_removes_token_from_list(
 ) -> None:
     create_use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
     revoke_use_case = RevokeApiTokenUseCase(api_token_repository, uow, event_publisher)
-    list_use_case = ListApiTokensUseCase(api_token_repository)
+    list_use_case = ListApiTokensUseCase(api_token_repository, uow)
 
     created = await create_use_case(
         owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])

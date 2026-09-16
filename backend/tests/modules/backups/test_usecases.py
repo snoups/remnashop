@@ -32,16 +32,20 @@ async def owner(user_repository: UserRepository, uow: UnitOfWork) -> UserDto:
     return user
 
 
-async def test_owner_can_get_settings(backup_repository: BackupRepository) -> None:
-    use_case = GetBackupSettingsUseCase(backup_repository)
+async def test_owner_can_get_settings(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+) -> None:
+    use_case = GetBackupSettingsUseCase(backup_repository, uow)
     settings = await use_case(OWNER)
     assert settings.enabled is False
 
 
 async def test_admin_without_grant_cannot_get_settings(
     backup_repository: BackupRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = GetBackupSettingsUseCase(backup_repository)
+    use_case = GetBackupSettingsUseCase(backup_repository, uow)
     with pytest.raises(PermissionDeniedError):
         await use_case(ADMIN_NO_GRANT)
 
@@ -87,8 +91,11 @@ async def test_create_backup_run_rejects_when_already_running(
         await use_case(owner, BackupKind.DATABASE)
 
 
-async def test_list_backup_runs_returns_page(backup_repository: BackupRepository) -> None:
-    use_case = ListBackupRunsUseCase(backup_repository)
+async def test_list_backup_runs_returns_page(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+) -> None:
+    use_case = ListBackupRunsUseCase(backup_repository, uow)
     runs, total = await use_case(OWNER, ListBackupRunsInput())
     assert total == 0
     assert runs == []
@@ -99,7 +106,7 @@ async def test_get_backup_run_returns_row(
 ) -> None:
     async with uow:
         created = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
-    use_case = GetBackupRunUseCase(backup_repository)
+    use_case = GetBackupRunUseCase(backup_repository, uow)
     fetched = await use_case(OWNER, created.id)
     assert fetched.id == created.id
 

@@ -2,18 +2,20 @@ from types import SimpleNamespace
 from typing import Any
 
 from app.core.constants import CONTAINER_KEY
+from app.core.db.uow import UnitOfWork
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import GetBotCommandsUseCase
 from app.telegram.middlewares.command_gate import CommandGateMiddleware
 
 
 class _FakeContainer:
-    def __init__(self, settings_repository: SettingsRepository) -> None:
+    def __init__(self, settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
         self._settings_repository = settings_repository
+        self._uow = uow
 
     async def get(self, dependency_type: type) -> Any:
         assert dependency_type is GetBotCommandsUseCase
-        return GetBotCommandsUseCase(self._settings_repository)
+        return GetBotCommandsUseCase(self._settings_repository, self._uow)
 
 
 class _ExplodingContainer:
@@ -35,12 +37,13 @@ async def _run_middleware(message: Any, data: dict[str, Any]) -> bool:
 
 async def test_command_gate_blocks_disabled_command(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
     await settings_repository.replace_bot_commands([("menu", False)])
     message = SimpleNamespace(text="/menu")
 
     handler_called = await _run_middleware(
-        message, {CONTAINER_KEY: _FakeContainer(settings_repository)}
+        message, {CONTAINER_KEY: _FakeContainer(settings_repository, uow)}
     )
 
     assert handler_called is False
@@ -48,11 +51,12 @@ async def test_command_gate_blocks_disabled_command(
 
 async def test_command_gate_allows_enabled_command(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
     message = SimpleNamespace(text="/menu")
 
     handler_called = await _run_middleware(
-        message, {CONTAINER_KEY: _FakeContainer(settings_repository)}
+        message, {CONTAINER_KEY: _FakeContainer(settings_repository, uow)}
     )
 
     assert handler_called is True

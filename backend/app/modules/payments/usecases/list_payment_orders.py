@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import PaymentOrderStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -19,12 +20,14 @@ class ListPaymentOrdersInput:
 class ListPaymentOrdersUseCase(UseCase[ListPaymentOrdersInput, tuple[list[PaymentOrderDto], int]]):
     required_permission = Permission.PAYMENTS_VIEW
 
-    def __init__(self, payment_order_repository: PaymentOrderRepository) -> None:
+    def __init__(self, payment_order_repository: PaymentOrderRepository, uow: UnitOfWork) -> None:
         self._payment_order_repository = payment_order_repository
+        self._uow = uow
 
     async def _execute(
         self, actor: UserDto, data: ListPaymentOrdersInput
     ) -> tuple[list[PaymentOrderDto], int]:
-        return await self._payment_order_repository.list_paginated(
-            status=data.status, page=data.page, page_size=data.page_size
-        )
+        async with self._uow:
+            return await self._payment_order_repository.list_paginated(
+                status=data.status, page=data.page, page_size=data.page_size
+            )

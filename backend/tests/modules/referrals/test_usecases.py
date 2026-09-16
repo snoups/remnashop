@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.actor import SyntheticActor
 from app.core.db.models import EventOutboxEntry, User
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, ReferralRewardType, Role, SubscriptionStatus
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
@@ -261,8 +262,9 @@ async def test_adjust_user_points_owner_can_increase_and_decrease(
 async def test_adjust_user_points_below_zero_raises_validation_error(
     user_repository: UserRepository, uow, event_publisher
 ) -> None:
-    target = await _create_user(user_repository, 5005)
-    await user_repository.credit_points(target.id, Decimal("10"))
+    async with uow:
+        target = await _create_user(user_repository, 5005)
+        await user_repository.credit_points(target.id, Decimal("10"))
     use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
@@ -293,8 +295,9 @@ async def test_adjust_user_points_publishes_event(
 
 async def test_get_referral_settings_requires_permission(
     referral_repository: ReferralRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = GetReferralSettingsUseCase(referral_repository)
+    use_case = GetReferralSettingsUseCase(referral_repository, uow)
     regular_actor = UserDto(id=999, name="Bob", role=Role.USER, language=Locale.EN)
 
     with pytest.raises(PermissionDeniedError):
@@ -313,14 +316,16 @@ async def test_update_referral_settings_persists_changes(
 
 
 async def test_get_own_referral_stats_reflects_referrer_and_counts(
-    referral_repository: ReferralRepository, user_repository: UserRepository
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     referrer = await _create_user(user_repository, 6001)
     a = await _create_user(user_repository, 6002)
     b = await _create_user(user_repository, 6003)
     await referral_repository.create_referral(referrer_id=referrer.id, referred_id=a.id, level=1)
     await referral_repository.create_referral(referrer_id=referrer.id, referred_id=b.id, level=1)
-    use_case = GetOwnReferralStatsUseCase(referral_repository)
+    use_case = GetOwnReferralStatsUseCase(referral_repository, uow)
 
     stats = await use_case(referrer)
 
@@ -333,6 +338,7 @@ async def test_get_own_referral_stats_includes_reward_history(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
 ) -> None:
     referrer = await _create_user(user_repository, 6005)
     referred = await _create_user(user_repository, 6006)
@@ -348,7 +354,7 @@ async def test_get_own_referral_stats_includes_reward_history(
         type=ReferralRewardType.POINTS,
         amount=Decimal("7.50"),
     )
-    use_case = GetOwnReferralStatsUseCase(referral_repository)
+    use_case = GetOwnReferralStatsUseCase(referral_repository, uow)
 
     stats = await use_case(referrer)
 
@@ -358,11 +364,12 @@ async def test_get_own_referral_stats_includes_reward_history(
 
 async def test_get_own_referral_stats_tolerates_synthetic_actor(
     referral_repository: ReferralRepository,
+    uow: UnitOfWork,
 ) -> None:
     token_actor = SyntheticActor(
         id=0, role=Role.USER, name="API Token: ci", is_privileged=True, log="[api_token:ci]"
     )
-    use_case = GetOwnReferralStatsUseCase(referral_repository)
+    use_case = GetOwnReferralStatsUseCase(referral_repository, uow)
 
     stats = await use_case(token_actor)
 
@@ -381,10 +388,12 @@ async def test_request_withdrawal_tolerates_synthetic_actor(uow, event_publisher
 
 
 async def test_get_user_referral_stats_requires_permission(
-    referral_repository: ReferralRepository, user_repository: UserRepository
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     target = await _create_user(user_repository, 6004)
-    use_case = GetUserReferralStatsUseCase(referral_repository, user_repository)
+    use_case = GetUserReferralStatsUseCase(referral_repository, user_repository, uow)
     regular_actor = UserDto(id=999, name="Bob", role=Role.USER, language=Locale.EN)
 
     with pytest.raises(PermissionDeniedError):
@@ -395,6 +404,7 @@ async def test_get_user_referral_stats_includes_reward_history(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
 ) -> None:
     referrer = await _create_user(user_repository, 6007)
     referred = await _create_user(user_repository, 6008)
@@ -410,7 +420,7 @@ async def test_get_user_referral_stats_includes_reward_history(
         type=ReferralRewardType.POINTS,
         amount=Decimal("9"),
     )
-    use_case = GetUserReferralStatsUseCase(referral_repository, user_repository)
+    use_case = GetUserReferralStatsUseCase(referral_repository, user_repository, uow)
 
     stats = await use_case(OWNER, referrer.id)
 

@@ -41,7 +41,7 @@ async def test_add_and_list_entry(
     result = await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="id 55"))
     assert result.telegram_ids == [55]
 
-    listed = await ListBlacklistUseCase(blacklist_repository)(owner)
+    listed = await ListBlacklistUseCase(blacklist_repository, uow)(owner)
     assert listed.telegram_ids == [55]
 
 

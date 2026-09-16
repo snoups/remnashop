@@ -1,5 +1,6 @@
 import pytest
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanType, PromocodeRewardType
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.plans.dto import CreatePlanDto
@@ -22,6 +23,7 @@ async def test_validates_a_fresh_code(
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     await promocode_repository.create(
         CreatePromocodeDto(
@@ -35,6 +37,7 @@ async def test_validates_a_fresh_code(
         referral_repository,
         PlanRepository(promocode_repository.session),
         SettingsRepository(promocode_repository.session),
+        uow,
     )
 
     result = await use_case(actor, ValidatePromocodeDto(code="valid1"))
@@ -48,6 +51,7 @@ async def test_raises_not_found_for_an_unknown_code(
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="validator-2"))
     use_case = ValidatePromocodeUseCase(
@@ -56,6 +60,7 @@ async def test_raises_not_found_for_an_unknown_code(
         referral_repository,
         PlanRepository(promocode_repository.session),
         SettingsRepository(promocode_repository.session),
+        uow,
     )
 
     with pytest.raises(NotFoundError):
@@ -67,6 +72,7 @@ async def test_does_not_claim_an_activation(
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     promo = await promocode_repository.create(
         CreatePromocodeDto(
@@ -80,6 +86,7 @@ async def test_does_not_claim_an_activation(
         referral_repository,
         PlanRepository(promocode_repository.session),
         SettingsRepository(promocode_repository.session),
+        uow,
     )
 
     await use_case(actor, ValidatePromocodeDto(code="NOCLAIM"))
@@ -92,9 +99,8 @@ async def test_preview_refuses_a_subscription_reward_whose_plan_is_unavailable(
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
-    # The preview must agree with activation, or the bot shows a confirm
-    # screen for a code that then refuses.
     plan_repository = PlanRepository(promocode_repository.session)
     plan = await plan_repository.create(
         CreatePlanDto(
@@ -120,6 +126,7 @@ async def test_preview_refuses_a_subscription_reward_whose_plan_is_unavailable(
         referral_repository,
         plan_repository,
         SettingsRepository(promocode_repository.session),
+        uow,
     )
 
     with pytest.raises(ValidationError):

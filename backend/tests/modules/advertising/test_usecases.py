@@ -122,7 +122,7 @@ async def test_list_ad_links_filters_by_is_active(
 ) -> None:
     create = CreateAdLinkUseCase(ad_link_repository, uow)
     update = UpdateAdLinkUseCase(ad_link_repository, uow)
-    list_use_case = ListAdLinksUseCase(ad_link_repository)
+    list_use_case = ListAdLinksUseCase(ad_link_repository, uow)
     active = await create(OWNER, CreateAdLinkDto(name="Active", code="list-active"))
     inactive = await create(OWNER, CreateAdLinkDto(name="Inactive", code="list-inactive"))
     await update(OWNER, UpdateAdLinkDto(ad_link_id=inactive.id, is_active=False))
@@ -137,8 +137,9 @@ async def test_list_ad_links_filters_by_is_active(
 
 async def test_generate_ad_link_code_returns_unused_code(
     ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = GenerateAdLinkCodeUseCase(ad_link_repository)
+    use_case = GenerateAdLinkCodeUseCase(ad_link_repository, uow)
 
     code = await use_case(OWNER)
 
@@ -175,7 +176,7 @@ async def test_get_ad_link_stats_zero_attributions_has_no_division_by_zero(
     create = CreateAdLinkUseCase(ad_link_repository, uow)
     ad_link = await create(OWNER, CreateAdLinkDto(name="Empty", code="stats-empty"))
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository
+        ad_link_repository, payment_order_repository, pricing_repository, uow
     )
 
     stats = await use_case(OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id))
@@ -199,7 +200,7 @@ async def test_get_ad_link_stats_zero_cost_has_no_roi(
         ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
     )
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository
+        ad_link_repository, payment_order_repository, pricing_repository, uow
     )
 
     stats = await use_case(OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id))
@@ -237,7 +238,7 @@ async def test_get_ad_link_stats_computes_conversion_and_revenue(
     await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
 
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository
+        ad_link_repository, payment_order_repository, pricing_repository, uow
     )
     stats = await use_case(
         OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id, report_currency=Currency.RUB)
@@ -310,7 +311,7 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
     await payment_order_repository.mark_status(usd_order.id, PaymentOrderStatus.PAID)
 
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository
+        ad_link_repository, payment_order_repository, pricing_repository, uow
     )
     stats = await use_case(
         OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id, report_currency=Currency.USD)
@@ -329,9 +330,10 @@ async def test_get_ad_link_stats_unknown_id_raises_not_found(
     ad_link_repository: AdLinkRepository,
     payment_order_repository: PaymentOrderRepository,
     pricing_repository: PricingRepository,
+    uow: UnitOfWork,
 ) -> None:
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository
+        ad_link_repository, payment_order_repository, pricing_repository, uow
     )
 
     with pytest.raises(NotFoundError):
@@ -362,7 +364,7 @@ async def test_list_ad_link_attributed_users_reports_paid_flag(
     await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
 
     use_case = ListAdLinkAttributedUsersUseCase(
-        ad_link_repository, user_repository, payment_order_repository
+        ad_link_repository, user_repository, payment_order_repository, uow
     )
     users, total = await use_case(OWNER, ListAdLinkAttributedUsersDto(ad_link_id=ad_link.id))
 
@@ -377,9 +379,10 @@ async def test_list_ad_link_attributed_users_unknown_id_raises_not_found(
     ad_link_repository: AdLinkRepository,
     user_repository: UserRepository,
     payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
 ) -> None:
     use_case = ListAdLinkAttributedUsersUseCase(
-        ad_link_repository, user_repository, payment_order_repository
+        ad_link_repository, user_repository, payment_order_repository, uow
     )
 
     with pytest.raises(NotFoundError):

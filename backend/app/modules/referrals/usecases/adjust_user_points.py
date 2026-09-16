@@ -29,16 +29,19 @@ class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: AdjustUserPointsDto) -> UserDto:
-        target = await self._user_repository.get_by_id(data.user_id)
-        if target is None:
-            raise NotFoundError(f"User '{data.user_id}' not found")
+        async with self._uow:
+            target = await self._user_repository.get_by_id(data.user_id)
+            if target is None:
+                raise NotFoundError(f"User '{data.user_id}' not found")
 
-        # Belt-and-braces: the authoritative floor lives in credit_points' own
-        # UPDATE predicate (two concurrent debits would both pass a check made
-        # here), but rejecting the obvious case up front keeps the common
-        # failure out of a transaction that would only be rolled back anyway.
-        if target.points + data.delta < 0:
-            raise ValidationError(f"Adjustment would take user '{data.user_id}' points below zero")
+            # Belt-and-braces: the authoritative floor lives in credit_points' own
+            # UPDATE predicate (two concurrent debits would both pass a check made
+            # here), but rejecting the obvious case up front keeps the common
+            # failure out of a transaction that would only be rolled back anyway.
+            if target.points + data.delta < 0:
+                raise ValidationError(
+                    f"Adjustment would take user '{data.user_id}' points below zero"
+                )
 
         async with self._uow:
             await self._user_repository.credit_points(data.user_id, data.delta)
@@ -46,9 +49,10 @@ class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
                 UserPointsAdjustedEvent(actor=actor, target=target, delta=str(data.delta))
             )
 
-        updated = await self._user_repository.get_by_id(data.user_id)
-        if updated is None:
-            raise NotFoundError(f"User '{data.user_id}' not found")
+        async with self._uow:
+            updated = await self._user_repository.get_by_id(data.user_id)
+            if updated is None:
+                raise NotFoundError(f"User '{data.user_id}' not found")
 
-        logger.info(f"{actor.log} Adjusted points of user '{data.user_id}' by '{data.delta}'")
-        return updated
+            logger.info(f"{actor.log} Adjusted points of user '{data.user_id}' by '{data.delta}'")
+            return updated

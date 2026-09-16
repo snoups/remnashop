@@ -48,18 +48,19 @@ class UploadBannerUseCase(UseCase[UploadBannerInput, BannerDto]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: UploadBannerInput) -> BannerDto:
-        banner_format = _FORMAT_BY_CONTENT_TYPE.get(data.content_type)
-        if banner_format is None:
-            raise ValidationError(f"Unsupported banner content type: {data.content_type}")
-        if not matches_image_magic_bytes(data.data, banner_format.value):
-            raise ValidationError("File content does not match the declared image type")
-        if len(data.data) > MAX_BANNER_SIZE_BYTES:
-            raise ValidationError("Banner file is too large")
-        active_locales = await self._settings_repository.list_active_locales()
-        if data.locale not in active_locales:
-            raise ValidationError(f"Locale not enabled: {data.locale}")
+        async with self._uow:
+            banner_format = _FORMAT_BY_CONTENT_TYPE.get(data.content_type)
+            if banner_format is None:
+                raise ValidationError(f"Unsupported banner content type: {data.content_type}")
+            if not matches_image_magic_bytes(data.data, banner_format.value):
+                raise ValidationError("File content does not match the declared image type")
+            if len(data.data) > MAX_BANNER_SIZE_BYTES:
+                raise ValidationError("Banner file is too large")
+            active_locales = await self._settings_repository.list_active_locales()
+            if data.locale not in active_locales:
+                raise ValidationError(f"Locale not enabled: {data.locale}")
 
-        existing = await self._banner_repository.get(data.name, data.locale)
+            existing = await self._banner_repository.get(data.name, data.locale)
 
         async with self._uow:
             banner = await self._banner_repository.upsert(

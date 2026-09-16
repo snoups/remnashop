@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.events import EventCategory
 from app.core.exceptions import PermissionDeniedError
@@ -24,6 +25,7 @@ GRANTED_ADMIN = UserDto(
 
 async def test_owner_can_list_event_log(
     event_log_repository: EventLogRepository,
+    uow: UnitOfWork,
 ) -> None:
     await event_log_repository.create(
         EventLogEntryDto(
@@ -34,7 +36,7 @@ async def test_owner_can_list_event_log(
         )
     )
 
-    use_case = ListEventLogUseCase(event_log_repository)
+    use_case = ListEventLogUseCase(event_log_repository, uow)
     items, total = await use_case(OWNER, ListEventLogInput())
 
     assert total == 1
@@ -43,8 +45,9 @@ async def test_owner_can_list_event_log(
 
 async def test_regular_admin_without_grant_cannot_list_event_log(
     event_log_repository: EventLogRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = ListEventLogUseCase(event_log_repository)
+    use_case = ListEventLogUseCase(event_log_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_ADMIN, ListEventLogInput())
@@ -52,8 +55,9 @@ async def test_regular_admin_without_grant_cannot_list_event_log(
 
 async def test_admin_with_grant_can_list_event_log(
     event_log_repository: EventLogRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = ListEventLogUseCase(event_log_repository)
+    use_case = ListEventLogUseCase(event_log_repository, uow)
 
     items, total = await use_case(GRANTED_ADMIN, ListEventLogInput())
 
@@ -63,6 +67,7 @@ async def test_admin_with_grant_can_list_event_log(
 
 async def test_list_event_log_passes_filters_through(
     event_log_repository: EventLogRepository,
+    uow: UnitOfWork,
 ) -> None:
     await event_log_repository.create(
         EventLogEntryDto(
@@ -81,7 +86,7 @@ async def test_list_event_log_passes_filters_through(
         )
     )
 
-    use_case = ListEventLogUseCase(event_log_repository)
+    use_case = ListEventLogUseCase(event_log_repository, uow)
     items, total = await use_case(OWNER, ListEventLogInput(category=EventCategory.ADMIN_MANAGEMENT))
 
     assert total == 1

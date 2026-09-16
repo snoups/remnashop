@@ -51,11 +51,13 @@ def _seed_panel_user(store: FakeUserStore, remnawave_user_id: int) -> None:
 
 
 async def test_owner_can_list_subscriptions(
-    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=201))
     await subscription_repository.create(_create_dto(user.id, 6001))
-    use_case = ListSubscriptionsUseCase(subscription_repository)
+    use_case = ListSubscriptionsUseCase(subscription_repository, uow)
 
     subscriptions, total = await use_case(OWNER, ListSubscriptionsInput())
 
@@ -65,8 +67,9 @@ async def test_owner_can_list_subscriptions(
 
 async def test_regular_user_cannot_list_subscriptions(
     subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = ListSubscriptionsUseCase(subscription_repository)
+    use_case = ListSubscriptionsUseCase(subscription_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, ListSubscriptionsInput())

@@ -15,9 +15,10 @@ class RenamePasskeyUseCase(UseCase[RenamePasskeyDto, PasskeyCredentialDto]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: RenamePasskeyDto) -> PasskeyCredentialDto:
-        existing = await self._passkey_repository.get_by_id_and_user(data.id, actor.id)
-        if existing is None:
-            raise NotFoundError("Passkey not found")
+        async with self._uow:
+            existing = await self._passkey_repository.get_by_id_and_user(data.id, actor.id)
+            if existing is None:
+                raise NotFoundError("Passkey not found")
 
         async with self._uow:
             return await self._passkey_repository.update_name(data.id, data.name)

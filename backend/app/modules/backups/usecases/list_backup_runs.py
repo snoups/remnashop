@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -20,12 +21,14 @@ class ListBackupRunsInput:
 class ListBackupRunsUseCase(UseCase[ListBackupRunsInput, tuple[list[BackupRunDto], int]]):
     required_permission = Permission.BACKUPS_VIEW
 
-    def __init__(self, backup_repository: BackupRepository) -> None:
+    def __init__(self, backup_repository: BackupRepository, uow: UnitOfWork) -> None:
         self._backup_repository = backup_repository
+        self._uow = uow
 
     async def _execute(
         self, actor: UserDto, data: ListBackupRunsInput
     ) -> tuple[list[BackupRunDto], int]:
-        return await self._backup_repository.list_runs(
-            kind=data.kind, status=data.status, page=data.page, page_size=data.page_size
-        )
+        async with self._uow:
+            return await self._backup_repository.list_runs(
+                kind=data.kind, status=data.status, page=data.page, page_size=data.page_size
+            )

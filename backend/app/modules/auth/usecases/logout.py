@@ -9,9 +9,10 @@ class LogoutUseCase:
         self._uow = uow
 
     async def execute(self, refresh_token: str) -> None:
-        session = await self._session_repository.get_rotatable_by_hash(
-            hash_refresh_token(refresh_token)
-        )
+        async with self._uow:
+            session = await self._session_repository.get_rotatable_by_hash(
+                hash_refresh_token(refresh_token)
+            )
         if session is not None:
             async with self._uow:
                 await self._session_repository.revoke_by_id(session.id)

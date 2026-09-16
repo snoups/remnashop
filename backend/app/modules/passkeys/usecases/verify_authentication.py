@@ -60,7 +60,8 @@ class VerifyPasskeyAuthenticationUseCase:
     async def execute(
         self, credential: dict[str, Any], client_ip: str, user_agent: Optional[str]
     ) -> tuple[UserDto, IssuedSession]:
-        settings = await self._settings_repository.get_oauth_settings()
+        async with self._uow:
+            settings = await self._settings_repository.get_oauth_settings()
         if not settings.passkey_enabled:
             raise await self._fail("Passkeys are not enabled", client_ip)
         if settings.passkey_rp_id is None or settings.passkey_origin is None:
@@ -74,7 +75,8 @@ class VerifyPasskeyAuthenticationUseCase:
         # identifier (unlike a login name), so looking it up before running
         # signature verification isn't a meaningful user-enumeration timing
         # oracle the way an unknown *login* would be in LoginUseCase.
-        stored = await self._passkey_repository.get_by_credential_id(credential_id)
+        async with self._uow:
+            stored = await self._passkey_repository.get_by_credential_id(credential_id)
         if stored is None:
             raise await self._fail("Passkey not recognized", client_ip, credential_id)
 
@@ -105,15 +107,17 @@ class VerifyPasskeyAuthenticationUseCase:
                 "Passkey authentication could not be verified", client_ip, credential_id
             ) from error
 
-        user = await self._user_repository.get_by_id(stored.user_id)
+        async with self._uow:
+            user = await self._user_repository.get_by_id(stored.user_id)
         # Same generic message whether the user record is gone or blocked --
         # matches LoginUseCase/OAuthLoginCallbackUseCase's no-enumeration rule.
         if user is None or user.is_blocked:
             raise await self._fail("Passkey not recognized", client_ip, credential_id)
 
-        await self._passkey_repository.update_after_authentication(
-            stored.id, verification.new_sign_count
-        )
+        async with self._uow:
+            await self._passkey_repository.update_after_authentication(
+                stored.id, verification.new_sign_count
+            )
         issued = await self._session_issuer.issue(user.id, client_ip, user_agent)
         async with self._uow:
             await self._event_publisher.publish(

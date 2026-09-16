@@ -61,55 +61,57 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         self._gateway_factory = gateway_factory
 
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
-        if data.user_id != actor.id and not actor.is_privileged:
-            raise PermissionDeniedError
+        async with self._uow:
+            if data.user_id != actor.id and not actor.is_privileged:
+                raise PermissionDeniedError
 
-        if data.gateway_type is PaymentGatewayType.TELEGRAM_STARS:
-            raise ValidationError("Telegram Stars checkout runs in the bot, not the web API")
-        if data.gateway_type not in GATEWAY_REGISTRY:
-            raise ValidationError(f"Gateway '{data.gateway_type.value}' is not yet supported")
-        gateway_settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
-        if data.currency is not gateway_currency(data.gateway_type, gateway_settings):
-            raise ValidationError(
-                f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'"
+            if data.gateway_type is PaymentGatewayType.TELEGRAM_STARS:
+                raise ValidationError("Telegram Stars checkout runs in the bot, not the web API")
+            if data.gateway_type not in GATEWAY_REGISTRY:
+                raise ValidationError(f"Gateway '{data.gateway_type.value}' is not yet supported")
+            gateway_settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
+            if data.currency is not gateway_currency(data.gateway_type, gateway_settings):
+                raise ValidationError(
+                    f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'"
+                )
+
+            plan = await self._plan_repository.get_by_id(data.plan_id)
+            user = await self._user_repository.get_by_id(data.user_id)
+            if user is None:
+                raise NotFoundError(f"User '{data.user_id}' not found")
+
+            customer_email = data.customer_email or user.email
+
+            has_purchase_history = await self._subscription_repository.has_any_subscription(
+                user.id, include_trial=False
             )
-
-        plan = await self._plan_repository.get_by_id(data.plan_id)
-        user = await self._user_repository.get_by_id(data.user_id)
-        if user is None:
-            raise NotFoundError(f"User '{data.user_id}' not found")
-
-        customer_email = data.customer_email or user.email
-
-        has_purchase_history = await self._subscription_repository.has_any_subscription(
-            user.id, include_trial=False
-        )
-        has_referrer = await self._referral_repository.has_referrer(user.id)
-        if not is_plan_purchasable_by(
-            plan, user, has_purchase_history=has_purchase_history, has_referrer=has_referrer
-        ):
-            raise ValidationError("Plan is not available for purchase")
+            has_referrer = await self._referral_repository.has_referrer(user.id)
+            if not is_plan_purchasable_by(
+                plan, user, has_purchase_history=has_purchase_history, has_referrer=has_referrer
+            ):
+                raise ValidationError("Plan is not available for purchase")
 
         await self._validate_provisioning_preconditions(data)
 
-        rates = await self._pricing_repository.get_rate_table()
-        quote = quote_price(plan, data.duration_days, data.currency, user, rates)
-        plan_snapshot = PlanSnapshot(
-            plan_id=plan.id,
-            public_code=plan.public_code,
-            name=plan.name,
-            price_paid=quote.final_price,
-            currency=data.currency,
-            duration_days=data.duration_days,
-            traffic_limit=plan.traffic_limit,
-            device_limit=plan.device_limit,
-            traffic_limit_strategy=plan.traffic_limit_strategy,
-            is_trial=plan.is_trial,
-            internal_squads=plan.internal_squads,
-            external_squad=plan.external_squad,
-        )
+        async with self._uow:
+            rates = await self._pricing_repository.get_rate_table()
+            quote = quote_price(plan, data.duration_days, data.currency, user, rates)
+            plan_snapshot = PlanSnapshot(
+                plan_id=plan.id,
+                public_code=plan.public_code,
+                name=plan.name,
+                price_paid=quote.final_price,
+                currency=data.currency,
+                duration_days=data.duration_days,
+                traffic_limit=plan.traffic_limit,
+                device_limit=plan.device_limit,
+                traffic_limit_strategy=plan.traffic_limit_strategy,
+                is_trial=plan.is_trial,
+                internal_squads=plan.internal_squads,
+                external_squad=plan.external_squad,
+            )
 
-        is_free = quote.final_price == 0
+            is_free = quote.final_price == 0
         if not is_free:
             await self._validate_gateway_availability(data.gateway_type)
 
@@ -172,49 +174,54 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         return CheckoutResultDto(order_id=order.id, confirmation_url=intent.confirmation_url)
 
     async def _validate_gateway_availability(self, gateway_type: PaymentGatewayType) -> None:
-        gateway_config = await self._gateways_repository.get_by_type(gateway_type)
-        if not gateway_config.is_active or not gateway_config.is_configured:
-            raise ValidationError(f"Gateway '{gateway_type.value}' is not available")
+        async with self._uow:
+            gateway_config = await self._gateways_repository.get_by_type(gateway_type)
+            if not gateway_config.is_active or not gateway_config.is_configured:
+                raise ValidationError(f"Gateway '{gateway_type.value}' is not available")
 
     async def _validate_provisioning_preconditions(self, data: CreateCheckoutDto) -> None:
         # Belt-and-braces: PurchaseSubscriptionUseCase re-checks the target
         # subscription under its own lock. The concurrent-subscription cap is
         # enforced only here -- a paid order is provisioned even if the cap
         # filled up before the worker ran (enforce_subscription_cap=False).
-        if data.purchase_type is PurchaseType.NEW:
-            if data.target_subscription_id is not None:
-                raise ValidationError("target_subscription_id is forbidden for a NEW purchase")
-            shop_settings = await self._settings_repository.get_shop_settings()
-            max_active = shop_settings.max_active_subscriptions
-            if max_active is not None:
-                active = await self._subscription_repository.get_active_by_user(data.user_id)
-                if len(active) >= max_active:
-                    raise ValidationError(
-                        f"User '{data.user_id}' is already at the concurrent-subscription cap"
-                    )
-            return
+        async with self._uow:
+            if data.purchase_type is PurchaseType.NEW:
+                if data.target_subscription_id is not None:
+                    raise ValidationError("target_subscription_id is forbidden for a NEW purchase")
+                shop_settings = await self._settings_repository.get_shop_settings()
+                max_active = shop_settings.max_active_subscriptions
+                if max_active is not None:
+                    active = await self._subscription_repository.get_active_by_user(data.user_id)
+                    if len(active) >= max_active:
+                        raise ValidationError(
+                            f"User '{data.user_id}' is already at the concurrent-subscription cap"
+                        )
+                return
 
         await self._validate_target_subscription(data)
 
     async def _validate_target_subscription(self, data: CreateCheckoutDto) -> None:
-        if data.target_subscription_id is None:
-            raise ValidationError(
-                f"target_subscription_id is required for a {data.purchase_type.value}"
-            )
+        async with self._uow:
+            if data.target_subscription_id is None:
+                raise ValidationError(
+                    f"target_subscription_id is required for a {data.purchase_type.value}"
+                )
 
-        try:
-            target = await self._subscription_repository.get_by_id(data.target_subscription_id)
-        except NotFoundError as error:
-            raise ValidationError("target_subscription_id does not belong to this user") from error
-        if target.user_id != data.user_id:
-            raise ValidationError("target_subscription_id does not belong to this user")
-        if target.status is SubscriptionStatus.DELETED:
-            raise ValidationError(
-                f"Cannot {data.purchase_type.value.lower()} a deleted subscription"
-            )
+            try:
+                target = await self._subscription_repository.get_by_id(data.target_subscription_id)
+            except NotFoundError as error:
+                raise ValidationError(
+                    "target_subscription_id does not belong to this user"
+                ) from error
+            if target.user_id != data.user_id:
+                raise ValidationError("target_subscription_id does not belong to this user")
+            if target.status is SubscriptionStatus.DELETED:
+                raise ValidationError(
+                    f"Cannot {data.purchase_type.value.lower()} a deleted subscription"
+                )
 
-        if data.purchase_type is PurchaseType.RENEW:
-            if target.plan_snapshot.plan_id != data.plan_id:
-                raise ValidationError("Renewing a different plan is a CHANGE, not a RENEW")
-        elif data.duration_days <= 0:
-            raise ValidationError("duration_days must be positive")
+            if data.purchase_type is PurchaseType.RENEW:
+                if target.plan_snapshot.plan_id != data.plan_id:
+                    raise ValidationError("Renewing a different plan is a CHANGE, not a RENEW")
+            elif data.duration_days <= 0:
+                raise ValidationError("duration_days must be positive")

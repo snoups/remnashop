@@ -20,9 +20,10 @@ class DeleteBannerUseCase(UseCase[BannerKeyDto, None]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: BannerKeyDto) -> None:
-        banner = await self._banner_repository.get(data.name, data.locale)
-        if banner is None:
-            raise NotFoundError(f"Banner not found: {data.name}/{data.locale}")
+        async with self._uow:
+            banner = await self._banner_repository.get(data.name, data.locale)
+            if banner is None:
+                raise NotFoundError(f"Banner not found: {data.name}/{data.locale}")
 
         async with self._uow:
             await self._banner_repository.delete(data.name, data.locale)

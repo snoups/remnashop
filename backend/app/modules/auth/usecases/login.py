@@ -37,14 +37,17 @@ class LoginUseCase:
     async def execute(
         self, login: str, password: str, client_ip: str, user_agent: Optional[str]
     ) -> tuple[UserDto, IssuedSession]:
-        oauth_settings = await self._settings_repository.get_oauth_settings()
-        if not oauth_settings.password_login_enabled:
-            raise AuthenticationError("Password login is disabled")
+        async with self._uow:
+            oauth_settings = await self._settings_repository.get_oauth_settings()
+            if not oauth_settings.password_login_enabled:
+                raise AuthenticationError("Password login is disabled")
 
-        user = await self._user_repository.get_by_login(login)
-        password_pepper = self._config.crypt_key.get_secret_value()
+            user = await self._user_repository.get_by_login(login)
+            password_pepper = self._config.crypt_key.get_secret_value()
 
-        stored_hash = user.password_hash if user and user.password_hash else _DUMMY_PASSWORD_HASH
+            stored_hash = (
+                user.password_hash if user and user.password_hash else _DUMMY_PASSWORD_HASH
+            )
         password_is_valid = await verify_password(password, stored_hash, password_pepper)
 
         # Same generic error whether the login doesn't exist, the password is

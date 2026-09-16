@@ -37,27 +37,28 @@ class UpdateAdminUseCase(UseCase[UpdateAdminDto, UserDto]):
         self._session_revoker = session_revoker
 
     async def _execute(self, actor: UserDto, data: UpdateAdminDto) -> UserDto:
-        if data.permission_grants is not None:
-            assert_grantable(data.permission_grants)
+        async with self._uow:
+            if data.permission_grants is not None:
+                assert_grantable(data.permission_grants)
 
-        target = await self._user_repository.get_by_id(data.user_id)
-        if target is None:
-            raise NotFoundError("Admin not found")
-        if target.role != Role.ADMIN:
-            raise ConflictError("Target is not a manageable admin")
+            target = await self._user_repository.get_by_id(data.user_id)
+            if target is None:
+                raise NotFoundError("Admin not found")
+            if target.role != Role.ADMIN:
+                raise ConflictError("Target is not a manageable admin")
 
-        update_data = UpdateUserDto(
-            permission_grants=(
-                [p.value for p in data.permission_grants]
-                if data.permission_grants is not None
-                else None
-            ),
-            permission_revokes=(
-                [p.value for p in data.permission_revokes]
-                if data.permission_revokes is not None
-                else None
-            ),
-        )
+            update_data = UpdateUserDto(
+                permission_grants=(
+                    [p.value for p in data.permission_grants]
+                    if data.permission_grants is not None
+                    else None
+                ),
+                permission_revokes=(
+                    [p.value for p in data.permission_revokes]
+                    if data.permission_revokes is not None
+                    else None
+                ),
+            )
 
         async with self._uow:
             updated = await self._user_repository.update_fields(data.user_id, update_data)

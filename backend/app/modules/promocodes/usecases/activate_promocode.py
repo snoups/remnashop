@@ -73,13 +73,14 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: ActivatePromocodeDto) -> PromocodeDto:
-        code = data.code.strip().upper()
-        promo = await self._promocode_repository.get_by_code(code)
-        if promo is None or not promo.is_active:
-            raise NotFoundError(f"Promocode '{code}' not found")
+        async with self._uow:
+            code = data.code.strip().upper()
+            promo = await self._promocode_repository.get_by_code(code)
+            if promo is None or not promo.is_active:
+                raise NotFoundError(f"Promocode '{code}' not found")
 
-        if promo.expires_at is not None and datetime_now() > promo.expires_at:
-            raise ValidationError(f"Promocode '{code}' has expired")
+            if promo.expires_at is not None and datetime_now() > promo.expires_at:
+                raise ValidationError(f"Promocode '{code}' has expired")
 
         await assert_available_to(promo, actor, self._subscription_repository)
 
@@ -88,12 +89,15 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         if promo.reward_type in _TARGET_REQUIRED_REWARDS:
             if data.target_subscription_id is None:
                 raise ValidationError("target_subscription_id is required for this promocode")
-            try:
-                target = await self._subscription_repository.get_by_id(data.target_subscription_id)
-            except NotFoundError as error:
-                raise ValidationError(
-                    "target_subscription_id does not belong to this user"
-                ) from error
+            async with self._uow:
+                try:
+                    target = await self._subscription_repository.get_by_id(
+                        data.target_subscription_id
+                    )
+                except NotFoundError as error:
+                    raise ValidationError(
+                        "target_subscription_id does not belong to this user"
+                    ) from error
             if target.user_id != actor.id:
                 raise ValidationError("target_subscription_id does not belong to this user")
             if target.status is not SubscriptionStatus.ACTIVE:

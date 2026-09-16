@@ -1,4 +1,5 @@
 from app.core.config import AppConfig
+from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageKind
 from app.core.exceptions import NotFoundError
 from app.modules.settings.appearance_storage import read_appearance_image
@@ -6,19 +7,26 @@ from app.modules.settings.repository import SettingsRepository
 
 
 class GetPublicAppearanceImageUseCase:
-    def __init__(self, settings_repository: SettingsRepository, config: AppConfig) -> None:
+    def __init__(
+        self,
+        settings_repository: SettingsRepository,
+        config: AppConfig,
+        uow: UnitOfWork,
+    ) -> None:
         self._settings_repository = settings_repository
         self._config = config
+        self._uow = uow
 
     async def execute(self, kind: AppearanceImageKind) -> tuple[bytes, str]:
-        meta = await self._settings_repository.get_appearance_image_meta(kind)
-        if meta is None:
-            raise NotFoundError(f"Appearance image not set: {kind}")
+        async with self._uow:
+            meta = await self._settings_repository.get_appearance_image_meta(kind)
+            if meta is None:
+                raise NotFoundError(f"Appearance image not set: {kind}")
 
-        extension, content_type = meta
-        try:
-            data = read_appearance_image(self._config.media_dir, kind, extension)
-        except FileNotFoundError:
-            raise NotFoundError(f"Appearance image not set: {kind}") from None
+            extension, content_type = meta
+            try:
+                data = read_appearance_image(self._config.media_dir, kind, extension)
+            except FileNotFoundError:
+                raise NotFoundError(f"Appearance image not set: {kind}") from None
 
-        return data, content_type
+            return data, content_type

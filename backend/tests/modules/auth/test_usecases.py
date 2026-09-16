@@ -270,7 +270,7 @@ async def test_status_reflects_owner_existence(
     settings_repository: SettingsRepository,
     session_repository: SessionRepository,
 ) -> None:
-    status_use_case = GetAuthStatusUseCase(user_repository, settings_repository)
+    status_use_case = GetAuthStatusUseCase(user_repository, settings_repository, uow)
 
     result = await status_use_case.execute()
     assert not result.owner_exists
@@ -284,9 +284,11 @@ async def test_status_reflects_owner_existence(
 
 
 async def test_status_reflects_configured_oauth_providers(
-    user_repository: UserRepository, settings_repository: SettingsRepository
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    status_use_case = GetAuthStatusUseCase(user_repository, settings_repository)
+    status_use_case = GetAuthStatusUseCase(user_repository, settings_repository, uow)
 
     result = await status_use_case.execute()
     assert result.oauth_providers[OAuthProvider.GITHUB] is False
@@ -320,9 +322,11 @@ async def test_status_reflects_configured_oauth_providers(
 
 
 async def test_status_reflects_password_login_toggle(
-    user_repository: UserRepository, settings_repository: SettingsRepository
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    status_use_case = GetAuthStatusUseCase(user_repository, settings_repository)
+    status_use_case = GetAuthStatusUseCase(user_repository, settings_repository, uow)
 
     result = await status_use_case.execute()
     assert result.password_login_enabled is True
@@ -336,14 +340,16 @@ async def test_status_reflects_password_login_toggle(
 
 
 async def test_get_auth_status_reports_passkey_login_enabled(
-    user_repository: UserRepository, settings_repository: SettingsRepository
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
     await settings_repository.update_oauth_settings(
         UpdateOAuthSettingsDto(
             passkey_enabled=True, passkey_rp_id="example.com", passkey_origin="https://example.com"
         )
     )
-    use_case = GetAuthStatusUseCase(user_repository, settings_repository)
+    use_case = GetAuthStatusUseCase(user_repository, settings_repository, uow)
 
     status = await use_case.execute()
 
@@ -587,7 +593,7 @@ async def test_list_sessions_returns_only_actors_own(
     issuer = SessionIssuer(session_repository, uow, config)
     await issuer.issue(other.id, CLIENT_IP, USER_AGENT)
 
-    use_case = ListSessionsUseCase(session_repository)
+    use_case = ListSessionsUseCase(session_repository, uow)
     sessions = await use_case(owner)
 
     assert len(sessions) == 1
@@ -669,7 +675,7 @@ async def test_admin_can_view_and_revoke_lower_privileged_users_session(
     await issuer.issue(target.id, CLIENT_IP, USER_AGENT)
     target_session = (await session_repository.list_active_by_user(target.id))[0]
 
-    list_use_case = ListUserSessionsUseCase(session_repository, user_repository)
+    list_use_case = ListUserSessionsUseCase(session_repository, user_repository, uow)
     sessions = await list_use_case(admin, target.id)
     assert [s.id for s in sessions] == [target_session.id]
 
@@ -717,7 +723,7 @@ async def test_admin_cannot_view_or_revoke_another_admins_session(
     await issuer.issue(other_admin.id, CLIENT_IP, USER_AGENT)
     other_admin_session = (await session_repository.list_active_by_user(other_admin.id))[0]
 
-    list_use_case = ListUserSessionsUseCase(session_repository, user_repository)
+    list_use_case = ListUserSessionsUseCase(session_repository, user_repository, uow)
     with pytest.raises(ConflictError):
         await list_use_case(admin, other_admin.id)
 
@@ -760,7 +766,7 @@ async def test_admin_cannot_view_or_revoke_owners_session(
         await uow.commit()
     owner_session = (await session_repository.list_active_by_user(owner.id))[0]
 
-    list_use_case = ListUserSessionsUseCase(session_repository, user_repository)
+    list_use_case = ListUserSessionsUseCase(session_repository, user_repository, uow)
     with pytest.raises(ConflictError):
         await list_use_case(admin, owner.id)
 

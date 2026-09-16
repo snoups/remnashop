@@ -42,11 +42,14 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: RegisterTelegramUserDto) -> UserDto:
-        existing = await self._user_repository.get_by_telegram_id(data.telegram_id)
-        if existing is not None:
-            return existing
+        async with self._uow:
+            existing = await self._user_repository.get_by_telegram_id(data.telegram_id)
+            if existing is not None:
+                return existing
 
-        is_blocked = await self._blacklist_repository.is_blacklisted_telegram_id(data.telegram_id)
+            is_blocked = await self._blacklist_repository.is_blacklisted_telegram_id(
+                data.telegram_id
+            )
 
         try:
             async with self._uow:
@@ -69,7 +72,8 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
             # brand-new telegram_id in flight at once) -- the winner's row
             # already exists, fetch it instead of dropping this update.
             logger.debug(f"Lost registration race for telegram_id={data.telegram_id}")
-            winner = await self._user_repository.get_by_telegram_id(data.telegram_id)
+            async with self._uow:
+                winner = await self._user_repository.get_by_telegram_id(data.telegram_id)
             if winner is None:
                 raise
             return winner

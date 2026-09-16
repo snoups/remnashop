@@ -30,11 +30,12 @@ class ResetAllDialogsUseCase(UseCase[None, None]):
         self._redis = redis
 
     async def _execute(self, actor: UserDto, data: None) -> None:
-        locales = await self._settings_repository.list_active_locales()
-        text_keys: set[str] = set()
-        for window in catalog.all_windows():
-            text_keys.update(window.text_keys)
-            text_keys.update(b.text_key for b in window.buttons)
+        async with self._uow:
+            locales = await self._settings_repository.list_active_locales()
+            text_keys: set[str] = set()
+            for window in catalog.all_windows():
+                text_keys.update(window.text_keys)
+                text_keys.update(b.text_key for b in window.buttons)
         async with self._uow:
             for key in await self._dialog_repository.list_seed_keys():
                 await self._dialog_repository.reset_to_snapshot(key)

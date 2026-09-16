@@ -44,45 +44,48 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
 
     async def _execute(self, actor: UserDto, data: UpdateTranslationInput) -> TranslationEntryDto:
         # Lazy import -- fluent_compiler lives under the telegram extra.
-        from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
+        async with self._uow:
+            from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
 
-        if "\n" in data.value:
-            # A newline lets the value break out of its own line when
-            # serialize_to_fluent() writes it back out, injecting a second
-            # top-level Fluent message into the locale text.
-            raise ValidationError("Translation values cannot contain newlines")
+            if "\n" in data.value:
+                # A newline lets the value break out of its own line when
+                # serialize_to_fluent() writes it back out, injecting a second
+                # top-level Fluent message into the locale text.
+                raise ValidationError("Translation values cannot contain newlines")
 
-        existing = await self._translations_repository.list_by_locale(data.locale)
-        candidate = [
-            entry
-            for entry in existing
-            if not (entry.message_id == data.message_id and entry.attribute_id == data.attribute_id)
-        ]
-        candidate.append(
-            TranslationEntryDto(
-                locale=data.locale,
-                message_id=data.message_id,
-                attribute_id=data.attribute_id,
-                value=data.value,
-                default_value=data.value,
+            existing = await self._translations_repository.list_by_locale(data.locale)
+            candidate = [
+                entry
+                for entry in existing
+                if not (
+                    entry.message_id == data.message_id and entry.attribute_id == data.attribute_id
+                )
+            ]
+            candidate.append(
+                TranslationEntryDto(
+                    locale=data.locale,
+                    message_id=data.message_id,
+                    attribute_id=data.attribute_id,
+                    value=data.value,
+                    default_value=data.value,
+                )
             )
-        )
-        candidate_text = serialize_to_fluent(candidate)
-        bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
-            data.locale.value, text=candidate_text
-        )
-        errors = bundle.check_messages()
-        if errors:
-            raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
-        # Checked against just this one submitted value, not candidate_text
-        # (the whole locale) -- scoping to the whole locale would reject an
-        # edit to any OTHER key the moment one placeable-bearing value exists
-        # anywhere in it (e.g. seeded bot-menu content), which isn't what
-        # this restriction is meant to catch. contains_placeable needs a
-        # full "id = value" line to parse a Pattern at all, hence the
-        # throwaway id.
-        if contains_placeable(f"placeholder-id = {data.value}"):
-            raise ValidationError("Fluent placeables are not supported in translation values")
+            candidate_text = serialize_to_fluent(candidate)
+            bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
+                data.locale.value, text=candidate_text
+            )
+            errors = bundle.check_messages()
+            if errors:
+                raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
+            # Checked against just this one submitted value, not candidate_text
+            # (the whole locale) -- scoping to the whole locale would reject an
+            # edit to any OTHER key the moment one placeable-bearing value exists
+            # anywhere in it (e.g. seeded bot-menu content), which isn't what
+            # this restriction is meant to catch. contains_placeable needs a
+            # full "id = value" line to parse a Pattern at all, hence the
+            # throwaway id.
+            if contains_placeable(f"placeholder-id = {data.value}"):
+                raise ValidationError("Fluent placeables are not supported in translation values")
 
         async with self._uow:
             updated = await self._translations_repository.update_value(
@@ -94,6 +97,6 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
         )
 
         await repush_bot_commands_if_configured(
-            self._settings_repository, self._translations_repository, self._config
+            self._settings_repository, self._translations_repository, self._config, self._uow
         )
         return updated

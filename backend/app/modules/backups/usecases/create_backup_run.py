@@ -30,8 +30,9 @@ class CreateBackupRunUseCase(UseCase[BackupKind, BackupRunDto]):
         self._run_backup_dispatch = run_backup_dispatch
 
     async def _execute(self, actor: UserDto, data: BackupKind) -> BackupRunDto:
-        if await self._backup_repository.has_active(data):
-            raise ConflictError(f"A '{data.value}' backup is already running")
+        async with self._uow:
+            if await self._backup_repository.has_active(data):
+                raise ConflictError(f"A '{data.value}' backup is already running")
 
         async with self._uow:
             run = await self._backup_repository.create_run(

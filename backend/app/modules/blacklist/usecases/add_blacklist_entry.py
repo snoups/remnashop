@@ -52,4 +52,5 @@ class AddBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto]):
 
             await reconcile_blacklist_task.kiq()  # type: ignore[call-overload]
 
-        return await self._blacklist_repository.get_blacklist()
+        async with self._uow:
+            return await self._blacklist_repository.get_blacklist()

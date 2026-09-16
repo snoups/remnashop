@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeRewardType
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.security.permissions import Permission
@@ -33,31 +34,36 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto]):
         referral_repository: ReferralRepository,
         plan_repository: PlanRepository,
         settings_repository: SettingsRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._promocode_repository = promocode_repository
         self._subscription_repository = subscription_repository
         self._referral_repository = referral_repository
         self._plan_repository = plan_repository
         self._settings_repository = settings_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: ValidatePromocodeDto) -> PromocodeDto:
-        code = data.code.strip().upper()
-        promo = await self._promocode_repository.get_by_code(code)
-        if promo is None or not promo.is_active:
-            raise NotFoundError(f"Promocode '{code}' not found")
+        async with self._uow:
+            code = data.code.strip().upper()
+            promo = await self._promocode_repository.get_by_code(code)
+            if promo is None or not promo.is_active:
+                raise NotFoundError(f"Promocode '{code}' not found")
 
-        if promo.expires_at is not None and datetime_now() > promo.expires_at:
-            raise ValidationError(f"Promocode '{code}' has expired")
+            if promo.expires_at is not None and datetime_now() > promo.expires_at:
+                raise ValidationError(f"Promocode '{code}' has expired")
 
-        if promo.max_activations is not None:
-            count = await self._promocode_repository.get_activations_count(promo.id)
-            if count >= promo.max_activations:
-                raise ValidationError(f"Promocode '{code}' activation limit reached")
+            if promo.max_activations is not None:
+                count = await self._promocode_repository.get_activations_count(promo.id)
+                if count >= promo.max_activations:
+                    raise ValidationError(f"Promocode '{code}' activation limit reached")
 
-        if not promo.is_reusable:
-            existing = await self._promocode_repository.get_activation_by_user(promo.id, actor.id)
-            if existing is not None:
-                raise ValidationError(f"Promocode '{code}' already activated by this user")
+            if not promo.is_reusable:
+                existing = await self._promocode_repository.get_activation_by_user(
+                    promo.id, actor.id
+                )
+                if existing is not None:
+                    raise ValidationError(f"Promocode '{code}' already activated by this user")
 
         await assert_available_to(promo, actor, self._subscription_repository)
         if promo.reward_type is PromocodeRewardType.SUBSCRIPTION:

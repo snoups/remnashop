@@ -25,9 +25,10 @@ class RefreshSessionUseCase:
     async def execute(
         self, refresh_token: str, ip_address: str, user_agent: Optional[str]
     ) -> IssuedSession:
-        presented_hash = hash_refresh_token(refresh_token)
+        async with self._uow:
+            presented_hash = hash_refresh_token(refresh_token)
 
-        current_session = await self._session_repository.get_by_current_hash(presented_hash)
+            current_session = await self._session_repository.get_by_current_hash(presented_hash)
         if current_session is not None:
             new_refresh_token = self._session_issuer.generate_new_refresh_token()
             async with self._uow:
@@ -40,9 +41,10 @@ class RefreshSessionUseCase:
                 current_session.user_id, current_session.id, new_refresh_token
             )
 
-        graced_session = await self._session_repository.get_by_previous_hash_in_grace(
-            presented_hash
-        )
+        async with self._uow:
+            graced_session = await self._session_repository.get_by_previous_hash_in_grace(
+                presented_hash
+            )
         if graced_session is not None:
             new_refresh_token = self._session_issuer.generate_new_refresh_token()
             async with self._uow:
@@ -55,7 +57,10 @@ class RefreshSessionUseCase:
                 graced_session.user_id, graced_session.id, new_refresh_token
             )
 
-        theft_session = await self._session_repository.get_by_expired_previous_hash(presented_hash)
+        async with self._uow:
+            theft_session = await self._session_repository.get_by_expired_previous_hash(
+                presented_hash
+            )
         if theft_session is not None:
             async with self._uow:
                 await self._session_repository.revoke_by_id(theft_session.id)

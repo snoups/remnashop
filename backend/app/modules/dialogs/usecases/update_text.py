@@ -49,49 +49,52 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
 
     async def _execute(self, actor: UserDto, data: UpdateDialogTextInput) -> TranslationEntryDto:
         # Lazy import -- fluent_compiler lives under the telegram extra.
-        from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
+        async with self._uow:
+            from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
 
-        full_key = data.message_id
-        if data.attribute_id:
-            full_key = f"{data.message_id}.{data.attribute_id}"
-        if full_key not in _catalog_text_keys() and not full_key.startswith(
-            catalog.CUSTOM_TEXT_KEY_PREFIX
-        ):
-            # This endpoint's relaxed placeable rule is dialogs-scoped -- it must
-            # not become a back door for editing arbitrary translations rows
-            # (bot commands, notifications) that the general editor guards more
-            # strictly and repushes on change.
-            raise ValidationError(f"'{full_key}' is not an editable dialog text key")
+            full_key = data.message_id
+            if data.attribute_id:
+                full_key = f"{data.message_id}.{data.attribute_id}"
+            if full_key not in _catalog_text_keys() and not full_key.startswith(
+                catalog.CUSTOM_TEXT_KEY_PREFIX
+            ):
+                # This endpoint's relaxed placeable rule is dialogs-scoped -- it must
+                # not become a back door for editing arbitrary translations rows
+                # (bot commands, notifications) that the general editor guards more
+                # strictly and repushes on change.
+                raise ValidationError(f"'{full_key}' is not an editable dialog text key")
 
-        if "\n" in data.value:
-            raise ValidationError("Translation values cannot contain newlines")
+            if "\n" in data.value:
+                raise ValidationError("Translation values cannot contain newlines")
 
-        disallowed = find_disallowed_placeable(data.value, catalog.text_variable_keys())
-        if disallowed is not None:
-            raise ValidationError(disallowed)
+            disallowed = find_disallowed_placeable(data.value, catalog.text_variable_keys())
+            if disallowed is not None:
+                raise ValidationError(disallowed)
 
-        existing = await self._translations_repository.list_by_locale(data.locale)
-        candidate = [
-            entry
-            for entry in existing
-            if not (entry.message_id == data.message_id and entry.attribute_id == data.attribute_id)
-        ]
-        candidate.append(
-            TranslationEntryDto(
-                locale=data.locale,
-                message_id=data.message_id,
-                attribute_id=data.attribute_id,
-                value=data.value,
-                default_value=data.value,
+            existing = await self._translations_repository.list_by_locale(data.locale)
+            candidate = [
+                entry
+                for entry in existing
+                if not (
+                    entry.message_id == data.message_id and entry.attribute_id == data.attribute_id
+                )
+            ]
+            candidate.append(
+                TranslationEntryDto(
+                    locale=data.locale,
+                    message_id=data.message_id,
+                    attribute_id=data.attribute_id,
+                    value=data.value,
+                    default_value=data.value,
+                )
             )
-        )
-        candidate_text = serialize_to_fluent(candidate)
-        bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
-            data.locale.value, text=candidate_text
-        )
-        errors = bundle.check_messages()
-        if errors:
-            raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
+            candidate_text = serialize_to_fluent(candidate)
+            bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
+                data.locale.value, text=candidate_text
+            )
+            errors = bundle.check_messages()
+            if errors:
+                raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
 
         async with self._uow:
             updated = await self._translations_repository.update_value(

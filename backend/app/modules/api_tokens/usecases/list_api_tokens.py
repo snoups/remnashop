@@ -1,3 +1,4 @@
+from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.api_tokens.dto import ApiTokenDto
@@ -8,8 +9,10 @@ from app.modules.users import UserDto
 class ListApiTokensUseCase(UseCase[None, list[ApiTokenDto]]):
     required_permission = Permission.API_TOKENS_MANAGE
 
-    def __init__(self, api_token_repository: ApiTokenRepository) -> None:
+    def __init__(self, api_token_repository: ApiTokenRepository, uow: UnitOfWork) -> None:
         self._api_token_repository = api_token_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> list[ApiTokenDto]:
-        return await self._api_token_repository.list_active()
+        async with self._uow:
+            return await self._api_token_repository.list_active()

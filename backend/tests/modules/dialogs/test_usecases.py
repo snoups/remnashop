@@ -1,5 +1,6 @@
 import pytest
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import BannerName, ButtonLinkType, DialogFlow, DialogWindowKind, Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.modules.dialogs import catalog
@@ -59,20 +60,29 @@ async def _seed(repo: DialogRepository) -> None:
     await repo.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
 
 
-async def test_non_admin_denied(dialog_repository: DialogRepository) -> None:
+async def test_non_admin_denied(
+    dialog_repository: DialogRepository,
+    uow: UnitOfWork,
+) -> None:
     with pytest.raises(PermissionDeniedError):
-        await ListDialogWindowsUseCase(dialog_repository)(USER)
+        await ListDialogWindowsUseCase(dialog_repository, uow)(USER)
 
 
-async def test_list_windows_returns_all(dialog_repository: DialogRepository) -> None:
+async def test_list_windows_returns_all(
+    dialog_repository: DialogRepository,
+    uow: UnitOfWork,
+) -> None:
     await _seed(dialog_repository)
-    result = await ListDialogWindowsUseCase(dialog_repository)(OWNER)
+    result = await ListDialogWindowsUseCase(dialog_repository, uow)(OWNER)
     assert [w.key for w in result] == ["menu.main"]
 
 
-async def test_get_catalog_reports_registered_keys(dialog_repository: DialogRepository) -> None:
+async def test_get_catalog_reports_registered_keys(
+    dialog_repository: DialogRepository,
+    uow: UnitOfWork,
+) -> None:
     await _seed(dialog_repository)
-    result = await GetDialogCatalogUseCase(dialog_repository)(OWNER)
+    result = await GetDialogCatalogUseCase(dialog_repository, uow)(OWNER)
     assert result.action_keys == ["get_trial"]
     assert result.condition_keys == ["is_trial_eligible"]
     assert result.navigable_window_keys == ["menu.main"]

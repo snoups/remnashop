@@ -7,6 +7,7 @@ from typing import Final, TypeVar
 
 from redis.asyncio import Redis
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, Role, SubscriptionStatus
 from app.core.remnawave_online import read_daily_online_peaks, read_latest_online
 from app.core.runtime_heartbeat import read_host_memory, read_runtime_heartbeats
@@ -95,101 +96,104 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
         payment_order_repository: PaymentOrderRepository,
         pricing_repository: PricingRepository,
         redis: Redis,
+        uow: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
         self._payment_order_repository = payment_order_repository
         self._pricing_repository = pricing_repository
         self._redis = redis
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: GetOverviewDto) -> OverviewDto:
-        perms = PermissionPolicy.effective_permissions(actor)
-        today_start = datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today = today_start.date()
+        async with self._uow:
+            perms = PermissionPolicy.effective_permissions(actor)
+            today_start = datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today = today_start.date()
 
-        if data.days == 0:
-            first_registration = await self._user_repository.earliest_registration(Role.USER)
-            start_date = first_registration or today
-        else:
-            start_date = today - timedelta(days=data.days - 1)
-        # Calendar-aligned to match the frontend's fillDailySeries, which
-        # builds exactly `days` UTC calendar days ending today -- a rolling
-        # datetime_now() - timedelta(days=days) cutoff would include a
-        # partial day `days` ago and exclude part of today, so the chart's
-        # daily series wouldn't sum to the same total as the period-scoped
-        # card numbers (found by the final whole-branch review).
-        since = today_start - timedelta(days=(today - start_date).days)
-        span_days = (today - start_date).days + 1
-        granularity: Granularity = "month" if span_days > _MONTHLY_THRESHOLD_DAYS else "day"
-        dense = data.days == 0
+            if data.days == 0:
+                first_registration = await self._user_repository.earliest_registration(Role.USER)
+                start_date = first_registration or today
+            else:
+                start_date = today - timedelta(days=data.days - 1)
+            # Calendar-aligned to match the frontend's fillDailySeries, which
+            # builds exactly `days` UTC calendar days ending today -- a rolling
+            # datetime_now() - timedelta(days=days) cutoff would include a
+            # partial day `days` ago and exclude part of today, so the chart's
+            # daily series wouldn't sum to the same total as the period-scoped
+            # card numbers (found by the final whole-branch review).
+            since = today_start - timedelta(days=(today - start_date).days)
+            span_days = (today - start_date).days + 1
+            granularity: Granularity = "month" if span_days > _MONTHLY_THRESHOLD_DAYS else "day"
+            dense = data.days == 0
 
-        users = None
-        if Permission.USERS_VIEW in perms:
-            daily = await self._user_repository.count_registrations_by_day(since, Role.USER)
-            reg_series = _bucketize(daily, start_date, today, granularity, 0, dense=dense)
-            users = OverviewUsersDto(
-                total=await self._user_repository.count_by_role(Role.USER),
-                new_today=await self._user_repository.count_new_since(today_start, Role.USER),
-                daily_registrations=[
-                    DailyCountDto(day=day, count=count) for day, count in reg_series
-                ],
-            )
+            users = None
+            if Permission.USERS_VIEW in perms:
+                daily = await self._user_repository.count_registrations_by_day(since, Role.USER)
+                reg_series = _bucketize(daily, start_date, today, granularity, 0, dense=dense)
+                users = OverviewUsersDto(
+                    total=await self._user_repository.count_by_role(Role.USER),
+                    new_today=await self._user_repository.count_new_since(today_start, Role.USER),
+                    daily_registrations=[
+                        DailyCountDto(day=day, count=count) for day, count in reg_series
+                    ],
+                )
 
-        subscriptions = None
-        if Permission.SUBSCRIPTIONS_VIEW in perms:
-            by_status = await self._subscription_repository.count_by_status()
-            active = by_status.get(SubscriptionStatus.ACTIVE, 0)
-            limited = by_status.get(SubscriptionStatus.LIMITED, 0)
-            expired = by_status.get(SubscriptionStatus.EXPIRED, 0)
-            disabled = by_status.get(SubscriptionStatus.DISABLED, 0)
-            subscriptions = OverviewSubscriptionsDto(
-                total=active + limited + expired,
-                active=active,
-                limited=limited,
-                expired=expired,
-                disabled=disabled,
-                expiring_soon=await self._subscription_repository.count_expiring_between(
-                    today_start, today_start + timedelta(days=7)
-                ),
-            )
-
-        payments = None
-        if Permission.PAYMENTS_VIEW in perms:
-            revenue_by_currency = await self._payment_order_repository.sum_paid_final_price_since(
-                since
-            )
-            rate_table = await self._pricing_repository.get_rate_table()
-            report_currency = rate_table.anchor
-            daily_by_currency = await self._payment_order_repository.daily_paid_revenue_by_currency(
-                since
-            )
-            daily_converted: list[tuple[date, Decimal]] = [
-                (
-                    day,
-                    sum(
-                        (
-                            _convert(amount, currency, report_currency, rate_table)
-                            for currency, amount in by_currency.items()
-                        ),
-                        start=Decimal(0),
+            subscriptions = None
+            if Permission.SUBSCRIPTIONS_VIEW in perms:
+                by_status = await self._subscription_repository.count_by_status()
+                active = by_status.get(SubscriptionStatus.ACTIVE, 0)
+                limited = by_status.get(SubscriptionStatus.LIMITED, 0)
+                expired = by_status.get(SubscriptionStatus.EXPIRED, 0)
+                disabled = by_status.get(SubscriptionStatus.DISABLED, 0)
+                subscriptions = OverviewSubscriptionsDto(
+                    total=active + limited + expired,
+                    active=active,
+                    limited=limited,
+                    expired=expired,
+                    disabled=disabled,
+                    expiring_soon=await self._subscription_repository.count_expiring_between(
+                        today_start, today_start + timedelta(days=7)
                     ),
                 )
-                for day, by_currency in sorted(daily_by_currency.items())
-            ]
-            revenue_series = _bucketize(
-                daily_converted, start_date, today, granularity, Decimal(0), dense=dense
-            )
-            daily_revenue = [
-                DailyAmountDto(day=day, amount=amount) for day, amount in revenue_series
-            ]
-            payments = OverviewPaymentsDto(
-                paid_orders_count=await self._payment_order_repository.count_paid_since(since),
-                revenue_by_currency=revenue_by_currency,
-                report_currency=report_currency,
-                daily_revenue=daily_revenue,
-            )
 
-        now = time.time()
+            payments = None
+            if Permission.PAYMENTS_VIEW in perms:
+                revenue_by_currency = (
+                    await self._payment_order_repository.sum_paid_final_price_since(since)
+                )
+                rate_table = await self._pricing_repository.get_rate_table()
+                report_currency = rate_table.anchor
+                daily_by_currency = (
+                    await self._payment_order_repository.daily_paid_revenue_by_currency(since)
+                )
+                daily_converted: list[tuple[date, Decimal]] = [
+                    (
+                        day,
+                        sum(
+                            (
+                                _convert(amount, currency, report_currency, rate_table)
+                                for currency, amount in by_currency.items()
+                            ),
+                            start=Decimal(0),
+                        ),
+                    )
+                    for day, by_currency in sorted(daily_by_currency.items())
+                ]
+                revenue_series = _bucketize(
+                    daily_converted, start_date, today, granularity, Decimal(0), dense=dense
+                )
+                daily_revenue = [
+                    DailyAmountDto(day=day, amount=amount) for day, amount in revenue_series
+                ]
+                payments = OverviewPaymentsDto(
+                    paid_orders_count=await self._payment_order_repository.count_paid_since(since),
+                    revenue_by_currency=revenue_by_currency,
+                    report_currency=report_currency,
+                    daily_revenue=daily_revenue,
+                )
+
+            now = time.time()
         runtime = [
             RuntimeProcessDto(
                 process=hb.process,

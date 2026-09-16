@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Final, Optional
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.exceptions import PermissionDeniedError
 from app.core.security.permissions import Permission, PermissionPolicy
@@ -31,21 +32,23 @@ class ListUsersInput:
 class ListUsersUseCase(UseCase[ListUsersInput, tuple[list[UserDto], int]]):
     required_permission = Permission.USERS_VIEW
 
-    def __init__(self, user_repository: UserRepository) -> None:
+    def __init__(self, user_repository: UserRepository, uow: UnitOfWork) -> None:
         self._user_repository = user_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: ListUsersInput) -> tuple[list[UserDto], int]:
-        allowed_roles = ALLOWED_ROLES
-        if data.include_staff:
-            if not PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
-                raise PermissionDeniedError
-            allowed_roles = STAFF_ROLES
+        async with self._uow:
+            allowed_roles = ALLOWED_ROLES
+            if data.include_staff:
+                if not PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
+                    raise PermissionDeniedError
+                allowed_roles = STAFF_ROLES
 
-        roles = [data.role] if data.role in allowed_roles else allowed_roles
-        return await self._user_repository.list_filtered(
-            roles=roles,
-            search=data.search,
-            is_blocked=data.is_blocked,
-            page=data.page,
-            page_size=data.page_size,
-        )
+            roles = [data.role] if data.role in allowed_roles else allowed_roles
+            return await self._user_repository.list_filtered(
+                roles=roles,
+                search=data.search,
+                is_blocked=data.is_blocked,
+                page=data.page,
+                page_size=data.page_size,
+            )

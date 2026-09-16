@@ -1,6 +1,7 @@
 from decimal import Decimal
 from uuid import uuid4
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanType
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -45,11 +46,12 @@ async def test_returns_the_trial_plan_when_available(
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-eligible"))
     use_case = GetAvailableTrialUseCase(
-        plan_repository, subscription_repository, referral_repository
+        plan_repository, subscription_repository, referral_repository, uow
     )
 
     result = await use_case(actor)
@@ -64,13 +66,14 @@ async def test_returns_no_plan_once_the_flag_is_spent(
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
     await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-spent"))
     await user_repository.update_fields(actor.id, UpdateUserDto(is_trial_available=False))
     updated_actor = await user_repository.get_by_id(actor.id)
     use_case = GetAvailableTrialUseCase(
-        plan_repository, subscription_repository, referral_repository
+        plan_repository, subscription_repository, referral_repository, uow
     )
 
     result = await use_case(updated_actor)

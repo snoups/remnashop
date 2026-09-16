@@ -44,25 +44,26 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
     async def _execute(
         self, actor: UserDto, data: PromoteToAdminDto
     ) -> tuple[UserDto, Optional[str]]:
-        assert_grantable(data.permission_grants)
+        async with self._uow:
+            assert_grantable(data.permission_grants)
 
-        target = None
-        if data.email:
-            target = await self._user_repository.get_by_email(data.email)
-        elif data.telegram_username:
-            target = await self._user_repository.get_by_username(data.telegram_username)
+            target = None
+            if data.email:
+                target = await self._user_repository.get_by_email(data.email)
+            elif data.telegram_username:
+                target = await self._user_repository.get_by_username(data.telegram_username)
 
-        if target is None:
-            raise NotFoundError("User not found")
-        if target.role != Role.USER:
-            raise ConflictError("User is already privileged")
+            if target is None:
+                raise NotFoundError("User not found")
+            if target.role != Role.USER:
+                raise ConflictError("User is already privileged")
 
-        login = target.login or data.login
-        if login is None:
-            raise ValidationError("login is required to promote a user without one")
+            login = target.login or data.login
+            if login is None:
+                raise ValidationError("login is required to promote a user without one")
 
-        existing_password_hash = target.password_hash
-        password: Optional[str] = None
+            existing_password_hash = target.password_hash
+            password: Optional[str] = None
         if existing_password_hash is None:
             password = generate_password()
             password_hash = await hash_password(password, self._config.crypt_key.get_secret_value())

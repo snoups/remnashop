@@ -39,11 +39,12 @@ class VerifyPasskeyRegistrationUseCase(UseCase[VerifyPasskeyRegistrationDto, Pas
     async def _execute(
         self, actor: UserDto, data: VerifyPasskeyRegistrationDto
     ) -> PasskeyCredentialDto:
-        settings = await self._settings_repository.get_oauth_settings()
-        if not settings.passkey_enabled:
-            raise AuthenticationError("Passkeys are not enabled")
-        if settings.passkey_rp_id is None or settings.passkey_origin is None:
-            raise AuthenticationError("Passkeys are not configured")
+        async with self._uow:
+            settings = await self._settings_repository.get_oauth_settings()
+            if not settings.passkey_enabled:
+                raise AuthenticationError("Passkeys are not enabled")
+            if settings.passkey_rp_id is None or settings.passkey_origin is None:
+                raise AuthenticationError("Passkeys are not configured")
 
         challenge = await self._challenge_store.consume_registration_challenge(actor.id)
         if challenge is None:

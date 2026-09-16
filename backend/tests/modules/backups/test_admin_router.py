@@ -134,6 +134,9 @@ async def _issue_token(
             expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
         )
     )
+    # Committed, not just flushed: a request that raises rolls its own
+    # transaction back, which would otherwise take this session row with it.
+    await session_repository.session.commit()
     return create_access_token(user_id, session.id, config.jwt_secret.get_secret_value())
 
 

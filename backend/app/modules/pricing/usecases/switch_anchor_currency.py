@@ -41,17 +41,18 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: SwitchAnchorCurrencyDto) -> PriceBookDto:
-        table = await self._pricing_repository.get_rate_table()
-        old_anchor = table.anchor
-        if data.new_anchor == old_anchor:
-            raise ValidationError("That currency is already the anchor")
+        async with self._uow:
+            table = await self._pricing_repository.get_rate_table()
+            old_anchor = table.anchor
+            if data.new_anchor == old_anchor:
+                raise ValidationError("That currency is already the anchor")
 
-        f = table.rows[data.new_anchor].rate
-        new_rates = {
-            currency: (row.rate / f).quantize(RATE_PRECISION)
-            for currency, row in table.rows.items()
-        }
-        new_rates[data.new_anchor] = Decimal("1.000000")
+            f = table.rows[data.new_anchor].rate
+            new_rates = {
+                currency: (row.rate / f).quantize(RATE_PRECISION)
+                for currency, row in table.rows.items()
+            }
+            new_rates[data.new_anchor] = Decimal("1.000000")
 
         async with self._uow:
             await self._pricing_repository.set_anchor(data.new_anchor, new_rates)

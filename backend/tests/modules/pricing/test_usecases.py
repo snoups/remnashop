@@ -71,6 +71,7 @@ async def test_price_book_lists_derived_and_pinned_cells(
     plan_repository: PlanRepository,
     addon_repository: AddOnRepository,
     pricing_repository: PricingRepository,
+    uow: UnitOfWork,
 ) -> None:
     await pricing_repository.get_rate_table()
     await pricing_repository.update_rate(
@@ -94,7 +95,9 @@ async def test_price_book_lists_derived_and_pinned_cells(
         )
     )
 
-    book = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository)(OWNER)
+    book = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(
+        OWNER
+    )
 
     plan_row = next(row for row in book.plans if row.ref_id == duration_id)
     assert plan_row.plan_id == plan.id
@@ -132,7 +135,9 @@ async def test_update_currency_rate_moves_the_book(
     rub_row = next(r for r in rows if r.currency is Currency.RUB)
     assert rub_row.rate == Decimal("100")
 
-    book = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository)(OWNER)
+    book = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(
+        OWNER
+    )
     plan_row = next(row for row in book.plans if row.ref_id == plan.durations[0].id)
     rub_cell = next(c for c in plan_row.cells if c.currency is Currency.RUB)
     assert rub_cell.amount == Decimal("200")  # 2.00 * 100
@@ -158,11 +163,15 @@ async def test_switch_anchor_keeps_derived_prices_stable(
     plan, _ = await _seed_catalog(plan_repository, addon_repository)
     duration_id = plan.durations[0].id
 
-    before = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository)(OWNER)
+    before = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(
+        OWNER
+    )
     await SwitchAnchorCurrencyUseCase(
         pricing_repository, plan_repository, addon_repository, uow, event_publisher
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
-    after = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository)(OWNER)
+    after = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(
+        OWNER
+    )
 
     b = next(c for c in before.plans[0].cells if c.currency is Currency.RUB).amount
     a = next(row for row in after.plans if row.ref_id == duration_id)
@@ -175,6 +184,7 @@ async def test_preview_pricing_change_writes_nothing(
     plan_repository: PlanRepository,
     addon_repository: AddOnRepository,
     pricing_repository: PricingRepository,
+    uow: UnitOfWork,
 ) -> None:
     await pricing_repository.get_rate_table()
     await pricing_repository.update_rate(
@@ -191,7 +201,9 @@ async def test_preview_pricing_change_writes_nothing(
     before_plan = await plan_repository.get_by_id(plan.id)
     before_addon = await addon_repository.get_by_id(addon.id)
 
-    diff = await PreviewPricingChangeUseCase(plan_repository, addon_repository, pricing_repository)(
+    diff = await PreviewPricingChangeUseCase(
+        plan_repository, addon_repository, pricing_repository, uow
+    )(
         OWNER,
         PricingChangePreviewDto(
             rate=UpdateCurrencyRateDto(
@@ -220,8 +232,11 @@ async def test_preview_pricing_change_rejects_ambiguous_request(
     plan_repository: PlanRepository,
     addon_repository: AddOnRepository,
     pricing_repository: PricingRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = PreviewPricingChangeUseCase(plan_repository, addon_repository, pricing_repository)
+    use_case = PreviewPricingChangeUseCase(
+        plan_repository, addon_repository, pricing_repository, uow
+    )
     with pytest.raises(ValidationError):
         await use_case(OWNER, PricingChangePreviewDto())
 

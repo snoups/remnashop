@@ -40,4 +40,5 @@ class RemoveBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto])
                         BlacklistEntryRemovedEvent(kind=data.kind.value, value=normalized)
                     )
 
-        return await self._blacklist_repository.get_blacklist()
+        async with self._uow:
+            return await self._blacklist_repository.get_blacklist()

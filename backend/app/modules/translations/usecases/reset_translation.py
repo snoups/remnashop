@@ -50,6 +50,6 @@ class ResetTranslationUseCase(UseCase[ResetTranslationInput, TranslationEntryDto
         )
 
         await repush_bot_commands_if_configured(
-            self._settings_repository, self._translations_repository, self._config
+            self._settings_repository, self._translations_repository, self._config, self._uow
         )
         return reset

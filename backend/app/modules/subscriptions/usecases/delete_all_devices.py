@@ -3,6 +3,7 @@ from datetime import timedelta
 from remnapy import RemnawaveSDK
 from remnapy.models import DeleteUserAllHwidDeviceRequestDto
 
+from app.core.db.uow import UnitOfWork
 from app.core.exceptions import CooldownError, ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -20,27 +21,33 @@ class DeleteAllDevicesUseCase(UseCase[None, None]):
         subscription_repository: SubscriptionRepository,
         remnawave_sdk: RemnawaveSDK,
         settings_repository: SettingsRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._remnawave_sdk = remnawave_sdk
         self._settings_repository = settings_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> None:
-        shop_settings = await self._settings_repository.get_shop_settings()
-        if not shop_settings.device_all_reset_enabled:
-            raise ValidationError("All devices reset is disabled")
+        async with self._uow:
+            shop_settings = await self._settings_repository.get_shop_settings()
+            if not shop_settings.device_all_reset_enabled:
+                raise ValidationError("All devices reset is disabled")
 
-        subscription = await self._subscription_repository.get_single_active_subscription_or_raise(
-            actor.id
-        )
+            subscription = (
+                await self._subscription_repository.get_single_active_subscription_or_raise(
+                    actor.id
+                )
+            )
 
-        cooldown_hours = shop_settings.device_all_reset_cooldown_hours
-        if cooldown_hours > 0 and subscription.device_all_reset_at is not None:
-            available_at = subscription.device_all_reset_at + timedelta(hours=cooldown_hours)
-            if datetime_now() < available_at:
-                raise CooldownError(available_at)
+            cooldown_hours = shop_settings.device_all_reset_cooldown_hours
+            if cooldown_hours > 0 and subscription.device_all_reset_at is not None:
+                available_at = subscription.device_all_reset_at + timedelta(hours=cooldown_hours)
+                if datetime_now() < available_at:
+                    raise CooldownError(available_at)
 
         await self._remnawave_sdk.hwid.delete_all_hwid_user(
             DeleteUserAllHwidDeviceRequestDto(user_id=subscription.remnawave_user_id)
         )
-        await self._subscription_repository.mark_device_all_reset(subscription.id)
+        async with self._uow:
+            await self._subscription_repository.mark_device_all_reset(subscription.id)

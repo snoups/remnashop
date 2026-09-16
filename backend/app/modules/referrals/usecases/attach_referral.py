@@ -34,18 +34,19 @@ class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: AttachReferralDto) -> UserDto:
-        settings = await self._referral_repository.get_settings()
-        if not settings.enabled:
-            raise ValidationError("Referral system is disabled")
+        async with self._uow:
+            settings = await self._referral_repository.get_settings()
+            if not settings.enabled:
+                raise ValidationError("Referral system is disabled")
 
-        referrer = await self._user_repository.get_by_referral_code(data.code)
-        if referrer is None:
-            raise ValidationError(f"Referral code '{data.code}' not found")
-        if referrer.id == actor.id:
-            raise ValidationError("Cannot use your own referral code")
+            referrer = await self._user_repository.get_by_referral_code(data.code)
+            if referrer is None:
+                raise ValidationError(f"Referral code '{data.code}' not found")
+            if referrer.id == actor.id:
+                raise ValidationError("Cannot use your own referral code")
 
-        if await self._referral_repository.has_referrer(actor.id):
-            raise ValidationError(f"User '{actor.id}' already has a referrer")
+            if await self._referral_repository.has_referrer(actor.id):
+                raise ValidationError(f"User '{actor.id}' already has a referrer")
 
         if await self._is_in_own_downline(
             referrer.id, actor_id=actor.id, max_level=settings.max_level
@@ -69,18 +70,20 @@ class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto]):
         # Walking up from the referrer: meeting the actor means attaching would
         # close a cycle, and the pair would then earn off each other forever.
         # Bounded by max_level -- a longer chain can't reward across the loop.
-        current_id = referrer_id
-        for _ in range(max_level):
-            if current_id == actor_id:
-                return True
-            edge = await self._referral_repository.get_by_referred_id(current_id)
-            if edge is None or edge.referrer_id is None:
-                return False
-            current_id = edge.referrer_id
-        return current_id == actor_id
+        async with self._uow:
+            current_id = referrer_id
+            for _ in range(max_level):
+                if current_id == actor_id:
+                    return True
+                edge = await self._referral_repository.get_by_referred_id(current_id)
+                if edge is None or edge.referrer_id is None:
+                    return False
+                current_id = edge.referrer_id
+            return current_id == actor_id
 
     async def _compute_level(self, referrer_id: int, *, max_level: int) -> int:
-        parent_edge = await self._referral_repository.get_by_referred_id(referrer_id)
-        if parent_edge is None:
-            return ReferralLevel.FIRST
-        return min(parent_edge.level + 1, max_level)
+        async with self._uow:
+            parent_edge = await self._referral_repository.get_by_referred_id(referrer_id)
+            if parent_edge is None:
+                return ReferralLevel.FIRST
+            return min(parent_edge.level + 1, max_level)

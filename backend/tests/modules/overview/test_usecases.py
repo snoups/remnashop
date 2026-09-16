@@ -101,6 +101,7 @@ async def test_owner_sees_all_sections_with_correct_counts(
         payment_order_repository,
         pricing_repository,
         redis,
+        uow,
     )
     overview = await use_case(OWNER, GetOverviewDto(days=7))
 
@@ -125,6 +126,7 @@ async def test_actor_missing_payments_view_gets_payments_none_but_keeps_other_se
     payment_order_repository: PaymentOrderRepository,
     pricing_repository: PricingRepository,
     redis: Redis,
+    uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"permission_revokes": ["PAYMENTS_VIEW"]})
 
@@ -134,6 +136,7 @@ async def test_actor_missing_payments_view_gets_payments_none_but_keeps_other_se
         payment_order_repository,
         pricing_repository,
         redis,
+        uow,
     )
     overview = await use_case(actor, GetOverviewDto(days=7))
 
@@ -173,6 +176,7 @@ async def test_days_window_excludes_orders_paid_before_the_cutoff(
         payment_order_repository,
         pricing_repository,
         redis,
+        uow,
     )
     overview = await use_case(OWNER, GetOverviewDto(days=7))
 
@@ -229,6 +233,7 @@ async def test_since_is_calendar_aligned_not_a_rolling_cutoff(
         payment_order_repository,
         pricing_repository,
         redis,
+        uow,
     )
     overview = await use_case(OWNER, GetOverviewDto(days=1))
 
@@ -243,6 +248,7 @@ async def test_all_time_period_starts_at_first_registration_and_buckets_by_month
     pricing_repository: PricingRepository,
     redis: Redis,
     session: AsyncSession,
+    uow: UnitOfWork,
 ) -> None:
     oldest = await user_repository.create(CreateUserDto(name="Oldest", telegram_id=830_301))
     await session.execute(
@@ -257,6 +263,7 @@ async def test_all_time_period_starts_at_first_registration_and_buckets_by_month
         payment_order_repository,
         pricing_repository,
         redis,
+        uow,
     )
     overview = await use_case(OWNER, GetOverviewDto(days=0))
 
@@ -277,6 +284,7 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
     payment_order_repository: PaymentOrderRepository,
     pricing_repository: PricingRepository,
     redis: Redis,
+    uow: UnitOfWork,
 ) -> None:
     keys = (
         "remnashop:runtime:heartbeat:api",
@@ -300,6 +308,7 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
         payment_order_repository,
         pricing_repository,
         redis,
+        uow,
     )
     overview = await use_case(OWNER, GetOverviewDto(days=7))
 
@@ -321,6 +330,7 @@ async def test_overview_includes_host_memory_when_available(
     payment_order_repository: PaymentOrderRepository,
     pricing_repository: PricingRepository,
     redis: Redis,
+    uow: UnitOfWork,
 ) -> None:
     use_case = GetOverviewUseCase(
         user_repository,
@@ -328,6 +338,7 @@ async def test_overview_includes_host_memory_when_available(
         payment_order_repository,
         pricing_repository,
         redis,
+        uow,
     )
     overview = await use_case(OWNER, GetOverviewDto(days=7))
 

@@ -32,7 +32,8 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: CreatePromocodeDto) -> PromocodeDto:
-        await self._validate_reward(data)
+        async with self._uow:
+            await self._validate_reward(data)
         if data.availability == PromocodeAvailability.ALLOWED and not data.allowed_user_ids:
             raise ValidationError("availability=ALLOWED requires at least one allowed user id")
 

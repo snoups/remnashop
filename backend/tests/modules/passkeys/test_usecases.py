@@ -98,7 +98,7 @@ async def test_get_registration_options_rejects_when_disabled(
 ) -> None:
     actor = await _create_user(user_repository, uow, "owner")
     use_case = GetPasskeyRegistrationOptionsUseCase(
-        settings_repository, passkey_repository, redis_challenge_store
+        settings_repository, passkey_repository, redis_challenge_store, uow
     )
 
     with pytest.raises(AuthenticationError):
@@ -115,7 +115,7 @@ async def test_get_registration_options_returns_json_when_enabled(
     actor = await _create_user(user_repository, uow, "owner")
     await _enable_passkeys(settings_repository)
     use_case = GetPasskeyRegistrationOptionsUseCase(
-        settings_repository, passkey_repository, redis_challenge_store
+        settings_repository, passkey_repository, redis_challenge_store, uow
     )
 
     options_json = await use_case(actor)
@@ -192,7 +192,7 @@ async def test_list_passkeys_returns_only_actors_own(
     await passkey_repository.create(_create_passkey_dto(actor.id, "cred-actor"))
     await passkey_repository.create(_create_passkey_dto(other.id, "cred-other"))
 
-    use_case = ListPasskeysUseCase(passkey_repository)
+    use_case = ListPasskeysUseCase(passkey_repository, uow)
     result = await use_case(actor)
 
     assert len(result) == 1
@@ -258,18 +258,26 @@ USER_AGENT = "pytest"
 
 
 async def test_get_authentication_options_rejects_when_disabled(
-    settings_repository: SettingsRepository, redis_challenge_store: PasskeyChallengeStore
+    settings_repository: SettingsRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = GetPasskeyAuthenticationOptionsUseCase(settings_repository, redis_challenge_store)
+    use_case = GetPasskeyAuthenticationOptionsUseCase(
+        settings_repository, redis_challenge_store, uow
+    )
     with pytest.raises(AuthenticationError):
         await use_case.execute()
 
 
 async def test_get_authentication_options_returns_json_when_enabled(
-    settings_repository: SettingsRepository, redis_challenge_store: PasskeyChallengeStore
+    settings_repository: SettingsRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
 ) -> None:
     await _enable_passkeys(settings_repository)
-    use_case = GetPasskeyAuthenticationOptionsUseCase(settings_repository, redis_challenge_store)
+    use_case = GetPasskeyAuthenticationOptionsUseCase(
+        settings_repository, redis_challenge_store, uow
+    )
 
     options_json = await use_case.execute()
     assert RP_ID in options_json

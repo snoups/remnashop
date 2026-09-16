@@ -177,10 +177,12 @@ async def test_delete_missing_banner_raises_not_found(
 
 
 async def test_list_banners_returns_available_locales_from_config(
-    banner_repository: BannerRepository, settings_repository: SettingsRepository
+    banner_repository: BannerRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
     await _seed_locales(settings_repository)
-    use_case = ListBannersUseCase(banner_repository, settings_repository)
+    use_case = ListBannersUseCase(banner_repository, settings_repository, uow)
 
     result = await use_case(OWNER)
 
@@ -199,7 +201,7 @@ async def test_list_banners_includes_uploaded_banners(
     upload_use_case = UploadBannerUseCase(
         banner_repository, settings_repository, _config(config, tmp_path), uow
     )
-    list_use_case = ListBannersUseCase(banner_repository, settings_repository)
+    list_use_case = ListBannersUseCase(banner_repository, settings_repository, uow)
 
     await upload_use_case(
         OWNER,
@@ -223,7 +225,7 @@ async def test_get_banner_image_returns_bytes_and_content_type(
     await _seed_locales(settings_repository)
     cfg = _config(config, tmp_path)
     upload_use_case = UploadBannerUseCase(banner_repository, settings_repository, cfg, uow)
-    get_use_case = GetBannerImageUseCase(banner_repository, cfg)
+    get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
 
     await upload_use_case(
         OWNER,
@@ -240,9 +242,12 @@ async def test_get_banner_image_returns_bytes_and_content_type(
 
 
 async def test_get_banner_image_missing_raises_not_found(
-    banner_repository: BannerRepository, config: AppConfig, tmp_path: Path
+    banner_repository: BannerRepository,
+    config: AppConfig,
+    tmp_path: Path,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = GetBannerImageUseCase(banner_repository, _config(config, tmp_path))
+    use_case = GetBannerImageUseCase(banner_repository, _config(config, tmp_path), uow)
 
     with pytest.raises(NotFoundError):
         await use_case(OWNER, BannerKeyDto(name=BannerName.MENU, locale=Locale.RU))
@@ -258,7 +263,7 @@ async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
     await _seed_locales(settings_repository)
     cfg = _config(config, tmp_path)
     upload_use_case = UploadBannerUseCase(banner_repository, settings_repository, cfg, uow)
-    get_use_case = GetBannerImageUseCase(banner_repository, cfg)
+    get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
 
     await upload_use_case(
         OWNER,

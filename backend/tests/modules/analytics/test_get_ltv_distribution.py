@@ -49,10 +49,12 @@ def _paid_order_dto(
 
 
 async def test_actor_without_analytics_view_is_denied(
-    payment_order_repository: PaymentOrderRepository, pricing_repository: PricingRepository
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = GetLtvDistributionUseCase(payment_order_repository, pricing_repository)
+    use_case = GetLtvDistributionUseCase(payment_order_repository, pricing_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor)
@@ -89,7 +91,7 @@ async def test_ltv_distribution_excludes_never_paid_users_and_buckets_by_total_s
     await payment_order_repository.mark_status(low_order.id, PaymentOrderStatus.PAID)
     await payment_order_repository.mark_status(high_order.id, PaymentOrderStatus.PAID)
 
-    use_case = GetLtvDistributionUseCase(payment_order_repository, pricing_repository)
+    use_case = GetLtvDistributionUseCase(payment_order_repository, pricing_repository, uow)
     distribution = await use_case(OWNER)
 
     total_bucketed_users = sum(bucket.users for bucket in distribution.buckets)
@@ -121,7 +123,7 @@ async def test_ltv_distribution_dedupes_boundaries_when_totals_share_the_same_va
             )
         await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
 
-    use_case = GetLtvDistributionUseCase(payment_order_repository, pricing_repository)
+    use_case = GetLtvDistributionUseCase(payment_order_repository, pricing_repository, uow)
     distribution = await use_case(OWNER)
 
     assert len(distribution.buckets) == 1

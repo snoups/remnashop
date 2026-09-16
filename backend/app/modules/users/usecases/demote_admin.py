@@ -35,11 +35,12 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
         self._passkey_revoker = passkey_revoker
 
     async def _execute(self, actor: UserDto, data: DemoteAdminDto) -> UserDto:
-        target = await self._user_repository.get_by_id(data.user_id)
-        if target is None:
-            raise NotFoundError("Admin not found")
-        if target.role != Role.ADMIN:
-            raise ConflictError("Target is not a manageable admin")
+        async with self._uow:
+            target = await self._user_repository.get_by_id(data.user_id)
+            if target is None:
+                raise NotFoundError("Admin not found")
+            if target.role != Role.ADMIN:
+                raise ConflictError("Target is not a manageable admin")
 
         async with self._uow:
             # OAuth identities (modules/oauth) are left untouched -- they're

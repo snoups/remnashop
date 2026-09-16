@@ -55,17 +55,19 @@ def _use_case(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
     payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
 ) -> GetFunnelUseCase:
-    return GetFunnelUseCase(user_repository, subscription_repository, payment_order_repository)
+    return GetFunnelUseCase(user_repository, subscription_repository, payment_order_repository, uow)
 
 
 async def test_actor_without_analytics_view_is_denied(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
     payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = _use_case(user_repository, subscription_repository, payment_order_repository)
+    use_case = _use_case(user_repository, subscription_repository, payment_order_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor, GetFunnelDto(days=7))
@@ -121,7 +123,7 @@ async def test_funnel_counts_are_independent_within_the_registered_cohort(
         .values(created_at=datetime_now() - timedelta(days=30))
     )
 
-    use_case = _use_case(user_repository, subscription_repository, payment_order_repository)
+    use_case = _use_case(user_repository, subscription_repository, payment_order_repository, uow)
     funnel = await use_case(OWNER, GetFunnelDto(days=7))
 
     by_key = {step.key: step for step in funnel.steps}

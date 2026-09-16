@@ -34,18 +34,21 @@ class RevokeUserSessionUseCase(UseCase[RevokeUserSessionDto, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: RevokeUserSessionDto) -> None:
-        session = await self._session_repository.get_active_by_id(data.session_id)
-        if session is None or session.user_id != data.user_id:
-            raise NotFoundError("Session not found")
+        async with self._uow:
+            session = await self._session_repository.get_active_by_id(data.session_id)
+            if session is None or session.user_id != data.user_id:
+                raise NotFoundError("Session not found")
 
-        target = await self._user_repository.get_by_id(data.user_id)
-        if target is None:
-            raise NotFoundError("User not found")
-        # A SyntheticActor's authorization boundary is its permission grants
-        # (already checked above), not a role it doesn't meaningfully have --
-        # skip the hierarchy guard that protects real admins from each other.
-        if not isinstance(actor, SyntheticActor) and target.role >= actor.role:
-            raise ConflictError("Cannot manage sessions for an equally or more privileged account")
+            target = await self._user_repository.get_by_id(data.user_id)
+            if target is None:
+                raise NotFoundError("User not found")
+            # A SyntheticActor's authorization boundary is its permission grants
+            # (already checked above), not a role it doesn't meaningfully have --
+            # skip the hierarchy guard that protects real admins from each other.
+            if not isinstance(actor, SyntheticActor) and target.role >= actor.role:
+                raise ConflictError(
+                    "Cannot manage sessions for an equally or more privileged account"
+                )
 
         async with self._uow:
             await self._session_repository.revoke_by_id(data.session_id)

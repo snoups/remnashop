@@ -30,10 +30,12 @@ async def _seed(
 
 
 async def test_owner_can_list_translations(
-    settings_repository: SettingsRepository, translations_repository: TranslationsRepository
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
 ) -> None:
     await _seed(settings_repository, translations_repository)
-    use_case = ListTranslationsUseCase(translations_repository)
+    use_case = ListTranslationsUseCase(translations_repository, uow)
 
     entries = await use_case(OWNER)
 
@@ -72,7 +74,8 @@ async def test_update_translation_rejects_invalid_fluent_syntax(
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    async with uow:
+        await _seed(settings_repository, translations_repository)
     use_case = UpdateTranslationUseCase(
         translations_repository, settings_repository, uow, config, redis
     )
@@ -97,7 +100,8 @@ async def test_update_translation_rejects_placeables(
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    async with uow:
+        await _seed(settings_repository, translations_repository)
     use_case = UpdateTranslationUseCase(
         translations_repository, settings_repository, uow, config, redis
     )

@@ -59,10 +59,11 @@ class UpdateBotCommandsUseCase(UseCase[list[tuple[str, bool]], UpdateBotCommands
 
     async def _push_to_telegram(self, token: Optional[str], commands: list[BotCommandDto]) -> bool:
         try:
-            active_locales = await self._settings_repository.list_active_locales()
-            translations_by_locale = await self._translations_repository.get_fluent_text_by_locale(
-                active_locales
-            )
+            async with self._uow:
+                active_locales = await self._settings_repository.list_active_locales()
+                translations_by_locale = (
+                    await self._translations_repository.get_fluent_text_by_locale(active_locales)
+                )
             return await push_bot_commands_to_telegram(
                 token, commands, active_locales, translations_by_locale, self._config.default_locale
             )

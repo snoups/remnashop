@@ -31,7 +31,9 @@ class BootstrapOwnerUseCase:
     async def execute(
         self, login: str, password: str, client_ip: str, user_agent: Optional[str]
     ) -> tuple[UserDto, IssuedSession]:
-        if await self._user_repository.exists_with_role(Role.OWNER):
+        async with self._uow:
+            owner_exists = await self._user_repository.exists_with_role(Role.OWNER)
+        if owner_exists:
             async with self._uow:
                 await self._event_publisher.publish(
                     BootstrapConflictEvent(login=login, ip_address=client_ip)

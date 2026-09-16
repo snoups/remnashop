@@ -71,7 +71,7 @@ async def _seed_en(
 async def test_owner_can_view_and_update_bot_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    get_use_case = GetBotSettingsUseCase(settings_repository)
+    get_use_case = GetBotSettingsUseCase(settings_repository, uow)
     update_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
 
     settings = await get_use_case(OWNER)
@@ -85,8 +85,9 @@ async def test_owner_can_view_and_update_bot_settings(
 
 async def test_regular_user_cannot_view_bot_settings(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    get_use_case = GetBotSettingsUseCase(settings_repository)
+    get_use_case = GetBotSettingsUseCase(settings_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await get_use_case(REGULAR_USER)
@@ -104,7 +105,7 @@ async def test_regular_user_cannot_update_bot_settings(
 async def test_owner_can_view_and_update_shop_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    get_use_case = GetShopSettingsUseCase(settings_repository)
+    get_use_case = GetShopSettingsUseCase(settings_repository, uow)
     update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
 
     settings = await get_use_case(OWNER)
@@ -127,8 +128,9 @@ async def test_owner_can_view_and_update_shop_settings(
 
 async def test_regular_user_cannot_view_shop_settings(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    get_use_case = GetShopSettingsUseCase(settings_repository)
+    get_use_case = GetShopSettingsUseCase(settings_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await get_use_case(REGULAR_USER)
@@ -191,7 +193,7 @@ async def test_owner_can_view_and_update_oauth_settings(
         "app.modules.settings.usecases.update_oauth_settings.assert_public_https_host",
         _fake_assert_public_https_host,
     )
-    get_use_case = GetOAuthSettingsUseCase(settings_repository)
+    get_use_case = GetOAuthSettingsUseCase(settings_repository, uow)
     update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
 
     settings = await get_use_case(OWNER)
@@ -291,8 +293,9 @@ async def test_update_oauth_settings_does_not_publish_event_when_issuer_is_uncha
 
 async def test_regular_user_cannot_view_oauth_settings(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    get_use_case = GetOAuthSettingsUseCase(settings_repository)
+    get_use_case = GetOAuthSettingsUseCase(settings_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await get_use_case(REGULAR_USER)
@@ -307,7 +310,7 @@ async def test_owner_can_update_and_list_bot_commands(
     update_use_case = UpdateBotCommandsUseCase(
         settings_repository, translations_repository, uow, config
     )
-    get_use_case = GetBotCommandsUseCase(settings_repository)
+    get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
     result = await update_use_case(OWNER, [("menu", True)])
 
@@ -320,8 +323,9 @@ async def test_owner_can_update_and_list_bot_commands(
 
 async def test_get_bot_commands_defaults_to_current_registry_when_db_is_empty(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    get_use_case = GetBotCommandsUseCase(settings_repository)
+    get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
     listed = await get_use_case(OWNER)
 
@@ -359,11 +363,10 @@ async def test_update_bot_commands_rejects_missing_command(
 
 async def test_get_bot_commands_drops_stale_rows_not_in_registry(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    # Bypasses the usecase's validation on purpose -- simulates a command left
-    # over from before a handler was removed from the registry.
     await settings_repository.replace_bot_commands([("ghost", True)])
-    get_use_case = GetBotCommandsUseCase(settings_repository)
+    get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
     listed = await get_use_case(OWNER)
 
@@ -372,8 +375,9 @@ async def test_get_bot_commands_drops_stale_rows_not_in_registry(
 
 async def test_regular_user_cannot_view_bot_commands(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    get_use_case = GetBotCommandsUseCase(settings_repository)
+    get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await get_use_case(REGULAR_USER)
@@ -611,7 +615,7 @@ async def test_owner_can_add_and_list_active_locales(
     settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
-    list_use_case = ListActiveLocalesUseCase(settings_repository)
+    list_use_case = ListActiveLocalesUseCase(settings_repository, uow)
 
     await add_use_case(OWNER, Locale.RU)
 
@@ -736,8 +740,9 @@ def _appearance_config(config: AppConfig, tmp_path: Path) -> AppConfig:
 
 async def test_get_public_appearance_returns_defaults(
     settings_repository: SettingsRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = GetPublicAppearanceUseCase(settings_repository)
+    use_case = GetPublicAppearanceUseCase(settings_repository, uow)
 
     settings = await use_case.execute()
 
@@ -812,7 +817,7 @@ async def test_owner_can_upload_and_fetch_logo(
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
     upload_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
-    get_use_case = GetPublicAppearanceImageUseCase(settings_repository, cfg)
+    get_use_case = GetPublicAppearanceImageUseCase(settings_repository, cfg, uow)
 
     settings = await upload_use_case(
         OWNER,
@@ -885,10 +890,13 @@ async def test_upload_rejects_oversized_file(
 
 
 async def test_get_appearance_image_missing_raises_not_found(
-    settings_repository: SettingsRepository, config: AppConfig, tmp_path: Path
+    settings_repository: SettingsRepository,
+    config: AppConfig,
+    tmp_path: Path,
+    uow: UnitOfWork,
 ) -> None:
     use_case = GetPublicAppearanceImageUseCase(
-        settings_repository, _appearance_config(config, tmp_path)
+        settings_repository, _appearance_config(config, tmp_path), uow
     )
 
     with pytest.raises(NotFoundError):

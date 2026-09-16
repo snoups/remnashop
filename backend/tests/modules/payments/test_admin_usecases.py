@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
     DiscountSource,
@@ -55,15 +56,17 @@ async def admin_actor(user_repository: UserRepository) -> UserDto:
 @pytest.fixture
 def list_payment_orders_use_case(
     payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
 ) -> ListPaymentOrdersUseCase:
-    return ListPaymentOrdersUseCase(payment_order_repository)
+    return ListPaymentOrdersUseCase(payment_order_repository, uow)
 
 
 @pytest.fixture
 def get_payment_order_use_case(
     payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
 ) -> GetPaymentOrderUseCase:
-    return GetPaymentOrderUseCase(payment_order_repository)
+    return GetPaymentOrderUseCase(payment_order_repository, uow)
 
 
 async def test_list_payment_orders_requires_the_payments_view_permission(

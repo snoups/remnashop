@@ -43,7 +43,8 @@ async def _upload_appearance_image(
     if len(data.data) > MAX_APPEARANCE_IMAGE_SIZE_BYTES:
         raise ValidationError("Image file is too large")
 
-    existing = await settings_repository.get_appearance_image_meta(kind)
+    async with uow:
+        existing = await settings_repository.get_appearance_image_meta(kind)
 
     save_appearance_image(config.media_dir, kind, image_format.value, data.data)
 

@@ -28,13 +28,14 @@ class DeleteAdminUseCase(UseCase[DeleteAdminDto, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: DeleteAdminDto) -> None:
-        target = await self._user_repository.get_by_id(data.user_id)
-        if target is None:
-            raise NotFoundError("Admin not found")
-        if target.role != Role.ADMIN:
-            raise ConflictError("Target is not a manageable admin")
-        if target.id == actor.id:
-            raise ConflictError("Cannot delete your own account")
+        async with self._uow:
+            target = await self._user_repository.get_by_id(data.user_id)
+            if target is None:
+                raise NotFoundError("Admin not found")
+            if target.role != Role.ADMIN:
+                raise ConflictError("Target is not a manageable admin")
+            if target.id == actor.id:
+                raise ConflictError("Cannot delete your own account")
 
         async with self._uow:
             deleted = await self._user_repository.delete(data.user_id)

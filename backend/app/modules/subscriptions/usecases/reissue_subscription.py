@@ -28,19 +28,22 @@ class ReissueSubscriptionUseCase(UseCase[None, None]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> None:
-        shop_settings = await self._settings_repository.get_shop_settings()
-        if not shop_settings.link_reset_enabled:
-            raise ValidationError("Subscription link reset is disabled")
+        async with self._uow:
+            shop_settings = await self._settings_repository.get_shop_settings()
+            if not shop_settings.link_reset_enabled:
+                raise ValidationError("Subscription link reset is disabled")
 
-        subscription = await self._subscription_repository.get_single_active_subscription_or_raise(
-            actor.id
-        )
+            subscription = (
+                await self._subscription_repository.get_single_active_subscription_or_raise(
+                    actor.id
+                )
+            )
 
-        cooldown_hours = shop_settings.link_reset_cooldown_hours
-        if cooldown_hours > 0 and subscription.link_reset_at is not None:
-            available_at = subscription.link_reset_at + timedelta(hours=cooldown_hours)
-            if datetime_now() < available_at:
-                raise CooldownError(available_at)
+            cooldown_hours = shop_settings.link_reset_cooldown_hours
+            if cooldown_hours > 0 and subscription.link_reset_at is not None:
+                available_at = subscription.link_reset_at + timedelta(hours=cooldown_hours)
+                if datetime_now() < available_at:
+                    raise CooldownError(available_at)
 
         panel_user = await self._remnawave_sdk.users.revoke_user_subscription(
             subscription.remnawave_user_id

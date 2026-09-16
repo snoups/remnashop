@@ -1,6 +1,7 @@
 from authlib.common.security import generate_token
 
 from app.core.config import AppConfig
+from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.exceptions import AuthenticationError
 from app.core.security.permissions import Permission
@@ -20,16 +21,19 @@ class OAuthConnectAuthorizeUseCase(UseCase[OAuthProvider, str]):
         settings_repository: SettingsRepository,
         state_store: OAuthStateStore,
         config: AppConfig,
+        uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
         self._state_store = state_store
         self._config = config
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: OAuthProvider) -> str:
-        settings = await self._settings_repository.get_oauth_settings()
-        client = get_oauth_client(data, settings)
+        async with self._uow:
+            settings = await self._settings_repository.get_oauth_settings()
+            client = get_oauth_client(data, settings)
 
-        code_verifier = generate_token(48) if client.requires_pkce else None
+            code_verifier = generate_token(48) if client.requires_pkce else None
         state = await self._state_store.create(
             provider=data,
             purpose=OAuthFlowPurpose.CONNECT,

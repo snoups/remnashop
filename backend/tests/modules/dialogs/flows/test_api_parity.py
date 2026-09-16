@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import ButtonLinkType, DialogWindowKind, Locale, Role
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto
@@ -47,14 +48,17 @@ def test_flows_package_imports_without_aiogram() -> None:
 
 
 async def test_get_catalog_usecase_sees_full_catalog_from_metadata_alone(
-    dialog_repository: DialogRepository, translations_repository, settings_repository
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow: UnitOfWork,
 ) -> None:
     from app.modules.dialogs import register_all_flow_metadata  # noqa: PLC0415
 
     register_all_flow_metadata()
     await ensure_dialogs_seeded(dialog_repository, translations_repository, settings_repository)
 
-    result = await GetDialogCatalogUseCase(dialog_repository)(OWNER, None)
+    result = await GetDialogCatalogUseCase(dialog_repository, uow)(OWNER, None)
 
     assert {
         "get_trial",

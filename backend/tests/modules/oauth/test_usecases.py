@@ -120,7 +120,10 @@ class _FailingOAuthClient(_StubOAuthClient):
 
 
 async def test_oauth_login_authorize_returns_url_for_configured_provider(
-    settings_repository: SettingsRepository, oauth_state_store: OAuthStateStore, config: AppConfig
+    settings_repository: SettingsRepository,
+    oauth_state_store: OAuthStateStore,
+    config: AppConfig,
+    uow: UnitOfWork,
 ) -> None:
     await settings_repository.update_oauth_settings(
         UpdateOAuthSettingsDto(
@@ -131,7 +134,7 @@ async def test_oauth_login_authorize_returns_url_for_configured_provider(
             telegram_client_secret=None,
         )
     )
-    use_case = OAuthLoginAuthorizeUseCase(settings_repository, oauth_state_store, config)
+    use_case = OAuthLoginAuthorizeUseCase(settings_repository, oauth_state_store, config, uow)
 
     url = await use_case.execute(OAuthProvider.GITHUB)
 
@@ -140,9 +143,12 @@ async def test_oauth_login_authorize_returns_url_for_configured_provider(
 
 
 async def test_oauth_login_authorize_rejects_unconfigured_provider(
-    settings_repository: SettingsRepository, oauth_state_store: OAuthStateStore, config: AppConfig
+    settings_repository: SettingsRepository,
+    oauth_state_store: OAuthStateStore,
+    config: AppConfig,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = OAuthLoginAuthorizeUseCase(settings_repository, oauth_state_store, config)
+    use_case = OAuthLoginAuthorizeUseCase(settings_repository, oauth_state_store, config, uow)
 
     with pytest.raises(AuthenticationError):
         await use_case.execute(OAuthProvider.GITHUB)
@@ -354,9 +360,12 @@ async def test_oauth_login_callback_succeeds_for_linked_identity(
 
 
 async def test_regular_user_cannot_connect_authorize(
-    settings_repository: SettingsRepository, oauth_state_store: OAuthStateStore, config: AppConfig
+    settings_repository: SettingsRepository,
+    oauth_state_store: OAuthStateStore,
+    config: AppConfig,
+    uow: UnitOfWork,
 ) -> None:
-    interactor = OAuthConnectAuthorizeUseCase(settings_repository, oauth_state_store, config)
+    interactor = OAuthConnectAuthorizeUseCase(settings_repository, oauth_state_store, config, uow)
 
     with pytest.raises(PermissionDeniedError):
         await interactor(REGULAR_USER, OAuthProvider.GITHUB)
@@ -383,7 +392,7 @@ async def test_connect_authorize_returns_url(
             telegram_client_secret=None,
         )
     )
-    interactor = OAuthConnectAuthorizeUseCase(settings_repository, oauth_state_store, config)
+    interactor = OAuthConnectAuthorizeUseCase(settings_repository, oauth_state_store, config, uow)
 
     url = await interactor(owner, OAuthProvider.GITHUB)
 
@@ -652,7 +661,7 @@ async def test_list_returns_only_actors_own_identities(
         )
     )
 
-    interactor = ListOAuthIdentitiesUseCase(oauth_identity_repository)
+    interactor = ListOAuthIdentitiesUseCase(oauth_identity_repository, uow)
     identities = await interactor(owner)
 
     assert len(identities) == 1

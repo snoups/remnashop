@@ -48,6 +48,7 @@ async def test_lists_the_actors_devices(
     user_repository: UserRepository,
     remnawave_sdk: RemnawaveSDK,
     remnawave_hwid_store: dict,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="device-lister"))
     await _create_active_subscription(subscription_repository, actor.id, 7001)
@@ -64,7 +65,7 @@ async def test_lists_the_actors_devices(
             "updatedAt": datetime.now(timezone.utc).isoformat(),
         }
     ]
-    use_case = ListDevicesUseCase(subscription_repository, remnawave_sdk)
+    use_case = ListDevicesUseCase(subscription_repository, remnawave_sdk, uow)
 
     devices = await use_case(actor)
 
@@ -77,9 +78,10 @@ async def test_raises_when_the_actor_has_no_active_subscription(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="no-sub"))
-    use_case = ListDevicesUseCase(subscription_repository, remnawave_sdk)
+    use_case = ListDevicesUseCase(subscription_repository, remnawave_sdk, uow)
 
     with pytest.raises(NotFoundError):
         await use_case(actor)
@@ -91,6 +93,7 @@ async def test_deletes_a_device(
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
     remnawave_hwid_store: dict,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="device-deleter"))
     subscription = await _create_active_subscription(subscription_repository, actor.id, 7002)
@@ -107,7 +110,7 @@ async def test_deletes_a_device(
             "updatedAt": datetime.now(timezone.utc).isoformat(),
         }
     ]
-    use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository)
+    use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository, uow)
 
     await use_case(actor, DeleteDeviceDto(hwid="delete-me"))
 
@@ -121,6 +124,7 @@ async def test_rejects_when_disabled(
     user_repository: UserRepository,
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="device-deleter-disabled"))
     await _create_active_subscription(subscription_repository, actor.id, 7003)
@@ -136,7 +140,7 @@ async def test_rejects_when_disabled(
             link_reset_cooldown_hours=current.link_reset_cooldown_hours,
         )
     )
-    use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository)
+    use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository, uow)
 
     with pytest.raises(ValidationError):
         await use_case(actor, DeleteDeviceDto(hwid="whatever"))
@@ -148,6 +152,7 @@ async def test_rejects_within_cooldown(
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
     remnawave_hwid_store: dict,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="device-deleter-cooldown"))
     await _create_active_subscription(subscription_repository, actor.id, 7004)
@@ -164,7 +169,7 @@ async def test_rejects_within_cooldown(
         )
     )
     remnawave_hwid_store[7004] = []
-    use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository)
+    use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository, uow)
     await use_case(actor, DeleteDeviceDto(hwid="first"))
 
     with pytest.raises(CooldownError):
@@ -177,6 +182,7 @@ async def test_deletes_all_devices(
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
     remnawave_hwid_store: dict,
+    uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="device-deleter-all"))
     subscription = await _create_active_subscription(subscription_repository, actor.id, 7005)
@@ -204,7 +210,9 @@ async def test_deletes_all_devices(
             "updatedAt": datetime.now(timezone.utc).isoformat(),
         },
     ]
-    use_case = DeleteAllDevicesUseCase(subscription_repository, remnawave_sdk, settings_repository)
+    use_case = DeleteAllDevicesUseCase(
+        subscription_repository, remnawave_sdk, settings_repository, uow
+    )
 
     await use_case(actor)
 

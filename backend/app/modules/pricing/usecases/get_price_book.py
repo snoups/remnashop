@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -84,12 +85,15 @@ class GetPriceBookUseCase(UseCase[None, PriceBookDto]):
         plan_repository: PlanRepository,
         addon_repository: AddOnRepository,
         pricing_repository: PricingRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._plan_repository = plan_repository
         self._addon_repository = addon_repository
         self._pricing_repository = pricing_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> PriceBookDto:
-        return await build_price_book(
-            self._plan_repository, self._addon_repository, self._pricing_repository
-        )
+        async with self._uow:
+            return await build_price_book(
+                self._plan_repository, self._addon_repository, self._pricing_repository
+            )

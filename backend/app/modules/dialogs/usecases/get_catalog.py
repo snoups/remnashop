@@ -1,3 +1,4 @@
+from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
@@ -9,17 +10,19 @@ from app.modules.users import UserDto
 class GetDialogCatalogUseCase(UseCase[None, DialogCatalogDto]):
     required_permission = Permission.DIALOGS_CATALOG_VIEW
 
-    def __init__(self, dialog_repository: DialogRepository) -> None:
+    def __init__(self, dialog_repository: DialogRepository, uow: UnitOfWork) -> None:
         self._dialog_repository = dialog_repository
+        self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> DialogCatalogDto:
-        windows = await self._dialog_repository.list_all()
-        navigable = sorted({w.key for w in windows} | {w.key for w in catalog.all_windows()})
-        return DialogCatalogDto(
-            action_keys=sorted(catalog.action_keys()),
-            condition_keys=sorted(catalog.condition_keys()),
-            variable_keys=sorted(catalog.variable_keys()),
-            text_variable_keys=sorted(catalog.text_variable_keys()),
-            seed_window_keys=sorted(w.key for w in catalog.all_windows()),
-            navigable_window_keys=navigable,
-        )
+        async with self._uow:
+            windows = await self._dialog_repository.list_all()
+            navigable = sorted({w.key for w in windows} | {w.key for w in catalog.all_windows()})
+            return DialogCatalogDto(
+                action_keys=sorted(catalog.action_keys()),
+                condition_keys=sorted(catalog.condition_keys()),
+                variable_keys=sorted(catalog.variable_keys()),
+                text_variable_keys=sorted(catalog.text_variable_keys()),
+                seed_window_keys=sorted(w.key for w in catalog.all_windows()),
+                navigable_window_keys=navigable,
+            )

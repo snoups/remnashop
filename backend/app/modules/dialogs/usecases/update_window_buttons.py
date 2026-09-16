@@ -42,24 +42,27 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsInput, D
     async def _execute(
         self, actor: UserDto, data: UpdateDialogWindowButtonsInput
     ) -> DialogWindowDto:
-        window = await self._dialog_repository.get_by_key_or_raise(data.key)
-        all_windows = await self._dialog_repository.list_all()
-        navigable = {w.key for w in all_windows} | {w.key for w in catalog.all_windows()}
-        seed_actions = (
-            await self._dialog_repository.seed_action_keys(data.key)
-            if window.kind == DialogWindowKind.SEED
-            else set()
-        )
+        async with self._uow:
+            window = await self._dialog_repository.get_by_key_or_raise(data.key)
+            all_windows = await self._dialog_repository.list_all()
+            navigable = {w.key for w in all_windows} | {w.key for w in catalog.all_windows()}
+            seed_actions = (
+                await self._dialog_repository.seed_action_keys(data.key)
+                if window.kind == DialogWindowKind.SEED
+                else set()
+            )
 
-        seen: set[tuple[int, int]] = set()
-        for button in data.buttons:
-            pos = (button.row, button.column)
-            if pos in seen:
-                raise ValidationError(f"Two buttons at row {button.row}, column {button.column}")
-            seen.add(pos)
-            self._validate_button(button, window, navigable, seed_actions)
+            seen: set[tuple[int, int]] = set()
+            for button in data.buttons:
+                pos = (button.row, button.column)
+                if pos in seen:
+                    raise ValidationError(
+                        f"Two buttons at row {button.row}, column {button.column}"
+                    )
+                seen.add(pos)
+                self._validate_button(button, window, navigable, seed_actions)
 
-        locales = await self._settings_repository.list_active_locales()
+            locales = await self._settings_repository.list_active_locales()
         async with self._uow:
             for button in data.buttons:
                 if button.text_key.startswith(catalog.CUSTOM_TEXT_KEY_PREFIX):

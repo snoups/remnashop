@@ -362,15 +362,19 @@ async def test_create_checkout_invited_plan_requires_a_referrer(
     plan_repository: PlanRepository,
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
+    uow: UnitOfWork,
 ) -> None:
-    await plan_repository.update_access(
-        UpdatePlanAccessDto(
-            plan_id=plan.id,
-            availability=PlanAvailability.INVITED,
-            allowed_telegram_ids=[],
-            allowed_emails=[],
+    # Committed, not just flushed: the refused checkout below rolls its own
+    # transaction back, which would otherwise take this setup with it.
+    async with uow:
+        await plan_repository.update_access(
+            UpdatePlanAccessDto(
+                plan_id=plan.id,
+                availability=PlanAvailability.INVITED,
+                allowed_telegram_ids=[],
+                allowed_emails=[],
+            )
         )
-    )
 
     with pytest.raises(ValidationError):
         await create_checkout_use_case(

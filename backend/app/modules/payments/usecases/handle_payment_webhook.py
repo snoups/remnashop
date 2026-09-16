@@ -46,8 +46,9 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, str]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: HandleWebhookInput) -> str:
-        settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
-        gateway = self._gateway_factory.build(data.gateway_type, settings)
+        async with self._uow:
+            settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
+            gateway = self._gateway_factory.build(data.gateway_type, settings)
 
         try:
             result = await gateway.parse_webhook(data.request)
@@ -102,14 +103,15 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, str]):
         # controls one (YooMoney's quickpay form lets the sender pick `label`
         # and `sum` freely) could otherwise point a cheap payment at an order
         # priced in another gateway's currency.
-        if result.reference:
-            order = await self._payment_order_repository.get_by_idempotency_key(
-                result.reference, gateway_type=gateway_type
-            )
-            if order is not None:
-                return order
-        if result.provider_payment_id:
-            return await self._payment_order_repository.get_by_external_payment_id(
-                result.provider_payment_id, gateway_type=gateway_type
-            )
-        return None
+        async with self._uow:
+            if result.reference:
+                order = await self._payment_order_repository.get_by_idempotency_key(
+                    result.reference, gateway_type=gateway_type
+                )
+                if order is not None:
+                    return order
+            if result.provider_payment_id:
+                return await self._payment_order_repository.get_by_external_payment_id(
+                    result.provider_payment_id, gateway_type=gateway_type
+                )
+            return None
