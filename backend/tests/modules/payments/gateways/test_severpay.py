@@ -1,152 +1,146 @@
 import hashlib
 import hmac
-from datetime import timedelta
-from decimal import Decimal
+import json
+from typing import Any
 
-import httpx
-import orjson
 import pytest
 
 import app.modules.payments.gateways.severpay as severpay_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.gateways.severpay import SeverPayGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"mid": "42", "token": "sp-token"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/severpay"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.SEVERPAY,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+_SETTINGS = {"mid": "1", "token": "tok"}
 
 
 def _gateway() -> SeverPayGateway:
-    return SeverPayGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+    return SeverPayGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(severpay_module, "http_client", httpx.AsyncClient(transport=handler))
+def _hmac(body: bytes) -> str:
+    return hmac.new(b"tok", body, hashlib.sha256).hexdigest()
 
 
-def _sign(body: dict[str, object], token: str = "sp-token") -> str:
-    sorted_body = dict(sorted(body.items()))
-    return hmac.new(token.encode(), orjson.dumps(sorted_body), hashlib.sha256).hexdigest()
+def _assert_signed_request(payload: dict[str, Any]) -> None:
+    sign = payload.pop("sign")
+    ordered = dict(sorted(payload.items()))
+    body = json.dumps(ordered, ensure_ascii=False, separators=(",", ":")).encode()
+    assert sign == _hmac(body)
+    assert payload["mid"] == 1
+    assert payload["salt"]
 
 
-def _webhook_body(data: dict[str, object], webhook_type: str = "payin") -> dict[str, object]:
-    body: dict[str, object] = {"type": webhook_type, "data": data}
-    body["sign"] = _sign(body)
-    return body
-
-
-def _webhook(body: dict[str, object]) -> WebhookRequest:
-    return WebhookRequest(body=orjson.dumps(body), headers={}, query={}, client_ip=None)
-
-
-async def test_create_payment_signs_the_body_and_returns_the_url(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = orjson.loads(request.content)
-        return httpx.Response(
-            200, json={"status": True, "data": {"id": "sp-1", "url": "https://severpay.io/pay/x"}}
-        )
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://severpay.io/pay/x"
-    assert intent.provider_payment_id == "sp-1"
-    body = captured["body"]
-    assert body["order_id"] == "order-key-1"  # type: ignore[index,call-overload]
-    assert body["mid"] == 42  # type: ignore[index,call-overload]
-    assert "sign" in body  # type: ignore[operator]
-    assert "salt" in body  # type: ignore[operator]
-
-
-async def test_create_payment_raises_when_api_reports_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"status": False, "msg": "bad mid"})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
-
-
-async def test_parse_webhook_success_status_returns_result() -> None:
-    body = _webhook_body({"id": "sp-1", "order_id": "order-key-1", "status": "success"})
-
-    result = await _gateway().parse_webhook(_webhook(body))
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = {
-        "type": "payin",
-        "data": {"id": "sp-1", "order_id": "order-key-1", "status": "success"},
-        "sign": "deadbeef",
+def _hook(status: str = "success", *, php_escaped: bool = True, kind: str = "payin") -> bytes:
+    data = {
+        "type": kind,
+        "data": {
+            "id": 123,
+            "order_id": ORDER_REF,
+            "amount": 500.0,
+            "currency": "RUB",
+            "status": status,
+            "note": "Оплата https://shop.example/1",
+        },
+        "salt": "a9f3c2d8e4b1",
     }
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
+    if php_escaped:
+        signed = json.dumps(data, separators=(",", ":")).replace("/", "\\/")
+    else:
+        signed = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps({**data, "sign": _hmac(signed.encode())}).encode()
 
 
-async def test_parse_webhook_missing_signature_raises() -> None:
-    body = {"type": "payin", "data": {"id": "sp-1", "status": "success"}}
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
+def _payin(status: str = "success") -> dict[str, object]:
+    return {
+        "status": True,
+        "msg": "",
+        "data": {
+            "id": 123,
+            "uid": "U1",
+            "order_id": ORDER_REF,
+            "amount": 500.0,
+            "currency": "RUB",
+            "status": status,
+        },
+    }
 
 
-async def test_parse_webhook_non_payin_type_is_a_noop() -> None:
-    body = _webhook_body(
-        {"id": "sp-1", "order_id": "order-key-1", "status": "success"}, webhook_type="payout"
+async def test_create_payment_signs_sorted_body_with_lifetime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    http = install_http(
+        monkeypatch,
+        severpay_module,
+        json_response({"status": True, "msg": "", "data": {"id": 123, "url": "https://sp/1"}}),
     )
 
-    result = await _gateway().parse_webhook(_webhook(body))
+    intent = await _gateway().create_payment(make_order())
 
-    assert result is None
+    payload = http.last_json()
+    assert payload["lifetime"] == 30
+    assert payload["order_id"] == ORDER_REF
+    _assert_signed_request(payload)
+    assert intent.provider_payment_id == "123"
 
 
-async def test_parse_webhook_non_success_status_is_a_noop() -> None:
-    body = _webhook_body({"id": "sp-1", "order_id": "order-key-1", "status": "new"})
+@pytest.mark.parametrize("php_escaped", [True, False])
+async def test_parse_webhook_accepts_both_documented_encodings(php_escaped: bool) -> None:
+    signal = await _gateway().parse_webhook(webhook(_hook(php_escaped=php_escaped)))
 
-    result = await _gateway().parse_webhook(_webhook(body))
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "123"
 
-    assert result is None
+
+async def test_parse_webhook_rejects_a_tampered_body() -> None:
+    body = json.loads(_hook())
+    body["data"]["amount"] = 1.0
+    with pytest.raises(PaymentGatewayError):
+        await _gateway().parse_webhook(webhook(body))
+
+
+async def test_parse_webhook_test_notification_is_ignored_and_fail_does_not_claim() -> None:
+    assert await _gateway().parse_webhook(webhook(_hook(kind="test"))) is None
+    failed = await _gateway().parse_webhook(webhook(_hook("fail")))
+    assert failed is not None and failed.claims_paid is False
+
+
+def test_ack_is_the_documented_json() -> None:
+    ack = _gateway().webhook_ack(None)
+    assert json.loads(ack.body) == {"status": True}
+    assert ack.media_type == "application/json"
+
+
+async def test_confirm_reads_a_signed_payin_get(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, severpay_module, json_response(_payin()))
+    signal = await _gateway().parse_webhook(webhook(_hook()))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(external_payment_id="123"), signal)
+
+    payload = http.last_json()
+    assert confirmed is not None
+    assert http.last.url.path == "/api/merchant/payin/get"
+    assert payload["id"] == 123
+    _assert_signed_request(payload)
+
+
+@pytest.mark.parametrize(
+    "response",
+    [_payin("process"), {"status": False, "msg": "not found"}],
+)
+async def test_confirm_rejects_unfinished_or_unknown_payins(
+    monkeypatch: pytest.MonkeyPatch, response: dict[str, object]
+) -> None:
+    install_http(monkeypatch, severpay_module, json_response(response))
+    signal = await _gateway().parse_webhook(webhook(_hook()))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(external_payment_id="123"), signal) is None

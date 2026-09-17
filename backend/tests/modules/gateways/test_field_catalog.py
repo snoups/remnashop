@@ -73,3 +73,32 @@ def test_validate_gateway_field_values_rejects_an_unknown_currency() -> None:
 
 def test_validate_gateway_field_values_ignores_an_absent_currency() -> None:
     validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"shop_id": "1"})  # does not raise
+
+
+def test_paypalych_signs_with_the_api_token_only() -> None:
+    keys = {spec.key for spec in GATEWAY_FIELD_CATALOG[PaymentGatewayType.PAYPALYCH]}
+    assert keys == {"api_token", "shop_id", "currency"}
+
+
+def test_freekassa_requires_customer_ip() -> None:
+    specs = {spec.key: spec for spec in GATEWAY_FIELD_CATALOG[PaymentGatewayType.FREEKASSA]}
+    assert specs["customer_ip"].required is True
+
+
+def test_riopay_and_valutix_take_an_optional_service_id() -> None:
+    for gateway_type in (PaymentGatewayType.RIOPAY, PaymentGatewayType.VALUTIX):
+        specs = {spec.key: spec for spec in GATEWAY_FIELD_CATALOG[gateway_type]}
+        assert specs["service_id"].required is False
+    riopay_keys = {spec.key for spec in GATEWAY_FIELD_CATALOG[PaymentGatewayType.RIOPAY]}
+    assert "webhook_secret" not in riopay_keys
+
+
+def test_yoomoney_access_token_is_optional() -> None:
+    specs = {spec.key: spec for spec in GATEWAY_FIELD_CATALOG[PaymentGatewayType.YOOMONEY]}
+    assert specs["access_token"].required is False
+
+
+def test_aurapay_and_lava_are_rub_only_and_have_no_currency_field() -> None:
+    for gateway_type in (PaymentGatewayType.AURAPAY, PaymentGatewayType.LAVA):
+        keys = {spec.key for spec in GATEWAY_FIELD_CATALOG[gateway_type]}
+        assert "currency" not in keys

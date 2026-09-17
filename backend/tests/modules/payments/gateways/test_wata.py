@@ -1,7 +1,8 @@
 import base64
 import json
-from datetime import timedelta
-from decimal import Decimal
+from collections.abc import Iterator
+from datetime import datetime, timedelta
+from typing import Final
 
 import httpx
 import pytest
@@ -9,168 +10,143 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 import app.modules.payments.gateways.wata as wata_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
 from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
-from app.modules.payments.gateways.wata import WataGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from app.modules.payments.gateways.wata import WataGateway, clear_public_key_cache
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    HttpRecorder,
+    install_http,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"api_key": "wata-token"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/wata"
-_RETURN_URL = "https://shop.example"
-
-_PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-_PUBLIC_PEM = (
-    _PRIVATE_KEY.public_key()
-    .public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
+_PROVIDER_KEY: Final[rsa.RSAPrivateKey] = rsa.generate_private_key(
+    public_exponent=65537, key_size=2048
+)
+_PUBLIC_PEM: Final[str] = (
+    _PROVIDER_KEY.public_key()
+    .public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
     .decode()
 )
 
 
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.USD,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.WATA,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("10"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("10"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+@pytest.fixture(autouse=True)
+def _fresh_key_cache() -> Iterator[None]:
+    clear_public_key_cache()
+    yield
+    clear_public_key_cache()
 
 
 def _gateway() -> WataGateway:
-    return WataGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+    return WataGateway(settings={"api_key": "tok"}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(wata_module, "http_client", httpx.AsyncClient(transport=handler))
+def _transaction(**overrides: object) -> dict[str, object]:
+    transaction: dict[str, object] = {
+        "id": "tx-1",
+        "kind": "Payment",
+        "status": "Paid",
+        "amount": 500.0,
+        "currency": "RUB",
+        "orderId": ORDER_REF,
+    }
+    transaction.update(overrides)
+    return transaction
 
 
-def _sign(raw: bytes) -> str:
-    signature = _PRIVATE_KEY.sign(raw, padding.PKCS1v15(), hashes.SHA512())
-    return base64.b64encode(signature).decode()
+def _install(monkeypatch: pytest.MonkeyPatch, transaction: dict[str, object]) -> HttpRecorder:
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/public-key"):
+            return httpx.Response(200, json={"value": _PUBLIC_PEM})
+        if request.url.path.endswith("/links"):
+            return httpx.Response(200, json={"id": "link-1", "url": "https://wata/1"})
+        return httpx.Response(200, json=transaction)
+
+    return install_http(monkeypatch, wata_module, respond)
 
 
-def _public_key_response() -> httpx.Response:
-    return httpx.Response(200, json={"value": _PUBLIC_PEM})
+def _signed(kind: str = "Payment", status: str = "Paid") -> tuple[bytes, dict[str, str]]:
+    raw = json.dumps(
+        {
+            "transactionType": "SBP",
+            "kind": kind,
+            "id": "link-1",
+            "transactionId": "tx-1",
+            "transactionStatus": status,
+            "amount": 500.0,
+            "currency": "RUB",
+            "orderId": ORDER_REF,
+        }
+    ).encode()
+    signature = _PROVIDER_KEY.sign(raw, padding.PKCS1v15(), hashes.SHA512())
+    return raw, {"X-Signature": base64.b64encode(signature).decode()}
 
 
-async def test_create_payment_sends_bearer_and_returns_the_link(
+async def test_create_payment_sets_an_expiry_past_the_provider_minimum(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, object] = {}
+    http = _install(monkeypatch, _transaction())
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
-        captured["auth"] = request.headers.get("authorization")
-        return httpx.Response(200, json={"url": "https://wata.pro/pay/x"})
+    intent = await _gateway().create_payment(make_order())
 
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://wata.pro/pay/x"
-    assert captured["auth"] == "Bearer wata-token"
-    body = captured["body"]
-    assert body["orderId"] == "order-key-1"  # type: ignore[index,call-overload]
-    assert body["type"] == "OneTime"  # type: ignore[index,call-overload]
+    body = http.last_json()
+    expiry = datetime.fromisoformat(body["expirationDateTime"].replace("Z", "+00:00"))
+    assert expiry >= datetime_now() + timedelta(minutes=29)
+    assert body["orderId"] == ORDER_REF
+    assert intent.confirmation_url == "https://wata/1"
 
 
-async def test_parse_webhook_verifies_rsa_signature_against_fetched_public_key(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    raw = json.dumps({"orderId": "order-key-1", "transactionStatus": "Paid"}).encode()
+async def test_parse_webhook_verifies_rsa_sha512(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install(monkeypatch, _transaction())
+    raw, headers = _signed()
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path.endswith("/public-key")
-        return _public_key_response()
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
 
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "tx-1"
 
-    result = await _gateway().parse_webhook(
-        WebhookRequest(body=raw, headers={"x-signature": _sign(raw)}, query={}, client_ip=None)
-    )
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_bad_signature_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    raw = json.dumps({"orderId": "order-key-1", "transactionStatus": "Paid"}).encode()
-
-    _patch_transport(monkeypatch, httpx.MockTransport(lambda request: _public_key_response()))
-
-    tampered_sig = _sign(b"a different body")
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(
-            WebhookRequest(
-                body=raw, headers={"x-signature": tampered_sig}, query={}, client_ip=None
-            )
-        )
+        await _gateway().parse_webhook(webhook(raw + b" ", headers))
 
 
-async def test_parse_webhook_missing_signature_raises() -> None:
-    raw = json.dumps({"orderId": "order-key-1", "transactionStatus": "Paid"}).encode()
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(
-            WebhookRequest(body=raw, headers={}, query={}, client_ip=None)
-        )
-
-
-async def test_parse_webhook_declined_status_is_a_noop(monkeypatch: pytest.MonkeyPatch) -> None:
-    raw = json.dumps({"orderId": "order-key-1", "transactionStatus": "Declined"}).encode()
-    _patch_transport(monkeypatch, httpx.MockTransport(lambda request: _public_key_response()))
-
-    result = await _gateway().parse_webhook(
-        WebhookRequest(body=raw, headers={"x-signature": _sign(raw)}, query={}, client_ip=None)
-    )
-    assert result is None
-
-
-async def test_public_key_is_fetched_once_for_repeat_webhooks(
+async def test_parse_webhook_refund_with_paid_status_does_not_claim(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # A new gateway instance is built per request, so the cache has to outlive
-    # the instance or every webhook pays for an extra round-trip.
-    wata_module.clear_public_key_cache()
-    raw = json.dumps({"orderId": "order-key-1", "transactionStatus": "Paid"}).encode()
-    fetches = 0
+    _install(monkeypatch, _transaction())
+    raw, headers = _signed(kind="Refund")
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None and signal.claims_paid is False
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal fetches
-        fetches += 1
-        return _public_key_response()
 
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-    request = WebhookRequest(
-        body=raw, headers={"x-signature": _sign(raw)}, query={}, client_ip=None
-    )
+async def test_confirm_reads_the_transaction(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = _install(monkeypatch, _transaction())
+    raw, headers = _signed()
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None
 
-    assert await _gateway().parse_webhook(request) is not None
-    assert await _gateway().parse_webhook(request) is not None
+    confirmed = await _gateway().confirm(make_order(), signal)
 
-    assert fetches == 1
-    wata_module.clear_public_key_cache()
+    assert confirmed is not None and confirmed.provider_payment_id == "tx-1"
+    assert http.last.url.path == "/api/h2h/transactions/tx-1"
+
+
+@pytest.mark.parametrize(
+    "transaction",
+    [
+        _transaction(status="Declined"),
+        _transaction(kind="Refund"),
+        _transaction(orderId="someone-else"),
+    ],
+)
+async def test_confirm_rejects_unpaid_refund_or_foreign_transactions(
+    monkeypatch: pytest.MonkeyPatch, transaction: dict[str, object]
+) -> None:
+    _install(monkeypatch, transaction)
+    raw, headers = _signed()
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(), signal) is None

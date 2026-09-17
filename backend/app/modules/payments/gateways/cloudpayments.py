@@ -1,33 +1,40 @@
-import base64
-import hashlib
-import hmac
 from typing import Final, Optional
-from urllib.parse import parse_qs, unquote_plus
 
 import orjson
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
+    WebhookAck,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     amount_to_float,
     http_client,
 )
+from app.modules.payments.gateways.common import (
+    PROVIDER_API_TIMEOUT_S,
+    hmac_b64,
+    parse_form,
+    safe_equals,
+    to_decimal,
+)
 
 _API_BASE: Final[str] = "https://api.cloudpayments.ru"
-_PAID_STATUSES: Final[frozenset[str]] = frozenset({"Completed", "Authorized"})
+# Single-stage payments only; Authorized is a two-stage hold.
+_PAID_STATUS: Final[str] = "Completed"
 
 
 class CloudPaymentsGateway(PaymentGateway):
     currency = Currency.RUB
+    ack = WebhookAck(body='{"code": 0}', media_type="application/json")
 
-    def _basic_auth(self) -> str:
-        credentials = f"{self._require('public_id')}:{self._require('api_secret')}"
-        return "Basic " + base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+    def _auth(self) -> tuple[str, str]:
+        return self._require("public_id"), self._require("api_secret")
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
@@ -40,9 +47,7 @@ class CloudPaymentsGateway(PaymentGateway):
             "FailRedirectUrl": self._return_url,
         }
         response = await http_client.post(
-            f"{_API_BASE}/orders/create",
-            json=payload,
-            headers={"Authorization": self._basic_auth(), "Content-Type": "application/json"},
+            f"{_API_BASE}/orders/create", json=payload, auth=self._auth()
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
@@ -59,48 +64,39 @@ class CloudPaymentsGateway(PaymentGateway):
             provider_payment_id=str(order_id) if order_id else None,
         )
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        signature = request.headers.get("content-hmac") or request.headers.get("x-content-hmac")
-        if not signature:
-            raise PaymentGatewayError("CloudPayments webhook missing Content-HMAC header")
-        secret = self._require("api_secret")
-        if not self._signature_matches(secret, request.body, signature):
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        signature = request.headers.get("content-hmac")
+        expected = hmac_b64(self._require("api_secret"), request.body)
+        if not signature or not safe_equals(expected, signature):
             raise PaymentGatewayError("Invalid CloudPayments webhook signature")
 
-        fields = {key: values[0] for key, values in parse_qs(request.body.decode("utf-8")).items()}
-
+        fields = parse_form(request.body, "CloudPayments")
         order_ref = fields.get("InvoiceId")
-        transaction_id = fields.get("TransactionId")
-        status = fields.get("Status", "")
-        if not order_ref or not status:
-            raise PaymentGatewayError("CloudPayments webhook missing 'InvoiceId'/'Status'")
-
-        # Pay notifications carry Reason or AuthCode; the pre-charge Check
-        # notification carries neither and must not be treated as payment.
-        is_pay_notification = bool(fields.get("Reason") or fields.get("AuthCode"))
-        if status not in _PAID_STATUSES or not is_pay_notification:
-            return None
-
-        return WebhookResult(
+        if not order_ref:
+            raise PaymentGatewayError("CloudPayments webhook missing 'InvoiceId'")
+        return WebhookSignal(
             reference=order_ref,
-            status=PaymentOrderStatus.PAID,
-            provider_payment_id=transaction_id,
+            claims_paid=fields.get("Status") == _PAID_STATUS,
+            provider_payment_id=fields.get("TransactionId") or None,
         )
 
-    def webhook_ack(self, result: Optional[WebhookResult]) -> str:
-        return '{"code": 0}'
-
-    @staticmethod
-    def _signature_matches(secret: str, raw_body: bytes, signature: str) -> bool:
-        def calc(data: bytes) -> str:
-            return base64.b64encode(
-                hmac.new(secret.encode("utf-8"), data, hashlib.sha256).digest()
-            ).decode()
-
-        if hmac.compare_digest(calc(raw_body), signature):
-            return True
-        try:
-            decoded = unquote_plus(raw_body.decode("utf-8")).encode("utf-8")
-        except UnicodeDecodeError:
-            return False
-        return hmac.compare_digest(calc(decoded), signature)
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        response = await http_client.post(
+            f"{_API_BASE}/payments/find",
+            json={"InvoiceId": order.idempotency_key},
+            auth=self._auth(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        data = orjson.loads(response.content)
+        if not data.get("Success"):
+            return NOT_PAID
+        model = data.get("Model") or {}
+        transaction_id = model.get("TransactionId")
+        return ProviderPayment(
+            paid=model.get("Status") == _PAID_STATUS,
+            amount=to_decimal(model.get("Amount")),
+            currency=model.get("Currency"),
+            reference=str(model.get("InvoiceId") or ""),
+            provider_payment_id=str(transaction_id) if transaction_id else None,
+        )

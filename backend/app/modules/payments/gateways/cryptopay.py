@@ -4,23 +4,37 @@ from typing import Final, Optional
 
 import orjson
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     http_client,
+)
+from app.modules.payments.gateways.common import (
+    PROVIDER_API_TIMEOUT_S,
+    link_lifetime,
+    parse_json,
+    safe_equals,
+    to_decimal,
 )
 
 _API_BASE: Final[str] = "https://pay.crypt.bot/api"
-_EXPIRES_IN_S: Final[int] = 1800
+_MAX_EXPIRES_IN_S: Final[int] = 2678400
+_PAID_STATUS: Final[str] = "paid"
+_PAID_UPDATE: Final[str] = "invoice_paid"
 
 
 class CryptoPayGateway(PaymentGateway):
     currency = Currency.USD
+
+    def _headers(self) -> dict[str, str]:
+        return {"Crypto-Pay-API-Token": self._require("api_key")}
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
@@ -31,45 +45,77 @@ class CryptoPayGateway(PaymentGateway):
             "payload": order.idempotency_key,
             "paid_btn_name": "openBot",
             "paid_btn_url": self._return_url,
-            "expires_in": _EXPIRES_IN_S,
+            "expires_in": link_lifetime(order, unit="seconds", maximum=_MAX_EXPIRES_IN_S),
         }
         response = await http_client.post(
-            f"{_API_BASE}/createInvoice",
-            json=payload,
-            headers={"Crypto-Pay-API-Token": self._require("api_key")},
+            f"{_API_BASE}/createInvoice", json=payload, headers=self._headers()
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
         if not data.get("ok"):
             raise PaymentGatewayError(f"CryptoPay API error: {data.get('error')}")
 
-        payment_url = data.get("result", {}).get("bot_invoice_url")
+        result = data.get("result") or {}
+        payment_url = result.get("bot_invoice_url")
         if not payment_url:
             raise PaymentGatewayError("CryptoPay response missing 'bot_invoice_url'")
-        return PaymentIntent(confirmation_url=str(payment_url), provider_payment_id=None)
+        invoice_id = result.get("invoice_id")
+        return PaymentIntent(
+            confirmation_url=str(payment_url),
+            provider_payment_id=str(invoice_id) if invoice_id else None,
+        )
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        signature = request.headers.get("crypto-pay-api-signature")
-        if not signature:
-            raise PaymentGatewayError("CryptoPay webhook missing signature header")
-        secret = hashlib.sha256(self._require("api_key").encode()).digest()
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        signature = request.headers.get("crypto-pay-api-signature", "")
+        secret = hashlib.sha256(self._require("api_key").encode("utf-8")).digest()
         expected = hmac.new(secret, request.body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, signature):
+        if not signature or not safe_equals(expected, signature):
             raise PaymentGatewayError("Invalid CryptoPay webhook signature")
 
-        try:
-            data = orjson.loads(request.body)
-        except orjson.JSONDecodeError as error:
-            raise PaymentGatewayError("Malformed CryptoPay webhook") from error
-
-        if data.get("update_type") != "invoice_paid":
+        data = parse_json(request.body, "CryptoPay")
+        if data.get("update_type") != _PAID_UPDATE:
             return None
-
-        invoice = data.get("payload", {})
+        invoice = data.get("payload") or {}
         order_ref = invoice.get("payload")
         if not order_ref:
             raise PaymentGatewayError("CryptoPay invoice missing 'payload'")
+        invoice_id = invoice.get("invoice_id")
+        return WebhookSignal(
+            reference=str(order_ref),
+            claims_paid=invoice.get("status") == _PAID_STATUS,
+            provider_payment_id=str(invoice_id) if invoice_id else None,
+        )
 
-        if invoice.get("status") != "paid":
-            return None
-        return WebhookResult(reference=str(order_ref), status=PaymentOrderStatus.PAID)
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        if not order.external_payment_id:
+            return NOT_PAID
+        response = await http_client.get(
+            f"{_API_BASE}/getInvoices",
+            params={"invoice_ids": order.external_payment_id},
+            headers=self._headers(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        data = orjson.loads(response.content)
+        if not data.get("ok"):
+            raise PaymentGatewayError(f"CryptoPay getInvoices error: {data.get('error')}")
+        result = data.get("result") or {}
+        items = result.get("items") if isinstance(result, dict) else result
+        invoice = next(
+            (
+                item
+                for item in items or []
+                if str(item.get("invoice_id")) == order.external_payment_id
+            ),
+            None,
+        )
+        if invoice is None:
+            return NOT_PAID
+        is_fiat = invoice.get("currency_type") == "fiat"
+        return ProviderPayment(
+            paid=invoice.get("status") == _PAID_STATUS,
+            amount=to_decimal(invoice.get("amount")),
+            currency=invoice.get("fiat") if is_fiat else invoice.get("asset"),
+            reference=str(invoice.get("payload") or ""),
+            provider_payment_id=str(invoice.get("invoice_id")),
+        )

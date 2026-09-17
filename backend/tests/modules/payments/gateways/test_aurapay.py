@@ -1,140 +1,135 @@
 import hashlib
 import hmac
 import json
-from datetime import timedelta
-from decimal import Decimal
+from typing import Any
 
-import httpx
 import pytest
 
 import app.modules.payments.gateways.aurapay as aurapay_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.aurapay import AuraPayGateway
-from app.modules.payments.gateways.base import WebhookRequest
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"api_key": "ap-key", "shop_id": "shop-1", "secret_key": "ap-secret"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/aurapay"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.AURAPAY,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+_SETTINGS = {"api_key": "key", "shop_id": "shop-1", "secret_key": "secret2"}
 
 
 def _gateway() -> AuraPayGateway:
-    return AuraPayGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+    return AuraPayGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(aurapay_module, "http_client", httpx.AsyncClient(transport=handler))
+def _docs_signature(params: dict[str, Any]) -> str:
+    ordered = dict(sorted(params.items()))
+    concatenated = "".join("" if v is None else str(v) for v in ordered.values())
+    return hmac.new(b"secret2", concatenated.encode(), hashlib.sha256).hexdigest()
 
 
-def _sign(payload: dict[str, object], secret: str = "ap-secret") -> str:
-    concatenated = "".join(
-        str(payload[key]) if payload[key] is not None else "" for key in sorted(payload)
+def _hook(status: str = "PAID") -> dict[str, Any]:
+    return {
+        "id": "inv-1",
+        "amount": "500.00",
+        "status": status,
+        "comment": "Order #42",
+        "service": "sbp",
+        "shop_id": "shop-1",
+        "order_id": ORDER_REF,
+        "custom_fields": None,
+    }
+
+
+async def test_create_payment_sends_lifetime_in_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(
+        monkeypatch,
+        aurapay_module,
+        json_response({"id": "inv-1", "payment_data": {"url": "https://aura/1"}}),
     )
-    return hmac.new(secret.encode(), concatenated.encode(), hashlib.sha256).hexdigest()
+
+    intent = await _gateway().create_payment(make_order())
+
+    body = http.last_json()
+    assert 1 <= body["lifetime"] <= 30
+    assert body["order_id"] == ORDER_REF
+    assert http.last.headers["X-ShopId"] == "shop-1"
+    assert intent.provider_payment_id == "inv-1"
 
 
-def _signed_webhook(body: dict[str, object]) -> WebhookRequest:
-    raw = json.dumps(body).encode()
-    return WebhookRequest(body=raw, headers={"x-signature": _sign(body)}, query={}, client_ip=None)
+async def test_parse_webhook_matches_the_docs_signature() -> None:
+    body = _hook()
+    signal = await _gateway().parse_webhook(
+        webhook(json.dumps(body).encode(), {"X-SIGNATURE": _docs_signature(body)})
+    )
+
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "inv-1"
 
 
-async def test_create_payment_sends_headers_and_returns_the_nested_url(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
-        captured["api_key"] = request.headers.get("x-apikey")
-        captured["shop_id"] = request.headers.get("x-shopid")
-        return httpx.Response(
-            200, json={"id": "ap-1", "payment_data": {"url": "https://app.aurapay.tech/pay/x"}}
+async def test_parse_webhook_rejects_tampering_and_ignores_unpaid() -> None:
+    body = _hook()
+    tampered = {**body, "amount": "1.00"}
+    with pytest.raises(PaymentGatewayError):
+        await _gateway().parse_webhook(
+            webhook(json.dumps(tampered).encode(), {"X-SIGNATURE": _docs_signature(body)})
         )
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://app.aurapay.tech/pay/x"
-    assert intent.provider_payment_id == "ap-1"
-    assert captured["api_key"] == "ap-key"
-    assert captured["shop_id"] == "shop-1"
-    body = captured["body"]
-    assert body["order_id"] == "order-key-1"  # type: ignore[index,call-overload]
-
-
-async def test_create_payment_raises_when_url_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"id": "ap-1", "payment_data": {}})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
-
-
-async def test_parse_webhook_paid_status_returns_result() -> None:
-    result = await _gateway().parse_webhook(
-        _signed_webhook({"id": "ap-1", "order_id": "order-key-1", "status": "PAID"})
+    expired = _hook("EXPIRED")
+    signal = await _gateway().parse_webhook(
+        webhook(json.dumps(expired).encode(), {"X-SIGNATURE": _docs_signature(expired)})
     )
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
+    assert signal is not None and signal.claims_paid is False
 
 
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = {"id": "ap-1", "order_id": "order-key-1", "status": "PAID"}
-    request = WebhookRequest(
-        body=json.dumps(body).encode(),
-        headers={"x-signature": "deadbeef"},
-        query={},
-        client_ip=None,
+async def test_confirm_reads_invoice_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(
+        monkeypatch,
+        aurapay_module,
+        json_response({"id": "inv-1", "order_id": ORDER_REF, "amount": 500, "status": "PAID"}),
     )
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
-
-
-async def test_parse_webhook_missing_signature_raises() -> None:
-    body = {"id": "ap-1", "order_id": "order-key-1", "status": "PAID"}
-    request = WebhookRequest(body=json.dumps(body).encode(), headers={}, query={}, client_ip=None)
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
-
-
-async def test_parse_webhook_non_paid_status_is_a_noop() -> None:
-    result = await _gateway().parse_webhook(
-        _signed_webhook({"id": "ap-1", "order_id": "order-key-1", "status": "PENDING"})
+    body = _hook()
+    signal = await _gateway().parse_webhook(
+        webhook(json.dumps(body).encode(), {"X-SIGNATURE": _docs_signature(body)})
     )
-    assert result is None
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(external_payment_id="inv-1"), signal)
+
+    assert confirmed is not None
+    assert http.last.url.path == "/invoice/status"
+    assert http.last_json() == {"id": "inv-1"}
+
+
+async def test_confirm_rejects_a_pending_invoice(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(
+        monkeypatch,
+        aurapay_module,
+        json_response({"id": "inv-1", "order_id": ORDER_REF, "amount": 500, "status": "PENDING"}),
+    )
+    body = _hook()
+    signal = await _gateway().parse_webhook(
+        webhook(json.dumps(body).encode(), {"X-SIGNATURE": _docs_signature(body)})
+    )
+    assert signal is not None
+    assert await _gateway().confirm(make_order(external_payment_id="inv-1"), signal) is None
+
+
+async def test_confirm_rejects_a_usd_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(
+        monkeypatch,
+        aurapay_module,
+        json_response({"id": "inv-1", "order_id": ORDER_REF, "amount": 500, "status": "PAID"}),
+    )
+    body = _hook()
+    signal = await _gateway().parse_webhook(
+        webhook(json.dumps(body).encode(), {"X-SIGNATURE": _docs_signature(body)})
+    )
+    assert signal is not None
+
+    order = make_order(external_payment_id="inv-1", currency=Currency.USD)
+    assert await _gateway().confirm(order, signal) is None

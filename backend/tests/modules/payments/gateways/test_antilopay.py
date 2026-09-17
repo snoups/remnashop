@@ -1,189 +1,184 @@
 import base64
 import json
-from datetime import timedelta
-from decimal import Decimal
+from typing import Final
 
-import httpx
 import pytest
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 import app.modules.payments.gateways.antilopay as antilopay_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.antilopay import AntilopayGateway
-from app.modules.payments.gateways.base import WebhookRequest
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-_PUBLIC_KEY = _PRIVATE_KEY.public_key()
+_MERCHANT_KEY: Final[rsa.RSAPrivateKey] = rsa.generate_private_key(
+    public_exponent=65537, key_size=2048
+)
+_PROVIDER_KEY: Final[rsa.RSAPrivateKey] = rsa.generate_private_key(
+    public_exponent=65537, key_size=2048
+)
 
 
-def _b64_der_private() -> str:
-    der = _PRIVATE_KEY.private_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
+def _b64(data: bytes) -> str:
+    return base64.b64encode(data).decode()
+
+
+def _settings(public_key_format: str = "der") -> dict[str, str]:
+    public_key = _PROVIDER_KEY.public_key()
+    if public_key_format == "der":
+        encoded = _b64(
+            public_key.public_bytes(
+                serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+        )
+    else:
+        encoded = public_key.public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode()
+    private_der = _MERCHANT_KEY.private_bytes(
+        serialization.Encoding.DER,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
     )
-    return base64.b64encode(der).decode()
-
-
-def _b64_der_public() -> str:
-    der = _PUBLIC_KEY.public_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    return base64.b64encode(der).decode()
-
-
-_SETTINGS = {
-    "secret_id": "secret-1",
-    "private_key": _b64_der_private(),
-    "public_key": _b64_der_public(),
-    "project_id": "project-1",
-}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/antilopay"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.ANTILOPAY,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
+    return {
+        "secret_id": "sid",
+        "private_key": _b64(private_der),
+        "public_key": encoded,
+        "project_id": "P1",
     }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
 
 
-def _gateway() -> AntilopayGateway:
-    return AntilopayGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
-
-
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(antilopay_module, "http_client", httpx.AsyncClient(transport=handler))
-
-
-def _sign(raw_body: bytes) -> str:
-    signature = _PRIVATE_KEY.sign(raw_body, padding.PKCS1v15(), hashes.SHA256())
-    return base64.b64encode(signature).decode()
-
-
-def _signed_webhook(body: dict[str, object]) -> WebhookRequest:
-    raw = json.dumps(body).encode()
-    return WebhookRequest(
-        body=raw, headers={"x-apay-callback": _sign(raw)}, query={}, client_ip=None
+def _gateway(public_key_format: str = "der") -> AntilopayGateway:
+    return AntilopayGateway(
+        settings=_settings(public_key_format), webhook_url=WEBHOOK_URL, return_url=RETURN_URL
     )
 
 
-async def test_create_payment_signs_the_body_and_returns_the_url(
+def _provider_headers(body: bytes) -> dict[str, str]:
+    signature = _PROVIDER_KEY.sign(body, padding.PKCS1v15(), hashes.SHA256())
+    return {"X-Apay-Callback": _b64(signature), "X-Apay-Callback-Version": "1"}
+
+
+def _assert_merchant_signed(body: bytes, signature: str) -> None:
+    _MERCHANT_KEY.public_key().verify(
+        base64.b64decode(signature), body, padding.PKCS1v15(), hashes.SHA256()
+    )
+
+
+def _callback(status: str = "SUCCESS", kind: str = "payment") -> bytes:
+    return json.dumps(
+        {
+            "type": kind,
+            "payment_id": "APAY1",
+            "order_id": ORDER_REF,
+            "amount": 490.0,
+            "original_amount": 500.0,
+            "fee": 10.0,
+            "status": status,
+            "currency": "RUB",
+        }
+    ).encode()
+
+
+def _check(**overrides: object) -> dict[str, object]:
+    body: dict[str, object] = {
+        "code": 0,
+        "payment_id": "APAY1",
+        "order_id": ORDER_REF,
+        "amount": 490.0,
+        "original_amount": 500.0,
+        "status": "SUCCESS",
+        "currency": "RUB",
+    }
+    body.update(overrides)
+    return body
+
+
+async def test_create_payment_posts_a_signed_body_to_api_v1(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, object] = {}
+    http = install_http(
+        monkeypatch,
+        antilopay_module,
+        json_response({"code": 0, "payment_id": "APAY1", "payment_url": "https://gate/1"}),
+    )
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
-        captured["secret_id"] = request.headers.get("x-apay-secret-id")
-        captured["sign"] = request.headers.get("x-apay-sign")
-        return httpx.Response(
-            200,
-            json={
-                "code": 0,
-                "payment_id": "alp-1",
-                "payment_url": "https://lk.antilopay.com/pay/x",
-            },
-        )
+    intent = await _gateway().create_payment(make_order())
 
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://lk.antilopay.com/pay/x"
-    assert intent.provider_payment_id == "alp-1"
-    assert captured["secret_id"] == "secret-1"
-    assert captured["sign"]
-    body = captured["body"]
-    assert body["order_id"] == "order-key-1"  # type: ignore[index,call-overload]
-    assert body["project_identificator"] == "project-1"  # type: ignore[index,call-overload]
+    assert http.last.url.path == "/api/v1/payment/create"
+    assert http.last.headers["X-Apay-Secret-Id"] == "sid"
+    assert http.last.headers["X-Apay-Sign-Version"] == "1"
+    _assert_merchant_signed(http.last.content, http.last.headers["X-Apay-Sign"])
+    assert intent.provider_payment_id == "APAY1"
 
 
-async def test_create_payment_raises_on_a_nonzero_api_code(monkeypatch: pytest.MonkeyPatch) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"code": 1, "message": "bad project"})
+@pytest.mark.parametrize("key_format", ["der", "pem"])
+async def test_parse_webhook_verifies_the_callback_signature(key_format: str) -> None:
+    raw = _callback()
+    signal = await _gateway(key_format).parse_webhook(webhook(raw, _provider_headers(raw)))
 
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "APAY1"
 
+
+async def test_parse_webhook_rejects_missing_or_bad_signatures() -> None:
+    raw = _callback()
     with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
-
-
-async def test_parse_webhook_success_status_returns_result() -> None:
-    result = await _gateway().parse_webhook(
-        _signed_webhook({"type": "payment", "order_id": "order-key-1", "status": "SUCCESS"})
-    )
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = json.dumps({"type": "payment", "order_id": "order-key-1", "status": "SUCCESS"}).encode()
-    request = WebhookRequest(
-        body=body,
-        headers={"x-apay-callback": base64.b64encode(b"garbage").decode()},
-        query={},
-        client_ip=None,
-    )
+        await _gateway().parse_webhook(webhook(raw))
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
+        await _gateway().parse_webhook(webhook(raw, _provider_headers(b"other")))
 
 
-async def test_parse_webhook_malformed_signature_header_raises() -> None:
-    body = json.dumps({"type": "payment", "order_id": "order-key-1", "status": "SUCCESS"}).encode()
-    request = WebhookRequest(
-        body=body, headers={"x-apay-callback": "not-valid-base64!!"}, query={}, client_ip=None
-    )
+async def test_parse_webhook_ignores_other_types_and_failures() -> None:
+    refund = _callback(kind="refund")
+    assert await _gateway().parse_webhook(webhook(refund, _provider_headers(refund))) is None
+    failed = _callback("FAIL")
+    signal = await _gateway().parse_webhook(webhook(failed, _provider_headers(failed)))
+    assert signal is not None and signal.claims_paid is False
+
+
+async def test_confirm_checks_the_payment_by_order_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, antilopay_module, json_response(_check()))
+    raw = _callback()
+    signal = await _gateway().parse_webhook(webhook(raw, _provider_headers(raw)))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(), signal)
+
+    assert confirmed is not None
+    assert confirmed.amount == 500
+    assert http.last.url.path == "/api/v1/payment/check"
+    assert json.loads(http.last.content) == {"project_identificator": "P1", "order_id": ORDER_REF}
+    _assert_merchant_signed(http.last.content, http.last.headers["X-Apay-Sign"])
+
+
+@pytest.mark.parametrize(
+    "response",
+    [_check(original_amount=400.0), _check(status="PENDING"), {"code": 8, "error": "not found"}],
+)
+async def test_confirm_rejects_short_unpaid_or_unknown_payments(
+    monkeypatch: pytest.MonkeyPatch, response: dict[str, object]
+) -> None:
+    install_http(monkeypatch, antilopay_module, json_response(response))
+    raw = _callback()
+    signal = await _gateway().parse_webhook(webhook(raw, _provider_headers(raw)))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(), signal) is None
+
+
+async def test_confirm_raises_on_api_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, antilopay_module, json_response({"code": 3, "error": "bad sign"}))
+    raw = _callback()
+    signal = await _gateway().parse_webhook(webhook(raw, _provider_headers(raw)))
+    assert signal is not None
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
-
-
-async def test_parse_webhook_missing_signature_raises() -> None:
-    body = json.dumps({"order_id": "order-key-1", "status": "SUCCESS"}).encode()
-    request = WebhookRequest(body=body, headers={}, query={}, client_ip=None)
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
-
-
-async def test_parse_webhook_non_payment_type_is_a_noop() -> None:
-    result = await _gateway().parse_webhook(
-        _signed_webhook({"type": "refund", "order_id": "order-key-1", "status": "SUCCESS"})
-    )
-    assert result is None
-
-
-async def test_parse_webhook_pending_status_is_a_noop() -> None:
-    result = await _gateway().parse_webhook(
-        _signed_webhook({"type": "payment", "order_id": "order-key-1", "status": "PENDING"})
-    )
-    assert result is None
+        await _gateway().confirm(make_order(), signal)

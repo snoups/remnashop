@@ -1,103 +1,115 @@
-import json
-from datetime import timedelta
-from decimal import Decimal
-
-import httpx
 import pytest
 
 import app.modules.payments.gateways.paymaster as paymaster_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
+from app.modules.payments.gateways.common import format_utc
 from app.modules.payments.gateways.paymaster import PayMasterGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"merchant_id": "merchant-1", "api_key": "bearer-token"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/paymaster"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.PAYMASTER,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+_SETTINGS = {"merchant_id": "m-1", "api_key": "token"}
 
 
 def _gateway() -> PayMasterGateway:
-    return PayMasterGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+    return PayMasterGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(paymaster_module, "http_client", httpx.AsyncClient(transport=handler))
+def _payment(**overrides: object) -> dict[str, object]:
+    payment: dict[str, object] = {
+        "id": "9755",
+        "status": "Settled",
+        "amount": {"value": 500.0, "currency": "RUB"},
+        "invoice": {"description": "Order #42", "orderNo": ORDER_REF},
+    }
+    payment.update(overrides)
+    return payment
 
 
-def _webhook(body: dict[str, object]) -> WebhookRequest:
-    return WebhookRequest(body=json.dumps(body).encode(), headers={}, query={}, client_ip=None)
-
-
-async def test_create_payment_sends_the_idempotency_key_and_returns_the_url(
+async def test_create_payment_sends_order_no_expiry_and_idempotency_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, object] = {}
+    http = install_http(
+        monkeypatch,
+        paymaster_module,
+        json_response({"paymentId": "9755", "url": "https://paymaster.ru/pay/1"}),
+    )
+    order = make_order()
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
-        captured["headers"] = request.headers
-        return httpx.Response(200, json={"paymentId": "pm-1", "url": "https://paymaster.ru/pay/1"})
+    intent = await _gateway().create_payment(order)
 
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
+    body = http.last_json()
+    assert intent.provider_payment_id == "9755"
     assert intent.confirmation_url == "https://paymaster.ru/pay/1"
-    assert intent.provider_payment_id == "pm-1"
-    headers = captured["headers"]
-    assert headers["authorization"] == "Bearer bearer-token"  # type: ignore[index]
-    assert headers["idempotency-key"] == "order-key-1"  # type: ignore[index]
-    body = captured["body"]
-    assert body["merchantId"] == "merchant-1"  # type: ignore[index,call-overload]
-    assert body["protocol"]["callbackUrl"] == _WEBHOOK_URL  # type: ignore[index,call-overload]
+    assert body["invoice"]["orderNo"] == ORDER_REF
+    assert body["invoice"]["expires"] == format_utc(order.expires_at)
+    assert http.last.headers["Idempotency-Key"] == ORDER_REF
+    assert http.last.headers["Authorization"] == "Bearer token"
 
 
-async def test_parse_webhook_settled_status_returns_paid() -> None:
-    result = await _gateway().parse_webhook(_webhook({"id": "pm-1", "status": "Settled"}))
-
-    assert result is not None
-    assert result.reference == ""
-    assert result.provider_payment_id == "pm-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_cancelled_status_returns_none() -> None:
-    result = await _gateway().parse_webhook(_webhook({"id": "pm-1", "status": "Cancelled"}))
-
-    assert result is None
-
-
-async def test_parse_webhook_missing_id_raises() -> None:
+async def test_create_payment_requires_a_payment_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, paymaster_module, json_response({"url": "https://pay"}))
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook({"status": "Settled"}))
+        await _gateway().create_payment(make_order())
+
+
+async def test_parse_webhook_claims_paid_only_when_settled() -> None:
+    settled = await _gateway().parse_webhook(webhook(_payment()))
+    authorized = await _gateway().parse_webhook(webhook(_payment(status="Authorized")))
+
+    assert settled is not None and settled.claims_paid is True
+    assert settled.provider_payment_id == "9755"
+    assert settled.reference == ORDER_REF
+    assert authorized is not None and authorized.claims_paid is False
+
+
+async def test_parse_webhook_requires_an_id() -> None:
+    with pytest.raises(PaymentGatewayError):
+        await _gateway().parse_webhook(webhook({"status": "Settled"}))
+
+
+async def test_confirm_reads_the_stored_payment(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, paymaster_module, json_response(_payment()))
+    signal = await _gateway().parse_webhook(webhook(_payment()))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(external_payment_id="9755"), signal)
+
+    assert confirmed is not None
+    assert http.last.url.path == "/api/v2/payments/9755"
+
+
+async def test_confirm_rejects_a_forged_webhook(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, paymaster_module, json_response(_payment(status="Authorized")))
+    signal = await _gateway().parse_webhook(webhook(_payment()))
+    assert signal is not None
+
+    assert await _gateway().confirm(make_order(external_payment_id="9755"), signal) is None
+
+
+async def test_confirm_trusts_the_id_scoped_query_when_order_no_is_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_http(
+        monkeypatch, paymaster_module, json_response(_payment(invoice={"description": "Order"}))
+    )
+    signal = await _gateway().parse_webhook(webhook(_payment()))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(external_payment_id="9755"), signal)
+
+    assert confirmed is not None
+
+
+async def test_confirm_rejects_a_different_order_no(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, paymaster_module, json_response(_payment(invoice={"orderNo": "x"})))
+    signal = await _gateway().parse_webhook(webhook(_payment()))
+    assert signal is not None
+
+    assert await _gateway().confirm(make_order(external_payment_id="9755"), signal) is None

@@ -1,22 +1,32 @@
-import hashlib
-import hmac
-from decimal import Decimal, InvalidOperation
 from typing import Final, Optional
-from urllib.parse import parse_qs, quote
+from urllib.parse import quote
 
-from app.core.enums import Currency, PaymentOrderStatus
+import orjson
+
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     http_client,
+)
+from app.modules.payments.gateways.common import (
+    PROVIDER_API_TIMEOUT_S,
+    hmac_hex,
+    parse_form,
+    safe_equals,
+    to_decimal,
 )
 
 _API_BASE: Final[str] = "https://yoomoney.ru"
 _TEST_NOTIFICATION: Final[str] = "test-notification"
+_PAID_STATUS: Final[str] = "success"
+_INCOMING: Final[str] = "in"
 
 
 class YooMoneyGateway(PaymentGateway):
@@ -37,48 +47,63 @@ class YooMoneyGateway(PaymentGateway):
         response.raise_for_status()
         return PaymentIntent(confirmation_url=str(response.url), provider_payment_id=None)
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        try:
-            parsed = parse_qs(request.body.decode("utf-8"), keep_blank_values=True)
-        except UnicodeDecodeError as error:
-            raise PaymentGatewayError("Malformed YooMoney webhook") from error
-        data = {key: values[0] for key, values in parsed.items()}
-
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        data = parse_form(request.body, "YooMoney")
         if data.get("operation_id") == _TEST_NOTIFICATION:
             return None
-
         if not self._signature_valid(data):
             raise PaymentGatewayError("Invalid YooMoney webhook signature")
 
         label = data.get("label")
         if not label:
             raise PaymentGatewayError("YooMoney webhook missing 'label'")
-
-        # 'withdraw_amount' is what the sender was debited; 'amount' is what
-        # reached the receiver, i.e. net of the transfer fee -- checking the
-        # latter against the order price rejects a real payment whenever the
-        # fee comes off the receiver's side.
-        try:
-            amount = Decimal(str(data.get("withdraw_amount", "")))
-        except InvalidOperation:
-            amount = None
-
-        return WebhookResult(
+        # withdraw_amount is what the sender paid; amount is net of the fee.
+        unaccepted = data.get("unaccepted") == "true"
+        codepro = data.get("codepro") == "true"
+        return WebhookSignal(
             reference=label,
-            status=PaymentOrderStatus.PAID,
-            provider_payment_id=data.get("operation_id"),
-            amount=amount,
+            claims_paid=not (unaccepted or codepro),
+            provider_payment_id=data.get("operation_id") or None,
+            amount=to_decimal(data.get("withdraw_amount")),
         )
 
     def _signature_valid(self, data: dict[str, str]) -> bool:
         received_sign = data.get("sign", "")
         if not received_sign:
             return False
-        sign_str = "&".join(
+        message = "&".join(
             f"{key}={quote(value, safe='')}" for key, value in sorted(data.items()) if key != "sign"
         )
-        secret = self._require("secret_key")
-        computed_sign = hmac.new(
-            secret.encode("utf-8"), sign_str.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        return hmac.compare_digest(computed_sign, received_sign)
+        expected = hmac_hex(self._require("secret_key"), message.encode("utf-8"))
+        return safe_equals(expected, received_sign)
+
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        if signal.amount is None:
+            return NOT_PAID
+        token = self._optional("access_token")
+        if token is None:
+            return ProviderPayment(
+                paid=True,
+                amount=signal.amount,
+                reference=signal.reference,
+                provider_payment_id=signal.provider_payment_id,
+            )
+        if not signal.provider_payment_id:
+            return NOT_PAID
+
+        response = await http_client.post(
+            f"{_API_BASE}/api/operation-details",
+            data={"operation_id": signal.provider_payment_id},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        details = orjson.loads(response.content)
+        if details.get("error"):
+            raise PaymentGatewayError(f"YooMoney operation-details error: {details['error']}")
+        return ProviderPayment(
+            paid=details.get("status") == _PAID_STATUS and details.get("direction") == _INCOMING,
+            amount=signal.amount,
+            reference=str(details.get("label") or ""),
+            provider_payment_id=str(details.get("operation_id") or signal.provider_payment_id),
+        )

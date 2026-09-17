@@ -1,35 +1,52 @@
 import pathlib
 from decimal import Decimal
+from typing import Optional
 
 import pytest
 
-from app.core.enums import PaymentOrderStatus
+from app.core.enums import Currency
+from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
+    WebhookAck,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     amount_to_float,
-    ip_in_networks,
 )
+from app.modules.payments.gateways.registry import GATEWAY_REGISTRY
+from tests.modules.payments.gateways.support import ORDER_REF, RETURN_URL, WEBHOOK_URL, make_order
+
+_SIGNAL = WebhookSignal(reference=ORDER_REF, claims_paid=True)
 
 
-def test_ip_in_networks_matches_cidr() -> None:
-    assert ip_in_networks("91.227.144.54", ("91.227.144.0/24",)) is True
+class _Gateway(PaymentGateway):
+    currency = Currency.RUB
+
+    def __init__(self, payment: Optional[ProviderPayment]) -> None:
+        super().__init__(settings={}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+        self._payment = payment
+
+    async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
+        raise NotImplementedError
+
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        return None
+
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        assert self._payment is not None
+        return self._payment
 
 
-def test_ip_in_networks_rejects_outside_cidr() -> None:
-    assert ip_in_networks("10.0.0.1", ("91.227.144.0/24",)) is False
-
-
-def test_ip_in_networks_rejects_garbage_input() -> None:
-    assert ip_in_networks("not-an-ip", ("91.227.144.0/24",)) is False
-    assert ip_in_networks("91.227.144.54", ("bogus-net",)) is False
+def _paid(**overrides: object) -> ProviderPayment:
+    values: dict[str, object] = {"paid": True, "amount": Decimal("500"), "reference": ORDER_REF}
+    values.update(overrides)
+    return ProviderPayment(**values)  # type: ignore[arg-type]
 
 
 def test_amount_to_float_rounds_to_two_places() -> None:
     assert amount_to_float(Decimal("19.999")) == 20.0
-    assert amount_to_float(Decimal("500")) == 500.0
 
 
 def test_payment_gateway_is_abstract() -> None:
@@ -41,15 +58,50 @@ def test_dataclasses_are_frozen() -> None:
     intent = PaymentIntent(confirmation_url="https://pay", provider_payment_id="p1")
     with pytest.raises(Exception):
         intent.confirmation_url = "mutated"  # type: ignore[misc]
-    result = WebhookResult(reference="ref", status=PaymentOrderStatus.PAID)
-    assert result.provider_payment_id is None
-    req = WebhookRequest(body=b"{}", headers={}, query={}, client_ip=None)
-    assert req.body == b"{}"
+    assert _SIGNAL.provider_payment_id is None
+    assert WebhookAck().body == ""
+    assert WebhookRequest(body=b"{}", headers={}).body == b"{}"
+
+
+async def test_confirm_accepts_a_paid_payment_matching_the_order() -> None:
+    payment = _paid(currency="rub", reference=ORDER_REF)
+    assert await _Gateway(payment).confirm(make_order(), _SIGNAL) is payment
+
+
+async def test_confirm_accepts_overpayment_and_missing_optional_fields() -> None:
+    assert await _Gateway(_paid(amount=Decimal("501"))).confirm(make_order(), _SIGNAL)
+    assert await _Gateway(_paid(amount=None)).confirm(make_order(), _SIGNAL)
+
+
+@pytest.mark.parametrize(
+    "payment",
+    [
+        ProviderPayment(paid=False, amount=Decimal("500"), reference=ORDER_REF),
+        _paid(amount=Decimal("499.99")),
+        _paid(currency="USD"),
+        _paid(reference="someone-else"),
+        _paid(reference=""),
+    ],
+)
+async def test_confirm_rejects(payment: ProviderPayment) -> None:
+    assert await _Gateway(payment).confirm(make_order(), _SIGNAL) is None
+
+
+def test_every_registered_gateway_implements_the_full_contract() -> None:
+    for gateway_class in GATEWAY_REGISTRY.values():
+        assert gateway_class.__abstractmethods__ == frozenset(), gateway_class.__name__
+
+
+def test_fetch_payment_is_abstract() -> None:
+    assert "fetch_payment" in PaymentGateway.__abstractmethods__
+
+
+def test_webhook_ack_defaults_to_the_class_ack() -> None:
+    assert _Gateway(None).webhook_ack(None) == WebhookAck()
 
 
 def test_gateways_package_imports_no_web_framework() -> None:
     package = pathlib.Path(__file__).parents[4] / "app" / "modules" / "payments" / "gateways"
-    assert (package / "base.py").is_file()
     offenders = []
     for path in package.glob("*.py"):
         text = path.read_text()

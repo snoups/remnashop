@@ -7,12 +7,8 @@ from app.modules.payments.gateways.base import PaymentGateway
 from app.modules.payments.gateways.cloudpayments import CloudPaymentsGateway
 from app.modules.payments.gateways.cryptomus import CryptomusGateway
 from app.modules.payments.gateways.cryptopay import CryptoPayGateway
-from app.modules.payments.gateways.donut import DonutGateway
-from app.modules.payments.gateways.etoplatezhi import EtoplatezhiGateway
 from app.modules.payments.gateways.freekassa import FreeKassaGateway
 from app.modules.payments.gateways.heleket import HeleketGateway
-from app.modules.payments.gateways.jupiter import JupiterGateway
-from app.modules.payments.gateways.kassa_ai import KassaAIGateway
 from app.modules.payments.gateways.lava import LavaGateway
 from app.modules.payments.gateways.mulenpay import MulenPayGateway
 from app.modules.payments.gateways.paymaster import PayMasterGateway
@@ -49,12 +45,8 @@ GATEWAY_REGISTRY: Final[dict[PaymentGatewayType, type[PaymentGateway]]] = {
     PaymentGatewayType.RIOPAY: RioPayGateway,
     PaymentGatewayType.SEVERPAY: SeverPayGateway,
     PaymentGatewayType.PAYPEAR: PayPearGateway,
-    PaymentGatewayType.ETOPLATEZHI: EtoplatezhiGateway,
-    PaymentGatewayType.JUPITER: JupiterGateway,
-    PaymentGatewayType.DONUT: DonutGateway,
     PaymentGatewayType.LAVA: LavaGateway,
     PaymentGatewayType.CLOUDPAYMENTS: CloudPaymentsGateway,
-    PaymentGatewayType.KASSAAI: KassaAIGateway,
     PaymentGatewayType.PAYPALYCH: PaypalychGateway,
 }
 

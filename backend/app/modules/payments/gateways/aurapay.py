@@ -1,22 +1,32 @@
-import hashlib
-import hmac
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 import orjson
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     amount_to_float,
     http_client,
 )
+from app.modules.payments.gateways.common import (
+    PROVIDER_API_TIMEOUT_S,
+    hmac_hex,
+    link_lifetime,
+    parse_json,
+    safe_equals,
+    to_decimal,
+)
 
 _API_BASE: Final[str] = "https://app.aurapay.tech"
+_PAID_STATUS: Final[str] = "PAID"
+_MAX_LIFETIME_MINUTES: Final[int] = 43200
 
 
 class AuraPayGateway(PaymentGateway):
@@ -37,6 +47,7 @@ class AuraPayGateway(PaymentGateway):
             "success_url": self._return_url,
             "fail_url": self._return_url,
             "callback_url": self._webhook_url,
+            "lifetime": link_lifetime(order, unit="minutes", maximum=_MAX_LIFETIME_MINUTES),
         }
         response = await http_client.post(
             f"{_API_BASE}/invoice/create", json=payload, headers=self._headers()
@@ -54,41 +65,43 @@ class AuraPayGateway(PaymentGateway):
             provider_payment_id=str(invoice_id) if invoice_id else None,
         )
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        signature = request.headers.get("x-signature")
-        if not signature:
-            raise PaymentGatewayError("AuraPay webhook missing X-SIGNATURE header")
-
-        try:
-            data = orjson.loads(request.body)
-        except orjson.JSONDecodeError as error:
-            raise PaymentGatewayError("Malformed AuraPay webhook") from error
-
-        if not self._signature_valid(data, signature):
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        signature = request.headers.get("x-signature", "")
+        data = parse_json(request.body, "AuraPay")
+        if not signature or not safe_equals(self._signature(data), signature, ignore_case=True):
             raise PaymentGatewayError("Invalid AuraPay webhook signature")
 
         invoice_id = data.get("id")
         order_ref = data.get("order_id")
         if not invoice_id or not order_ref:
             raise PaymentGatewayError("AuraPay webhook missing 'id'/'order_id'")
-
-        if data.get("status") != "PAID":
-            return None
-        return WebhookResult(
+        return WebhookSignal(
             reference=str(order_ref),
-            status=PaymentOrderStatus.PAID,
+            claims_paid=data.get("status") == _PAID_STATUS,
             provider_payment_id=str(invoice_id),
         )
 
-    def _signature_valid(self, data: dict[str, object], signature: str) -> bool:
-        # Sort keys alphabetically, concatenate stringified values (None -> ""),
-        # HMAC-SHA256 with the shop's secret key.
+    def _signature(self, data: dict[str, Any]) -> str:
         concatenated = "".join(
-            str(data[key]) if data[key] is not None else "" for key in sorted(data)
+            "" if value is None else str(value) for _, value in sorted(data.items())
         )
-        expected = hmac.new(
-            self._require("secret_key").encode("utf-8"),
-            concatenated.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
-        return hmac.compare_digest(expected, signature)
+        return hmac_hex(self._require("secret_key"), concatenated.encode("utf-8"))
+
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        if not order.external_payment_id:
+            return NOT_PAID
+        response = await http_client.post(
+            f"{_API_BASE}/invoice/status",
+            json={"id": order.external_payment_id},
+            headers=self._headers(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        data = orjson.loads(response.content)
+        return ProviderPayment(
+            paid=data.get("status") == _PAID_STATUS,
+            amount=to_decimal(data.get("amount")),
+            currency=Currency.RUB.value,
+            reference=str(data.get("order_id") or ""),
+            provider_payment_id=str(data.get("id") or order.external_payment_id),
+        )

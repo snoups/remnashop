@@ -9,8 +9,10 @@ from app.modules.payments.dto import (
 from app.modules.payments.gateways.base import (
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
+    WebhookAck,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
 )
 from app.modules.payments.gateways.factory import PaymentGatewayFactory
 from app.modules.payments.repository import PaymentOrderRepository
@@ -29,7 +31,9 @@ __all__ = [
     "PaymentOrderDto",
     "PaymentOrderRepository",
     "PriceQuote",
+    "ProviderPayment",
+    "WebhookAck",
     "WebhookRequest",
-    "WebhookResult",
+    "WebhookSignal",
     "get_payments_providers",
 ]

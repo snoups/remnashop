@@ -1,40 +1,47 @@
-import hashlib
-import hmac
-from decimal import Decimal, InvalidOperation
 from typing import Final, Optional
-from urllib.parse import parse_qs
 
 import orjson
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     http_client,
+)
+from app.modules.payments.gateways.common import (
+    PROVIDER_API_TIMEOUT_S,
+    link_lifetime,
+    md5_hex,
+    parse_form,
+    parse_json,
+    safe_equals,
+    to_decimal,
 )
 
 _API_BASE: Final[str] = "https://pal24.pro/api/v1"
-_PAID_STATUSES: Final[frozenset[str]] = frozenset({"PAID", "SUCCESS", "OVERPAID"})
+_PAID_STATUSES: Final[frozenset[str]] = frozenset({"SUCCESS", "OVERPAID"})
 
 
-def _parse_body(body: bytes) -> dict[str, str]:
+def _parse_postback(body: bytes) -> dict[str, str]:
     """Pal24 posts JSON or form-encoded, depending on the shop config."""
     try:
-        parsed = orjson.loads(body)
-        if isinstance(parsed, dict):
-            return {str(key): str(value) for key, value in parsed.items()}
-    except orjson.JSONDecodeError:
-        pass
-    form = parse_qs(body.decode("utf-8"), keep_blank_values=True)
-    return {key: values[0] for key, values in form.items()}
+        data = parse_json(body, "Pal24")
+    except PaymentGatewayError:
+        return parse_form(body, "Pal24")
+    return {str(key): str(value) for key, value in data.items()}
 
 
 class PaypalychGateway(PaymentGateway):
     currency = Currency.RUB
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._require('api_token')}"}
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payload = {
@@ -44,14 +51,13 @@ class PaypalychGateway(PaymentGateway):
             "type": "normal",
             "order_id": order.idempotency_key,
             "description": f"Order #{order.id}",
+            "ttl": link_lifetime(order, unit="seconds"),
         }
         response = await http_client.post(
-            f"{_API_BASE}/bill/create",
-            json=payload,
-            headers={"Authorization": f"Bearer {self._require('api_token')}"},
+            f"{_API_BASE}/bill/create", json=payload, headers=self._headers()
         )
         data = orjson.loads(response.content)
-        if not data.get("success", response.status_code < 400):
+        if response.is_error or str(data.get("success")).lower() != "true":
             raise PaymentGatewayError(
                 f"Pal24 API error: {data.get('message') or data.get('error') or data}"
             )
@@ -59,19 +65,13 @@ class PaypalychGateway(PaymentGateway):
         bill_id = data.get("bill_id")
         if not bill_id:
             raise PaymentGatewayError("Pal24 response missing 'bill_id'")
-
-        payment_url = data.get("transfer_url") or data.get("link_page_url") or data.get("link_url")
+        payment_url = data.get("link_page_url") or data.get("link_url")
         if not payment_url:
             raise PaymentGatewayError("Pal24 response missing a payment URL")
-
         return PaymentIntent(confirmation_url=str(payment_url), provider_payment_id=str(bill_id))
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        try:
-            data = _parse_body(request.body)
-        except UnicodeDecodeError as error:
-            raise PaymentGatewayError("Malformed Pal24 webhook") from error
-
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        data = _parse_postback(request.body)
         out_sum = data.get("OutSum")
         inv_id = data.get("InvId")
         signature = data.get("SignatureValue")
@@ -81,29 +81,31 @@ class PaypalychGateway(PaymentGateway):
                 "Pal24 webhook missing 'InvId'/'OutSum'/'Status'/'SignatureValue'"
             )
 
-        expected = (
-            hashlib.md5(f"{out_sum}:{inv_id}:{self._require('signature_token')}".encode("utf-8"))
-            .hexdigest()
-            .upper()
-        )
-        if not hmac.compare_digest(expected, signature.upper()):
+        expected = md5_hex(f"{out_sum}:{inv_id}:{self._require('api_token')}")
+        if not safe_equals(expected, signature, ignore_case=True):
             raise PaymentGatewayError("Invalid Pal24 webhook signature")
 
-        if status.upper() not in _PAID_STATUSES:
-            return None
-
-        try:
-            amount = Decimal(str(out_sum))
-        except InvalidOperation:
-            amount = None
-
-        provider_payment_id = data.get("TrsId")
-        return WebhookResult(
+        return WebhookSignal(
             reference=inv_id,
-            status=PaymentOrderStatus.PAID,
-            provider_payment_id=provider_payment_id,
-            amount=amount,
+            claims_paid=status.upper() in _PAID_STATUSES,
+            provider_payment_id=data.get("TrsId") or None,
         )
 
-    def webhook_ack(self, result: Optional[WebhookResult]) -> str:
-        return '{"status": "ok"}'
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        if not order.external_payment_id:
+            return NOT_PAID
+        response = await http_client.get(
+            f"{_API_BASE}/bill/status",
+            params={"id": order.external_payment_id},
+            headers=self._headers(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        data = orjson.loads(response.content)
+        return ProviderPayment(
+            paid=str(data.get("status")).upper() in _PAID_STATUSES,
+            amount=to_decimal(data.get("amount")),
+            currency=data.get("currency_in"),
+            reference=str(data.get("order_id") or ""),
+            provider_payment_id=str(data.get("id") or order.external_payment_id),
+        )

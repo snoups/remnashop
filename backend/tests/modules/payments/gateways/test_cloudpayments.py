@@ -1,164 +1,100 @@
 import base64
 import hashlib
 import hmac
-import json
-from datetime import timedelta
-from decimal import Decimal
 from urllib.parse import urlencode
 
-import httpx
 import pytest
 
 import app.modules.payments.gateways.cloudpayments as cloudpayments_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.gateways.cloudpayments import CloudPaymentsGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"public_id": "pub-1", "api_secret": "cp-secret"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/cloudpayments"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.CLOUDPAYMENTS,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+_SETTINGS = {"public_id": "pk_1", "api_secret": "secret"}
 
 
 def _gateway() -> CloudPaymentsGateway:
-    return CloudPaymentsGateway(
-        settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL
-    )
+    return CloudPaymentsGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(cloudpayments_module, "http_client", httpx.AsyncClient(transport=handler))
+def _signed(status: str = "Completed") -> tuple[bytes, dict[str, str]]:
+    raw = urlencode(
+        {
+            "TransactionId": "5",
+            "Amount": "500.00",
+            "Currency": "RUB",
+            "InvoiceId": ORDER_REF,
+            "Status": status,
+            "AuthCode": "A1B2C3",
+        }
+    ).encode()
+    signature = base64.b64encode(hmac.new(b"secret", raw, hashlib.sha256).digest()).decode()
+    return raw, {"Content-HMAC": signature}
 
 
-def _webhook(fields: dict[str, str], secret: str = "cp-secret") -> WebhookRequest:
-    raw = urlencode(fields).encode()
-    signature = base64.b64encode(hmac.new(secret.encode(), raw, hashlib.sha256).digest()).decode()
-    return WebhookRequest(body=raw, headers={"content-hmac": signature}, query={}, client_ip=None)
-
-
-async def test_create_payment_uses_basic_auth_and_returns_the_model_url(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
-        captured["auth"] = request.headers.get("authorization")
-        return httpx.Response(
-            200,
-            json={
-                "Success": True,
-                "Model": {"Id": "cp-1", "Url": "https://cloudpayments.ru/pay/x"},
-            },
-        )
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://cloudpayments.ru/pay/x"
-    assert intent.provider_payment_id == "cp-1"
-    expected_auth = "Basic " + base64.b64encode(b"pub-1:cp-secret").decode()
-    assert captured["auth"] == expected_auth
-    assert captured["body"]["InvoiceId"] == "order-key-1"  # type: ignore[index,call-overload]
-
-
-async def test_create_payment_raises_when_api_reports_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"Success": False, "Message": "bad public id"})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
-
-
-async def test_parse_webhook_pay_notification_returns_result() -> None:
-    fields = {
-        "TransactionId": "123",
-        "InvoiceId": "order-key-1",
-        "Status": "Completed",
-        "AuthCode": "A1B2C3",
+def _find(status: str = "Completed", success: bool = True) -> dict[str, object]:
+    return {
+        "Success": success,
+        "Model": {
+            "TransactionId": 5,
+            "Amount": 500.0,
+            "Currency": "RUB",
+            "InvoiceId": ORDER_REF,
+            "Status": status,
+        },
     }
 
-    result = await _gateway().parse_webhook(_webhook(fields))
 
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.provider_payment_id == "123"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_check_notification_is_a_noop() -> None:
-    # No Reason/AuthCode -- CloudPayments' pre-auth Check notification.
-    fields = {"TransactionId": "123", "InvoiceId": "order-key-1", "Status": "Completed"}
-
-    result = await _gateway().parse_webhook(_webhook(fields))
-
-    assert result is None
-
-
-async def test_parse_webhook_declined_status_is_a_noop() -> None:
-    fields = {"TransactionId": "123", "InvoiceId": "order-key-1", "Status": "Declined"}
-
-    result = await _gateway().parse_webhook(_webhook(fields))
-
-    assert result is None
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    raw = urlencode({"TransactionId": "123", "Status": "Completed"}).encode()
-    request = WebhookRequest(
-        body=raw, headers={"content-hmac": "deadbeef"}, query={}, client_ip=None
-    )
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
-
-
-async def test_parse_webhook_missing_signature_raises() -> None:
-    raw = urlencode({"TransactionId": "123", "Status": "Completed"}).encode()
-    request = WebhookRequest(body=raw, headers={}, query={}, client_ip=None)
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
-
-
-async def test_webhook_ack_is_always_the_code_zero_json() -> None:
-    fields = {"TransactionId": "123", "InvoiceId": "order-key-1", "Status": "Completed"}
+async def test_parse_webhook_verifies_the_raw_body_hmac() -> None:
+    raw, headers = _signed()
     gateway = _gateway()
+    signal = await gateway.parse_webhook(webhook(raw, headers))
 
-    result = await gateway.parse_webhook(_webhook(fields))
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "5"
+    assert gateway.webhook_ack(signal).body == '{"code": 0}'
+    assert gateway.webhook_ack(signal).media_type == "application/json"
 
-    assert gateway.webhook_ack(result) == '{"code": 0}'
+    with pytest.raises(PaymentGatewayError):
+        await gateway.parse_webhook(webhook(raw, {"Content-HMAC": "AAAA"}))
+
+
+async def test_parse_webhook_authorized_is_not_a_payment() -> None:
+    raw, headers = _signed("Authorized")
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None and signal.claims_paid is False
+
+
+async def test_confirm_finds_the_payment_by_invoice_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, cloudpayments_module, json_response(_find()))
+    raw, headers = _signed()
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(), signal)
+
+    expected_auth = "Basic " + base64.b64encode(b"pk_1:secret").decode()
+    assert confirmed is not None and confirmed.provider_payment_id == "5"
+    assert http.last.url.path == "/payments/find"
+    assert http.last_json() == {"InvoiceId": ORDER_REF}
+    assert http.last.headers["Authorization"] == expected_auth
+
+
+@pytest.mark.parametrize("response", [_find("Authorized"), _find(success=False)])
+async def test_confirm_rejects_unfinished_or_unknown_payments(
+    monkeypatch: pytest.MonkeyPatch, response: dict[str, object]
+) -> None:
+    install_http(monkeypatch, cloudpayments_module, json_response(response))
+    raw, headers = _signed()
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(), signal) is None

@@ -1,225 +1,123 @@
 import hashlib
-import json
-from datetime import timedelta
-from decimal import Decimal
 from urllib.parse import urlencode
 
-import httpx
 import pytest
 
 import app.modules.payments.gateways.paypalych as paypalych_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.gateways.paypalych import PaypalychGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {
-    "api_token": "pal-token",
-    "shop_id": "shop-1",
-    "signature_token": "pal-sig-token",
-}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/paypalych"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.PAYPALYCH,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+_TOKEN = "api-token"
+_SETTINGS = {"api_token": _TOKEN, "shop_id": "shop-1"}
 
 
 def _gateway() -> PaypalychGateway:
-    return PaypalychGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+    return PaypalychGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(paypalych_module, "http_client", httpx.AsyncClient(transport=handler))
+def _postback(status: str = "SUCCESS", out_sum: str = "500.00") -> dict[str, str]:
+    signature = hashlib.md5(f"{out_sum}:{ORDER_REF}:{_TOKEN}".encode()).hexdigest().upper()
+    return {
+        "Status": status,
+        "InvId": ORDER_REF,
+        "OutSum": out_sum,
+        "TrsId": "bill-1",
+        "CurrencyIn": "RUB",
+        "SignatureValue": signature,
+    }
 
 
-def _sign(out_sum: str, inv_id: str, token: str = "pal-sig-token") -> str:
-    return hashlib.md5(f"{out_sum}:{inv_id}:{token}".encode()).hexdigest().upper()
+def _bill(status: str = "SUCCESS") -> dict[str, object]:
+    return {
+        "id": "bill-1",
+        "order_id": ORDER_REF,
+        "status": status,
+        "amount": 500.0,
+        "currency_in": "RUB",
+        "success": True,
+    }
 
 
-def _webhook_form(fields: dict[str, str]) -> WebhookRequest:
-    raw = urlencode(fields).encode()
-    return WebhookRequest(
-        body=raw,
-        headers={"content-type": "application/x-www-form-urlencoded"},
-        query={},
-        client_ip=None,
+async def test_create_payment_sends_ttl_and_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(
+        monkeypatch,
+        paypalych_module,
+        json_response({"success": "true", "bill_id": "bill-1", "link_page_url": "https://p/1"}),
     )
 
+    intent = await _gateway().create_payment(make_order())
 
-async def test_create_payment_sends_bearer_auth_and_returns_transfer_url(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
-        captured["auth"] = request.headers.get("authorization")
-        return httpx.Response(
-            200,
-            json={
-                "success": True,
-                "bill_id": "bill-1",
-                "transfer_url": "https://pal24.pro/pay/x",
-                "link_page_url": "https://pal24.pro/page/x",
-            },
-        )
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://pal24.pro/pay/x"
+    body = http.last_json()
     assert intent.provider_payment_id == "bill-1"
-    assert captured["auth"] == "Bearer pal-token"
-    body = captured["body"]
-    assert isinstance(body, dict)
-    assert body["order_id"] == "order-key-1"
-    assert body["shop_id"] == "shop-1"
-    assert body["type"] == "normal"
+    assert intent.confirmation_url == "https://p/1"
+    assert body["order_id"] == ORDER_REF
+    assert 0 < body["ttl"] <= 1800
+    assert http.last.headers["Authorization"] == f"Bearer {_TOKEN}"
 
 
-async def test_create_payment_falls_back_to_link_page_url(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={
-                "success": True,
-                "bill_id": "bill-1",
-                "link_page_url": "https://pal24.pro/page/x",
-            },
-        )
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://pal24.pro/page/x"
-
-
-async def test_create_payment_raises_when_api_reports_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"success": False, "message": "bad shop_id"})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
-
-
-async def test_parse_webhook_success_status_returns_paid_result() -> None:
-    fields = {
-        "InvId": "order-key-1",
-        "OutSum": "500.00",
-        "Status": "SUCCESS",
-        "TrsId": "trs-1",
-    }
-    fields["SignatureValue"] = _sign("500.00", "order-key-1")
-
-    result = await _gateway().parse_webhook(_webhook_form(fields))
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.provider_payment_id == "trs-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_accepts_json_body() -> None:
-    fields = {
-        "InvId": "order-key-1",
-        "OutSum": "500.00",
-        "Status": "OVERPAID",
-        "TrsId": "trs-1",
-    }
-    fields["SignatureValue"] = _sign("500.00", "order-key-1")
-    request = WebhookRequest(
-        body=json.dumps(fields).encode(),
-        headers={"content-type": "application/json"},
-        query={},
-        client_ip=None,
+async def test_create_payment_rejects_success_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(
+        monkeypatch, paypalych_module, json_response({"success": "false", "message": "nope"})
     )
-
-    result = await _gateway().parse_webhook(request)
-
-    assert result is not None
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_pending_status_is_a_noop() -> None:
-    fields = {
-        "InvId": "order-key-1",
-        "OutSum": "500.00",
-        "Status": "NEW",
-        "TrsId": "trs-1",
-    }
-    fields["SignatureValue"] = _sign("500.00", "order-key-1")
-
-    result = await _gateway().parse_webhook(_webhook_form(fields))
-
-    assert result is None
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    fields = {
-        "InvId": "order-key-1",
-        "OutSum": "500.00",
-        "Status": "SUCCESS",
-        "SignatureValue": "deadbeef",
-    }
-
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook_form(fields))
+        await _gateway().create_payment(make_order())
 
 
-async def test_parse_webhook_missing_fields_raises() -> None:
-    fields = {"InvId": "order-key-1", "OutSum": "500.00"}
+@pytest.mark.parametrize("as_form", [True, False])
+async def test_parse_webhook_verifies_signature_with_the_api_token(as_form: bool) -> None:
+    body = _postback()
+    request = webhook(urlencode(body).encode() if as_form else body)
 
+    signal = await _gateway().parse_webhook(request)
+
+    assert signal is not None
+    assert signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "bill-1"
+
+
+async def test_parse_webhook_rejects_a_bad_signature() -> None:
+    body = {**_postback(), "SignatureValue": "0" * 32}
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook_form(fields))
+        await _gateway().parse_webhook(webhook(body))
 
 
-async def test_webhook_ack_is_status_ok_json() -> None:
-    fields = {
-        "InvId": "order-key-1",
-        "OutSum": "500.00",
-        "Status": "SUCCESS",
-        "TrsId": "trs-1",
-    }
-    fields["SignatureValue"] = _sign("500.00", "order-key-1")
-    gateway = _gateway()
+@pytest.mark.parametrize(
+    ("status", "claims"), [("OVERPAID", True), ("UNDERPAID", False), ("FAIL", False)]
+)
+async def test_parse_webhook_status_mapping(status: str, claims: bool) -> None:
+    signal = await _gateway().parse_webhook(webhook(_postback(status=status)))
+    assert signal is not None and signal.claims_paid is claims
 
-    result = await gateway.parse_webhook(_webhook_form(fields))
 
-    assert gateway.webhook_ack(result) == '{"status": "ok"}'
+async def test_confirm_reads_bill_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, paypalych_module, json_response(_bill()))
+    signal = await _gateway().parse_webhook(webhook(_postback()))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(external_payment_id="bill-1"), signal)
+
+    assert confirmed is not None
+    assert http.last.url.path == "/api/v1/bill/status"
+    assert http.last.url.params["id"] == "bill-1"
+
+
+async def test_confirm_rejects_a_replayed_signature_with_forged_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The signature does not cover Status, so a signed (OutSum, InvId) pair
+    # from a failed payment verifies; only the API tells the truth.
+    install_http(monkeypatch, paypalych_module, json_response(_bill(status="FAIL")))
+    signal = await _gateway().parse_webhook(webhook(_postback(status="SUCCESS")))
+    assert signal is not None
+
+    assert await _gateway().confirm(make_order(external_payment_id="bill-1"), signal) is None

@@ -39,6 +39,7 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
     PaymentGatewayType.YOOMONEY: (
         GatewayFieldSpec(key="wallet_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
+        GatewayFieldSpec(key="access_token", kind=GatewayFieldKind.SECRET, required=False),
     ),
     PaymentGatewayType.CRYPTOMUS: (
         GatewayFieldSpec(key="merchant_id", kind=GatewayFieldKind.TEXT),
@@ -60,7 +61,7 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
         GatewayFieldSpec(key="secret_word_2", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="payment_system_id", kind=GatewayFieldKind.NUMBER),
         GatewayFieldSpec(key="customer_email", kind=GatewayFieldKind.TEXT, required=False),
-        GatewayFieldSpec(key="customer_ip", kind=GatewayFieldKind.TEXT, required=False),
+        GatewayFieldSpec(key="customer_ip", kind=GatewayFieldKind.TEXT),
     ),
     PaymentGatewayType.MULENPAY: (
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
@@ -94,6 +95,7 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
     ),
     PaymentGatewayType.VALUTIX: (
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
+        GatewayFieldSpec(key="service_id", kind=GatewayFieldKind.NUMBER, required=False),
         GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
     PaymentGatewayType.ROLLYPAY: (
@@ -111,19 +113,17 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
     PaymentGatewayType.PAYPALYCH: (
         GatewayFieldSpec(key="api_token", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="signature_token", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
     PaymentGatewayType.RIOPAY: (
         GatewayFieldSpec(key="api_token", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="webhook_secret", kind=GatewayFieldKind.SECRET, required=False),
+        GatewayFieldSpec(key="service_id", kind=GatewayFieldKind.NUMBER, required=False),
         GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
     PaymentGatewayType.AURAPAY: (
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
     PaymentGatewayType.SEVERPAY: (
         GatewayFieldSpec(key="mid", kind=GatewayFieldKind.NUMBER),
@@ -134,39 +134,15 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="webhook_secret", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
     PaymentGatewayType.CLOUDPAYMENTS: (
         GatewayFieldSpec(key="public_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="api_secret", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
-    PaymentGatewayType.KASSAAI: (
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.NUMBER),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="secret_word_2", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
     PaymentGatewayType.PAYPEAR: (
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.ETOPLATEZHI: (
-        GatewayFieldSpec(key="project_id", kind=GatewayFieldKind.NUMBER),
-        GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.JUPITER: (
-        GatewayFieldSpec(key="token", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="secret", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="method_id", kind=GatewayFieldKind.TEXT, required=False),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.DONUT: (
-        GatewayFieldSpec(key="token", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="secret", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="method_id", kind=GatewayFieldKind.TEXT, required=False),
         GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
     # Overpay's real integration authenticates with a client-certificate

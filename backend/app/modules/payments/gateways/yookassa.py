@@ -2,23 +2,23 @@ from typing import Final, Optional
 
 import orjson
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     http_client,
 )
+from app.modules.payments.gateways.common import PROVIDER_API_TIMEOUT_S, parse_json, to_decimal
 
 _API_BASE: Final[str] = "https://api.yookassa.ru/v3"
-
-
-_STATUS_MAP: Final[dict[str, PaymentOrderStatus]] = {
-    "succeeded": PaymentOrderStatus.PAID,
-}
+_PAID_STATUS: Final[str] = "succeeded"
+_PAID_EVENT: Final[str] = "payment.succeeded"
 
 
 def _build_receipt(order: PaymentOrderDto, settings: dict[str, str]) -> Optional[dict[str, object]]:
@@ -64,30 +64,35 @@ class YooKassaGateway(PaymentGateway):
             provider_payment_id=str(data["id"]),
         )
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        try:
-            payload = orjson.loads(request.body)
-            obj = payload["object"]
-            status = _STATUS_MAP.get(str(obj.get("status")))
-        except (orjson.JSONDecodeError, KeyError, TypeError, AttributeError) as error:
-            raise PaymentGatewayError("Malformed YooKassa webhook") from error
-
-        if status is None:
-            return None
-
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        # YooKassa does not sign notifications; fetch_payment is the check.
+        payload = parse_json(request.body, "YooKassa")
+        obj = payload.get("object")
+        if not isinstance(obj, dict):
+            raise PaymentGatewayError("Malformed YooKassa webhook")
         metadata = obj.get("metadata") or {}
-        return WebhookResult(
+        payment_id = obj.get("id")
+        return WebhookSignal(
             reference=str(metadata.get("order_ref", "")),
-            status=status,
-            provider_payment_id=str(obj["id"]) if obj.get("id") else None,
+            claims_paid=payload.get("event") == _PAID_EVENT,
+            provider_payment_id=str(payment_id) if payment_id else None,
         )
 
-    async def verify_payment(self, order: PaymentOrderDto, result: WebhookResult) -> bool:
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
-            return False
+            return NOT_PAID
         response = await http_client.get(
-            f"{_API_BASE}/payments/{order.external_payment_id}", auth=self._auth()
+            f"{_API_BASE}/payments/{order.external_payment_id}",
+            auth=self._auth(),
+            timeout=PROVIDER_API_TIMEOUT_S,
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
-        return bool(data.get("status") == "succeeded")
+        amount = data.get("amount") or {}
+        return ProviderPayment(
+            paid=data.get("status") == _PAID_STATUS and data.get("paid") is True,
+            amount=to_decimal(amount.get("value")),
+            currency=amount.get("currency"),
+            reference=str((data.get("metadata") or {}).get("order_ref") or ""),
+            provider_payment_id=str(data.get("id") or order.external_payment_id),
+        )

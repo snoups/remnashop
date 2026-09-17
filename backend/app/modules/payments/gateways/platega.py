@@ -1,27 +1,41 @@
-from hmac import compare_digest
 from typing import Final, Optional
 
 import orjson
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     amount_to_float,
     http_client,
+)
+from app.modules.payments.gateways.common import (
+    PROVIDER_API_TIMEOUT_S,
+    parse_json,
+    safe_equals,
+    to_decimal,
 )
 
 _API_BASE: Final[str] = "https://app.platega.io"
 _SINGLE_METHOD_ENDPOINT: Final[str] = "transaction/process"
 _MULTI_METHOD_ENDPOINT: Final[str] = "v2/transaction/process"
+_PAID_STATUS: Final[str] = "CONFIRMED"
 
 
 class PlategaGateway(PaymentGateway):
     currency = Currency.RUB
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "X-MerchantId": self._require("merchant_id"),
+            "X-Secret": self._require("api_key"),
+        }
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         payment_method = self._optional("payment_method")
@@ -41,12 +55,7 @@ class PlategaGateway(PaymentGateway):
             endpoint = _MULTI_METHOD_ENDPOINT
 
         response = await http_client.post(
-            f"{_API_BASE}/{endpoint}",
-            json=payload,
-            headers={
-                "X-MerchantId": self._require("merchant_id"),
-                "X-Secret": self._require("api_key"),
-            },
+            f"{_API_BASE}/{endpoint}", json=payload, headers=self._headers()
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
@@ -61,26 +70,40 @@ class PlategaGateway(PaymentGateway):
             confirmation_url=str(payment_url), provider_payment_id=str(transaction_id)
         )
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        merchant_id = request.headers.get("x-merchantid")
-        secret = request.headers.get("x-secret")
-        if not merchant_id or not secret:
-            raise PaymentGatewayError("Platega webhook missing credential headers")
-        if not compare_digest(merchant_id, self._require("merchant_id")) or not compare_digest(
-            secret, self._require("api_key")
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        merchant_id = request.headers.get("x-merchantid", "")
+        secret = request.headers.get("x-secret", "")
+        if not (
+            safe_equals(merchant_id, self._require("merchant_id"))
+            and safe_equals(secret, self._require("api_key"))
         ):
             raise PaymentGatewayError("Invalid Platega webhook credentials")
 
-        try:
-            data = orjson.loads(request.body)
-        except orjson.JSONDecodeError as error:
-            raise PaymentGatewayError("Malformed Platega webhook") from error
-
+        data = parse_json(request.body, "Platega")
         transaction_id = data.get("id")
-        if data.get("status") != "CONFIRMED":
-            return None
-        return WebhookResult(
+        if not transaction_id:
+            raise PaymentGatewayError("Platega webhook missing 'id'")
+        return WebhookSignal(
             reference="",
-            status=PaymentOrderStatus.PAID,
-            provider_payment_id=str(transaction_id) if transaction_id else None,
+            claims_paid=data.get("status") == _PAID_STATUS,
+            provider_payment_id=str(transaction_id),
+        )
+
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        if not order.external_payment_id:
+            return NOT_PAID
+        response = await http_client.get(
+            f"{_API_BASE}/transaction/{order.external_payment_id}",
+            headers=self._headers(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        data = orjson.loads(response.content)
+        details = data.get("paymentDetails") or {}
+        return ProviderPayment(
+            paid=data.get("status") == _PAID_STATUS,
+            amount=to_decimal(details.get("amount")),
+            currency=details.get("currency"),
+            reference=order.idempotency_key,
+            provider_payment_id=str(data.get("id") or order.external_payment_id),
         )

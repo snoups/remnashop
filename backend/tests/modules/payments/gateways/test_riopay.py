@@ -1,144 +1,134 @@
 import hashlib
 import hmac
 import json
-from datetime import timedelta
-from decimal import Decimal
 
 import httpx
 import pytest
 
 import app.modules.payments.gateways.riopay as riopay_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.gateways.riopay import RioPayGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from app.modules.payments.gateways.valutix import ValutixGateway
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"api_token": "rio-token", "webhook_secret": "rio-webhook-secret"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/riopay"
-_RETURN_URL = "https://shop.example"
+_GATEWAYS = [
+    (RioPayGateway, "api_token", "api.riopay.online"),
+    (ValutixGateway, "api_key", "api.panel.valutix.kz"),
+]
 
 
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.RIOPAY,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
+def _gateway(
+    cls: type[RioPayGateway] = RioPayGateway, token_setting: str = "api_token", **extra: str
+) -> RioPayGateway:
+    settings = {token_setting: "tok", **extra}
+    return cls(settings=settings, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+
+
+def _order_body(status: str = "COMPLETED") -> dict[str, object]:
+    return {
+        "id": "o-1",
+        "status": status,
+        "amount": "500.0",
+        "currency": "RUB",
+        "externalId": ORDER_REF,
     }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
 
 
-def _gateway(settings: dict[str, str] = _SETTINGS) -> RioPayGateway:
-    return RioPayGateway(settings=settings, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+def _signed_hook(status: str = "COMPLETED") -> tuple[bytes, dict[str, str]]:
+    raw = json.dumps(_order_body(status)).encode()
+    signature = hmac.new(b"tok", raw, hashlib.sha512).hexdigest().upper()
+    return raw, {"X-Signature": signature}
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(riopay_module, "http_client", httpx.AsyncClient(transport=handler))
-
-
-def _sign(raw: bytes, secret: str = "rio-webhook-secret") -> str:
-    return hmac.new(secret.encode(), raw, hashlib.sha512).hexdigest()
-
-
-def _signed_webhook(body: dict[str, object], secret: str = "rio-webhook-secret") -> WebhookRequest:
-    raw = json.dumps(body).encode()
-    return WebhookRequest(
-        body=raw, headers={"x-signature": _sign(raw, secret)}, query={}, client_ip=None
+@pytest.mark.parametrize(("cls", "token_setting", "host"), _GATEWAYS)
+async def test_create_payment_sends_service_callback_and_fail_urls(
+    monkeypatch: pytest.MonkeyPatch, cls: type[RioPayGateway], token_setting: str, host: str
+) -> None:
+    http = install_http(
+        monkeypatch, riopay_module, json_response({"id": "o-1", "paymentLink": "https://p/1"}, 201)
     )
 
+    intent = await _gateway(cls, token_setting, service_id="3").create_payment(make_order())
 
-async def test_create_payment_sends_the_token_and_returns_the_link(
+    body = http.last_json()
+    assert http.last.url.host == host
+    assert http.last.url.path == "/v1/orders"
+    assert http.last.headers["X-Api-Token"] == "tok"
+    assert body["serviceId"] == 3
+    assert body["callbackUrl"] == WEBHOOK_URL
+    assert body["failUrl"] == RETURN_URL
+    assert body["externalId"] == ORDER_REF
+    assert body["amount"] == "500.00"
+    assert intent.provider_payment_id == "o-1"
+
+
+async def test_create_payment_accepts_200_without_a_service_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
-        captured["token"] = request.headers.get("x-api-token")
-        return httpx.Response(
-            201, json={"id": "rio-1", "paymentLink": "https://api.riopay.online/pay/x"}
-        )
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://api.riopay.online/pay/x"
-    assert intent.provider_payment_id == "rio-1"
-    assert captured["token"] == "rio-token"
-    assert captured["body"]["externalId"] == "order-key-1"  # type: ignore[index,call-overload]
-
-
-async def test_create_payment_raises_on_a_non_201_response(monkeypatch: pytest.MonkeyPatch) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(400, json={"message": "bad amount"})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
-
-
-async def test_parse_webhook_completed_status_returns_result() -> None:
-    result = await _gateway().parse_webhook(
-        _signed_webhook({"id": "rio-1", "externalId": "order-key-1", "status": "COMPLETED"})
+    http = install_http(
+        monkeypatch, riopay_module, json_response({"id": "o-1", "paymentLink": "https://p/1"})
     )
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
+    await _gateway().create_payment(make_order())
+    assert "serviceId" not in http.last_json()
 
 
-async def test_parse_webhook_defaults_the_webhook_secret_to_the_api_token() -> None:
-    settings = {"api_token": "rio-token"}
-    body = {"id": "rio-1", "externalId": "order-key-1", "status": "COMPLETED"}
-    request = _signed_webhook(body, secret="rio-token")
-
-    result = await _gateway(settings).parse_webhook(request)
-
-    assert result is not None
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = json.dumps({"id": "rio-1", "externalId": "order-key-1", "status": "COMPLETED"}).encode()
-    request = WebhookRequest(
-        body=body, headers={"x-signature": "deadbeef"}, query={}, client_ip=None
+async def test_create_payment_raises_on_an_api_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(
+        monkeypatch, riopay_module, lambda request: httpx.Response(422, json={"message": "bad"})
     )
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
+        await _gateway().create_payment(make_order())
 
 
-async def test_parse_webhook_missing_signature_raises() -> None:
-    body = json.dumps({"id": "rio-1", "externalId": "order-key-1", "status": "COMPLETED"}).encode()
-    request = WebhookRequest(body=body, headers={}, query={}, client_ip=None)
+@pytest.mark.parametrize(("cls", "token_setting", "host"), _GATEWAYS)
+async def test_parse_webhook_verifies_the_hmac_case_insensitively(
+    cls: type[RioPayGateway], token_setting: str, host: str
+) -> None:
+    raw, headers = _signed_hook()
+    signal = await _gateway(cls, token_setting).parse_webhook(webhook(raw, headers))
+
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "o-1"
+
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
+        await _gateway(cls, token_setting).parse_webhook(webhook(raw, {"X-Signature": "00"}))
 
 
-async def test_parse_webhook_non_completed_status_is_a_noop() -> None:
-    result = await _gateway().parse_webhook(
-        _signed_webhook({"id": "rio-1", "externalId": "order-key-1", "status": "PENDING"})
-    )
-    assert result is None
+async def test_parse_webhook_failed_order_does_not_claim() -> None:
+    raw, headers = _signed_hook("FAILED")
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None and signal.claims_paid is False
+
+
+@pytest.mark.parametrize(("cls", "token_setting", "host"), _GATEWAYS)
+async def test_confirm_reads_the_order(
+    monkeypatch: pytest.MonkeyPatch, cls: type[RioPayGateway], token_setting: str, host: str
+) -> None:
+    http = install_http(monkeypatch, riopay_module, json_response(_order_body()))
+    raw, headers = _signed_hook()
+    gateway = _gateway(cls, token_setting)
+    signal = await gateway.parse_webhook(webhook(raw, headers))
+    assert signal is not None
+
+    confirmed = await gateway.confirm(make_order(external_payment_id="o-1"), signal)
+
+    assert confirmed is not None
+    assert http.last.url.host == host
+    assert http.last.url.path == "/v1/orders/o-1"
+
+
+async def test_confirm_rejects_a_failed_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, riopay_module, json_response(_order_body("FAILED")))
+    raw, headers = _signed_hook()
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(external_payment_id="o-1"), signal) is None

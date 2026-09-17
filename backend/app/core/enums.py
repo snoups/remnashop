@@ -32,11 +32,7 @@ class PaymentGatewayType(UpperStrEnum):
     SEVERPAY = auto()
     LAVA = auto()
     CLOUDPAYMENTS = auto()
-    KASSAAI = auto()
     PAYPEAR = auto()
-    ETOPLATEZHI = auto()
-    JUPITER = auto()
-    DONUT = auto()
     TRIBUTE = auto()
 
 

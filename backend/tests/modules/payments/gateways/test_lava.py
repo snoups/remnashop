@@ -1,147 +1,119 @@
 import hashlib
 import hmac
 import json
-from datetime import timedelta
-from decimal import Decimal
 
-import httpx
 import pytest
 
 import app.modules.payments.gateways.lava as lava_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.gateways.lava import LavaGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"shop_id": "shop-1", "secret_key": "lava-secret", "webhook_secret": "lava-webhook"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/lava"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.LAVA,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+_SETTINGS = {"shop_id": "shop-1", "secret_key": "secret", "webhook_secret": "extra"}
 
 
 def _gateway() -> LavaGateway:
-    return LavaGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+    return LavaGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(lava_module, "http_client", httpx.AsyncClient(transport=handler))
+def _sign(key: str, body: bytes) -> str:
+    return hmac.new(key.encode(), body, hashlib.sha256).hexdigest()
 
 
-def _webhook(body: dict[str, object], secret: str = "lava-webhook") -> WebhookRequest:
-    raw = json.dumps(body).encode()
-    signature = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
-    return WebhookRequest(body=raw, headers={"authorization": signature}, query={}, client_ip=None)
+def _hook(status: str = "success") -> bytes:
+    return json.dumps(
+        {"invoice_id": "inv-1", "order_id": ORDER_REF, "status": status, "amount": 500.0}
+    ).encode()
 
 
-async def test_create_payment_signs_the_exact_bytes_sent_and_returns_the_url(
+def _status(status: str = "success") -> dict[str, object]:
+    return {
+        "data": {"id": "inv-1", "status": status, "amount": 500.0, "order_id": ORDER_REF},
+        "status": 200,
+        "status_check": True,
+    }
+
+
+async def test_create_payment_signs_the_exact_body_and_sends_expire(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["content"] = request.content
-        captured["sign"] = request.headers.get("signature")
-        return httpx.Response(
-            200,
-            json={"status": "success", "data": {"id": "lava-1", "url": "https://lava.ru/pay/x"}},
-        )
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://lava.ru/pay/x"
-    assert intent.provider_payment_id == "lava-1"
-    expected_sig = hmac.new(b"lava-secret", captured["content"], hashlib.sha256).hexdigest()  # type: ignore[arg-type]
-    assert captured["sign"] == expected_sig
-    body = json.loads(captured["content"])  # type: ignore[arg-type]
-    assert body["orderId"] == "order-key-1"
-    assert body["shopId"] == "shop-1"
-
-
-async def test_create_payment_raises_on_an_error_status(monkeypatch: pytest.MonkeyPatch) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"status": "error", "error": "bad shop"})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
-
-
-async def test_parse_webhook_success_status_returns_result() -> None:
-    body = {"invoice_id": "lava-1", "order_id": "order-key-1", "status": "success"}
-
-    result = await _gateway().parse_webhook(_webhook(body))
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.provider_payment_id == "lava-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_accepts_the_canonical_sorted_json_fallback() -> None:
-    body = {"order_id": "order-key-1", "invoice_id": "lava-1", "status": "success"}
-    raw = json.dumps(body).encode()  # not the canonical sorted form
-    canonical = json.dumps(dict(sorted(body.items())), separators=(",", ":")).encode()
-    signature = hmac.new(b"lava-webhook", canonical, hashlib.sha256).hexdigest()
-    request = WebhookRequest(
-        body=raw, headers={"authorization": signature}, query={}, client_ip=None
+    http = install_http(
+        monkeypatch,
+        lava_module,
+        json_response(
+            {"data": {"id": "inv-1", "url": "https://lava/1"}, "status": 200, "status_check": True}
+        ),
     )
 
-    result = await _gateway().parse_webhook(request)
+    intent = await _gateway().create_payment(make_order())
 
-    assert result is not None
-    assert result.status is PaymentOrderStatus.PAID
+    payload = json.loads(http.last.content)
+    assert http.last.headers["Signature"] == _sign("secret", http.last.content)
+    assert payload["orderId"] == ORDER_REF
+    assert 0 < payload["expire"] <= 30
+    assert intent.provider_payment_id == "inv-1"
+    assert intent.confirmation_url == "https://lava/1"
 
 
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = json.dumps({"order_id": "order-key-1", "status": "success"}).encode()
-    request = WebhookRequest(
-        body=body, headers={"authorization": "deadbeef"}, query={}, client_ip=None
-    )
+async def test_parse_webhook_reads_the_signature_header() -> None:
+    raw = _hook()
+    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "inv-1"
+
+
+async def test_parse_webhook_rejects_other_headers_and_keys() -> None:
+    raw = _hook()
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
-
-
-async def test_parse_webhook_missing_signature_raises() -> None:
-    body = json.dumps({"order_id": "order-key-1", "status": "success"}).encode()
-    request = WebhookRequest(body=body, headers={}, query={}, client_ip=None)
+        await _gateway().parse_webhook(webhook(raw, {"Authorization": _sign("extra", raw)}))
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(request)
+        await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("secret", raw)}))
 
 
-async def test_parse_webhook_pending_status_is_a_noop() -> None:
-    body = {"invoice_id": "lava-1", "order_id": "order-key-1", "status": "pending"}
-    result = await _gateway().parse_webhook(_webhook(body))
-    assert result is None
+async def test_parse_webhook_failed_invoice_does_not_claim_payment() -> None:
+    raw = _hook("fail")
+    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+    assert signal is not None and signal.claims_paid is False
+
+
+async def test_confirm_posts_a_signed_status_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, lava_module, json_response(_status()))
+    raw = _hook()
+    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(), signal)
+
+    assert confirmed is not None
+    assert http.last.url.path == "/business/invoice/status"
+    assert http.last.headers["Signature"] == _sign("secret", http.last.content)
+    assert json.loads(http.last.content) == {"shopId": "shop-1", "orderId": ORDER_REF}
+
+
+async def test_confirm_rejects_an_unpaid_invoice(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, lava_module, json_response(_status("created")))
+    raw = _hook()
+    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(), signal) is None
+
+
+async def test_confirm_rejects_a_usd_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, lava_module, json_response(_status()))
+    raw = _hook()
+    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+    assert signal is not None
+
+    order = make_order(currency=Currency.USD)
+    assert await _gateway().confirm(order, signal) is None

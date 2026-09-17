@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal
-from ipaddress import ip_address, ip_network
-from typing import Final, Iterable, Optional
+from typing import Final, Optional
 
 import httpx
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 
@@ -18,8 +17,6 @@ http_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_HTTP_TIMEOUT_
 class WebhookRequest:
     body: bytes
     headers: dict[str, str]
-    query: dict[str, str]
-    client_ip: Optional[str]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -29,14 +26,31 @@ class PaymentIntent:
 
 
 @dataclass(frozen=True, kw_only=True)
-class WebhookResult:
+class WebhookSignal:
     reference: str
-    status: PaymentOrderStatus
+    claims_paid: bool
     provider_payment_id: Optional[str] = None
-    # Amount the provider says was actually paid, parsed from the webhook body
-    # itself -- None when a gateway's webhook carries no such field (checked
-    # against order.final_price by the default verify_payment below).
+    # Set only where the signature binds the amount and the status API
+    # reports a net figure (Robokassa, YooMoney).
     amount: Optional[Decimal] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProviderPayment:
+    paid: bool
+    amount: Optional[Decimal]
+    reference: str
+    currency: Optional[str] = None
+    provider_payment_id: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class WebhookAck:
+    body: str = ""
+    media_type: str = "text/plain"
+
+
+NOT_PAID: Final[ProviderPayment] = ProviderPayment(paid=False, amount=None, reference="")
 
 
 def amount_to_float(value: Decimal) -> float:
@@ -45,23 +59,9 @@ def amount_to_float(value: Decimal) -> float:
     return float(f"{value:.2f}")
 
 
-def ip_in_networks(ip: str, networks: Iterable[str]) -> bool:
-    try:
-        addr = ip_address(ip)
-    except ValueError:
-        return False
-    for net in networks:
-        try:
-            if addr in ip_network(net, strict=False):
-                return True
-        except ValueError:
-            continue
-    return False
-
-
 class PaymentGateway(ABC):
     currency: Currency
-    trusted_networks: tuple[str, ...] = ()
+    ack: WebhookAck = WebhookAck()
 
     def __init__(self, *, settings: dict[str, str], webhook_url: str, return_url: str) -> None:
         self._settings = settings
@@ -81,27 +81,29 @@ class PaymentGateway(ABC):
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent: ...
 
     @abstractmethod
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        """Verify signature/IP and extract (reference, status). Return None
-        for webhooks carrying no state change (test pings, confirm_check).
-        Raise PaymentGatewayError on a verification failure."""
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        """Authenticate the notification where the provider signs it and
+        extract references. None for notifications that are not about a
+        payment. Raise PaymentGatewayError on a failed check."""
 
-    async def verify_payment(self, order: PaymentOrderDto, result: WebhookResult) -> bool:
-        # amount=None means this adapter doesn't parse one -- either the
-        # provider's callback carries no amount, or its docs don't pin down
-        # whether the field is gross or net of fees. Guessing there is worse
-        # than not checking: a net-of-fees field would reject real payments
-        # after the customer was charged (yoomoney's 'amount' is exactly that
-        # field, which is why its adapter reads 'withdraw_amount' instead).
-        # Where a payer picks the amount themselves -- YooMoney's quickpay
-        # form takes both `sum` and `label` from whoever opens it -- this
-        # check is the only thing standing between them and underpaying, so
-        # an adapter on such a gateway has to parse one. The order is always
-        # looked up within the gateway the callback arrived on, so a cheap
-        # payment can't be pointed at an order priced in another currency.
-        if result.amount is None:
-            return True
-        return result.amount >= order.final_price
+    @abstractmethod
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        """Read the payment from the provider's status API. The decision to
+        credit it is confirm()'s, not the adapter's."""
 
-    def webhook_ack(self, result: Optional[WebhookResult]) -> str:
-        return ""
+    async def confirm(
+        self, order: PaymentOrderDto, signal: WebhookSignal
+    ) -> Optional[ProviderPayment]:
+        payment = await self.fetch_payment(order, signal)
+        if not payment.paid:
+            return None
+        if payment.reference != order.idempotency_key:
+            return None
+        if payment.amount is not None and payment.amount < order.final_price:
+            return None
+        if payment.currency is not None and payment.currency.upper() != order.currency.value:
+            return None
+        return payment
+
+    def webhook_ack(self, signal: Optional[WebhookSignal]) -> WebhookAck:
+        return self.ack

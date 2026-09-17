@@ -1,28 +1,35 @@
 import hashlib
-from decimal import Decimal, InvalidOperation
-from hmac import compare_digest
-from typing import Final, Optional
+from typing import ClassVar, Final, Optional
 
 import orjson
 
-from app.core.enums import Currency, PaymentOrderStatus
+from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
+    NOT_PAID,
     PaymentGateway,
     PaymentIntent,
+    ProviderPayment,
     WebhookRequest,
-    WebhookResult,
+    WebhookSignal,
     http_client,
 )
+from app.modules.payments.gateways.common import PROVIDER_API_TIMEOUT_S, parse_json, to_decimal
 
-_API_BASE: Final[str] = "https://mulenpay.ru/api"
 _PAYMENT_SUBJECT: Final[int] = 4
 _PAYMENT_MODE: Final[int] = 4
+_DEFAULT_VAT_CODE: Final[int] = 0
+_PAID_STATUS_CODE: Final[int] = 3
+_PAID_CALLBACK_STATUS: Final[str] = "success"
 
 
 class MulenPayGateway(PaymentGateway):
     currency = Currency.RUB
+    API_BASE: ClassVar[str] = "https://mulenpay.ru/api"
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._require('api_key')}"}
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
         currency = order.currency.value.lower()
@@ -40,62 +47,58 @@ class MulenPayGateway(PaymentGateway):
                 {
                     "description": f"Order #{order.id}",
                     "quantity": 1,
-                    "price": amount,
-                    "vat_code": int(vat_code) if vat_code else None,
+                    "price": float(amount),
+                    "vat_code": int(vat_code) if vat_code else _DEFAULT_VAT_CODE,
                     "payment_subject": _PAYMENT_SUBJECT,
                     "payment_mode": _PAYMENT_MODE,
                 }
             ],
         }
         response = await http_client.post(
-            f"{_API_BASE}/v2/payments",
-            json=payload,
-            headers={"Authorization": f"Bearer {self._require('api_key')}"},
+            f"{self.API_BASE}/v2/payments", json=payload, headers=self._headers()
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
         if not data.get("success"):
-            raise PaymentGatewayError(f"MulenPay API error: {data}")
+            raise PaymentGatewayError(f"{type(self).__name__} API error: {data}")
 
         payment_url = data.get("paymentUrl")
-        if not payment_url:
-            raise PaymentGatewayError("MulenPay response missing 'paymentUrl'")
-        return PaymentIntent(confirmation_url=str(payment_url), provider_payment_id=None)
+        payment_id = data.get("id")
+        if not payment_url or payment_id is None:
+            raise PaymentGatewayError(f"{type(self).__name__} response missing 'paymentUrl'/'id'")
+        return PaymentIntent(confirmation_url=str(payment_url), provider_payment_id=str(payment_id))
 
-    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookResult]:
-        try:
-            data = orjson.loads(request.body)
-        except orjson.JSONDecodeError as error:
-            raise PaymentGatewayError("Malformed MulenPay webhook") from error
-
+    async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
+        # The callback carries no documented authentication; fetch_payment is
+        # the check.
+        data = parse_json(request.body, type(self).__name__)
         order_ref = data.get("uuid")
         if not order_ref:
-            raise PaymentGatewayError("MulenPay webhook missing 'uuid'")
+            raise PaymentGatewayError(f"{type(self).__name__} webhook missing 'uuid'")
+        payment_id = data.get("id")
+        return WebhookSignal(
+            reference=str(order_ref),
+            claims_paid=data.get("payment_status") == _PAID_CALLBACK_STATUS,
+            provider_payment_id=str(payment_id) if payment_id is not None else None,
+        )
 
-        if not self._signature_valid(data):
-            raise PaymentGatewayError("Invalid MulenPay webhook signature")
-
-        if data.get("payment_status") != "success":
-            return None
-
-        try:
-            amount = Decimal(str(data.get("amount", "")))
-        except InvalidOperation:
-            amount = None
-
-        return WebhookResult(reference=order_ref, status=PaymentOrderStatus.PAID, amount=amount)
-
-    def _signature_valid(self, data: dict[str, object]) -> bool:
-        received_sign = data.get("sign")
-        if not received_sign:
-            return False
-        currency = str(data.get("currency", "rub")).lower()
-        try:
-            amount = f"{Decimal(str(data.get('amount', ''))):.2f}"
-        except Exception:  # noqa: BLE001 -- any unparseable amount fails verification
-            return False
-        expected = self._sign(currency, amount, int(self._require("shop_id")))
-        return compare_digest(expected, str(received_sign))
+    async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
+        if not order.external_payment_id:
+            return NOT_PAID
+        response = await http_client.get(
+            f"{self.API_BASE}/v2/payments/{order.external_payment_id}",
+            headers=self._headers(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        payment = orjson.loads(response.content).get("payment") or {}
+        return ProviderPayment(
+            paid=payment.get("status") == _PAID_STATUS_CODE,
+            amount=to_decimal(payment.get("amount")),
+            currency=payment.get("currency"),
+            reference=str(payment.get("uuid") or ""),
+            provider_payment_id=str(payment.get("id") or order.external_payment_id),
+        )
 
     def _sign(self, currency: str, amount: str, shop_id: int) -> str:
         raw = f"{currency}{amount}{shop_id}{self._require('secret_key')}"

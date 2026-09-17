@@ -1,148 +1,150 @@
 import hashlib
-from datetime import timedelta
-from decimal import Decimal
+import hmac
 from urllib.parse import urlencode
 
-import httpx
-import orjson
 import pytest
 
 import app.modules.payments.gateways.freekassa as freekassa_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.gateways.freekassa import FreeKassaGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
 _SETTINGS = {
     "shop_id": "42",
-    "api_key": "api-key-secret",
-    "secret_word_2": "word2-secret",
+    "api_key": "api-key",
+    "secret_word_2": "word2",
     "payment_system_id": "4",
+    "customer_ip": "203.0.113.5",
 }
-_TRUSTED_IP = "168.119.157.136"
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/freekassa"
-_RETURN_URL = "https://shop.example"
 
 
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.FREEKASSA,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
+def _gateway(**overrides: str) -> FreeKassaGateway:
+    settings = {**_SETTINGS, **overrides}
+    return FreeKassaGateway(settings=settings, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+
+
+def _api_signature(params: dict[str, object]) -> str:
+    joined = "|".join(str(value) for _, value in sorted(params.items()))
+    return hmac.new(b"api-key", joined.encode(), hashlib.sha256).hexdigest()
+
+
+def _notification(amount: str = "500", signed_amount: str = "500", merchant: str = "42") -> bytes:
+    sign = hashlib.md5(f"{merchant}:{signed_amount}:word2:{ORDER_REF}".encode()).hexdigest()
+    fields = {
+        "MERCHANT_ID": merchant,
+        "AMOUNT": amount,
+        "intid": "777",
+        "MERCHANT_ORDER_ID": ORDER_REF,
+        "SIGN": sign,
     }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+    return urlencode(fields).encode()
 
 
-def _gateway() -> FreeKassaGateway:
-    return FreeKassaGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+def _orders(*orders: dict[str, object]) -> dict[str, object]:
+    return {"type": "success", "pages": 1, "orders": list(orders)}
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(freekassa_module, "http_client", httpx.AsyncClient(transport=handler))
+_PAID_ORDER = {
+    "merchant_order_id": ORDER_REF,
+    "fk_order_id": 777,
+    "amount": 500.0,
+    "currency": "RUB",
+    "status": 1,
+}
 
 
-def _signed_webhook(**fields: str) -> bytes:
-    raw = f"{fields['MERCHANT_ID']}:{fields['AMOUNT']}:word2-secret:{fields['MERCHANT_ORDER_ID']}"
-    sign = hashlib.md5(raw.encode()).hexdigest()
-    return urlencode({**fields, "SIGN": sign}).encode()
+async def test_create_payment_never_signs_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(
+        monkeypatch,
+        freekassa_module,
+        json_response({"type": "success", "orderId": 777, "location": "https://pay.fk/1"}),
+    )
+
+    intent = await _gateway().create_payment(make_order(customer_email=None))
+
+    body = http.last_json()
+    signature = body.pop("signature")
+    assert None not in body.values()
+    assert body["ip"] == "203.0.113.5"
+    assert body["email"] == f"user_{ORDER_REF}@telegram.org"
+    assert signature == _api_signature(body)
+    assert intent.provider_payment_id == "777"
 
 
-def _webhook(body: bytes, client_ip: str = _TRUSTED_IP) -> WebhookRequest:
-    return WebhookRequest(body=body, headers={}, query={}, client_ip=client_ip)
+async def test_create_payment_prefers_the_order_email(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(
+        monkeypatch,
+        freekassa_module,
+        json_response({"type": "success", "orderId": 1, "location": "https://pay.fk/1"}),
+    )
+    await _gateway().create_payment(make_order(customer_email="buyer@example.com"))
+    assert http.last_json()["email"] == "buyer@example.com"
 
 
-async def test_create_payment_sends_a_signed_order_and_returns_the_redirect(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = orjson.loads(request.content)
-        return httpx.Response(200, json={"type": "success", "location": "https://pay.fk.life/x"})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
-    intent = await _gateway().create_payment(_order())
-
-    assert intent.confirmation_url == "https://pay.fk.life/x"
-    assert intent.provider_payment_id is None
-    body = captured["body"]
-    assert body["shopId"] == 42  # type: ignore[index,call-overload]
-    assert body["paymentId"] == "order-key-1"  # type: ignore[index,call-overload]
-    assert body["i"] == 4  # type: ignore[index,call-overload]
-    assert body["amount"] == "500.00"  # type: ignore[index,call-overload]
-    assert "signature" in body  # type: ignore[operator]
-
-
-async def test_create_payment_raises_when_api_reports_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"type": "error", "message": "bad request"})
-
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
-
+async def test_create_payment_requires_customer_ip() -> None:
+    settings = {key: value for key, value in _SETTINGS.items() if key != "customer_ip"}
+    gateway = FreeKassaGateway(settings=settings, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
     with pytest.raises(PaymentGatewayError):
-        await _gateway().create_payment(_order())
+        await gateway.create_payment(make_order())
 
 
-async def test_parse_webhook_valid_signature_from_trusted_ip_returns_paid() -> None:
-    body = _signed_webhook(MERCHANT_ID="42", AMOUNT="500.00", MERCHANT_ORDER_ID="order-key-1")
-
-    result = await _gateway().parse_webhook(_webhook(body))
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_untrusted_ip_raises() -> None:
-    body = _signed_webhook(MERCHANT_ID="42", AMOUNT="500.00", MERCHANT_ORDER_ID="order-key-1")
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body, client_ip="1.2.3.4"))
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = urlencode(
-        {
-            "MERCHANT_ID": "42",
-            "AMOUNT": "500.00",
-            "MERCHANT_ORDER_ID": "order-key-1",
-            "SIGN": "0" * 32,
-        }
-    ).encode()
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
-
-
-async def test_webhook_ack_is_always_yes() -> None:
-    body = _signed_webhook(MERCHANT_ID="42", AMOUNT="500.00", MERCHANT_ORDER_ID="order-key-1")
+async def test_parse_webhook_verifies_sign_without_an_ip_check() -> None:
     gateway = _gateway()
+    signal = await gateway.parse_webhook(webhook(_notification()))
 
-    result = await gateway.parse_webhook(_webhook(body))
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "777"
+    assert gateway.webhook_ack(signal).body == "YES"
 
-    assert gateway.webhook_ack(result) == "YES"
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        _notification(amount="1", signed_amount="500"),
+        _notification(merchant="43"),
+    ],
+)
+async def test_parse_webhook_rejects_tampering(body: bytes) -> None:
+    with pytest.raises(PaymentGatewayError):
+        await _gateway().parse_webhook(webhook(body))
+
+
+async def test_confirm_finds_the_order_by_payment_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, freekassa_module, json_response(_orders(_PAID_ORDER)))
+    signal = await _gateway().parse_webhook(webhook(_notification()))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(), signal)
+
+    body = http.last_json()
+    signature = body.pop("signature")
+    assert confirmed is not None and confirmed.provider_payment_id == "777"
+    assert http.last.url.path == "/v1/orders"
+    assert body["paymentId"] == ORDER_REF
+    assert signature == _api_signature(body)
+
+
+@pytest.mark.parametrize(
+    "orders",
+    [
+        [],
+        [{**_PAID_ORDER, "status": 0}],
+        [{**_PAID_ORDER, "merchant_order_id": "someone-else"}],
+    ],
+)
+async def test_confirm_rejects_missing_or_unpaid_orders(
+    monkeypatch: pytest.MonkeyPatch, orders: list[dict[str, object]]
+) -> None:
+    install_http(monkeypatch, freekassa_module, json_response(_orders(*orders)))
+    signal = await _gateway().parse_webhook(webhook(_notification()))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(), signal) is None

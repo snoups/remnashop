@@ -26,7 +26,7 @@ from app.modules.blacklist import get_blacklist_providers
 from app.modules.gateways import get_gateways_providers
 from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.payments.dto import CreatePaymentOrderDto
-from app.modules.payments.gateways.base import WebhookResult
+from app.modules.payments.gateways.base import ProviderPayment, WebhookAck, WebhookSignal
 from app.modules.payments.gateways.factory import PaymentGatewayFactory
 from app.modules.payments.gateways.registry import GATEWAY_REGISTRY
 from app.modules.payments.repository import PaymentOrderRepository
@@ -39,33 +39,47 @@ from app.modules.translations import get_translations_providers
 from app.modules.users import get_users_providers
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
+_CONFIRMED = ProviderPayment(
+    paid=True, amount=Decimal("500"), reference="order-ref", provider_payment_id="yk-2"
+)
+
 
 class _StubGateway:
     def __init__(
         self,
         *,
-        parse_result: Optional[WebhookResult],
-        verify_result: bool = True,
-        verify_exc: Optional[BaseException] = None,
+        signal: Optional[WebhookSignal],
+        payment: Optional[ProviderPayment] = _CONFIRMED,
+        confirm_exc: Optional[BaseException] = None,
         parse_exc: Optional[BaseException] = None,
+        ack: WebhookAck = WebhookAck(),
     ) -> None:
-        self._parse_result = parse_result
-        self._verify_result = verify_result
-        self._verify_exc = verify_exc
+        self._signal = signal
+        self._payment = payment
+        self._confirm_exc = confirm_exc
         self._parse_exc = parse_exc
+        self._ack = ack
+        self.confirm_calls = 0
 
-    async def parse_webhook(self, request: object) -> Optional[WebhookResult]:
+    async def parse_webhook(self, request: object) -> Optional[WebhookSignal]:
         if self._parse_exc is not None:
             raise self._parse_exc
-        return self._parse_result
+        return self._signal
 
-    async def verify_payment(self, order: object, result: object) -> bool:
-        if self._verify_exc is not None:
-            raise self._verify_exc
-        return self._verify_result
+    async def confirm(self, order: object, signal: object) -> Optional[ProviderPayment]:
+        self.confirm_calls += 1
+        if self._confirm_exc is not None:
+            raise self._confirm_exc
+        return self._payment
 
-    def webhook_ack(self, result: object) -> str:
-        return ""
+    def webhook_ack(self, signal: object) -> WebhookAck:
+        return self._ack
+
+
+def _paid_signal(reference: str, provider_payment_id: Optional[str] = None) -> WebhookSignal:
+    return WebhookSignal(
+        reference=reference, claims_paid=True, provider_payment_id=provider_payment_id
+    )
 
 
 def _install_stub(monkeypatch: pytest.MonkeyPatch, stub: _StubGateway) -> None:
@@ -167,17 +181,39 @@ async def test_gateway_type_with_no_adapter_returns_404(client, monkeypatch) -> 
 
 
 async def test_webhook_order_not_found_returns_200(client, monkeypatch) -> None:
-    _install_stub(
-        monkeypatch,
-        _StubGateway(
-            parse_result=WebhookResult(reference="missing", status=PaymentOrderStatus.PAID)
-        ),
-    )
+    _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("missing")))
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
     assert response.status_code == 200
 
 
-async def test_webhook_already_paid_order_is_a_noop_and_never_calls_verify(
+async def test_webhook_not_claiming_payment_never_calls_confirm(
+    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-0")
+        )
+    stub = _StubGateway(signal=WebhookSignal(reference="wh-key-0", claims_paid=False))
+    _install_stub(monkeypatch, stub)
+
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert response.status_code == 200
+    assert stub.confirm_calls == 0
+
+
+async def test_webhook_returns_the_gateway_ack(client, monkeypatch) -> None:
+    ack = WebhookAck(body='{"status": true}', media_type="application/json")
+    _install_stub(monkeypatch, _StubGateway(signal=None, ack=ack))
+
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert response.status_code == 200
+    assert response.text == '{"status": true}'
+    assert response.headers["content-type"].startswith("application/json")
+
+
+async def test_webhook_already_paid_order_is_a_noop_and_never_confirms(
     client, payment_order_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:
     async with uow:
@@ -187,38 +223,23 @@ async def test_webhook_already_paid_order_is_a_noop_and_never_calls_verify(
         await payment_order_repository.mark_status(
             order.id, PaymentOrderStatus.PAID, external_payment_id="yk-1"
         )
-
-    _install_stub(
-        monkeypatch,
-        _StubGateway(
-            parse_result=WebhookResult(reference="wh-key-1", status=PaymentOrderStatus.PAID),
-            verify_exc=AssertionError("verify_payment must not be called for a terminal order"),
-        ),
-    )
+    stub = _StubGateway(signal=_paid_signal("wh-key-1"))
+    _install_stub(monkeypatch, stub)
 
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+
     assert response.status_code == 200
+    assert stub.confirm_calls == 0
 
 
-async def test_webhook_verified_success_marks_paid_and_dispatches_purchase(
+async def test_webhook_confirmed_payment_marks_paid_and_dispatches_purchase(
     client, payment_order_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:
     async with uow:
         order = await payment_order_repository.create(
             _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-2")
         )
-
-    _install_stub(
-        monkeypatch,
-        _StubGateway(
-            parse_result=WebhookResult(
-                reference="wh-key-2",
-                status=PaymentOrderStatus.PAID,
-                provider_payment_id="yk-2",
-            )
-        ),
-    )
-
+    _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-key-2")))
     dispatched: list[dict[str, object]] = []
 
     async def _fake_kiq(**kwargs: object) -> None:
@@ -234,24 +255,17 @@ async def test_webhook_verified_success_marks_paid_and_dispatches_purchase(
     assert fetched.external_payment_id == "yk-2"
     assert len(dispatched) == 1
     assert dispatched[0]["idempotency_key"] == "wh-key-2"
+    assert dispatched[0]["base_price"] == "500.00"
 
 
-async def test_webhook_unverified_payment_leaves_the_order_pending_and_dispatches_nothing(
+async def test_webhook_unconfirmed_payment_returns_502_and_leaves_the_order_pending(
     client, payment_order_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:
     async with uow:
         order = await payment_order_repository.create(
             _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-4")
         )
-
-    _install_stub(
-        monkeypatch,
-        _StubGateway(
-            parse_result=WebhookResult(reference="wh-key-4", status=PaymentOrderStatus.PAID),
-            verify_result=False,
-        ),
-    )
-
+    _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-key-4"), payment=None))
     dispatched: list[dict[str, object]] = []
 
     async def _fake_kiq(**kwargs: object) -> None:
@@ -261,25 +275,24 @@ async def test_webhook_unverified_payment_leaves_the_order_pending_and_dispatche
 
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
 
-    assert response.status_code == 200
+    assert response.status_code == 502
     fetched = await payment_order_repository.get_by_id(order.id)
     assert fetched.status is PaymentOrderStatus.PENDING
     assert dispatched == []
 
 
-async def test_webhook_gateway_exception_returns_502(
+async def test_webhook_confirm_exception_returns_502(
     client, payment_order_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:
     async with uow:
         await payment_order_repository.create(
             _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-3")
         )
-
     _install_stub(
         monkeypatch,
         _StubGateway(
-            parse_result=WebhookResult(reference="wh-key-3", status=PaymentOrderStatus.PAID),
-            verify_exc=ConnectionError("simulated network failure"),
+            signal=_paid_signal("wh-key-3"),
+            confirm_exc=ConnectionError("simulated network failure"),
         ),
     )
 
@@ -290,49 +303,25 @@ async def test_webhook_gateway_exception_returns_502(
 async def test_webhook_from_another_gateway_never_touches_the_order(
     client, payment_order_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:
-    # A YooMoney callback naming a YooKassa order's reference: the payer picks
-    # both `label` and `sum` on a quickpay form, so this is reachable.
     async with uow:
         order = await payment_order_repository.create(
             _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-5")
         )
-
-    _install_stub(
-        monkeypatch,
-        _StubGateway(
-            parse_result=WebhookResult(
-                reference="wh-key-5", status=PaymentOrderStatus.PAID, provider_payment_id="ym-1"
-            )
-        ),
-    )
-
-    dispatched: list[dict[str, object]] = []
-
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
-
-    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
+    stub = _StubGateway(signal=_paid_signal("wh-key-5", "ym-1"))
+    _install_stub(monkeypatch, stub)
 
     response = await client.post("/api/v1/payments/yoomoney", content=b"{}")
 
     assert response.status_code == 200
     fetched = await payment_order_repository.get_by_id(order.id)
     assert fetched.status is PaymentOrderStatus.PENDING
-    assert dispatched == []
+    assert stub.confirm_calls == 0
 
 
-async def test_webhook_parse_error_returns_502(
-    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
-) -> None:
-    async with uow:
-        await payment_order_repository.create(
-            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-6")
-        )
-
+async def test_webhook_parse_error_returns_502(client, monkeypatch) -> None:
     _install_stub(
         monkeypatch,
-        _StubGateway(parse_result=None, parse_exc=ValueError("adapter leaked a parse error")),
+        _StubGateway(signal=None, parse_exc=ValueError("adapter leaked a parse error")),
     )
-
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
     assert response.status_code == 502

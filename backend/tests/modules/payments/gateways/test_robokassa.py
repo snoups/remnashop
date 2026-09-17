@@ -1,128 +1,115 @@
 import hashlib
-from datetime import timedelta
 from decimal import Decimal
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
+import httpx
 import pytest
 
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
+import app.modules.payments.gateways.robokassa as robokassa_module
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
+from app.modules.payments.gateways.common import format_moscow
 from app.modules.payments.gateways.robokassa import RobokassaGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"merchant_login": "shop-login", "password1": "pass1", "password2": "pass2"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/robokassa"
-_RETURN_URL = "https://shop.example"
-
-
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.ROBOKASSA,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
-    }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+_SETTINGS = {"merchant_login": "shop", "password1": "p1", "password2": "p2"}
+_XML = (
+    '﻿<?xml version="1.0" encoding="utf-8"?>'
+    '<OperationStateResponse xmlns="http://merchant.roboxchange.com/WebService/">'
+    "<Result><Code>{result}</Code></Result>"
+    "<State><Code>{state}</Code></State>"
+    "<Info><OutCurrLabel>RUB</OutCurrLabel><OutSum>485.000000</OutSum></Info>"
+    "</OperationStateResponse>"
+)
 
 
 def _gateway() -> RobokassaGateway:
-    return RobokassaGateway(settings=_SETTINGS, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+    return RobokassaGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
 
 
-def _signed_webhook(
-    out_sum: str, inv_id: str, shp_order_id: str, password2: str = "pass2"
-) -> bytes:
-    raw = f"{out_sum}:{inv_id}:{password2}:Shp_order_id={shp_order_id}"
-    sign = hashlib.md5(raw.encode()).hexdigest().upper()
-    return urlencode(
-        {
-            "OutSum": out_sum,
-            "InvId": inv_id,
-            "SignatureValue": sign,
-            "Shp_order_id": shp_order_id,
-        }
-    ).encode()
+def _md5(message: str) -> str:
+    return hashlib.md5(message.encode()).hexdigest()
 
 
-def _webhook(body: bytes) -> WebhookRequest:
-    return WebhookRequest(body=body, headers={}, query={}, client_ip=None)
+def _result_url(out_sum: str = "500.000000", password: str = "p2") -> bytes:
+    signature = _md5(f"{out_sum}:42:{password}:Shp_order_id={ORDER_REF}").upper()
+    fields = {
+        "OutSum": out_sum,
+        "InvId": "42",
+        "Fee": "15.000000",
+        "SignatureValue": signature,
+        "Shp_order_id": ORDER_REF,
+    }
+    return urlencode(fields).encode()
 
 
-async def test_create_payment_builds_a_signed_redirect_url() -> None:
-    intent = await _gateway().create_payment(_order())
+def _xml_response(result: int = 0, state: int = 100) -> httpx.Response:
+    body = _XML.format(result=result, state=state).encode("utf-8")
+    return httpx.Response(200, content=body, headers={"content-type": "text/xml"})
 
-    assert intent.provider_payment_id is None
+
+async def test_create_payment_uses_the_order_id_and_expiry() -> None:
+    order = make_order()
+
+    intent = await _gateway().create_payment(order)
+
     assert intent.confirmation_url is not None
-    assert intent.confirmation_url.startswith("https://auth.robokassa.ru/Merchant/Index.aspx?")
-    params = {k: v[0] for k, v in parse_qs(intent.confirmation_url.split("?", 1)[1]).items()}
-    assert params["MerchantLogin"] == "shop-login"
-    assert params["OutSum"] == "500.00"
-    assert params["Shp_order_id"] == "order-key-1"
-
-    expected_sign = (
-        hashlib.md5(b"shop-login:500.00:0:pass1:Shp_order_id=order-key-1").hexdigest().upper()
-    )
-    assert params["SignatureValue"] == expected_sign
+    params = {k: v[0] for k, v in parse_qs(urlsplit(intent.confirmation_url).query).items()}
+    assert params["InvId"] == "42"
+    assert params["SignatureValue"] == _md5(f"shop:500.00:42:p1:Shp_order_id={ORDER_REF}")
+    assert params["ExpirationDate"] == format_moscow(order.expires_at)
+    assert params["Shp_order_id"] == ORDER_REF
+    assert intent.provider_payment_id == "42"
 
 
-async def test_parse_webhook_valid_signature_extracts_order_ref() -> None:
-    body = _signed_webhook(out_sum="500.00", inv_id="0", shp_order_id="order-key-1")
-
-    result = await _gateway().parse_webhook(_webhook(body))
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = urlencode(
-        {
-            "OutSum": "500.00",
-            "InvId": "0",
-            "SignatureValue": "0" * 32,
-            "Shp_order_id": "order-key-1",
-        }
-    ).encode()
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
-
-
-async def test_parse_webhook_missing_shp_order_id_raises() -> None:
-    raw = "500.00:0:pass2"
-    sign = hashlib.md5(raw.encode()).hexdigest().upper()
-    body = urlencode({"OutSum": "500.00", "InvId": "0", "SignatureValue": sign}).encode()
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
-
-
-async def test_webhook_ack_echoes_inv_id_after_parsing() -> None:
+async def test_parse_webhook_verifies_password2_and_acks_with_inv_id() -> None:
     gateway = _gateway()
-    body = _signed_webhook(out_sum="500.00", inv_id="42", shp_order_id="order-key-1")
+    signal = await gateway.parse_webhook(webhook(_result_url()))
 
-    result = await gateway.parse_webhook(_webhook(body))
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "42"
+    assert signal.amount == Decimal("500")
+    assert gateway.webhook_ack(signal).body == "OK42"
 
-    assert gateway.webhook_ack(result) == "OK42"
+
+async def test_parse_webhook_rejects_a_password1_signature() -> None:
+    with pytest.raises(PaymentGatewayError):
+        await _gateway().parse_webhook(webhook(_result_url(password="p1")))
+
+
+async def test_confirm_reads_op_state_ext(monkeypatch: pytest.MonkeyPatch) -> None:
+    http = install_http(monkeypatch, robokassa_module, lambda request: _xml_response())
+    signal = await _gateway().parse_webhook(webhook(_result_url()))
+    assert signal is not None
+
+    confirmed = await _gateway().confirm(make_order(), signal)
+
+    assert confirmed is not None and confirmed.amount == Decimal("500")
+    assert http.last.url.path.endswith("/OpStateExt")
+    assert http.last.url.params["InvoiceID"] == "42"
+    assert http.last.url.params["Signature"] == _md5("shop:42:p2")
+
+
+@pytest.mark.parametrize(("result", "state"), [(0, 5), (0, 50), (3, 0)])
+async def test_confirm_rejects_unfinished_or_unknown_operations(
+    monkeypatch: pytest.MonkeyPatch, result: int, state: int
+) -> None:
+    install_http(monkeypatch, robokassa_module, lambda request: _xml_response(result, state))
+    signal = await _gateway().parse_webhook(webhook(_result_url()))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(), signal) is None
+
+
+async def test_confirm_raises_on_op_state_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, robokassa_module, lambda request: _xml_response(1, 0))
+    signal = await _gateway().parse_webhook(webhook(_result_url()))
+    assert signal is not None
+    with pytest.raises(PaymentGatewayError):
+        await _gateway().confirm(make_order(), signal)

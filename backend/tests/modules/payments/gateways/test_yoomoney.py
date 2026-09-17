@@ -1,175 +1,149 @@
 import hashlib
 import hmac
-from datetime import timedelta
 from decimal import Decimal
-from urllib.parse import parse_qs, quote, urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 import pytest
 
 import app.modules.payments.gateways.yoomoney as yoomoney_module
-from app.core.enums import (
-    Currency,
-    DiscountSource,
-    PaymentGatewayType,
-    PaymentOrderStatus,
-    PurchaseType,
-)
 from app.core.exceptions import PaymentGatewayError
-from app.core.utils.time import datetime_now
-from app.modules.payments.dto import PaymentOrderDto
-from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.gateways.yoomoney import YooMoneyGateway
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.modules.payments.gateways.support import (
+    ORDER_REF,
+    RETURN_URL,
+    WEBHOOK_URL,
+    install_http,
+    json_response,
+    make_order,
+    webhook,
+)
 
-_SETTINGS = {"wallet_id": "410011234567890", "secret_key": "test-secret"}
-_WEBHOOK_URL = "https://shop.example/api/v1/payments/yoomoney"
-_RETURN_URL = "https://shop.example"
+_SETTINGS = {"wallet_id": "41001", "secret_key": "secret"}
 
 
-def _order(**overrides: object) -> PaymentOrderDto:
-    defaults: dict[str, object] = {
-        "id": 1,
-        "user_id": 1,
-        "plan_id": 1,
-        "plan_snapshot": make_plan_snapshot(plan_id=1),
-        "duration_days": 30,
-        "currency": Currency.RUB,
-        "purchase_type": PurchaseType.NEW,
-        "gateway_type": PaymentGatewayType.YOOMONEY,
-        "status": PaymentOrderStatus.PENDING,
-        "base_price": Decimal("500"),
-        "discount_percent": 0,
-        "discount_source": DiscountSource.NONE,
-        "final_price": Decimal("500"),
-        "idempotency_key": "order-key-1",
-        "expires_at": datetime_now() + timedelta(minutes=30),
+def _gateway(**extra: str) -> YooMoneyGateway:
+    return YooMoneyGateway(
+        settings={**_SETTINGS, **extra}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL
+    )
+
+
+def _notification(**overrides: str) -> bytes:
+    fields = {
+        "notification_type": "p2p-incoming",
+        "operation_id": "op-1",
+        "amount": "490.00",
+        "withdraw_amount": "500.00",
+        "currency": "643",
+        "datetime": "2026-09-17T10:00:00Z",
+        "sender": "41002",
+        "codepro": "false",
+        "label": ORDER_REF,
+        "unaccepted": "false",
     }
-    defaults.update(overrides)
-    return PaymentOrderDto(**defaults)  # type: ignore[arg-type]
+    fields.update(overrides)
+    base = "&".join(f"{key}={quote(value, safe='')}" for key, value in sorted(fields.items()))
+    fields["sign"] = hmac.new(b"secret", base.encode(), hashlib.sha256).hexdigest()
+    return urlencode(fields).encode()
 
 
-def _gateway(settings: dict[str, str] = _SETTINGS) -> YooMoneyGateway:
-    return YooMoneyGateway(settings=settings, webhook_url=_WEBHOOK_URL, return_url=_RETURN_URL)
+def _details(**overrides: object) -> dict[str, object]:
+    details: dict[str, object] = {
+        "operation_id": "op-1",
+        "status": "success",
+        "direction": "in",
+        "amount": 490.0,
+        "label": ORDER_REF,
+    }
+    details.update(overrides)
+    return details
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport) -> None:
-    monkeypatch.setattr(yoomoney_module, "http_client", httpx.AsyncClient(transport=handler))
-
-
-def _signed_body(secret: str, **fields: str) -> bytes:
-    sign_str = "&".join(f"{key}={quote(value, safe='')}" for key, value in sorted(fields.items()))
-    sign = hmac.new(secret.encode("utf-8"), sign_str.encode("utf-8"), hashlib.sha256).hexdigest()
-    return urlencode({**fields, "sign": sign}).encode("utf-8")
-
-
-def _webhook(body: bytes) -> WebhookRequest:
-    return WebhookRequest(body=body, headers={}, query={}, client_ip=None)
-
-
-async def test_create_payment_posts_form_data_and_follows_the_redirect_to_checkout(
+async def test_create_payment_follows_the_quickpay_redirect(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    requests: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        if len(requests) == 1:
-            return httpx.Response(
-                302,
-                headers={
-                    "Location": "https://yoomoney.ru/checkout/payments/v2/contract?orderId=abc"
-                },
-            )
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/quickpay/confirm.xml":
+            return httpx.Response(302, headers={"Location": "https://yoomoney.ru/quickpay/pay/1"})
         return httpx.Response(200)
 
-    _patch_transport(monkeypatch, httpx.MockTransport(handler))
+    http = install_http(monkeypatch, yoomoney_module, respond)
 
-    intent = await _gateway().create_payment(_order())
+    intent = await _gateway().create_payment(make_order())
 
-    assert (
-        intent.confirmation_url == "https://yoomoney.ru/checkout/payments/v2/contract?orderId=abc"
-    )
-    assert intent.provider_payment_id is None
-    first_request = requests[0]
-    assert first_request.headers["content-type"] == "application/x-www-form-urlencoded"
-    form = {k: v[0] for k, v in parse_qs(first_request.content.decode()).items()}
-    assert form["receiver"] == "410011234567890"
-    assert form["label"] == "order-key-1"
-    assert form["sum"] == "500.00"
-    assert form["successURL"] == _RETURN_URL
+    assert intent.confirmation_url == "https://yoomoney.ru/quickpay/pay/1"
+    assert b"label=order-key-1" in http.requests[0].content
 
 
-async def test_parse_webhook_valid_signature_returns_paid_result() -> None:
-    body = _signed_body(
-        "test-secret",
-        label="order-key-1",
-        operation_id="op-1",
-        amount="500.00",
-        withdraw_amount="500.00",
-        currency="643",
-        datetime="2026-09-02T12:00:00Z",
-        sender="",
-        codepro="false",
-        notification_type="p2p-incoming",
-    )
+async def test_parse_webhook_verifies_the_signature() -> None:
+    signal = await _gateway().parse_webhook(webhook(_notification()))
 
-    result = await _gateway().parse_webhook(_webhook(body))
-
-    assert result is not None
-    assert result.reference == "order-key-1"
-    assert result.status is PaymentOrderStatus.PAID
-    assert result.provider_payment_id == "op-1"
+    assert signal is not None and signal.claims_paid is True
+    assert signal.reference == ORDER_REF
+    assert signal.provider_payment_id == "op-1"
+    assert signal.amount == Decimal("500.00")
 
 
-async def test_parse_webhook_reads_the_amount_debited_from_the_sender() -> None:
-    # 'amount' is what reached the receiver (fee already deducted), so reading
-    # it would reject a payment the customer was charged in full for.
-    body = _signed_body(
-        "test-secret",
-        label="order-key-1",
-        operation_id="op-1",
-        amount="485.00",
-        withdraw_amount="500.00",
-        currency="643",
-        datetime="2026-09-02T12:00:00Z",
-        sender="",
-        codepro="false",
-        notification_type="p2p-incoming",
-    )
-
-    result = await _gateway().parse_webhook(_webhook(body))
-
-    assert result is not None
-    assert result.amount == Decimal("500.00")
-
-
-async def test_parse_webhook_invalid_signature_raises() -> None:
-    body = urlencode({"label": "order-key-1", "sign": "not-the-real-signature"}).encode()
-
+async def test_parse_webhook_rejects_a_bad_signature_and_skips_test_pings() -> None:
+    tampered = _notification().replace(b"withdraw_amount=500.00", b"withdraw_amount=1.00")
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
+        await _gateway().parse_webhook(webhook(tampered))
+    ping = await _gateway().parse_webhook(webhook(_notification(operation_id="test-notification")))
+    assert ping is None
 
 
-async def test_parse_webhook_missing_signature_raises() -> None:
-    body = urlencode({"label": "order-key-1"}).encode()
+@pytest.mark.parametrize("field", ["unaccepted", "codepro"])
+async def test_parse_webhook_does_not_claim_payment_when_unaccepted_or_codepro(field: str) -> None:
+    signal = await _gateway().parse_webhook(webhook(_notification(**{field: "true"})))
 
+    assert signal is not None and signal.claims_paid is False
+
+
+async def test_confirm_without_a_token_trusts_the_signed_amount() -> None:
+    gateway = _gateway()
+    paid = await gateway.parse_webhook(webhook(_notification()))
+    short = await gateway.parse_webhook(webhook(_notification(withdraw_amount="400.00")))
+    missing = await gateway.parse_webhook(webhook(_notification(withdraw_amount="")))
+    assert paid is not None and short is not None and missing is not None
+
+    assert await gateway.confirm(make_order(), paid) is not None
+    assert await gateway.confirm(make_order(), short) is None
+    assert await gateway.confirm(make_order(), missing) is None
+
+
+async def test_confirm_with_a_token_reads_operation_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    http = install_http(monkeypatch, yoomoney_module, json_response(_details()))
+    gateway = _gateway(access_token="wallet-token")
+    signal = await gateway.parse_webhook(webhook(_notification()))
+    assert signal is not None
+
+    confirmed = await gateway.confirm(make_order(), signal)
+
+    assert confirmed is not None and confirmed.amount == Decimal("500.00")
+    assert http.last.url.path == "/api/operation-details"
+    assert http.last.headers["Authorization"] == "Bearer wallet-token"
+    assert http.last.content == b"operation_id=op-1"
+
+
+@pytest.mark.parametrize(
+    "details", [_details(direction="out"), _details(status="refused"), _details(label="other")]
+)
+async def test_confirm_with_a_token_rejects_mismatches(
+    monkeypatch: pytest.MonkeyPatch, details: dict[str, object]
+) -> None:
+    install_http(monkeypatch, yoomoney_module, json_response(details))
+    gateway = _gateway(access_token="wallet-token")
+    signal = await gateway.parse_webhook(webhook(_notification()))
+    assert signal is not None
+    assert await gateway.confirm(make_order(), signal) is None
+
+
+async def test_confirm_with_a_token_raises_on_api_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, yoomoney_module, json_response({"error": "invalid_token"}))
+    gateway = _gateway(access_token="wallet-token")
+    signal = await gateway.parse_webhook(webhook(_notification()))
+    assert signal is not None
     with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
-
-
-async def test_parse_webhook_test_notification_is_a_noop() -> None:
-    # YooMoney's dashboard "test" button sends operation_id=test-notification
-    # unsigned -- not a real payment, never a verification failure.
-    body = urlencode({"operation_id": "test-notification", "label": "order-key-1"}).encode()
-
-    result = await _gateway().parse_webhook(_webhook(body))
-
-    assert result is None
-
-
-async def test_parse_webhook_missing_label_raises() -> None:
-    body = _signed_body("test-secret", operation_id="op-1")
-
-    with pytest.raises(PaymentGatewayError):
-        await _gateway().parse_webhook(_webhook(body))
+        await gateway.confirm(make_order(), signal)

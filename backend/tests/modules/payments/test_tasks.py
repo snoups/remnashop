@@ -105,6 +105,7 @@ async def test_reconcile_paid_orders_redispatches_when_no_subscription_is_linked
     assert dispatched[0]["idempotency_key"] == "recon-unlinked"
     assert dispatched[0]["user_id"] == user_id
     assert dispatched[0]["plan_snapshot"]["plan_id"] == plan_id
+    assert dispatched[0]["base_price"] == "500.00"
 
 
 async def test_reconcile_paid_orders_skips_when_a_subscription_is_already_linked(
