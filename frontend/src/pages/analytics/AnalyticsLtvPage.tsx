@@ -4,6 +4,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 
 import { getLtvDistribution } from "@entities/analytics/api";
 import type { LtvDistribution } from "@entities/analytics/api";
+import { FieldHint } from "@shared/ui/FieldHint";
 import { Spinner } from "@shared/ui/Spinner";
 
 type LtvState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: LtvDistribution };
@@ -29,11 +30,12 @@ export function AnalyticsLtvPage() {
 
   return (
     <div className="flex flex-col gap-4 pb-2">
-      <h2 className="text-[13px] font-semibold text-foreground">
+      <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
         {t("analytics.ltv.title")}
         {state.kind === "ready" && (
-          <span className="ml-2 font-normal text-muted-foreground">({state.data.report_currency})</span>
+          <span className="font-normal text-muted-foreground">({state.data.report_currency})</span>
         )}
+        <FieldHint text={t("analytics.ltv.titleHint")} side="bottom" />
       </h2>
 
       {state.kind === "loading" && <Spinner className="py-12" />}

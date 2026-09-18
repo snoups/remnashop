@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { getCohorts } from "@entities/analytics/api";
 import type { Cohorts } from "@entities/analytics/api";
+import { FieldHint } from "@shared/ui/FieldHint";
 import { Spinner } from "@shared/ui/Spinner";
 
 type CohortsState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Cohorts };
@@ -36,7 +37,10 @@ export function AnalyticsCohortsPage() {
 
   return (
     <div className="flex flex-col gap-4 pb-2">
-      <h2 className="text-[13px] font-semibold text-foreground">{t("analytics.cohorts.title")}</h2>
+      <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+        {t("analytics.cohorts.title")}
+        <FieldHint text={t("analytics.cohorts.titleHint")} side="bottom" />
+      </h2>
 
       {state.kind === "loading" && <Spinner className="py-12" />}
       {state.kind === "error" && (

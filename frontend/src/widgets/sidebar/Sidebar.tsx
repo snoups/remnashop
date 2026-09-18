@@ -46,6 +46,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { key: "overview", to: "/dashboard", icon: LayoutGrid, end: true },
+  { key: "analytics", to: "/dashboard/analytics", icon: BarChart3, permission: "ANALYTICS_VIEW" },
   { key: "users", to: "/dashboard/users", icon: Users, permission: "USERS_VIEW" },
   { key: "dialogs", to: "/dashboard/dialogs", icon: MessageSquare, permission: "DIALOGS_WINDOWS_VIEW" },
   { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, permission: "SUBSCRIPTIONS_VIEW" },
@@ -54,7 +55,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: "referrals", to: "/dashboard/referrals", icon: Gift, permission: "REFERRALS_SETTINGS_VIEW" },
   { key: "advertising", to: "/dashboard/advertising", icon: Link2, permission: "AD_LINKS_VIEW" },
   { key: "payments", to: "/dashboard/payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
-  { key: "analytics", to: "/dashboard/analytics", icon: BarChart3, permission: "ANALYTICS_VIEW" },
   { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, permission: "ADMINS_MANAGE" },
   { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, permission: "EVENT_LOG_VIEW" },
   { key: "settings", to: "/dashboard/settings", icon: Settings },

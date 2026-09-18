@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { getAnalytics } from "@entities/analytics/api";
 import type { Analytics, AnalyticsPeriodDays } from "@entities/analytics/api";
+import { FieldHint } from "@shared/ui/FieldHint";
 import { PeriodToggle } from "@shared/ui/PeriodToggle";
 import { Spinner } from "@shared/ui/Spinner";
 import { StatCard } from "@shared/ui/StatCard";
@@ -59,11 +60,13 @@ export function AnalyticsOverviewPage() {
               icon={TrendingUp}
               label={t("analytics.kpi.mrr")}
               value={`${state.data.kpi.mrr} ${state.data.kpi.report_currency}`}
+              hint={t("analytics.kpi.mrrHint")}
             />
             <StatCard
               icon={PieChart}
               label={t("analytics.kpi.arpu")}
               value={`${state.data.kpi.arpu} ${state.data.kpi.report_currency}`}
+              hint={t("analytics.kpi.arpuHint")}
             />
             <StatCard
               icon={Users}
@@ -79,21 +82,27 @@ export function AnalyticsOverviewPage() {
               icon={UserCheck}
               label={t("analytics.kpi.conversionRate")}
               value={`${formatPercent(state.data.kpi.conversion_rate)} (${state.data.kpi.paid_in_period}/${state.data.kpi.registered_in_period})`}
+              hint={t("analytics.kpi.conversionRateHint")}
             />
           </div>
 
           <div className="rounded-2xl border border-border bg-surface/40 p-4">
-            <h3 className="mb-3 text-[13px] font-semibold text-foreground">{t("analytics.churn.title")}</h3>
+            <h3 className="mb-3 flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+              {t("analytics.churn.title")}
+              <FieldHint text={t("analytics.churn.titleHint")} />
+            </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <StatCard
                 icon={TrendingDown}
                 label={t("analytics.churn.rate")}
                 value={formatPercent(state.data.churn.churn_rate)}
+                hint={t("analytics.churn.rateHint")}
               />
               <StatCard
                 icon={TrendingUp}
                 label={t("analytics.churn.retention")}
                 value={formatPercent(state.data.churn.retention_rate)}
+                hint={t("analytics.churn.retentionHint")}
               />
             </div>
             <div className="mt-3 flex flex-wrap gap-4 text-[12px] text-muted-foreground">
