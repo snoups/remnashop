@@ -11,11 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.enums import Role
 from app.core.metrics import register_db_pool_metrics
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
+from app.modules.blacklist import BlacklistRepository, ensure_blacklist_sources_seeded
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository, ensure_translations_seeded
+from app.modules.users import UserRepository
 from app.worker.broker import broker
 
 
@@ -36,6 +39,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         async with uow:
             register_all_flow_metadata()
             await ensure_translations_seeded(config, translations_repository, settings_repository)
+
+            # Fresh install only -- once an owner exists the list is the
+            # admin's to manage, and a source they removed must stay removed.
+            user_repository = await startup_container.get(UserRepository)
+            if not await user_repository.exists_with_role(Role.OWNER):
+                blacklist_repository = await startup_container.get(BlacklistRepository)
+                await ensure_blacklist_sources_seeded(blacklist_repository)
 
             dialog_repository = await startup_container.get(DialogRepository)
             await ensure_dialogs_seeded(
