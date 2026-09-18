@@ -12,6 +12,7 @@ from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
+from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import AppearanceImageKind, Locale
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
@@ -44,11 +45,7 @@ class SettingsRepository:
         self.session = session
 
     async def _get_or_create_singleton(self, model: type[_SingletonRow]) -> _SingletonRow:
-        row = await self.session.get(model, _SINGLETON_ID)
-        if row is None:
-            row = model(id=_SINGLETON_ID)
-            self.session.add(row)
-        return row
+        return await get_or_create_singleton(self.session, model, _SINGLETON_ID)
 
     def _to_dto(self, row: Optional[BotSettings]) -> BotSettingsDto:
         if row is None:

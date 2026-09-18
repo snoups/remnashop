@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.models.referral import Referral
 from app.core.db.models.referral_reward import ReferralReward
 from app.core.db.models.referral_settings import ReferralSettings
+from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import ReferralRewardType
 from app.core.exceptions import ConflictError
 from app.modules.referrals.dto import (
@@ -125,11 +126,7 @@ class ReferralRepository:
         return [self._reward_to_dto(row) for row in rows]
 
     async def _get_or_create_settings(self) -> ReferralSettings:
-        row = await self.session.get(ReferralSettings, _SINGLETON_ID)
-        if row is None:
-            row = ReferralSettings(id=_SINGLETON_ID)
-            self.session.add(row)
-        return row
+        return await get_or_create_singleton(self.session, ReferralSettings, _SINGLETON_ID)
 
     async def get_settings(self) -> ReferralSettingsDto:
         row = await self.session.get(ReferralSettings, _SINGLETON_ID)

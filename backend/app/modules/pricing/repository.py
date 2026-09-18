@@ -2,10 +2,12 @@ from decimal import Decimal
 from typing import Final
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.currency_rate import CurrencyRate
 from app.core.db.models.pricing_settings import PricingSettings
+from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import Currency, RoundingMode
 from app.core.exceptions import ValidationError
 from app.modules.pricing.dto import (
@@ -50,30 +52,39 @@ class PricingRepository:
         )
 
     async def _get_or_create_settings(self) -> PricingSettings:
-        row = await self.session.get(PricingSettings, _SETTINGS_ID)
-        if row is None:
-            row = PricingSettings(id=_SETTINGS_ID)
-            self.session.add(row)
-        return row
+        return await get_or_create_singleton(self.session, PricingSettings, _SETTINGS_ID)
+
+    async def _seed_missing_rates(self, missing: list[Currency]) -> None:
+        # ON CONFLICT DO NOTHING rather than session.add -- same fresh-database
+        # race as get_or_create_singleton guards against.
+        await self.session.execute(
+            pg_insert(CurrencyRate)
+            .values(
+                [
+                    {
+                        "currency": currency,
+                        "rate": Decimal("1"),
+                        "rounding_mode": _SEED_RATES[currency][0],
+                        "charm_ending": _SEED_RATES[currency][1],
+                        "min_amount": _SEED_RATES[currency][2],
+                    }
+                    for currency in missing
+                ]
+            )
+            .on_conflict_do_nothing()
+        )
 
     async def get_rate_table(self) -> CurrencyRateTable:
         result = await self.session.execute(select(CurrencyRate))
         rows = {row.currency: row for row in result.scalars()}
 
-        for currency, (rounding_mode, charm_ending, min_amount) in _SEED_RATES.items():
-            if currency not in rows:
-                row = CurrencyRate(
-                    currency=currency,
-                    rate=Decimal("1"),
-                    rounding_mode=rounding_mode,
-                    charm_ending=charm_ending,
-                    min_amount=min_amount,
-                )
-                self.session.add(row)
-                rows[currency] = row
+        missing = [currency for currency in _SEED_RATES if currency not in rows]
+        if missing:
+            await self._seed_missing_rates(missing)
+            result = await self.session.execute(select(CurrencyRate))
+            rows = {row.currency: row for row in result.scalars()}
 
         settings = await self._get_or_create_settings()
-        await self.session.flush()
 
         return CurrencyRateTable(
             anchor=settings.anchor_currency,

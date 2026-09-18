@@ -1,8 +1,12 @@
+import asyncio
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.core.db.models.currency_rate import CurrencyRate
+from app.core.db.models.pricing_settings import PricingSettings
 from app.core.enums import Currency, RoundingMode
 from app.core.exceptions import ValidationError
 from app.modules.pricing.dto import UpdateCurrencyRateDto, UpdatePricingSettingsDto
@@ -78,3 +82,20 @@ async def test_update_settings_clears_a_field_to_null(session: AsyncSession) -> 
     )
     assert result.price_per_day is None
     assert result.price_per_gb == Decimal("0.10")
+
+
+async def test_get_rate_table_survives_concurrent_seeding(engine: AsyncEngine) -> None:
+    # Real connections, not the rolled-back `session` fixture -- the race only
+    # exists between separate transactions racing to insert the same seed rows.
+    async def seed() -> None:
+        async with AsyncSession(engine) as concurrent:
+            await PricingRepository(concurrent).get_rate_table()
+            await concurrent.commit()
+
+    try:
+        await asyncio.gather(seed(), seed(), seed())
+    finally:
+        async with AsyncSession(engine) as cleanup:
+            await cleanup.execute(delete(CurrencyRate))
+            await cleanup.execute(delete(PricingSettings))
+            await cleanup.commit()

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.blacklist import Blacklist
 from app.core.db.models.blacklist_source import BlacklistSource
+from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import BlacklistKind
 from app.core.exceptions import ConflictError
 from app.core.utils.time import datetime_now
@@ -25,12 +26,9 @@ class BlacklistRepository:
         self.session = session
 
     async def _get_or_create_row(self) -> Blacklist:
-        row = await self.session.get(Blacklist, _SINGLETON_ID)
-        if row is None:
-            row = Blacklist(id=_SINGLETON_ID, blocked_telegram_ids=[], blocked_emails=[])
-            self.session.add(row)
-            await self.session.flush()
-        return row
+        return await get_or_create_singleton(
+            self.session, Blacklist, _SINGLETON_ID, blocked_telegram_ids=[], blocked_emails=[]
+        )
 
     def _to_source_dto(self, row: BlacklistSource) -> BlacklistSourceDto:
         return BlacklistSourceDto(
