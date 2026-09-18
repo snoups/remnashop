@@ -48,7 +48,7 @@
     },
     "welcome": {
       "title": "Welcome to Remnashop",
-      "description": "Remnashop is a Telegram bot for selling VPN subscriptions on top of Remnawave, built by enthusiasts in their spare time. If it's been useful to you, support is very welcome.",
+      "description": "Remnashop is a ready-made platform for selling VPN subscriptions, built by enthusiasts in their spare time. If it's been useful to you, support is very welcome.",
       "continueButton": "Continue to dashboard"
     }
   },
@@ -106,15 +106,21 @@
     "kpi": {
       "revenue": "Revenue",
       "mrr": "MRR",
+      "mrrHint": "Monthly Recurring Revenue — the sum of all active subscriptions' monthly value.",
       "arpu": "ARPU",
+      "arpuHint": "Average Revenue Per User — total revenue in the period divided by the number of paying users.",
       "activeSubscriptions": "Active subscriptions",
       "paidOrders": "Paid orders",
-      "conversionRate": "Registration → payment"
+      "conversionRate": "Registration → payment",
+      "conversionRateHint": "Share of users registered in the period who made at least one paid order."
     },
     "churn": {
       "title": "Churn",
+      "titleHint": "How many subscribers who were active at the start of the period stayed active by the end of it.",
       "rate": "Churn rate",
+      "rateHint": "Share of subscribers active at the start of the period who are no longer active by the end.",
       "retention": "Retention rate",
+      "retentionHint": "Share of subscribers active at the start of the period who are still active at the end.",
       "prevActive": "Active at window start",
       "stillActive": "Still active",
       "churned": "Churned"
@@ -139,6 +145,7 @@
     },
     "cohorts": {
       "title": "Cohort retention",
+      "titleHint": "Each row is users who registered in that month. M0, M1... show the share of them still active 0, 1... months later.",
       "loadError": "Couldn't load cohorts. Try refreshing.",
       "empty": "No registrations in this window yet.",
       "cohortColumn": "Cohort",
@@ -146,6 +153,7 @@
     },
     "ltv": {
       "title": "Lifetime value distribution",
+      "titleHint": "How many paying users fall into each range of total amount paid to date.",
       "loadError": "Couldn't load LTV distribution. Try refreshing.",
       "empty": "No paying users yet.",
       "usersAxis": "Users"
@@ -1196,12 +1204,29 @@
       "deleteWindowConfirm": "Delete \"{{key}}\"? This can't be undone.",
       "deleteWindowConfirmButton": "Delete",
       "deleteWindowCancelButton": "Cancel",
-      "deleted": "Window deleted."
+      "deleted": "Window deleted.",
+      "limitReached": "Window limit reached — delete one to add another.",
+      "title": "Windows",
+      "flows": {
+        "menu": "Menu",
+        "purchase": "Purchase",
+        "renewal": "Renewal",
+        "change": "Plan change",
+        "subscription": "Subscription",
+        "promocode": "Promocode",
+        "custom": "Custom"
+      }
     },
     "canvas": {
       "noBanner": "No banner",
       "noText": "(no text set)",
-      "emptyButtons": "This window has no buttons."
+      "emptyButtons": "This window has no buttons.",
+      "newButton": "New button",
+      "unreachable": "No button leads here yet, so this window can't be reached in the bot.",
+      "editText": "Edit the message text",
+      "editButton": "Click to edit, drag to move",
+      "unlabelledButton": "No label",
+      "newRow": "Drag a button here to start a new row"
     },
     "inspector": {
       "windowTitle": "Window settings",
@@ -1240,7 +1265,23 @@
       "buttonsDiscard": "Discard changes",
       "buttonLabelPending": "Save the button grid first to unlock editing this label.",
       "discardSwitchConfirm": "Discard unsaved button changes and switch windows?",
-      "discardSwitchConfirmButton": "Discard and switch"
+      "discardSwitchConfirmButton": "Discard and switch",
+      "buttonUrlEmpty": "A URL button needs a link.",
+      "buttonUrlScheme": "The link must start with {{schemes}}.",
+      "buttonUrlVariable": "Unknown variable: {{name}}.",
+      "buttonUrlInvalidGrid": "Fix the button link before saving.",
+      "buttonLabelEmpty": "A button with no label is skipped in the bot — Telegram rejects it.",
+      "emptySelection": "Pick the text or a button on the canvas to edit it.",
+      "tabWindow": "Window",
+      "tabElement": "Element"
+    },
+    "toolbar": {
+      "export": "Export",
+      "import": "Import",
+      "importConfirm": "Replace the whole dialog configuration with this file? Custom windows missing from it are deleted, and edited texts are overwritten.",
+      "importConfirmButton": "Import",
+      "imported": "Configuration imported.",
+      "importInvalid": "That file isn't a dialog export."
     }
   },
   "referrals": {

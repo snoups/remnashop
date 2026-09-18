@@ -1,5 +1,6 @@
 import pytest
 
+from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.enums import BannerName, ButtonLinkType, DialogFlow
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.dialogs.dto import (
@@ -73,13 +74,43 @@ async def test_replace_buttons_swaps_layout(dialog_repository: DialogRepository)
 async def test_reset_restores_snapshot(dialog_repository: DialogRepository) -> None:
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
     await dialog_repository.update_window(
-        "menu.main", UpdateDialogWindowDto(banner_name=BannerName.DEFAULT)
+        "menu.main",
+        UpdateDialogWindowDto(banner_name=BannerName.DEFAULT, banner_name_provided=True),
     )
     await dialog_repository.replace_buttons("menu.main", [])
 
     reset = await dialog_repository.reset_to_snapshot("menu.main")
     assert reset.banner_name == BannerName.MENU
     assert [b.text_key for b in reset.buttons] == ["btn-menu.subscription"]
+
+
+async def test_update_window_clears_banner_only_when_told_to(
+    dialog_repository: DialogRepository,
+) -> None:
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+
+    untouched = await dialog_repository.update_window(
+        "menu.main", UpdateDialogWindowDto(is_enabled=False)
+    )
+    assert untouched.banner_name == BannerName.MENU
+
+    cleared = await dialog_repository.update_window(
+        "menu.main", UpdateDialogWindowDto(banner_name=None, banner_name_provided=True)
+    )
+    assert cleared.banner_name is None
+
+
+async def test_custom_windows_take_free_slots_until_the_pool_runs_out(
+    dialog_repository: DialogRepository,
+) -> None:
+    for index in range(CUSTOM_DIALOG_WINDOW_SLOTS):
+        window = await dialog_repository.create_custom_window(
+            f"custom.{index}", CreateCustomWindowDto()
+        )
+        assert window.slot == index
+
+    with pytest.raises(ValidationError):
+        await dialog_repository.create_custom_window("custom.overflow", CreateCustomWindowDto())
 
 
 async def test_create_custom_window_conflict(dialog_repository: DialogRepository) -> None:

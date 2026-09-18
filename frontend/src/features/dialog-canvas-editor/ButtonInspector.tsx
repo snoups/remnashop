@@ -1,9 +1,24 @@
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
-import { splitTextKey } from "@entities/dialogs/api";
+import { URL_SCHEMES, splitTextKey, urlProblem } from "@entities/dialogs/api";
 import type { DialogButtonItem, DialogCatalog } from "@entities/dialogs/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
+
+function describeUrlError(
+  button: DialogButtonItem,
+  variableKeys: string[],
+  t: TFunction,
+): string | null {
+  if (button.link_type !== "url") return null;
+  if (!button.url_value) return t("dialogs.inspector.buttonUrlEmpty");
+  const problem = urlProblem(button.url_value, variableKeys);
+  if (problem === null) return null;
+  return problem.kind === "scheme"
+    ? t("dialogs.inspector.buttonUrlScheme", { schemes: URL_SCHEMES.join(", ") })
+    : t("dialogs.inspector.buttonUrlVariable", { name: problem.name });
+}
 
 interface ButtonInspectorProps {
   button: DialogButtonItem;
@@ -39,10 +54,18 @@ export function ButtonInspector({
   const { t } = useTranslation();
   const linkTypeOptions: DialogButtonItem["link_type"][] =
     windowKind === "custom" ? ["navigate", "url"] : ["action", "navigate", "url"];
-  const isTextSeeded = entries.some((e) => e.message_id === splitTextKey(button.text_key).messageId);
+  const { messageId, attributeId } = splitTextKey(button.text_key);
+  const isTextSeeded = entries.some((e) => e.message_id === messageId);
+  const isLabelEmpty =
+    (
+      entries.find(
+        (e) => e.locale === activeLocale && e.message_id === messageId && e.attribute_id === attributeId,
+      )?.value ?? ""
+    ).trim() === "";
+  const urlError = describeUrlError(button, catalog.variable_keys, t);
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-4 lg:w-64">
+    <div className="flex w-full flex-col gap-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
         <h3 className="mb-3 text-[13px] font-semibold text-foreground">{t("dialogs.inspector.buttonTitle")}</h3>
 
@@ -63,6 +86,9 @@ export function ButtonInspector({
             <p className="mt-1 text-[11.5px] text-muted-foreground">
               {t("dialogs.inspector.buttonLabelPending")}
             </p>
+          )}
+          {isTextSeeded && isLabelEmpty && (
+            <p className="mt-1 text-[11.5px] text-error">{t("dialogs.inspector.buttonLabelEmpty")}</p>
           )}
         </label>
 
@@ -162,8 +188,11 @@ export function ButtonInspector({
               value={button.url_value ?? ""}
               disabled={!canEditButtons}
               onChange={(event) => onChange({ ...button, url_value: event.target.value })}
-              className="mb-1.5 w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+              className={`mb-1.5 w-full rounded-lg border bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50 ${
+                urlError === null ? "border-white/[0.12]" : "border-error/60"
+              }`}
             />
+            {urlError !== null && <p className="mb-1.5 text-[11.5px] text-error">{urlError}</p>}
             <div className="flex flex-wrap gap-1">
               {catalog.variable_keys.map((name) => (
                 <button

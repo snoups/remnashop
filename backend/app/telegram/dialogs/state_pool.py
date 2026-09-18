@@ -2,6 +2,8 @@ from typing import Final, Optional, Protocol
 
 from aiogram.fsm.state import State, StatesGroup
 
+from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
+
 
 class CustomWindows(StatesGroup):
     W0 = State()
@@ -60,8 +62,12 @@ class CustomWindows(StatesGroup):
 
 
 _CUSTOM_WINDOW_STATES: Final[tuple[State, ...]] = tuple(
-    getattr(CustomWindows, f"W{i}") for i in range(50)
+    getattr(CustomWindows, f"W{i}") for i in range(CUSTOM_DIALOG_WINDOW_SLOTS)
 )
+
+_SLOT_BY_STATE: Final[dict[State, int]] = {
+    state: slot for slot, state in enumerate(_CUSTOM_WINDOW_STATES)
+}
 
 _SEED_STATES: Final[dict[str, State]] = {}
 
@@ -73,6 +79,21 @@ class _EnabledWindow(Protocol):
 class _SlotResolver(Protocol):
     async def custom_window_slot(self, window_key: str) -> Optional[int]: ...
     async def get_window(self, key: str) -> _EnabledWindow: ...
+
+
+class _KeyResolver(Protocol):
+    async def key_for_slot(self, slot: int) -> Optional[str]: ...
+
+
+def custom_window_states() -> tuple[State, ...]:
+    return _CUSTOM_WINDOW_STATES
+
+
+async def resolve_custom_window_key(state: State, cache: _KeyResolver) -> Optional[str]:
+    slot = _SLOT_BY_STATE.get(state)
+    if slot is None:
+        return None
+    return await cache.key_for_slot(slot)
 
 
 def register_seed_state(window_key: str, state: State) -> None:

@@ -13,6 +13,7 @@ from app.core.enums import (
 
 
 class DialogButtonItem(BaseModel):
+    id: int
     row: int
     column: int
     text_key: str
@@ -44,6 +45,7 @@ class DialogCatalogResponse(BaseModel):
     text_variable_keys: list[str]
     seed_window_keys: list[str]
     navigable_window_keys: list[str]
+    custom_window_limit: int
 
 
 class UpdateDialogWindowRequest(BaseModel):
@@ -61,7 +63,7 @@ class DialogButtonInput(BaseModel):
     visibility_condition: Optional[str] = Field(default=None, max_length=64)
     action_key: Optional[str] = Field(default=None, max_length=64)
     target_window_key: Optional[str] = Field(default=None, max_length=128)
-    url_value: Optional[str] = None
+    url_value: Optional[str] = Field(default=None, max_length=2048)
     is_hidden: bool = False
 
 
@@ -72,6 +74,28 @@ class ReplaceButtonsRequest(BaseModel):
 class CreateCustomWindowRequest(BaseModel):
     title_text: str = Field(min_length=1, max_length=4096)
     banner_name: Optional[BannerName] = None
+
+
+class DialogTextExportItem(BaseModel):
+    locale: Locale
+    message_id: str = Field(min_length=1, max_length=128)
+    attribute_id: str = Field(default="", max_length=128)
+    value: str = Field(max_length=4096)
+
+
+class DialogWindowExportItem(BaseModel):
+    key: str = Field(pattern=r"^[a-z0-9._-]+$", max_length=128)
+    kind: DialogWindowKind
+    banner_name: Optional[BannerName] = None
+    is_enabled: bool = True
+    position: int = Field(default=0, ge=0)
+    buttons: list[DialogButtonInput] = Field(default_factory=list)
+
+
+class DialogExportPayload(BaseModel):
+    version: int
+    windows: list[DialogWindowExportItem]
+    texts: list[DialogTextExportItem] = Field(default_factory=list)
 
 
 class UpdateDialogTextRequest(BaseModel):

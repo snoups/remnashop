@@ -52,6 +52,14 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
         async with self._uow:
             from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
 
+            if "." in data.message_id:
+                # An attribute belongs in attribute_id; taking it here too would
+                # write a second row that shadows the real one.
+                raise ValidationError(
+                    f"'{data.message_id}' is a message id plus an attribute -- "
+                    "pass the attribute as attribute_id"
+                )
+
             full_key = data.message_id
             if data.attribute_id:
                 full_key = f"{data.message_id}.{data.attribute_id}"
@@ -64,9 +72,9 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
                 # strictly and repushes on change.
                 raise ValidationError(f"'{full_key}' is not an editable dialog text key")
 
-            if "\n" in data.value:
-                raise ValidationError("Translation values cannot contain newlines")
-
+            # Newlines are fine here, unlike in the general translations editor:
+            # serialize_to_fluent() indents continuation lines, and a window's
+            # body is the one piece of bot text that genuinely wants paragraphs.
             disallowed = find_disallowed_placeable(data.value, catalog.text_variable_keys())
             if disallowed is not None:
                 raise ValidationError(disallowed)

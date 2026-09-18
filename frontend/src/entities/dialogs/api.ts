@@ -13,6 +13,8 @@ export type ButtonLinkType = "action" | "navigate" | "url";
 export type ButtonStyleKind = "primary" | "success" | "danger";
 
 export interface DialogButtonItem {
+  /** Null for a button added in the editor and not saved yet. */
+  id: number | null;
   row: number;
   column: number;
   text_key: string;
@@ -44,6 +46,7 @@ export interface DialogCatalog {
   text_variable_keys: string[];
   seed_window_keys: string[];
   navigable_window_keys: string[];
+  custom_window_limit: number;
 }
 
 export interface DialogTextEntry {
@@ -83,6 +86,12 @@ export function toButtonInput(button: DialogButtonItem): DialogButtonInput {
   };
 }
 
+/** Identifies a button across edits: its row/column change under drag and drop,
+ * and its text key is only unique by convention. */
+export function buttonKey(button: DialogButtonItem): string {
+  return button.id === null ? `new:${button.text_key}` : `id:${button.id}`;
+}
+
 export function windowTextKeys(window: DialogWindow): string[] {
   return [...window.text_keys, ...window.buttons.map((button) => button.text_key)];
 }
@@ -96,6 +105,37 @@ export const BANNER_OPTIONS = [
   "promocode",
   "devices",
 ];
+
+const URL_VARIABLE_RE = /\$\{([a-z0-9_.]+)\}/g;
+/** Mirrors the backend's own rule (modules/dialogs/catalog.py): Telegram rejects
+ * a whole keyboard over one bad button URL. */
+export const URL_SCHEMES = ["https://", "http://", "tg://"];
+
+export type UrlProblem = { kind: "scheme" } | { kind: "variable"; name: string };
+
+export function urlProblem(value: string, variableKeys: string[]): UrlProblem | null {
+  for (const match of value.matchAll(URL_VARIABLE_RE)) {
+    if (!variableKeys.includes(match[1])) return { kind: "variable", name: match[1] };
+  }
+  const literal = value.replace(URL_VARIABLE_RE, "");
+  if (literal && !URL_SCHEMES.some((scheme) => literal.startsWith(scheme))) {
+    return { kind: "scheme" };
+  }
+  return null;
+}
+
+export function invalidUrlButton(
+  buttons: DialogButtonItem[],
+  variableKeys: string[],
+): DialogButtonItem | null {
+  return (
+    buttons.find(
+      (button) =>
+        button.link_type === "url" &&
+        (!button.url_value || urlProblem(button.url_value, variableKeys) !== null),
+    ) ?? null
+  );
+}
 
 export function splitTextKey(key: string): { messageId: string; attributeId: string } {
   const dotIndex = key.lastIndexOf(".");
@@ -148,6 +188,20 @@ export function resetWindow(key: string): Promise<DialogWindow> {
     `/dialogs/windows/${encodeURIComponent(key)}/reset`,
     {},
   );
+}
+
+export interface DialogExportPayload {
+  version: number;
+  windows: unknown[];
+  texts: unknown[];
+}
+
+export function exportDialogs(): Promise<DialogExportPayload> {
+  return apiGet<DialogExportPayload>("/dialogs/export");
+}
+
+export function importDialogs(payload: DialogExportPayload): Promise<null> {
+  return apiPost<null, DialogExportPayload>("/dialogs/import", payload);
 }
 
 export function resetAll(): Promise<null> {

@@ -3,7 +3,9 @@ from app.modules.dialogs.usecases.create_custom_window import (
     CreateCustomDialogWindowUseCase,
 )
 from app.modules.dialogs.usecases.delete_custom_window import DeleteCustomDialogWindowUseCase
+from app.modules.dialogs.usecases.export_dialogs import ExportDialogsUseCase
 from app.modules.dialogs.usecases.get_catalog import GetDialogCatalogUseCase
+from app.modules.dialogs.usecases.import_dialogs import ImportDialogsUseCase
 from app.modules.dialogs.usecases.list_windows import ListDialogWindowsUseCase
 from app.modules.dialogs.usecases.reset_all import ResetAllDialogsUseCase
 from app.modules.dialogs.usecases.reset_window import ResetDialogWindowUseCase
@@ -21,7 +23,9 @@ __all__ = [
     "CreateCustomDialogWindowInput",
     "CreateCustomDialogWindowUseCase",
     "DeleteCustomDialogWindowUseCase",
+    "ExportDialogsUseCase",
     "GetDialogCatalogUseCase",
+    "ImportDialogsUseCase",
     "ListDialogWindowsUseCase",
     "ResetAllDialogsUseCase",
     "ResetDialogWindowUseCase",

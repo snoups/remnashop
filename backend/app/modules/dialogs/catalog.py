@@ -14,6 +14,13 @@ Resolver = Callable[..., object]
 # inside real Fluent `{ $var }` text.
 _FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
+# A url_value may interpolate catalog variables as ${name}; what's left after
+# stripping those tokens is the literal part of the URL, and Telegram only
+# accepts a keyboard whose button URLs carry one of these schemes -- it rejects
+# the whole keyboard otherwise, taking the window down with it.
+URL_VARIABLE_RE: Final[re.Pattern[str]] = re.compile(r"\$\{([a-z0-9_.]+)\}")
+URL_SCHEMES: Final[tuple[str, ...]] = ("https://", "http://", "tg://")
+
 # The namespace for admin-authored dialog text that has no catalog registration
 # of its own: a custom window's body, or a freshly-added button's label. Must
 # stay dash-separated, not dot-separated -- see create_custom_window.py's key
@@ -105,6 +112,13 @@ def has_window(key: str) -> bool:
 
 def get_window(key: str) -> CatalogWindow:
     return _WINDOWS[key]
+
+
+def window_text_keys(window_key: str) -> tuple[str, ...]:
+    # A custom window isn't in the in-process catalog; its body follows the fixed
+    # naming convention create_custom_window.py generates.
+    window = _WINDOWS.get(window_key)
+    return window.text_keys if window is not None else (f"msg-dialog-{window_key}",)
 
 
 def has_action_handler(key: str) -> bool:

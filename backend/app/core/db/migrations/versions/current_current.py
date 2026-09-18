@@ -425,6 +425,7 @@ def upgrade() -> None:
         sa.Column("banner_name", sa.String(length=32), nullable=True),
         sa.Column("is_enabled", sa.Boolean(), server_default=sa.text("true"), nullable=False),
         sa.Column("position", sa.Integer(), server_default=sa.text("0"), nullable=False),
+        sa.Column("slot", sa.Integer(), nullable=True),
         sa.Column("default_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column(
             "created_at",
@@ -440,6 +441,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("key", name="ux_dialog_windows_key"),
+        sa.UniqueConstraint("slot", name="ux_dialog_windows_slot"),
     )
     op.create_table(
         "oauth_settings",

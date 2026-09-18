@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.db.models import DialogButton, DialogWindow
 from app.core.enums import BannerName, ButtonLinkType, ButtonStyleKind, DialogFlow, DialogWindowKind
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
@@ -35,6 +36,7 @@ class DialogRepository:
             banner_name=row.banner_name,
             is_enabled=row.is_enabled,
             position=row.position,
+            slot=row.slot,
             buttons=[self._button_to_dto(b) for b in row.buttons],
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -115,7 +117,7 @@ class DialogRepository:
 
     async def update_window(self, key: str, data: UpdateDialogWindowDto) -> DialogWindowDto:
         row = await self._get_row_or_raise(key)
-        if data.banner_name is not None:
+        if data.banner_name_provided:
             row.banner_name = data.banner_name
         if data.is_enabled is not None:
             row.is_enabled = data.is_enabled
@@ -158,6 +160,19 @@ class DialogRepository:
         await self.session.refresh(row)
         return self._to_dto(row)
 
+    async def _claim_free_slot(self) -> int:
+        taken = set(
+            await self.session.scalars(
+                select(DialogWindow.slot).where(DialogWindow.slot.is_not(None))
+            )
+        )
+        for slot in range(CUSTOM_DIALOG_WINDOW_SLOTS):
+            if slot not in taken:
+                return slot
+        raise ValidationError(
+            f"No free dialog window slot left (limit is {CUSTOM_DIALOG_WINDOW_SLOTS})"
+        )
+
     async def create_custom_window(self, key: str, data: CreateCustomWindowDto) -> DialogWindowDto:
         if await self._get_row(key) is not None:
             raise ConflictError(f"Dialog window '{key}' already exists")
@@ -168,6 +183,7 @@ class DialogRepository:
             banner_name=data.banner_name,
             is_enabled=True,
             position=data.position,
+            slot=await self._claim_free_slot(),
             default_snapshot={"banner_name": None, "buttons": []},
         )
         self.session.add(window)

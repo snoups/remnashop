@@ -10,6 +10,7 @@ from app.core.enums import (
     ButtonStyleKind,
     DialogFlow,
     DialogWindowKind,
+    Locale,
 )
 
 
@@ -35,12 +36,16 @@ class DialogWindowDto(BaseDto, TimestampMixin):
     banner_name: Optional[BannerName] = None
     is_enabled: bool = True
     position: int = 0
+    slot: Optional[int] = None
     buttons: list[DialogButtonDto] = Field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateDialogWindowDto:
+    # banner_name=None is ambiguous on its own -- it's both "leave the banner
+    # alone" and "drop the banner". The flag is what tells them apart.
     banner_name: Optional[BannerName] = None
+    banner_name_provided: bool = False
     is_enabled: Optional[bool] = None
 
 
@@ -66,6 +71,31 @@ class CreateCustomWindowDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class DialogTextExportDto:
+    locale: Locale
+    message_id: str
+    attribute_id: str
+    value: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class DialogWindowExportDto:
+    key: str
+    kind: DialogWindowKind
+    banner_name: Optional[BannerName]
+    is_enabled: bool
+    position: int
+    buttons: list[DialogButtonInputDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class DialogExportDto:
+    version: int
+    windows: list[DialogWindowExportDto]
+    texts: list[DialogTextExportDto]
+
+
+@dataclass(frozen=True, kw_only=True)
 class DialogCatalogDto:
     action_keys: list[str]
     condition_keys: list[str]
@@ -73,3 +103,4 @@ class DialogCatalogDto:
     text_variable_keys: list[str]
     seed_window_keys: list[str]
     navigable_window_keys: list[str]
+    custom_window_limit: int

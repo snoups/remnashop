@@ -12,16 +12,19 @@ class DialogConfigCache:
         self._session_maker = session_maker
         self._windows: dict[str, DialogWindowDto] = {}
         self._custom_slots: dict[str, int] = {}
+        self._keys_by_slot: dict[int, str] = {}
         self._loaded = asyncio.Event()
 
     async def reload(self) -> None:
         async with self._session_maker() as session:
             windows = await DialogRepository(session).list_all()
         self._windows = {window.key: window for window in windows}
-        custom_keys = sorted(
-            window.key for window in windows if window.kind == DialogWindowKind.CUSTOM
-        )
-        self._custom_slots = {key: index for index, key in enumerate(custom_keys)}
+        self._custom_slots = {
+            window.key: window.slot
+            for window in windows
+            if window.kind == DialogWindowKind.CUSTOM and window.slot is not None
+        }
+        self._keys_by_slot = {slot: key for key, slot in self._custom_slots.items()}
         self._loaded.set()
 
     async def _ensure_loaded(self) -> None:
@@ -45,3 +48,7 @@ class DialogConfigCache:
     async def custom_window_slot(self, window_key: str) -> Optional[int]:
         await self._ensure_loaded()
         return self._custom_slots.get(window_key)
+
+    async def key_for_slot(self, slot: int) -> Optional[str]:
+        await self._ensure_loaded()
+        return self._keys_by_slot.get(slot)

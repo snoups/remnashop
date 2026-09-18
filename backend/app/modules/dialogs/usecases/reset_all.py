@@ -8,7 +8,7 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases._publish import publish_dialog_change
 from app.modules.settings import SettingsRepository
-from app.modules.translations import TranslationsRepository
+from app.modules.translations import TranslationsRepository, split_message_key
 from app.modules.users import UserDto
 
 
@@ -40,9 +40,12 @@ class ResetAllDialogsUseCase(UseCase[None, None]):
             for key in await self._dialog_repository.list_seed_keys():
                 await self._dialog_repository.reset_to_snapshot(key)
             for locale in locales:
-                for message_id in text_keys:
+                for text_key in text_keys:
+                    message_id, attribute_id = split_message_key(text_key)
                     try:
-                        await self._translations_repository.reset_value(locale, message_id, "")
+                        await self._translations_repository.reset_value(
+                            locale, message_id, attribute_id
+                        )
                     except NotFoundError:
                         continue
         await publish_dialog_change(self._redis)

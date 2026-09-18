@@ -1,6 +1,6 @@
 from aiogram import Router
 
-from app.telegram.routers import menu, promocode
+from app.telegram.routers import custom, menu, promocode
 
 
 def setup_routers(router: Router) -> None:
@@ -8,4 +8,5 @@ def setup_routers(router: Router) -> None:
         menu.handlers.router,
         menu.dialog.router,
         promocode.dialog.router,
+        custom.dialog.router,
     )

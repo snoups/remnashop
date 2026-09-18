@@ -1,4 +1,5 @@
 msg-main-menu = Main menu, { $name }!
+msg-window-gone = This screen is no longer available.
 msg-menu-devices = Your devices ({ $current_count }/{ $max_count })
 msg-menu-devices-confirm-delete = Delete this device?
 msg-menu-devices-confirm-delete-all = Delete ALL devices?

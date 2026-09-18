@@ -41,6 +41,11 @@ TELEGRAM_RESTART_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:restart"
 DIALOG_CONFIG_CHANGED_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:dialog-config-changed"
 TRANSLATION_CHANGED_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:translation-changed"
 
+# A custom dialog window renders through one state out of a fixed pool
+# (app/telegram/dialogs/state_pool.py), so the pool size is also the hard cap on
+# how many custom windows a shop can have.
+CUSTOM_DIALOG_WINDOW_SLOTS: Final[int] = 50
+
 # Shared between auth's /refresh, /logout and oauth's /oauth/{provider}/callback --
 # oauth writes this cookie, auth reads it.
 REFRESH_COOKIE_NAME: Final[str] = "refresh_token"

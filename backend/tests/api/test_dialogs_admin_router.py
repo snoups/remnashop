@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
-from app.core.constants import API_V1
+from app.core.constants import API_V1, CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import BannerName, DialogFlow, Locale, Role
@@ -139,6 +139,8 @@ async def test_get_catalog(
     response = await client.get(f"{API_V1}/dialogs/catalog", headers=headers)
     assert response.status_code == 200
     assert response.json()["action_keys"] == ["get_trial"]
+    # The editor disables "add window" on this rather than hardcoding the pool size.
+    assert response.json()["custom_window_limit"] == CUSTOM_DIALOG_WINDOW_SLOTS
 
 
 async def test_owner_lists_and_updates(
@@ -191,6 +193,19 @@ async def test_owner_lists_and_updates(
     )
     assert resp.status_code == 200
     assert resp.json()["is_enabled"] is False
+    assert resp.json()["banner_name"] == "default"
+
+    # Omitting banner_name leaves it alone; sending it as null clears it.
+    untouched = await client.put(
+        f"{API_V1}/dialogs/windows/menu.main", headers=headers, json={"is_enabled": True}
+    )
+    assert untouched.json()["banner_name"] == "default"
+
+    cleared = await client.put(
+        f"{API_V1}/dialogs/windows/menu.main", headers=headers, json={"banner_name": None}
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["banner_name"] is None
 
 
 async def test_get_window_missing_is_404(

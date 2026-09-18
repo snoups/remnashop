@@ -7,7 +7,7 @@ from fluentogram import TranslatorHub
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
-from app.core.enums import BannerName, SubscriptionStatus
+from app.core.enums import BannerName
 from app.modules.banners import BannerRepository
 from app.modules.subscriptions import (
     GetAvailableTrialUseCase,
@@ -17,6 +17,7 @@ from app.modules.subscriptions import (
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
+from app.telegram.dialogs.context import build_condition_data
 from app.telegram.dialogs.rendering import render_dialog_buttons, resolve_variable_kwargs
 from app.telegram.i18n import get_translator
 
@@ -50,23 +51,12 @@ async def menu_getter(
         config.default_locale,
     )
 
-    active = await subscription_repository.get_active_by_user(user.id)
-    subscription = active[0] if active else None
-
-    trial_result = await get_available_trial(user)
-    trial_available = trial_result.is_trial_available and trial_result.plan is not None
-    connectable = subscription is not None and subscription.status == SubscriptionStatus.ACTIVE
-
-    data: dict[str, Any] = {
-        "banner": banner,
-        "menu_text": runner.get("msg-main-menu", **resolve_variable_kwargs({"name": user.name})),
-        "subscription_text": runner.get("btn-menu.subscription"),
-        "has_subscription": subscription is not None,
-        "connectable": connectable,
-        "trial_available": trial_available,
-        "has_device_limit": subscription is not None and subscription.effective_device_limit != 0,
-        "connect_url": subscription.url if subscription is not None else "",
-    }
+    data: dict[str, Any] = await build_condition_data(
+        user, subscription_repository, get_available_trial
+    )
+    data["banner"] = banner
+    data["menu_text"] = runner.get("msg-main-menu", **resolve_variable_kwargs(data))
+    data["subscription_text"] = runner.get("btn-menu.subscription")
     data["buttons"] = await render_dialog_buttons("menu.main", dialog_config_cache, runner, data)
     return data
 

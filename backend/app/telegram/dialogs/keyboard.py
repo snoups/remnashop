@@ -3,6 +3,7 @@ from collections.abc import Awaitable
 from typing import Any, Optional, Union, cast
 
 from aiogram.types import CallbackQuery, InlineKeyboardButton, KeyboardButton
+from aiogram_dialog import StartMode
 from aiogram_dialog.api.internal import RawKeyboard
 from aiogram_dialog.api.protocols import DialogManager, DialogProtocol
 from aiogram_dialog.widgets.kbd import Keyboard
@@ -12,13 +13,18 @@ from dishka.integrations.aiogram_dialog import CONTAINER_NAME
 from app.core.enums import ButtonLinkType
 from app.modules.dialogs import catalog
 from app.telegram.dialogs.config_cache import DialogConfigCache
-from app.telegram.dialogs.state_pool import resolve_state
+from app.telegram.dialogs.state_pool import resolve_custom_window_key, resolve_state
 
 logger = logging.getLogger(__name__)
 
 
+async def _cache_from(manager: DialogManager) -> DialogConfigCache:
+    container: AsyncContainer = manager.middleware_data[CONTAINER_NAME]
+    return await container.get(DialogConfigCache)
+
+
 class ConfigKeyboard(Keyboard):
-    def __init__(self, window_key: str, id: Optional[str] = None) -> None:
+    def __init__(self, window_key: Optional[str] = None, id: Optional[str] = None) -> None:
         # Keyboard.callback_prefix() is falsy without a widget id, so
         # process_callback() never reaches _process_item_callback -- every
         # window has exactly one ConfigKeyboard, so a fixed id only needs to
@@ -26,17 +32,36 @@ class ConfigKeyboard(Keyboard):
         super().__init__(id=id or "cfgkb")
         self.window_key = window_key
 
+    async def _resolve_window_key(self, manager: DialogManager) -> Optional[str]:
+        return self.window_key
+
     async def _render_keyboard(self, data: dict[str, Any], manager: DialogManager) -> RawKeyboard:
+        window_key = await self._resolve_window_key(manager)
         keyboard: RawKeyboard = []
         for row in data.get("buttons", []):
             rendered_row: list[Union[InlineKeyboardButton, KeyboardButton]] = []
             for button in row:
+                if not button["text"]:
+                    # Telegram refuses a button with no text, and refusing it means
+                    # refusing the whole keyboard -- a label nobody has filled in
+                    # yet would otherwise take the entire window down.
+                    logger.warning(
+                        "Skipping button %s in window %s: its label is empty",
+                        button["id"],
+                        window_key,
+                    )
+                    continue
                 if button["link_type"] == ButtonLinkType.URL:
-                    if not button["url_value"]:
+                    url = button["url_value"]
+                    if not url or not url.startswith(catalog.URL_SCHEMES):
+                        # Telegram rejects the whole keyboard over one bad URL, so
+                        # a variable that resolved to nothing usable drops its own
+                        # button instead of taking the window down.
                         logger.warning(
-                            "Skipping URL button %s in window %s: empty resolved url_value",
+                            "Skipping URL button %s in window %s: unusable resolved url_value %r",
                             button["id"],
-                            self.window_key,
+                            window_key,
+                            url,
                         )
                         continue
                     rendered_row.append(
@@ -55,7 +80,7 @@ class ConfigKeyboard(Keyboard):
                 keyboard.append(rendered_row)
         return keyboard
 
-    async def _process_item_callback(
+    async def _process_item_callback(  # noqa: PLR0911
         self,
         callback: CallbackQuery,
         item_id: str,
@@ -70,11 +95,15 @@ class ConfigKeyboard(Keyboard):
             )
             return False
 
-        container: AsyncContainer = manager.middleware_data[CONTAINER_NAME]
-        cache = await container.get(DialogConfigCache)
-        button = await cache.get_button(self.window_key, button_id)
+        window_key = await self._resolve_window_key(manager)
+        if window_key is None:
+            logger.warning("Could not resolve the window behind button %s", button_id)
+            return False
+
+        cache = await _cache_from(manager)
+        button = await cache.get_button(window_key, button_id)
         if button is None:
-            logger.warning("Unknown dialog button %s in window %s", button_id, self.window_key)
+            logger.warning("Unknown dialog button %s in window %s", button_id, window_key)
             return False
 
         if button.link_type == ButtonLinkType.ACTION:
@@ -83,7 +112,7 @@ class ConfigKeyboard(Keyboard):
                     "Unregistered action_key %r on button %s in window %s",
                     button.action_key,
                     button_id,
-                    self.window_key,
+                    window_key,
                 )
                 return False
             handler = catalog.get_action(button.action_key)
@@ -95,7 +124,7 @@ class ConfigKeyboard(Keyboard):
                 logger.warning(
                     "NAVIGATE button %s in window %s has no target_window_key",
                     button_id,
-                    self.window_key,
+                    window_key,
                 )
                 return False
             state = await resolve_state(button.target_window_key, cache)
@@ -104,16 +133,33 @@ class ConfigKeyboard(Keyboard):
                     "Could not resolve state for target window %s (from button %s in window %s)",
                     button.target_window_key,
                     button_id,
-                    self.window_key,
+                    window_key,
                 )
                 return False
-            await manager.switch_to(state=state)
+            if state.group == manager.current_context().state.group:
+                await manager.switch_to(state=state)
+            else:
+                # switch_to() refuses to cross state groups, and a configured
+                # jump routinely does (seed windows and custom ones live in
+                # different groups). RESET_STACK keeps hopping between them from
+                # growing the stack a level per click.
+                await manager.start(state=state, mode=StartMode.RESET_STACK)
             return True
 
         logger.warning(
             "Button %s in window %s has unhandled link_type %s",
             button_id,
-            self.window_key,
+            window_key,
             button.link_type,
         )
         return False
+
+
+class CustomConfigKeyboard(ConfigKeyboard):
+    """The keyboard of a custom window, which has no window key of its own at
+    import time: every custom window renders through a pooled state, and which
+    window that state currently stands for is only known from the config cache."""
+
+    async def _resolve_window_key(self, manager: DialogManager) -> Optional[str]:
+        cache = await _cache_from(manager)
+        return await resolve_custom_window_key(manager.current_context().state, cache)

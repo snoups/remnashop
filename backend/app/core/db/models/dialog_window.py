@@ -12,7 +12,10 @@ from app.core.enums import BannerName, DialogFlow, DialogWindowKind
 
 class DialogWindow(BaseSql, TimestampMixin):
     __tablename__ = "dialog_windows"
-    __table_args__ = (UniqueConstraint("key", name="ux_dialog_windows_key"),)
+    __table_args__ = (
+        UniqueConstraint("key", name="ux_dialog_windows_key"),
+        UniqueConstraint("slot", name="ux_dialog_windows_slot"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     key: Mapped[str] = mapped_column(String(128))
@@ -21,6 +24,11 @@ class DialogWindow(BaseSql, TimestampMixin):
     banner_name: Mapped[Optional[BannerName]] = mapped_column(String(32))
     is_enabled: Mapped[bool] = mapped_column(server_default=text("true"))
     position: Mapped[int] = mapped_column(server_default=text("0"))
+    # Only custom windows hold one; seed windows render through their own
+    # hand-written state. Never reused while the window lives, so a user sitting
+    # in a custom window doesn't get moved to a different one when its neighbours
+    # are created or deleted.
+    slot: Mapped[Optional[int]] = mapped_column()
     default_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
     buttons: Mapped[list[DialogButton]] = relationship(

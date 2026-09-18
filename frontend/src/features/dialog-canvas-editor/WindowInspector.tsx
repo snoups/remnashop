@@ -53,7 +53,7 @@ export function WindowInspector({ window, onWindowUpdated }: WindowInspectorProp
   };
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-4 lg:w-64">
+    <div className="flex w-full flex-col gap-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
         <h3 className="mb-3 text-[13px] font-semibold text-foreground">
           {t("dialogs.inspector.windowTitle")}
@@ -68,11 +68,7 @@ export function WindowInspector({ window, onWindowUpdated }: WindowInspectorProp
             disabled={!canUpdate}
             onChange={(event) => void handleBannerChange(event.target.value)}
           >
-            {/* PUT /dialogs/windows/{key} treats banner_name:null as "no change", not "clear" -- so "None"
-                is a display-only state for a window that has no banner, never a selectable target. */}
-            <option value="" disabled>
-              {t("dialogs.inspector.bannerNone")}
-            </option>
+            <option value="">{t("dialogs.inspector.bannerNone")}</option>
             {BANNER_OPTIONS.map((name) => (
               <option key={name} value={name}>
                 {name}

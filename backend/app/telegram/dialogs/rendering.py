@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Final, Optional
+from typing import Any, Optional
 
 from fluentogram import TranslatorRunner
 
@@ -8,8 +8,6 @@ from app.modules.dialogs import catalog
 from app.telegram.dialogs.config_cache import DialogConfigCache
 
 logger = logging.getLogger(__name__)
-
-_VARIABLE_RE: Final[re.Pattern[str]] = re.compile(r"\$\{([a-z0-9_.]+)\}")
 
 
 def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Optional[str]:
@@ -23,7 +21,7 @@ def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Opt
             return ""
         return str(catalog.get_variable(key)(getter_data))
 
-    return _VARIABLE_RE.sub(_sub, value)
+    return catalog.URL_VARIABLE_RE.sub(_sub, value)
 
 
 def resolve_variable_kwargs(getter_data: dict[str, Any]) -> dict[str, object]:

@@ -1,8 +1,10 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardButton
+from aiogram_dialog import StartMode
 from dishka import Provider, Scope, make_async_container, provide
 from dishka.integrations.aiogram_dialog import CONTAINER_NAME
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -145,6 +147,54 @@ async def test_render_keyboard_skips_url_button_with_empty_url() -> None:
     assert keyboard == []
 
 
+async def test_render_keyboard_skips_button_with_an_empty_label() -> None:
+    # A button saved before anyone typed its label has an empty translation, and
+    # Telegram refuses the whole keyboard over it.
+    widget = ConfigKeyboard(window_key="menu.main")
+    data = {
+        "buttons": [
+            [
+                {
+                    "id": 1,
+                    "text": "",
+                    "style": None,
+                    "icon_custom_emoji_id": None,
+                    "link_type": ButtonLinkType.NAVIGATE,
+                    "action_key": None,
+                    "target_window_key": "menu.devices",
+                    "url_value": None,
+                }
+            ]
+        ]
+    }
+    keyboard = await widget._render_keyboard(data, MagicMock())
+    assert keyboard == []
+
+
+async def test_render_keyboard_skips_url_button_with_unusable_scheme() -> None:
+    # Telegram rejects the whole keyboard over one bad URL, taking the window
+    # down with it -- so the bad button drops instead.
+    widget = ConfigKeyboard(window_key="menu.main")
+    data = {
+        "buttons": [
+            [
+                {
+                    "id": 1,
+                    "text": "Broken",
+                    "style": None,
+                    "icon_custom_emoji_id": None,
+                    "link_type": ButtonLinkType.URL,
+                    "action_key": None,
+                    "target_window_key": None,
+                    "url_value": "example.com",
+                }
+            ]
+        ]
+    }
+    keyboard = await widget._render_keyboard(data, MagicMock())
+    assert keyboard == []
+
+
 async def test_process_item_callback_dispatches_action(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
@@ -179,6 +229,7 @@ async def test_process_item_callback_dispatches_navigate(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
     class _S(StatesGroup):
+        MAIN = State()
         DEVICES = State()
 
     register_seed_state("menu.devices", _S.DEVICES)
@@ -199,6 +250,8 @@ async def test_process_item_callback_dispatches_navigate(
     manager = MagicMock()
     manager.middleware_data = {CONTAINER_NAME: container}
     manager.switch_to = AsyncMock()
+    manager.start = AsyncMock()
+    manager.current_context.return_value = SimpleNamespace(state=_S.MAIN)
 
     widget = ConfigKeyboard(window_key="menu.main")
     handled = await widget._process_item_callback(
@@ -207,6 +260,50 @@ async def test_process_item_callback_dispatches_navigate(
 
     assert handled is True
     manager.switch_to.assert_awaited_once_with(state=_S.DEVICES)
+    manager.start.assert_not_awaited()
+    await container.close()
+
+
+async def test_process_item_callback_navigate_across_state_groups_starts_dialog(
+    config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
+) -> None:
+    # switch_to() raises on a cross-group jump, which is exactly what a button
+    # pointing at a custom window does -- those live in their own states group.
+    class _Here(StatesGroup):
+        MAIN = State()
+
+    class _There(StatesGroup):
+        WINDOW = State()
+
+    register_seed_state("menu.devices", _There.WINDOW)
+
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed(
+        "menu.devices", DialogFlow.MENU, None, {"banner_name": None, "buttons": []}
+    )
+    window = await dialog_repository.get_by_key_or_raise("menu.main")
+    nav_button = next(b for b in window.buttons if b.link_type == ButtonLinkType.NAVIGATE)
+
+    container = make_async_container(
+        *get_core_providers(),
+        DialogConfigProvider(),
+        _BoundSession(session),
+        context={AppConfig: config},
+    )
+    manager = MagicMock()
+    manager.middleware_data = {CONTAINER_NAME: container}
+    manager.switch_to = AsyncMock()
+    manager.start = AsyncMock()
+    manager.current_context.return_value = SimpleNamespace(state=_Here.MAIN)
+
+    widget = ConfigKeyboard(window_key="menu.main")
+    handled = await widget._process_item_callback(
+        MagicMock(), str(nav_button.id), MagicMock(), manager
+    )
+
+    assert handled is True
+    manager.switch_to.assert_not_awaited()
+    manager.start.assert_awaited_once_with(state=_There.WINDOW, mode=StartMode.RESET_STACK)
     await container.close()
 
 

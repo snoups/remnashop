@@ -17,6 +17,7 @@ from app.modules.users import UserDto
 class UpdateDialogWindowInput:
     key: str
     banner_name: Optional[BannerName] = None
+    banner_name_provided: bool = False
     is_enabled: Optional[bool] = None
 
 
@@ -32,7 +33,11 @@ class UpdateDialogWindowUseCase(UseCase[UpdateDialogWindowInput, DialogWindowDto
         async with self._uow:
             window = await self._dialog_repository.update_window(
                 data.key,
-                UpdateDialogWindowDto(banner_name=data.banner_name, is_enabled=data.is_enabled),
+                UpdateDialogWindowDto(
+                    banner_name=data.banner_name,
+                    banner_name_provided=data.banner_name_provided,
+                    is_enabled=data.is_enabled,
+                ),
             )
         await publish_dialog_change(self._redis)
         return window

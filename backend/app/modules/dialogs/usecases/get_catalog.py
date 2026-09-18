@@ -1,3 +1,4 @@
+from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -25,4 +26,5 @@ class GetDialogCatalogUseCase(UseCase[None, DialogCatalogDto]):
                 text_variable_keys=sorted(catalog.text_variable_keys()),
                 seed_window_keys=sorted(w.key for w in catalog.all_windows()),
                 navigable_window_keys=navigable,
+                custom_window_limit=CUSTOM_DIALOG_WINDOW_SLOTS,
             )

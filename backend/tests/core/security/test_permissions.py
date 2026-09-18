@@ -174,6 +174,8 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.TRANSLATIONS_RESET,
         Permission.DIALOGS_WINDOWS_VIEW,
         Permission.DIALOGS_CATALOG_VIEW,
+        Permission.DIALOGS_EXPORT,
+        Permission.DIALOGS_IMPORT,
         Permission.DIALOGS_WINDOWS_UPDATE,
         Permission.DIALOGS_WINDOWS_BUTTONS_UPDATE,
         Permission.DIALOGS_WINDOWS_CREATE,

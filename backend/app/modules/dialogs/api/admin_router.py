@@ -13,7 +13,10 @@ from app.modules.dialogs.api.schemas import (
     DialogButtonInput,
     DialogButtonItem,
     DialogCatalogResponse,
+    DialogExportPayload,
+    DialogTextExportItem,
     DialogTextResponse,
+    DialogWindowExportItem,
     DialogWindowResponse,
     ReplaceButtonsRequest,
     UpdateDialogTextRequest,
@@ -23,13 +26,18 @@ from app.modules.dialogs.dto import (
     DialogButtonDto,
     DialogButtonInputDto,
     DialogCatalogDto,
+    DialogExportDto,
+    DialogTextExportDto,
     DialogWindowDto,
+    DialogWindowExportDto,
 )
 from app.modules.dialogs.usecases import (
     CreateCustomDialogWindowInput,
     CreateCustomDialogWindowUseCase,
     DeleteCustomDialogWindowUseCase,
+    ExportDialogsUseCase,
     GetDialogCatalogUseCase,
+    ImportDialogsUseCase,
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
@@ -49,6 +57,7 @@ _KEY_PATH: Final[Any] = Path(pattern=r"^[a-z0-9._-]+$", max_length=128)
 
 def _to_button_item(button: DialogButtonDto) -> DialogButtonItem:
     return DialogButtonItem(
+        id=button.id,
         row=button.row,
         column=button.column,
         text_key=button.text_key,
@@ -64,12 +73,6 @@ def _to_button_item(button: DialogButtonDto) -> DialogButtonItem:
 
 
 def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
-    if catalog.has_window(window.key):
-        text_keys = list(catalog.get_window(window.key).text_keys)
-    else:
-        # Custom windows aren't in the in-process catalog -- their text key
-        # follows the fixed naming convention create_custom_window.py uses.
-        text_keys = [f"msg-dialog-{window.key}"]
     return DialogWindowResponse(
         key=window.key,
         kind=window.kind,
@@ -77,7 +80,7 @@ def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
         banner_name=window.banner_name,
         is_enabled=window.is_enabled,
         position=window.position,
-        text_keys=text_keys,
+        text_keys=list(catalog.window_text_keys(window.key)),
         buttons=[_to_button_item(button) for button in window.buttons],
     )
 
@@ -90,6 +93,7 @@ def _to_catalog_response(catalog: DialogCatalogDto) -> DialogCatalogResponse:
         text_variable_keys=catalog.text_variable_keys,
         seed_window_keys=catalog.seed_window_keys,
         navigable_window_keys=catalog.navigable_window_keys,
+        custom_window_limit=catalog.custom_window_limit,
     )
 
 
@@ -156,7 +160,10 @@ async def update_window(
         window = await use_case(
             actor,
             UpdateDialogWindowInput(
-                key=key, banner_name=payload.banner_name, is_enabled=payload.is_enabled
+                key=key,
+                banner_name=payload.banner_name,
+                banner_name_provided="banner_name" in payload.model_fields_set,
+                is_enabled=payload.is_enabled,
             ),
         )
     except NotFoundError as error:
@@ -200,6 +207,8 @@ async def create_custom_window(
                 title_text=payload.title_text, banner_name=payload.banner_name
             ),
         )
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     except ConflictError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     return _to_window_response(window)
@@ -266,6 +275,93 @@ async def update_dialog_text(
         value=entry.value,
         default_value=entry.default_value,
     )
+
+
+@router.get("/export", response_model=DialogExportPayload)
+@inject
+async def export_dialogs(
+    use_case: FromDishka[ExportDialogsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> DialogExportPayload:
+    export = await use_case(actor)
+    return DialogExportPayload(
+        version=export.version,
+        windows=[
+            DialogWindowExportItem(
+                key=window.key,
+                kind=window.kind,
+                banner_name=window.banner_name,
+                is_enabled=window.is_enabled,
+                position=window.position,
+                buttons=[
+                    DialogButtonInput(
+                        row=button.row,
+                        column=button.column,
+                        text_key=button.text_key,
+                        link_type=button.link_type,
+                        icon_custom_emoji_id=button.icon_custom_emoji_id,
+                        style=button.style,
+                        visibility_condition=button.visibility_condition,
+                        action_key=button.action_key,
+                        target_window_key=button.target_window_key,
+                        url_value=button.url_value,
+                        is_hidden=button.is_hidden,
+                    )
+                    for button in window.buttons
+                ],
+            )
+            for window in export.windows
+        ],
+        texts=[
+            DialogTextExportItem(
+                locale=text.locale,
+                message_id=text.message_id,
+                attribute_id=text.attribute_id,
+                value=text.value,
+            )
+            for text in export.texts
+        ],
+    )
+
+
+@router.post("/import", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def import_dialogs(
+    payload: DialogExportPayload,
+    use_case: FromDishka[ImportDialogsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> None:
+    try:
+        await use_case(
+            actor,
+            DialogExportDto(
+                version=payload.version,
+                windows=[
+                    DialogWindowExportDto(
+                        key=window.key,
+                        kind=window.kind,
+                        banner_name=window.banner_name,
+                        is_enabled=window.is_enabled,
+                        position=window.position,
+                        buttons=[_to_button_input(button) for button in window.buttons],
+                    )
+                    for window in payload.windows
+                ],
+                texts=[
+                    DialogTextExportDto(
+                        locale=text.locale,
+                        message_id=text.message_id,
+                        attribute_id=text.attribute_id,
+                        value=text.value,
+                    )
+                    for text in payload.texts
+                ],
+            ),
+        )
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 
 
 @router.post("/reset", status_code=status.HTTP_204_NO_CONTENT)

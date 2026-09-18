@@ -4,7 +4,9 @@ from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases import (
     CreateCustomDialogWindowUseCase,
     DeleteCustomDialogWindowUseCase,
+    ExportDialogsUseCase,
     GetDialogCatalogUseCase,
+    ImportDialogsUseCase,
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
@@ -27,6 +29,8 @@ class DialogsProvider(Provider):
     delete_custom_dialog_window_use_case = provide(DeleteCustomDialogWindowUseCase)
     reset_dialog_window_use_case = provide(ResetDialogWindowUseCase)
     reset_all_dialogs_use_case = provide(ResetAllDialogsUseCase)
+    export_dialogs_use_case = provide(ExportDialogsUseCase)
+    import_dialogs_use_case = provide(ImportDialogsUseCase)
 
 
 def get_dialogs_providers() -> list[Provider]:

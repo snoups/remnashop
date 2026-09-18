@@ -45,6 +45,8 @@ class Permission(UpperStrEnum):
     DIALOGS_WINDOWS_RESET = auto()
     DIALOGS_WINDOWS_RESET_ALL = auto()
     DIALOGS_TEXT_UPDATE = auto()
+    DIALOGS_EXPORT = auto()
+    DIALOGS_IMPORT = auto()
     OWN_ACCOUNT_MANAGE = auto()
     ADMINS_MANAGE = auto()
     API_TOKENS_MANAGE = auto()
@@ -165,6 +167,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.DIALOGS_WINDOWS_RESET: PermissionMeta(resource="dialogs", kind="write"),
     Permission.DIALOGS_WINDOWS_RESET_ALL: PermissionMeta(resource="dialogs", kind="write"),
     Permission.DIALOGS_TEXT_UPDATE: PermissionMeta(resource="dialogs", kind="write"),
+    Permission.DIALOGS_EXPORT: PermissionMeta(resource="dialogs", kind="read"),
+    Permission.DIALOGS_IMPORT: PermissionMeta(resource="dialogs", kind="write"),
     Permission.EVENT_LOG_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
@@ -286,6 +290,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.DIALOGS_WINDOWS_RESET,
         Permission.DIALOGS_WINDOWS_RESET_ALL,
         Permission.DIALOGS_TEXT_UPDATE,
+        Permission.DIALOGS_EXPORT,
+        Permission.DIALOGS_IMPORT,
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.PLANS_VIEW,
         Permission.PLANS_CREATE,

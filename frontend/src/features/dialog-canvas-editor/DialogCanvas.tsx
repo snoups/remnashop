@@ -10,7 +10,7 @@ interface DialogCanvasProps {
   textByKey: Record<string, string>;
   bannerUrl: string | null;
   selection: Selection | null;
-  onSelect: (selection: Selection, anchor: HTMLElement) => void;
+  onSelect: (selection: Selection) => void;
   canEditButtons: boolean;
   onReorderButtons: (next: DialogButtonItem[]) => void;
 }
@@ -28,33 +28,32 @@ export function DialogCanvas({
   const { t } = useTranslation();
 
   return (
-    <div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-      <button
-        type="button"
-        onClick={(event) => onSelect({ kind: "window" }, event.currentTarget)}
-        className={`flex h-32 w-full items-center justify-center border-b border-dashed border-white/[0.12] bg-white/[0.02] ${
-          selection?.kind === "window" ? "ring-2 ring-inset ring-primary" : ""
-        }`}
-      >
-        {bannerUrl ? (
-          <img src={bannerUrl} alt="" className="size-full object-cover" />
-        ) : (
-          <span className="text-[12.5px] text-muted-foreground">{t("dialogs.canvas.noBanner")}</span>
-        )}
-      </button>
-      <button
-        type="button"
-        onClick={(event) => onSelect({ kind: "text" }, event.currentTarget)}
-        className={`block w-full whitespace-pre-line px-3 py-2.5 text-left text-[13.5px] leading-relaxed text-foreground ${
-          selection?.kind === "text" ? "ring-2 ring-inset ring-primary" : ""
-        }`}
-      >
-        {window.text_keys[0] && textByKey[window.text_keys[0]] ? (
-          textByKey[window.text_keys[0]]
-        ) : (
-          <span className="text-muted-foreground">{t("dialogs.canvas.noText")}</span>
-        )}
-      </button>
+    <div className="mx-auto w-full max-w-sm rounded-2xl border border-white/[0.08] bg-white/[0.03] p-2.5">
+      <div className="flex flex-col gap-1.5">
+        {/* Preview only -- the banner is picked on the inspector's window tab. */}
+        <div className="flex h-32 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/[0.12] bg-white/[0.02]">
+          {bannerUrl ? (
+            <img src={bannerUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <span className="text-[12.5px] text-muted-foreground">{t("dialogs.canvas.noBanner")}</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => onSelect({ kind: "text" })}
+          title={t("dialogs.canvas.editText")}
+          className={`block w-full cursor-pointer whitespace-pre-line rounded-lg px-2.5 py-2 text-left text-[13.5px] leading-relaxed text-foreground transition-colors ${
+            selection?.kind === "text" ? "ring-2 ring-inset ring-primary" : "hover:bg-white/[0.06]"
+          }`}
+        >
+          {window.text_keys[0] && textByKey[window.text_keys[0]] ? (
+            textByKey[window.text_keys[0]]
+          ) : (
+            <span className="text-muted-foreground">{t("dialogs.canvas.noText")}</span>
+          )}
+        </button>
+      </div>
+      <div className="my-2.5 h-px bg-white/[0.08]" />
       <ButtonGrid
         buttons={buttons}
         textByKey={textByKey}

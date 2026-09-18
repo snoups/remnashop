@@ -1,4 +1,5 @@
 msg-main-menu = Главное меню, { $name }!
+msg-window-gone = Этот экран больше недоступен.
 msg-menu-devices = Ваши устройства ({ $current_count }/{ $max_count })
 msg-menu-devices-confirm-delete = Удалить это устройство?
 msg-menu-devices-confirm-delete-all = Удалить ВСЕ устройства?

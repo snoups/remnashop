@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { splitTextKey, updateDialogText } from "@entities/dialogs/api";
+import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { getErrorMessage } from "@shared/api/http";
+import { localeLabel } from "@shared/i18n/locale-label";
 import { resetTranslation } from "@entities/translations/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
@@ -16,6 +18,9 @@ interface TextEditorPanelProps {
   variableKeys: string[];
   canUpdate: boolean;
   canReset: boolean;
+  /** A window body is a Telegram message and may have paragraphs; a button
+   * label is one line. */
+  multiline?: boolean;
   onSaved: (entry: TranslationEntry) => void;
 }
 
@@ -28,9 +33,10 @@ export function TextEditorPanel({
   variableKeys,
   canUpdate,
   canReset,
+  multiline = false,
   onSaved,
 }: TextEditorPanelProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { messageId, attributeId } = splitTextKey(textKey);
   const entry = entries.find(
     (e) => e.locale === activeLocale && e.message_id === messageId && e.attribute_id === attributeId,
@@ -74,28 +80,34 @@ export function TextEditorPanel({
   return (
     <div>
       {locales.length > 1 && (
-        <div className="mb-2 flex flex-wrap gap-1">
-          {locales.map((locale) => (
-            <button
-              key={locale}
-              type="button"
-              onClick={() => onActiveLocaleChange(locale)}
-              className={`rounded-full px-2.5 py-1 text-[11.5px] ${
-                locale === activeLocale ? "bg-accent text-primary" : "text-foreground/70 hover:bg-white/[0.06]"
-              }`}
-            >
-              {locale}
-            </button>
-          ))}
+        <div className="mb-2">
+          <PillTabs
+            items={locales.map((locale) => ({
+              key: locale,
+              label: localeLabel(locale, i18n.language),
+            }))}
+            activeKey={activeLocale}
+            onSelect={onActiveLocaleChange}
+          />
         </div>
       )}
-      <input
-        type="text"
-        value={draft}
-        disabled={!canUpdate}
-        onChange={(event) => setDraft(event.target.value)}
-        className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
-      />
+      {multiline ? (
+        <textarea
+          rows={5}
+          value={draft}
+          disabled={!canUpdate}
+          onChange={(event) => setDraft(event.target.value)}
+          className="w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+        />
+      ) : (
+        <input
+          type="text"
+          value={draft}
+          disabled={!canUpdate}
+          onChange={(event) => setDraft(event.target.value)}
+          className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+        />
+      )}
       {variableKeys.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {variableKeys.map((name) => (

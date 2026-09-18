@@ -1,4 +1,5 @@
 import pytest
+from fluent_compiler.bundle import FluentBundle
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BannerName, ButtonLinkType, DialogFlow, DialogWindowKind, Locale, Role
@@ -20,6 +21,7 @@ from app.modules.dialogs.usecases.create_custom_window import CreateCustomDialog
 from app.modules.dialogs.usecases.update_text import UpdateDialogTextInput, UpdateDialogTextUseCase
 from app.modules.dialogs.usecases.update_window import UpdateDialogWindowInput
 from app.modules.dialogs.usecases.update_window_buttons import UpdateDialogWindowButtonsInput
+from app.modules.translations import serialize_to_fluent
 from app.modules.users.dto import UserDto
 
 OWNER = UserDto(id=1, login="a", name="a", role=Role.OWNER, language=Locale.EN)
@@ -311,6 +313,65 @@ async def test_update_buttons_allows_added_url_button(
     assert [b.link_type for b in result.buttons] == [ButtonLinkType.ACTION, ButtonLinkType.URL]
 
 
+@pytest.mark.parametrize(
+    "url_value",
+    [
+        "example.com",  # no scheme -- Telegram refuses the whole keyboard over it
+        "javascript:alert(1)",
+        "${made_up_variable}",
+    ],
+)
+async def test_update_buttons_rejects_unusable_url(
+    url_value, dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
+    await _seed(dialog_repository)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdateDialogWindowButtonsInput(
+                key="menu.main",
+                buttons=[
+                    DialogButtonInputDto(
+                        row=0,
+                        column=0,
+                        text_key="btn-menu.help",
+                        link_type=ButtonLinkType.URL,
+                        url_value=url_value,
+                    )
+                ],
+            ),
+        )
+
+
+async def test_update_buttons_accepts_url_built_from_a_catalog_variable(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
+    catalog.register_variable("subscription.url", lambda data: data.get("connect_url", ""))
+    await _seed(dialog_repository)
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    result = await use_case(
+        OWNER,
+        UpdateDialogWindowButtonsInput(
+            key="menu.main",
+            buttons=[
+                DialogButtonInputDto(
+                    row=0,
+                    column=0,
+                    text_key="btn-menu.connect",
+                    link_type=ButtonLinkType.URL,
+                    url_value="${subscription.url}",
+                )
+            ],
+        ),
+    )
+    assert result.buttons[0].url_value == "${subscription.url}"
+
+
 async def test_create_custom_window_seeds_translation(
     dialog_repository, translations_repository, settings_repository, uow, redis
 ) -> None:
@@ -348,6 +409,64 @@ async def test_reset_all_restores_every_seed_window(
     await use_case(OWNER, None)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     assert [b.text_key for b in window.buttons] == ["btn-menu.trial"]
+
+
+async def test_reset_all_restores_an_edited_button_label(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
+    # The label lives in the "trial" attribute of "btn-menu"; a reset that looked
+    # for a message called "btn-menu.trial" silently found nothing and left the
+    # edit in place.
+    await _seed(dialog_repository)
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.main",
+            flow=DialogFlow.MENU,
+            text_keys=(),
+            banner_name=None,
+            buttons=(
+                catalog.CatalogButton(
+                    key="trial",
+                    text_key="btn-menu.trial",
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="get_trial",
+                ),
+            ),
+        )
+    )
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try for free")
+    await translations_repository.update_value(Locale.EN, "btn-menu", "trial", "Edited")
+
+    use_case = ResetAllDialogsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    await use_case(OWNER, None)
+
+    restored = await translations_repository.get(Locale.EN, "btn-menu", "trial")
+    assert restored is not None
+    assert restored.value == "Try for free"
+
+
+async def test_update_dialog_text_rejects_a_dotted_message_id(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdateDialogTextInput(
+                locale=Locale.EN,
+                message_id="btn-menu.trial",
+                attribute_id="",
+                value="Anything",
+            ),
+        )
 
 
 def _register_text_window(*text_keys: str) -> None:
@@ -474,29 +593,38 @@ async def test_update_dialog_text_rejects_unknown_variable(
         )
 
 
-async def test_update_dialog_text_rejects_newlines(
+async def test_update_dialog_text_keeps_multiline_value(
     dialog_repository: DialogRepository,
     translations_repository,
     settings_repository,
     uow,
     redis,
 ) -> None:
+    # A window body is a Telegram message, so paragraphs are the normal case --
+    # and it has to survive the Fluent round-trip, not just the write.
     _register_text_window("msg-window-greeting3")
     if Locale.EN not in await settings_repository.list_active_locales():
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "msg-window-greeting3", "", "Hi!")
 
     use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
-    with pytest.raises(ValidationError):
-        await use_case(
-            OWNER,
-            UpdateDialogTextInput(
-                locale=Locale.EN,
-                message_id="msg-window-greeting3",
-                attribute_id="",
-                value="Hi\nthere",
-            ),
-        )
+    updated = await use_case(
+        OWNER,
+        UpdateDialogTextInput(
+            locale=Locale.EN,
+            message_id="msg-window-greeting3",
+            attribute_id="",
+            value="Hi there\n\nSecond paragraph",
+        ),
+    )
+
+    assert updated.value == "Hi there\n\nSecond paragraph"
+
+    entries = await translations_repository.list_by_locale(Locale.EN)
+    bundle = FluentBundle.from_string(Locale.EN.value, text=serialize_to_fluent(entries))
+    assert bundle.check_messages() == []
+    value, errors = bundle.format("msg-window-greeting3", {})
+    assert (value, errors) == ("Hi there\n\nSecond paragraph", [])
 
 
 async def test_update_buttons_seeds_translation_for_new_custom_text_key(

@@ -1,7 +1,22 @@
-import { DndContext, PointerSensor, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCenter,
+  defaultDropAnimationSideEffects,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  type DropAnimation,
+} from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
+import { buttonKey } from "@entities/dialogs/api";
 import type { DialogButtonItem } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 
@@ -9,7 +24,7 @@ interface ButtonGridProps {
   buttons: DialogButtonItem[];
   textByKey: Record<string, string>;
   selection: Selection | null;
-  onSelect: (selection: Selection, anchor: HTMLElement) => void;
+  onSelect: (selection: Selection) => void;
   emptyLabel: string;
   canEdit: boolean;
   onReorder: (next: DialogButtonItem[]) => void;
@@ -27,15 +42,17 @@ export function buttonRows(buttons: DialogButtonItem[]): DialogButtonItem[][] {
     .map(([, row]) => row.sort((a, b) => a.column - b.column));
 }
 
+const DROP_ANIMATION: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.3" } } }),
+};
+
 const STYLE_BORDER_CLASSNAME: Record<string, string> = {
   primary: "border-primary/50",
   success: "border-emerald-500/60",
   danger: "border-red-500/60",
 };
 
-function buttonId(button: DialogButtonItem): string {
-  return `${button.row}-${button.column}`;
-}
+const buttonId = buttonKey;
 
 function toContainers(buttons: DialogButtonItem[]): Record<string, DialogButtonItem[]> {
   const rows = buttonRows(buttons);
@@ -68,6 +85,45 @@ function renumber(containers: Record<string, DialogButtonItem[]>): DialogButtonI
   return flat;
 }
 
+function useButtonLabel(button: DialogButtonItem, textByKey: Record<string, string>) {
+  const { t } = useTranslation();
+  // An unsaved button has no translation row yet; a saved one can still have an
+  // empty label, which the bot refuses to render at all.
+  const text = textByKey[button.text_key] ?? "";
+  const isUnlabelled = text.trim() === "";
+  return {
+    isUnlabelled,
+    label: isUnlabelled
+      ? t(button.id === null ? "dialogs.canvas.newButton" : "dialogs.canvas.unlabelledButton")
+      : text,
+  };
+}
+
+function ButtonFace({
+  button,
+  textByKey,
+  className,
+}: {
+  button: DialogButtonItem;
+  textByKey: Record<string, string>;
+  className: string;
+}) {
+  const { label, isUnlabelled } = useButtonLabel(button, textByKey);
+  const borderClassName = button.style ? STYLE_BORDER_CLASSNAME[button.style] : "border-white/[0.12]";
+
+  return (
+    <span
+      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${borderClassName} ${className}`}
+    >
+      {button.icon_custom_emoji_id ? <span className="text-[11px] opacity-70">★</span> : null}
+      <span className={`truncate ${isUnlabelled ? "italic text-muted-foreground" : ""}`}>{label}</span>
+      {button.visibility_condition ? (
+        <span className="text-[9.5px] text-muted-foreground">({button.visibility_condition})</span>
+      ) : null}
+    </span>
+  );
+}
+
 function CanvasButton({
   button,
   textByKey,
@@ -80,33 +136,43 @@ function CanvasButton({
   textByKey: Record<string, string>;
   isSelected: boolean;
   isEffectivelyHidden: boolean;
-  onClick: (anchor: HTMLElement) => void;
+  onClick: () => void;
   draggable: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+  const { t } = useTranslation();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: buttonId(button),
     disabled: !draggable,
   });
-  const label = textByKey[button.text_key] ?? button.text_key;
-  const borderClassName = button.style ? STYLE_BORDER_CLASSNAME[button.style] : "border-white/[0.12]";
 
   return (
     <button
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        // Without this a touch drag scrolls the page instead of moving the button.
+        touchAction: draggable ? "none" : undefined,
+      }}
       type="button"
-      onClick={(event) => onClick(event.currentTarget)}
+      onClick={() => onClick()}
       {...attributes}
       {...listeners}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${borderClassName} ${
-        isEffectivelyHidden ? "opacity-40" : ""
-      } ${isSelected ? "ring-2 ring-primary" : ""}`}
+      title={draggable ? t("dialogs.canvas.editButton") : undefined}
+      className={`flex flex-1 ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
-      {button.icon_custom_emoji_id ? <span className="text-[11px] opacity-70">★</span> : null}
-      <span className="truncate">{label}</span>
-      {button.visibility_condition ? (
-        <span className="text-[9.5px] text-muted-foreground">({button.visibility_condition})</span>
-      ) : null}
+      <ButtonFace
+        button={button}
+        textByKey={textByKey}
+        className={`w-full transition ${isEffectivelyHidden ? "opacity-40 hover:opacity-70" : ""} ${
+          isDragging
+            ? // The real button stays as the gap the overlay will drop back into.
+              "opacity-25"
+            : isSelected
+              ? "ring-2 ring-primary"
+              : "hover:bg-white/[0.06] hover:ring-1 hover:ring-white/25"
+        }`}
+      />
     </button>
   );
 }
@@ -125,7 +191,7 @@ function Row({
   buttons: DialogButtonItem[];
   textByKey: Record<string, string>;
   selection: Selection | null;
-  onSelect: (selection: Selection, anchor: HTMLElement) => void;
+  onSelect: (selection: Selection) => void;
   canEdit: boolean;
   isPlaceholder: boolean;
   placeholderLabel?: string;
@@ -135,8 +201,14 @@ function Row({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-10 gap-1.5 rounded-lg ${isOver ? "bg-primary/10" : ""} ${
-        isPlaceholder ? "items-center justify-center border border-dashed border-white/[0.12] py-2" : ""
+      className={`flex min-h-10 gap-1.5 rounded-lg transition-colors ${
+        isOver ? "bg-primary/10 ring-1 ring-primary/40" : ""
+      } ${
+        isPlaceholder
+          ? `items-center justify-center border border-dashed py-2 ${
+              isOver ? "border-primary/50" : "border-white/[0.12]"
+            }`
+          : ""
       }`}
     >
       {isPlaceholder && buttons.length === 0 ? (
@@ -149,9 +221,9 @@ function Row({
               button={button}
               textByKey={textByKey}
               draggable={canEdit}
-              isSelected={selection?.kind === "button" && selection.textKey === button.text_key}
+              isSelected={selection?.kind === "button" && selection.buttonKey === buttonId(button)}
               isEffectivelyHidden={button.is_hidden}
-              onClick={(anchor) => onSelect({ kind: "button", textKey: button.text_key }, anchor)}
+              onClick={() => onSelect({ kind: "button", buttonKey: buttonId(button) })}
             />
           ))}
         </SortableContext>
@@ -169,13 +241,25 @@ export function ButtonGrid({
   canEdit,
   onReorder,
 }: ButtonGridProps) {
+  const { t } = useTranslation();
+  const newRowLabel = t("dialogs.canvas.newRow");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [dragged, setDragged] = useState<{ button: DialogButtonItem; width: number } | null>(null);
   const containers = toContainers(buttons);
   const rowKeys = Object.keys(containers)
     .filter((key) => key !== "row-new")
     .sort((a, b) => Number(a.split("-")[1]) - Number(b.split("-")[1]));
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const button = buttons.find((b) => buttonId(b) === String(event.active.id));
+    if (!button) return;
+    // The overlay is outside the row's flex layout, so it needs the width the
+    // button actually had, or it collapses to its text.
+    setDragged({ button, width: event.active.rect.current.initial?.width ?? 0 });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setDragged(null);
     const { active, over } = event;
     if (!over) return;
     const activeId = String(active.id);
@@ -208,15 +292,21 @@ export function ButtonGrid({
 
   if (buttons.length === 0 && !canEdit) {
     return (
-      <div className="flex flex-col gap-1.5 px-3 pb-3">
+      <div className="flex flex-col gap-1.5">
         <p className="text-[12px] text-muted-foreground">{emptyLabel}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1.5 px-3 pb-3">
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <div className="flex flex-col gap-1.5">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setDragged(null)}
+      >
         {rowKeys.map((key) => (
           <Row
             key={key}
@@ -238,8 +328,20 @@ export function ButtonGrid({
             onSelect={onSelect}
             canEdit={canEdit}
             isPlaceholder
+            placeholderLabel={newRowLabel}
           />
         )}
+        <DragOverlay dropAnimation={DROP_ANIMATION}>
+          {dragged && (
+            <div style={{ width: dragged.width }} className="scale-[1.03] cursor-grabbing">
+              <ButtonFace
+                button={dragged.button}
+                textByKey={textByKey}
+                className="w-full bg-surface shadow-lg shadow-black/40 ring-2 ring-primary/60"
+              />
+            </div>
+          )}
+        </DragOverlay>
       </DndContext>
     </div>
   );

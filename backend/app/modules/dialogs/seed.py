@@ -1,7 +1,7 @@
 from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.settings import SettingsRepository
-from app.modules.translations import TranslationsRepository
+from app.modules.translations import TranslationsRepository, split_message_key
 
 
 async def ensure_dialogs_seeded(
@@ -16,5 +16,11 @@ async def ensure_dialogs_seeded(
         )
         text_keys = set(window.text_keys) | {b.text_key for b in window.buttons}
         for locale in locales:
-            for message_id in text_keys:
-                await translations_repository.seed_missing(locale, message_id, "", "")
+            for text_key in text_keys:
+                message_id, attribute_id = split_message_key(text_key)
+                await translations_repository.seed_missing(locale, message_id, attribute_id, "")
+                if attribute_id:
+                    # Earlier seeds stored the dotted key as a message id of its
+                    # own, which shadows the real row everywhere the two are
+                    # looked up by joined key.
+                    await translations_repository.delete_blank(locale, text_key, "")
