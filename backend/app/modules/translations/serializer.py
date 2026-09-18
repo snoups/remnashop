@@ -4,6 +4,27 @@ from typing import Optional
 from app.modules.translations.dto import TranslationEntryDto
 
 
+def split_message_key(key: str) -> tuple[str, str]:
+    """Split a Fluent lookup key into the (message_id, attribute_id) pair a
+    translations row is keyed by. `btn-menu.trial` is message `btn-menu`'s
+    `trial` attribute -- storing it whole as a message id produces a row that
+    shadows the real one and serializes to invalid Fluent, since a message id
+    cannot contain a dot."""
+    message_id, separator, attribute_id = key.rpartition(".")
+    return (message_id, attribute_id) if separator else (key, "")
+
+
+def join_message_key(message_id: str, attribute_id: str) -> str:
+    return f"{message_id}.{attribute_id}" if attribute_id else message_id
+
+
+def _block(value: str, indent: str) -> str:
+    # A Fluent pattern continues onto the next line only while that line is
+    # indented, so a stored newline has to carry the indent with it. Fluent
+    # strips the common indent back off when it parses the value.
+    return value.replace("\n", f"\n{indent}")
+
+
 def serialize_to_fluent(entries: list[TranslationEntryDto]) -> str:
     by_message: dict[str, list[TranslationEntryDto]] = defaultdict(list)
     for entry in entries:
@@ -13,10 +34,14 @@ def serialize_to_fluent(entries: list[TranslationEntryDto]) -> str:
     for message_id in sorted(by_message):
         group = sorted(by_message[message_id], key=lambda entry: entry.attribute_id)
         own_value = next((entry.value for entry in group if entry.attribute_id == ""), None)
-        lines.append(f"{message_id} = {own_value}" if own_value is not None else f"{message_id} =")
+        lines.append(
+            f"{message_id} = {_block(own_value, '    ')}"
+            if own_value is not None
+            else f"{message_id} ="
+        )
         for entry in group:
             if entry.attribute_id:
-                lines.append(f"    .{entry.attribute_id} = {entry.value}")
+                lines.append(f"    .{entry.attribute_id} = {_block(entry.value, '        ')}")
 
     return "\n".join(lines) + "\n"
 

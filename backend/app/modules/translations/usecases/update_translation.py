@@ -48,9 +48,11 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
             from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
 
             if "\n" in data.value:
-                # A newline lets the value break out of its own line when
-                # serialize_to_fluent() writes it back out, injecting a second
-                # top-level Fluent message into the locale text.
+                # Kept single-line even though serialize_to_fluent() now indents
+                # continuations: this editor reaches every key, including the bot
+                # command descriptions repushed below, which Telegram rejects
+                # unless they are one line. Dialog window bodies get their
+                # newlines through modules/dialogs' own text endpoint instead.
                 raise ValidationError("Translation values cannot contain newlines")
 
             existing = await self._translations_repository.list_by_locale(data.locale)

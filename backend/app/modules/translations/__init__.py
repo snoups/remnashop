@@ -4,7 +4,12 @@
 from app.modules.translations.dto import TranslationEntryDto  # noqa: I001
 from app.modules.translations.repository import TranslationsRepository
 from app.modules.translations.seed import ensure_translations_seeded
-from app.modules.translations.serializer import find_disallowed_placeable, serialize_to_fluent
+from app.modules.translations.serializer import (
+    find_disallowed_placeable,
+    join_message_key,
+    serialize_to_fluent,
+    split_message_key,
+)
 from app.modules.translations.publish import publish_translation_change
 from app.modules.translations.di import get_translations_providers
 from app.modules.translations.usecases import (
@@ -26,6 +31,8 @@ __all__ = [
     "ensure_translations_seeded",
     "find_disallowed_placeable",
     "get_translations_providers",
+    "join_message_key",
     "publish_translation_change",
     "serialize_to_fluent",
+    "split_message_key",
 ]

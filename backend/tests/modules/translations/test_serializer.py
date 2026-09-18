@@ -1,6 +1,12 @@
+import pytest
+
 from app.core.enums import Locale
 from app.modules.translations.dto import TranslationEntryDto
-from app.modules.translations.serializer import find_disallowed_placeable, serialize_to_fluent
+from app.modules.translations.serializer import (
+    find_disallowed_placeable,
+    serialize_to_fluent,
+    split_message_key,
+)
 
 
 def _entry(message_id: str, attribute_id: str, value: str) -> TranslationEntryDto:
@@ -101,3 +107,16 @@ def test_unmatched_brace_without_closing_brace_is_not_caught_here() -> None:
     # the separate FluentBundle.check_messages() compile check the caller
     # (UpdateDialogTextUseCase) runs on the full candidate text afterward.
     assert find_disallowed_placeable("Hi { unterminated", _ALLOWED) is None
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        ("btn-menu.trial", ("btn-menu", "trial")),
+        ("msg-main-menu", ("msg-main-menu", "")),
+        ("msg-dialog-custom-3f9a", ("msg-dialog-custom-3f9a", "")),
+        ("platform-icon.ios", ("platform-icon", "ios")),
+    ],
+)
+def test_split_message_key(key: str, expected: tuple[str, str]) -> None:
+    assert split_message_key(key) == expected

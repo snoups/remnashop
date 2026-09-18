@@ -87,6 +87,18 @@ class TranslationsRepository:
         )
         await self.session.execute(stmt)
 
+    async def delete_blank(self, locale: Locale, message_id: str, attribute_id: str) -> None:
+        # Deliberately only removes a row nobody has typed anything into: an
+        # edited value is somebody's work, even if the row shouldn't exist.
+        await self.session.execute(
+            delete(BotTranslation).where(
+                BotTranslation.locale == locale,
+                BotTranslation.message_id == message_id,
+                BotTranslation.attribute_id == attribute_id,
+                BotTranslation.value == "",
+            )
+        )
+
     async def update_value(
         self, locale: Locale, message_id: str, attribute_id: str, value: str
     ) -> TranslationEntryDto:

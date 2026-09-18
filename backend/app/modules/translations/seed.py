@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from textwrap import dedent
 from typing import TYPE_CHECKING, Final
 
 from app.core.config import AppConfig
@@ -28,7 +29,12 @@ def _parse_seed_file(path: Path) -> list[tuple[str, str, str]]:
         # Slice the original source rather than walk elements -- preserves
         # placeables ({ $var }) and multi-line continuation exactly as
         # authored, instead of reconstructing (and rejecting) them by hand.
-        return source[pattern.span.start : pattern.span.end]
+        raw = source[pattern.span.start : pattern.span.end]
+        first, separator, rest = raw.partition("\n")
+        # The slice carries the .ftl's own continuation indent; store the value
+        # without it, so an editor shows the text the reader sees and
+        # serialize_to_fluent() is the only thing that decides indentation.
+        return first + separator + dedent(rest) if separator else raw
 
     source = path.read_text()
     resource = FluentParser().parse(source)
