@@ -13,12 +13,13 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1, CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import BannerName, DialogFlow, Locale, Role
+from app.core.enums import DialogFlow, Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.banners import get_banners_providers
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.dialogs import catalog, get_dialogs_providers
 from app.modules.dialogs.repository import DialogRepository
@@ -52,6 +53,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_passkey_revoker_providers(),
         *get_auth_providers(),
         *get_api_tokens_providers(),
+        *get_banners_providers(),
         *get_blacklist_providers(),
         *get_settings_providers(),
         *get_translations_providers(),
@@ -155,7 +157,7 @@ async def test_owner_lists_and_updates(
     await dialog_repository.upsert_seed(
         "menu.main",
         DialogFlow.MENU,
-        BannerName.MENU,
+        "menu",
         {
             "banner_name": "menu",
             "buttons": [
@@ -230,7 +232,7 @@ async def test_replace_buttons_bad_action_is_400(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
     await dialog_repository.upsert_seed(
-        "menu.main", DialogFlow.MENU, BannerName.MENU, {"banner_name": "menu", "buttons": []}
+        "menu.main", DialogFlow.MENU, "menu", {"banner_name": "menu", "buttons": []}
     )
     await uow.commit()
 
@@ -262,7 +264,7 @@ async def test_replace_buttons_overlong_text_key_is_422(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
     await dialog_repository.upsert_seed(
-        "menu.main", DialogFlow.MENU, BannerName.MENU, {"banner_name": "menu", "buttons": []}
+        "menu.main", DialogFlow.MENU, "menu", {"banner_name": "menu", "buttons": []}
     )
     await uow.commit()
 
@@ -319,7 +321,7 @@ async def test_delete_seed_window_is_400(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
     await dialog_repository.upsert_seed(
-        "menu.main", DialogFlow.MENU, BannerName.MENU, {"banner_name": "menu", "buttons": []}
+        "menu.main", DialogFlow.MENU, "menu", {"banner_name": "menu", "buttons": []}
     )
     await uow.commit()
 
@@ -349,7 +351,7 @@ async def test_reset_window_and_reset_all(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
     await dialog_repository.upsert_seed(
-        "menu.main", DialogFlow.MENU, BannerName.MENU, {"banner_name": "menu", "buttons": []}
+        "menu.main", DialogFlow.MENU, "menu", {"banner_name": "menu", "buttons": []}
     )
     await uow.commit()
 

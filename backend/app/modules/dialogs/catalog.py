@@ -3,7 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final, Optional
 
-from app.core.enums import BannerName, ButtonLinkType, ButtonStyleKind, DialogFlow
+from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow
 
 Resolver = Callable[..., object]
 
@@ -27,6 +27,13 @@ URL_SCHEMES: Final[tuple[str, ...]] = ("https://", "http://", "tg://")
 # generation for why a dot here fails Fluent's identifier grammar.
 CUSTOM_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-custom-"
 
+# A button's icon is a translation of its own, so it can differ per locale and
+# never gets mixed into the label text. Exactly one of the two is ever filled:
+# the plain glyph goes into the button's text, the premium id into Telegram's
+# icon_custom_emoji_id.
+ICON_KEY_SUFFIX: Final[str] = "-icon"
+ICON_ID_KEY_SUFFIX: Final[str] = "-icon-id"
+
 
 @dataclass(frozen=True, kw_only=True)
 class CatalogButton:
@@ -40,7 +47,6 @@ class CatalogButton:
     url_value: Optional[str] = None
     visibility_condition: Optional[str] = None
     style: Optional[ButtonStyleKind] = None
-    icon_custom_emoji_id: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,7 +54,7 @@ class CatalogWindow:
     key: str
     flow: DialogFlow
     text_keys: tuple[str, ...]
-    banner_name: Optional[BannerName]
+    banner_name: Optional[str]
     buttons: tuple[CatalogButton, ...] = ()
 
 
@@ -141,6 +147,31 @@ def text_variable_keys() -> frozenset[str]:
     return frozenset(key for key in _VARIABLES if _FLUENT_IDENTIFIER_RE.match(key))
 
 
+def text_keys() -> frozenset[str]:
+    # Every text key a catalog-registered window or button genuinely owns.
+    # Custom windows aren't in the in-process catalog, hence the prefix check
+    # callers layer on top of this set.
+    keys: set[str] = set()
+    for window in _WINDOWS.values():
+        keys.update(window.text_keys)
+        keys.update(button.text_key for button in window.buttons)
+    return frozenset(keys)
+
+
+def icon_text_key(text_key: str) -> str:
+    return f"{text_key}{ICON_KEY_SUFFIX}"
+
+
+def icon_id_text_key(text_key: str) -> str:
+    return f"{text_key}{ICON_ID_KEY_SUFFIX}"
+
+
+def is_editable_text_key(key: str) -> bool:
+    # An icon key is editable exactly when the label it belongs to is.
+    base = key.removesuffix(ICON_ID_KEY_SUFFIX).removesuffix(ICON_KEY_SUFFIX)
+    return base in text_keys() or base.startswith(CUSTOM_TEXT_KEY_PREFIX)
+
+
 def get_action(key: str) -> Resolver:
     return _ACTIONS[key]
 
@@ -156,7 +187,7 @@ def get_variable(key: str) -> Resolver:
 def window_snapshot(key: str) -> dict:
     window = _WINDOWS[key]
     return {
-        "banner_name": window.banner_name.value if window.banner_name else None,
+        "banner_name": window.banner_name,
         "buttons": [
             {
                 "key": b.key,
@@ -169,7 +200,6 @@ def window_snapshot(key: str) -> dict:
                 "url_value": b.url_value,
                 "visibility_condition": b.visibility_condition,
                 "style": b.style.value if b.style else None,
-                "icon_custom_emoji_id": b.icon_custom_emoji_id,
                 "is_hidden": False,
             }
             for b in window.buttons

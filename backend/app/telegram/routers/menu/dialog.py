@@ -1,3 +1,4 @@
+from aiogram.enums import ParseMode
 from aiogram_dialog import Dialog, Window
 from aiogram_dialog.widgets.kbd import Button, ListGroup, Row, Start
 from aiogram_dialog.widgets.media import DynamicMedia
@@ -29,6 +30,7 @@ main = Window(
             state=Subscription.MAIN,
         ),
     ),
+    parse_mode=ParseMode.HTML,
     state=MainMenu.MAIN,
     getter=menu_getter,
 )
@@ -45,6 +47,7 @@ devices = Window(
         when=F["has_devices"],
     ),
     ConfigKeyboard(window_key="menu.devices"),
+    parse_mode=ParseMode.HTML,
     state=MainMenu.DEVICES,
     getter=devices_getter,
 )
@@ -53,6 +56,7 @@ device_confirm_delete = Window(
     DynamicMedia("banner"),
     Format("{confirm_message}"),
     ConfigKeyboard(window_key="menu.device_confirm_delete"),
+    parse_mode=ParseMode.HTML,
     state=MainMenu.DEVICE_CONFIRM_DELETE,
     getter=device_confirm_delete_getter,
 )
@@ -61,6 +65,7 @@ device_confirm_delete_all = Window(
     DynamicMedia("banner"),
     Format("{confirm_message}"),
     ConfigKeyboard(window_key="menu.device_confirm_delete_all"),
+    parse_mode=ParseMode.HTML,
     state=MainMenu.DEVICE_CONFIRM_DELETE_ALL,
     getter=device_confirm_delete_all_getter,
 )
@@ -69,6 +74,7 @@ device_confirm_reissue = Window(
     DynamicMedia("banner"),
     Format("{confirm_message}"),
     ConfigKeyboard(window_key="menu.device_confirm_reissue"),
+    parse_mode=ParseMode.HTML,
     state=MainMenu.DEVICE_CONFIRM_REISSUE,
     getter=device_confirm_reissue_getter,
 )

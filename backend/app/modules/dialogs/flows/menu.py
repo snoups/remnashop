@@ -1,4 +1,5 @@
-from app.core.enums import BannerName, ButtonLinkType, DialogFlow
+from app.core.constants import DEFAULT_BANNER_NAME
+from app.core.enums import ButtonLinkType, DialogFlow
 from app.modules.dialogs import catalog
 
 
@@ -32,7 +33,7 @@ def register_menu_metadata() -> None:
             key="menu.main",
             flow=DialogFlow.MENU,
             text_keys=("msg-main-menu",),
-            banner_name=BannerName.MENU,
+            banner_name=DEFAULT_BANNER_NAME,
             buttons=(
                 catalog.CatalogButton(
                     key="connect",

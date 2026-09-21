@@ -1,6 +1,6 @@
 import pytest
 
-from app.core.enums import BannerName, ButtonLinkType, DialogFlow, Locale
+from app.core.enums import ButtonLinkType, DialogFlow, Locale
 from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.seed import ensure_dialogs_seeded
@@ -14,7 +14,7 @@ def _catalog():
             key="menu.main",
             flow=DialogFlow.MENU,
             text_keys=("msg-main-menu",),
-            banner_name=BannerName.MENU,
+            banner_name="menu",
             buttons=(
                 catalog.CatalogButton(
                     key="sub",

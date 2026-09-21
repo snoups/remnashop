@@ -35,6 +35,7 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.banners.repository import BannerRepository
 from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.dialogs.repository import DialogRepository
+from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.gateways.repository import GatewaysRepository
 from app.modules.oauth.providers.state_store import OAuthStateStore
@@ -153,6 +154,11 @@ def api_token_repository(session: AsyncSession) -> ApiTokenRepository:
 @pytest.fixture
 def banner_repository(session: AsyncSession) -> BannerRepository:
     return BannerRepository(session)
+
+
+@pytest.fixture
+def emoji_pack_repository(session: AsyncSession) -> EmojiPackRepository:
+    return EmojiPackRepository(session)
 
 
 @pytest.fixture

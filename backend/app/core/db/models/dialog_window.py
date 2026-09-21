@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db.base import BaseSql
 from app.core.db.models.dialog_button import DialogButton
 from app.core.db.timestamp import TimestampMixin
-from app.core.enums import BannerName, DialogFlow, DialogWindowKind
+from app.core.enums import DialogFlow, DialogWindowKind
 
 
 class DialogWindow(BaseSql, TimestampMixin):
@@ -21,7 +21,9 @@ class DialogWindow(BaseSql, TimestampMixin):
     key: Mapped[str] = mapped_column(String(128))
     kind: Mapped[DialogWindowKind] = mapped_column(String(16))
     flow: Mapped[DialogFlow] = mapped_column(String(16))
-    banner_name: Mapped[Optional[BannerName]] = mapped_column(String(32))
+    # NULL -- no banner; DEFAULT_BANNER_NAME -- the shared one; anything else --
+    # this window's own, named after its key.
+    banner_name: Mapped[Optional[str]] = mapped_column(String(160))
     is_enabled: Mapped[bool] = mapped_column(server_default=text("true"))
     position: Mapped[int] = mapped_column(server_default=text("0"))
     # Only custom windows hold one; seed windows render through their own

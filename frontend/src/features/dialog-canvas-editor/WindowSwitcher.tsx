@@ -1,14 +1,17 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { BANNER_OPTIONS, type DialogFlow, type DialogWindow } from "@entities/dialogs/api";
+import type { DialogFlow, DialogWindow } from "@entities/dialogs/api";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 interface WindowSwitcherProps {
   windows: DialogWindow[];
-  /** Display name per custom window key; falls back to the key itself. */
-  labels: Record<string, string>;
+  /** Custom windows no button navigates to: unreachable in the bot. */
+  unreachableKeys: Set<string>;
+  /** The window holding unsaved keyboard edits, if any. */
+  dirtyKey: string | null;
+  labelOf: (window: DialogWindow) => string;
   selectedKey: string | null;
   onSelect: (key: string) => void;
   canCreate: boolean;
@@ -32,10 +35,20 @@ const FLOW_ORDER: DialogFlow[] = [
   "custom",
 ];
 
+function StateBadge({ label }: { label: string }) {
+  return (
+    <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wide text-warning">
+      {label}
+    </span>
+  );
+}
+
 function WindowChip({
   window,
   label,
   isSelected,
+  isUnreachable,
+  isDirty,
   canDelete,
   onSelect,
   onDelete,
@@ -43,6 +56,8 @@ function WindowChip({
   window: DialogWindow;
   label: string;
   isSelected: boolean;
+  isUnreachable: boolean;
+  isDirty: boolean;
   canDelete: boolean;
   onSelect: () => void;
   onDelete: () => void;
@@ -50,19 +65,25 @@ function WindowChip({
   const { t } = useTranslation();
   return (
     <div
-      className={`group flex items-center gap-1 rounded-lg border px-1 transition-colors ${
-        isSelected ? "border-primary/40 bg-accent" : "border-transparent hover:bg-white/[0.06]"
+      className={`group flex items-center gap-1 rounded-full px-1 transition-colors ${
+        isSelected ? "bg-accent" : "hover:bg-white/[0.04]"
       }`}
     >
       <button
         type="button"
         onClick={onSelect}
         title={window.key}
-        className={`min-w-0 flex-1 cursor-pointer truncate px-1.5 py-1.5 text-left text-[12.5px] ${
-          isSelected ? "text-primary" : "text-foreground/80"
-        }`}
+        className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 py-1.5 text-left text-[13px] ${
+          isSelected ? "font-medium text-primary" : "text-foreground/80"
+        } ${window.is_enabled ? "" : "opacity-55"}`}
       >
-        {label.length > LABEL_MAX_LENGTH ? `${label.slice(0, LABEL_MAX_LENGTH)}…` : label}
+        <MessageSquare className={`size-3.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+        <span className="min-w-0 flex-1 truncate">
+          {label.length > LABEL_MAX_LENGTH ? `${label.slice(0, LABEL_MAX_LENGTH)}…` : label}
+        </span>
+        {isDirty && <span className="size-1.5 shrink-0 rounded-full bg-warning" />}
+        {!window.is_enabled && <StateBadge label={t("dialogs.windowList.disabledBadge")} />}
+        {isUnreachable && <StateBadge label={t("dialogs.windowList.unlinkedBadge")} />}
       </button>
       {canDelete && window.kind === "custom" ? (
         <button
@@ -80,7 +101,9 @@ function WindowChip({
 
 export function WindowSwitcher({
   windows,
-  labels,
+  labelOf,
+  unreachableKeys,
+  dirtyKey,
   selectedKey,
   onSelect,
   canCreate,
@@ -93,7 +116,6 @@ export function WindowSwitcher({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [titleText, setTitleText] = useState("");
-  const [bannerName, setBannerName] = useState("");
   const [collapsedFlows, setCollapsedFlows] = useState<string[]>([]);
 
   const branches = FLOW_ORDER.map((flow) => ({
@@ -129,10 +151,10 @@ export function WindowSwitcher({
                   <WindowChip
                     key={window.key}
                     window={window}
-                    label={
-                      window.kind === "custom" ? (labels[window.key] ?? window.key) : window.key
-                    }
+                    label={labelOf(window)}
                     isSelected={window.key === selectedKey}
+                    isUnreachable={unreachableKeys.has(window.key)}
+                    isDirty={window.key === dirtyKey}
                     canDelete={canDelete}
                     onSelect={() => onSelect(window.key)}
                     onDelete={() => setDeleteTarget(window.key)}
@@ -165,10 +187,9 @@ export function WindowSwitcher({
           cancelLabel={t("dialogs.windowList.addWindowCancel")}
           onConfirm={() => {
             if (!titleText.trim()) return;
-            onCreate(titleText.trim(), bannerName || null);
+            onCreate(titleText.trim(), null);
             setIsCreateOpen(false);
             setTitleText("");
-            setBannerName("");
           }}
           onCancel={() => setIsCreateOpen(false)}
         >
@@ -179,18 +200,6 @@ export function WindowSwitcher({
             placeholder={t("dialogs.windowList.addWindowTitlePlaceholder")}
             className="mb-2 w-full rounded-lg border border-border bg-input/60 px-2.5 py-1.5 text-[13px]"
           />
-          <select
-            value={bannerName}
-            onChange={(event) => setBannerName(event.target.value)}
-            className="w-full rounded-lg border border-border bg-input/60 px-2.5 py-1.5 text-[13px]"
-          >
-            <option value="">{t("dialogs.inspector.bannerNone")}</option>
-            {BANNER_OPTIONS.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
         </ConfirmDialog>
       )}
       {deleteTarget && (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, RotateCcw, Upload, type LucideIcon } from "lucide-react";
+import { Download, MessageSquare, RotateCcw, Upload, type LucideIcon } from "lucide-react";
 
 import { fetchBannerImageBlob } from "@entities/banners/api";
 import {
@@ -85,6 +85,9 @@ export function DialogCanvasEditor() {
   const [inspectorTab, setInspectorTab] = useState<"window" | "element">("window");
   const [previewLocale, setPreviewLocale] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  // Bumped after an upload or delete: the URL depends on bytes the effect
+  // below cannot otherwise know changed.
+  const [bannerNonce, setBannerNonce] = useState(0);
   const [pendingButtons, setPendingButtons] = useState<DialogButtonItem[] | null>(null);
   const [pendingWindowSwitch, setPendingWindowSwitch] = useState<string | null>(null);
   const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
@@ -134,7 +137,7 @@ export function DialogCanvasEditor() {
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [selectedWindow, previewLocale]);
+  }, [selectedWindow, previewLocale, bannerNonce]);
 
   if (windowsState.kind === "loading") {
     return <p className="p-4 text-[13.5px] text-muted-foreground">{t("dialogs.loading")}</p>;
@@ -169,10 +172,18 @@ export function DialogCanvasEditor() {
   const incomingLinks = new Set(
     windows.flatMap((w) => w.buttons.map((b) => b.target_window_key).filter((key) => key !== null)),
   );
-  const isUnreachable =
-    selectedWindow !== null &&
-    selectedWindow.kind === "custom" &&
-    !incomingLinks.has(selectedWindow.key);
+  // Shown as a badge in the tree: a custom window nothing navigates to cannot
+  // be reached in the bot at all.
+  const unreachableKeys = new Set(
+    windows
+      .filter((window) => window.kind === "custom" && !incomingLinks.has(window.key))
+      .map((window) => window.key),
+  );
+
+  const windowLabel = (window: DialogWindow): string =>
+    window.kind === "custom"
+      ? (windowLabels[window.key] ?? window.key)
+      : t(`dialogs.windowList.windows.${window.key}`, { defaultValue: window.key });
 
   const handleEntrySaved = (updated: TranslationEntry) => {
     if (entriesState.kind !== "ready") return;
@@ -267,7 +278,6 @@ export function DialogCanvasEditor() {
       row: nextRow,
       column: 0,
       text_key: `msg-dialog-custom-${randomId()}`,
-      icon_custom_emoji_id: null,
       style: null,
       visibility_condition: null,
       link_type: "navigate",
@@ -304,6 +314,7 @@ export function DialogCanvasEditor() {
             onActiveLocaleChange={setPreviewLocale}
             variableKeys={catalog?.text_variable_keys ?? []}
             multiline
+            emojiInsert
             canUpdate={permissions.includes("DIALOGS_TEXT_UPDATE")}
             canReset={permissions.includes("TRANSLATIONS_RESET")}
             onSaved={handleEntrySaved}
@@ -383,135 +394,175 @@ export function DialogCanvasEditor() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {permissions.includes("DIALOGS_EXPORT") && (
-          <ToolbarButton icon={Download} label={t("dialogs.toolbar.export")} onClick={() => void handleExport()} />
-        )}
-        {permissions.includes("DIALOGS_IMPORT") && (
-          <ToolbarButton
-            icon={Upload}
-            label={t("dialogs.toolbar.import")}
-            onClick={() => fileInputRef.current?.click()}
-          />
-        )}
-        {canResetAll && (
-          <ToolbarButton
-            icon={RotateCcw}
-            label={t("dialogs.inspector.resetAll")}
-            danger
-            onClick={() => setIsResetAllConfirmOpen(true)}
-          />
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/json,.json"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            // Clear it so picking the same file twice in a row still fires.
-            event.target.value = "";
-            if (file) void handleFileChosen(file);
-          }}
-        />
-      </div>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
-      <aside className="flex shrink-0 flex-col gap-2 lg:w-56">
-        <h2 className="text-[11px] uppercase tracking-wide text-muted-foreground">
-          {t("dialogs.windowList.title")}
-        </h2>
-        <WindowSwitcher
-          windows={windows}
-          labels={windowLabels}
-          selectedKey={selectedKey}
-          onSelect={handleSelectWindow}
-          canCreate={canCreateWindow && !isWindowLimitReached}
-          isLimitReached={isWindowLimitReached}
-          canDelete={canDeleteWindow}
-          onCreate={(title, banner) => void handleCreateWindow(title, banner)}
-          onDelete={(key) => void handleDeleteWindow(key)}
-        />
-      </aside>
-      <div className="mx-auto w-full max-w-sm min-w-0 flex-1">
-        {activeLocales.length > 1 && (
-          <div className="mb-3">
-            <PillTabs
-              items={activeLocales.map((locale) => ({
-                key: locale,
-                label: localeLabel(locale, i18n.language),
-              }))}
-              activeKey={previewLocale}
-              onSelect={setPreviewLocale}
-            />
+      {/* One card: the toolbar belongs to the window it acts on, and the three
+          panes are zones inside it rather than separate floating blocks. */}
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] p-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+              <MessageSquare className="size-4 text-foreground" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm font-semibold text-foreground">
+                  {selectedWindow ? windowLabel(selectedWindow) : "—"}
+                </span>
+                {selectedWindow?.kind === "seed" && (
+                  <span className="shrink-0 rounded-full border border-border bg-white/[0.04] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("dialogs.windowList.seedBadge")}
+                  </span>
+                )}
+              </div>
+              {selectedWindow && (
+                <span className="truncate font-mono text-[11.5px] text-muted-foreground">
+                  {selectedWindow.key}
+                </span>
+              )}
+            </div>
           </div>
-        )}
-        {selectedWindow ? (
-          <DialogCanvas
-            window={selectedWindow}
-            buttons={buttons}
-            textByKey={textByKey}
-            bannerUrl={bannerUrl}
-            selection={selection}
-            onSelect={handleSelect}
-            canEditButtons={canEditButtons}
-            onReorderButtons={setPendingButtons}
-          />
-        ) : null}
-        {canEditButtons && catalog && (
-          <button
-            type="button"
-            onClick={handleAddButton}
-            className="mt-2 w-full rounded-lg border border-dashed border-white/[0.12] py-1.5 text-[12px] text-foreground/70 hover:bg-white/[0.06]"
-          >
-            {t("dialogs.inspector.buttonAdd")}
-          </button>
-        )}
-        {isUnreachable && (
-          <p className="mt-2 text-[11.5px] text-muted-foreground">{t("dialogs.canvas.unreachable")}</p>
-        )}
-        {isDirty && canEditButtons && brokenUrlButton !== null && (
-          <p className="mt-2 text-[11.5px] text-error">{t("dialogs.inspector.buttonUrlInvalidGrid")}</p>
-        )}
-        {isDirty && canEditButtons && (
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              disabled={brokenUrlButton !== null}
-              onClick={() => void handleSaveButtons()}
-              className="rounded-full bg-accent px-3 py-1.5 text-[12.5px] text-primary hover:bg-primary/20 disabled:opacity-40"
-            >
-              {t("dialogs.inspector.buttonsSave")}
-            </button>
-            <button
-              type="button"
-              onClick={handleDiscardButtons}
-              className="rounded-full border border-white/[0.12] px-3 py-1.5 text-[12.5px] text-foreground/70 hover:bg-white/[0.06]"
-            >
-              {t("dialogs.inspector.buttonsDiscard")}
-            </button>
-          </div>
-        )}
-      </div>
-      <aside className="flex shrink-0 flex-col gap-2 lg:sticky lg:top-4 lg:w-72">
-        <PillTabs items={inspectorTabs} activeKey={inspectorTab} onSelect={setInspectorTab} />
-        {inspectorTab === "window" ? (
-          selectedWindow && (
-            <WindowInspector
-              window={selectedWindow}
-              onWindowUpdated={(updated) => {
-                setWindowsData(windows.map((w) => (w.key === updated.key ? updated : w)));
+          <div className="flex items-center gap-2">
+            {permissions.includes("DIALOGS_EXPORT") && (
+              <ToolbarButton icon={Download} label={t("dialogs.toolbar.export")} onClick={() => void handleExport()} />
+            )}
+            {permissions.includes("DIALOGS_IMPORT") && (
+              <ToolbarButton
+                icon={Upload}
+                label={t("dialogs.toolbar.import")}
+                onClick={() => fileInputRef.current?.click()}
+              />
+            )}
+            {canResetAll && (
+              <ToolbarButton
+                icon={RotateCcw}
+                label={t("dialogs.inspector.resetAll")}
+                danger
+                onClick={() => setIsResetAllConfirmOpen(true)}
+              />
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                // Clear it so picking the same file twice in a row still fires.
+                event.target.value = "";
+                if (file) void handleFileChosen(file);
               }}
             />
-          )
-        ) : (
-          (elementInspector ?? (
-            <p className="rounded-2xl border border-dashed border-white/[0.12] p-4 text-[12.5px] text-muted-foreground">
-              {t("dialogs.inspector.emptySelection")}
-            </p>
-          ))
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-col lg:flex-row">
+          <aside className="shrink-0 border-b border-white/[0.08] p-2.5 lg:w-56 lg:border-b-0 lg:border-r">
+            <WindowSwitcher
+              windows={windows}
+              labelOf={windowLabel}
+              selectedKey={selectedKey}
+              onSelect={handleSelectWindow}
+              canCreate={canCreateWindow && !isWindowLimitReached}
+              isLimitReached={isWindowLimitReached}
+              canDelete={canDeleteWindow}
+              unreachableKeys={unreachableKeys}
+              dirtyKey={isDirty ? selectedKey : null}
+              onCreate={(title, banner) => void handleCreateWindow(title, banner)}
+              onDelete={(key) => void handleDeleteWindow(key)}
+            />
+          </aside>
+
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-3 p-3.5">
+            {activeLocales.length > 1 && (
+              <div className="w-full max-w-sm">
+                <PillTabs
+                  items={activeLocales.map((locale) => ({
+                    key: locale,
+                    label: localeLabel(locale, i18n.language),
+                  }))}
+                  activeKey={previewLocale}
+                  onSelect={setPreviewLocale}
+                />
+              </div>
+            )}
+            {selectedWindow ? (
+              <DialogCanvas
+                window={selectedWindow}
+                buttons={buttons}
+                textByKey={textByKey}
+                bannerUrl={bannerUrl}
+                selection={selection}
+                onSelect={handleSelect}
+                canEditButtons={canEditButtons}
+                onReorderButtons={setPendingButtons}
+              />
+            ) : null}
+            {canEditButtons && catalog && (
+              <button
+                type="button"
+                onClick={handleAddButton}
+                className="w-full max-w-sm cursor-pointer rounded-xl border border-dashed border-white/[0.12] py-1.5 text-[12px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+              >
+                {t("dialogs.inspector.buttonAdd")}
+              </button>
+            )}
+          </div>
+
+          <aside className="flex shrink-0 flex-col gap-3 border-t border-white/[0.08] p-3.5 lg:w-72 lg:border-l lg:border-t-0">
+            <PillTabs items={inspectorTabs} activeKey={inspectorTab} onSelect={setInspectorTab} />
+            {inspectorTab === "window" ? (
+              selectedWindow && (
+                <WindowInspector
+                  window={selectedWindow}
+                  activeLocale={previewLocale}
+                  bannerUrl={bannerUrl}
+                  onBannerChanged={() => setBannerNonce((nonce) => nonce + 1)}
+                  onWindowUpdated={(updated) => {
+                    setWindowsData(windows.map((w) => (w.key === updated.key ? updated : w)));
+                  }}
+                />
+              )
+            ) : (
+              (elementInspector ?? (
+                <p className="rounded-xl border border-dashed border-white/[0.12] p-4 text-[12.5px] text-muted-foreground">
+                  {t("dialogs.inspector.emptySelection")}
+                </p>
+              ))
+            )}
+          </aside>
+        </div>
+
+        {isDirty && canEditButtons && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-warning/25 bg-warning/[0.07] px-3.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="size-[7px] rounded-full bg-warning" />
+              <span className="text-[13px] text-foreground">{t("dialogs.inspector.dirtyTitle")}</span>
+              {brokenUrlButton !== null && (
+                <span className="text-[12.5px] text-error">
+                  {t("dialogs.inspector.buttonUrlInvalidGrid")}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDiscardButtons}
+                className="cursor-pointer rounded-full border border-border px-4 py-1.5 text-[13px] text-foreground/80 transition-colors hover:bg-white/[0.06]"
+              >
+                {t("dialogs.inspector.buttonsDiscard")}
+              </button>
+              <button
+                type="button"
+                disabled={brokenUrlButton !== null}
+                onClick={() => void handleSaveButtons()}
+                className="cursor-pointer rounded-full bg-accent px-4 py-1.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {t("dialogs.inspector.buttonsSave")}
+              </button>
+            </div>
+          </div>
         )}
-      </aside>
       </div>
+
       {pendingWindowSwitch && (
         <ConfirmDialog
           title={t("dialogs.inspector.buttonsDiscard")}

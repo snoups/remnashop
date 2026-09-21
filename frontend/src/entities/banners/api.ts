@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiUpload, BASE_URL } from "@shared/api/http";
+import { apiDelete, apiGet, apiPost, apiUpload, BASE_URL } from "@shared/api/http";
 import { getAccessToken } from "@shared/lib/token-storage";
 
 export interface BannerMeta {
@@ -23,6 +23,10 @@ export function uploadBanner(name: string, locale: string, file: File): Promise<
   formData.append("locale", locale);
   formData.append("file", file);
   return apiUpload<BannerMeta>("/banners", formData);
+}
+
+export function restoreDefaultBanner(): Promise<null> {
+  return apiPost<null, Record<string, never>>("/banners/default/restore", {});
 }
 
 export function deleteBanner(name: string, locale: string): Promise<null> {

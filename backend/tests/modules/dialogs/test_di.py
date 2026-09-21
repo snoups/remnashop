@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
+from app.modules.banners import get_banners_providers
 from app.modules.dialogs import get_dialogs_providers
 from app.modules.dialogs.usecases import ListDialogWindowsUseCase, UpdateDialogWindowButtonsUseCase
 from app.modules.settings import get_settings_providers
@@ -24,6 +25,7 @@ class _BoundSession(Provider):
 async def test_usecases_resolve(config: AppConfig, session: AsyncSession) -> None:
     container = make_async_container(
         *get_core_providers(),
+        *get_banners_providers(),
         *get_settings_providers(),
         *get_translations_providers(),
         *get_dialogs_providers(),

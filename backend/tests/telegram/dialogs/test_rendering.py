@@ -1,11 +1,15 @@
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.core.enums import BannerName, DialogFlow
+from app.core.enums import DialogFlow
 from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.telegram.dialogs.config_cache import DialogConfigCache
-from app.telegram.dialogs.rendering import render_dialog_buttons, resolve_variable_kwargs
+from app.telegram.dialogs.rendering import (
+    render_dialog_buttons,
+    render_window_text,
+    resolve_variable_kwargs,
+)
 
 _SNAPSHOT = {
     "banner_name": "menu",
@@ -57,7 +61,7 @@ def _catalog():
 
 
 async def _cache(session, dialog_repository: DialogRepository) -> DialogConfigCache:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     session_maker = async_sessionmaker(
         bind=session.bind, expire_on_commit=False, join_transaction_mode="create_savepoint"
     )
@@ -122,7 +126,7 @@ async def test_unknown_variable_token_resolves_to_empty_string(
     await dialog_repository.upsert_seed(
         "menu.main",
         DialogFlow.MENU,
-        BannerName.MENU,
+        "menu",
         {
             "banner_name": "menu",
             "buttons": [
@@ -173,7 +177,7 @@ async def test_unknown_visibility_condition_hides_button(
     await dialog_repository.upsert_seed(
         "menu.main",
         DialogFlow.MENU,
-        BannerName.MENU,
+        "menu",
         {
             "banner_name": "menu",
             "buttons": [
@@ -200,3 +204,35 @@ async def test_unknown_visibility_condition_hides_button(
     cache = DialogConfigCache(session_maker)
     rows = await render_dialog_buttons("menu.main", cache, _FakeRunner(), {})
     assert rows == []
+
+
+class _StubRunner:
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def get(self, key: str, **kwargs: object) -> str:
+        return self._value
+
+
+def test_render_window_text_turns_markup_into_a_tg_emoji_tag() -> None:
+    runner = _StubRunner("\U0001f381 Hello")
+    assert render_window_text(runner, "k") == "\U0001f381 Hello"
+
+    runner = _StubRunner("[\U0001f381](emoji:5386587088873331829) Hello")
+    assert render_window_text(runner, "k") == (
+        '<tg-emoji emoji-id="5386587088873331829">\U0001f381</tg-emoji> Hello'
+    )
+
+
+def test_render_window_text_escapes_everything_else() -> None:
+    # The window renders as HTML so <tg-emoji> works, which makes any unescaped
+    # text -- a user's own display name among it -- an injection point.
+    runner = _StubRunner('<a href="http://evil">click</a> & <b>bold</b>')
+    assert render_window_text(runner, "k") == (
+        '&lt;a href="http://evil"&gt;click&lt;/a&gt; &amp; &lt;b&gt;bold&lt;/b&gt;'
+    )
+
+
+def test_render_window_text_ignores_a_malformed_emoji_marker() -> None:
+    runner = _StubRunner("[\U0001f381](emoji:not-a-number)")
+    assert render_window_text(runner, "k") == "[\U0001f381](emoji:not-a-number)"

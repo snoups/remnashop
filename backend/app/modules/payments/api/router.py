@@ -2,8 +2,10 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
+from app.core.constants import MAX_WEBHOOK_BODY_BYTES
 from app.core.enums import PaymentGatewayType
 from app.core.exceptions import PaymentGatewayError, ValidationError
+from app.core.utils.http import read_bounded_body
 from app.modules.payments.gateways.base import WebhookRequest
 from app.modules.payments.usecases import HandlePaymentWebhookUseCase, HandleWebhookInput
 
@@ -23,7 +25,7 @@ async def receive_payment_webhook(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from None
 
     webhook_request = WebhookRequest(
-        body=await request.body(),
+        body=await read_bounded_body(request, MAX_WEBHOOK_BODY_BYTES),
         headers={key.lower(): value for key, value in request.headers.items()},
     )
     try:

@@ -1,3 +1,4 @@
+from aiogram.enums import ParseMode
 from aiogram.fsm.state import State
 from aiogram_dialog import Dialog, Window
 from aiogram_dialog.widgets.media import DynamicMedia
@@ -13,6 +14,7 @@ def _window(state: State) -> Window:
         DynamicMedia("banner", when="banner"),
         Format("{window_text}"),
         CustomConfigKeyboard(),
+        parse_mode=ParseMode.HTML,
         state=state,
         getter=custom_window_getter,
     )

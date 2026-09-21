@@ -2,8 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.core.constants import BANNER_NAME_PATTERN
 from app.core.enums import (
-    BannerName,
     ButtonLinkType,
     ButtonStyleKind,
     DialogFlow,
@@ -17,7 +17,6 @@ class DialogButtonItem(BaseModel):
     row: int
     column: int
     text_key: str
-    icon_custom_emoji_id: Optional[str] = None
     style: Optional[ButtonStyleKind] = None
     visibility_condition: Optional[str] = None
     link_type: ButtonLinkType
@@ -31,7 +30,7 @@ class DialogWindowResponse(BaseModel):
     key: str
     kind: DialogWindowKind
     flow: DialogFlow
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
     is_enabled: bool
     position: int
     text_keys: list[str]
@@ -49,7 +48,7 @@ class DialogCatalogResponse(BaseModel):
 
 
 class UpdateDialogWindowRequest(BaseModel):
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
     is_enabled: Optional[bool] = None
 
 
@@ -58,7 +57,6 @@ class DialogButtonInput(BaseModel):
     column: int = Field(ge=0)
     text_key: str = Field(min_length=1, max_length=64)
     link_type: ButtonLinkType
-    icon_custom_emoji_id: Optional[str] = Field(default=None, max_length=32)
     style: Optional[ButtonStyleKind] = None
     visibility_condition: Optional[str] = Field(default=None, max_length=64)
     action_key: Optional[str] = Field(default=None, max_length=64)
@@ -73,7 +71,7 @@ class ReplaceButtonsRequest(BaseModel):
 
 class CreateCustomWindowRequest(BaseModel):
     title_text: str = Field(min_length=1, max_length=4096)
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
 
 
 class DialogTextExportItem(BaseModel):
@@ -86,7 +84,7 @@ class DialogTextExportItem(BaseModel):
 class DialogWindowExportItem(BaseModel):
     key: str = Field(pattern=r"^[a-z0-9._-]+$", max_length=128)
     kind: DialogWindowKind
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
     is_enabled: bool = True
     position: int = Field(default=0, ge=0)
     buttons: list[DialogButtonInput] = Field(default_factory=list)

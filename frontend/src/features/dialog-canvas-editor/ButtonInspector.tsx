@@ -1,10 +1,20 @@
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
-import { URL_SCHEMES, splitTextKey, urlProblem } from "@entities/dialogs/api";
+import {
+  URL_SCHEMES,
+  iconIdTextKey,
+  iconTextKey,
+  splitTextKey,
+  updateDialogText,
+  urlProblem,
+} from "@entities/dialogs/api";
 import type { DialogButtonItem, DialogCatalog } from "@entities/dialogs/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
+import { getErrorMessage } from "@shared/api/http";
+import { toast } from "@shared/lib/toast";
+import { EmojiPicker, type PickedEmoji } from "@shared/ui/EmojiPicker";
 
 function describeUrlError(
   button: DialogButtonItem,
@@ -64,6 +74,44 @@ export function ButtonInspector({
     ).trim() === "";
   const urlError = describeUrlError(button, catalog.variable_keys, t);
 
+  const valueOf = (key: string): string => {
+    const { messageId: id, attributeId: attr } = splitTextKey(key);
+    return (
+      entries.find((e) => e.locale === activeLocale && e.message_id === id && e.attribute_id === attr)
+        ?.value ?? ""
+    );
+  };
+  // Only one of the two is ever filled: a glyph rides in the label text, a
+  // premium id goes to Telegram's own icon field.
+  const iconGlyph = valueOf(iconTextKey(button.text_key));
+  const iconId = valueOf(iconIdTextKey(button.text_key));
+
+  const writeIcon = async (key: string, value: string) => {
+    const { messageId: id, attributeId: attr } = splitTextKey(key);
+    const updated = await updateDialogText(activeLocale, id, attr, value);
+    onEntrySaved({
+      locale: updated.locale,
+      message_id: updated.message_id,
+      attribute_id: attr,
+      value: updated.value,
+      default_value: updated.default_value,
+    });
+  };
+
+  const handleIconPick = async (picked: PickedEmoji) => {
+    try {
+      if ("glyph" in picked) {
+        await writeIcon(iconTextKey(button.text_key), picked.glyph);
+        if (iconId) await writeIcon(iconIdTextKey(button.text_key), "");
+      } else {
+        await writeIcon(iconIdTextKey(button.text_key), picked.customEmojiId);
+        await writeIcon(iconTextKey(button.text_key), picked.fallback);
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    }
+  };
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -81,6 +129,14 @@ export function ButtonInspector({
             canUpdate={isTextSeeded && canEditText}
             canReset={canResetText}
             onSaved={onEntrySaved}
+            fieldAction={
+              <EmojiPicker
+                current={iconGlyph || null}
+                disabled={!canEditText}
+                onPick={(picked) => void handleIconPick(picked)}
+                onClear={() => void handleIconPick({ glyph: "" })}
+              />
+            }
           />
           {!isTextSeeded && (
             <p className="mt-1 text-[11.5px] text-muted-foreground">
@@ -107,17 +163,6 @@ export function ButtonInspector({
             <option value="success">success</option>
             <option value="danger">danger</option>
           </select>
-        </label>
-
-        <label className="mb-3 block">
-          <span className="mb-1 block text-[12px] text-muted-foreground">{t("dialogs.inspector.buttonIcon")}</span>
-          <input
-            type="text"
-            value={button.icon_custom_emoji_id ?? ""}
-            disabled={!canEditButtons}
-            onChange={(event) => onChange({ ...button, icon_custom_emoji_id: event.target.value || null })}
-            className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
-          />
         </label>
 
         <label className="mb-3 block">

@@ -3,7 +3,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.enums import BannerName, Locale
+from app.core.enums import Locale
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.banners.api.schemas import BannerListResponse, BannerMetaResponse
 from app.modules.banners.dto import BannerDto, BannerKeyDto
@@ -11,6 +11,7 @@ from app.modules.banners.usecases import (
     DeleteBannerUseCase,
     GetBannerImageUseCase,
     ListBannersUseCase,
+    RestoreDefaultBannerUseCase,
     UploadBannerInput,
     UploadBannerUseCase,
 )
@@ -46,7 +47,7 @@ async def list_banners(
 @inject
 async def upload_banner(
     use_case: FromDishka[UploadBannerUseCase],
-    name: BannerName = Form(...),
+    name: str = Form(...),
     locale: Locale = Form(...),
     file: UploadFile = File(...),
     actor: UserDto = Depends(require_admin),
@@ -69,7 +70,7 @@ async def upload_banner(
 @router.delete("/{name}/{locale}", status_code=status.HTTP_204_NO_CONTENT)
 @inject
 async def delete_banner(
-    name: BannerName,
+    name: str,
     locale: Locale,
     use_case: FromDishka[DeleteBannerUseCase],
     actor: UserDto = Depends(require_admin),
@@ -83,7 +84,7 @@ async def delete_banner(
 @router.get("/{name}/{locale}/image")
 @inject
 async def get_banner_image(
-    name: BannerName,
+    name: str,
     locale: Locale,
     use_case: FromDishka[GetBannerImageUseCase],
     actor: UserDto = Depends(require_admin),
@@ -93,3 +94,13 @@ async def get_banner_image(
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     return Response(content=data, media_type=content_type)
+
+
+@router.post("/default/restore", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def restore_default_banner(
+    use_case: FromDishka[RestoreDefaultBannerUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> Response:
+    await use_case(actor, None)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

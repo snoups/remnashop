@@ -3,7 +3,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
 from app.core.db.timestamp import TimestampMixin
-from app.core.enums import BannerName, Locale
+from app.core.enums import Locale
 
 
 class Banner(BaseSql, TimestampMixin):
@@ -11,7 +11,7 @@ class Banner(BaseSql, TimestampMixin):
     __table_args__ = (UniqueConstraint("name", "locale", name="ux_banners_name_locale"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[BannerName]
+    name: Mapped[str] = mapped_column(String(160))
     locale: Mapped[Locale]
     content_type: Mapped[str] = mapped_column(String(64))
     extension: Mapped[str] = mapped_column(String(8))

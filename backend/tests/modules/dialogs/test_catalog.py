@@ -1,6 +1,6 @@
 import pytest
 
-from app.core.enums import BannerName, ButtonLinkType, DialogFlow
+from app.core.enums import ButtonLinkType, DialogFlow
 from app.modules.dialogs import catalog
 
 
@@ -17,7 +17,7 @@ def test_register_and_snapshot_round_trip() -> None:
             key="menu.main",
             flow=DialogFlow.MENU,
             text_keys=("msg-main-menu",),
-            banner_name=BannerName.MENU,
+            banner_name="menu",
             buttons=(
                 catalog.CatalogButton(
                     key="subscription",
@@ -86,3 +86,43 @@ def test_text_variable_keys_accepts_hyphens_and_underscores() -> None:
 def test_register_variable_rejects_reserved_names(reserved: str) -> None:
     with pytest.raises(ValueError):
         catalog.register_variable(reserved, lambda data: "")
+
+
+def _register_menu_window() -> None:
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.main",
+            flow=DialogFlow.MENU,
+            text_keys=("msg-main-menu",),
+            banner_name=None,
+            buttons=(
+                catalog.CatalogButton(
+                    key="subscription",
+                    text_key="btn-menu.subscription",
+                    link_type=ButtonLinkType.NAVIGATE,
+                    target_window_key="subscription.main",
+                ),
+            ),
+        )
+    )
+
+
+def test_text_keys_covers_window_bodies_and_button_labels() -> None:
+    _register_menu_window()
+    assert catalog.text_keys() == frozenset({"msg-main-menu", "btn-menu.subscription"})
+
+
+def test_is_editable_text_key_accepts_catalog_and_custom_keys() -> None:
+    _register_menu_window()
+    assert catalog.is_editable_text_key("msg-main-menu")
+    assert catalog.is_editable_text_key("btn-menu.subscription")
+    assert catalog.is_editable_text_key(f"{catalog.CUSTOM_TEXT_KEY_PREFIX}anything")
+
+
+def test_is_editable_text_key_rejects_rows_outside_the_dialogs_namespace() -> None:
+    # command.menu is a bot command description: documented as never
+    # admin-editable, and reachable through import only while the allowlist is
+    # derived from submitted button text_keys rather than from the catalog.
+    _register_menu_window()
+    assert not catalog.is_editable_text_key("command.menu")
+    assert not catalog.is_editable_text_key("ntf-subscription-expiring")

@@ -27,6 +27,15 @@ BOT_WEBHOOK_PATH: Final[str] = "/telegram"
 PAYMENTS_WEBHOOK_PATH: Final[str] = "/payments"
 REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
 
+# A window's banner is just a banner name: unset means no banner, DEFAULT_BANNER_NAME
+# means the shared one, and anything prefixed with WINDOW_BANNER_PREFIX is that
+# window's own. The frontend mirrors both when it uploads or assigns one.
+DEFAULT_BANNER_NAME: Final[str] = "default"
+WINDOW_BANNER_PREFIX: Final[str] = "win."
+# The name lands in a filesystem path, so anything outside this alphabet -- a
+# slash, a leading dot, ".." -- would let a caller walk out of the media dir.
+BANNER_NAME_PATTERN: Final[str] = r"^[a-z0-9][a-z0-9._-]*$"
+
 IMPORTED_TAG: Final[str] = "IMPORTED"
 INLINE_QUERY_INVITE: Final[str] = "invite"
 REMNASHOP_PREFIX: Final[str] = "rs_"
@@ -94,3 +103,11 @@ BATCH_DELAY: Final[int] = 1
 # is byte-denominated (CreateUserRequestDto.traffic_limit_bytes). Convert at
 # the SDK-call boundary only; never store bytes anywhere in our own schema.
 GB_TO_BYTES: Final[int] = 1024**3
+
+# Cap on what a webhook handler will buffer. Both webhook routes are
+# unauthenticated and read the whole body before their signature check, and the
+# panel one is exempt from the global rate limiter, so without this the only
+# bound is whatever the operator's reverse proxy happens to impose -- the
+# in-repo traefik reference imposes none. Sized well above any real payload:
+# the largest is a Remnawave user event.
+MAX_WEBHOOK_BODY_BYTES: Final[int] = 1024 * 1024

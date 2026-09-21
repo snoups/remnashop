@@ -5,7 +5,6 @@ from pydantic import Field
 
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
-    BannerName,
     ButtonLinkType,
     ButtonStyleKind,
     DialogFlow,
@@ -19,7 +18,6 @@ class DialogButtonDto(BaseDto, TimestampMixin):
     row: int
     column: int
     text_key: str
-    icon_custom_emoji_id: Optional[str] = None
     style: Optional[ButtonStyleKind] = None
     visibility_condition: Optional[str] = None
     link_type: ButtonLinkType
@@ -33,7 +31,7 @@ class DialogWindowDto(BaseDto, TimestampMixin):
     key: str
     kind: DialogWindowKind
     flow: DialogFlow
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = None
     is_enabled: bool = True
     position: int = 0
     slot: Optional[int] = None
@@ -44,7 +42,7 @@ class DialogWindowDto(BaseDto, TimestampMixin):
 class UpdateDialogWindowDto:
     # banner_name=None is ambiguous on its own -- it's both "leave the banner
     # alone" and "drop the banner". The flag is what tells them apart.
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = None
     banner_name_provided: bool = False
     is_enabled: Optional[bool] = None
 
@@ -55,7 +53,6 @@ class DialogButtonInputDto:
     column: int
     text_key: str
     link_type: ButtonLinkType
-    icon_custom_emoji_id: Optional[str] = None
     style: Optional[ButtonStyleKind] = None
     visibility_condition: Optional[str] = None
     action_key: Optional[str] = None
@@ -66,7 +63,7 @@ class DialogButtonInputDto:
 
 @dataclass(frozen=True, kw_only=True)
 class CreateCustomWindowDto:
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = None
     position: int = 0
 
 
@@ -82,7 +79,7 @@ class DialogTextExportDto:
 class DialogWindowExportDto:
     key: str
     kind: DialogWindowKind
-    banner_name: Optional[BannerName]
+    banner_name: Optional[str]
     is_enabled: bool
     position: int
     buttons: list[DialogButtonInputDto]

@@ -36,7 +36,9 @@
       "loginInvalidChars": "Login may only contain Latin letters, digits, dots, underscores, and hyphens",
       "passwordRequirements": "Password must be at least 24 characters long and contain an uppercase letter, a lowercase letter, and a digit",
       "passwordsDoNotMatch": "Passwords do not match",
-      "genericError": "Something went wrong"
+      "genericError": "Something went wrong",
+      "unsafeAuthorizationUrl": "The sign-in provider returned an unsafe address",
+      "logoutNotConfirmed": "Signed out locally, but the server did not confirm the session was revoked"
     },
     "oauth": {
       "continueWith": "Continue with {{provider}}",
@@ -397,13 +399,6 @@
       "reset": "Translation reset to default."
     },
     "banners": {
-      "title": "Banners",
-      "description": "Set up banners for every bot screen.",
-      "loading": "Loading…",
-      "loadError": "Failed to load banners.",
-      "upload": "Upload",
-      "replace": "Replace",
-      "delete": "Delete",
       "uploadError": "Failed to upload banner.",
       "deleteError": "Failed to delete banner.",
       "unsupportedFormat": "Unsupported file format"
@@ -1215,6 +1210,18 @@
         "subscription": "Subscription",
         "promocode": "Promocode",
         "custom": "Custom"
+      },
+      "seedBadge": "built-in",
+      "disabledBadge": "off",
+      "unlinkedBadge": "unlinked",
+      "windows": {
+        "menu": {
+          "main": "Main menu",
+          "devices": "Devices",
+          "device_confirm_delete": "Delete a device",
+          "device_confirm_delete_all": "Delete all devices",
+          "device_confirm_reissue": "Reissue the link"
+        }
       }
     },
     "canvas": {
@@ -1232,9 +1239,9 @@
       "windowTitle": "Window settings",
       "bannerLabel": "Banner",
       "bannerNone": "None",
-      "enabledLabel": "Enabled",
-      "enabledHint": "Disabled windows can't be navigated to from the bot.",
-      "resetWindow": "Reset this window",
+      "enabledLabel": "Show in the bot",
+      "enabledHint": "Buttons leading to this window disappear too.",
+      "resetWindow": "Reset changes",
       "resetWindowConfirm": "Reset \"{{key}}\" to its default banner and buttons? This can't be undone.",
       "resetWindowConfirmButton": "Reset",
       "resetWindowCancelButton": "Cancel",
@@ -1250,7 +1257,7 @@
       "buttonLabel": "Label",
       "buttonStyle": "Style",
       "buttonStyleNone": "None",
-      "buttonIcon": "Custom emoji icon ID",
+      "buttonIcon": "Emoji",
       "buttonCondition": "Visibility condition",
       "buttonConditionNone": "Always visible",
       "buttonLinkType": "Action type",
@@ -1273,7 +1280,39 @@
       "buttonLabelEmpty": "A button with no label is skipped in the bot — Telegram rejects it.",
       "emptySelection": "Pick the text or a button on the canvas to edit it.",
       "tabWindow": "Window",
-      "tabElement": "Element"
+      "tabElement": "Element",
+      "bannerMode": {
+        "none": "None",
+        "shared": "Shared",
+        "own": "Own"
+      },
+      "bannerHint": {
+        "none": "This window is sent without a banner.",
+        "shared": "One banner for every window that uses it — replacing it here changes it everywhere.",
+        "own": "Only for this window, one file per locale. Locales without a file fall back to the shared banner."
+      },
+      "bannerReplace": "Replace",
+      "bannerDelete": "Delete the banner",
+      "emojiPick": "Pick an emoji",
+      "emojiStandard": "Standard",
+      "emojiClear": "Remove the emoji",
+      "emojiPremiumHint": "Premium emoji only show up for bots whose owner has Telegram Premium.",
+      "emojiGroup": {
+        "smileys": "Smileys",
+        "people": "People",
+        "nature": "Nature",
+        "food": "Food",
+        "travel": "Travel",
+        "objects": "Objects",
+        "symbols": "Symbols"
+      },
+      "dirtyTitle": "Unsaved keyboard changes",
+      "emojiAddPack": "Add an emoji pack",
+      "emojiPackLinkPlaceholder": "t.me/addemoji/...",
+      "emojiPackAdd": "Add",
+      "emojiPackDelete": "Remove this pack",
+      "emojiSearch": "Search by English name",
+      "bannerRestoreDefault": "Restore the shipped banner"
     },
     "toolbar": {
       "export": "Export",

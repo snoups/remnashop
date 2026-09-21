@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { splitTextKey, updateDialogText } from "@entities/dialogs/api";
@@ -8,6 +8,7 @@ import { localeLabel } from "@shared/i18n/locale-label";
 import { resetTranslation } from "@entities/translations/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
+import { EmojiPicker, type PickedEmoji } from "@shared/ui/EmojiPicker";
 
 interface TextEditorPanelProps {
   textKey: string;
@@ -21,6 +22,12 @@ interface TextEditorPanelProps {
   /** A window body is a Telegram message and may have paragraphs; a button
    * label is one line. */
   multiline?: boolean;
+  /** Window text takes emoji inline, at the cursor. A premium one becomes the
+   * markup the bot turns into a custom_emoji entity. */
+  emojiInsert?: boolean;
+  /** Rendered inside the field, in the corner the text never reaches -- the
+   * button label puts its icon picker there. */
+  fieldAction?: ReactNode;
   onSaved: (entry: TranslationEntry) => void;
 }
 
@@ -34,6 +41,8 @@ export function TextEditorPanel({
   canUpdate,
   canReset,
   multiline = false,
+  emojiInsert = false,
+  fieldAction,
   onSaved,
 }: TextEditorPanelProps) {
   const { t, i18n } = useTranslation();
@@ -42,6 +51,23 @@ export function TextEditorPanel({
     (e) => e.locale === activeLocale && e.message_id === messageId && e.attribute_id === attributeId,
   );
   const [draft, setDraft] = useState(entry?.value ?? "");
+  const fieldRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
+
+  const insertAtCursor = (snippet: string) => {
+    const field = fieldRef.current;
+    const at = field?.selectionStart ?? draft.length;
+    setDraft((current) => `${current.slice(0, at)}${snippet}${current.slice(at)}`);
+  };
+
+  const handleEmojiPick = (picked: PickedEmoji) => {
+    insertAtCursor(
+      "glyph" in picked
+        ? picked.glyph
+        : // The glyph stays in the text as the fallback Telegram shows to
+          // anyone the custom emoji does not render for.
+          `[${picked.fallback}](emoji:${picked.customEmojiId})`,
+    );
+  };
 
   useEffect(() => {
     setDraft(entry?.value ?? "");
@@ -91,23 +117,44 @@ export function TextEditorPanel({
           />
         </div>
       )}
-      {multiline ? (
-        <textarea
-          rows={5}
-          value={draft}
-          disabled={!canUpdate}
-          onChange={(event) => setDraft(event.target.value)}
-          className="w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
-        />
-      ) : (
-        <input
-          type="text"
-          value={draft}
-          disabled={!canUpdate}
-          onChange={(event) => setDraft(event.target.value)}
-          className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
-        />
-      )}
+      <div className="relative">
+        {multiline ? (
+          <textarea
+            ref={fieldRef}
+            rows={5}
+            value={draft}
+            disabled={!canUpdate}
+            onChange={(event) => setDraft(event.target.value)}
+            // resize-none: the native grip sits exactly where the picker does,
+            // and the field already grows with its rows.
+            className="w-full resize-none rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 pb-9 pt-1.5 text-[13px] text-foreground disabled:opacity-50"
+          />
+        ) : (
+          <input
+            ref={fieldRef}
+            type="text"
+            value={draft}
+            disabled={!canUpdate}
+            onChange={(event) => setDraft(event.target.value)}
+            className={`w-full rounded-lg border border-white/[0.12] bg-white/[0.04] py-1.5 pl-2.5 text-[13px] text-foreground disabled:opacity-50 ${
+              fieldAction ? "pr-10" : "pr-2.5"
+            }`}
+          />
+        )}
+        {/* Anchored where the text cannot reach it: the field reserves that
+            padding above. */}
+        <div className={`absolute right-2 ${multiline ? "bottom-2" : "top-1/2 -translate-y-1/2"}`}>
+          {fieldAction ??
+            (emojiInsert && (
+              <EmojiPicker
+                current={null}
+                disabled={!canUpdate}
+                onPick={handleEmojiPick}
+                onClear={() => undefined}
+              />
+            ))}
+        </div>
+      </div>
       {variableKeys.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {variableKeys.map((name) => (

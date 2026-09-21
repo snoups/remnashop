@@ -10,10 +10,14 @@ btn-menu =
     .connect-not-available = Connection unavailable
     .trial = Try for free
     .trial-paid = Trial — { $trial_price }
-    .devices = 📱 Devices
-    .subscription = 💳 Subscription
-    .support = 🆘 Support
-    .web-cabinet = 🌐 Web cabinet
+    .devices = Devices
+    .devices-icon = 📱
+    .subscription = Subscription
+    .subscription-icon = 💳
+    .support = Support
+    .support-icon = 🆘
+    .web-cabinet = Web cabinet
+    .web-cabinet-icon = 🌐
 
 btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
@@ -25,7 +29,8 @@ btn-devices =
     .cancel-reissue = Cancel
 
 btn-back =
-    .general = ⬅️ Back
+    .general = Back
+    .general-icon = ⬅️
 
 ntf-devices =
     .deleted = Device deleted.
@@ -54,13 +59,16 @@ msg-promocode-confirm = Code: { $promo_code }
 msg-promocode-confirm-will-replace = ⚠️ This will replace your current subscription.
 
 btn-promocode =
-    .confirm = ✅ Apply
-    .cancel = ❌ Cancel
+    .confirm = Apply
+    .confirm-icon = ✅
+    .cancel = Cancel
+    .cancel-icon = ❌
 
 msg-subscription-main = The subscription purchase section is coming soon. Promocode activation is available now.
 
 btn-subscription =
-    .promocode = 🎟 Activate promocode
+    .promocode = Activate promocode
+    .promocode-icon = 🎟
 
 platform-icon =
     .ios = 📱

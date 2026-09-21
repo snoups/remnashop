@@ -4,7 +4,7 @@ import socket
 from typing import Final, Union
 from urllib.parse import urlsplit
 
-from fastapi import Request
+from fastapi import HTTPException, Request, status
 
 from app.core.exceptions import ValidationError
 
@@ -41,14 +41,45 @@ def resolve_client_ip(request: Request) -> str:
     # value it itself appends -- its own view of the real peer -- always
     # lands last. A client can prepend arbitrary spoofed entries either way;
     # only the rightmost one was written by something we trust.
+    #
+    # getlist, not get: repeated field lines are one comma-joined list per
+    # HTTP field-order semantics, and a proxy that adds a line rather than
+    # merging (HAProxy's `option forwardfor` without `if-none`) would
+    # otherwise leave the client's own line as the one we read.
     direct_peer = request.client.host if request.client else None
     if direct_peer is None or not _is_trusted_proxy(direct_peer):
         return direct_peer or "unknown"
 
-    forwarded_for = request.headers.get("x-forwarded-for")
+    forwarded_for = request.headers.getlist("x-forwarded-for")
     if forwarded_for:
-        return forwarded_for.split(",")[-1].strip()
+        candidate = ",".join(forwarded_for).split(",")[-1].strip()
+        try:
+            return str(ipaddress.ip_address(candidate))
+        except ValueError:
+            # A trusted hop never writes a non-address here; fall back to the
+            # peer rather than letting the value reach a rate-limit bucket key
+            # or an allowlist comparison.
+            pass
     return direct_peer or "unknown"
+
+
+async def read_bounded_body(request: Request, limit: int) -> bytes:
+    # Streams rather than trusting Content-Length: a chunked request carries no
+    # such header, so a length check alone bounds nothing. Callers are the two
+    # unauthenticated webhook routes, which must not buffer an arbitrary body
+    # before they get to verify a signature over it.
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > limit:
+        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE)
+
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > limit:
+            raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE)
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 async def assert_public_https_host(url: str) -> None:

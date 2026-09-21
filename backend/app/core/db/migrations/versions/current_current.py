@@ -150,20 +150,7 @@ def upgrade() -> None:
     op.create_table(
         "banners",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column(
-            "name",
-            sa.Enum(
-                "DEFAULT",
-                "MENU",
-                "DASHBOARD",
-                "SUBSCRIPTION",
-                "REFERRAL",
-                "PROMOCODE",
-                "DEVICES",
-                name="bannername",
-            ),
-            nullable=False,
-        ),
+        sa.Column("name", sa.String(length=160), nullable=False),
         sa.Column(
             "locale",
             sa.Enum(
@@ -301,7 +288,7 @@ def upgrade() -> None:
         sa.Column("token", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("secret_token", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("drop_pending_updates", sa.Boolean(), server_default="false", nullable=False),
-        sa.Column("banners_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("banners_enabled", sa.Boolean(), server_default="true", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -422,7 +409,7 @@ def upgrade() -> None:
         sa.Column("key", sa.String(length=128), nullable=False),
         sa.Column("kind", sa.String(length=16), nullable=False),
         sa.Column("flow", sa.String(length=16), nullable=False),
-        sa.Column("banner_name", sa.String(length=32), nullable=True),
+        sa.Column("banner_name", sa.String(length=160), nullable=True),
         sa.Column("is_enabled", sa.Boolean(), server_default=sa.text("true"), nullable=False),
         sa.Column("position", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.Column("slot", sa.Integer(), nullable=True),
@@ -442,6 +429,26 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("key", name="ux_dialog_windows_key"),
         sa.UniqueConstraint("slot", name="ux_dialog_windows_slot"),
+    )
+    op.create_table(
+        "emoji_packs",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("set_name", sa.String(length=64), nullable=False),
+        sa.Column("title", sa.String(length=128), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("set_name", name="ux_emoji_packs_set_name"),
     )
     op.create_table(
         "oauth_settings",
@@ -891,7 +898,6 @@ def upgrade() -> None:
         sa.Column("row", sa.Integer(), nullable=False),
         sa.Column("column", sa.Integer(), nullable=False),
         sa.Column("text_key", sa.String(length=64), nullable=False),
-        sa.Column("icon_custom_emoji_id", sa.String(length=32), nullable=True),
         sa.Column("style", sa.String(length=16), nullable=True),
         sa.Column("visibility_condition", sa.String(length=64), nullable=True),
         sa.Column("link_type", sa.String(length=16), nullable=False),
@@ -919,6 +925,32 @@ def upgrade() -> None:
     )
     op.create_index(
         op.f("ix_dialog_buttons_window_id"), "dialog_buttons", ["window_id"], unique=False
+    )
+    op.create_table(
+        "emoji_pack_items",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("pack_id", sa.Integer(), nullable=False),
+        sa.Column("position", sa.Integer(), nullable=False),
+        sa.Column("custom_emoji_id", sa.String(length=32), nullable=False),
+        sa.Column("fallback_emoji", sa.String(length=16), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["pack_id"], ["emoji_packs.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("custom_emoji_id", name="ux_emoji_pack_items_custom_emoji_id"),
+    )
+    op.create_index(
+        op.f("ix_emoji_pack_items_pack_id"), "emoji_pack_items", ["pack_id"], unique=False
     )
     op.create_table(
         "event_outbox",
@@ -1617,6 +1649,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_event_outbox_event_type"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
     op.drop_table("event_outbox")
+    op.drop_index(op.f("ix_emoji_pack_items_pack_id"), table_name="emoji_pack_items")
+    op.drop_table("emoji_pack_items")
     op.drop_index(op.f("ix_dialog_buttons_window_id"), table_name="dialog_buttons")
     op.drop_table("dialog_buttons")
     op.drop_index(op.f("ix_backup_runs_status"), table_name="backup_runs")
@@ -1647,6 +1681,7 @@ def downgrade() -> None:
     op.drop_table("plans")
     op.drop_table("payment_gateways")
     op.drop_table("oauth_settings")
+    op.drop_table("emoji_packs")
     op.drop_table("dialog_windows")
     op.drop_table("currency_rates")
     op.drop_table("bot_translations")

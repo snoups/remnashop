@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import BannerName, Locale
+from app.core.enums import Locale
 
 
 class BannerDto(BaseDto, TimestampMixin):
-    name: BannerName
+    name: str
     locale: Locale
     content_type: str
     extension: str
@@ -23,7 +23,7 @@ class BannerListDto(BaseModel):
 
 @dataclass(frozen=True, kw_only=True)
 class UploadBannerDto:
-    name: BannerName
+    name: str
     locale: Locale
     content_type: str
     extension: str
@@ -32,5 +32,5 @@ class UploadBannerDto:
 
 @dataclass(frozen=True, kw_only=True)
 class BannerKeyDto:
-    name: BannerName
+    name: str
     locale: Locale

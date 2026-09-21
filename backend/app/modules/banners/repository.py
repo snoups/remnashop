@@ -3,8 +3,9 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import DEFAULT_BANNER_NAME
 from app.core.db.models.banner import Banner
-from app.core.enums import BannerName, Locale
+from app.core.enums import Locale
 from app.modules.banners.dto import BannerDto, UploadBannerDto
 
 
@@ -24,7 +25,7 @@ class BannerRepository:
             updated_at=row.updated_at,
         )
 
-    async def get(self, name: BannerName, locale: Locale) -> Optional[BannerDto]:
+    async def get(self, name: str, locale: Locale) -> Optional[BannerDto]:
         row = await self.session.scalar(
             select(Banner).where(Banner.name == name, Banner.locale == locale)
         )
@@ -50,7 +51,7 @@ class BannerRepository:
         await self.session.refresh(row)
         return self._to_dto(row)
 
-    async def delete(self, name: BannerName, locale: Locale) -> None:
+    async def delete(self, name: str, locale: Locale) -> None:
         row = await self.session.scalar(
             select(Banner).where(Banner.name == name, Banner.locale == locale)
         )
@@ -58,12 +59,21 @@ class BannerRepository:
             await self.session.delete(row)
             await self.session.flush()
 
+    async def delete_all_named(self, name: str) -> list[BannerDto]:
+        result = await self.session.execute(select(Banner).where(Banner.name == name))
+        rows = list(result.scalars())
+        deleted = [self._to_dto(row) for row in rows]
+        for row in rows:
+            await self.session.delete(row)
+        await self.session.flush()
+        return deleted
+
     async def find_for_display(
-        self, name: BannerName, locale: Locale, default_locale: Locale
+        self, name: str, locale: Locale, default_locale: Locale
     ) -> Optional[BannerDto]:
-        candidates = [(name, locale), (BannerName.DEFAULT, locale)]
+        candidates = [(name, locale), (DEFAULT_BANNER_NAME, locale)]
         if locale != default_locale:
-            candidates += [(name, default_locale), (BannerName.DEFAULT, default_locale)]
+            candidates += [(name, default_locale), (DEFAULT_BANNER_NAME, default_locale)]
 
         for candidate_name, candidate_locale in candidates:
             banner = await self.get(candidate_name, candidate_locale)

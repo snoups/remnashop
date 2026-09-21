@@ -1,3 +1,4 @@
+from aiogram.enums import ParseMode
 from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, ListGroup, Row, Start, SwitchTo
@@ -31,6 +32,7 @@ subscription_main = Window(
             mode=StartMode.RESET_STACK,
         ),
     ),
+    parse_mode=ParseMode.HTML,
     state=Subscription.MAIN,
     getter=subscription_main_getter,
 )
@@ -41,6 +43,7 @@ promocode_input = Window(
     Row(
         SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Subscription.MAIN),
     ),
+    parse_mode=ParseMode.HTML,
     state=Subscription.PROMOCODE,
     getter=promocode_input_getter,
 )
@@ -60,6 +63,7 @@ promocode_target = Window(
     Row(
         SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Subscription.MAIN),
     ),
+    parse_mode=ParseMode.HTML,
     state=Subscription.PROMOCODE_TARGET,
     getter=promocode_target_getter,
 )
@@ -71,6 +75,7 @@ promocode_confirm = Window(
         Button(text=Format("{confirm_text}"), id="confirm", on_click=on_promocode_confirm),
         SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Subscription.PROMOCODE),
     ),
+    parse_mode=ParseMode.HTML,
     state=Subscription.PROMOCODE_CONFIRM,
     getter=promocode_confirm_getter,
 )

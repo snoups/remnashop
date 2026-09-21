@@ -1,6 +1,6 @@
 import pytest
 
-from app.core.enums import BannerName, ButtonLinkType, DialogFlow, DialogWindowKind, Locale, Role
+from app.core.enums import ButtonLinkType, DialogFlow, DialogWindowKind, Locale, Role
 from app.core.exceptions import ValidationError
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import (
@@ -12,6 +12,7 @@ from app.modules.dialogs.dto import (
 )
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases import ExportDialogsUseCase, ImportDialogsUseCase
+from app.modules.dialogs.usecases.export_dialogs import EXPORT_VERSION
 from app.modules.users.dto import UserDto
 
 OWNER = UserDto(id=1, login="a", name="a", role=Role.OWNER, language=Locale.EN)
@@ -46,7 +47,7 @@ def _catalog():
             key="menu.main",
             flow=DialogFlow.MENU,
             text_keys=("msg-main-menu",),
-            banner_name=BannerName.MENU,
+            banner_name="menu",
             buttons=(
                 catalog.CatalogButton(
                     key="trial",
@@ -70,7 +71,7 @@ async def _export(dialog_repository, translations_repository, settings_repositor
 async def test_export_carries_windows_and_their_texts(
     dialog_repository: DialogRepository, translations_repository, settings_repository, uow
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     if Locale.EN not in await settings_repository.list_active_locales():
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try for free")
@@ -79,7 +80,7 @@ async def test_export_carries_windows_and_their_texts(
 
     export = await _export(dialog_repository, translations_repository, settings_repository, uow)
 
-    assert export.version == 1
+    assert export.version == EXPORT_VERSION
     assert [w.key for w in export.windows] == ["menu.main"]
     assert [b.text_key for b in export.windows[0].buttons] == ["btn-menu.trial"]
     assert ("btn-menu", "trial") in {(t.message_id, t.attribute_id) for t in export.texts}
@@ -89,7 +90,7 @@ async def test_export_carries_windows_and_their_texts(
 async def test_import_restores_an_exported_configuration(
     dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     if Locale.EN not in await settings_repository.list_active_locales():
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try for free")
@@ -114,7 +115,7 @@ async def test_import_restores_an_exported_configuration(
 async def test_import_deletes_custom_windows_missing_from_the_file(
     dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     export = await _export(dialog_repository, translations_repository, settings_repository, uow)
     await dialog_repository.create_custom_window("custom.later", CreateCustomWindowDto())
 
@@ -128,12 +129,12 @@ async def test_import_deletes_custom_windows_missing_from_the_file(
 async def test_import_creates_a_custom_window_from_the_file(
     dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     if Locale.EN not in await settings_repository.list_active_locales():
         await settings_repository.add_active_locale(Locale.EN)
 
     payload = DialogExportDto(
-        version=1,
+        version=EXPORT_VERSION,
         windows=[
             DialogWindowExportDto(
                 key="custom-faq",
@@ -175,14 +176,14 @@ async def test_import_creates_a_custom_window_from_the_file(
 async def test_import_rejects_a_button_pointing_nowhere(
     dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     payload = DialogExportDto(
-        version=1,
+        version=EXPORT_VERSION,
         windows=[
             DialogWindowExportDto(
                 key="menu.main",
                 kind=DialogWindowKind.SEED,
-                banner_name=BannerName.MENU,
+                banner_name="menu",
                 is_enabled=True,
                 position=0,
                 buttons=[

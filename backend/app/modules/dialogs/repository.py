@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.db.models import DialogButton, DialogWindow
-from app.core.enums import BannerName, ButtonLinkType, ButtonStyleKind, DialogFlow, DialogWindowKind
+from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow, DialogWindowKind
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.dialogs.dto import (
     CreateCustomWindowDto,
@@ -87,7 +87,6 @@ class DialogRepository:
             url_value=raw.get("url_value"),
             visibility_condition=raw.get("visibility_condition"),
             style=_optional_enum(raw.get("style"), ButtonStyleKind),
-            icon_custom_emoji_id=raw.get("icon_custom_emoji_id"),
             is_hidden=raw.get("is_hidden", False),
         )
 
@@ -95,7 +94,7 @@ class DialogRepository:
         self,
         key: str,
         flow: DialogFlow,
-        banner_name: Optional[BannerName],
+        banner_name: Optional[str],
         default_snapshot: dict,
     ) -> bool:
         if await self._get_row(key) is not None:
@@ -147,7 +146,6 @@ class DialogRepository:
                     column=button.column,
                     text_key=button.text_key,
                     link_type=button.link_type,
-                    icon_custom_emoji_id=button.icon_custom_emoji_id,
                     style=button.style,
                     visibility_condition=button.visibility_condition,
                     action_key=button.action_key,
@@ -216,7 +214,7 @@ class DialogRepository:
             raise ValidationError("Custom windows have no default to reset to; delete instead")
         snapshot = row.default_snapshot
         raw_banner = snapshot.get("banner_name")
-        row.banner_name = BannerName(raw_banner) if raw_banner else None
+        row.banner_name = raw_banner or None
         row.is_enabled = True
         for existing in list(row.buttons):
             await self.session.delete(existing)

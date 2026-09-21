@@ -10,7 +10,7 @@ class BotSettingsDto(BaseDto, TimestampMixin):
     token: Optional[SecretStr] = None
     secret_token: Optional[SecretStr] = None
     drop_pending_updates: bool = False
-    banners_enabled: bool = False
+    banners_enabled: bool = True
 
     @property
     def is_configured(self) -> bool:

@@ -29,6 +29,13 @@ def validate_buttons(
                 f"Two buttons at row {button.row}, column {button.column} in '{window_key}'"
             )
         seen.add(position)
+        if not catalog.is_editable_text_key(button.text_key):
+            # A button's text_key is what dialog_text_keys() lets import write to
+            # in bot_translations. Deriving that allowlist from stored rows means
+            # an unvalidated text_key here authorizes a write to any translation
+            # row -- bot command descriptions, notifications -- so the bound
+            # belongs at the boundary every write path already passes through.
+            raise ValidationError(f"'{button.text_key}' is not an editable dialog text key")
         _validate_button(button, window_kind, navigable, seed_actions)
 
 

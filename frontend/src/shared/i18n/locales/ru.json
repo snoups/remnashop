@@ -36,7 +36,9 @@
       "loginInvalidChars": "Логин может содержать только латинские буквы, цифры, точки, подчёркивания и дефисы",
       "passwordRequirements": "Пароль должен быть не менее 24 символов и содержать заглавную букву, строчную букву и цифру",
       "passwordsDoNotMatch": "Пароли не совпадают",
-      "genericError": "Что-то пошло не так"
+      "genericError": "Что-то пошло не так",
+      "unsafeAuthorizationUrl": "Провайдер входа вернул небезопасный адрес",
+      "logoutNotConfirmed": "Выход выполнен локально, но сервер не подтвердил отзыв сессии"
     },
     "oauth": {
       "continueWith": "Продолжить через {{provider}}",
@@ -397,13 +399,6 @@
       "reset": "Перевод сброшен к значению по умолчанию."
     },
     "banners": {
-      "title": "Баннеры",
-      "description": "Установка баннеров для каждого окна бота.",
-      "loading": "Загрузка…",
-      "loadError": "Не удалось загрузить баннеры.",
-      "upload": "Загрузить",
-      "replace": "Заменить",
-      "delete": "Удалить",
       "uploadError": "Не удалось загрузить баннер.",
       "deleteError": "Не удалось удалить баннер.",
       "unsupportedFormat": "Неподдерживаемый формат файла"
@@ -1215,6 +1210,18 @@
         "subscription": "Подписка",
         "promocode": "Промокод",
         "custom": "Свои окна"
+      },
+      "seedBadge": "системное",
+      "disabledBadge": "выкл",
+      "unlinkedBadge": "не связано",
+      "windows": {
+        "menu": {
+          "main": "Главное меню",
+          "devices": "Устройства",
+          "device_confirm_delete": "Удаление устройства",
+          "device_confirm_delete_all": "Удаление всех устройств",
+          "device_confirm_reissue": "Перевыпуск ссылки"
+        }
       }
     },
     "canvas": {
@@ -1232,9 +1239,9 @@
       "windowTitle": "Настройки окна",
       "bannerLabel": "Баннер",
       "bannerNone": "Нет",
-      "enabledLabel": "Включено",
-      "enabledHint": "На отключённые окна нельзя перейти из бота.",
-      "resetWindow": "Сбросить это окно",
+      "enabledLabel": "Показывать в боте",
+      "enabledHint": "Кнопки, ведущие на это окно, тоже исчезнут.",
+      "resetWindow": "Сбросить изменения",
       "resetWindowConfirm": "Сбросить «{{key}}» к дефолтному баннеру и кнопкам? Отменить нельзя.",
       "resetWindowConfirmButton": "Сбросить",
       "resetWindowCancelButton": "Отмена",
@@ -1250,7 +1257,7 @@
       "buttonLabel": "Текст",
       "buttonStyle": "Стиль",
       "buttonStyleNone": "Нет",
-      "buttonIcon": "ID кастомного эмодзи",
+      "buttonIcon": "Эмодзи",
       "buttonCondition": "Условие видимости",
       "buttonConditionNone": "Видна всегда",
       "buttonLinkType": "Тип действия",
@@ -1273,7 +1280,39 @@
       "buttonLabelEmpty": "Кнопка без текста в боте не показывается — Telegram её отклоняет.",
       "emptySelection": "Выберите текст или кнопку на макете, чтобы изменить их.",
       "tabWindow": "Окно",
-      "tabElement": "Элемент"
+      "tabElement": "Элемент",
+      "bannerMode": {
+        "none": "Нет",
+        "shared": "Общий",
+        "own": "Отдельный"
+      },
+      "bannerHint": {
+        "none": "Окно отправляется без баннера.",
+        "shared": "Один на все окна, где он выбран: заменишь здесь — изменится везде.",
+        "own": "Только для этого окна, по файлу на локаль. Где файла нет — бот покажет общий."
+      },
+      "bannerReplace": "Заменить",
+      "bannerDelete": "Удалить баннер",
+      "emojiPick": "Выбрать эмодзи",
+      "emojiStandard": "Стандартные",
+      "emojiClear": "Убрать эмодзи",
+      "emojiPremiumHint": "Премиум-эмодзи показываются, только если бот создан от аккаунта с Telegram Premium.",
+      "emojiGroup": {
+        "smileys": "Смайлики",
+        "people": "Люди",
+        "nature": "Природа",
+        "food": "Еда",
+        "travel": "Путешествия",
+        "objects": "Предметы",
+        "symbols": "Знаки"
+      },
+      "dirtyTitle": "Несохранённые изменения клавиатуры",
+      "emojiAddPack": "Добавить пак эмодзи",
+      "emojiPackLinkPlaceholder": "t.me/addemoji/...",
+      "emojiPackAdd": "Добавить",
+      "emojiPackDelete": "Удалить пак",
+      "emojiSearch": "Поиск по английскому названию",
+      "bannerRestoreDefault": "Вернуть стандартный"
     },
     "toolbar": {
       "export": "Экспортировать",

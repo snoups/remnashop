@@ -58,11 +58,17 @@ def setup_logger(config: AppConfig) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logger.remove()
 
+    # diagnose=False on every sink: loguru's default annotates each traceback
+    # frame with the repr of that frame's variables. On a request path those
+    # hold the caller's bearer credential; on the asyncpg path, the database
+    # password. Neither reaches the log through an application DTO, so schema
+    # changes alone would not close it.
     logger.add(
         sink=sys.stderr,
         level=config.log.level,
         format=LOG_FORMAT,
         colorize=True,
+        diagnose=False,
     )
 
     if config.log.to_file:
@@ -74,6 +80,7 @@ def setup_logger(config: AppConfig) -> None:
             retention=config.log.retention,
             compression=config.log.compression,
             encoding=LOG_ENCODING,
+            diagnose=False,
         )
 
     logger.add(
@@ -81,6 +88,7 @@ def setup_logger(config: AppConfig) -> None:
         level=config.log.level,
         format=LOG_FORMAT,
         colorize=False,
+        diagnose=False,
     )
 
     intercept_handler = InterceptHandler()

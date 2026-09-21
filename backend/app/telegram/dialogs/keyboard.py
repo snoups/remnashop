@@ -51,6 +51,15 @@ class ConfigKeyboard(Keyboard):
                         window_key,
                     )
                     continue
+                # A plain emoji has to ride in the label -- Telegram's icon field
+                # takes a custom emoji id and nothing else, and drops the icon
+                # silently for a bot whose owner has no Premium. When both are
+                # stored the id wins: the glyph is only kept so the dashboard has
+                # something to draw, and prepending it too would show the emoji
+                # twice.
+                icon_id = button.get("icon_custom_emoji_id")
+                icon = button.get("icon")
+                text = f"{icon} {button['text']}" if icon and not icon_id else button["text"]
                 if button["link_type"] == ButtonLinkType.URL:
                     url = button["url_value"]
                     if not url or not url.startswith(catalog.URL_SCHEMES):
@@ -65,15 +74,19 @@ class ConfigKeyboard(Keyboard):
                         )
                         continue
                     rendered_row.append(
-                        InlineKeyboardButton(text=button["text"], url=button["url_value"])
+                        InlineKeyboardButton(
+                            text=text,
+                            url=button["url_value"],
+                            icon_custom_emoji_id=icon_id,
+                        )
                     )
                 else:
                     rendered_row.append(
                         InlineKeyboardButton(
-                            text=button["text"],
+                            text=text,
                             callback_data=self._item_callback_data(str(button["id"])),
                             style=button["style"],
-                            icon_custom_emoji_id=button["icon_custom_emoji_id"],
+                            icon_custom_emoji_id=icon_id,
                         )
                     )
             if rendered_row:

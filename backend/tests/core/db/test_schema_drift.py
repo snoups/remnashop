@@ -10,7 +10,6 @@ from app.core.enums import (
     AdLinkChannel,
     BackupKind,
     BackupRunStatus,
-    BannerName,
     Currency,
     DiscountSource,
     Locale,
@@ -47,7 +46,6 @@ _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
     "adlinkchannel": AdLinkChannel,
     "backupkind": BackupKind,
     "backuprunstatus": BackupRunStatus,
-    "bannername": BannerName,
     "currency": Currency,
     "discountsource": DiscountSource,
     "event_category": EventCategory,
@@ -110,7 +108,7 @@ def test_python_enums_match_the_migration() -> None:
         if pg_name not in migration:
             continue
         # SQLAlchemy's native Enum type generates Postgres labels from .name, not .value.
-        # See Role (IntEnum) or BannerName (plain StrEnum) where they diverge.
+        # See Role (IntEnum) or BannerFormat (plain StrEnum) where they diverge.
         python_names = {member.name for member in enum_cls}
         if python_names != migration[pg_name]:
             drift[pg_name] = {

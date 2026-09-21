@@ -16,7 +16,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { buttonKey } from "@entities/dialogs/api";
+import { buttonKey, iconTextKey } from "@entities/dialogs/api";
 import type { DialogButtonItem } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 
@@ -110,12 +110,15 @@ function ButtonFace({
 }) {
   const { label, isUnlabelled } = useButtonLabel(button, textByKey);
   const borderClassName = button.style ? STYLE_BORDER_CLASSNAME[button.style] : "border-white/[0.12]";
+  // A premium emoji has no glyph to show here, so the plain one is all the
+  // preview can draw -- same as what a bot without Premium actually sends.
+  const icon = textByKey[iconTextKey(button.text_key)];
 
   return (
     <span
       className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${borderClassName} ${className}`}
     >
-      {button.icon_custom_emoji_id ? <span className="text-[11px] opacity-70">★</span> : null}
+      {icon ? <span className="text-[13px]">{icon}</span> : null}
       <span className={`truncate ${isUnlabelled ? "italic text-muted-foreground" : ""}`}>{label}</span>
       {button.visibility_condition ? (
         <span className="text-[9.5px] text-muted-foreground">({button.visibility_condition})</span>
@@ -184,8 +187,6 @@ function Row({
   selection,
   onSelect,
   canEdit,
-  isPlaceholder,
-  placeholderLabel,
 }: {
   id: string;
   buttons: DialogButtonItem[];
@@ -193,8 +194,6 @@ function Row({
   selection: Selection | null;
   onSelect: (selection: Selection) => void;
   canEdit: boolean;
-  isPlaceholder: boolean;
-  placeholderLabel?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
@@ -203,31 +202,41 @@ function Row({
       ref={setNodeRef}
       className={`flex min-h-10 gap-1.5 rounded-lg transition-colors ${
         isOver ? "bg-primary/10 ring-1 ring-primary/40" : ""
-      } ${
-        isPlaceholder
-          ? `items-center justify-center border border-dashed py-2 ${
-              isOver ? "border-primary/50" : "border-white/[0.12]"
-            }`
-          : ""
       }`}
     >
-      {isPlaceholder && buttons.length === 0 ? (
-        <span className="text-[11px] text-muted-foreground">{placeholderLabel}</span>
-      ) : (
-        <SortableContext items={buttons.map(buttonId)} strategy={horizontalListSortingStrategy}>
-          {buttons.map((button) => (
-            <CanvasButton
-              key={buttonId(button)}
-              button={button}
-              textByKey={textByKey}
-              draggable={canEdit}
-              isSelected={selection?.kind === "button" && selection.buttonKey === buttonId(button)}
-              isEffectivelyHidden={button.is_hidden}
-              onClick={() => onSelect({ kind: "button", buttonKey: buttonId(button) })}
-            />
-          ))}
-        </SortableContext>
-      )}
+      <SortableContext items={buttons.map(buttonId)} strategy={horizontalListSortingStrategy}>
+        {buttons.map((button) => (
+          <CanvasButton
+            key={buttonId(button)}
+            button={button}
+            textByKey={textByKey}
+            draggable={canEdit}
+            isSelected={selection?.kind === "button" && selection.buttonKey === buttonId(button)}
+            isEffectivelyHidden={button.is_hidden}
+            onClick={() => onSelect({ kind: "button", buttonKey: buttonId(button) })}
+          />
+        ))}
+      </SortableContext>
+    </div>
+  );
+}
+
+/** Where a dropped button opens a new row. Mounted only while something is
+ * being dragged: a permanent dashed strip sits in the layout doing nothing the
+ * rest of the time. */
+function NewRowIndicator({ id }: { id: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+
+  return (
+    <div ref={setNodeRef} className="flex h-5 items-center">
+      <span
+        className={`relative h-[3px] w-full rounded-full transition-colors ${
+          isOver ? "bg-primary shadow-[0_0_14px_rgba(34,211,238,0.55)]" : "bg-primary/35"
+        }`}
+      >
+        <span className="absolute -left-0.5 -top-[2.5px] size-2 rounded-full bg-inherit" />
+        <span className="absolute -right-0.5 -top-[2.5px] size-2 rounded-full bg-inherit" />
+      </span>
     </div>
   );
 }
@@ -241,8 +250,6 @@ export function ButtonGrid({
   canEdit,
   onReorder,
 }: ButtonGridProps) {
-  const { t } = useTranslation();
-  const newRowLabel = t("dialogs.canvas.newRow");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [dragged, setDragged] = useState<{ button: DialogButtonItem; width: number } | null>(null);
   const containers = toContainers(buttons);
@@ -316,21 +323,9 @@ export function ButtonGrid({
             selection={selection}
             onSelect={onSelect}
             canEdit={canEdit}
-            isPlaceholder={false}
           />
         ))}
-        {canEdit && (
-          <Row
-            id="row-new"
-            buttons={[]}
-            textByKey={textByKey}
-            selection={selection}
-            onSelect={onSelect}
-            canEdit={canEdit}
-            isPlaceholder
-            placeholderLabel={newRowLabel}
-          />
-        )}
+        {canEdit && dragged !== null && <NewRowIndicator id="row-new" />}
         <DragOverlay dropAnimation={DROP_ANIMATION}>
           {dragged && (
             <div style={{ width: dragged.width }} className="scale-[1.03] cursor-grabbing">

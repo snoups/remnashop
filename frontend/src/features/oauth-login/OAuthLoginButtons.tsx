@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { getErrorMessage } from "@shared/api/http";
 import { getOAuthLoginAuthorizeUrl, type OAuthProvider } from "@entities/auth/oauth";
+import { isHttpsUrl } from "@shared/lib/external-links";
 import { setOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
 
@@ -28,6 +29,10 @@ export function OAuthLoginButtons({ oauthProviders, oidcDisplayName }: OAuthLogi
   const handleClick = async (provider: OAuthProvider) => {
     try {
       const { authorization_url } = await getOAuthLoginAuthorizeUrl(provider);
+      if (!isHttpsUrl(authorization_url)) {
+        toast.error(t("auth.errors.unsafeAuthorizationUrl"));
+        return;
+      }
       setOAuthFlow("login");
       window.location.href = authorization_url;
     } catch (err) {

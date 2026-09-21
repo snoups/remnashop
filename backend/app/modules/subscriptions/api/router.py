@@ -9,8 +9,15 @@ from remnapy.controllers.webhooks import WebhookHeadersDto, WebhookUtility
 from remnapy.models.webhook import UserDto as WebhookUserDto
 
 from app.core.config import AppConfig
-from app.core.constants import REDIS_KEY_PREFIX, REMNAWAVE_WEBHOOK_PATH, TTL_5M, TTL_10M
+from app.core.constants import (
+    MAX_WEBHOOK_BODY_BYTES,
+    REDIS_KEY_PREFIX,
+    REMNAWAVE_WEBHOOK_PATH,
+    TTL_5M,
+    TTL_10M,
+)
 from app.core.enums import SubscriptionStatus
+from app.core.utils.http import read_bounded_body
 from app.modules.subscriptions.dto import SyncSubscriptionStatusDto
 from app.modules.subscriptions.usecases import SyncSubscriptionStatusUseCase
 
@@ -57,7 +64,7 @@ async def receive_remnawave_webhook(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed webhook"
         ) from error
 
-    body = await request.body()
+    body = await read_bounded_body(request, MAX_WEBHOOK_BODY_BYTES)
     try:
         payload = WebhookUtility.parse_webhook(
             body.decode("utf-8"),

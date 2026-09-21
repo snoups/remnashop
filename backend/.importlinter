@@ -188,6 +188,44 @@ forbidden_modules =
     app.modules.banners.usecases
     app.modules.banners.storage
 
+[importlinter:contract:emoji-packs-encapsulation]
+name = emoji_packs module internals are private
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.api
+    app.telegram
+    app.worker
+    app.modules.auth
+    app.modules.banners
+    app.modules.settings
+    app.modules.users
+    app.modules.event_log
+    app.modules.gateways
+    app.modules.api_tokens
+    app.modules.translations
+    app.modules.plans
+    app.modules.subscriptions
+    app.modules.promocodes
+    app.modules.payments
+    app.modules.oauth
+    app.modules.passkeys
+    app.modules.referrals
+    app.modules.backups
+    app.modules.pricing
+    app.modules.blacklist
+    app.modules.dialogs
+    app.modules.advertising
+    app.modules.overview
+    app.modules.analytics
+forbidden_modules =
+    app.modules.emoji_packs.repository
+    app.modules.emoji_packs.dto
+    app.modules.emoji_packs.di
+    app.modules.emoji_packs.usecases
+    app.modules.emoji_packs.telegram_api
+
 [importlinter:contract:api-tokens-encapsulation]
 name = api_tokens module internals are private
 type = forbidden

@@ -5,7 +5,6 @@ from uuid import uuid4
 from redis.asyncio import Redis
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BannerName
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs.dto import CreateCustomWindowDto, DialogWindowDto
@@ -19,7 +18,7 @@ from app.modules.users import UserDto
 @dataclass(frozen=True, kw_only=True)
 class CreateCustomDialogWindowInput:
     title_text: str
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = None
 
 
 class CreateCustomDialogWindowUseCase(UseCase[CreateCustomDialogWindowInput, DialogWindowDto]):

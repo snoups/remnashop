@@ -18,7 +18,6 @@ export interface DialogButtonItem {
   row: number;
   column: number;
   text_key: string;
-  icon_custom_emoji_id: string | null;
   style: ButtonStyleKind | null;
   visibility_condition: string | null;
   link_type: ButtonLinkType;
@@ -61,7 +60,6 @@ export interface DialogButtonInput {
   column: number;
   text_key: string;
   link_type: ButtonLinkType;
-  icon_custom_emoji_id?: string | null;
   style?: ButtonStyleKind | null;
   visibility_condition?: string | null;
   action_key?: string | null;
@@ -76,7 +74,6 @@ export function toButtonInput(button: DialogButtonItem): DialogButtonInput {
     column: button.column,
     text_key: button.text_key,
     link_type: button.link_type,
-    icon_custom_emoji_id: button.icon_custom_emoji_id,
     style: button.style,
     visibility_condition: button.visibility_condition,
     action_key: button.action_key,
@@ -92,19 +89,43 @@ export function buttonKey(button: DialogButtonItem): string {
   return button.id === null ? `new:${button.text_key}` : `id:${button.id}`;
 }
 
+/** Mirrors modules/dialogs/catalog.py: a button's icon is a translation of its
+ * own, so it can differ per locale. Exactly one of the two is ever filled -- a
+ * plain glyph, or a premium custom emoji id. */
+export function iconTextKey(textKey: string): string {
+  return `${textKey}-icon`;
+}
+
+export function iconIdTextKey(textKey: string): string {
+  return `${textKey}-icon-id`;
+}
+
 export function windowTextKeys(window: DialogWindow): string[] {
   return [...window.text_keys, ...window.buttons.map((button) => button.text_key)];
 }
 
-export const BANNER_OPTIONS = [
-  "default",
-  "menu",
-  "dashboard",
-  "subscription",
-  "referral",
-  "promocode",
-  "devices",
-];
+/** Mirrors core/constants.py. A window stores a banner name: unset means no
+ * banner, SHARED_BANNER_NAME means the one shared by every window, and anything
+ * else is that window's own. */
+export const SHARED_BANNER_NAME = "default";
+const WINDOW_BANNER_PREFIX = "win.";
+
+export type BannerMode = "none" | "shared" | "own";
+
+export function bannerMode(bannerName: string | null): BannerMode {
+  if (bannerName === null) return "none";
+  return bannerName === SHARED_BANNER_NAME ? "shared" : "own";
+}
+
+export function windowBannerName(windowKey: string): string {
+  return `${WINDOW_BANNER_PREFIX}${windowKey}`;
+}
+
+/** The name a window's banner takes in each mode; null means "no banner". */
+export function bannerNameForMode(mode: BannerMode, windowKey: string): string | null {
+  if (mode === "none") return null;
+  return mode === "shared" ? SHARED_BANNER_NAME : windowBannerName(windowKey);
+}
 
 const URL_VARIABLE_RE = /\$\{([a-z0-9_.]+)\}/g;
 /** Mirrors the backend's own rule (modules/dialogs/catalog.py): Telegram rejects

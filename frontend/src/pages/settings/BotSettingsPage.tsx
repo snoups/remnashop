@@ -1,4 +1,3 @@
-import { BannerSettingsForm } from "@features/banner-settings/BannerSettingsForm";
 import { BotCommandsForm } from "@features/bot-commands/BotCommandsForm";
 import { BotSettingsForm } from "@features/bot-settings/BotSettingsForm";
 import { TranslationsEditorForm } from "@features/translations-editor/TranslationsEditorForm";
@@ -9,7 +8,6 @@ export function BotSettingsPage() {
       <BotSettingsForm />
       <BotCommandsForm />
       <TranslationsEditorForm />
-      <BannerSettingsForm />
     </div>
   );
 }

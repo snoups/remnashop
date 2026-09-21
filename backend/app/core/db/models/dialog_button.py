@@ -21,7 +21,6 @@ class DialogButton(BaseSql, TimestampMixin):
     row: Mapped[int]
     column: Mapped[int]
     text_key: Mapped[str] = mapped_column(String(64))
-    icon_custom_emoji_id: Mapped[Optional[str]] = mapped_column(String(32))
     style: Mapped[Optional[ButtonStyleKind]] = mapped_column(String(16))
     visibility_condition: Mapped[Optional[str]] = mapped_column(String(64))
     link_type: Mapped[ButtonLinkType] = mapped_column(String(16))

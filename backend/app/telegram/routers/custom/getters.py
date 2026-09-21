@@ -8,12 +8,17 @@ from fluentogram import TranslatorHub
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
 from app.modules.banners import BannerRepository
+from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import GetAvailableTrialUseCase, SubscriptionRepository
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data
-from app.telegram.dialogs.rendering import render_dialog_buttons, resolve_variable_kwargs
+from app.telegram.dialogs.rendering import (
+    render_dialog_buttons,
+    render_window_text,
+    resolve_variable_kwargs,
+)
 from app.telegram.dialogs.state_pool import resolve_custom_window_key
 from app.telegram.i18n import get_translator
 
@@ -23,6 +28,7 @@ async def custom_window_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
     banner_repository: FromDishka[BannerRepository],
+    settings_repository: FromDishka[SettingsRepository],
     subscription_repository: FromDishka[SubscriptionRepository],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
@@ -36,12 +42,17 @@ async def custom_window_getter(
     )
     if key is None:
         # The window behind this slot was deleted while the user sat in it.
-        return {"banner": None, "window_text": runner.get("msg-window-gone"), "buttons": []}
+        return {
+            "banner": None,
+            "window_text": render_window_text(runner, "msg-window-gone"),
+            "buttons": [],
+        }
 
     window = await dialog_config_cache.get_window(key)
     banner = (
         await get_banner_media(
             banner_repository,
+            settings_repository,
             config,
             window.banner_name,
             user.language,
@@ -55,6 +66,8 @@ async def custom_window_getter(
         user, subscription_repository, get_available_trial
     )
     data["banner"] = banner
-    data["window_text"] = runner.get(f"msg-dialog-{key}", **resolve_variable_kwargs(data))
+    data["window_text"] = render_window_text(
+        runner, f"msg-dialog-{key}", **resolve_variable_kwargs(data)
+    )
     data["buttons"] = await render_dialog_buttons(key, dialog_config_cache, runner, data)
     return data

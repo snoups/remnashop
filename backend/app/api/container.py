@@ -10,6 +10,7 @@ from app.modules.backups import get_backups_providers
 from app.modules.banners import get_banners_providers
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.dialogs import get_dialogs_providers
+from app.modules.emoji_packs import get_emoji_packs_providers
 from app.modules.event_log import get_event_log_providers
 from app.modules.gateways import get_gateways_providers
 from app.modules.oauth import get_oauth_providers
@@ -42,6 +43,7 @@ def create_api_container(config: AppConfig) -> AsyncContainer:
         *get_backups_providers(),
         *get_subscriptions_providers(),
         *get_banners_providers(),
+        *get_emoji_packs_providers(),
         *get_event_log_providers(),
         *get_gateways_providers(),
         *get_payments_providers(),

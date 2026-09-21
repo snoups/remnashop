@@ -272,16 +272,6 @@ class LogLevel(UpperStrEnum):
     NOTSET = auto()
 
 
-class BannerName(StrEnum):
-    DEFAULT = auto()
-    MENU = auto()
-    DASHBOARD = auto()
-    SUBSCRIPTION = auto()
-    REFERRAL = auto()
-    PROMOCODE = auto()
-    DEVICES = auto()
-
-
 class BannerFormat(StrEnum):
     JPG = auto()
     JPEG = auto()

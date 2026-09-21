@@ -23,7 +23,7 @@ export function SessionsForm() {
     try {
       await revokeOwnSession(sessionId);
       if (sessionId === currentSessionId) {
-        await logout();
+        if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
         clearAccessToken();
         navigate("/", { replace: true });
         return;

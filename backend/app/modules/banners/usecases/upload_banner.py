@@ -3,14 +3,18 @@ from typing import Final
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BannerFormat, BannerName, Locale
+from app.core.enums import BannerFormat, Locale
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.image import matches_image_magic_bytes
 from app.modules.banners.dto import BannerDto, UploadBannerDto
 from app.modules.banners.repository import BannerRepository
-from app.modules.banners.storage import delete_banner_file, save_banner_file
+from app.modules.banners.storage import (
+    delete_banner_file,
+    save_banner_file,
+    validate_banner_name,
+)
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
 
@@ -26,7 +30,7 @@ _FORMAT_BY_CONTENT_TYPE: Final[dict[str, BannerFormat]] = {
 
 @dataclass(frozen=True, kw_only=True)
 class UploadBannerInput:
-    name: BannerName
+    name: str
     locale: Locale
     content_type: str
     data: bytes
@@ -48,6 +52,11 @@ class UploadBannerUseCase(UseCase[UploadBannerInput, BannerDto]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: UploadBannerInput) -> BannerDto:
+        try:
+            validate_banner_name(data.name)
+        except ValueError as err:
+            raise ValidationError(str(err)) from None
+
         async with self._uow:
             banner_format = _FORMAT_BY_CONTENT_TYPE.get(data.content_type)
             if banner_format is None:

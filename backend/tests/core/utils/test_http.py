@@ -1,17 +1,31 @@
 from typing import Optional
 
 import pytest
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 from app.core.exceptions import ValidationError
-from app.core.utils.http import assert_public_https_host, is_ip_allowed, resolve_client_ip
+from app.core.utils.http import (
+    assert_public_https_host,
+    is_ip_allowed,
+    read_bounded_body,
+    resolve_client_ip,
+)
 
 
-def _make_request(client_host: Optional[str], headers: Optional[dict[str, str]] = None) -> Request:
+def _make_request(
+    client_host: Optional[str],
+    headers: Optional[dict[str, str]] = None,
+    *,
+    header_pairs: Optional[list[tuple[str, str]]] = None,
+) -> Request:
+    # header_pairs, not headers, when a test needs the same field name twice:
+    # a dict cannot express it, which is why the duplicate-field-line case went
+    # untested for so long.
+    pairs = header_pairs if header_pairs is not None else list((headers or {}).items())
     scope = {
         "type": "http",
         "client": (client_host, 12345) if client_host is not None else None,
-        "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()],
+        "headers": [(k.lower().encode(), v.encode()) for k, v in pairs],
     }
     return Request(scope)
 
@@ -66,6 +80,27 @@ def test_resolve_client_ip_uses_last_entry_when_proxy_appends() -> None:
     assert resolve_client_ip(request) == "198.51.100.20"
 
 
+def test_resolve_client_ip_uses_last_of_repeated_field_lines() -> None:
+    # HTTP treats repeated field lines as one comma-joined list. A proxy that
+    # adds a line rather than merging (HAProxy's `option forwardfor` without
+    # `if-none`) leaves the client's own line first, so reading only the first
+    # line would hand the client the value that keys rate limits and the IP
+    # allowlist.
+    request = _make_request(
+        "127.0.0.1",
+        header_pairs=[
+            ("x-forwarded-for", "203.0.113.5"),
+            ("x-forwarded-for", "198.51.100.20"),
+        ],
+    )
+    assert resolve_client_ip(request) == "198.51.100.20"
+
+
+def test_resolve_client_ip_falls_back_when_forwarded_value_is_not_an_address() -> None:
+    request = _make_request("127.0.0.1", {"x-forwarded-for": "not-an-ip"})
+    assert resolve_client_ip(request) == "127.0.0.1"
+
+
 def test_resolve_client_ip_no_header_uses_client_host() -> None:
     request = _make_request("127.0.0.1")
     assert resolve_client_ip(request) == "127.0.0.1"
@@ -99,3 +134,37 @@ async def test_assert_public_https_host_rejects_private_range() -> None:
 async def test_assert_public_https_host_rejects_unresolvable_host() -> None:
     with pytest.raises(ValidationError):
         await assert_public_https_host("https://this-host-does-not-exist.invalid/")
+
+
+def _streaming_request(chunks: list[bytes], content_length: Optional[str] = None) -> Request:
+    headers = [(b"content-length", content_length.encode())] if content_length else []
+    scope = {"type": "http", "client": ("127.0.0.1", 12345), "headers": headers}
+
+    queued = [{"type": "http.request", "body": chunk, "more_body": True} for chunk in chunks]
+    queued.append({"type": "http.request", "body": b"", "more_body": False})
+
+    async def receive() -> dict:
+        return queued.pop(0)
+
+    return Request(scope, receive)
+
+
+async def test_read_bounded_body_returns_body_under_limit() -> None:
+    request = _streaming_request([b"abc", b"def"])
+    assert await read_bounded_body(request, 16) == b"abcdef"
+
+
+async def test_read_bounded_body_rejects_declared_oversize() -> None:
+    request = _streaming_request([b"x"], content_length="9999")
+    with pytest.raises(HTTPException) as error:
+        await read_bounded_body(request, 16)
+    assert error.value.status_code == 413
+
+
+async def test_read_bounded_body_rejects_oversize_without_content_length() -> None:
+    # A chunked request carries no Content-Length, so a header check alone
+    # would bound nothing -- the running total is what actually caps it.
+    request = _streaming_request([b"x" * 10, b"x" * 10])
+    with pytest.raises(HTTPException) as error:
+        await read_bounded_body(request, 16)
+    assert error.value.status_code == 413

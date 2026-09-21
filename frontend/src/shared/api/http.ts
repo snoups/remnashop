@@ -44,15 +44,22 @@ export async function initializeAuth(): Promise<void> {
   if (token) saveAccessToken(token);
 }
 
-export async function logout(): Promise<void> {
+/**
+ * Returns whether the server confirmed the session was revoked. Callers must
+ * clear local state either way -- but a false here means the refresh token is
+ * still live server-side, which the user should be told rather than shown a
+ * logged-out screen that implies otherwise.
+ */
+export async function logout(): Promise<boolean> {
   const csrfToken = readCookie("csrf_token");
   try {
-    await fetch(`${BASE_URL}/auth/logout`, {
+    const response = await fetch(`${BASE_URL}/auth/logout`, {
       method: "POST",
       headers: csrfToken ? { "X-CSRF-Token": csrfToken } : {},
     });
+    return response.ok;
   } catch {
-    // best-effort -- local logout must proceed either way
+    return false;
   }
 }
 

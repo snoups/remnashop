@@ -22,6 +22,7 @@ import {
 } from "@entities/auth/passkeys";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { isHttpsUrl } from "@shared/lib/external-links";
 import { setOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -60,6 +61,10 @@ export function ConnectedAccountsForm() {
   const handleConnect = async (provider: OAuthProvider) => {
     try {
       const { authorization_url } = await getOAuthConnectAuthorizeUrl(provider);
+      if (!isHttpsUrl(authorization_url)) {
+        toast.error(t("auth.errors.unsafeAuthorizationUrl"));
+        return;
+      }
       setOAuthFlow("connect");
       window.location.href = authorization_url;
     } catch (err) {

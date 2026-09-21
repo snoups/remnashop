@@ -26,17 +26,6 @@ class UpdateDialogTextInput:
     value: str
 
 
-def _catalog_text_keys() -> set[str]:
-    # Every text key a catalog-registered dialog window or button genuinely owns.
-    # Custom windows aren't in the in-process catalog, hence the prefix check the
-    # caller layers on top of this set.
-    keys: set[str] = set()
-    for window in catalog.all_windows():
-        keys.update(window.text_keys)
-        keys.update(button.text_key for button in window.buttons)
-    return keys
-
-
 class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto]):
     required_permission = Permission.DIALOGS_TEXT_UPDATE
 
@@ -63,9 +52,7 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
             full_key = data.message_id
             if data.attribute_id:
                 full_key = f"{data.message_id}.{data.attribute_id}"
-            if full_key not in _catalog_text_keys() and not full_key.startswith(
-                catalog.CUSTOM_TEXT_KEY_PREFIX
-            ):
+            if not catalog.is_editable_text_key(full_key):
                 # This endpoint's relaxed placeable rule is dialogs-scoped -- it must
                 # not become a back door for editing arbitrary translations rows
                 # (bot commands, notifications) that the general editor guards more

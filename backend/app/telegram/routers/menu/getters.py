@@ -7,8 +7,8 @@ from fluentogram import TranslatorHub
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
-from app.core.enums import BannerName
 from app.modules.banners import BannerRepository
+from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
     GetAvailableTrialUseCase,
     ListDevicesUseCase,
@@ -18,7 +18,11 @@ from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data
-from app.telegram.dialogs.rendering import render_dialog_buttons, resolve_variable_kwargs
+from app.telegram.dialogs.rendering import (
+    render_dialog_buttons,
+    render_window_text,
+    resolve_variable_kwargs,
+)
 from app.telegram.i18n import get_translator
 
 _KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"ios", "android", "windows", "macos", "linux"})
@@ -34,6 +38,7 @@ async def menu_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
     banner_repository: FromDishka[BannerRepository],
+    settings_repository: FromDishka[SettingsRepository],
     subscription_repository: FromDishka[SubscriptionRepository],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
@@ -43,19 +48,26 @@ async def menu_getter(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     window = await dialog_config_cache.get_window("menu.main")
-    banner = await get_banner_media(
-        banner_repository,
-        config,
-        window.banner_name or BannerName.MENU,
-        user.language,
-        config.default_locale,
+    # No banner name means the admin turned the banner off for this window --
+    # not "fall back to something".
+    banner = (
+        await get_banner_media(
+            banner_repository,
+            settings_repository,
+            config,
+            window.banner_name,
+            user.language,
+            config.default_locale,
+        )
+        if window.banner_name
+        else None
     )
 
     data: dict[str, Any] = await build_condition_data(
         user, subscription_repository, get_available_trial
     )
     data["banner"] = banner
-    data["menu_text"] = runner.get("msg-main-menu", **resolve_variable_kwargs(data))
+    data["menu_text"] = render_window_text(runner, "msg-main-menu", **resolve_variable_kwargs(data))
     data["subscription_text"] = runner.get("btn-menu.subscription")
     data["buttons"] = await render_dialog_buttons("menu.main", dialog_config_cache, runner, data)
     return data
@@ -95,7 +107,8 @@ async def devices_getter(
     data: dict[str, Any] = {
         "devices": formatted,
         "has_devices": len(formatted) > 0,
-        "devices_header": runner.get(
+        "devices_header": render_window_text(
+            runner,
             "msg-menu-devices",
             current_count=len(formatted),
             max_count=subscription.effective_device_limit,
@@ -117,8 +130,8 @@ async def device_confirm_delete_getter(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     data: dict[str, Any] = {
-        "confirm_message": runner.get(
-            "msg-menu-devices-confirm-delete", **resolve_variable_kwargs({})
+        "confirm_message": render_window_text(
+            runner, "msg-menu-devices-confirm-delete", **resolve_variable_kwargs({})
         )
     }
     data["buttons"] = await render_dialog_buttons(
@@ -137,8 +150,8 @@ async def device_confirm_delete_all_getter(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     data: dict[str, Any] = {
-        "confirm_message": runner.get(
-            "msg-menu-devices-confirm-delete-all", **resolve_variable_kwargs({})
+        "confirm_message": render_window_text(
+            runner, "msg-menu-devices-confirm-delete-all", **resolve_variable_kwargs({})
         )
     }
     data["buttons"] = await render_dialog_buttons(
@@ -157,8 +170,8 @@ async def device_confirm_reissue_getter(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     data: dict[str, Any] = {
-        "confirm_message": runner.get(
-            "msg-menu-devices-confirm-reissue", **resolve_variable_kwargs({})
+        "confirm_message": render_window_text(
+            runner, "msg-menu-devices-confirm-reissue", **resolve_variable_kwargs({})
         )
     }
     data["buttons"] = await render_dialog_buttons(

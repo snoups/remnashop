@@ -1,8 +1,10 @@
 import { Suspense, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Outlet, useNavigate } from "react-router-dom";
 
 import { logout } from "@shared/api/http";
 import { CurrentUserProvider } from "@entities/user/CurrentUserProvider";
+import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { RefreshSignalContext } from "@shared/lib/refresh-signal";
 import { useCurrentUser } from "@entities/user/use-current-user";
@@ -48,10 +50,11 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
 }
 
 export function DashboardLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
+    if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
     clearAccessToken();
     navigate("/", { replace: true });
   };

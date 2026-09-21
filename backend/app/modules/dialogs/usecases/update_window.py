@@ -4,7 +4,6 @@ from typing import Optional
 from redis.asyncio import Redis
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BannerName
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs.dto import DialogWindowDto, UpdateDialogWindowDto
@@ -16,7 +15,7 @@ from app.modules.users import UserDto
 @dataclass(frozen=True, kw_only=True)
 class UpdateDialogWindowInput:
     key: str
-    banner_name: Optional[BannerName] = None
+    banner_name: Optional[str] = None
     banner_name_provided: bool = False
     is_enabled: Optional[bool] = None
 

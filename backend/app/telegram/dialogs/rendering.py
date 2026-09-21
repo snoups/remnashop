@@ -1,13 +1,27 @@
+import html
 import logging
 import re
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 from fluentogram import TranslatorRunner
+from fluentogram.exceptions import KeyNotFoundError
 
 from app.modules.dialogs import catalog
 from app.telegram.dialogs.config_cache import DialogConfigCache
 
 logger = logging.getLogger(__name__)
+
+# Premium emoji in window text needs the glyph in the message plus a custom_emoji
+# entity over it, and aiogram-dialog's NewMessage carries no entities -- so the
+# window renders as HTML and this markup becomes a <tg-emoji> tag. Everything
+# else is escaped first, which is what keeps a variable resolving to "<b>"
+# literal instead of turning into formatting.
+PREMIUM_EMOJI_RE: Final[re.Pattern[str]] = re.compile(r"\[([^\[\]]{1,16})\]\(emoji:(\d{1,24})\)")
+
+
+def render_window_text(runner: TranslatorRunner, key: str, **kwargs: Any) -> str:
+    escaped = html.escape(runner.get(key, **kwargs), quote=False)
+    return PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', escaped)
 
 
 def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Optional[str]:
@@ -22,6 +36,16 @@ def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Opt
         return str(catalog.get_variable(key)(getter_data))
 
     return catalog.URL_VARIABLE_RE.sub(_sub, value)
+
+
+def _optional_translation(runner: TranslatorRunner, key: str) -> Optional[str]:
+    # Most buttons carry no icon at all, and fluentogram raises on a key that was
+    # never seeded rather than returning nothing.
+    try:
+        value = runner.get(key)
+    except KeyNotFoundError:
+        return None
+    return value.strip() or None
 
 
 def resolve_variable_kwargs(getter_data: dict[str, Any]) -> dict[str, object]:
@@ -58,7 +82,10 @@ async def render_dialog_buttons(
                 "id": button.id,
                 "text": runner.get(button.text_key, **variable_kwargs),
                 "style": button.style,
-                "icon_custom_emoji_id": button.icon_custom_emoji_id,
+                "icon": _optional_translation(runner, catalog.icon_text_key(button.text_key)),
+                "icon_custom_emoji_id": _optional_translation(
+                    runner, catalog.icon_id_text_key(button.text_key)
+                ),
                 "link_type": button.link_type,
                 "action_key": button.action_key,
                 "target_window_key": button.target_window_key,

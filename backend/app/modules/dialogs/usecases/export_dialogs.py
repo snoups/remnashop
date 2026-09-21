@@ -1,3 +1,5 @@
+from typing import Final
+
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -14,7 +16,10 @@ from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository, join_message_key
 from app.modules.users import UserDto
 
-EXPORT_VERSION = 1
+# Bumped when the payload's meaning changes: banner_name went from a fixed
+# category to a free name, and a button's icon moved out into translations.
+# An older file would import cleanly and land wrong, so it is refused instead.
+EXPORT_VERSION: Final[int] = 2
 
 
 def dialog_text_keys(windows: list[DialogWindowDto]) -> set[str]:
@@ -80,7 +85,6 @@ def _to_export(window: DialogWindowDto) -> DialogWindowExportDto:
                 column=button.column,
                 text_key=button.text_key,
                 link_type=button.link_type,
-                icon_custom_emoji_id=button.icon_custom_emoji_id,
                 style=button.style,
                 visibility_condition=button.visibility_condition,
                 action_key=button.action_key,

@@ -30,6 +30,10 @@ class Permission(UpperStrEnum):
     BANNERS_IMAGE_VIEW = auto()
     BANNERS_UPLOAD = auto()
     BANNERS_DELETE = auto()
+    BANNERS_RESTORE_DEFAULT = auto()
+    EMOJI_PACKS_VIEW = auto()
+    EMOJI_PACKS_IMPORT = auto()
+    EMOJI_PACKS_DELETE = auto()
     LOCALES_VIEW = auto()
     LOCALES_ADD = auto()
     LOCALES_REMOVE = auto()
@@ -152,6 +156,10 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BANNERS_IMAGE_VIEW: PermissionMeta(resource="banners", kind="read"),
     Permission.BANNERS_UPLOAD: PermissionMeta(resource="banners", kind="write"),
     Permission.BANNERS_DELETE: PermissionMeta(resource="banners", kind="write"),
+    Permission.BANNERS_RESTORE_DEFAULT: PermissionMeta(resource="banners", kind="write"),
+    Permission.EMOJI_PACKS_VIEW: PermissionMeta(resource="emoji_packs", kind="read"),
+    Permission.EMOJI_PACKS_IMPORT: PermissionMeta(resource="emoji_packs", kind="write"),
+    Permission.EMOJI_PACKS_DELETE: PermissionMeta(resource="emoji_packs", kind="write"),
     Permission.LOCALES_VIEW: PermissionMeta(resource="locales", kind="read"),
     Permission.LOCALES_ADD: PermissionMeta(resource="locales", kind="write"),
     Permission.LOCALES_REMOVE: PermissionMeta(resource="locales", kind="write"),
@@ -273,6 +281,10 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.BANNERS_IMAGE_VIEW,
         Permission.BANNERS_UPLOAD,
         Permission.BANNERS_DELETE,
+        Permission.BANNERS_RESTORE_DEFAULT,
+        Permission.EMOJI_PACKS_VIEW,
+        Permission.EMOJI_PACKS_IMPORT,
+        Permission.EMOJI_PACKS_DELETE,
         Permission.OAUTH_SETTINGS_VIEW,
         Permission.OAUTH_SETTINGS_MANAGE,
         Permission.LOCALES_VIEW,

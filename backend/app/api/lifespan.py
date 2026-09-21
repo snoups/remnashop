@@ -14,6 +14,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.metrics import register_db_pool_metrics
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
+from app.modules.banners import BannerRepository, ensure_default_banner_seeded
 from app.modules.blacklist import BlacklistRepository, ensure_blacklist_sources_seeded
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
 from app.modules.settings import SettingsRepository
@@ -46,6 +47,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             if not await user_repository.exists_with_role(Role.OWNER):
                 blacklist_repository = await startup_container.get(BlacklistRepository)
                 await ensure_blacklist_sources_seeded(blacklist_repository)
+
+            banner_repository = await startup_container.get(BannerRepository)
+            await ensure_default_banner_seeded(banner_repository, config)
 
             dialog_repository = await startup_container.get(DialogRepository)
             await ensure_dialogs_seeded(

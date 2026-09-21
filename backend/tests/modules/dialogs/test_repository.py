@@ -1,7 +1,7 @@
 import pytest
 
-from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
-from app.core.enums import BannerName, ButtonLinkType, DialogFlow
+from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS, DEFAULT_BANNER_NAME
+from app.core.enums import ButtonLinkType, DialogFlow
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.dialogs.dto import (
     CreateCustomWindowDto,
@@ -32,23 +32,19 @@ _SNAPSHOT = {
 
 
 async def test_upsert_seed_creates_once(dialog_repository: DialogRepository) -> None:
-    created = await dialog_repository.upsert_seed(
-        "menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT
-    )
+    created = await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     assert created is True
-    again = await dialog_repository.upsert_seed(
-        "menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT
-    )
+    again = await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     assert again is False
 
     window = await dialog_repository.get_by_key_or_raise("menu.main")
-    assert window.banner_name == BannerName.MENU
+    assert window.banner_name == "menu"
     assert len(window.buttons) == 1
     assert window.buttons[0].link_type == ButtonLinkType.NAVIGATE
 
 
 async def test_replace_buttons_swaps_layout(dialog_repository: DialogRepository) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     updated = await dialog_repository.replace_buttons(
         "menu.main",
         [
@@ -72,27 +68,27 @@ async def test_replace_buttons_swaps_layout(dialog_repository: DialogRepository)
 
 
 async def test_reset_restores_snapshot(dialog_repository: DialogRepository) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     await dialog_repository.update_window(
         "menu.main",
-        UpdateDialogWindowDto(banner_name=BannerName.DEFAULT, banner_name_provided=True),
+        UpdateDialogWindowDto(banner_name=DEFAULT_BANNER_NAME, banner_name_provided=True),
     )
     await dialog_repository.replace_buttons("menu.main", [])
 
     reset = await dialog_repository.reset_to_snapshot("menu.main")
-    assert reset.banner_name == BannerName.MENU
+    assert reset.banner_name == "menu"
     assert [b.text_key for b in reset.buttons] == ["btn-menu.subscription"]
 
 
 async def test_update_window_clears_banner_only_when_told_to(
     dialog_repository: DialogRepository,
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
 
     untouched = await dialog_repository.update_window(
         "menu.main", UpdateDialogWindowDto(is_enabled=False)
     )
-    assert untouched.banner_name == BannerName.MENU
+    assert untouched.banner_name == "menu"
 
     cleared = await dialog_repository.update_window(
         "menu.main", UpdateDialogWindowDto(banner_name=None, banner_name_provided=True)
@@ -120,7 +116,7 @@ async def test_create_custom_window_conflict(dialog_repository: DialogRepository
 
 
 async def test_delete_rejects_seed_window(dialog_repository: DialogRepository) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     with pytest.raises(ValidationError):
         await dialog_repository.delete_custom_window("menu.main")
 

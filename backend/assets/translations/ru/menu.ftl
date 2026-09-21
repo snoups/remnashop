@@ -10,10 +10,14 @@ btn-menu =
     .connect-not-available = Подключение недоступно
     .trial = Попробовать бесплатно
     .trial-paid = Пробный период — { $trial_price }
-    .devices = 📱 Устройства
-    .subscription = 💳 Подписка
-    .support = 🆘 Поддержка
-    .web-cabinet = 🌐 Веб-кабинет
+    .devices = Устройства
+    .devices-icon = 📱
+    .subscription = Подписка
+    .subscription-icon = 💳
+    .support = Поддержка
+    .support-icon = 🆘
+    .web-cabinet = Веб-кабинет
+    .web-cabinet-icon = 🌐
 
 btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
@@ -25,7 +29,8 @@ btn-devices =
     .cancel-reissue = Отмена
 
 btn-back =
-    .general = ⬅️ Назад
+    .general = Назад
+    .general-icon = ⬅️
 
 ntf-devices =
     .deleted = Устройство удалено.
@@ -54,13 +59,16 @@ msg-promocode-confirm = Промокод: { $promo_code }
 msg-promocode-confirm-will-replace = ⚠️ Это заменит вашу текущую подписку.
 
 btn-promocode =
-    .confirm = ✅ Применить
-    .cancel = ❌ Отмена
+    .confirm = Применить
+    .confirm-icon = ✅
+    .cancel = Отмена
+    .cancel-icon = ❌
 
 msg-subscription-main = Раздел покупки подписки скоро появится. Пока доступна активация промокодов.
 
 btn-subscription =
-    .promocode = 🎟 Активировать промокод
+    .promocode = Активировать промокод
+    .promocode-icon = 🎟
 
 platform-icon =
     .ios = 📱

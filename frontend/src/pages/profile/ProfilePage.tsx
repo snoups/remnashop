@@ -9,6 +9,7 @@ import { EditProfileDialog } from "@features/profile-edit/EditProfileDialog";
 import { SecurityForm } from "@features/account-security/SecurityForm";
 import { logout } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { Spinner } from "@shared/ui/Spinner";
 import { useCurrentUser } from "@entities/user/use-current-user";
@@ -20,7 +21,7 @@ export function ProfilePage() {
   const state = useCurrentUser();
 
   const handleLogout = async () => {
-    await logout();
+    if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
     clearAccessToken();
     navigate("/", { replace: true });
   };

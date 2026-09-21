@@ -1,8 +1,8 @@
 import { motion } from "motion/react";
 import type { ComponentType, MouseEvent } from "react";
-import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 
+import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 
 const MotionNavLink = motion.create(NavLink);
@@ -24,32 +24,6 @@ function preventNavigationWhenActive(isActive: boolean) {
   return (event: MouseEvent) => {
     if (isActive) event.preventDefault();
   };
-}
-
-// A vertical mouse wheel does nothing on a horizontally-scrolling container
-// by default (only trackpad swipes / shift+wheel do) -- redirect wheel input
-// to horizontal scroll so a plain mouse wheel works too. React attaches
-// onWheel as a passive listener, so preventDefault() there is silently
-// ignored and the page scrolls too -- a plain addEventListener with
-// `{ passive: false }` is required to actually stop that.
-function useScrollTabsHorizontallyOnWheel<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const onWheel = (event: WheelEvent) => {
-      if (el.scrollWidth <= el.clientWidth) return;
-      event.preventDefault();
-      el.scrollLeft += event.deltaY;
-    };
-
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
-
-  return ref;
 }
 
 // The scale bounce lives on a separate background pill behind the icon/label,
@@ -87,7 +61,7 @@ function Tab({ to, end, icon, label, isActive, bounceStrength }: TabBarItem & { 
 }
 
 export function TabBar({ items, bounceStrength }: { items: TabBarItem[]; bounceStrength: number }) {
-  const tabsRef = useScrollTabsHorizontallyOnWheel<HTMLDivElement>();
+  const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
 
   return (
     <nav className="inline-flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">

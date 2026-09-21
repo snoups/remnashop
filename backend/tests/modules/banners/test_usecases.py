@@ -4,7 +4,7 @@ import pytest
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BannerName, Locale, Role
+from app.core.enums import Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.modules.banners.dto import BannerKeyDto
 from app.modules.banners.repository import BannerRepository
@@ -47,12 +47,10 @@ async def test_owner_can_upload_banner(
 
     banner = await use_case(
         OWNER,
-        UploadBannerInput(
-            name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
-        ),
+        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
     )
 
-    assert banner.name == BannerName.MENU
+    assert banner.name == "menu"
     assert banner.extension == "jpg"
     assert banner.size_bytes == len(FAKE_JPEG)
     assert (tmp_path / "banners" / "menu_ru.jpg").read_bytes() == FAKE_JPEG
@@ -73,9 +71,7 @@ async def test_regular_user_cannot_upload_banner(
     with pytest.raises(PermissionDeniedError):
         await use_case(
             REGULAR_USER,
-            UploadBannerInput(
-                name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=b"x"
-            ),
+            UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=b"x"),
         )
 
 
@@ -95,7 +91,7 @@ async def test_upload_rejects_unsupported_content_type(
         await use_case(
             OWNER,
             UploadBannerInput(
-                name=BannerName.MENU, locale=Locale.RU, content_type="application/pdf", data=b"x"
+                name="menu", locale=Locale.RU, content_type="application/pdf", data=b"x"
             ),
         )
 
@@ -116,7 +112,7 @@ async def test_upload_rejects_locale_not_in_config(
         await use_case(
             OWNER,
             UploadBannerInput(
-                name=BannerName.MENU, locale=Locale.DE, content_type="image/jpeg", data=FAKE_JPEG
+                name="menu", locale=Locale.DE, content_type="image/jpeg", data=FAKE_JPEG
             ),
         )
 
@@ -138,7 +134,7 @@ async def test_upload_rejects_oversized_file(
         await use_case(
             OWNER,
             UploadBannerInput(
-                name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=oversized
+                name="menu", locale=Locale.RU, content_type="image/jpeg", data=oversized
             ),
         )
 
@@ -157,13 +153,11 @@ async def test_owner_can_delete_banner(
 
     await upload_use_case(
         OWNER,
-        UploadBannerInput(
-            name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
-        ),
+        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
     )
-    await delete_use_case(OWNER, BannerKeyDto(name=BannerName.MENU, locale=Locale.RU))
+    await delete_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
 
-    assert await banner_repository.get(BannerName.MENU, Locale.RU) is None
+    assert await banner_repository.get("menu", Locale.RU) is None
     assert not (tmp_path / "banners" / "menu_ru.jpg").exists()
 
 
@@ -173,7 +167,7 @@ async def test_delete_missing_banner_raises_not_found(
     delete_use_case = DeleteBannerUseCase(banner_repository, _config(config, tmp_path), uow)
 
     with pytest.raises(NotFoundError):
-        await delete_use_case(OWNER, BannerKeyDto(name=BannerName.MENU, locale=Locale.RU))
+        await delete_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
 
 
 async def test_list_banners_returns_available_locales_from_config(
@@ -205,14 +199,12 @@ async def test_list_banners_includes_uploaded_banners(
 
     await upload_use_case(
         OWNER,
-        UploadBannerInput(
-            name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
-        ),
+        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
     )
 
     result = await list_use_case(OWNER)
     assert len(result.banners) == 1
-    assert result.banners[0].name == BannerName.MENU
+    assert result.banners[0].name == "menu"
 
 
 async def test_get_banner_image_returns_bytes_and_content_type(
@@ -229,14 +221,10 @@ async def test_get_banner_image_returns_bytes_and_content_type(
 
     await upload_use_case(
         OWNER,
-        UploadBannerInput(
-            name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
-        ),
+        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
     )
 
-    data, content_type = await get_use_case(
-        OWNER, BannerKeyDto(name=BannerName.MENU, locale=Locale.RU)
-    )
+    data, content_type = await get_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
     assert data == FAKE_JPEG
     assert content_type == "image/jpeg"
 
@@ -250,7 +238,7 @@ async def test_get_banner_image_missing_raises_not_found(
     use_case = GetBannerImageUseCase(banner_repository, _config(config, tmp_path), uow)
 
     with pytest.raises(NotFoundError):
-        await use_case(OWNER, BannerKeyDto(name=BannerName.MENU, locale=Locale.RU))
+        await use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
 
 
 async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
@@ -267,14 +255,12 @@ async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
 
     await upload_use_case(
         OWNER,
-        UploadBannerInput(
-            name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
-        ),
+        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
     )
     (tmp_path / "banners" / "menu_ru.jpg").unlink()
 
     with pytest.raises(NotFoundError):
-        await get_use_case(OWNER, BannerKeyDto(name=BannerName.MENU, locale=Locale.RU))
+        await get_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
 
 
 async def test_upload_rejects_content_not_matching_declared_type(
@@ -293,7 +279,7 @@ async def test_upload_rejects_content_not_matching_declared_type(
         await use_case(
             OWNER,
             UploadBannerInput(
-                name=BannerName.MENU,
+                name="menu",
                 locale=Locale.RU,
                 content_type="image/jpeg",
                 data=b"this is not actually a jpeg",
@@ -314,17 +300,13 @@ async def test_upload_replaces_file_when_format_changes(
 
     await use_case(
         OWNER,
-        UploadBannerInput(
-            name=BannerName.MENU, locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
-        ),
+        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
     )
     assert (tmp_path / "banners" / "menu_ru.jpg").exists()
 
     banner = await use_case(
         OWNER,
-        UploadBannerInput(
-            name=BannerName.MENU, locale=Locale.RU, content_type="image/png", data=FAKE_PNG
-        ),
+        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/png", data=FAKE_PNG),
     )
 
     assert banner.extension == "png"

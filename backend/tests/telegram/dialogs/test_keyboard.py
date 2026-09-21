@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
-from app.core.enums import BannerName, ButtonLinkType, DialogFlow
+from app.core.enums import ButtonLinkType, DialogFlow
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import UpdateDialogWindowDto
 from app.modules.dialogs.repository import DialogRepository
@@ -123,6 +123,82 @@ async def test_render_keyboard_builds_rows_from_data() -> None:
     assert keyboard[1][0].url == "https://example.com"
 
 
+async def test_render_keyboard_puts_a_plain_emoji_in_the_label() -> None:
+    # Telegram's icon field only takes a custom emoji id, so a plain glyph has to
+    # ride in the text or it would never show up.
+    widget = ConfigKeyboard(window_key="menu.main")
+    data = {
+        "buttons": [
+            [
+                {
+                    "id": 1,
+                    "text": "Devices",
+                    "style": None,
+                    "icon": "\U0001f4f1",
+                    "icon_custom_emoji_id": None,
+                    "link_type": ButtonLinkType.ACTION,
+                    "action_key": "get_trial",
+                    "target_window_key": None,
+                    "url_value": None,
+                }
+            ]
+        ]
+    }
+    keyboard = await widget._render_keyboard(data, MagicMock())
+    assert keyboard[0][0].text == "\U0001f4f1 Devices"
+    assert keyboard[0][0].icon_custom_emoji_id is None
+
+
+async def test_render_keyboard_passes_a_premium_emoji_as_an_icon() -> None:
+    widget = ConfigKeyboard(window_key="menu.main")
+    data = {
+        "buttons": [
+            [
+                {
+                    "id": 1,
+                    "text": "Devices",
+                    "style": None,
+                    "icon": None,
+                    "icon_custom_emoji_id": "5386587088873331829",
+                    "link_type": ButtonLinkType.ACTION,
+                    "action_key": "get_trial",
+                    "target_window_key": None,
+                    "url_value": None,
+                }
+            ]
+        ]
+    }
+    keyboard = await widget._render_keyboard(data, MagicMock())
+    assert keyboard[0][0].text == "Devices"
+    assert keyboard[0][0].icon_custom_emoji_id == "5386587088873331829"
+
+
+async def test_render_keyboard_prefers_the_premium_icon_over_the_glyph() -> None:
+    # The dashboard stores the fallback glyph alongside a premium id so it has
+    # something to draw; sending both would show the emoji twice.
+    widget = ConfigKeyboard(window_key="menu.main")
+    data = {
+        "buttons": [
+            [
+                {
+                    "id": 1,
+                    "text": "Devices",
+                    "style": None,
+                    "icon": "\U0001f4f1",
+                    "icon_custom_emoji_id": "5386587088873331829",
+                    "link_type": ButtonLinkType.ACTION,
+                    "action_key": "get_trial",
+                    "target_window_key": None,
+                    "url_value": None,
+                }
+            ]
+        ]
+    }
+    keyboard = await widget._render_keyboard(data, MagicMock())
+    assert keyboard[0][0].text == "Devices"
+    assert keyboard[0][0].icon_custom_emoji_id == "5386587088873331829"
+
+
 async def test_render_keyboard_skips_url_button_with_empty_url() -> None:
     # An admin typo that makes ${variable} resolve to "" must drop the button,
     # not hand aiogram an invalid empty url.
@@ -198,7 +274,7 @@ async def test_render_keyboard_skips_url_button_with_unusable_scheme() -> None:
 async def test_process_item_callback_dispatches_action(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     trial_button = next(b for b in window.buttons if b.action_key == "get_trial")
 
@@ -234,7 +310,7 @@ async def test_process_item_callback_dispatches_navigate(
 
     register_seed_state("menu.devices", _S.DEVICES)
 
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     await dialog_repository.upsert_seed(
         "menu.devices", DialogFlow.MENU, None, {"banner_name": None, "buttons": []}
     )
@@ -277,7 +353,7 @@ async def test_process_item_callback_navigate_across_state_groups_starts_dialog(
 
     register_seed_state("menu.devices", _There.WINDOW)
 
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     await dialog_repository.upsert_seed(
         "menu.devices", DialogFlow.MENU, None, {"banner_name": None, "buttons": []}
     )
@@ -314,7 +390,7 @@ async def test_default_id_reaches_process_item_callback(
     # process_callback() never reaches _process_item_callback -- Task 8 constructs
     # ConfigKeyboard with no id= for every migrated window, so this has to work
     # with the default.
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     trial_button = next(b for b in window.buttons if b.action_key == "get_trial")
 
@@ -346,7 +422,7 @@ async def test_default_id_reaches_process_item_callback(
 async def test_process_item_callback_unregistered_action_returns_false(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     trial_button = next(b for b in window.buttons if b.action_key == "get_trial")
     # deliberately not calling catalog.register_action_key("get_trial")
@@ -376,7 +452,7 @@ async def test_process_item_callback_declared_but_unbound_action_returns_false(
     # flow's metadata (so it's in catalog.action_keys()) but never bound to a
     # handler must not reach catalog.get_action() -- that would raise KeyError
     # instead of returning False.
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     trial_button = next(b for b in window.buttons if b.action_key == "get_trial")
     catalog.register_action_key("get_trial")
@@ -403,7 +479,7 @@ async def test_process_item_callback_declared_but_unbound_action_returns_false(
 async def test_process_item_callback_unknown_button_returns_false(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
 
     container = make_async_container(
         *get_core_providers(),
@@ -426,7 +502,7 @@ async def test_process_item_callback_unresolved_navigate_target_returns_false(
 ) -> None:
     # "menu.devices" is referenced by the seed but never registered via
     # register_seed_state and isn't a CUSTOM window either.
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     nav_button = next(b for b in window.buttons if b.link_type == ButtonLinkType.NAVIGATE)
 
@@ -451,7 +527,7 @@ async def test_process_item_callback_unresolved_navigate_target_returns_false(
 async def test_process_item_callback_navigate_to_disabled_window_returns_false(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, BannerName.MENU, _SNAPSHOT)
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     await dialog_repository.upsert_seed(
         "menu.devices", DialogFlow.MENU, None, {"banner_name": None, "buttons": []}
     )
