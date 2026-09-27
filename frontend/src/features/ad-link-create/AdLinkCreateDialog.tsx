@@ -1,9 +1,17 @@
-import { Dices, Filter, Link2, X } from "lucide-react";
+import { Coins, Dices, Link2, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type AdLink, createAdLink, generateAdLinkCode } from "@entities/advertising/api";
+import {
+  type AdLink,
+  AD_LINK_CODE_MAX_LENGTH,
+  AD_LINK_CODE_PATTERN,
+  AD_LINK_START_PREFIX,
+  createAdLink,
+  generateAdLinkCode,
+} from "@entities/advertising/api";
+import { CURRENCY_SYMBOL } from "@entities/payments/api";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
@@ -42,6 +50,9 @@ function AdLinkCreateDialogBody({
   const [cost, setCost] = useState("0");
   const [currency, setCurrency] = useState("USD");
   const [note, setNote] = useState("");
+  const trimmedCode = code.trim();
+  const isCodeInvalid = trimmedCode !== "" && !AD_LINK_CODE_PATTERN.test(trimmedCode);
+  const canSubmit = name.trim() !== "" && trimmedCode !== "" && !isCodeInvalid;
 
   const handleGenerate = async () => {
     try {
@@ -100,6 +111,7 @@ function AdLinkCreateDialogBody({
             id="adlink-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
+            maxLength={255}
             className={fieldClassName}
           />
         </div>
@@ -114,7 +126,10 @@ function AdLinkCreateDialogBody({
               value={code}
               onChange={(event) => setCode(event.target.value)}
               placeholder={t("advertising.create.codePlaceholder")}
-              className={`${fieldClassName} flex-1 font-mono`}
+              maxLength={AD_LINK_CODE_MAX_LENGTH}
+              aria-invalid={isCodeInvalid}
+              aria-describedby="adlink-code-hint"
+              className={`${fieldClassName} flex-1 font-mono ${isCodeInvalid ? "border-error focus:border-error" : ""}`}
             />
             {canGenerateCode && (
               <motion.button
@@ -128,6 +143,19 @@ function AdLinkCreateDialogBody({
               </motion.button>
             )}
           </div>
+          <p id="adlink-code-hint" className={`text-[12px] ${isCodeInvalid ? "text-error" : "text-muted-foreground"}`}>
+            {isCodeInvalid ? (
+              t("advertising.create.codeInvalid")
+            ) : (
+              <>
+                {t("advertising.startParam")}:{" "}
+                <span className="font-mono text-foreground/80">
+                  ?start={AD_LINK_START_PREFIX}
+                  {trimmedCode || "…"}
+                </span>
+              </>
+            )}
+          </p>
         </div>
 
         <div className="flex gap-3">
@@ -151,9 +179,9 @@ function AdLinkCreateDialogBody({
               id="adlink-currency"
               value={currency}
               onChange={setCurrency}
-              icon={Filter}
+              icon={Coins}
               placeholder={currency}
-              options={CURRENCIES.map((value) => ({ value, label: value }))}
+              options={CURRENCIES.map((value) => ({ value, label: `${value} ${CURRENCY_SYMBOL[value]}` }))}
             />
           </div>
         </div>
@@ -181,9 +209,9 @@ function AdLinkCreateDialogBody({
           </button>
           <motion.button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canSubmit}
             {...bounceTap(bounceStrength)}
-            className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? t("advertising.create.saving") : t("advertising.create.save")}
           </motion.button>

@@ -1,10 +1,11 @@
 import { ArrowUpCircle, Check, Clock, Copy, GitBranch, GitCommit, Info, Star, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { toggleDebugBar, useDebugState } from "@shared/lib/debug-bar";
 import { githubApiUrl, TELEGRAM_URL } from "@shared/lib/external-links";
 import { isNewerVersion } from "@shared/lib/version-compare";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
@@ -17,17 +18,22 @@ interface GithubRelease {
   html_url: string;
 }
 
+const LONG_PRESS_MS = 600;
+
 const footerLinkClassName =
   "flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-glass-border hover:bg-white/[0.06] hover:text-primary";
 
 export function BuildInfoBadge() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
+  const { fakeUpdate } = useDebugState();
   const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
   const [stars, setStars] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [latestRelease, setLatestRelease] = useState<GithubRelease | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const longPressTimer = useRef<number | null>(null);
+  const didLongPress = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -36,11 +42,23 @@ export function BuildInfoBadge() {
       .then((data) => {
         if (controller.signal.aborted) return;
         setMetadata(data);
-        return fetch(githubApiUrl(data.repository_url), { signal: controller.signal })
+
+        fetch(githubApiUrl(data.repository_url), { signal: controller.signal })
           .then((response) => (response.ok ? (response.json() as Promise<{ stargazers_count: number }>) : null))
           .then((repo) => {
             if (!controller.signal.aborted && repo) setStars(repo.stargazers_count);
-          });
+          })
+          .catch(() => {});
+
+        // Only a real CI-built artifact is comparable against releases — skip for dev/local runs.
+        if (!data.git.is_official_build) return;
+
+        fetch(githubApiUrl(data.repository_url, "/releases/latest"), { signal: controller.signal })
+          .then((response) => (response.ok ? (response.json() as Promise<GithubRelease>) : null))
+          .then((release) => {
+            if (!controller.signal.aborted) setLatestRelease(release);
+          })
+          .catch(() => {});
       })
       .catch(() => {});
 
@@ -49,15 +67,27 @@ export function BuildInfoBadge() {
 
   const isOfficialBuild = metadata?.git.is_official_build ?? false;
 
-  const handleOpen = () => {
-    setIsOpen(true);
-    // Only a real CI-built artifact is comparable against releases — skip for dev/local runs.
-    if (!metadata || !isOfficialBuild || latestRelease) return;
+  const startLongPress = () => {
+    didLongPress.current = false;
+    longPressTimer.current = window.setTimeout(() => {
+      didLongPress.current = true;
+      toggleDebugBar();
+    }, LONG_PRESS_MS);
+  };
 
-    fetch(githubApiUrl(metadata.repository_url, "/releases/latest"))
-      .then((response) => (response.ok ? (response.json() as Promise<GithubRelease>) : null))
-      .then((release) => setLatestRelease(release))
-      .catch(() => setLatestRelease(null));
+  const cancelLongPress = () => {
+    if (longPressTimer.current !== null) clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  };
+
+  const handleOpen = () => {
+    cancelLongPress();
+    // Keyboard activation never fires pointerdown, so clear the flag here too.
+    if (didLongPress.current) {
+      didLongPress.current = false;
+      return;
+    }
+    setIsOpen(true);
   };
 
   const handleCopyCommit = () => {
@@ -73,15 +103,21 @@ export function BuildInfoBadge() {
   if (!metadata) return null;
 
   const currentVersion = metadata.version;
-  const isUpdateAvailable = latestRelease ? isNewerVersion(latestRelease.tag_name, currentVersion) : false;
+  const release = fakeUpdate
+    ? { tag_name: "v999.0.0", html_url: `${metadata.repository_url}/releases` }
+    : latestRelease;
+  const isUpdateAvailable = release ? isNewerVersion(release.tag_name, currentVersion) : false;
 
   return (
     <>
       <motion.button
         type="button"
         onClick={handleOpen}
+        onPointerDown={startLongPress}
+        onPointerUp={cancelLongPress}
+        onPointerLeave={cancelLongPress}
+        onContextMenu={(event) => event.preventDefault()}
         aria-label={t("buildInfo.title")}
-        title={t("buildInfo.title")}
         className={SIDEBAR_PILL_CLASSNAME}
         initial="rest"
         whileHover="hover"
@@ -89,6 +125,13 @@ export function BuildInfoBadge() {
       >
         <BounceIcon icon={Info} size={17} hoverSize={23.5} />
         <span className={`${LABEL_CLASSNAME} font-mono`}>{currentVersion}</span>
+        {isUpdateAvailable && release && (
+          <span
+            className={`${LABEL_CLASSNAME} ml-auto rounded-full border border-primary/40 bg-accent px-2 py-1 font-mono text-[10px] font-semibold leading-none text-primary`}
+          >
+            {release.tag_name}
+          </span>
+        )}
       </motion.button>
 
       <AnimatePresence>
@@ -140,15 +183,15 @@ export function BuildInfoBadge() {
                   <div className="mt-0.5 font-mono text-lg font-bold text-foreground">v{currentVersion}</div>
                 </div>
 
-                {isUpdateAvailable && latestRelease && (
+                {isUpdateAvailable && release && (
                   <a
-                    href={latestRelease.html_url}
+                    href={release.html_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-accent px-3 py-1.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/20"
+                    className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-accent px-3 py-1.5 font-mono text-[12px] font-semibold text-primary transition-colors hover:bg-primary/20"
                   >
                     <ArrowUpCircle className="size-3.5" />
-                    {latestRelease.tag_name}
+                    {release.tag_name}
                   </a>
                 )}
               </div>
@@ -160,13 +203,12 @@ export function BuildInfoBadge() {
                   </InfoRow>
                 )}
 
-                {isOfficialBuild && metadata.git.commit_sha ? (
+                {isOfficialBuild && metadata.git.commit_sha && (
                   <InfoRow icon={GitCommit} label={t("buildInfo.commit")}>
                     <a
                       href={`${metadata.repository_url}/commit/${metadata.git.commit_sha}`}
                       target="_blank"
                       rel="noreferrer"
-                      title={metadata.git.commit_sha}
                       className="hover:text-primary"
                     >
                       {metadata.git.commit_sha.slice(0, 7)}
@@ -183,10 +225,6 @@ export function BuildInfoBadge() {
                         <Copy className="size-3.5" />
                       )}
                     </button>
-                  </InfoRow>
-                ) : (
-                  <InfoRow icon={GitCommit} label={t("buildInfo.commit")}>
-                    <span className="font-sans font-medium text-muted-foreground">{t("buildInfo.localBuild")}</span>
                   </InfoRow>
                 )}
 

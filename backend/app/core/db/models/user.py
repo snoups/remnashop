@@ -61,7 +61,7 @@ class User(BaseSql, TimestampMixin):
     # one (see the plan's Global Constraints) -- multiple NULLs are fine
     # under a UNIQUE index.
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
-    points: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal(0), server_default="0")
+    points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=Decimal(0), server_default="0")
     # One-way latch: True until the user's first trial activation, then
     # never re-derived from subscription history (a trial subscription can
     # later become DELETED via a trial->paid conversion -- see

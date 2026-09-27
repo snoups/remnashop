@@ -56,17 +56,19 @@ async def admin_actor(user_repository: UserRepository) -> UserDto:
 @pytest.fixture
 def list_payment_orders_use_case(
     payment_order_repository: PaymentOrderRepository,
+    user_repository: UserRepository,
     uow: UnitOfWork,
 ) -> ListPaymentOrdersUseCase:
-    return ListPaymentOrdersUseCase(payment_order_repository, uow)
+    return ListPaymentOrdersUseCase(payment_order_repository, user_repository, uow)
 
 
 @pytest.fixture
 def get_payment_order_use_case(
     payment_order_repository: PaymentOrderRepository,
+    user_repository: UserRepository,
     uow: UnitOfWork,
 ) -> GetPaymentOrderUseCase:
-    return GetPaymentOrderUseCase(payment_order_repository, uow)
+    return GetPaymentOrderUseCase(payment_order_repository, user_repository, uow)
 
 
 async def test_list_payment_orders_requires_the_payments_view_permission(
@@ -94,14 +96,15 @@ async def test_list_payment_orders_filters_by_status(
         )
         await payment_order_repository.mark_status(paid.id, PaymentOrderStatus.PAID)
 
-    orders, total = await list_payment_orders_use_case(
+    items, total = await list_payment_orders_use_case(
         admin_actor, ListPaymentOrdersInput(status=PaymentOrderStatus.PAID)
     )
     assert total == 1
-    assert [order.id for order in orders] == [paid.id]
+    assert [item.order.id for item in items] == [paid.id]
+    assert items[0].user is not None and items[0].user.name == "buyer"
 
-    orders, total = await list_payment_orders_use_case(admin_actor, ListPaymentOrdersInput())
-    ids = {order.id for order in orders}
+    items, total = await list_payment_orders_use_case(admin_actor, ListPaymentOrdersInput())
+    ids = {item.order.id for item in items}
     assert {pending.id, paid.id} <= ids
 
 
@@ -127,7 +130,8 @@ async def test_get_payment_order_returns_the_order(
         )
 
     fetched = await get_payment_order_use_case(admin_actor, created.id)
-    assert fetched.id == created.id
+    assert fetched.order.id == created.id
+    assert fetched.user is not None and fetched.user.telegram_id == 900_001
 
 
 async def test_get_payment_order_raises_not_found_for_a_missing_id(

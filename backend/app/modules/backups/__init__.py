@@ -2,6 +2,7 @@ from app.modules.backups.di import get_backups_providers
 from app.modules.backups.dto import (
     BackupRunDto,
     BackupSettingsDto,
+    BackupStatsDto,
     CreateBackupRunDto,
     UpdateBackupSettingsDto,
 )
@@ -18,6 +19,7 @@ from app.modules.backups.usecases import (
     DownloadBackupRunUseCase,
     GetBackupRunUseCase,
     GetBackupSettingsUseCase,
+    GetBackupStatsUseCase,
     ListBackupRunsUseCase,
     UpdateBackupSettingsUseCase,
 )
@@ -26,12 +28,14 @@ __all__ = [
     "BackupRepository",
     "BackupRunDto",
     "BackupSettingsDto",
+    "BackupStatsDto",
     "CreateBackupRunDto",
     "CreateBackupRunUseCase",
     "DeleteBackupRunUseCase",
     "DownloadBackupRunUseCase",
     "GetBackupRunUseCase",
     "GetBackupSettingsUseCase",
+    "GetBackupStatsUseCase",
     "ListBackupRunsUseCase",
     "ProvenanceResult",
     "ProvenanceStatus",

@@ -1,11 +1,11 @@
 from time import monotonic
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 import orjson
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -34,9 +34,21 @@ _PUBLIC_KEY_TTL_S: Final[float] = 3600.0
 _MIN_LINK_LIFETIME_S: Final[int] = 11 * 60
 _PAID_STATUS: Final[str] = "Paid"
 _PAYMENT_KIND: Final[str] = "Payment"
+_DECLINED_STATUS: Final[str] = "Declined"
+_REFUND_KIND: Final[str] = "Refund"
+
 
 # Keyed by api_key, not per instance: the factory builds a fresh gateway for
 # every request, so an instance-level cache would never be reused.
+def _reported_status(data: dict[str, Any]) -> Optional[PaymentOrderStatus]:
+    status = data.get("transactionStatus")
+    if data.get("kind") == _PAYMENT_KIND and status == _DECLINED_STATUS:
+        return PaymentOrderStatus.FAILED
+    if data.get("kind") == _REFUND_KIND and status == _PAID_STATUS:
+        return PaymentOrderStatus.REFUNDED
+    return None
+
+
 _public_key_cache: Final[dict[str, tuple[float, RSAPublicKey]]] = {}
 
 
@@ -44,6 +56,7 @@ def clear_public_key_cache() -> None:
     _public_key_cache.clear()
 
 
+# Docs: https://api.wata.pro/
 class WataGateway(PaymentGateway):
     currency = Currency.USD
 
@@ -84,13 +97,15 @@ class WataGateway(PaymentGateway):
         order_ref = data.get("orderId")
         if not order_ref:
             raise PaymentGatewayError("WATA webhook missing 'orderId'")
-        transaction_id = data.get("transactionId")
+        # `id` is the payment's transaction; `transactionId` is the refund's.
+        transaction_id = data.get("id") or data.get("transactionId")
         # A completed refund also reports transactionStatus=Paid.
+        is_payment = data.get("kind") == _PAYMENT_KIND
         return WebhookSignal(
             reference=str(order_ref),
-            claims_paid=data.get("kind") == _PAYMENT_KIND
-            and data.get("transactionStatus") == _PAID_STATUS,
+            claims_paid=is_payment and data.get("transactionStatus") == _PAID_STATUS,
             provider_payment_id=str(transaction_id) if transaction_id else None,
+            reported_status=_reported_status(data),
         )
 
     async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:

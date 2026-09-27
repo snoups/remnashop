@@ -33,6 +33,7 @@ _RESULT_NOT_FOUND: Final[str] = "3"
 _STATE_PAID: Final[str] = "100"
 
 
+# Docs: https://docs.robokassa.ru/ru/pay-interface
 class RobokassaGateway(PaymentGateway):
     currency = Currency.RUB
 
@@ -120,9 +121,19 @@ class RobokassaGateway(PaymentGateway):
         if result_code != _RESULT_OK:
             raise PaymentGatewayError(f"Robokassa OpStateExt error code {result_code}")
         state_code = root.findtext("r:State/r:Code", namespaces=_NAMESPACES)
+        # Shp_ names are case-insensitive on Robokassa's side (docs show `shp_interface`)
+        order_ref = next(
+            (
+                field.findtext("r:Value", default="", namespaces=_NAMESPACES)
+                for field in root.iterfind("r:UserFields/r:Field", _NAMESPACES)
+                if (field.findtext("r:Name", default="", namespaces=_NAMESPACES)).lower()
+                == _SHP_ORDER_ID.lower()
+            ),
+            "",
+        )
         return ProviderPayment(
             paid=state_code == _STATE_PAID,
             amount=signal.amount,
-            reference=order.idempotency_key,
+            reference=order_ref,
             provider_payment_id=inv_id,
         )

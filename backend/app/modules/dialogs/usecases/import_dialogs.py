@@ -14,6 +14,7 @@ from app.modules.dialogs.dto import (
 )
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases._publish import publish_dialog_change
+from app.modules.dialogs.usecases._window_texts import validate_stored_window_texts
 from app.modules.dialogs.usecases.export_dialogs import EXPORT_VERSION, dialog_text_keys
 from app.modules.dialogs.validation import validate_buttons
 from app.modules.settings import SettingsRepository
@@ -71,6 +72,13 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
 
             windows = await self._dialog_repository.list_all()
             await self._apply_texts(data, dialog_text_keys(windows))
+            for window in windows:
+                await validate_stored_window_texts(
+                    window.key,
+                    window.banner_name,
+                    self._translations_repository,
+                    self._settings_repository,
+                )
 
         await publish_dialog_change(self._redis)
 
@@ -88,7 +96,9 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
                 return
             await self._dialog_repository.create_custom_window(
                 window.key,
-                CreateCustomWindowDto(banner_name=window.banner_name, position=window.position),
+                CreateCustomWindowDto(
+                    banner_name=window.banner_name, name=window.name, position=window.position
+                ),
             )
 
         seed_actions = (
@@ -102,13 +112,15 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
             window_kind=window.kind,
             navigable=navigable,
             seed_actions=seed_actions,
+            system_text_keys=await self._dialog_repository.system_text_keys(window.key),
         )
         await self._dialog_repository.update_window(
             window.key,
             UpdateDialogWindowDto(
                 banner_name=window.banner_name,
                 banner_name_provided=True,
-                is_enabled=window.is_enabled,
+                # seed windows are always on, whatever an older export says
+                is_enabled=True if window.kind == DialogWindowKind.SEED else window.is_enabled,
             ),
         )
         await self._dialog_repository.replace_buttons(window.key, window.buttons)

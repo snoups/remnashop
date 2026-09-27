@@ -1,8 +1,17 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import PaymentGatewayType
+from app.core.enums import PaymentGatewayType, PaymentOrderStatus
+
+
+class GatewayTestPaymentResponse(BaseModel):
+    order_id: int
+    confirmation_url: Optional[str]
+
+
+class GatewayTestPaymentStatusResponse(BaseModel):
+    status: PaymentOrderStatus
 
 
 class GatewayResponse(BaseModel):
@@ -28,6 +37,7 @@ class GatewayFieldSpecResponse(BaseModel):
 
 class GatewayCatalogEntryResponse(BaseModel):
     type: PaymentGatewayType
+    webhook_url: Optional[str]
     fields: list[GatewayFieldSpecResponse]
 
 

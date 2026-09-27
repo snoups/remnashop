@@ -2,6 +2,8 @@ import { apiDelete, apiGet, apiPut, apiUpload, BASE_URL } from "@shared/api/http
 
 export type AppearanceImageKind = "logo" | "favicon";
 
+export const DEFAULT_FAVICON_HREF = "/favicon.svg";
+
 export interface AppearanceSettings {
   brand_name: string | null;
   primary_color: string | null;
@@ -27,28 +29,39 @@ export function updateAppearance(payload: UpdateAppearancePayload): Promise<Appe
   return apiPut<AppearanceSettings, UpdateAppearancePayload>("/settings/appearance", payload);
 }
 
-// Clears brand_name/primary_color back to unset -- unlike updateAppearance,
-// which only ever writes fields it's given (undefined means "don't touch"),
-// this is the only way to explicitly revert them to the default.
-export function resetAppearanceSettings(): Promise<AppearanceSettings> {
-  return apiDelete<AppearanceSettings>("/settings/appearance");
+export type AppearanceResetScope = "branding" | "colors";
+
+// Clears one scope's fields back to unset -- unlike updateAppearance, which
+// only ever writes fields it's given (undefined means "don't touch"), this is
+// the only way to explicitly revert them to the default. Images are separate:
+// deleteAppearanceImage.
+export function resetAppearanceSettings(scope: AppearanceResetScope): Promise<AppearanceSettings> {
+  return apiDelete<AppearanceSettings>(`/settings/appearance?scope=${scope}`);
 }
 
-export function uploadAppearanceImage(
+// Image URLs never change on their own, so a replaced logo/favicon would keep
+// rendering from the browser cache -- bumped on every upload/delete.
+let imageVersion = Date.now();
+
+export async function uploadAppearanceImage(
   kind: AppearanceImageKind,
   file: File,
 ): Promise<AppearanceSettings> {
   const formData = new FormData();
   formData.append("file", file);
-  return apiUpload<AppearanceSettings>(`/settings/appearance/${kind}`, formData);
+  const result = await apiUpload<AppearanceSettings>(`/settings/appearance/${kind}`, formData);
+  imageVersion = Date.now();
+  return result;
 }
 
-export function deleteAppearanceImage(kind: AppearanceImageKind): Promise<null> {
-  return apiDelete<null>(`/settings/appearance/${kind}`);
+export async function deleteAppearanceImage(kind: AppearanceImageKind): Promise<null> {
+  const result = await apiDelete<null>(`/settings/appearance/${kind}`);
+  imageVersion = Date.now();
+  return result;
 }
 
 // Public image endpoints -- unlike banners, these need no Authorization header,
 // so a plain <img src> works directly (no blob-fetch dance).
 export function appearanceImageUrl(kind: AppearanceImageKind): string {
-  return `${BASE_URL}/appearance/${kind}`;
+  return `${BASE_URL}/appearance/${kind}?v=${imageVersion}`;
 }

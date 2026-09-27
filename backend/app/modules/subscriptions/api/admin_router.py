@@ -116,11 +116,13 @@ async def list_subscriptions(
     use_case: FromDishka[ListSubscriptionsUseCase],
     actor: UserDto = Depends(require_admin),
     status_filter: Optional[SubscriptionStatus] = Query(None, alias="status"),
+    search: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> SubscriptionPageResponse:
     subscriptions, total = await use_case(
-        actor, ListSubscriptionsInput(status=status_filter, page=page, page_size=page_size)
+        actor,
+        ListSubscriptionsInput(status=status_filter, search=search, page=page, page_size=page_size),
     )
     return SubscriptionPageResponse(
         items=[_to_subscription_response(subscription) for subscription in subscriptions],

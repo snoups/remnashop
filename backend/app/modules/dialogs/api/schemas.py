@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.constants import BANNER_NAME_PATTERN
+from app.core.constants import BANNER_NAME_PATTERN, DEFAULT_BANNER_NAME
 from app.core.enums import (
     ButtonLinkType,
     ButtonStyleKind,
@@ -24,6 +24,7 @@ class DialogButtonItem(BaseModel):
     target_window_key: Optional[str] = None
     url_value: Optional[str] = None
     is_hidden: bool = False
+    is_system: bool = False
 
 
 class DialogWindowResponse(BaseModel):
@@ -31,6 +32,7 @@ class DialogWindowResponse(BaseModel):
     kind: DialogWindowKind
     flow: DialogFlow
     banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
+    name: Optional[str] = None
     is_enabled: bool
     position: int
     text_keys: list[str]
@@ -50,6 +52,7 @@ class DialogCatalogResponse(BaseModel):
 class UpdateDialogWindowRequest(BaseModel):
     banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
     is_enabled: Optional[bool] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
 
 class DialogButtonInput(BaseModel):
@@ -70,8 +73,11 @@ class ReplaceButtonsRequest(BaseModel):
 
 
 class CreateCustomWindowRequest(BaseModel):
-    title_text: str = Field(min_length=1, max_length=4096)
-    banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
+    name: str = Field(min_length=1, max_length=128)
+    # Omitting it means the shared banner; sending null explicitly means none.
+    banner_name: Optional[str] = Field(
+        default=DEFAULT_BANNER_NAME, max_length=160, pattern=BANNER_NAME_PATTERN
+    )
 
 
 class DialogTextExportItem(BaseModel):
@@ -85,6 +91,7 @@ class DialogWindowExportItem(BaseModel):
     key: str = Field(pattern=r"^[a-z0-9._-]+$", max_length=128)
     kind: DialogWindowKind
     banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
+    name: Optional[str] = Field(default=None, max_length=128)
     is_enabled: bool = True
     position: int = Field(default=0, ge=0)
     buttons: list[DialogButtonInput] = Field(default_factory=list)

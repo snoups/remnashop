@@ -30,7 +30,7 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
         {state.kind === "loading" && <Spinner />}
         {state.kind === "error" && <p className="text-sm text-error">{t("profile.loadError")}</p>}
         {state.kind === "ready" && (
@@ -44,7 +44,7 @@ export function ProfilePage() {
                 {state.data.login ?? t("header.account")}
               </div>
             </div>
-            <span className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-[12px] font-semibold text-primary">
+            <span className="shrink-0 rounded-full border border-transparent bg-accent px-3 py-2 text-[12px] font-semibold text-primary">
               {t(`roles.${state.data.role}`)}
             </span>
             <EditProfileDialog name={state.data.name} login={state.data.login} />
@@ -52,7 +52,7 @@ export function ProfilePage() {
               type="button"
               onClick={handleLogout}
               {...bounceTap(bounceStrength)}
-              className="flex shrink-0 items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold text-error transition-colors hover:bg-error/10"
+              className="flex shrink-0 items-center gap-2 rounded-full border border-border px-3 py-2 text-[12px] font-semibold text-error transition-colors hover:bg-error/10"
             >
               <LogOut className="size-3.5" />
               {t("header.logout")}

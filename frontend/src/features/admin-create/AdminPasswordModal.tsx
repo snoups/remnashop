@@ -47,15 +47,17 @@ function AdminPasswordModalBody({ password }: { password: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left font-mono text-sm text-foreground transition-colors ${
-            isCopied ? "border-success/40 bg-success/10" : "border-border bg-input/60 hover:bg-white/[0.06]"
-          }`}
+          className="relative flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-input/60 px-3 py-2.5 text-left font-mono text-sm text-foreground transition-colors hover:bg-white/[0.06]"
         >
-          <span className="select-all truncate">{password}</span>
-          {isCopied ? (
-            <Check className="size-4 shrink-0 text-success" />
-          ) : (
+          <span className={`contents ${isCopied ? "[&>*]:opacity-0" : ""}`}>
+            <span className="select-all truncate">{password}</span>
             <Copy className="size-4 shrink-0 text-muted-foreground" />
+          </span>
+          {isCopied && (
+            <span className="absolute inset-0 flex items-center justify-center gap-1.5 font-sans text-[12.5px] font-medium text-success">
+              <Check className="size-3.5" />
+              {t("app.copied")}
+            </span>
           )}
         </button>
       </div>

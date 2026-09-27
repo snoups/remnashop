@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
+import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 
 interface DatePickerFieldProps {
   id?: string;
@@ -50,6 +51,7 @@ export function DatePickerField({ id, value, onChange, placeholder, clearAriaLab
   }, [isOpen, value]);
 
   useClickOutside(ref, isOpen, () => setIsOpen(false));
+  useCloseOnScroll(isOpen, ref, () => setIsOpen(false));
 
   const today = new Date();
   const days = getMonthGrid(viewDate.getFullYear(), viewDate.getMonth());

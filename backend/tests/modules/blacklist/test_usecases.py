@@ -1,7 +1,9 @@
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BlacklistKind, Role
+from app.core.enums import BlacklistKind, Locale, Role
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.modules.blacklist.dto import (
@@ -29,6 +31,24 @@ def owner() -> UserDto:
 @pytest.fixture
 def plain_user() -> UserDto:
     return UserDto(id=2, telegram_id=2, name="user", role=Role.USER)
+
+
+@pytest.fixture(autouse=True)
+async def _seed_actor_rows(session: AsyncSession) -> None:
+    # event_outbox.actor_id is a real FK into users -- the actor DTOs above
+    # are bare, not inserted rows.
+    for user_id in (1, 2):
+        session.add(
+            User(
+                id=user_id,
+                name=f"u{user_id}",
+                telegram_id=user_id,
+                role=Role.USER,
+                language=Locale.EN,
+                is_blocked=False,
+            )
+        )
+    await session.flush()
 
 
 async def test_add_and_list_entry(
@@ -137,3 +157,27 @@ async def test_toggle_source(
         owner, ToggleBlacklistSourceDto(source_id=src.id, enabled=False)
     )
     assert toggled.enabled is False
+
+
+async def test_add_source_derives_name_when_blank(
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    owner: UserDto,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _fake_assert_public_https_host(url: str) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "app.modules.blacklist.usecases.add_blacklist_source.assert_public_https_host",
+        _fake_assert_public_https_host,
+    )
+    add = AddBlacklistSourceUseCase(blacklist_repository, uow)
+
+    derived = await add(owner, AddBlacklistSourceDto(url="https://feed.example/a.txt", name="  "))
+    assert derived.name == "feed.example/a.txt"
+
+    explicit = await add(
+        owner, AddBlacklistSourceDto(url="https://feed.example/b.txt", name=" Mine ")
+    )
+    assert explicit.name == "Mine"

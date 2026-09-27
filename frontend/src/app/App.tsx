@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router-dom";
 
 import { AppearanceProvider } from "@entities/appearance/AppearanceProvider";
 import { initializeAuth } from "@shared/api/http";
+import { DebugBar } from "@widgets/debug-bar/DebugBar";
 import { ToastContainer } from "@widgets/toast/ToastContainer";
 
 import { router } from "./router";
@@ -29,6 +30,7 @@ export function App() {
         </Suspense>
       )}
       <ToastContainer />
+      <DebugBar />
     </AppearanceProvider>
   );
 }

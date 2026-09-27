@@ -8,7 +8,6 @@ from fluentogram import TranslatorHub
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
 from app.modules.banners import BannerRepository
-from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import GetAvailableTrialUseCase, SubscriptionRepository
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
@@ -28,7 +27,6 @@ async def custom_window_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
     banner_repository: FromDishka[BannerRepository],
-    settings_repository: FromDishka[SettingsRepository],
     subscription_repository: FromDishka[SubscriptionRepository],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
@@ -52,7 +50,6 @@ async def custom_window_getter(
     banner = (
         await get_banner_media(
             banner_repository,
-            settings_repository,
             config,
             window.banner_name,
             user.language,

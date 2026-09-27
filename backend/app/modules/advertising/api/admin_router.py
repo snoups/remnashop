@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from dishka import FromDishka
@@ -8,9 +9,11 @@ from app.api.dependencies.admin import require_admin
 from app.core.enums import Currency
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.advertising.api.schemas import (
+    AdLinkMetricsResponse,
     AdLinkPageResponse,
     AdLinkResponse,
     AdLinkStatsResponse,
+    AdvertisingSummaryResponse,
     AttributedUserPageResponse,
     AttributedUserResponse,
     CreateAdLinkRequest,
@@ -25,6 +28,7 @@ from app.modules.advertising.dto import (
     AttributedUserDto,
     CreateAdLinkDto,
     GetAdLinkStatsDto,
+    GetAdvertisingSummaryDto,
     ListAdLinkAttributedUsersDto,
     ListAdLinksDto,
     UpdateAdLinkDto,
@@ -34,6 +38,7 @@ from app.modules.advertising.usecases import (
     DeleteAdLinkUseCase,
     GenerateAdLinkCodeUseCase,
     GetAdLinkStatsUseCase,
+    GetAdvertisingSummaryUseCase,
     ListAdLinkAttributedUsersUseCase,
     ListAdLinksUseCase,
     UpdateAdLinkUseCase,
@@ -163,10 +168,14 @@ async def get_ad_link_stats(
     use_case: FromDishka[GetAdLinkStatsUseCase],
     actor: UserDto = Depends(require_admin),
     report_currency: Optional[Currency] = Query(None),
+    created_from: Optional[datetime] = Query(None),
 ) -> AdLinkStatsResponse:
     try:
         stats = await use_case(
-            actor, GetAdLinkStatsDto(ad_link_id=ad_link_id, report_currency=report_currency)
+            actor,
+            GetAdLinkStatsDto(
+                ad_link_id=ad_link_id, report_currency=report_currency, created_from=created_from
+            ),
         )
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -184,6 +193,45 @@ async def get_ad_link_stats(
         daily_registrations=[
             DailyAttributionCountResponse(day=row.day, count=row.count)
             for row in stats.daily_registrations
+        ],
+    )
+
+
+@router.get("/summary", response_model=AdvertisingSummaryResponse)
+@inject
+async def get_advertising_summary(
+    use_case: FromDishka[GetAdvertisingSummaryUseCase],
+    actor: UserDto = Depends(require_admin),
+    is_active: Optional[bool] = Query(None),
+    report_currency: Optional[Currency] = Query(None),
+    created_from: Optional[datetime] = Query(None),
+) -> AdvertisingSummaryResponse:
+    summary = await use_case(
+        actor,
+        GetAdvertisingSummaryDto(
+            is_active=is_active, report_currency=report_currency, created_from=created_from
+        ),
+    )
+    return AdvertisingSummaryResponse(
+        report_currency=summary.report_currency,
+        attributions_count=summary.attributions_count,
+        attributions_by_channel=summary.attributions_by_channel,
+        paid_count=summary.paid_count,
+        conversion_rate=summary.conversion_rate,
+        revenue=summary.revenue,
+        cost=summary.cost,
+        cpa=summary.cpa,
+        roi=summary.roi,
+        links=[
+            AdLinkMetricsResponse(
+                ad_link_id=link.ad_link_id,
+                attributions_count=link.attributions_count,
+                paid_count=link.paid_count,
+                revenue=link.revenue,
+                cost=link.cost,
+                roi=link.roi,
+            )
+            for link in summary.links
         ],
     )
 

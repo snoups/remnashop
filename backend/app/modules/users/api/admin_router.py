@@ -7,12 +7,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from app.api.dependencies.admin import require_admin
 from app.core.enums import Role
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.core.security.permissions import PermissionPolicy
+from app.core.security.permissions import ROLE_PERMISSIONS, PermissionPolicy
 from app.core.utils.http import resolve_client_ip
+from app.modules.blacklist import BlacklistOriginDto
 from app.modules.users.api.schemas import (
     AdminPromoteResponse,
     AdminResponse,
     AdminWithPasswordResponse,
+    BlacklistHitResponse,
+    BlacklistMatchPageResponse,
+    BlacklistMatchResponse,
+    BlacklistOriginResponse,
     BulkBlockRequest,
     BulkBlockResponse,
     CreateAdminRequest,
@@ -29,6 +34,7 @@ from app.modules.users.api.schemas import (
 )
 from app.modules.users.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, UserDto
 from app.modules.users.usecases import (
+    BlacklistMatchOrigin,
     BlockUserUseCase,
     BulkBlockUsersUseCase,
     CreateAdminDto,
@@ -41,6 +47,8 @@ from app.modules.users.usecases import (
     DemoteAdminUseCase,
     GetCurrentUserUseCase,
     ListAdminsUseCase,
+    ListBlacklistMatchesInput,
+    ListBlacklistMatchesUseCase,
     ListUsersInput,
     ListUsersUseCase,
     PromoteToAdminDto,
@@ -48,6 +56,7 @@ from app.modules.users.usecases import (
     SetUserPersonalDiscountDto,
     SetUserPersonalDiscountUseCase,
     UnblockAllUsersUseCase,
+    UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
     UpdateAdminDto,
     UpdateAdminUseCase,
@@ -89,9 +98,14 @@ def _to_admin_response(user: UserDto) -> AdminResponse:
         email=user.email,
         language=str(user.language),
         is_blocked=user.is_blocked,
+        personal_discount=user.personal_discount,
+        purchase_discount=user.purchase_discount,
+        points=user.points,
+        is_trial_available=user.is_trial_available,
         created_at=user.created_at,
         permission_grants=list(user.permission_grants or []),
         permission_revokes=list(user.permission_revokes or []),
+        role_permissions=sorted(p.value for p in ROLE_PERMISSIONS.get(user.role, set())),
         effective_permissions=sorted(p.value for p in PermissionPolicy.effective_permissions(user)),
     )
 
@@ -109,6 +123,9 @@ def _to_user_response(user: UserDto) -> UserResponse:
         is_blocked=user.is_blocked,
         personal_discount=user.personal_discount,
         purchase_discount=user.purchase_discount,
+        referral_code=user.referral_code,
+        points=user.points,
+        is_trial_available=user.is_trial_available,
         created_at=user.created_at,
     )
 
@@ -210,6 +227,61 @@ async def list_users(
         ),
     )
     return UserPageResponse(items=[_to_user_response(u) for u in users], total=total)
+
+
+def _to_origin_response(origin: BlacklistOriginDto) -> BlacklistOriginResponse:
+    return BlacklistOriginResponse(source_id=origin.source_id, source_name=origin.source_name)
+
+
+@router.get("/blacklist-matches", response_model=BlacklistMatchPageResponse)
+@inject
+async def list_blacklist_matches(
+    use_case: FromDishka[ListBlacklistMatchesUseCase],
+    actor: UserDto = Depends(require_admin),
+    search: Optional[str] = None,
+    origin: Optional[BlacklistMatchOrigin] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+) -> BlacklistMatchPageResponse:
+    result = await use_case(
+        actor,
+        ListBlacklistMatchesInput(
+            search=search,
+            origin=origin,
+            page=page,
+            page_size=page_size,
+        ),
+    )
+    return BlacklistMatchPageResponse(
+        items=[
+            BlacklistMatchResponse(
+                user=_to_user_response(match.user),
+                hits=[
+                    BlacklistHitResponse(
+                        kind=hit.kind,
+                        value=hit.value,
+                        origins=[_to_origin_response(origin) for origin in hit.origins],
+                    )
+                    for hit in match.hits
+                ],
+            )
+            for match in result.items
+        ],
+        total=result.total,
+        all_total=result.all_total,
+        manual_total=result.manual_total,
+        lists_total=result.lists_total,
+    )
+
+
+@router.post("/blacklist-matches/unblock", response_model=UnblockAllResponse)
+@inject
+async def unblock_blacklist_matches(
+    use_case: FromDishka[UnblockBlacklistMatchesUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> UnblockAllResponse:
+    count = await use_case(actor)
+    return UnblockAllResponse(unblocked=count)
 
 
 @router.patch("/{user_id}/discount", response_model=UserResponse)

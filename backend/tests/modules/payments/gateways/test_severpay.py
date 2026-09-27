@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 import app.modules.payments.gateways.severpay as severpay_module
+from app.core.enums import PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.gateways.severpay import SeverPayGateway
 from tests.modules.payments.gateways.support import (
@@ -111,6 +112,9 @@ async def test_parse_webhook_test_notification_is_ignored_and_fail_does_not_clai
     assert await _gateway().parse_webhook(webhook(_hook(kind="test"))) is None
     failed = await _gateway().parse_webhook(webhook(_hook("fail")))
     assert failed is not None and failed.claims_paid is False
+    assert failed.reported_status is PaymentOrderStatus.FAILED
+    declined = await _gateway().parse_webhook(webhook(_hook("decline")))
+    assert declined is not None and declined.reported_status is PaymentOrderStatus.FAILED
 
 
 def test_ack_is_the_documented_json() -> None:

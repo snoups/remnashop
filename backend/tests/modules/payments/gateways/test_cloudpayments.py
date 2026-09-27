@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 import pytest
 
 import app.modules.payments.gateways.cloudpayments as cloudpayments_module
+from app.core.enums import PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.gateways.cloudpayments import CloudPaymentsGateway
 from tests.modules.payments.gateways.support import (
@@ -72,6 +73,14 @@ async def test_parse_webhook_authorized_is_not_a_payment() -> None:
     raw, headers = _signed("Authorized")
     signal = await _gateway().parse_webhook(webhook(raw, headers))
     assert signal is not None and signal.claims_paid is False
+    assert signal.reported_status is None
+
+
+async def test_parse_webhook_declined_reports_failed() -> None:
+    raw, headers = _signed("Declined")
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None and signal.claims_paid is False
+    assert signal.reported_status is PaymentOrderStatus.FAILED
 
 
 async def test_confirm_finds_the_payment_by_invoice_id(monkeypatch: pytest.MonkeyPatch) -> None:

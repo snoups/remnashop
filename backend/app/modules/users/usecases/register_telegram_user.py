@@ -5,10 +5,11 @@ from loguru import logger
 from sqlalchemy.exc import IntegrityError
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale
+from app.core.enums import Locale, Role
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
+from app.modules.users.display_name import clean_telegram_name
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.events import TelegramRegistrationBlockedEvent, TelegramUserRegisteredEvent
 from app.modules.users.repository import UserRepository
@@ -18,7 +19,11 @@ from app.modules.users.repository import UserRepository
 class RegisterTelegramUserDto:
     telegram_id: int
     name: str
+    username: Optional[str] = None
     language: Locale
+    # True when `language` is the user's own Telegram language (and active),
+    # not the deployment default -- only then may it overwrite a stored one.
+    sync_language: bool = False
     # Raw deep-link payload, opaque to `users` -- advertising resolves it.
     ad_link_code: Optional[str] = None
 
@@ -45,7 +50,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
         async with self._uow:
             existing = await self._user_repository.get_by_telegram_id(data.telegram_id)
             if existing is not None:
-                return existing
+                return await self._sync_profile(existing, data)
 
             is_blocked = await self._blacklist_repository.is_blacklisted_telegram_id(
                 data.telegram_id
@@ -56,7 +61,8 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                 user = await self._user_repository.create(
                     CreateUserDto(
                         telegram_id=data.telegram_id,
-                        name=data.name,
+                        name=clean_telegram_name(data.name, data.telegram_id),
+                        username=data.username,
                         language=data.language,
                         is_blocked=is_blocked,
                     )
@@ -79,3 +85,19 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
             return winner
 
         return user
+
+    async def _sync_profile(self, user: UserDto, data: RegisterTelegramUserDto) -> UserDto:
+        # staff names are set from the dashboard, Telegram doesn't own them
+        name = (
+            clean_telegram_name(data.name, data.telegram_id)
+            if user.role == Role.USER
+            else user.name
+        )
+        language = data.language if data.sync_language else user.language
+        if (user.name, user.username, user.language) == (name, data.username, language):
+            return user
+        updated = await self._user_repository.update_telegram_profile(
+            user.id, name=name, username=data.username, language=language
+        )
+        logger.info(f"User '{user.id}' profile updated from Telegram data")
+        return updated

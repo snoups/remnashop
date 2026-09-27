@@ -1,7 +1,7 @@
 import html
 import logging
 import re
-from typing import Any, Final, Optional
+from typing import Any, Optional
 
 from fluentogram import TranslatorRunner
 from fluentogram.exceptions import KeyNotFoundError
@@ -11,17 +11,15 @@ from app.telegram.dialogs.config_cache import DialogConfigCache
 
 logger = logging.getLogger(__name__)
 
-# Premium emoji in window text needs the glyph in the message plus a custom_emoji
-# entity over it, and aiogram-dialog's NewMessage carries no entities -- so the
-# window renders as HTML and this markup becomes a <tg-emoji> tag. Everything
-# else is escaped first, which is what keeps a variable resolving to "<b>"
-# literal instead of turning into formatting.
-PREMIUM_EMOJI_RE: Final[re.Pattern[str]] = re.compile(r"\[([^\[\]]{1,16})\]\(emoji:(\d{1,24})\)")
-
 
 def render_window_text(runner: TranslatorRunner, key: str, **kwargs: Any) -> str:
+    # Premium emoji in window text needs the glyph in the message plus a
+    # custom_emoji entity over it, and aiogram-dialog's NewMessage carries no
+    # entities -- so the window renders as HTML and the markup becomes a
+    # <tg-emoji> tag. Everything else is escaped first, which is what keeps a
+    # variable resolving to "<b>" literal instead of turning into formatting.
     escaped = html.escape(runner.get(key, **kwargs), quote=False)
-    return PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', escaped)
+    return catalog.PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', escaped)
 
 
 def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Optional[str]:
@@ -56,6 +54,15 @@ def resolve_variable_kwargs(getter_data: dict[str, Any]) -> dict[str, object]:
     substitution already draws from.
     """
     return {key: catalog.get_variable(key)(getter_data) for key in catalog.variable_keys()}
+
+
+def label_with_icon(runner: TranslatorRunner, text_key: str) -> str:
+    """A label for a button the bot hardcodes rather than renders from config.
+    Those never reach ConfigKeyboard, so the icon has to be glued on here or it
+    would silently never show."""
+    label = runner.get(text_key)
+    icon = _optional_translation(runner, catalog.icon_text_key(text_key))
+    return f"{icon} {label}" if icon else label
 
 
 async def render_dialog_buttons(

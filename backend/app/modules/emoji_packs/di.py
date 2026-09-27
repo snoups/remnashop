@@ -3,6 +3,8 @@ from dishka import Provider, Scope, provide
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.emoji_packs.usecases import (
     DeleteEmojiPackUseCase,
+    GetEmojiPackAnimationUseCase,
+    GetEmojiPackThumbnailUseCase,
     ImportEmojiPackUseCase,
     ListEmojiPacksUseCase,
 )
@@ -15,6 +17,8 @@ class EmojiPacksProvider(Provider):
     import_emoji_pack_use_case = provide(ImportEmojiPackUseCase)
     list_emoji_packs_use_case = provide(ListEmojiPacksUseCase)
     delete_emoji_pack_use_case = provide(DeleteEmojiPackUseCase)
+    emoji_pack_thumbnail_use_case = provide(GetEmojiPackThumbnailUseCase)
+    emoji_pack_animation_use_case = provide(GetEmojiPackAnimationUseCase)
 
 
 def get_emoji_packs_providers() -> list[Provider]:

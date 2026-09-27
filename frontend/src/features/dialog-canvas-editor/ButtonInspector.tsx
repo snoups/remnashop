@@ -1,3 +1,4 @@
+import { ArrowRight, Eye, Link2, Palette } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
@@ -15,6 +16,8 @@ import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel"
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { EmojiPicker, type PickedEmoji } from "@shared/ui/EmojiPicker";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Switch } from "@shared/ui/Switch";
 
 function describeUrlError(
   button: DialogButtonItem,
@@ -25,9 +28,11 @@ function describeUrlError(
   if (!button.url_value) return t("dialogs.inspector.buttonUrlEmpty");
   const problem = urlProblem(button.url_value, variableKeys);
   if (problem === null) return null;
-  return problem.kind === "scheme"
-    ? t("dialogs.inspector.buttonUrlScheme", { schemes: URL_SCHEMES.join(", ") })
-    : t("dialogs.inspector.buttonUrlVariable", { name: problem.name });
+  if (problem.kind === "scheme") {
+    return t("dialogs.inspector.buttonUrlScheme", { schemes: URL_SCHEMES.join(", ") });
+  }
+  if (problem.kind === "malformed") return t("dialogs.inspector.buttonUrlMalformed");
+  return t("dialogs.inspector.buttonUrlVariable", { name: problem.name });
 }
 
 interface ButtonInspectorProps {
@@ -35,9 +40,7 @@ interface ButtonInspectorProps {
   windowKind: "seed" | "custom";
   catalog: DialogCatalog;
   entries: TranslationEntry[];
-  locales: string[];
   activeLocale: string;
-  onActiveLocaleChange: (locale: string) => void;
   canEditText: boolean;
   canResetText: boolean;
   canEditButtons: boolean;
@@ -51,9 +54,7 @@ export function ButtonInspector({
   windowKind,
   catalog,
   entries,
-  locales,
   activeLocale,
-  onActiveLocaleChange,
   canEditText,
   canResetText,
   canEditButtons,
@@ -64,14 +65,8 @@ export function ButtonInspector({
   const { t } = useTranslation();
   const linkTypeOptions: DialogButtonItem["link_type"][] =
     windowKind === "custom" ? ["navigate", "url"] : ["action", "navigate", "url"];
-  const { messageId, attributeId } = splitTextKey(button.text_key);
+  const { messageId } = splitTextKey(button.text_key);
   const isTextSeeded = entries.some((e) => e.message_id === messageId);
-  const isLabelEmpty =
-    (
-      entries.find(
-        (e) => e.locale === activeLocale && e.message_id === messageId && e.attribute_id === attributeId,
-      )?.value ?? ""
-    ).trim() === "";
   const urlError = describeUrlError(button, catalog.variable_keys, t);
 
   const valueOf = (key: string): string => {
@@ -115,20 +110,38 @@ export function ButtonInspector({
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        <h3 className="mb-3 text-[13px] font-semibold text-foreground">{t("dialogs.inspector.buttonTitle")}</h3>
+        <div className="mb-4 min-w-0">
+          <span className="block truncate text-sm font-semibold text-foreground">
+            {t("dialogs.inspector.buttonTitle")}
+          </span>
+          <span className="block truncate font-mono text-[11.5px] text-muted-foreground">
+            {button.text_key}
+          </span>
+        </div>
+
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-[13px] font-medium text-foreground/80">
+            {t("dialogs.inspector.enabledLabel")}
+          </span>
+          <Switch
+            checked={!button.is_hidden}
+            onChange={(value) => onChange({ ...button, is_hidden: !value })}
+            disabled={!canEditButtons || button.is_system}
+            ariaLabel={t("dialogs.inspector.enabledLabel")}
+          />
+        </div>
 
         <label className="mb-3 block">
-          <span className="mb-1 block text-[12px] text-muted-foreground">{t("dialogs.inspector.buttonLabel")}</span>
+          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonLabel")}</span>
           <TextEditorPanel
             textKey={button.text_key}
             entries={entries}
-            locales={locales}
             activeLocale={activeLocale}
-            onActiveLocaleChange={onActiveLocaleChange}
             variableKeys={catalog.text_variable_keys}
             canUpdate={isTextSeeded && canEditText}
             canReset={canResetText}
             onSaved={onEntrySaved}
+            required
             fieldAction={
               <EmojiPicker
                 current={iconGlyph || null}
@@ -143,60 +156,53 @@ export function ButtonInspector({
               {t("dialogs.inspector.buttonLabelPending")}
             </p>
           )}
-          {isTextSeeded && isLabelEmpty && (
-            <p className="mt-1 text-[11.5px] text-error">{t("dialogs.inspector.buttonLabelEmpty")}</p>
-          )}
         </label>
 
-        <label className="mb-3 block">
-          <span className="mb-1 block text-[12px] text-muted-foreground">{t("dialogs.inspector.buttonStyle")}</span>
-          <select
-            className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+        <div className="mb-3">
+          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonStyle")}</span>
+          <SelectDropdown
+            icon={Palette}
             value={button.style ?? ""}
             disabled={!canEditButtons}
-            onChange={(event) =>
-              onChange({ ...button, style: event.target.value === "" ? null : (event.target.value as DialogButtonItem["style"]) })
+            placeholder={t("dialogs.inspector.buttonStyleNone")}
+            options={[
+              { value: "", label: t("dialogs.inspector.buttonStyleNone") },
+              { value: "primary", label: "primary" },
+              { value: "success", label: "success" },
+              { value: "danger", label: "danger" },
+            ]}
+            onChange={(value) =>
+              onChange({ ...button, style: value === "" ? null : (value as DialogButtonItem["style"]) })
             }
-          >
-            <option value="">{t("dialogs.inspector.buttonStyleNone")}</option>
-            <option value="primary">primary</option>
-            <option value="success">success</option>
-            <option value="danger">danger</option>
-          </select>
-        </label>
+          />
+        </div>
 
-        <label className="mb-3 block">
-          <span className="mb-1 block text-[12px] text-muted-foreground">{t("dialogs.inspector.buttonCondition")}</span>
-          <select
-            className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+        <div className="mb-3">
+          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonCondition")}</span>
+          <SelectDropdown
+            icon={Eye}
             value={button.visibility_condition ?? ""}
             disabled={!canEditButtons}
-            onChange={(event) => onChange({ ...button, visibility_condition: event.target.value || null })}
-          >
-            <option value="">{t("dialogs.inspector.buttonConditionNone")}</option>
-            {catalog.condition_keys.map((key) => (
-              <option key={key} value={key}>
-                {key}
-              </option>
-            ))}
-          </select>
-        </label>
+            placeholder={t("dialogs.inspector.buttonConditionNone")}
+            options={[
+              { value: "", label: t("dialogs.inspector.buttonConditionNone") },
+              ...catalog.condition_keys.map((key) => ({ value: key, label: key })),
+            ]}
+            onChange={(value) => onChange({ ...button, visibility_condition: value || null })}
+          />
+        </div>
 
-        <label className="mb-3 block">
-          <span className="mb-1 block text-[12px] text-muted-foreground">{t("dialogs.inspector.buttonLinkType")}</span>
-          <select
-            className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+        <div className="mb-3">
+          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonLinkType")}</span>
+          <SelectDropdown
+            icon={Link2}
             value={button.link_type}
             disabled={!canEditButtons || button.link_type === "action"}
-            onChange={(event) => onChange({ ...button, link_type: event.target.value as DialogButtonItem["link_type"] })}
-          >
-            {linkTypeOptions.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </label>
+            placeholder={button.link_type}
+            options={linkTypeOptions.map((type) => ({ value: type, label: type }))}
+            onChange={(value) => onChange({ ...button, link_type: value as DialogButtonItem["link_type"] })}
+          />
+        </div>
 
         {button.link_type === "action" && (
           <p className="mb-3 text-[11.5px] text-muted-foreground">
@@ -205,29 +211,22 @@ export function ButtonInspector({
         )}
 
         {button.link_type === "navigate" && (
-          <label className="mb-3 block">
-            <span className="mb-1 block text-[12px] text-muted-foreground">{t("dialogs.inspector.buttonTarget")}</span>
-            <select
-              className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+          <div className="mb-3">
+            <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonTarget")}</span>
+            <SelectDropdown
+              icon={ArrowRight}
               value={button.target_window_key ?? ""}
               disabled={!canEditButtons}
-              onChange={(event) => onChange({ ...button, target_window_key: event.target.value || null })}
-            >
-              <option value="" disabled>
-                {t("dialogs.inspector.buttonTargetNone")}
-              </option>
-              {catalog.navigable_window_keys.map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
-            </select>
-          </label>
+              placeholder={t("dialogs.inspector.buttonTargetNone")}
+              options={catalog.navigable_window_keys.map((key) => ({ value: key, label: key }))}
+              onChange={(value) => onChange({ ...button, target_window_key: value || null })}
+            />
+          </div>
         )}
 
         {button.link_type === "url" && (
           <label className="mb-3 block">
-            <span className="mb-1 block text-[12px] text-muted-foreground">{t("dialogs.inspector.buttonUrl")}</span>
+            <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonUrl")}</span>
             <input
               type="text"
               value={button.url_value ?? ""}
@@ -254,15 +253,6 @@ export function ButtonInspector({
           </label>
         )}
 
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={button.is_hidden}
-            disabled={!canEditButtons}
-            onChange={(event) => onChange({ ...button, is_hidden: event.target.checked })}
-          />
-          <span className="text-[13px] text-foreground">{t("dialogs.inspector.buttonHidden")}</span>
-        </label>
       </div>
       {canEditButtons && (
         <button

@@ -1,16 +1,27 @@
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BackupKind, Locale, Role
+from app.core.enums import BackupKind, BackupRunStatus, Locale, Role
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
-from app.modules.backups.dto import CreateBackupRunDto, UpdateBackupSettingsDto
+from app.modules.backups.dto import (
+    BackupRunDto,
+    BackupSettingsDto,
+    CreateBackupRunDto,
+    UpdateBackupSettingsDto,
+)
 from app.modules.backups.repository import BackupRepository
 from app.modules.backups.usecases.create_backup_run import CreateBackupRunUseCase
 from app.modules.backups.usecases.delete_backup_run import DeleteBackupRunUseCase
 from app.modules.backups.usecases.get_backup_run import GetBackupRunUseCase
 from app.modules.backups.usecases.get_backup_settings import GetBackupSettingsUseCase
+from app.modules.backups.usecases.get_backup_stats import (
+    GetBackupStatsUseCase,
+    next_scheduled_run,
+)
 from app.modules.backups.usecases.list_backup_runs import ListBackupRunsInput, ListBackupRunsUseCase
 from app.modules.backups.usecases.update_backup_settings import UpdateBackupSettingsUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -145,3 +156,53 @@ async def test_delete_backup_run_does_not_unlink_file_when_commit_fails(
             await use_case(OWNER, created.id)
 
     assert dump_file.exists()
+
+
+async def test_owner_can_get_stats(backup_repository: BackupRepository, uow: UnitOfWork) -> None:
+    stats = await GetBackupStatsUseCase(backup_repository, uow)(OWNER)
+    assert stats.completed_count == 0
+    assert stats.next_run_at is None  # scheduling is off by default
+
+
+async def test_admin_without_grant_cannot_get_stats(
+    backup_repository: BackupRepository, uow: UnitOfWork
+) -> None:
+    with pytest.raises(PermissionDeniedError):
+        await GetBackupStatsUseCase(backup_repository, uow)(ADMIN_NO_GRANT)
+
+
+_NOW = datetime(2026, 9, 25, 10, 48, tzinfo=timezone.utc)
+
+
+def _finished(at: datetime) -> BackupRunDto:
+    return BackupRunDto(
+        id=1, kind=BackupKind.DATABASE, status=BackupRunStatus.COMPLETED, finished_at=at
+    )
+
+
+@pytest.mark.parametrize(
+    ("settings", "latest", "expected"),
+    [
+        (BackupSettingsDto(enabled=False), None, None),
+        (BackupSettingsDto(enabled=True), None, datetime(2026, 9, 25, 11, tzinfo=timezone.utc)),
+        (
+            BackupSettingsDto(enabled=True, interval_hours=24),
+            _finished(datetime(2026, 9, 25, 3, 0, 12, tzinfo=timezone.utc)),
+            datetime(2026, 9, 26, 4, tzinfo=timezone.utc),
+        ),
+        (
+            BackupSettingsDto(enabled=True, interval_hours=6),
+            _finished(_NOW - timedelta(hours=30)),
+            datetime(2026, 9, 25, 11, tzinfo=timezone.utc),
+        ),
+        (
+            BackupSettingsDto(enabled=True, interval_hours=2),
+            _finished(datetime(2026, 9, 25, 10, tzinfo=timezone.utc)),
+            datetime(2026, 9, 25, 12, tzinfo=timezone.utc),
+        ),
+    ],
+)
+def test_next_scheduled_run_lands_on_the_first_due_hourly_tick(
+    settings: BackupSettingsDto, latest: Optional[BackupRunDto], expected: Optional[datetime]
+) -> None:
+    assert next_scheduled_run(settings, latest, _NOW) == expected

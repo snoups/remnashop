@@ -33,6 +33,11 @@ export interface UserListItem {
   login: string | null;
   language: string;
   is_blocked: boolean;
+  personal_discount: number;
+  purchase_discount: number;
+  referral_code?: string | null;
+  points: string;
+  is_trial_available: boolean;
   created_at: string | null;
 }
 

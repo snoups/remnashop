@@ -3,7 +3,7 @@ from typing import Any, Final, Optional
 
 import orjson
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -30,11 +30,13 @@ from app.modules.payments.gateways.common import (
 
 _API_BASE: Final[str] = "https://severpay.io/api/merchant"
 _PAID_STATUS: Final[str] = "success"
+_REPORTED_STATUSES: Final[frozenset[str]] = frozenset({"decline", "fail"})
 _PAYIN_TYPE: Final[str] = "payin"
 _MIN_LIFETIME_MINUTES: Final[int] = 30
 _MAX_LIFETIME_MINUTES: Final[int] = 4320
 
 
+# Docs: https://docs.severpay.io/en/
 class SeverPayGateway(PaymentGateway):
     currency = Currency.RUB
     ack = WebhookAck(body='{"status": true}', media_type="application/json")
@@ -93,6 +95,9 @@ class SeverPayGateway(PaymentGateway):
             reference=str(payin.get("order_id") or ""),
             claims_paid=payin.get("status") == _PAID_STATUS,
             provider_payment_id=str(payment_id),
+            reported_status=PaymentOrderStatus.FAILED
+            if payin.get("status") in _REPORTED_STATUSES
+            else None,
         )
 
     def _webhook_signature_valid(self, data: dict[str, Any], received: str) -> bool:

@@ -1,156 +1,428 @@
-import { Languages } from "lucide-react";
+import { ChevronRight, CircleAlert, Download, Languages, RotateCcw, Upload } from "lucide-react";
+import { motion } from "motion/react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
-import { getErrorMessage } from "@shared/api/http";
+import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { ToolbarButton } from "@features/dialog-canvas-editor/DialogCanvasEditor";
+import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import {
+  exportTranslations,
+  importTranslations,
   listActiveLocales,
   listTranslations,
-  resetTranslation,
+  resetAllTranslations,
   type TranslationEntry,
+  type TranslationsExportPayload,
   updateTranslation,
 } from "@entities/translations/api";
+import { useCurrentUser } from "@entities/user/use-current-user";
+import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { useBounceStrength } from "@shared/lib/bounceState";
+import { localeLabel } from "@shared/i18n/locale-label";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
 
-interface Row {
-  messageId: string;
-  attributeId: string;
-  byLocale: Record<string, TranslationEntry>;
+/** Every other locale starts life as a copy of this one. */
+const SOURCE_LOCALE = "en";
+
+/** Key prefixes are the project's own grouping: msg-, btn-, ntf- and so on. */
+function groupOf(key: string): string {
+  const dash = key.indexOf("-");
+  return dash === -1 ? key : key.slice(0, dash);
 }
 
-function toRows(entries: TranslationEntry[]): Row[] {
-  const rows = new Map<string, Row>();
+function toGroups(
+  entries: TranslationEntry[],
+  excludeKeys: Set<string>,
+): { group: string; keys: string[] }[] {
+  // `btn-menu = ` with nothing but attributes under it is a Fluent grouping
+  // header, not a string anyone edits.
+  const grouping = new Set(entries.filter((e) => e.attribute_id).map((e) => e.message_id));
+  const byGroup = new Map<string, Set<string>>();
   for (const entry of entries) {
-    const key = `${entry.message_id}.${entry.attribute_id}`;
-    const row = rows.get(key) ?? { messageId: entry.message_id, attributeId: entry.attribute_id, byLocale: {} };
-    row.byLocale[entry.locale] = entry;
-    rows.set(key, row);
+    const key = entry.attribute_id ? `${entry.message_id}.${entry.attribute_id}` : entry.message_id;
+    if (excludeKeys.has(key)) continue;
+    if (!entry.attribute_id && grouping.has(entry.message_id)) continue;
+    const group = groupOf(entry.message_id);
+    const keys = byGroup.get(group) ?? new Set<string>();
+    keys.add(key);
+    byGroup.set(group, keys);
   }
-  return [...rows.values()].sort((a, b) => a.messageId.localeCompare(b.messageId));
+  return [...byGroup.entries()]
+    .map(([group, keys]) => ({ group, keys: [...keys].sort() }))
+    .sort((a, b) => a.group.localeCompare(b.group));
 }
 
 export function TranslationsEditorForm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const bounceStrength = useBounceStrength();
+  const [windowsState] = useAsyncResource(listWindows);
   const [localesState, , setLocalesState] = useAsyncResource(listActiveLocales);
-  const [rowsState, reloadRows, setRowsState] = useAsyncResource(listTranslations);
+  const [entriesState, reloadEntries, setEntriesData] = useAsyncResource(listTranslations);
+  const [pickedKey, setSelectedKey] = useState<string | null>(null);
+  const [pickedLocale, setActiveLocale] = useState<string | null>(null);
+  // Same rule as the window tree: a group stays as clicked, otherwise it
+  // follows the selected key.
+  const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>({});
+  const [pendingImport, setPendingImport] = useState<TranslationsExportPayload | null>(null);
+  const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentUserState = useCurrentUser();
+  const permissions =
+    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
 
-  const handleSave = async (row: Row, locale: string, value: string) => {
+  const entries = entriesState.kind === "ready" ? entriesState.data : [];
+  const activeLocales = localesState.kind === "ready" ? localesState.data.active : [];
+  // Everything a window puts on the canvas -- its text, its button labels and
+  // their emoji -- is edited there, so this panel holds the rest: the
+  // notifications, the dynamic lists and the flows that have no window yet.
+  const onCanvas = new Set<string>();
+  if (windowsState.kind === "ready") {
+    for (const window of windowsState.data) {
+      for (const key of windowTextKeys(window)) {
+        onCanvas.add(key);
+        onCanvas.add(iconTextKey(key));
+        onCanvas.add(iconIdTextKey(key));
+      }
+    }
+  }
+  const groups = toGroups(entries, onCanvas);
+  // Nothing picked yet means the first of each -- derived, so a locale that is
+  // switched off or a key that leaves the list cannot stay selected.
+  const activeLocale = pickedLocale ?? activeLocales[0] ?? null;
+  const selectedKey = pickedKey ?? groups[0]?.keys[0] ?? null;
+
+  // A newly enabled locale starts as a copy of English, so "translated" is the
+  // rows somebody has actually changed since.
+  const englishValues = new Map(
+    entries
+      .filter((e) => e.locale === SOURCE_LOCALE)
+      .map((e) => [`${e.message_id}.${e.attribute_id}`, e.value]),
+  );
+  const localeStats = activeLocales.map((locale) => {
+    const rows = entries.filter((e) => e.locale === locale);
+    return {
+      locale,
+      total: rows.length,
+      translated: rows.filter(
+        (e) => e.value !== englishValues.get(`${e.message_id}.${e.attribute_id}`),
+      ).length,
+    };
+  });
+
+  const untranslatedKeys = new Set(
+    activeLocale === SOURCE_LOCALE
+      ? []
+      : entries
+          .filter(
+            (e) =>
+              e.locale === activeLocale &&
+              e.value === englishValues.get(`${e.message_id}.${e.attribute_id}`),
+          )
+          .map((e) => (e.attribute_id ? `${e.message_id}.${e.attribute_id}` : e.message_id)),
+  );
+
+  const isGroupCollapsed = (group: string) =>
+    toggledGroups[group] ?? (selectedKey === null || group !== groupOf(selectedKey));
+
+  const toggleGroup = (group: string) =>
+    setToggledGroups((current) => ({ ...current, [group]: !isGroupCollapsed(group) }));
+
+  const handleExport = async () => {
     try {
-      const updated = await updateTranslation(locale, row.messageId, row.attributeId, value);
-      if (rowsState.kind !== "ready") return;
-      setRowsState(
-        rowsState.data.map((entry) =>
-          entry.locale === locale && entry.message_id === row.messageId && entry.attribute_id === row.attributeId
-            ? updated
-            : entry,
-        ),
+      const payload = await exportTranslations();
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
       );
-      toast.success(t("settings.translationsEditor.saved"));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `translations-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
     }
   };
 
-  const handleReset = async (row: Row, locale: string) => {
+  const handleFileChosen = async (file: File) => {
     try {
-      const reset = await resetTranslation(locale, row.messageId, row.attributeId);
-      if (rowsState.kind !== "ready") return;
-      setRowsState(
-        rowsState.data.map((entry) =>
-          entry.locale === locale && entry.message_id === row.messageId && entry.attribute_id === row.attributeId
-            ? reset
-            : entry,
-        ),
+      const parsed: unknown = JSON.parse(await file.text());
+      if (typeof parsed !== "object" || parsed === null || !("texts" in parsed)) {
+        throw new Error("not a translations export");
+      }
+      setPendingImport(parsed as TranslationsExportPayload);
+    } catch {
+      toast.error(t("dialogs.texts.importInvalid"));
+    }
+  };
+
+  const handleImportConfirmed = async () => {
+    if (pendingImport === null) return;
+    const payload = pendingImport;
+    setPendingImport(null);
+    try {
+      const result = await importTranslations(payload);
+      reloadEntries();
+      toast.success(
+        t("dialogs.texts.imported", { applied: result.applied, skipped: result.skipped }),
       );
-      toast.success(t("settings.translationsEditor.reset"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
     }
+  };
+
+  const handleResetAll = async () => {
+    setIsResetAllConfirmOpen(false);
+    try {
+      await resetAllTranslations();
+      reloadEntries();
+      toast.success(t("dialogs.texts.resetAllDone"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    }
+  };
+
+  const handleEntrySaved = (updated: TranslationEntry) => {
+    if (entriesState.kind !== "ready") return;
+    const next = entriesState.data.filter(
+      (e) =>
+        !(
+          e.locale === updated.locale &&
+          e.message_id === updated.message_id &&
+          e.attribute_id === updated.attribute_id
+        ),
+    );
+    next.push(updated);
+    setEntriesData(next);
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-      <div className="flex items-center gap-2.5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.07] p-4">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <Languages className="size-4" />
         </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("settings.translationsEditor.title")}</h2>
-          <p className="text-[12.5px] text-muted-foreground">{t("settings.translationsEditor.description")}</p>
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-foreground">{t("dialogs.texts.title")}</h2>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+            {t("dialogs.texts.description")}
+          </p>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {permissions.includes("TRANSLATIONS_EXPORT") && (
+            <ToolbarButton
+              icon={Download}
+              label={t("dialogs.toolbar.export")}
+              bounceStrength={bounceStrength}
+              onClick={() => void handleExport()}
+            />
+          )}
+          {permissions.includes("TRANSLATIONS_IMPORT") && (
+            <ToolbarButton
+              icon={Upload}
+              label={t("dialogs.toolbar.import")}
+              bounceStrength={bounceStrength}
+              onClick={() => fileInputRef.current?.click()}
+            />
+          )}
+          {permissions.includes("TRANSLATIONS_RESET_ALL") && (
+            <ToolbarButton
+              icon={RotateCcw}
+              label={t("dialogs.inspector.resetAll")}
+              danger
+              bounceStrength={bounceStrength}
+              onClick={() => setIsResetAllConfirmOpen(true)}
+            />
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              // Clear it so picking the same file twice in a row still fires.
+              event.target.value = "";
+              if (file) void handleFileChosen(file);
+            }}
+          />
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-4">
-        {localesState.kind === "ready" && (
-          <LocalesManager
-            locales={localesState.data}
-            onChange={(locales) => {
-              setLocalesState(locales);
-              reloadRows();
-            }}
-          />
-        )}
-
-        {rowsState.kind === "loading" && (
-          <Spinner />
-        )}
-        {rowsState.kind === "error" && (
-          <p className="text-sm text-error">{t("settings.translationsEditor.loadError")}</p>
-        )}
-        {rowsState.kind === "ready" && localesState.kind === "ready" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase text-muted-foreground">
-                  <th className="p-2">{"key"}</th>
-                  {localesState.data.active.map((locale) => (
-                    <th key={locale} className="p-2">
-                      {locale}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {toRows(rowsState.data).map((row) => (
-                  <tr key={`${row.messageId}.${row.attributeId}`} className="border-t border-border">
-                    <td className="p-2 font-mono text-xs text-foreground/80">
-                      {row.attributeId ? `${row.messageId}.${row.attributeId}` : row.messageId}
-                    </td>
-                    {localesState.data.active.map((locale) => {
-                      const entry = row.byLocale[locale];
-                      return (
-                        <td key={locale} className="p-2">
-                          <div className="flex items-center gap-1">
-                            <input
-                              key={entry?.value ?? ""}
-                              defaultValue={entry?.value ?? ""}
-                              onBlur={(event) => {
-                                if (event.target.value === (entry?.value ?? "")) return;
-                                void handleSave(row, locale, event.target.value);
-                              }}
-                              className="w-48 rounded-lg border border-border bg-input/60 px-2 py-1 text-xs"
+      <div className="flex min-h-0 flex-1 flex-col pt-4 lg:flex-row">
+        <aside className="max-h-72 shrink-0 overflow-y-auto border-b border-white/[0.08] px-4 pb-4 lg:max-h-none lg:w-[27.7%] lg:overflow-y-visible lg:border-b-0 lg:pr-2">
+          <div className="flex flex-col gap-1.5">
+            {groups.map(({ group, keys }) => {
+              const isCollapsed = isGroupCollapsed(group);
+              return (
+                <div key={group}>
+                  <motion.button
+                    type="button"
+                    onClick={() => toggleGroup(group)}
+                    initial="rest"
+                    whileTap="tap"
+                    className="group relative isolate flex w-full cursor-pointer items-center gap-1 rounded-full px-1.5 py-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
+                  >
+                    <motion.span
+                      aria-hidden
+                      variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+                      className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
+                    />
+                    <ChevronRight
+                      className={`relative z-10 size-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+                    />
+                    <span className="relative z-10 truncate">{group}</span>
+                    {keys.some((key) => untranslatedKeys.has(key)) && (
+                      <CircleAlert
+                        aria-label={t("dialogs.texts.untranslated")}
+                        className="relative z-10 size-3 shrink-0 text-warning"
+                      />
+                    )}
+                    <span className="relative z-10 ml-auto text-[10.5px] tabular-nums opacity-70">
+                      {keys.length}
+                    </span>
+                  </motion.button>
+                  {!isCollapsed && (
+                    <div className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
+                      {keys.map((key) => (
+                        <motion.button
+                          key={key}
+                          type="button"
+                          onClick={() => setSelectedKey(key)}
+                          initial="rest"
+                          whileTap="tap"
+                          className="group relative isolate flex min-w-0 cursor-pointer items-center rounded-full"
+                        >
+                          <motion.span
+                            aria-hidden
+                            variants={{
+                              rest: { scale: 1 },
+                              tap: { scale: 1 + 0.05 * bounceStrength },
+                            }}
+                            className={`absolute inset-0 rounded-full transition-colors ${
+                              key === selectedKey ? "bg-accent" : "group-hover:bg-white/[0.04]"
+                            }`}
+                          />
+                          <span
+                            className={`relative z-10 min-w-0 flex-1 truncate px-2.5 py-1.5 text-left font-mono text-[12px] ${
+                              key === selectedKey
+                                ? "font-medium text-primary"
+                                : "text-foreground/80"
+                            }`}
+                          >
+                            {key}
+                          </span>
+                          {untranslatedKeys.has(key) && (
+                            <CircleAlert
+                              aria-label={t("dialogs.texts.untranslated")}
+                              className="relative z-10 mr-2.5 size-3.5 shrink-0 text-warning"
                             />
-                            <button
-                              type="button"
-                              disabled={entry?.value === entry?.default_value}
-                              onClick={() => void handleReset(row, locale)}
-                              className="text-[11px] text-foreground/60 hover:text-foreground disabled:opacity-30"
-                            >
-                              {t("settings.translationsEditor.resetToDefault")}
-                            </button>
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-2 pb-4">
+          {entriesState.kind === "loading" && <Spinner />}
+          {entriesState.kind === "error" && (
+            <p className="text-sm text-error">{t("dialogs.texts.loadError")}</p>
+          )}
+          {activeLocales.length > 1 && (
+            <div className="w-full max-w-sm">
+              <PillTabs
+                items={activeLocales.map((locale) => ({
+                  key: locale,
+                  label: localeLabel(locale, i18n.language),
+                }))}
+                activeKey={activeLocale}
+                onSelect={setActiveLocale}
+              />
+            </div>
+          )}
+          {selectedKey !== null && activeLocale !== null && (
+            <div className="w-full max-w-sm rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+              <TextEditorPanel
+                // Remounts on key or locale change so the draft never carries
+                // one string's text over to another.
+                key={`${selectedKey}:${activeLocale}`}
+                textKey={selectedKey}
+                entries={entries}
+                activeLocale={activeLocale}
+                variableKeys={[]}
+                multiline
+                emojiInsert
+                canUpdate
+                canReset
+                save={updateTranslation}
+                onSaved={handleEntrySaved}
+              />
+            </div>
+          )}
+        </div>
+
+        <aside className="flex shrink-0 flex-col gap-3 border-t border-white/[0.08] pr-4 pb-4 lg:w-[27.7%] lg:border-t-0">
+          {localesState.kind === "ready" && (
+            <div>
+              <LocalesManager
+                locales={localesState.data}
+                onChange={(locales) => {
+                  setLocalesState(locales);
+                  reloadEntries();
+                }}
+              />
+            </div>
+          )}
+          {localeStats.length > 0 && (
+            <ul className="flex flex-col divide-y divide-white/[0.06] rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+              {localeStats.map(({ locale, total, translated }) => (
+                <li key={locale} className="flex flex-wrap items-baseline gap-x-2 px-3.5 py-2.5">
+                  <span className="truncate text-[13px] font-medium text-foreground">
+                    {localeLabel(locale, i18n.language)}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                    {locale === SOURCE_LOCALE
+                      ? t("dialogs.texts.localeSource", { total })
+                      : t("dialogs.texts.localeTranslated", { translated, total })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
       </div>
+
+      {pendingImport !== null && (
+        <ConfirmDialog
+          title={t("dialogs.toolbar.import")}
+          message={t("dialogs.texts.importConfirm")}
+          confirmLabel={t("dialogs.toolbar.importConfirmButton")}
+          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          onConfirm={() => void handleImportConfirmed()}
+          onCancel={() => setPendingImport(null)}
+        />
+      )}
+      {isResetAllConfirmOpen && (
+        <ConfirmDialog
+          title={t("dialogs.inspector.resetAll")}
+          message={t("dialogs.texts.resetAllConfirm")}
+          confirmLabel={t("dialogs.inspector.resetAllConfirmButton")}
+          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          danger
+          onConfirm={() => void handleResetAll()}
+          onCancel={() => setIsResetAllConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 }

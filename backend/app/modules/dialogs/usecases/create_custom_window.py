@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from redis.asyncio import Redis
 
+from app.core.constants import DEFAULT_BANNER_NAME
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -17,8 +18,10 @@ from app.modules.users import UserDto
 
 @dataclass(frozen=True, kw_only=True)
 class CreateCustomDialogWindowInput:
-    title_text: str
-    banner_name: Optional[str] = None
+    name: str
+    # Every window starts on the shared banner; the inspector is where an
+    # admin moves it to its own or turns it off.
+    banner_name: Optional[str] = DEFAULT_BANNER_NAME
 
 
 class CreateCustomDialogWindowUseCase(UseCase[CreateCustomDialogWindowInput, DialogWindowDto]):
@@ -47,11 +50,9 @@ class CreateCustomDialogWindowUseCase(UseCase[CreateCustomDialogWindowInput, Dia
             locales = await self._settings_repository.list_active_locales()
         async with self._uow:
             for locale in locales:
-                await self._translations_repository.seed_missing(
-                    locale, text_key, "", data.title_text
-                )
+                await self._translations_repository.seed_missing(locale, text_key, "", data.name)
             window = await self._dialog_repository.create_custom_window(
-                key, CreateCustomWindowDto(banner_name=data.banner_name)
+                key, CreateCustomWindowDto(banner_name=data.banner_name, name=data.name)
             )
         await publish_dialog_change(self._redis)
         return window

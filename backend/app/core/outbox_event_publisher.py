@@ -12,7 +12,15 @@ _SKIPPED_PAYLOAD_FIELDS: Final[set[str]] = {"event_id", "occurred_at", "ip_addre
 
 
 def _sanitize_user(user: Actor) -> dict[str, Any]:
-    return {"id": user.id, "login": user.login, "name": user.name, "role": str(user.role)}
+    return {
+        "id": user.id,
+        "login": user.login,
+        "name": user.name,
+        "role": str(user.role),
+        "telegram_id": user.telegram_id,
+        "username": getattr(user, "username", None),  # not on SyntheticActor
+        "email": user.email,
+    }
 
 
 def _build_payload(event: BaseEvent) -> dict[str, Any]:

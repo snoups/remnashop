@@ -1,81 +1,144 @@
-import { useState } from "react";
+import { Check, ChevronDown, Globe } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { addLocale, type ActiveLocalesResult, removeLocale } from "@entities/translations/api";
 import { getErrorMessage } from "@shared/api/http";
+import { localeLabel } from "@shared/i18n/locale-label";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
+import { useClickOutside } from "@shared/lib/use-click-outside";
+import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 
 interface LocalesManagerProps {
   locales: ActiveLocalesResult;
   onChange: (locales: ActiveLocalesResult) => void;
 }
 
+/** The TranslatorHub's root locale -- the backend refuses to deactivate it. */
+const DEFAULT_LOCALE = "en";
+
 export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
-  const { t } = useTranslation();
-  const [selected, setSelected] = useState("");
-  // `selected` only holds an explicit pick; the first available locale is the
-  // implicit one, so adding never submits a code that just left the list.
-  const value = locales.available.includes(selected) ? selected : (locales.available[0] ?? "");
+  const { t, i18n } = useTranslation();
+  const bounceStrength = useBounceStrength();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Portalled and fixed: the editor panel clips its overflow, so a popover
+  // positioned in place gets cut off at the panel's edge.
+  // measured on open only -- reposition on scroll/resize if the page
+  // ever scrolls out from under it.
+  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  );
 
-  const handleAdd = async () => {
-    if (!value) return;
+  useClickOutside([ref, popoverRef], isOpen, () => setIsOpen(false));
+  useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
+
+  const toggleOpen = () => {
+    const trigger = triggerRef.current?.getBoundingClientRect();
+    if (trigger) {
+      setAnchor({ top: trigger.bottom + 8, left: trigger.left, width: trigger.width });
+    }
+    setIsOpen((open) => !open);
+  };
+
+  const byLabel = (a: string, b: string) => {
+    if (a === DEFAULT_LOCALE || b === DEFAULT_LOCALE) return a === DEFAULT_LOCALE ? -1 : 1;
+    return localeLabel(a, i18n.language).localeCompare(localeLabel(b, i18n.language));
+  };
+  const active = [...locales.active].sort(byLabel);
+  const available = [...locales.available].sort(byLabel);
+
+  const toggle = async (locale: string, isActive: boolean) => {
+    setIsPending(true);
     try {
-      setSelected("");
-      onChange(await addLocale(value));
+      onChange(isActive ? await removeLocale(locale) : await addLocale(locale));
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    } finally {
+      setIsPending(false);
     }
   };
 
-  const handleRemove = async (locale: string) => {
-    try {
-      onChange(await removeLocale(locale));
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
-    }
-  };
+  const row = (locale: string, isActive: boolean) => (
+    <button
+      key={locale}
+      type="button"
+      role="option"
+      aria-selected={isActive}
+      disabled={locale === DEFAULT_LOCALE || isPending}
+      onClick={() => void toggle(locale, isActive)}
+      className="flex w-full items-center gap-2.5 rounded-popover-item px-2.5 py-2 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
+    >
+      <span
+        aria-hidden
+        className={`flex size-4 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
+          isActive ? "border-primary bg-primary/20 text-primary" : "border-white/[0.18]"
+        }`}
+      >
+        {isActive && <Check className="size-3" />}
+      </span>
+      <span className="truncate">{localeLabel(locale, i18n.language)}</span>
+      <span className="ml-auto shrink-0 text-[11px] uppercase tabular-nums opacity-60">
+        {locale}
+      </span>
+    </button>
+  );
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {locales.active.map((locale) => (
-        <span
-          key={locale}
-          className="flex items-center gap-1 rounded-full border border-border bg-input/60 px-3 py-1 text-xs font-medium uppercase"
-        >
-          {locale}
-          {locale !== "en" && (
-            <button
-              type="button"
-              onClick={() => void handleRemove(locale)}
-              aria-label={t("settings.translationsEditor.removeLocale")}
-              className="text-foreground/60 hover:text-foreground"
+    <div ref={ref} onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}>
+      <motion.button
+        ref={triggerRef}
+        type="button"
+        onClick={toggleOpen}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        {...bounceTap(bounceStrength)}
+        className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] px-4 text-[13px] text-foreground/80 transition-colors hover:bg-white/[0.06]"
+      >
+        <Globe className="size-3.5" />
+        {t("dialogs.texts.languages", { total: active.length })}
+        <ChevronDown
+          className={`ml-auto size-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </motion.button>
+
+      {/* body, not #dialog-root: that node sits inside the shell's
+          backdrop-blur wrapper, which is a containing block for `fixed` and
+          would offset these viewport coordinates. */}
+      {createPortal(
+        <AnimatePresence>
+          {isOpen && anchor && (
+            <motion.div
+              ref={popoverRef}
+              initial={{ opacity: 0, scale: 0.96, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -4 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              style={{ transformOrigin: "top", ...anchor }}
+              role="listbox"
+              aria-multiselectable
+              onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
+              className="fixed z-30 min-w-40 rounded-popover border border-white/[0.14] bg-popover/60 p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150"
             >
-              ×
-            </button>
+              {/* the scroll lives inside the padding -- on the popover itself the
+                  scrollbar column paints over the rounded right corners */}
+              <div className="max-h-72 overflow-y-auto">
+                {active.map((locale) => row(locale, true))}
+                {active.length > 0 && available.length > 0 && (
+                  <div aria-hidden className="my-1 h-px bg-white/[0.08]" />
+                )}
+                {available.map((locale) => row(locale, false))}
+              </div>
+            </motion.div>
           )}
-        </span>
-      ))}
-      {locales.available.length > 0 && (
-        <div className="flex items-center gap-2">
-          <select
-            value={value}
-            onChange={(event) => setSelected(event.target.value)}
-            className="rounded-full border border-border bg-input/60 px-2 py-1 text-xs uppercase"
-          >
-            {locales.available.map((locale) => (
-              <option key={locale} value={locale}>
-                {locale}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => void handleAdd()}
-            className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20"
-          >
-            {t("settings.translationsEditor.addLocale")}
-          </button>
-        </div>
+        </AnimatePresence>,
+        document.body,
       )}
     </div>
   );

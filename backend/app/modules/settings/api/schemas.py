@@ -11,14 +11,20 @@ _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
 class BotSettingsResponse(BaseModel):
     is_configured: bool
     drop_pending_updates: bool
-    banners_enabled: bool
+
+
+class BotStatusResponse(BaseModel):
+    is_configured: bool
+    is_running: bool
+    webhook_url: Optional[str]
+    pending_update_count: int
+    error: Optional[str]
 
 
 class UpdateBotSettingsRequest(BaseModel):
     token: Optional[str] = Field(default=None, min_length=1)
     secret_token: Optional[str] = Field(default=None, min_length=1)
     drop_pending_updates: Optional[bool] = None
-    banners_enabled: Optional[bool] = None
 
 
 class ShopSettingsResponse(BaseModel):

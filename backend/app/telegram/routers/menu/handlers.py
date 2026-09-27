@@ -1,7 +1,7 @@
 from typing import Final
 
 from aiogram import Router
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.kbd import Button, Keyboard
@@ -31,7 +31,6 @@ router = Router(name=__name__)
 
 
 @router.message(CommandStart())
-@router.message(Command("menu"))
 async def on_start_command(message: Message, user: UserDto, dialog_manager: DialogManager) -> None:
     logger.info(f"{user.log} Started menu dialog")
     await dialog_manager.start(

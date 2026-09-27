@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
 
 import { useClickOutside } from "@shared/lib/use-click-outside";
+import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 
 interface ColorPickerFieldProps {
   value: string;
@@ -20,6 +21,7 @@ export function ColorPickerField({ value, onChange, ariaLabel, displayValue }: C
   const ref = useRef<HTMLDivElement>(null);
 
   useClickOutside(ref, isOpen, () => setIsOpen(false));
+  useCloseOnScroll(isOpen, ref, () => setIsOpen(false));
 
   return (
     <div ref={ref} className="relative">

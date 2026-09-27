@@ -297,12 +297,8 @@ forbidden_modules =
     app.modules.translations.dto
     app.modules.translations.di
     app.modules.translations.usecases
-    app.modules.translations.tasks
-    app.modules.translations.events
     app.modules.translations.seed
     app.modules.translations.serializer
-ignore_imports =
-    app.core.event_bus -> app.modules.translations.events
 
 [importlinter:contract:gateways-encapsulation]
 name = gateways module internals are private

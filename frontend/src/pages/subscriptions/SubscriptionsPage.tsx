@@ -18,6 +18,9 @@ import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { useUrlSearch } from "@shared/lib/use-url-search";
+import { SearchField } from "@shared/ui/SearchField";
 import { Spinner } from "@shared/ui/Spinner";
 
 type LoadState =
@@ -29,6 +32,7 @@ const STATUSES: SubscriptionStatus[] = ["ACTIVE", "LIMITED", "EXPIRED", "DISABLE
 // Only surface the dimmed-loading state once a refetch has been in flight
 // this long -- matches UsersPage's own debounce-flash guard.
 const FETCH_INDICATOR_DELAY_MS = 150;
+const FILTER_DEBOUNCE_MS = 200;
 
 const STATUS_BADGE_CLASSNAME: Record<SubscriptionStatus, string> = {
   ACTIVE: "border-success/30 bg-success/10 text-success",
@@ -56,6 +60,7 @@ export function SubscriptionsPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [status, setStatus] = useState("");
+  const [searchInput, setSearchInput] = useUrlSearch();
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   // Bumped on every primary load (mount, filter change); a load-more that
@@ -73,9 +78,13 @@ export function SubscriptionsPage() {
 
   const unlimitedLabel = t("subscriptions.unlimited");
 
-  const baseFilters = useMemo<{ status?: SubscriptionStatus }>(
-    () => ({ status: (status || undefined) as SubscriptionStatus | undefined }),
-    [status],
+  const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
+  const baseFilters = useMemo<{ status?: SubscriptionStatus; search?: string }>(
+    () => ({
+      status: (status || undefined) as SubscriptionStatus | undefined,
+      search: debouncedSearch || undefined,
+    }),
+    [status, debouncedSearch],
   );
 
   useEffect(() => {
@@ -159,6 +168,13 @@ export function SubscriptionsPage() {
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
         <div className="flex flex-wrap items-end gap-3">
+          <SearchField
+            id="subscriptions-search"
+            label={t("subscriptions.filters.search")}
+            placeholder={t("subscriptions.filters.searchPlaceholder")}
+            value={searchInput}
+            onChange={setSearchInput}
+          />
           <div className="flex min-w-40 flex-1 flex-col gap-1.5">
             <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("subscriptions.filters.status")}

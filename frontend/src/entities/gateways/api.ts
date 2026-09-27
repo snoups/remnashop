@@ -17,6 +17,7 @@ export interface GatewayFieldSpec {
 
 export interface GatewayCatalogEntry {
   type: string;
+  webhook_url: string | null;
   fields: GatewayFieldSpec[];
 }
 
@@ -45,6 +46,21 @@ export function updateGatewaySettings(
 
 export function toggleGatewayActive(type: string): Promise<Gateway> {
   return apiPost<Gateway, Record<string, never>>(`/gateways/${type}/toggle`, {});
+}
+
+export interface TestPayment {
+  order_id: number;
+  confirmation_url: string | null;
+}
+
+export type TestPaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELED" | "REFUNDED";
+
+export function createTestPayment(type: string): Promise<TestPayment> {
+  return apiPost<TestPayment, Record<string, never>>(`/gateways/${type}/test`, {});
+}
+
+export function getTestPaymentStatus(orderId: number): Promise<{ status: TestPaymentStatus }> {
+  return apiGet<{ status: TestPaymentStatus }>(`/gateways/test-payments/${orderId}`);
 }
 
 export function reorderGateways(types: string[]): Promise<Gateway[]> {

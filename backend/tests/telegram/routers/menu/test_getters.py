@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fluentogram.exceptions import KeyNotFoundError
 
 from app.core.constants import USER_KEY
 from app.core.enums import Locale
@@ -8,6 +9,19 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.flows.menu import register_menu_metadata
 from app.modules.subscriptions import GetAvailableTrialUseCase
 from app.telegram.routers.menu.getters import device_confirm_delete_getter, menu_getter
+
+
+def _echo_translator() -> MagicMock:
+    """Echoes the key back, the way the real runner would return a value -- but
+    raises on the icon keys nothing seeded, which is what fluentogram does and
+    what label_with_icon relies on to tell "no icon" from "an icon"."""
+
+    def get(key: str, **kwargs: object) -> str:
+        if key.endswith("-icon") or key.endswith("-icon-id"):
+            raise KeyNotFoundError(key)
+        return key
+
+    return MagicMock(get=get)
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +36,7 @@ def _menu_catalog():
 
 
 async def test_menu_getter_includes_rendered_buttons(
-    config, banner_repository, settings_repository, subscription_repository, monkeypatch
+    config, banner_repository, subscription_repository, monkeypatch
 ) -> None:
     dialog_manager = MagicMock()
     dialog_manager.middleware_data = {USER_KEY: MagicMock(id=1, language=Locale.EN, name="Test")}
@@ -39,13 +53,12 @@ async def test_menu_getter_includes_rendered_buttons(
     get_available_trial.return_value = MagicMock(is_trial_available=False, plan=None)
 
     i18n = MagicMock()
-    i18n.get_translator_by_locale.return_value = MagicMock(get=lambda key, **kwargs: key)
+    i18n.get_translator_by_locale.return_value = _echo_translator()
 
     data = await menu_getter.__dishka_orig_func__(
         dialog_manager=dialog_manager,
         config=config,
         banner_repository=banner_repository,
-        settings_repository=settings_repository,
         subscription_repository=subscription_repository,
         get_available_trial=get_available_trial,
         i18n=i18n,
@@ -60,7 +73,7 @@ async def test_menu_getter_includes_rendered_buttons(
 
 
 async def test_menu_getter_passes_name_variable_to_menu_text(
-    config, banner_repository, settings_repository, subscription_repository, monkeypatch
+    config, banner_repository, subscription_repository, monkeypatch
 ) -> None:
     # `name` is a permanently registered catalog variable (menu.register_menu_metadata),
     # so this test relies on that registration rather than adding a scoped one.
@@ -97,7 +110,6 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
         dialog_manager=dialog_manager,
         config=config,
         banner_repository=banner_repository,
-        settings_repository=settings_repository,
         subscription_repository=subscription_repository,
         get_available_trial=get_available_trial,
         i18n=i18n,

@@ -3,7 +3,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.enums import Locale
+from app.core.enums import AppearanceResetScope, Locale
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.settings.api.schemas import (
     ActiveLocalesResponse,
@@ -11,6 +11,7 @@ from app.modules.settings.api.schemas import (
     AppearanceResponse,
     BotCommandItem,
     BotSettingsResponse,
+    BotStatusResponse,
     OAuthSettingsResponse,
     ShopSettingsResponse,
     UpdateAppearanceRequest,
@@ -32,7 +33,9 @@ from app.modules.settings.usecases import (
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
     GetBotCommandsUseCase,
+    GetBotLogsUseCase,
     GetBotSettingsUseCase,
+    GetBotStatusUseCase,
     GetOAuthSettingsUseCase,
     GetShopSettingsUseCase,
     ListActiveLocalesUseCase,
@@ -70,8 +73,32 @@ async def get_bot_settings(
     return BotSettingsResponse(
         is_configured=settings.is_configured,
         drop_pending_updates=settings.drop_pending_updates,
-        banners_enabled=settings.banners_enabled,
     )
+
+
+@router.get("/bot/status", response_model=BotStatusResponse)
+@inject
+async def get_bot_status(
+    use_case: FromDishka[GetBotStatusUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> BotStatusResponse:
+    status = await use_case(actor)
+    return BotStatusResponse(
+        is_configured=status.is_configured,
+        is_running=status.is_running,
+        webhook_url=status.webhook_url,
+        pending_update_count=status.pending_update_count,
+        error=status.error,
+    )
+
+
+@router.get("/bot/logs", response_model=list[str])
+@inject
+async def get_bot_logs(
+    use_case: FromDishka[GetBotLogsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> list[str]:
+    return await use_case(actor)
 
 
 @router.put("/bot", response_model=BotSettingsResponse)
@@ -87,13 +114,11 @@ async def update_bot_settings(
             token=payload.token,
             secret_token=payload.secret_token,
             drop_pending_updates=payload.drop_pending_updates,
-            banners_enabled=payload.banners_enabled,
         ),
     )
     return BotSettingsResponse(
         is_configured=settings.is_configured,
         drop_pending_updates=settings.drop_pending_updates,
-        banners_enabled=settings.banners_enabled,
     )
 
 
@@ -161,9 +186,10 @@ async def restart_bot(
 @inject
 async def get_bot_commands(
     use_case: FromDishka[GetBotCommandsUseCase],
+    default_order: bool = False,
     actor: UserDto = Depends(require_admin),
 ) -> list[BotCommandItem]:
-    commands = await use_case(actor)
+    commands = await use_case(actor, default_order)
     return [BotCommandItem(command=item.command, enabled=item.enabled) for item in commands]
 
 
@@ -327,9 +353,10 @@ async def update_appearance_settings(
 @inject
 async def reset_appearance_settings(
     use_case: FromDishka[ResetAppearanceSettingsUseCase],
+    scope: AppearanceResetScope,
     actor: UserDto = Depends(require_admin),
 ) -> AppearanceResponse:
-    settings = await use_case(actor)
+    settings = await use_case(actor, scope)
     return _to_appearance_response(settings)
 
 

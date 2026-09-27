@@ -1,3 +1,4 @@
+import { getDebugState } from "@shared/lib/debug-bar";
 import { clearAccessToken, getAccessToken, saveAccessToken } from "@shared/lib/token-storage";
 
 export const BASE_URL = "/api/v1";
@@ -113,6 +114,11 @@ async function sendRequest(
   init: RequestInit | undefined,
   bearer: string | null,
 ): Promise<{ response: Response; data: unknown }> {
+  const { apiFailure, latency } = getDebugState();
+  if (latency) await new Promise((resolve) => setTimeout(resolve, latency));
+  if (apiFailure === "network") throw new NetworkError("Forced failure (debug bar)");
+  if (apiFailure === "server") throw new ApiError(500, "Forced failure (debug bar)");
+
   const headers = new Headers(init?.headers);
   if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
 

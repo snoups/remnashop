@@ -1,6 +1,7 @@
 import { useContext } from "react";
 
 import type { AppearanceSettings } from "@entities/appearance/api";
+import { useShaderMuted } from "@shared/lib/shader-mute";
 import type { AsyncState } from "@shared/lib/use-async-resource";
 
 import { AppearanceContext, AppearancePreviewContext, AppearanceReloadContext, type AppearancePreview } from "./context";
@@ -59,9 +60,11 @@ export function useEffectiveShaderPalette(): string[] | null {
 }
 
 // Same idea, for the shader's on/off toggle. Defaults to true while loading
-// or unset, matching the backend's own default.
+// or unset, matching the backend's own default. The per-viewer mute (the
+// header's quick toggle) wins over both -- it's the local escape hatch.
 export function useEffectiveShaderEnabled(): boolean {
   const state = useAppearance();
   const { previewShaderEnabled } = useAppearancePreview();
-  return previewShaderEnabled ?? (state.kind === "ready" ? state.data.shader_enabled : true);
+  const muted = useShaderMuted();
+  return !muted && (previewShaderEnabled ?? (state.kind === "ready" ? state.data.shader_enabled : true));
 }

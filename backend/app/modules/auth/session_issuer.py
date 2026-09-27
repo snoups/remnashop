@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 
 from app.core.config import AppConfig
@@ -11,6 +11,7 @@ from app.core.security import (
     generate_refresh_token,
     hash_refresh_token,
 )
+from app.core.utils.time import datetime_now
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 
@@ -35,7 +36,7 @@ class SessionIssuer:
         self, user_id: int, ip_address: str, user_agent: Optional[str]
     ) -> IssuedSession:
         refresh_token = generate_refresh_token()
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=TTL_30D)
+        expires_at = datetime_now() + timedelta(seconds=TTL_30D)
 
         async with self._uow:
             await self._session_repository.revoke_active_by_fingerprint(

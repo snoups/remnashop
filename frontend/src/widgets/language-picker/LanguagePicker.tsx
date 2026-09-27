@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@shared/i18n";
 import { useClickOutside } from "@shared/lib/use-click-outside";
+import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: "English",
@@ -17,6 +18,7 @@ export function LanguagePicker() {
   const ref = useRef<HTMLDivElement>(null);
 
   useClickOutside(ref, isOpen, () => setIsOpen(false));
+  useCloseOnScroll(isOpen, ref, () => setIsOpen(false));
 
   const currentLanguage = (i18n.resolvedLanguage ?? "en") as SupportedLanguage;
   const currentLanguageLabel = currentLanguage.toUpperCase();

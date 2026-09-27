@@ -10,11 +10,13 @@ from app.modules.users.usecases import (
     DemoteAdminUseCase,
     GetCurrentUserUseCase,
     ListAdminsUseCase,
+    ListBlacklistMatchesUseCase,
     ListUsersUseCase,
     PromoteToAdminUseCase,
     RegisterTelegramUserUseCase,
     SetUserPersonalDiscountUseCase,
     UnblockAllUsersUseCase,
+    UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
     UpdateAdminUseCase,
     UpdateOwnProfileUseCase,
@@ -29,6 +31,7 @@ class UsersProvider(Provider):
     get_current_user_use_case = provide(GetCurrentUserUseCase)
     list_admins_use_case = provide(ListAdminsUseCase)
     list_users_use_case = provide(ListUsersUseCase)
+    list_blacklist_matches_use_case = provide(ListBlacklistMatchesUseCase)
     create_admin_use_case = provide(CreateAdminUseCase)
     promote_to_admin_use_case = provide(PromoteToAdminUseCase)
     update_admin_use_case = provide(UpdateAdminUseCase)
@@ -43,6 +46,7 @@ class UsersProvider(Provider):
     unblock_user_use_case = provide(UnblockUserUseCase)
     bulk_block_users_use_case = provide(BulkBlockUsersUseCase)
     unblock_all_users_use_case = provide(UnblockAllUsersUseCase)
+    unblock_blacklist_matches_use_case = provide(UnblockBlacklistMatchesUseCase)
 
 
 def get_users_providers() -> list[Provider]:

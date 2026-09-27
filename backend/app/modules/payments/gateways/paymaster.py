@@ -26,6 +26,7 @@ _API_BASE: Final[str] = "https://paymaster.ru/api/v2"
 _PAID_STATUS: Final[str] = "Settled"
 
 
+# Docs: https://paymaster.ru/docs/en/api
 class PayMasterGateway(PaymentGateway):
     currency = Currency.RUB
 
@@ -94,6 +95,6 @@ class PayMasterGateway(PaymentGateway):
             paid=data.get("status") == _PAID_STATUS,
             amount=to_decimal(amount.get("value")),
             currency=amount.get("currency"),
-            reference=str(order_no) if order_no else order.idempotency_key,
+            reference=str(order_no or ""),
             provider_payment_id=str(data.get("id") or order.external_payment_id),
         )

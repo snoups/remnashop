@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,10 @@ from app.modules.advertising.dto import (
     CreateAdLinkDto,
     UpdateAdLinkDto,
 )
+
+
+def _since(created_from: Optional[datetime]) -> list[ColumnElement[bool]]:
+    return [AdLinkAttribution.created_at >= created_from] if created_from is not None else []
 
 
 class AdLinkRepository:
@@ -135,32 +139,58 @@ class AdLinkRepository:
         await self.session.refresh(row)
         return self._attribution_to_dto(row)
 
-    async def count_attributions(self, ad_link_id: int) -> int:
+    async def list_all(self, *, is_active: Optional[bool] = None) -> list[AdLinkDto]:
+        filters = [AdLink.is_active == is_active] if is_active is not None else []
+        rows = (await self.session.scalars(select(AdLink).where(*filters))).all()
+        return [self._to_dto(row) for row in rows]
+
+    async def count_attributions(
+        self, ad_link_id: int, *, created_from: Optional[datetime] = None
+    ) -> int:
         stmt = (
             select(func.count())
             .select_from(AdLinkAttribution)
-            .where(AdLinkAttribution.ad_link_id == ad_link_id)
+            .where(AdLinkAttribution.ad_link_id == ad_link_id, *_since(created_from))
         )
         return int(await self.session.scalar(stmt) or 0)
 
-    async def count_attributions_by_channel(self, ad_link_id: int) -> dict[AdLinkChannel, int]:
+    async def count_attributions_by_channel(
+        self, ad_link_id: int, *, created_from: Optional[datetime] = None
+    ) -> dict[AdLinkChannel, int]:
         stmt = (
             select(AdLinkAttribution.channel, func.count())
-            .where(AdLinkAttribution.ad_link_id == ad_link_id)
+            .where(AdLinkAttribution.ad_link_id == ad_link_id, *_since(created_from))
             .group_by(AdLinkAttribution.channel)
         )
         rows = (await self.session.execute(stmt)).tuples()
         return dict(rows.all())
 
-    async def list_attributed_user_ids(self, ad_link_id: int) -> list[int]:
-        stmt = select(AdLinkAttribution.user_id).where(AdLinkAttribution.ad_link_id == ad_link_id)
+    async def list_attributed_user_ids(
+        self, ad_link_id: int, *, created_from: Optional[datetime] = None
+    ) -> list[int]:
+        stmt = select(AdLinkAttribution.user_id).where(
+            AdLinkAttribution.ad_link_id == ad_link_id, *_since(created_from)
+        )
         return list((await self.session.scalars(stmt)).all())
 
-    async def daily_attribution_counts(self, ad_link_id: int) -> list[tuple[date, int]]:
+    async def list_attributions(
+        self, ad_link_ids: list[int], *, created_from: Optional[datetime] = None
+    ) -> list[tuple[int, int, AdLinkChannel]]:
+        # (ad_link_id, user_id, channel) -- one row per attributed user.
+        if not ad_link_ids:
+            return []
+        stmt = select(
+            AdLinkAttribution.ad_link_id, AdLinkAttribution.user_id, AdLinkAttribution.channel
+        ).where(AdLinkAttribution.ad_link_id.in_(ad_link_ids), *_since(created_from))
+        return list((await self.session.execute(stmt)).tuples().all())
+
+    async def daily_attribution_counts(
+        self, ad_link_id: int, *, created_from: Optional[datetime] = None
+    ) -> list[tuple[date, int]]:
         day_col = func.date(func.timezone("UTC", AdLinkAttribution.created_at))
         stmt = (
             select(day_col, func.count())
-            .where(AdLinkAttribution.ad_link_id == ad_link_id)
+            .where(AdLinkAttribution.ad_link_id == ad_link_id, *_since(created_from))
             .group_by(day_col)
             .order_by(day_col)
         )

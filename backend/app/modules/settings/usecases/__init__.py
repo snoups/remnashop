@@ -4,7 +4,9 @@ from app.modules.settings.usecases.delete_appearance_image import (
     DeleteAppearanceLogoUseCase,
 )
 from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
+from app.modules.settings.usecases.get_bot_logs import GetBotLogsUseCase
 from app.modules.settings.usecases.get_bot_settings import GetBotSettingsUseCase
+from app.modules.settings.usecases.get_bot_status import GetBotStatusUseCase
 from app.modules.settings.usecases.get_oauth_settings import GetOAuthSettingsUseCase
 from app.modules.settings.usecases.get_public_appearance import GetPublicAppearanceUseCase
 from app.modules.settings.usecases.get_public_appearance_image import (
@@ -34,6 +36,8 @@ __all__ = [
     "DeleteAppearanceLogoUseCase",
     "GetBotCommandsUseCase",
     "GetBotSettingsUseCase",
+    "GetBotLogsUseCase",
+    "GetBotStatusUseCase",
     "GetOAuthSettingsUseCase",
     "GetPublicAppearanceImageUseCase",
     "GetPublicAppearanceUseCase",

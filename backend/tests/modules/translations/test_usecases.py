@@ -8,12 +8,18 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError, Validation
 from app.modules.settings.dto import UpdateBotSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import UpdateBotSettingsUseCase
+from app.modules.translations.dto import TranslationTextExportDto
 from app.modules.translations.repository import TranslationsRepository
 from app.modules.translations.usecases import (
+    ExportTranslationsUseCase,
+    ImportTranslationsUseCase,
     ListTranslationsUseCase,
+    ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
+    TranslationsImportInput,
     UpdateTranslationUseCase,
 )
+from app.modules.translations.usecases.export_translations import EXPORT_VERSION
 from app.modules.translations.usecases.reset_translation import ResetTranslationInput
 from app.modules.translations.usecases.update_translation import UpdateTranslationInput
 from app.modules.users.dto import UserDto
@@ -171,6 +177,8 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     from aiogram.methods.set_my_commands import SetMyCommands  # noqa: PLC0415
 
     await _seed(settings_repository, translations_repository)
+    # the description the registry actually points at
+    await translations_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
     await UpdateBotSettingsUseCase(settings_repository, uow)(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
@@ -189,7 +197,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     await use_case(
         OWNER,
         UpdateTranslationInput(
-            locale=Locale.EN, message_id="command", attribute_id="menu", value="New text"
+            locale=Locale.EN, message_id="command", attribute_id="start", value="New text"
         ),
     )
 
@@ -244,3 +252,110 @@ async def test_regular_user_cannot_update_translation(
                 locale=Locale.EN, message_id="command", attribute_id="menu", value="x"
             ),
         )
+
+
+async def test_export_returns_every_active_locale_string(
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+) -> None:
+    await _seed(settings_repository, translations_repository)
+
+    export = await ExportTranslationsUseCase(translations_repository, settings_repository, uow)(
+        OWNER
+    )
+
+    assert export.version == EXPORT_VERSION
+    assert [(text.message_id, text.attribute_id, text.value) for text in export.texts] == [
+        ("command", "menu", "Open the main menu")
+    ]
+
+
+async def test_import_applies_known_keys_and_skips_the_rest(
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    redis: Redis,
+) -> None:
+    await _seed(settings_repository, translations_repository)
+    use_case = ImportTranslationsUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
+
+    result = await use_case(
+        OWNER,
+        TranslationsImportInput(
+            version=EXPORT_VERSION,
+            texts=[
+                TranslationTextExportDto(
+                    locale=Locale.EN, message_id="command", attribute_id="menu", value="Imported"
+                ),
+                # Unknown key and inactive locale: both land nowhere, so both
+                # count as skipped instead of creating rows nothing reads.
+                TranslationTextExportDto(
+                    locale=Locale.EN, message_id="command", attribute_id="gone", value="Ghost"
+                ),
+                TranslationTextExportDto(
+                    locale=Locale.RU, message_id="command", attribute_id="menu", value="Меню"
+                ),
+            ],
+        ),
+    )
+
+    assert (result.applied, result.skipped) == (1, 2)
+    entry = await translations_repository.get(Locale.EN, "command", "menu")
+    assert entry is not None
+    assert entry.value == "Imported"
+
+
+async def test_import_rejects_a_foreign_export_version(
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    redis: Redis,
+) -> None:
+    use_case = ImportTranslationsUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(OWNER, TranslationsImportInput(version=EXPORT_VERSION + 1, texts=[]))
+
+
+async def test_reset_all_restores_every_edited_string(
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    redis: Redis,
+) -> None:
+    await _seed(settings_repository, translations_repository)
+    await UpdateTranslationUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )(
+        OWNER,
+        UpdateTranslationInput(
+            locale=Locale.EN, message_id="command", attribute_id="menu", value="Changed"
+        ),
+    )
+
+    await ResetAllTranslationsUseCase(
+        translations_repository, settings_repository, uow, config, redis
+    )(OWNER)
+
+    entry = await translations_repository.get(Locale.EN, "command", "menu")
+    assert entry is not None
+    assert entry.value == "Open the main menu"
+
+
+async def test_regular_user_cannot_export_translations(
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+) -> None:
+    use_case = ExportTranslationsUseCase(translations_repository, settings_repository, uow)
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(REGULAR_USER)

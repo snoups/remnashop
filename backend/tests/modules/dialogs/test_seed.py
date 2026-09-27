@@ -49,6 +49,24 @@ async def test_seed_is_idempotent(
     assert await translations_repository.get(Locale.EN, "btn-menu.subscription", "") is None
 
 
+async def test_seed_orders_windows_the_way_the_catalog_registers_them(
+    dialog_repository: DialogRepository, translations_repository, settings_repository
+) -> None:
+    # Both keys sort the other way round alphabetically, so a list that comes back
+    # in flow order can only have come from the seeded positions.
+    catalog._reset_for_tests()
+    for key in ("menu.main", "menu.devices"):
+        catalog.register_window(
+            catalog.CatalogWindow(
+                key=key, flow=DialogFlow.MENU, text_keys=("msg-main-menu",), banner_name=None
+            )
+        )
+
+    await ensure_dialogs_seeded(dialog_repository, translations_repository, settings_repository)
+
+    assert [w.key for w in await dialog_repository.list_all()] == ["menu.main", "menu.devices"]
+
+
 async def test_seed_removes_the_shadow_row_an_older_seed_left(
     dialog_repository: DialogRepository, translations_repository, settings_repository
 ) -> None:

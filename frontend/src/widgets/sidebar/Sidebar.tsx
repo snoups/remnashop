@@ -1,20 +1,4 @@
-import {
-  BarChart3,
-  CreditCard,
-  Gift,
-  LayoutGrid,
-  Layers,
-  Link2,
-  MessageSquare,
-  ScrollText,
-  Settings,
-  ShieldCheck,
-  Tag,
-  Ticket,
-  Users,
-} from "lucide-react";
 import { motion } from "motion/react";
-import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router-dom";
 
@@ -22,43 +6,14 @@ import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
-import type { Permission } from "@shared/types/rbac";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
 import { DonateButton } from "@widgets/build-info/DonateButton";
+import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
+import type { NavItem } from "@widgets/sidebar/nav-items";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 
 const MotionNavLink = motion.create(NavLink);
-
-interface NavItem {
-  key: string;
-  to: string;
-  icon: ComponentType<{ className?: string }>;
-  end?: boolean;
-  // Omitted means always visible (overview, settings) -- everything else is
-  // gated behind the matching permission. ADMINS_MANAGE is never
-  // grantable/revocable per-user (see GRANTABLE_PERMISSIONS on the backend),
-  // always exactly "role is OWNER or SYSTEM", but checking the permission
-  // here keeps this in step with the rest of the list and doesn't quietly
-  // drop SYSTEM.
-  permission?: Permission;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { key: "overview", to: "/dashboard", icon: LayoutGrid, end: true },
-  { key: "analytics", to: "/dashboard/analytics", icon: BarChart3, permission: "ANALYTICS_VIEW" },
-  { key: "users", to: "/dashboard/users", icon: Users, permission: "USERS_VIEW" },
-  { key: "dialogs", to: "/dashboard/dialogs", icon: MessageSquare, permission: "DIALOGS_WINDOWS_VIEW" },
-  { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, permission: "SUBSCRIPTIONS_VIEW" },
-  { key: "plans", to: "/dashboard/plans", icon: Tag, permission: "PLANS_VIEW" },
-  { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, permission: "PROMOCODES_VIEW" },
-  { key: "referrals", to: "/dashboard/referrals", icon: Gift, permission: "REFERRALS_SETTINGS_VIEW" },
-  { key: "advertising", to: "/dashboard/advertising", icon: Link2, permission: "AD_LINKS_VIEW" },
-  { key: "payments", to: "/dashboard/payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
-  { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, permission: "ADMINS_MANAGE" },
-  { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, permission: "EVENT_LOG_VIEW" },
-  { key: "settings", to: "/dashboard/settings", icon: Settings },
-];
 
 const linkClassName = ({ isActive }: { isActive: boolean }) =>
   isActive

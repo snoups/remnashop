@@ -1,5 +1,4 @@
 import hmac
-from datetime import datetime, timezone
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
@@ -12,6 +11,7 @@ from app.core.constants import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, REFRESH_CO
 from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.security import derive_csrf_token
 from app.core.utils.http import resolve_client_ip
+from app.core.utils.time import datetime_now
 from app.modules.auth import (
     BootstrapOwnerUseCase,
     GetAuthStatusUseCase,
@@ -40,7 +40,7 @@ def _set_session_cookies(response: Response, issued: "IssuedSession", secure: bo
         secure=secure,
         samesite="lax",
         path=REFRESH_COOKIE_PATH,
-        max_age=int((issued.expires_at - datetime.now(timezone.utc)).total_seconds()),
+        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
     )
     response.set_cookie(
         CSRF_COOKIE_NAME,
@@ -49,7 +49,7 @@ def _set_session_cookies(response: Response, issued: "IssuedSession", secure: bo
         secure=secure,
         samesite="lax",
         path="/",
-        max_age=int((issued.expires_at - datetime.now(timezone.utc)).total_seconds()),
+        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
     )
 
 

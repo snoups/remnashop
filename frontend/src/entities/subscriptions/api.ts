@@ -28,6 +28,7 @@ export interface SubscriptionListPage {
 
 export interface SubscriptionListFilters {
   status?: SubscriptionStatus;
+  search?: string;
   page?: number;
   pageSize?: number;
 }
@@ -38,6 +39,7 @@ export function listSubscriptions(
 ): Promise<SubscriptionListPage> {
   const params = new URLSearchParams();
   if (filters.status) params.set("status", filters.status);
+  if (filters.search) params.set("search", filters.search);
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 

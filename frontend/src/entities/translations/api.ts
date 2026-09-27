@@ -53,3 +53,30 @@ export function resetTranslation(
     {},
   );
 }
+
+export interface TranslationsExportPayload {
+  version: number;
+  texts: { locale: string; message_id: string; attribute_id: string; value: string }[];
+}
+
+export interface TranslationsImportResult {
+  applied: number;
+  skipped: number;
+}
+
+export function exportTranslations(): Promise<TranslationsExportPayload> {
+  return apiGet<TranslationsExportPayload>("/translations/export");
+}
+
+export function importTranslations(
+  payload: TranslationsExportPayload,
+): Promise<TranslationsImportResult> {
+  return apiPost<TranslationsImportResult, TranslationsExportPayload>(
+    "/translations/import",
+    payload,
+  );
+}
+
+export function resetAllTranslations(): Promise<null> {
+  return apiPost<null, Record<string, never>>("/translations/reset-all", {});
+}

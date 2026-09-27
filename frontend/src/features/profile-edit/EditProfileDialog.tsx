@@ -28,7 +28,7 @@ export function EditProfileDialog({ name, login }: EditProfileDialogProps) {
         type="button"
         onClick={() => setIsOpen(true)}
         {...bounceTap(bounceStrength)}
-        className="flex shrink-0 items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground/90 transition-colors hover:bg-white/5"
+        className="flex shrink-0 items-center gap-2 rounded-full border border-border px-3 py-2 text-[12px] font-semibold text-foreground/90 transition-colors hover:bg-white/5"
       >
         <Pencil className="size-3.5" />
         {t("profile.edit.button")}
@@ -157,6 +157,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
           <input
             id="edit-name"
             value={nameValue}
+            maxLength={32}
             onChange={(event) => setNameValue(event.target.value)}
             className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
           />

@@ -14,7 +14,7 @@ from app.modules.users import UserDto
 _ZERO: Final[Decimal] = Decimal(0)
 
 
-def _convert(
+def convert_for_report(
     amount: Decimal, from_currency: Currency, to_currency: Currency, rates: CurrencyRateTable
 ) -> Decimal:
     # Display-only reporting conversion, deliberately not pricing.resolve_price:
@@ -45,11 +45,16 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
         async with self._uow:
             ad_link = await self._ad_link_repository.get_by_id(data.ad_link_id)
 
-            attributions_count = await self._ad_link_repository.count_attributions(data.ad_link_id)
-            attributions_by_channel = await self._ad_link_repository.count_attributions_by_channel(
-                data.ad_link_id
+            since = data.created_from
+            attributions_count = await self._ad_link_repository.count_attributions(
+                data.ad_link_id, created_from=since
             )
-            user_ids = await self._ad_link_repository.list_attributed_user_ids(data.ad_link_id)
+            attributions_by_channel = await self._ad_link_repository.count_attributions_by_channel(
+                data.ad_link_id, created_from=since
+            )
+            user_ids = await self._ad_link_repository.list_attributed_user_ids(
+                data.ad_link_id, created_from=since
+            )
 
             paid_user_ids = await self._payment_order_repository.list_user_ids_with_paid_order(
                 user_ids
@@ -63,12 +68,14 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
 
             revenue = sum(
                 (
-                    _convert(amount, currency, report_currency, rate_table)
+                    convert_for_report(amount, currency, report_currency, rate_table)
                     for currency, amount in revenue_by_currency.items()
                 ),
                 start=_ZERO,
             )
-            cost = _convert(ad_link.cost, ad_link.cost_currency, report_currency, rate_table)
+            cost = convert_for_report(
+                ad_link.cost, ad_link.cost_currency, report_currency, rate_table
+            )
 
             cpa = cost / attributions_count if attributions_count > 0 else None
             roi = (revenue - cost) / cost if cost > 0 else None
@@ -78,7 +85,9 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
                 else _ZERO
             )
 
-            daily = await self._ad_link_repository.daily_attribution_counts(data.ad_link_id)
+            daily = await self._ad_link_repository.daily_attribution_counts(
+                data.ad_link_id, created_from=since
+            )
 
             return AdLinkStatsDto(
                 attributions_count=attributions_count,

@@ -46,10 +46,10 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.3" } } }),
 };
 
-const STYLE_BORDER_CLASSNAME: Record<string, string> = {
-  primary: "border-primary/50",
-  success: "border-emerald-500/60",
-  danger: "border-red-500/60",
+const STYLE_CLASSNAME: Record<string, string> = {
+  primary: "border-primary/40 bg-primary/20",
+  success: "border-emerald-500/40 bg-emerald-500/20",
+  danger: "border-red-500/40 bg-red-500/20",
 };
 
 const buttonId = buttonKey;
@@ -109,14 +109,14 @@ function ButtonFace({
   className: string;
 }) {
   const { label, isUnlabelled } = useButtonLabel(button, textByKey);
-  const borderClassName = button.style ? STYLE_BORDER_CLASSNAME[button.style] : "border-white/[0.12]";
+  const styleClassName = button.style ? STYLE_CLASSNAME[button.style] : "border-white/[0.12]";
   // A premium emoji has no glyph to show here, so the plain one is all the
   // preview can draw -- same as what a bot without Premium actually sends.
   const icon = textByKey[iconTextKey(button.text_key)];
 
   return (
     <span
-      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${borderClassName} ${className}`}
+      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${styleClassName} ${className}`}
     >
       {icon ? <span className="text-[13px]">{icon}</span> : null}
       <span className={`truncate ${isUnlabelled ? "italic text-muted-foreground" : ""}`}>{label}</span>
@@ -142,7 +142,6 @@ function CanvasButton({
   onClick: () => void;
   draggable: boolean;
 }) {
-  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: buttonId(button),
     disabled: !draggable,
@@ -161,7 +160,6 @@ function CanvasButton({
       onClick={() => onClick()}
       {...attributes}
       {...listeners}
-      title={draggable ? t("dialogs.canvas.editButton") : undefined}
       className={`flex flex-1 ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <ButtonFace
@@ -173,7 +171,7 @@ function CanvasButton({
               "opacity-25"
             : isSelected
               ? "ring-2 ring-primary"
-              : "hover:bg-white/[0.06] hover:ring-1 hover:ring-white/25"
+              : "hover:ring-1 hover:ring-white/25"
         }`}
       />
     </button>

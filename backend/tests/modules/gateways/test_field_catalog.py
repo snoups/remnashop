@@ -31,7 +31,7 @@ def test_is_gateway_configured_true_when_required_fields_present() -> None:
 
 def test_is_gateway_configured_ignores_optional_fields() -> None:
     assert is_gateway_configured(
-        PaymentGatewayType.YOOKASSA, {"shop_id": "123", "api_key": "secret", "customer": ""}
+        PaymentGatewayType.YOOKASSA, {"shop_id": "123", "api_key": "secret", "vat_code": ""}
     )
 
 
@@ -80,9 +80,10 @@ def test_paypalych_signs_with_the_api_token_only() -> None:
     assert keys == {"api_token", "shop_id", "currency"}
 
 
-def test_freekassa_requires_customer_ip() -> None:
-    specs = {spec.key: spec for spec in GATEWAY_FIELD_CATALOG[PaymentGatewayType.FREEKASSA]}
-    assert specs["customer_ip"].required is True
+def test_customer_email_and_ip_are_not_gateway_settings() -> None:
+    for specs in GATEWAY_FIELD_CATALOG.values():
+        keys = {spec.key for spec in specs}
+        assert not keys & {"customer", "customer_email", "customer_ip"}
 
 
 def test_riopay_and_valutix_take_an_optional_service_id() -> None:

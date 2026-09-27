@@ -62,7 +62,11 @@ class ConfigKeyboard(Keyboard):
                 text = f"{icon} {button['text']}" if icon and not icon_id else button["text"]
                 if button["link_type"] == ButtonLinkType.URL:
                     url = button["url_value"]
-                    if not url or not url.startswith(catalog.URL_SCHEMES):
+                    if (
+                        not url
+                        or not url.startswith(catalog.URL_SCHEMES)
+                        or url in catalog.URL_SCHEMES
+                    ):
                         # Telegram rejects the whole keyboard over one bad URL, so
                         # a variable that resolved to nothing usable drops its own
                         # button instead of taking the window down.

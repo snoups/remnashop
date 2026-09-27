@@ -25,6 +25,7 @@ _XML = (
     "<Result><Code>{result}</Code></Result>"
     "<State><Code>{state}</Code></State>"
     "<Info><OutCurrLabel>RUB</OutCurrLabel><OutSum>485.000000</OutSum></Info>"
+    "<UserFields><Field><Name>shp_order_id</Name><Value>{order_ref}</Value></Field></UserFields>"
     "</OperationStateResponse>"
 )
 
@@ -49,8 +50,8 @@ def _result_url(out_sum: str = "500.000000", password: str = "p2") -> bytes:
     return urlencode(fields).encode()
 
 
-def _xml_response(result: int = 0, state: int = 100) -> httpx.Response:
-    body = _XML.format(result=result, state=state).encode("utf-8")
+def _xml_response(result: int = 0, state: int = 100, order_ref: str = ORDER_REF) -> httpx.Response:
+    body = _XML.format(result=result, state=state, order_ref=order_ref).encode("utf-8")
     return httpx.Response(200, content=body, headers={"content-type": "text/xml"})
 
 
@@ -113,3 +114,10 @@ async def test_confirm_raises_on_op_state_errors(monkeypatch: pytest.MonkeyPatch
     assert signal is not None
     with pytest.raises(PaymentGatewayError):
         await _gateway().confirm(make_order(), signal)
+
+
+async def test_confirm_rejects_an_invoice_of_another_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_http(monkeypatch, robokassa_module, lambda request: _xml_response(order_ref="other"))
+    signal = await _gateway().parse_webhook(webhook(_result_url()))
+    assert signal is not None
+    assert await _gateway().confirm(make_order(), signal) is None

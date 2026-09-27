@@ -13,6 +13,7 @@ from app.modules.users import UserDto
 @dataclass(frozen=True, kw_only=True)
 class ListSubscriptionsInput:
     status: Optional[SubscriptionStatus] = None
+    search: Optional[str] = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
 
@@ -29,5 +30,5 @@ class ListSubscriptionsUseCase(UseCase[ListSubscriptionsInput, tuple[list[Subscr
     ) -> tuple[list[SubscriptionDto], int]:
         async with self._uow:
             return await self._subscription_repository.list_paginated(
-                status=data.status, page=data.page, page_size=data.page_size
+                status=data.status, search=data.search, page=data.page, page_size=data.page_size
             )

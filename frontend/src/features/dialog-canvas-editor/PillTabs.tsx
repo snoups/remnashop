@@ -1,47 +1,76 @@
+import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 
+import { useBounceStrength } from "@shared/lib/bounceState";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 
 interface PillTabsProps<T extends string> {
-  items: { key: T; label: string }[];
+  items: { key: T; label: ReactNode }[];
   activeKey: T | null;
   onSelect: (key: T) => void;
+  disabled?: boolean;
+  compact?: boolean;
 }
 
-/** Tabs share the width when they fit and scroll sideways when they don't --
- * the locale row grows with every language a shop turns on. */
-export function PillTabs<T extends string>({ items, activeKey, onSelect }: PillTabsProps<T>) {
+/** The settings TabBar's capsule, for tabs that switch state instead of routes:
+ * the editor's own tabs, the locale row, the inspector's pair. */
+export function PillTabs<T extends string>({
+  items,
+  activeKey,
+  onSelect,
+  disabled = false,
+  compact = false,
+}: PillTabsProps<T>) {
   const scrollerRef = useHorizontalWheelScroll<HTMLDivElement>();
   const activeRef = useRef<HTMLButtonElement>(null);
+  const bounceStrength = useBounceStrength();
 
   useEffect(() => {
     // With twenty locales the selected one can sit past the right edge, and a
     // tab you cannot see reads as no selection at all.
-    activeRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    // Scrolls the strip itself, never the page: scrollIntoView would drag the
+    // whole page down to an editor that sits below the fold.
+    const active = activeRef.current;
+    const scroller = active?.parentElement;
+    if (!active || !scroller) return;
+    const a = active.getBoundingClientRect();
+    const s = scroller.getBoundingClientRect();
+    if (a.left < s.left) scroller.scrollLeft -= s.left - a.left;
+    else if (a.right > s.right) scroller.scrollLeft += a.right - s.right;
   }, [activeKey]);
 
   return (
-    <div className="flex w-full rounded-full border border-white/[0.12] bg-white/[0.03] p-0.5">
-      {/* The fade sits on the strip, not on the capsule: masking the parent
-          would eat its own border and background at the right edge. */}
-      <div
-        ref={scrollerRef}
-        className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]"
-      >
+    <div className="flex w-full rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
+      <div ref={scrollerRef} className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full">
         {items.map((item) => (
-          <button
+          <motion.button
             key={item.key}
             ref={activeKey === item.key ? activeRef : undefined}
             type="button"
             onClick={() => onSelect(item.key)}
-            className={`flex-1 shrink-0 cursor-pointer whitespace-nowrap rounded-full px-3 py-1.5 text-[12.5px] transition-colors ${
-              activeKey === item.key
-                ? "bg-accent text-primary"
-                : "text-foreground/70 hover:bg-white/[0.06]"
-            }`}
+            disabled={disabled}
+            initial="rest"
+            whileTap="tap"
+            className="group relative isolate block flex-1 shrink-0 cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {item.label}
-          </button>
+            {/* Same split as TabBar: only the pill behind the label scales, so
+                the text stays crisp through the bounce. */}
+            <motion.span
+              aria-hidden
+              variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+              className={`absolute inset-0 rounded-full transition-colors ${
+                activeKey === item.key ? "bg-accent" : "group-hover:bg-white/[0.06]"
+              }`}
+            />
+            <span
+              className={`relative z-10 block whitespace-nowrap ${
+                compact ? "px-2 py-1 text-[11.5px]" : "px-3 py-1.5 text-[12.5px]"
+              } ${activeKey === item.key ? "text-primary" : "text-foreground/70"}`}
+            >
+              {item.label}
+            </span>
+          </motion.button>
         ))}
       </div>
     </div>

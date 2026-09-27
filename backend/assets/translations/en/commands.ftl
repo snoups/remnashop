@@ -1,2 +1,2 @@
 command =
-    .menu = Open the main menu
+    .start = Open the main menu

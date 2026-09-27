@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, LogOut, RefreshCw, Search, User as UserIcon } from "lucide-react";
+import { Bell, ChevronDown, LogOut, RefreshCw, User as UserIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,9 +8,11 @@ import { useBrandName } from "@entities/appearance/use-appearance";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
+import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { usePageTitle } from "@shared/lib/use-page-title";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { BounceIcon } from "@shared/ui/BounceIcon";
+import { HeaderSearch } from "@widgets/header/HeaderSearch";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 
 const MotionLink = motion.create(Link);
@@ -50,6 +52,7 @@ export function Header({ onLogout }: HeaderProps) {
   const notifRef = useRef<HTMLDivElement>(null);
 
   useClickOutside([menuRef, notifRef], openPopover !== null, () => setOpenPopover(null));
+  useCloseOnScroll(openPopover !== null, [menuRef, notifRef], () => setOpenPopover(null));
 
   const initials = (login ?? "?").slice(0, 2).toUpperCase();
 
@@ -62,7 +65,6 @@ export function Header({ onLogout }: HeaderProps) {
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            title={t("dashboard.refresh")}
             aria-label={t("dashboard.refresh")}
             {...bounceTap(bounceStrength, 0.12)}
             className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground disabled:cursor-not-allowed"
@@ -73,18 +75,7 @@ export function Header({ onLogout }: HeaderProps) {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-3.5">
-        <motion.label
-          {...bounceTap(bounceStrength, 0.03)}
-          className="group flex min-w-40 max-w-80 flex-1 items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] px-3.5 py-2 transition-colors not-focus-within:hover:bg-white/[0.08] focus-within:border-primary"
-        >
-          <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
-          <input
-            type="search"
-            title={t("header.searchPlaceholder")}
-            placeholder={t("header.searchPlaceholder")}
-            className="w-full min-w-0 border-0 bg-transparent text-[13px] text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
-          />
-        </motion.label>
+        <HeaderSearch />
 
         <LanguagePicker />
 
@@ -94,7 +85,6 @@ export function Header({ onLogout }: HeaderProps) {
             onClick={() => setOpenPopover((open) => (open === "notifications" ? null : "notifications"))}
             aria-haspopup="menu"
             aria-expanded={openPopover === "notifications"}
-            title={t("header.notifications")}
             aria-label={t("header.notifications")}
             {...bounceTap(bounceStrength, 0.12)}
             className="flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"

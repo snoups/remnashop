@@ -39,5 +39,5 @@ class UpdateOAuthSettingsUseCase(UseCase[UpdateOAuthSettingsDto, OAuthSettingsDt
                 # longer trustworthy -- stale oauth_identities rows would let
                 # a `sub` collision on the new issuer log in as the old
                 # identity's user.
-                await self._event_publisher.publish(OidcIssuerChangedEvent())
+                await self._event_publisher.publish(OidcIssuerChangedEvent(actor=actor))
         return settings

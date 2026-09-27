@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Final
+from typing import Final, Optional
 from uuid import uuid4
 
 from app.core.db.uow import UnitOfWork
@@ -60,6 +60,16 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
         self._uow = uow
         self._gateway_factory = gateway_factory
 
+    @staticmethod
+    def _resolve_customer_email(
+        data: CreateCheckoutDto, user: UserDto, gateway_settings: dict[str, str]
+    ) -> Optional[str]:
+        customer_email = data.customer_email or user.email
+        gateway_class = GATEWAY_REGISTRY[data.gateway_type]
+        if customer_email is None and gateway_class.requires_customer_email(gateway_settings):
+            raise ValidationError(f"Gateway '{data.gateway_type.value}' requires a customer email")
+        return customer_email
+
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
         async with self._uow:
             if data.user_id != actor.id and not actor.is_privileged:
@@ -80,7 +90,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
             if user is None:
                 raise NotFoundError(f"User '{data.user_id}' not found")
 
-            customer_email = data.customer_email or user.email
+            customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
             has_purchase_history = await self._subscription_repository.has_any_subscription(
                 user.id, include_trial=False

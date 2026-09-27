@@ -29,6 +29,7 @@ _PAID_STATUS: Final[str] = "success"
 _INCOMING: Final[str] = "in"
 
 
+# Docs: https://yoomoney.ru/docs/wallet
 class YooMoneyGateway(PaymentGateway):
     currency = Currency.RUB
 

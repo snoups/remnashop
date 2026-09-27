@@ -1,27 +1,35 @@
 from dataclasses import dataclass
 from typing import Final, Optional
 
+from loguru import logger
+
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PaymentGatewayType, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
+from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.gateways import GatewaysRepository
 from app.modules.payments.dto import PaymentOrderDto
+from app.modules.payments.events import PaymentOrderRefundedEvent
 from app.modules.payments.gateways.base import WebhookAck, WebhookRequest, WebhookSignal
 from app.modules.payments.gateways.factory import PaymentGatewayFactory
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.subscriptions import purchase_subscription_task
 from app.modules.users import UserDto
 
-# EXPIRED excluded deliberately -- the TTL sweep may mark an order EXPIRED
-# while a payment is still in flight; a late webhook should still be honoured.
-_TERMINAL_STATUSES: Final[frozenset[PaymentOrderStatus]] = frozenset(
-    {
-        PaymentOrderStatus.PAID,
-        PaymentOrderStatus.FAILED,
-        PaymentOrderStatus.CANCELED,
-    }
+# Only PAID is final for a paid claim: an order the TTL sweep or a provider
+# CANCELED/FAILED can still receive a late payment, and confirm() re-checks
+# it against the provider anyway.
+_TERMINAL_STATUSES: Final[frozenset[PaymentOrderStatus]] = frozenset({PaymentOrderStatus.PAID})
+_UNPAID_STATUSES: Final[frozenset[PaymentOrderStatus]] = frozenset(
+    {PaymentOrderStatus.PENDING, PaymentOrderStatus.CANCELED}
 )
+# which current statuses a reported status may replace
+_REPORTED_FROM: Final[dict[PaymentOrderStatus, frozenset[PaymentOrderStatus]]] = {
+    PaymentOrderStatus.FAILED: _UNPAID_STATUSES,
+    PaymentOrderStatus.CANCELED: _UNPAID_STATUSES,
+    PaymentOrderStatus.REFUNDED: frozenset({PaymentOrderStatus.PAID}),
+}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -38,11 +46,13 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, WebhookAck]):
         payment_order_repository: PaymentOrderRepository,
         gateways_repository: GatewaysRepository,
         gateway_factory: PaymentGatewayFactory,
+        event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
         self._payment_order_repository = payment_order_repository
         self._gateways_repository = gateways_repository
         self._gateway_factory = gateway_factory
+        self._event_publisher = event_publisher
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: HandleWebhookInput) -> WebhookAck:
@@ -59,6 +69,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, WebhookAck]):
             # PaymentGateway.parse_webhook), not a 500 with a stack trace.
             raise PaymentGatewayError("Could not parse webhook") from error
         if signal is None or not signal.claims_paid:
+            await self._record_reported_status(data.gateway_type, signal)
             return gateway.webhook_ack(signal)
 
         order = await self._resolve_order(data.gateway_type, signal)
@@ -83,6 +94,9 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, WebhookAck]):
                 PaymentOrderStatus.PAID,
                 external_payment_id=payment.provider_payment_id or order.external_payment_id,
             )
+        if order.is_test:
+            logger.info(f"Test payment order '{order.id}' confirmed by {data.gateway_type.value}")
+            return gateway.webhook_ack(signal)
         await purchase_subscription_task.kiq(  # type: ignore[call-overload]
             user_id=order.user_id,
             plan_snapshot=order.plan_snapshot.to_json(),
@@ -96,6 +110,36 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, WebhookAck]):
         )
 
         return gateway.webhook_ack(signal)
+
+    async def _record_reported_status(
+        self,
+        gateway_type: PaymentGatewayType,
+        signal: Optional[WebhookSignal],
+    ) -> None:
+        if signal is None or signal.reported_status is None:
+            return
+        status = signal.reported_status
+        allowed_from = _REPORTED_FROM.get(status, frozenset())
+        order = await self._resolve_order(gateway_type, signal)
+        if order is None or order.status not in allowed_from:
+            return
+        async with self._uow:
+            changed = await self._payment_order_repository.mark_status_if(
+                order.id, status, current=allowed_from
+            )
+            if changed and status is PaymentOrderStatus.REFUNDED:
+                await self._event_publisher.publish(
+                    PaymentOrderRefundedEvent(
+                        order_id=order.id,
+                        user_id=order.user_id,
+                        gateway_type=gateway_type.value,
+                        amount=str(order.final_price),
+                        currency=order.currency.value,
+                    )
+                )
+        if not changed:
+            return
+        logger.info(f"Order '{order.id}' marked {status.value} by {gateway_type.value} webhook")
 
     async def _resolve_order(
         self, gateway_type: PaymentGatewayType, signal: WebhookSignal

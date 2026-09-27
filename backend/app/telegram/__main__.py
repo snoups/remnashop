@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from typing import TYPE_CHECKING, Optional
 
 import uvicorn
@@ -9,7 +10,8 @@ from fastapi import FastAPI
 from loguru import logger
 
 from app.core.config import AppConfig
-from app.core.logger import setup_logger
+from app.core.constants import TELEGRAM_LOGS_KEY
+from app.core.logger import add_redis_sink, setup_logger
 from app.modules.settings import BotSettingsDto, read_bot_settings
 from app.telegram.app import get_app
 from app.telegram.container import create_aiogram_container
@@ -26,8 +28,8 @@ def build_app(
 ) -> FastAPI:
     if bot_settings.token is None or bot_settings.secret_token is None:
         logger.warning(
-            "Bot token not set (Dashboard -> Settings -> Bot) -- telegram service idling. "
-            "Restart this process after setting it."
+            "Bot token not set, telegram service is idle. "
+            "Set it in Dashboard -> Settings -> Telegram Bot, then press Restart."
         )
         return get_idle_app(config)
 
@@ -57,27 +59,30 @@ def build_app(
 if __name__ == "__main__":
     _config = AppConfig.get()
     setup_logger(_config)
+    add_redis_sink(_config, TELEGRAM_LOGS_KEY)
 
-    # Read once, before uvicorn starts its own event loop -- uvicorn calls a
-    # `factory=True` app callable synchronously from inside a loop it already
-    # owns, so an asyncio.run() in there would fail ("cannot be called from a
-    # running event loop"). Fetching the token here, then building a concrete
-    # app object, sidesteps that entirely (and matches the "read once at
-    # startup, no hot-reload" design -- see /CLAUDE.md).
-    _bot_settings = asyncio.run(read_bot_settings(_config))
-    # Only read the hub when the bot is actually configured -- an unset
-    # token means build_app takes the idle-app path below and never uses
-    # it, and read_translator_hub raises when no locale is active yet
-    # (exactly the state of a fresh, not-yet-configured deploy).
-    _translator_hub = (
-        asyncio.run(read_translator_hub(_config))
-        if _bot_settings.token is not None and _bot_settings.secret_token is not None
-        else None
-    )
-    _app = build_app(_config, _bot_settings, _translator_hub)
+    # Startup crashes go through loguru too, so they reach the dashboard log view.
+    with logger.catch(onerror=lambda _: sys.exit(1)):
+        # Read once, before uvicorn starts its own event loop -- uvicorn calls a
+        # `factory=True` app callable synchronously from inside a loop it already
+        # owns, so an asyncio.run() in there would fail ("cannot be called from a
+        # running event loop"). Fetching the token here, then building a concrete
+        # app object, sidesteps that entirely (and matches the "read once at
+        # startup, no hot-reload" design -- see /CLAUDE.md).
+        _bot_settings = asyncio.run(read_bot_settings(_config))
+        # Only read the hub when the bot is actually configured -- an unset
+        # token means build_app takes the idle-app path below and never uses
+        # it, and read_translator_hub raises when no locale is active yet
+        # (exactly the state of a fresh, not-yet-configured deploy).
+        _translator_hub = (
+            asyncio.run(read_translator_hub(_config))
+            if _bot_settings.token is not None and _bot_settings.secret_token is not None
+            else None
+        )
+        _app = build_app(_config, _bot_settings, _translator_hub)
 
-    uvicorn.run(
-        app=_app,
-        host=_config.bot.host,
-        port=_config.bot.port,
-    )
+        uvicorn.run(
+            app=_app,
+            host=_config.bot.host,
+            port=_config.bot.port,
+        )

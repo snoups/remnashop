@@ -25,7 +25,7 @@ export function ToastContainer() {
   const toasts = useToasts();
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-80 flex-col gap-2">
+    <div className="pointer-events-none fixed right-4 top-4 z-50 flex w-80 flex-col gap-2 min-[1792px]:w-[min(20rem,50vw_-_41rem)]">
       <AnimatePresence>
         {toasts.map((item) => {
           const Icon = VARIANT_ICON[item.variant];

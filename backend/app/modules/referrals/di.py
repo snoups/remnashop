@@ -7,6 +7,7 @@ from app.modules.referrals.usecases import (
     GetOwnReferralStatsUseCase,
     GetReferralSettingsUseCase,
     GetUserReferralStatsUseCase,
+    ListReferralsUseCase,
     RequestPointsWithdrawalUseCase,
     UpdateReferralSettingsUseCase,
 )
@@ -23,6 +24,7 @@ class ReferralsProvider(Provider):
     update_referral_settings_use_case = provide(UpdateReferralSettingsUseCase)
     get_own_referral_stats_use_case = provide(GetOwnReferralStatsUseCase)
     get_user_referral_stats_use_case = provide(GetUserReferralStatsUseCase)
+    list_referrals_use_case = provide(ListReferralsUseCase)
 
 
 def get_referrals_providers() -> list[Provider]:

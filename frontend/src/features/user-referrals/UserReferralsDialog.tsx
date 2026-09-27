@@ -145,7 +145,7 @@ function UserReferralsDialogBody({
                 <input
                   id="referral-adjust-delta"
                   type="number"
-                  step="0.01"
+                  step="1"
                   value={delta}
                   onChange={(event) => setDelta(event.target.value)}
                   placeholder={t("referrals.stats.adjustPlaceholder")}

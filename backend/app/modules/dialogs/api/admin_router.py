@@ -68,6 +68,7 @@ def _to_button_item(button: DialogButtonDto) -> DialogButtonItem:
         target_window_key=button.target_window_key,
         url_value=button.url_value,
         is_hidden=button.is_hidden,
+        is_system=button.is_system,
     )
 
 
@@ -77,6 +78,7 @@ def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
         kind=window.kind,
         flow=window.flow,
         banner_name=window.banner_name,
+        name=window.name,
         is_enabled=window.is_enabled,
         position=window.position,
         text_keys=list(catalog.window_text_keys(window.key)),
@@ -162,10 +164,13 @@ async def update_window(
                 banner_name=payload.banner_name,
                 banner_name_provided="banner_name" in payload.model_fields_set,
                 is_enabled=payload.is_enabled,
+                name=payload.name,
             ),
         )
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     return _to_window_response(window)
 
 
@@ -201,9 +206,7 @@ async def create_custom_window(
     try:
         window = await use_case(
             actor,
-            CreateCustomDialogWindowInput(
-                title_text=payload.title_text, banner_name=payload.banner_name
-            ),
+            CreateCustomDialogWindowInput(name=payload.name, banner_name=payload.banner_name),
         )
     except ValidationError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
@@ -338,6 +341,7 @@ async def import_dialogs(
                         key=window.key,
                         kind=window.kind,
                         banner_name=window.banner_name,
+                        name=window.name,
                         is_enabled=window.is_enabled,
                         position=window.position,
                         buttons=[_to_button_input(button) for button in window.buttons],

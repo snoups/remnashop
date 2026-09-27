@@ -39,8 +39,8 @@ async def test_command_gate_blocks_disabled_command(
     settings_repository: SettingsRepository,
     uow: UnitOfWork,
 ) -> None:
-    await settings_repository.replace_bot_commands([("menu", False)])
-    message = SimpleNamespace(text="/menu")
+    await settings_repository.replace_bot_commands([("start", False)])
+    message = SimpleNamespace(text="/start")
 
     handler_called = await _run_middleware(
         message, {CONTAINER_KEY: _FakeContainer(settings_repository, uow)}
@@ -53,7 +53,7 @@ async def test_command_gate_allows_enabled_command(
     settings_repository: SettingsRepository,
     uow: UnitOfWork,
 ) -> None:
-    message = SimpleNamespace(text="/menu")
+    message = SimpleNamespace(text="/start")
 
     handler_called = await _run_middleware(
         message, {CONTAINER_KEY: _FakeContainer(settings_repository, uow)}
@@ -71,7 +71,7 @@ async def test_command_gate_ignores_non_command_messages() -> None:
 
 
 async def test_command_gate_passes_through_commands_outside_registry() -> None:
-    message = SimpleNamespace(text="/start")
+    message = SimpleNamespace(text="/menu")
 
     handler_called = await _run_middleware(message, {CONTAINER_KEY: _ExplodingContainer()})
 

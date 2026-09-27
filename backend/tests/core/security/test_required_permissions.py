@@ -20,7 +20,12 @@ from app.modules.gateways.usecases.list_gateways import ListGatewaysUseCase
 from app.modules.gateways.usecases.reorder_gateways import ReorderGatewaysUseCase
 from app.modules.gateways.usecases.toggle_gateway_active import ToggleGatewayActiveUseCase
 from app.modules.gateways.usecases.update_gateway_settings import UpdateGatewaySettingsUseCase
+from app.modules.payments.usecases.create_test_payment import CreateTestPaymentUseCase
 from app.modules.payments.usecases.get_payment_order import GetPaymentOrderUseCase
+from app.modules.payments.usecases.get_test_payment_status import GetTestPaymentStatusUseCase
+from app.modules.payments.usecases.list_payment_order_gateways import (
+    ListPaymentOrderGatewaysUseCase,
+)
 from app.modules.payments.usecases.list_payment_orders import ListPaymentOrdersUseCase
 from app.modules.plans.usecases.set_plan_duration_base_price import (
     SetPlanDurationBasePriceUseCase,
@@ -50,8 +55,11 @@ from app.modules.users.usecases.set_user_personal_discount import (
         (UpdateGatewaySettingsUseCase, Permission.GATEWAYS_UPDATE),
         (ToggleGatewayActiveUseCase, Permission.GATEWAYS_TOGGLE),
         (ReorderGatewaysUseCase, Permission.GATEWAYS_REORDER),
+        (CreateTestPaymentUseCase, Permission.GATEWAYS_TEST),
+        (GetTestPaymentStatusUseCase, Permission.GATEWAYS_TEST_VIEW),
         (SetUserPersonalDiscountUseCase, Permission.USERS_DISCOUNT_MANAGE),
         (ListPaymentOrdersUseCase, Permission.PAYMENTS_VIEW),
+        (ListPaymentOrderGatewaysUseCase, Permission.PAYMENTS_GATEWAYS_VIEW),
         (GetPaymentOrderUseCase, Permission.PAYMENTS_ORDER_VIEW),
         (
             SetPlanDurationBasePriceUseCase,

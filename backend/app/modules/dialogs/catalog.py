@@ -34,6 +34,13 @@ CUSTOM_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-custom-"
 ICON_KEY_SUFFIX: Final[str] = "-icon"
 ICON_ID_KEY_SUFFIX: Final[str] = "-icon-id"
 
+# A custom window's body key is this prefix plus the window key.
+_WINDOW_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-"
+
+# Premium emoji in window text: the glyph plus the custom emoji id, turned into a
+# <tg-emoji> tag at render time.
+PREMIUM_EMOJI_RE: Final[re.Pattern[str]] = re.compile(r"\[([^\[\]]{1,16})\]\(emoji:(\d{1,24})\)")
+
 
 @dataclass(frozen=True, kw_only=True)
 class CatalogButton:
@@ -124,7 +131,19 @@ def window_text_keys(window_key: str) -> tuple[str, ...]:
     # A custom window isn't in the in-process catalog; its body follows the fixed
     # naming convention create_custom_window.py generates.
     window = _WINDOWS.get(window_key)
-    return window.text_keys if window is not None else (f"msg-dialog-{window_key}",)
+    return window.text_keys if window is not None else (f"{_WINDOW_TEXT_KEY_PREFIX}{window_key}",)
+
+
+def window_key_for_text_key(text_key: str) -> Optional[str]:
+    """The window whose body this key would be. For a custom-prefixed key that
+    is only a candidate -- a button label shares the prefix, so the caller
+    confirms the window exists."""
+    for window in _WINDOWS.values():
+        if text_key in window.text_keys:
+            return window.key
+    if text_key.startswith(CUSTOM_TEXT_KEY_PREFIX):
+        return text_key.removeprefix(_WINDOW_TEXT_KEY_PREFIX)
+    return None
 
 
 def has_action_handler(key: str) -> bool:

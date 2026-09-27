@@ -90,13 +90,66 @@ async def test_get_catalog_reports_registered_keys(
 
 
 async def test_update_window_changes_banner_and_enabled(
-    dialog_repository: DialogRepository, uow, redis
+    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
 ) -> None:
     await _seed(dialog_repository)
-    use_case = UpdateDialogWindowUseCase(dialog_repository, uow, redis)
-    result = await use_case(OWNER, UpdateDialogWindowInput(key="menu.main", is_enabled=False))
+    await dialog_repository.create_custom_window("custom.off", CreateCustomWindowDto())
+    use_case = UpdateDialogWindowUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    result = await use_case(OWNER, UpdateDialogWindowInput(key="custom.off", is_enabled=False))
     assert result.is_enabled is False
-    assert result.banner_name == "menu"
+    seed = await use_case(
+        OWNER, UpdateDialogWindowInput(key="menu.main", banner_name="x", banner_name_provided=True)
+    )
+    assert seed.banner_name == "x"
+
+
+async def test_update_window_renames_custom_only(
+    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+) -> None:
+    await _seed(dialog_repository)
+    await dialog_repository.create_custom_window("custom.n", CreateCustomWindowDto(name="Old"))
+    use_case = UpdateDialogWindowUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    renamed = await use_case(OWNER, UpdateDialogWindowInput(key="custom.n", name="New"))
+    assert renamed.name == "New"
+    with pytest.raises(ValidationError):
+        await use_case(OWNER, UpdateDialogWindowInput(key="menu.main", name="New"))
+
+
+async def test_seed_window_cannot_be_disabled(
+    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+) -> None:
+    await _seed(dialog_repository)
+    use_case = UpdateDialogWindowUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    with pytest.raises(ValidationError):
+        await use_case(OWNER, UpdateDialogWindowInput(key="menu.main", is_enabled=False))
+
+
+async def test_system_button_cannot_be_hidden(
+    dialog_repository, translations_repository, settings_repository, uow, redis
+) -> None:
+    await _seed(dialog_repository)
+    _register_button_window("btn-menu.trial")
+    use_case = UpdateDialogWindowButtonsUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    system = DialogButtonInputDto(
+        row=0,
+        column=0,
+        text_key="btn-menu.trial",
+        link_type=ButtonLinkType.ACTION,
+        action_key="get_trial",
+    )
+    kept = await use_case(OWNER, UpdateDialogWindowButtonsInput(key="menu.main", buttons=[system]))
+    assert kept.buttons[0].is_system is True
+    hidden = DialogButtonInputDto(**{**system.__dict__, "is_hidden": True})
+    with pytest.raises(ValidationError):
+        await use_case(OWNER, UpdateDialogWindowButtonsInput(key="menu.main", buttons=[hidden]))
 
 
 async def test_update_buttons_rejects_unknown_action(
@@ -379,7 +432,8 @@ async def test_create_custom_window_seeds_translation(
     use_case = CreateCustomDialogWindowUseCase(
         dialog_repository, translations_repository, settings_repository, uow, redis
     )
-    result = await use_case(OWNER, CreateCustomDialogWindowInput(title_text="Hello"))
+    result = await use_case(OWNER, CreateCustomDialogWindowInput(name="Hello"))
+    assert result.name == "Hello"
     assert result.key.startswith("custom-")
     assert result.kind == DialogWindowKind.CUSTOM
 
@@ -404,12 +458,24 @@ async def test_reset_window_restores_snapshot(dialog_repository, uow, redis) -> 
 
 
 async def test_reset_all_restores_every_seed_window(
-    dialog_repository, translations_repository, settings_repository, uow, redis
+    dialog_repository,
+    translations_repository,
+    settings_repository,
+    banner_repository,
+    config,
+    uow,
+    redis,
 ) -> None:
     await _seed(dialog_repository)
     await dialog_repository.replace_buttons("menu.main", [])
     use_case = ResetAllDialogsUseCase(
-        dialog_repository, translations_repository, settings_repository, uow, redis
+        dialog_repository,
+        translations_repository,
+        settings_repository,
+        banner_repository,
+        config,
+        uow,
+        redis,
     )
     await use_case(OWNER, None)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
@@ -417,7 +483,13 @@ async def test_reset_all_restores_every_seed_window(
 
 
 async def test_reset_all_restores_an_edited_button_label(
-    dialog_repository, translations_repository, settings_repository, uow, redis
+    dialog_repository,
+    translations_repository,
+    settings_repository,
+    banner_repository,
+    config,
+    uow,
+    redis,
 ) -> None:
     # The label lives in the "trial" attribute of "btn-menu"; a reset that looked
     # for a message called "btn-menu.trial" silently found nothing and left the
@@ -445,7 +517,13 @@ async def test_reset_all_restores_an_edited_button_label(
     await translations_repository.update_value(Locale.EN, "btn-menu", "trial", "Edited")
 
     use_case = ResetAllDialogsUseCase(
-        dialog_repository, translations_repository, settings_repository, uow, redis
+        dialog_repository,
+        translations_repository,
+        settings_repository,
+        banner_repository,
+        config,
+        uow,
+        redis,
     )
     await use_case(OWNER, None)
 
@@ -461,7 +539,7 @@ async def test_update_dialog_text_rejects_a_dotted_message_id(
     uow,
     redis,
 ) -> None:
-    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -517,7 +595,7 @@ async def test_update_dialog_text_allows_known_variable(
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "msg-window-greeting", "", "Hi!")
 
-    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
     updated = await use_case(
         OWNER,
         UpdateDialogTextInput(
@@ -557,7 +635,7 @@ async def test_update_dialog_text_edits_attribute_keyed_button_label(
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "btn-menu", "subscription", "Sub")
 
-    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
     updated = await use_case(
         OWNER,
         UpdateDialogTextInput(
@@ -582,7 +660,7 @@ async def test_update_dialog_text_rejects_non_dialog_message_id(
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "command", "menu", "Menu")
 
-    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -604,7 +682,7 @@ async def test_update_dialog_text_rejects_unknown_variable(
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "msg-window-greeting2", "", "Hi!")
 
-    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -631,7 +709,7 @@ async def test_update_dialog_text_keeps_multiline_value(
         await settings_repository.add_active_locale(Locale.EN)
     await translations_repository.seed_missing(Locale.EN, "msg-window-greeting3", "", "Hi!")
 
-    use_case = UpdateDialogTextUseCase(translations_repository, uow, redis)
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
     updated = await use_case(
         OWNER,
         UpdateDialogTextInput(
@@ -655,8 +733,9 @@ async def test_update_buttons_seeds_translation_for_new_custom_text_key(
     dialog_repository, translations_repository, settings_repository, uow, redis
 ) -> None:
     await _seed(dialog_repository)
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
+    for locale in (Locale.EN, Locale.RU):
+        if locale not in await settings_repository.list_active_locales():
+            await settings_repository.add_active_locale(locale)
     _register_button_window("btn-menu.trial")
     use_case = UpdateDialogWindowButtonsUseCase(
         dialog_repository, translations_repository, settings_repository, uow, redis
@@ -684,8 +763,9 @@ async def test_update_buttons_seeds_translation_for_new_custom_text_key(
             ],
         ),
     )
-    entries = await translations_repository.list_by_locale(Locale.EN)
-    assert any(e.message_id == new_key and e.value == "" for e in entries)
+    for locale, label in ((Locale.EN, "Button"), (Locale.RU, "Кнопка")):
+        entries = await translations_repository.list_by_locale(locale)
+        assert any(e.message_id == new_key and e.value == label for e in entries)
 
 
 async def test_update_buttons_rejects_a_text_key_no_window_owns(
@@ -718,3 +798,79 @@ async def test_update_buttons_rejects_a_text_key_no_window_owns(
         )
     entries = await translations_repository.list_by_locale(Locale.EN)
     assert not any(e.message_id == "btn-menu.freeform" for e in entries)
+
+
+async def test_reset_all_removes_custom_windows(
+    dialog_repository,
+    translations_repository,
+    settings_repository,
+    banner_repository,
+    config,
+    uow,
+    redis,
+) -> None:
+    # A custom window has no default to fall back to, so "everything back to how
+    # it shipped" can only mean it goes away.
+    await _seed(dialog_repository)
+    window = await dialog_repository.create_custom_window("custom.x", CreateCustomWindowDto())
+
+    await ResetAllDialogsUseCase(
+        dialog_repository,
+        translations_repository,
+        settings_repository,
+        banner_repository,
+        config,
+        uow,
+        redis,
+    )(OWNER, None)
+
+    assert await dialog_repository.list_custom_keys() == set()
+    with pytest.raises(NotFoundError):
+        await dialog_repository.get_by_key_or_raise(window.key)
+
+
+async def test_update_dialog_text_rejects_an_empty_button_label(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    _register_button_window("btn-menu.trial")
+    await _seed(dialog_repository)
+    await translations_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdateDialogTextInput(
+                locale=Locale.EN, message_id="btn-menu", attribute_id="trial", value="  "
+            ),
+        )
+
+
+async def test_banner_cannot_be_set_over_text_too_long_for_a_caption(
+    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+) -> None:
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.main", flow=DialogFlow.MENU, text_keys=("msg-main-menu",), banner_name=None
+        )
+    )
+    await _seed(dialog_repository)
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "msg-main-menu", "", "a" * 2000)
+
+    use_case = UpdateDialogWindowUseCase(
+        dialog_repository, translations_repository, settings_repository, uow, redis
+    )
+    await use_case(
+        OWNER, UpdateDialogWindowInput(key="menu.main", banner_name=None, banner_name_provided=True)
+    )
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdateDialogWindowInput(key="menu.main", banner_name="x", banner_name_provided=True),
+        )

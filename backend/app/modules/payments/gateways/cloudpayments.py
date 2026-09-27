@@ -2,7 +2,7 @@ from typing import Final, Optional
 
 import orjson
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -27,8 +27,10 @@ from app.modules.payments.gateways.common import (
 _API_BASE: Final[str] = "https://api.cloudpayments.ru"
 # Single-stage payments only; Authorized is a two-stage hold.
 _PAID_STATUS: Final[str] = "Completed"
+_DECLINED_STATUS: Final[str] = "Declined"
 
 
+# Docs: https://developers.cloudpayments.ru/
 class CloudPaymentsGateway(PaymentGateway):
     currency = Currency.RUB
     ack = WebhookAck(body='{"code": 0}', media_type="application/json")
@@ -78,6 +80,9 @@ class CloudPaymentsGateway(PaymentGateway):
             reference=order_ref,
             claims_paid=fields.get("Status") == _PAID_STATUS,
             provider_payment_id=fields.get("TransactionId") or None,
+            reported_status=PaymentOrderStatus.FAILED
+            if fields.get("Status") == _DECLINED_STATUS
+            else None,
         )
 
     async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:

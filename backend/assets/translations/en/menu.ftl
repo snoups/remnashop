@@ -2,7 +2,7 @@ msg-main-menu = Main menu, { $name }!
 msg-window-gone = This screen is no longer available.
 msg-menu-devices = Your devices ({ $current_count }/{ $max_count })
 msg-menu-devices-confirm-delete = Delete this device?
-msg-menu-devices-confirm-delete-all = Delete ALL devices?
+msg-menu-devices-confirm-delete-all = Delete every device? Each one has to be connected again.
 msg-menu-devices-confirm-reissue = Reissue the connection link? The old link will stop working.
 
 btn-menu =
@@ -38,7 +38,7 @@ ntf-devices =
     .reissued = Connection link reissued.
 
 ntf-common =
-    .cooldown-active = Please wait until { $available_at } before repeating this action.
+    .cooldown-active = You can repeat this action after { $available_at }.
     .trial-unavailable = Trial is not available.
     .connect-not-available = Connection is not available.
     .access-restricted = Access is restricted.

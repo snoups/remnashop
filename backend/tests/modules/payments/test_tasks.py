@@ -50,7 +50,7 @@ async def test_prune_expired_payment_orders_marks_stale_pending_rows_expired(
     await prune_expired_payment_orders(payment_order_repository=payment_order_repository, uow=uow)
 
     fetched = await payment_order_repository.get_by_id(stale.id)
-    assert fetched.status is PaymentOrderStatus.EXPIRED
+    assert fetched.status is PaymentOrderStatus.CANCELED
 
 
 def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreatePaymentOrderDto:

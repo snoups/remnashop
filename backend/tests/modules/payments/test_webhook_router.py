@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 from typing import AsyncIterator, Optional
@@ -6,11 +7,13 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.payments.usecases.handle_payment_webhook as webhook_usecase_module
 from app.api.app import get_app
 from app.core.config import AppConfig
+from app.core.db.models import EventOutboxEntry
 from app.core.di.providers import get_core_providers
 from app.core.enums import (
     Currency,
@@ -258,6 +261,32 @@ async def test_webhook_confirmed_payment_marks_paid_and_dispatches_purchase(
     assert dispatched[0]["base_price"] == "500.00"
 
 
+async def test_webhook_confirmed_test_payment_marks_paid_without_provisioning(
+    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        order = await payment_order_repository.create(
+            replace(
+                _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-test"),
+                is_test=True,
+            )
+        )
+    _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-test")))
+    dispatched: list[dict[str, object]] = []
+
+    async def _fake_kiq(**kwargs: object) -> None:
+        dispatched.append(kwargs)
+
+    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
+
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert response.status_code == 200
+    assert (await payment_order_repository.get_by_id(order.id)).status is PaymentOrderStatus.PAID
+    assert dispatched == []
+    assert await payment_order_repository.count_paid_since(datetime_now() - timedelta(days=1)) == 0
+
+
 async def test_webhook_unconfirmed_payment_returns_502_and_leaves_the_order_pending(
     client, payment_order_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:
@@ -325,3 +354,98 @@ async def test_webhook_parse_error_returns_502(client, monkeypatch) -> None:
     )
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
     assert response.status_code == 502
+
+
+def _canceled_signal(reference: str) -> WebhookSignal:
+    return WebhookSignal(
+        reference=reference, claims_paid=False, reported_status=PaymentOrderStatus.CANCELED
+    )
+
+
+async def test_webhook_failure_marks_a_pending_order(
+    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        order = await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-fail-1")
+        )
+    stub = _StubGateway(signal=_canceled_signal("wh-fail-1"))
+    _install_stub(monkeypatch, stub)
+
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert response.status_code == 200
+    assert stub.confirm_calls == 0
+    fetched = await payment_order_repository.get_by_id(order.id)
+    assert fetched.status is PaymentOrderStatus.CANCELED
+
+
+async def test_webhook_failure_never_overwrites_a_paid_order(
+    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        order = await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-fail-2")
+        )
+        await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    _install_stub(monkeypatch, _StubGateway(signal=_canceled_signal("wh-fail-2")))
+
+    await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    fetched = await payment_order_repository.get_by_id(order.id)
+    assert fetched.status is PaymentOrderStatus.PAID
+
+
+async def test_webhook_late_payment_on_a_canceled_order_is_still_honoured(
+    client, payment_order_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        order = await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-fail-4")
+        )
+        await payment_order_repository.mark_status(order.id, PaymentOrderStatus.CANCELED)
+    _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-fail-4")))
+
+    async def _fake_kiq(**kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
+
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert response.status_code == 200
+    fetched = await payment_order_repository.get_by_id(order.id)
+    assert fetched.status is PaymentOrderStatus.PAID
+
+
+async def test_webhook_refund_marks_only_a_paid_order_and_publishes_an_event(
+    client, payment_order_repository, uow, session, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        paid = await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-refund-1")
+        )
+        await payment_order_repository.mark_status(paid.id, PaymentOrderStatus.PAID)
+        pending = await payment_order_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-refund-2")
+        )
+
+    for key in ("wh-refund-1", "wh-refund-2"):
+        signal = WebhookSignal(
+            reference=key, claims_paid=False, reported_status=PaymentOrderStatus.REFUNDED
+        )
+        _install_stub(monkeypatch, _StubGateway(signal=signal))
+        await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert (await payment_order_repository.get_by_id(paid.id)).status is PaymentOrderStatus.REFUNDED
+    assert (
+        await payment_order_repository.get_by_id(pending.id)
+    ).status is PaymentOrderStatus.PENDING
+    events = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == "PaymentOrderRefundedEvent"
+            )
+        )
+    ).all()
+    assert [event.payload["order_id"] for event in events] == [paid.id]

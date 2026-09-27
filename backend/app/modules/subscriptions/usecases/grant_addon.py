@@ -11,7 +11,7 @@ from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import GrantAddOnDto, SubscriptionDto
 from app.modules.subscriptions.events import SubscriptionAddOnGrantedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto
+from app.modules.users import UserDto, UserRepository
 
 
 class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
@@ -24,12 +24,14 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
         self,
         subscription_repository: SubscriptionRepository,
         addon_repository: AddOnRepository,
+        user_repository: UserRepository,
         remnawave_sdk: RemnawaveSDK,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._addon_repository = addon_repository
+        self._user_repository = user_repository
         self._remnawave_sdk = remnawave_sdk
         self._uow = uow
         self._event_publisher = event_publisher
@@ -67,9 +69,11 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
         # exception, and it precedes this -- a failed attempt never reaches
         # publish, so the event fires exactly once across all attempts.
         async with self._uow:
+            recipient = await self._user_repository.get_by_id(subscription.user_id)
             await self._event_publisher.publish(
                 SubscriptionAddOnGrantedEvent(
                     user=actor,
+                    target=recipient,
                     subscription_id=subscription.id,
                     addon_id=addon.id,
                     amount=addon.amount,

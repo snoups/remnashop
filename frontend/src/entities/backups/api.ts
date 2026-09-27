@@ -63,6 +63,18 @@ export function listBackupRuns(
   return apiGet<BackupRunListPage>(`/backups/runs?${params.toString()}`, signal);
 }
 
+export interface BackupStats {
+  completed_count: number;
+  failed_count: number;
+  total_size_bytes: number;
+  last_database_backup: BackupRun | null;
+  next_run_at: string | null;
+}
+
+export function getBackupStats(signal?: AbortSignal): Promise<BackupStats> {
+  return apiGet<BackupStats>("/backups/stats", signal);
+}
+
 export function createBackupRun(kind: BackupKind): Promise<BackupRun> {
   return apiPost<BackupRun, { kind: BackupKind }>("/backups/runs", { kind });
 }

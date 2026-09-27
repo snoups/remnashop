@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
@@ -11,6 +11,7 @@ from app.core.security.permissions import (
     assert_grantable,
 )
 from app.core.usecase import UseCase
+from app.core.utils.time import datetime_now
 from app.modules.api_tokens.dto import ApiTokenDto, CreateApiTokenDto
 from app.modules.api_tokens.events import ApiTokenCreatedEvent
 from app.modules.api_tokens.repository import ApiTokenRepository
@@ -51,7 +52,7 @@ class CreateApiTokenUseCase(UseCase[CreateApiTokenInput, CreatedApiTokenDto]):
         secret = generate_refresh_token()
 
         expires_at = (
-            datetime.now(timezone.utc) + timedelta(days=data.expires_in_days)
+            datetime_now() + timedelta(days=data.expires_in_days)
             if data.expires_in_days is not None
             else None
         )

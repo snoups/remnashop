@@ -30,8 +30,8 @@ async def prune_expired_payment_orders(
     *, payment_order_repository: PaymentOrderRepository, uow: UnitOfWork
 ) -> None:
     async with uow:
-        marked = await payment_order_repository.mark_expired_pending(datetime_now())
-    logger.info(f"Marked {marked} expired payment order(s) EXPIRED")
+        canceled = await payment_order_repository.cancel_expired_pending(datetime_now())
+    logger.info(f"Canceled {canceled} unpaid payment order(s) past their expiry")
 
 
 @broker.task(schedule=[{"cron": "*/10 * * * *"}])

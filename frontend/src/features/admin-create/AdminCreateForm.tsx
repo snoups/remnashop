@@ -23,10 +23,12 @@ export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
       <motion.button
         type="button"
         onClick={() => setIsOpen(true)}
-        {...bounceTap(bounceStrength)}
-        className="flex items-center gap-2 rounded-full border border-border px-3.5 py-2 text-sm font-medium text-foreground/90 transition-colors hover:bg-white/5"
+        {...bounceTap(bounceStrength, 0.03)}
+        className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] px-3 py-2.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
       >
-        <UserPlus className="size-4" />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] transition-colors group-hover:bg-transparent">
+          <UserPlus className="size-4" />
+        </span>
         {t("admins.create.button")}
       </motion.button>
 

@@ -25,32 +25,24 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { usePermissionCatalog, groupCatalogByResource } from "@entities/admin/use-permission-catalog";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
 import type { Permission } from "@shared/types/rbac";
 
-interface SinglePickerProps {
-  mode: "single";
+interface PermissionPickerProps {
   selected: Set<Permission>;
   onToggle: (permission: Permission) => void;
+  /** Rows whose state differs from this set get a "changed" mark (an admin's role defaults). */
+  baseline?: Set<Permission>;
   disabled?: boolean;
 }
-
-interface GrantRevokePickerProps {
-  mode: "grant-revoke";
-  granted: Set<Permission>;
-  revoked: Set<Permission>;
-  onToggleGrant: (permission: Permission) => void;
-  onToggleRevoke: (permission: Permission) => void;
-  disabled?: boolean;
-}
-
-type PermissionPickerProps = SinglePickerProps | GrantRevokePickerProps;
 
 const RESOURCE_ICONS: Record<string, LucideIcon> = {
   bot_settings: Bot,
@@ -89,26 +81,11 @@ function getKindState(keys: Permission[], active: Set<Permission>): KindState {
   return "partial";
 }
 
-// grant-revoke mode's kind pills bulk-toggle only the "grant" column --
-// revoke stays per-permission, a deliberately more surgical action.
-function activeSetFor(props: PermissionPickerProps): Set<Permission> {
-  return props.mode === "single" ? props.selected : props.granted;
-}
-
-function toggleOne(props: PermissionPickerProps, permission: Permission): void {
-  if (props.mode === "single") {
-    props.onToggle(permission);
-  } else {
-    props.onToggleGrant(permission);
-  }
-}
-
 function toggleKind(props: PermissionPickerProps, keys: Permission[], state: KindState): void {
-  const active = activeSetFor(props);
   const turnOn = state !== "on";
   for (const key of keys) {
-    if (active.has(key) !== turnOn) {
-      toggleOne(props, key);
+    if (props.selected.has(key) !== turnOn) {
+      props.onToggle(key);
     }
   }
 }
@@ -126,7 +103,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
   }
 
   const groups = groupCatalogByResource(catalogState.data);
-  const active = activeSetFor(props);
+  const active = props.selected;
 
   const toggleExpand = (resource: string) => {
     setExpanded((prev) => {
@@ -216,15 +193,17 @@ interface KindPillProps {
 }
 
 function KindPill({ label, state, disabled, onClick }: KindPillProps) {
+  const bounceStrength = useBounceStrength();
   const isActive = state === "on" || state === "partial";
   return (
-    <button
+    <motion.button
       type="button"
       onClick={(event) => {
         event.stopPropagation();
         onClick();
       }}
       disabled={disabled}
+      {...bounceTap(bounceStrength)}
       className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         isActive
           ? "border-primary/40 bg-accent text-primary"
@@ -234,42 +213,33 @@ function KindPill({ label, state, disabled, onClick }: KindPillProps) {
       {state === "on" && <Check className="size-3.5" />}
       {state === "partial" && <Minus className="size-3.5" />}
       {label}
-    </button>
+    </motion.button>
   );
 }
 
 function PermissionRow({ permission, ...props }: { permission: Permission } & PermissionPickerProps) {
   const { t } = useTranslation();
   const label = t(`permissions.${permission}`);
-
-  if (props.mode === "single") {
-    return (
-      <div className="flex items-center justify-between gap-3 py-2">
-        <span className="text-[13px] text-foreground/90">{label}</span>
-        <Switch
-          checked={props.selected.has(permission)}
-          onChange={() => props.onToggle(permission)}
-          disabled={props.disabled}
-          ariaLabel={label}
-        />
-      </div>
-    );
-  }
+  const isChanged = props.baseline !== undefined && props.baseline.has(permission) !== props.selected.has(permission);
 
   return (
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2">
-      <span className="text-[13px] text-foreground/90">{label}</span>
+    <div className="flex items-center justify-between gap-3 py-2">
+      <span className="flex min-w-0 items-center gap-2 text-[13px] text-foreground/90">
+        {props.baseline !== undefined && (
+          // slot kept on every row so labels stay aligned
+          <span
+            role={isChanged ? "img" : undefined}
+            aria-label={isChanged ? t("permissionPicker.changed") : undefined}
+            className={`size-1.5 shrink-0 rounded-full ${isChanged ? "bg-warning" : ""}`}
+          />
+        )}
+        {label}
+      </span>
       <Switch
-        checked={props.granted.has(permission)}
-        onChange={() => props.onToggleGrant(permission)}
+        checked={props.selected.has(permission)}
+        onChange={() => props.onToggle(permission)}
         disabled={props.disabled}
-        ariaLabel={`${t("admins.permissionsForm.headers.grant")}: ${label}`}
-      />
-      <Switch
-        checked={props.revoked.has(permission)}
-        onChange={() => props.onToggleRevoke(permission)}
-        disabled={props.disabled}
-        ariaLabel={`${t("admins.permissionsForm.headers.revoke")}: ${label}`}
+        ariaLabel={label}
       />
     </div>
   );

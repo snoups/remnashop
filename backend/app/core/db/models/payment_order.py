@@ -68,3 +68,5 @@ class PaymentOrder(BaseSql, TimestampMixin):
     # the durable "provisioned" record, unlike the idempotency key it's read
     # from (pruned after IDEMPOTENCY_KEY_RETENTION_DAYS).
     fulfilled_at: Mapped[Optional[datetime]]
+    # Dashboard gateway check: never provisioned, excluded from every revenue query.
+    is_test: Mapped[bool] = mapped_column(default=False, server_default="false")

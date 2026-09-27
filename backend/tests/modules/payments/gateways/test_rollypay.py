@@ -5,6 +5,7 @@ import json
 import pytest
 
 import app.modules.payments.gateways.rollypay as rollypay_module
+from app.core.enums import PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.gateways.rollypay import RollyPayGateway
 from tests.modules.payments.gateways.support import (
@@ -77,6 +78,23 @@ async def test_parse_webhook_sandbox_and_unpaid_events_do_not_claim() -> None:
         raw, headers = _signed(**overrides)
         signal = await _gateway().parse_webhook(webhook(raw, headers))
         assert signal is not None and signal.claims_paid is False
+
+
+@pytest.mark.parametrize(
+    ("status", "reported_status"),
+    [
+        ("canceled", PaymentOrderStatus.CANCELED),
+        ("expired", PaymentOrderStatus.CANCELED),
+        ("refunded", PaymentOrderStatus.REFUNDED),
+        ("chargeback", PaymentOrderStatus.REFUNDED),
+    ],
+)
+async def test_parse_webhook_reports_unpaid_outcomes(
+    status: str, reported_status: PaymentOrderStatus
+) -> None:
+    raw, headers = _signed(status=status, event_type=f"payment.{status}")
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None and signal.reported_status is reported_status
 
 
 async def test_confirm_reads_the_payment(monkeypatch: pytest.MonkeyPatch) -> None:

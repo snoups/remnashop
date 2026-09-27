@@ -69,6 +69,19 @@ export function BotCommandsForm() {
     );
   };
 
+  const handleResetOrder = async () => {
+    try {
+      const defaults = await getBotCommands(undefined, true);
+      const rank = new Map(defaults.map((item, index) => [item.command, index]));
+      // Only the order resets -- unsaved toggles stay as the admin left them.
+      setRows((current) =>
+        [...current].sort((a, b) => (rank.get(a.command) ?? 0) - (rank.get(b.command) ?? 0)),
+      );
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    }
+  };
+
   const handleSave = async () => {
     setIsSubmitting(true);
 
@@ -95,9 +108,11 @@ export function BotCommandsForm() {
         </div>
         <div>
           <h2 className="text-sm font-bold text-foreground">{t("settings.botCommands.title")}</h2>
-          <p className="text-[12.5px] text-muted-foreground">{t("settings.botCommands.description")}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.botCommands.description")}</p>
         </div>
       </div>
+
+      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
       <div className="mt-4 flex flex-col gap-4">
         {state.kind === "loading" && (
@@ -127,6 +142,14 @@ export function BotCommandsForm() {
                 className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? t("settings.botCommands.saving") : t("settings.botCommands.save")}
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={() => void handleResetOrder()}
+                {...bounceTap(bounceStrength)}
+                className="w-fit rounded-full border border-white/[0.12] px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/[0.06]"
+              >
+                {t("settings.botCommands.resetOrder")}
               </motion.button>
             </div>
           </>

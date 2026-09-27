@@ -1,10 +1,12 @@
 import ipaddress
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.constants import LOGIN_PATTERN
+from app.core.enums import BlacklistKind
 from app.core.security import PASSWORD_MIN_LENGTH, PASSWORD_PATTERN
 from app.core.security.permissions import Permission
 
@@ -35,9 +37,14 @@ class AdminResponse(BaseModel):
     email: Optional[str]
     language: str
     is_blocked: bool
+    personal_discount: int
+    purchase_discount: int
+    points: Decimal
+    is_trial_available: bool
     created_at: Optional[datetime]
     permission_grants: list[Permission]
     permission_revokes: list[Permission]
+    role_permissions: list[Permission]
     effective_permissions: list[Permission]
 
 
@@ -63,7 +70,34 @@ class UserResponse(BaseModel):
     is_blocked: bool
     personal_discount: int
     purchase_discount: int
+    referral_code: Optional[str]
+    points: Decimal
+    is_trial_available: bool
     created_at: Optional[datetime]
+
+
+class BlacklistOriginResponse(BaseModel):
+    source_id: Optional[int]
+    source_name: Optional[str]
+
+
+class BlacklistHitResponse(BaseModel):
+    kind: BlacklistKind
+    value: str
+    origins: list[BlacklistOriginResponse]
+
+
+class BlacklistMatchResponse(BaseModel):
+    user: UserResponse
+    hits: list[BlacklistHitResponse]
+
+
+class BlacklistMatchPageResponse(BaseModel):
+    items: list[BlacklistMatchResponse]
+    total: int
+    all_total: int
+    manual_total: int
+    lists_total: int
 
 
 class UserPageResponse(BaseModel):

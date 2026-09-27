@@ -165,6 +165,12 @@ async def test_get_payment_order_returns_the_order(
 
     assert response.status_code == 200
     assert response.json()["id"] == created.id
+    assert response.json()["user"] == {
+        "name": "buyer",
+        "username": None,
+        "telegram_id": 900_001,
+        "email": None,
+    }
 
 
 async def test_get_payment_order_returns_404_for_a_missing_id(

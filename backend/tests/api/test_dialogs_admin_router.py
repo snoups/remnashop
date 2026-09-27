@@ -191,11 +191,15 @@ async def test_owner_lists_and_updates(
     resp = await client.put(
         f"{API_V1}/dialogs/windows/menu.main",
         headers=headers,
-        json={"banner_name": "default", "is_enabled": False},
+        json={"banner_name": "default"},
     )
     assert resp.status_code == 200
-    assert resp.json()["is_enabled"] is False
     assert resp.json()["banner_name"] == "default"
+
+    disabled = await client.put(
+        f"{API_V1}/dialogs/windows/menu.main", headers=headers, json={"is_enabled": False}
+    )
+    assert disabled.status_code == 400
 
     # Omitting banner_name leaves it alone; sending it as null clears it.
     untouched = await client.put(
@@ -298,7 +302,7 @@ async def test_create_update_delete_custom_window(
     create_resp = await client.post(
         f"{API_V1}/dialogs/windows",
         headers=headers,
-        json={"title_text": "Custom title"},
+        json={"name": "Custom title"},
     )
     assert create_resp.status_code == 201
     key = create_resp.json()["key"]
@@ -355,11 +359,6 @@ async def test_reset_window_and_reset_all(
     )
     await uow.commit()
 
-    await client.put(
-        f"{API_V1}/dialogs/windows/menu.main",
-        headers=headers,
-        json={"is_enabled": False},
-    )
     reset_resp = await client.post(f"{API_V1}/dialogs/windows/menu.main/reset", headers=headers)
     assert reset_resp.status_code == 200
     assert reset_resp.json()["is_enabled"] is True
@@ -406,7 +405,7 @@ async def test_window_response_includes_text_keys_for_custom_window(
     create_resp = await client.post(
         f"{API_V1}/dialogs/windows",
         headers=headers,
-        json={"title_text": "Custom title"},
+        json={"name": "Custom title"},
     )
     assert create_resp.status_code == 201
     key = create_resp.json()["key"]

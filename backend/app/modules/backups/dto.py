@@ -38,3 +38,11 @@ class BackupRunDto(BaseDto, TimestampMixin):
 class CreateBackupRunDto:
     kind: BackupKind
     triggered_by: Optional[int] = None
+
+
+class BackupStatsDto(BaseDto):
+    completed_count: int = 0
+    failed_count: int = 0
+    total_size_bytes: int = 0
+    last_database_backup: Optional[BackupRunDto] = None
+    next_run_at: Optional[datetime] = None

@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.enums import BlacklistKind
-from app.modules.blacklist.normalize import normalize_identity
+from app.modules.blacklist.normalize import derive_source_name, normalize_identity
 
 TG = BlacklistKind.TELEGRAM_ID
 EMAIL = BlacklistKind.EMAIL
@@ -39,3 +39,20 @@ def test_normalize_telegram_id(raw: str, expected):
 )
 def test_normalize_email(raw: str, expected):
     assert normalize_identity(EMAIL, raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        (
+            "https://raw.githubusercontent.com/remnashop/blacklist/main/blacklist.txt",
+            "remnashop/blacklist",
+        ),
+        ("https://github.com/owner/repo", "owner/repo"),
+        ("https://www.example.com/lists/abuse.txt", "example.com/abuse.txt"),
+        ("https://example.com", "example.com"),
+        ("https://github.com/owner", "github.com/owner"),
+    ],
+)
+def test_derive_source_name(url: str, expected: str) -> None:
+    assert derive_source_name(url) == expected

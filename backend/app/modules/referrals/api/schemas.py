@@ -1,10 +1,12 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Annotated, Optional, TypeAlias
 
 from pydantic import BaseModel, Field
 
 from app.core.enums import ReferralAccrualStrategy, ReferralRewardType
+
+_WholeDecimal: TypeAlias = Annotated[Decimal, Field(decimal_places=0)]
 
 
 class ReferralSettingsResponse(BaseModel):
@@ -20,7 +22,7 @@ class UpdateReferralSettingsRequest(BaseModel):
     max_level: Optional[int] = Field(default=None, ge=1, le=3)
     accrual_strategy: Optional[ReferralAccrualStrategy] = None
     reward_type: Optional[ReferralRewardType] = None
-    reward_amounts: Optional[dict[int, Decimal]] = None
+    reward_amounts: Optional[dict[int, _WholeDecimal]] = None
 
 
 class ReferralRewardResponse(BaseModel):
@@ -37,8 +39,30 @@ class ReferralStatsResponse(BaseModel):
     rewards: list[ReferralRewardResponse]
 
 
+class ReferralUserResponse(BaseModel):
+    id: int
+    name: str
+    username: Optional[str]
+    telegram_id: Optional[int]
+
+
+class ReferralListItemResponse(BaseModel):
+    id: int
+    level: int
+    created_at: Optional[datetime]
+    referred: Optional[ReferralUserResponse]
+    referrer: Optional[ReferralUserResponse]
+    reward_count: int
+    reward_amounts: dict[ReferralRewardType, Decimal]
+
+
+class ReferralPageResponse(BaseModel):
+    items: list[ReferralListItemResponse]
+    total: int
+
+
 class AdjustPointsRequest(BaseModel):
-    delta: Decimal
+    delta: _WholeDecimal
 
 
 class AttachReferralRequest(BaseModel):
@@ -46,4 +70,4 @@ class AttachReferralRequest(BaseModel):
 
 
 class WithdrawPointsRequest(BaseModel):
-    amount: Decimal = Field(gt=0)
+    amount: _WholeDecimal = Field(gt=0)

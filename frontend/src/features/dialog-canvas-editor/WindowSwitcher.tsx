@@ -1,8 +1,10 @@
-import { ChevronRight, MessageSquare } from "lucide-react";
+import { ChevronRight, MessagesSquare, Plus } from "lucide-react";
+import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogFlow, DialogWindow } from "@entities/dialogs/api";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 interface WindowSwitcherProps {
@@ -17,7 +19,7 @@ interface WindowSwitcherProps {
   canCreate: boolean;
   isLimitReached: boolean;
   canDelete: boolean;
-  onCreate: (titleText: string, bannerName: string | null) => void;
+  onCreate: (name: string) => void;
   onDelete: (key: string) => void;
 }
 
@@ -50,6 +52,7 @@ function WindowChip({
   isUnreachable,
   isDirty,
   canDelete,
+  bounceStrength,
   onSelect,
   onDelete,
 }: {
@@ -59,25 +62,32 @@ function WindowChip({
   isUnreachable: boolean;
   isDirty: boolean;
   canDelete: boolean;
+  bounceStrength: number;
   onSelect: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
   return (
-    <div
-      className={`group flex items-center gap-1 rounded-full px-1 transition-colors ${
-        isSelected ? "bg-accent" : "hover:bg-white/[0.04]"
-      }`}
+    <motion.div
+      initial="rest"
+      whileTap="tap"
+      className="group relative isolate flex items-center gap-1 rounded-full px-1"
     >
+      {/* Only the pill behind the row scales on tap, same split as TabBar. */}
+      <motion.span
+        aria-hidden
+        variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+        className={`absolute inset-0 rounded-full transition-colors ${
+          isSelected ? "bg-accent" : "group-hover:bg-white/[0.04]"
+        }`}
+      />
       <button
         type="button"
         onClick={onSelect}
-        title={window.key}
-        className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 py-1.5 text-left text-[13px] ${
+        className={`relative z-10 flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 py-1.5 text-left text-[13px] ${
           isSelected ? "font-medium text-primary" : "text-foreground/80"
         } ${window.is_enabled ? "" : "opacity-55"}`}
       >
-        <MessageSquare className={`size-3.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
         <span className="min-w-0 flex-1 truncate">
           {label.length > LABEL_MAX_LENGTH ? `${label.slice(0, LABEL_MAX_LENGTH)}…` : label}
         </span>
@@ -90,12 +100,12 @@ function WindowChip({
           type="button"
           onClick={onDelete}
           aria-label={t("dialogs.windowList.deleteWindow")}
-          className="cursor-pointer px-1 text-[13px] text-muted-foreground opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
+          className="relative z-10 cursor-pointer px-1 text-[13px] text-muted-foreground opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
         >
           ×
         </button>
       ) : null}
-    </div>
+    </motion.div>
   );
 }
 
@@ -113,40 +123,55 @@ export function WindowSwitcher({
   onDelete,
 }: WindowSwitcherProps) {
   const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [titleText, setTitleText] = useState("");
-  const [collapsedFlows, setCollapsedFlows] = useState<string[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<DialogWindow | null>(null);
+  const [name, setName] = useState("");
+  // Only what somebody clicked is remembered; everything else follows the
+  // selection, so the flow holding the open window is the one left expanded.
+  const [toggledFlows, setToggledFlows] = useState<Record<string, boolean>>({});
 
   const branches = FLOW_ORDER.map((flow) => ({
     flow,
     items: windows.filter((window) => window.flow === flow),
   })).filter((branch) => branch.items.length > 0);
 
+  const activeFlow = windows.find((window) => window.key === selectedKey)?.flow ?? null;
+  const isFlowCollapsed = (flow: DialogFlow) => toggledFlows[flow] ?? flow !== activeFlow;
+
   const toggleFlow = (flow: DialogFlow) =>
-    setCollapsedFlows((current) =>
-      current.includes(flow) ? current.filter((item) => item !== flow) : [...current, flow],
-    );
+    setToggledFlows((current) => ({ ...current, [flow]: !isFlowCollapsed(flow) }));
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1.5">
       {branches.map(({ flow, items }) => {
-        const isCollapsed = collapsedFlows.includes(flow);
+        const isCollapsed = isFlowCollapsed(flow);
         return (
           <div key={flow}>
-            <button
+            <motion.button
               type="button"
               onClick={() => toggleFlow(flow)}
-              className="flex w-full cursor-pointer items-center gap-1 rounded-lg px-1.5 py-1.5 text-left text-[11px] uppercase tracking-wide text-muted-foreground transition-colors hover:bg-white/[0.06]"
+              initial="rest"
+              whileTap="tap"
+              className="group relative isolate flex w-full cursor-pointer items-center gap-1 rounded-full px-1.5 py-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
             >
-              <ChevronRight
-                className={`size-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+              <motion.span
+                aria-hidden
+                variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+                className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
               />
-              <span className="truncate">{t(`dialogs.windowList.flows.${flow}`)}</span>
-              <span className="ml-auto text-[10.5px] tabular-nums opacity-70">{items.length}</span>
-            </button>
+              <ChevronRight
+                className={`relative z-10 size-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+              />
+              <span className="relative z-10 truncate">
+                {t(`dialogs.windowList.flows.${flow}`)}
+              </span>
+              <span className="relative z-10 ml-auto text-[10.5px] tabular-nums opacity-70">
+                {items.length}
+              </span>
+            </motion.button>
             {!isCollapsed && (
-              <div className="ml-[13px] flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
+              <div className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
                 {items.map((window) => (
                   <WindowChip
                     key={window.key}
@@ -156,8 +181,9 @@ export function WindowSwitcher({
                     isUnreachable={unreachableKeys.has(window.key)}
                     isDirty={window.key === dirtyKey}
                     canDelete={canDelete}
+                    bounceStrength={bounceStrength}
                     onSelect={() => onSelect(window.key)}
-                    onDelete={() => setDeleteTarget(window.key)}
+                    onDelete={() => setDeleteTarget(window)}
                   />
                 ))}
               </div>
@@ -166,13 +192,15 @@ export function WindowSwitcher({
         );
       })}
       {canCreate && (
-        <button
+        <motion.button
           type="button"
           onClick={() => setIsCreateOpen(true)}
-          className="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-white/[0.12] px-2.5 py-1.5 text-left text-[12px] text-foreground/70 hover:bg-white/[0.06]"
+          {...bounceTap(bounceStrength)}
+          className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 py-1.5 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
+          <Plus className="size-3.5" />
           {t("dialogs.windowList.addWindow")}
-        </button>
+        </motion.button>
       )}
       {isLimitReached && (
         <span className="mt-1 text-[11.5px] text-muted-foreground">
@@ -182,21 +210,21 @@ export function WindowSwitcher({
       {isCreateOpen && (
         <ConfirmDialog
           title={t("dialogs.windowList.addWindow")}
-          message={t("dialogs.windowList.addWindowMessage")}
+          icon={MessagesSquare}
           confirmLabel={t("dialogs.windowList.addWindowConfirm")}
           cancelLabel={t("dialogs.windowList.addWindowCancel")}
           onConfirm={() => {
-            if (!titleText.trim()) return;
-            onCreate(titleText.trim(), null);
+            if (!name.trim()) return;
+            onCreate(name.trim());
             setIsCreateOpen(false);
-            setTitleText("");
+            setName("");
           }}
           onCancel={() => setIsCreateOpen(false)}
         >
           <input
             type="text"
-            value={titleText}
-            onChange={(event) => setTitleText(event.target.value)}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
             placeholder={t("dialogs.windowList.addWindowTitlePlaceholder")}
             className="mb-2 w-full rounded-lg border border-border bg-input/60 px-2.5 py-1.5 text-[13px]"
           />
@@ -205,12 +233,12 @@ export function WindowSwitcher({
       {deleteTarget && (
         <ConfirmDialog
           title={t("dialogs.windowList.deleteWindow")}
-          message={t("dialogs.windowList.deleteWindowConfirm", { key: deleteTarget })}
+          message={t("dialogs.windowList.deleteWindowConfirm", { name: labelOf(deleteTarget) })}
           confirmLabel={t("dialogs.windowList.deleteWindowConfirmButton")}
           cancelLabel={t("dialogs.windowList.deleteWindowCancelButton")}
           danger
           onConfirm={() => {
-            onDelete(deleteTarget);
+            onDelete(deleteTarget.key);
             setDeleteTarget(null);
           }}
           onCancel={() => setDeleteTarget(null)}

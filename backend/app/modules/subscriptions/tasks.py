@@ -98,6 +98,7 @@ async def grant_addon(
     *,
     subscription_repository: SubscriptionRepository,
     addon_repository: AddOnRepository,
+    user_repository: UserRepository,
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
@@ -106,7 +107,12 @@ async def grant_addon(
     idempotency_key: Optional[str] = None,
 ) -> SubscriptionDto:
     use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
     return await use_case.system(
         GrantAddOnDto(
@@ -164,6 +170,7 @@ async def grant_addon_task(
     addon_id: int,
     subscription_repository: FromDishka[SubscriptionRepository],
     addon_repository: FromDishka[AddOnRepository],
+    user_repository: FromDishka[UserRepository],
     remnawave_sdk: FromDishka[RemnawaveSDK],
     uow: FromDishka[UnitOfWork],
     event_publisher: FromDishka[EventPublisher],
@@ -172,6 +179,7 @@ async def grant_addon_task(
     await grant_addon(
         subscription_repository=subscription_repository,
         addon_repository=addon_repository,
+        user_repository=user_repository,
         remnawave_sdk=remnawave_sdk,
         uow=uow,
         event_publisher=event_publisher,

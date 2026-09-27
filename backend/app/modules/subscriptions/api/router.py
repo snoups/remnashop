@@ -18,6 +18,7 @@ from app.core.constants import (
 )
 from app.core.enums import SubscriptionStatus
 from app.core.utils.http import read_bounded_body
+from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import SyncSubscriptionStatusDto
 from app.modules.subscriptions.usecases import SyncSubscriptionStatusUseCase
 
@@ -36,7 +37,7 @@ _WEBHOOK_REPLAY_TTL_S: Final[int] = TTL_10M
 def _is_stale(timestamp: datetime) -> bool:
     if timestamp.tzinfo is None:
         timestamp = timestamp.replace(tzinfo=timezone.utc)
-    drift = abs((datetime.now(timezone.utc) - timestamp).total_seconds())
+    drift = abs((datetime_now() - timestamp).total_seconds())
     return drift > _WEBHOOK_FRESHNESS_WINDOW_S
 
 

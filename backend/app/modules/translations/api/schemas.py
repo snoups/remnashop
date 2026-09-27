@@ -13,3 +13,20 @@ class TranslationEntryItem(BaseModel):
 
 class UpdateTranslationRequest(BaseModel):
     value: str
+
+
+class TranslationTextExportItem(BaseModel):
+    locale: Locale
+    message_id: str
+    attribute_id: str
+    value: str
+
+
+class TranslationsExportPayload(BaseModel):
+    version: int
+    texts: list[TranslationTextExportItem]
+
+
+class TranslationsImportResult(BaseModel):
+    applied: int
+    skipped: int

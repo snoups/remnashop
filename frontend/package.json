@@ -16,6 +16,7 @@
     "@simplewebauthn/browser": "^14.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "i18next": "^26.3.6",
+    "lottie-web": "^5.13.0",
     "lucide-react": "^1.31.0",
     "motion": "^13.1.0",
     "react": "^19.2.8",

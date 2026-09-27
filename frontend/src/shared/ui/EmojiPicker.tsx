@@ -1,14 +1,17 @@
-import { Plus, Search, Smile, Trash2, X } from "lucide-react";
+import { Plus, Smile, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import { deleteEmojiPack, importEmojiPack, listEmojiPacks } from "@entities/emoji-packs/api";
-import { getErrorMessage } from "@shared/api/http";
-import { toast } from "@shared/lib/toast";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { listEmojiPacks } from "@entities/emoji-packs/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { useBounceStrength } from "@shared/lib/bounceState";
+import { scrollToEmojiPacks } from "@shared/lib/emoji-packs-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
+import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
+import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
+import { PremiumEmoji } from "@shared/ui/PremiumEmoji";
 import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 
 /** A standard emoji is a glyph the bot puts in the button's own label; a premium
@@ -24,67 +27,108 @@ interface EmojiPickerProps {
   onClear: () => void;
 }
 
+const POPOVER_MAX_HEIGHT = 360;
+const POPOVER_GAP = 8;
+
+type PopoverAnchor = { right: number } & ({ top: number } | { bottom: number });
+
+function anchorFor(trigger: DOMRect): PopoverAnchor {
+  const right = window.innerWidth - trigger.right;
+  return window.innerHeight - trigger.bottom < POPOVER_MAX_HEIGHT && trigger.top > POPOVER_MAX_HEIGHT
+    ? { right, bottom: window.innerHeight - trigger.top + POPOVER_GAP }
+    : { right, top: trigger.bottom + POPOVER_GAP };
+}
+
 const POPOVER_MOTION = {
   initial: { opacity: 0, scale: 0.96, y: -4 },
   animate: { opacity: 1, scale: 1, y: 0 },
   exit: { opacity: 0, scale: 0.96, y: -4 },
   transition: { duration: 0.15, ease: "easeOut" },
-  style: { transformOrigin: "top right" },
 } as const;
 
-export function EmojiPicker({ current, disabled = false, onPick, onClear }: EmojiPickerProps) {
+function PackTab({
+  isActive,
+  bounceStrength,
+  label,
+  glyph,
+  onSelect,
+}: {
+  isActive: boolean;
+  bounceStrength: number;
+  label: string;
+  glyph: ReactNode;
+  onSelect: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onSelect}
+      aria-label={label}
+      initial="rest"
+      whileTap="tap"
+      className="group relative isolate block shrink-0 cursor-pointer rounded-full"
+    >
+      <motion.span
+        aria-hidden
+        variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+        className={`absolute inset-0 rounded-full transition-colors ${
+          isActive ? "bg-accent" : "group-hover:bg-white/[0.06]"
+        }`}
+      />
+      <span
+        className={`relative z-10 flex size-7 items-center justify-center ${
+          isActive ? "text-primary" : "text-muted-foreground"
+        }`}
+      >
+        {glyph}
+      </span>
+    </motion.button>
+  );
+}
+
+export function EmojiPicker({
+  current,
+  disabled = false,
+  onPick,
+  onClear,
+}: EmojiPickerProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("standard");
   const ref = useRef<HTMLDivElement>(null);
-  const [packsState, reloadPacks] = useAsyncResource(listEmojiPacks);
-  const [isAdding, setIsAdding] = useState(false);
-  const [link, setLink] = useState("");
-  const [isImporting, setIsImporting] = useState(false);
-  const [query, setQuery] = useState("");
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
-  const canImport = permissions.includes("EMOJI_PACKS_IMPORT");
-  const canDeletePack = permissions.includes("EMOJI_PACKS_DELETE");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | undefined>(undefined);
+  const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
+  const bounceStrength = useBounceStrength();
+  // Portalled and fixed: the inspector pane scrolls, and the shell's backdrop-blur
+  // wrapper is both a containing block for fixed children and an overflow-hidden
+  // box, so a popover positioned in place gets clipped either way.
+  // measured on open only, so it stays put if the pane scrolls under it --
+  // reposition on scroll/resize if that ever reads as broken.
+  const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
+  const [packsState] = useAsyncResource(listEmojiPacks);
   const packs = packsState.kind === "ready" ? packsState.data : [];
 
-  useClickOutside(ref, isOpen, () => setIsOpen(false));
+  useClickOutside([ref, popoverRef], isOpen, () => setIsOpen(false));
+  useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
 
   const activePack = packs.find((pack) => pack.set_name === activeTab);
-  // Unicode names are English, so the search only answers in English -- still
-  // better than scrolling seven hundred glyphs.
-  const needle = query.trim().toLowerCase();
-  const standardGroups = needle
-    ? STANDARD_EMOJI.map((group) => ({
-        ...group,
-        items: group.items.filter((emoji) => emoji.n.includes(needle)),
-      })).filter((group) => group.items.length > 0)
-    : STANDARD_EMOJI;
 
-  const handleImport = async () => {
-    setIsImporting(true);
-    try {
-      const pack = await importEmojiPack(link.trim());
-      reloadPacks();
-      setActiveTab(pack.set_name);
-      setLink("");
-      setIsAdding(false);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
-    } finally {
-      setIsImporting(false);
-    }
+  const open = () => {
+    const trigger = triggerRef.current?.getBoundingClientRect();
+    if (trigger) setAnchor(anchorFor(trigger));
+    setActiveTab("standard");
+    setIsOpen(true);
   };
 
-  const handleDeletePack = async (setName: string) => {
-    try {
-      await deleteEmojiPack(setName);
-      reloadPacks();
-      setActiveTab("standard");
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
-    }
+  // The popover is portalled, so the gap between trigger and popover is not a
+  // DOM ancestor of either -- a delay is what lets the pointer cross it.
+  const closeSoon = () => {
+    closeTimer.current = window.setTimeout(() => setIsOpen(false), 200);
+  };
+  const cancelClose = () => {
+    if (closeTimer.current !== undefined) window.clearTimeout(closeTimer.current);
   };
 
   const pick = (picked: PickedEmoji) => {
@@ -95,165 +139,141 @@ export function EmojiPicker({ current, disabled = false, onPick, onClear }: Emoj
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen((open) => !open)}
+        onMouseEnter={() => {
+          if (disabled) return;
+          cancelClose();
+          open();
+        }}
+        onMouseLeave={closeSoon}
+        onClick={() => (isOpen ? setIsOpen(false) : open())}
         aria-label={t("dialogs.inspector.emojiPick")}
-        className="flex size-[26px] cursor-pointer items-center justify-center rounded-full bg-white/[0.06] text-[14px] transition-colors hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex size-[26px] cursor-pointer items-center justify-center rounded-full text-[16px] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {current ?? <Smile className="size-3.5 text-muted-foreground" />}
+        {current ?? <Smile className="size-[18px] text-muted-foreground" />}
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            {...POPOVER_MOTION}
-            className="absolute right-0 top-full z-30 mt-2 w-72 rounded-popover border border-white/[0.14] bg-popover/80 p-2 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6)] backdrop-blur-2xl"
-          >
-            <label className="mb-2 flex items-center gap-2 rounded-full border border-border bg-input/60 px-2.5 py-1">
-              <Search className="size-3 shrink-0 text-muted-foreground" />
-              <input
-                type="text"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("dialogs.inspector.emojiSearch")}
-                className="min-w-0 flex-1 bg-transparent text-[11.5px] text-foreground outline-none"
-              />
-            </label>
-
-            <div className="no-scrollbar mb-2 flex gap-1 overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setActiveTab("standard")}
-                className={`shrink-0 cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] transition-colors ${
-                  activeTab === "standard" ? "bg-accent text-primary" : "text-foreground/70 hover:bg-white/[0.06]"
-                }`}
-              >
-                {t("dialogs.inspector.emojiStandard")}
-              </button>
-              {packs.map((pack) => (
-                <button
-                  key={pack.set_name}
-                  type="button"
-                  onClick={() => setActiveTab(pack.set_name)}
-                  className={`shrink-0 cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] transition-colors ${
-                    activeTab === pack.set_name
-                      ? "bg-accent text-primary"
-                      : "text-foreground/70 hover:bg-white/[0.06]"
-                  }`}
+      {createPortal(
+        <AnimatePresence>
+          {isOpen && anchor && (
+            <motion.div
+              ref={popoverRef}
+              onMouseEnter={cancelClose}
+              onMouseLeave={closeSoon}
+              {...POPOVER_MOTION}
+              style={{ transformOrigin: "top" in anchor ? "top right" : "bottom right", ...anchor }}
+              // Opaque, unlike every other popover: a backdrop-filter over the
+              // WebGL background is re-blurred on every change inside the
+              // layer, and a grid of animating emoji changes ~60 times a
+              // second. Measured 60% -> 40% GPU on dropping the blur alone.
+              className="fixed z-30 w-72 rounded-popover border border-white/[0.14] bg-popover p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)]"
+            >
+              {/* TabBar's capsule, scaled down for the popover: the scroller is
+                  inset by the capsule's own p-0.5, so its clip box lines up with
+                  the outer radius instead of cutting into a pill. */}
+              <nav className="mb-2 flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
+                <div
+                  ref={tabsRef}
+                  className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto rounded-full"
                 >
-                  {pack.title}
-                </button>
-              ))}
-              {canImport && (
-                <button
-                  type="button"
-                  onClick={() => setIsAdding((adding) => !adding)}
-                  aria-label={t("dialogs.inspector.emojiAddPack")}
-                  className="ml-auto flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-dashed border-white/[0.16] text-muted-foreground transition-colors hover:bg-white/[0.06]"
-                >
-                  <Plus className="size-3" />
-                </button>
-              )}
-            </div>
-
-            {isAdding && (
-              <div className="mb-2 flex gap-1.5">
-                <input
-                  type="text"
-                  value={link}
-                  onChange={(event) => setLink(event.target.value)}
-                  placeholder={t("dialogs.inspector.emojiPackLinkPlaceholder")}
-                  className="min-w-0 flex-1 rounded-full border border-border bg-input/60 px-2.5 py-1 text-[11.5px] text-foreground outline-none focus:border-primary"
-                />
+                  <PackTab
+                    isActive={activeTab === "standard"}
+                    bounceStrength={bounceStrength}
+                    label={t("dialogs.inspector.emojiStandard")}
+                    glyph={<Smile className="size-[18px]" />}
+                    onSelect={() => setActiveTab("standard")}
+                  />
+                  {packs.map((pack) => (
+                    <PackTab
+                      key={pack.set_name}
+                      isActive={activeTab === pack.set_name}
+                      bounceStrength={bounceStrength}
+                      label={pack.title}
+                      glyph={<PremiumEmoji item={pack.items[0]} size={20} />}
+                      onSelect={() => setActiveTab(pack.set_name)}
+                    />
+                  ))}
+                </div>
                 <button
                   type="button"
-                  disabled={isImporting || link.trim() === ""}
-                  onClick={() => void handleImport()}
-                  className="shrink-0 cursor-pointer rounded-full bg-accent px-2.5 py-1 text-[11.5px] font-semibold text-primary transition-colors hover:bg-primary/20 disabled:opacity-40"
+                  onClick={() => {
+                    setIsOpen(false);
+                    scrollToEmojiPacks();
+                  }}
+                  aria-label={t("dialogs.inspector.emojiManage")}
+                  className="ml-auto flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
                 >
-                  {t("dialogs.inspector.emojiPackAdd")}
+                  <Plus className="size-[18px]" />
                 </button>
-              </div>
-            )}
+              </nav>
 
-            <div className="max-h-56 overflow-y-auto">
-              {activePack ? (
-                <>
+              {/* x-hidden, not x-auto: a glyph the font renders wider than its
+                  cell would otherwise add a scrollbar to a grid that is already
+                  as wide as the popover. */}
+              {/* py matches the fade: at either end of the scroll the gradient
+                  sits over padding, never over a row of emoji. */}
+              <div className="max-h-56 overflow-y-auto overflow-x-hidden py-2 [mask-composite:add] [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent),linear-gradient(to_right,transparent_calc(100%-14px),black_calc(100%-14px))]">
+                {activePack ? (
                   <div className="grid grid-cols-8 gap-1">
                     {activePack.items.map((item) => (
                       <button
                         key={item.custom_emoji_id}
                         type="button"
-                        title={item.fallback_emoji}
                         onClick={() =>
                           pick({
                             customEmojiId: item.custom_emoji_id,
                             fallback: item.fallback_emoji,
                           })
                         }
-                        className="flex h-7 cursor-pointer items-center justify-center rounded-lg text-[17px] transition-colors hover:bg-white/[0.06]"
+                        className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.06]"
                       >
-                        {item.fallback_emoji}
+                        <PremiumEmoji item={item} size={22} />
                       </button>
                     ))}
                   </div>
-                  <div className="mt-2 flex items-start gap-2">
-                    <p className="flex-1 text-[11px] leading-relaxed text-muted-foreground">
-                      {t("dialogs.inspector.emojiPremiumHint")}
-                    </p>
-                    {canDeletePack && (
-                      <button
-                        type="button"
-                        onClick={() => void handleDeletePack(activePack.set_name)}
-                        aria-label={t("dialogs.inspector.emojiPackDelete")}
-                        className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-error/20 bg-error/[0.08] text-error transition-colors hover:bg-error/15"
-                      >
-                        <Trash2 className="size-3" />
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                standardGroups.map((group) => (
-                  <div key={group.key} className="mb-2">
-                    <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {t(`dialogs.inspector.emojiGroup.${group.key}`)}
-                    </span>
-                    <div className="grid grid-cols-8 gap-1">
-                      {group.items.map((emoji) => (
-                        <button
-                          key={emoji.g}
-                          type="button"
-                          title={emoji.n}
-                          onClick={() => pick({ glyph: emoji.g })}
-                          className="flex h-7 cursor-pointer items-center justify-center rounded-lg text-[17px] transition-colors hover:bg-white/[0.06]"
-                        >
-                          {emoji.g}
-                        </button>
-                      ))}
+                ) : (
+                  STANDARD_EMOJI.map((group) => (
+                    <div key={group.key} className="mb-2">
+                      <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t(`dialogs.inspector.emojiGroup.${group.key}`)}
+                      </span>
+                      <div className="grid grid-cols-8 gap-1">
+                        {group.items.map((emoji) => (
+                          <button
+                            key={emoji.g}
+                            type="button"
+                            onClick={() => pick({ glyph: emoji.g })}
+                            className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.06]"
+                          >
+                            {emoji.g}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
 
-            {current !== null && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClear();
-                  setIsOpen(false);
-                }}
-                className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border py-1 text-[11.5px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
-              >
-                <X className="size-3" />
-                {t("dialogs.inspector.emojiClear")}
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {current !== null && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClear();
+                    setIsOpen(false);
+                  }}
+                  className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border py-1 text-[11.5px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+                >
+                  <X className="size-3" />
+                  {t("dialogs.inspector.emojiClear")}
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }

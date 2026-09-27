@@ -11,7 +11,7 @@ from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import Locale, Role
+from app.core.enums import BlacklistKind, Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.password import PASSWORD_MIN_LENGTH
 from app.core.security.permissions import Permission
@@ -19,7 +19,7 @@ from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
+from app.modules.blacklist import BlacklistRepository, get_blacklist_providers
 from app.modules.passkeys import get_passkey_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscription_revoker_providers
@@ -197,6 +197,8 @@ async def test_list_admins_endpoint(
     assert response.status_code == 200
     logins = {a["login"] for a in response.json()}
     assert owner.login in logins
+    owner_row = next(a for a in response.json() if a["login"] == owner.login)
+    assert "ADMINS_MANAGE" in owner_row["role_permissions"]
 
 
 async def test_update_own_security_settings_rejects_self_lockout(
@@ -597,3 +599,62 @@ async def test_unblock_all_endpoint_requires_unblock_all_permission(
     )
 
     assert response.status_code == 403
+
+
+async def test_blacklist_matches_endpoint(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    async with uow:
+        await BlacklistRepository(uow.session).add_entry(BlacklistKind.TELEGRAM_ID, "7001")
+        user = await user_repository.create(
+            CreateUserDto(telegram_id=7001, name="Matched", language=Locale.EN)
+        )
+        await uow.commit()
+
+    response = await client.get(
+        "/api/v1/users/blacklist-matches", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == body["all_total"] == 1
+    assert body["origins"] == [{"origin": {"source_id": None, "source_name": None}, "count": 1}]
+    (match,) = body["items"]
+    assert match["user"]["id"] == user.id
+    assert match["hits"] == [
+        {
+            "kind": "TELEGRAM_ID",
+            "value": "7001",
+            "origins": [{"source_id": None, "source_name": None}],
+        }
+    ]
+
+
+async def test_unblock_blacklist_matches_endpoint(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    async with uow:
+        await BlacklistRepository(uow.session).add_entry(BlacklistKind.TELEGRAM_ID, "7002")
+        user = await user_repository.create(
+            CreateUserDto(telegram_id=7002, name="Matched", language=Locale.EN)
+        )
+        await user_repository.set_blocked(user.id, True)
+        await uow.commit()
+
+    # must not be captured by POST /users/{user_id}/unblock
+    response = await client.post(
+        "/api/v1/users/blacklist-matches/unblock", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"unblocked": 1}

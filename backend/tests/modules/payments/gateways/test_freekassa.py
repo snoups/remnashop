@@ -22,7 +22,6 @@ _SETTINGS = {
     "api_key": "api-key",
     "secret_word_2": "word2",
     "payment_system_id": "4",
-    "customer_ip": "203.0.113.5",
 }
 
 
@@ -61,19 +60,52 @@ _PAID_ORDER = {
 }
 
 
+async def _fake_server_ip(webhook_url: str) -> str:
+    return "198.51.100.7"
+
+
+async def test_server_ip_is_resolved_once_within_the_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def _resolve(
+        host: str, *args: object, **kwargs: object
+    ) -> list[tuple[int, int, int, str, tuple[str, int]]]:
+        calls.append(host)
+        return [(2, 1, 6, "", ("198.51.100.9", 0))]
+
+    freekassa_module._server_ip_cache.clear()
+    monkeypatch.setattr(freekassa_module.socket, "getaddrinfo", _resolve)
+    url = "https://cache-test.example/x"
+    assert await freekassa_module._resolve_server_ip(url) == "198.51.100.9"
+    assert await freekassa_module._resolve_server_ip(url) == "198.51.100.9"
+    assert calls == ["cache-test.example"]
+    freekassa_module._server_ip_cache.clear()
+
+
+async def test_server_ip_falls_back_when_the_domain_does_not_resolve(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fail(*args: object, **kwargs: object) -> None:
+        raise OSError("no such host")
+
+    monkeypatch.setattr(freekassa_module.socket, "getaddrinfo", _fail)
+    assert await freekassa_module._resolve_server_ip("https://shop.example/x") == "127.0.0.1"
+
+
 async def test_create_payment_never_signs_none(monkeypatch: pytest.MonkeyPatch) -> None:
     http = install_http(
         monkeypatch,
         freekassa_module,
         json_response({"type": "success", "orderId": 777, "location": "https://pay.fk/1"}),
     )
+    monkeypatch.setattr(freekassa_module, "_resolve_server_ip", _fake_server_ip)
 
     intent = await _gateway().create_payment(make_order(customer_email=None))
 
     body = http.last_json()
     signature = body.pop("signature")
     assert None not in body.values()
-    assert body["ip"] == "203.0.113.5"
+    assert body["ip"] == "198.51.100.7"
     assert body["email"] == f"user_{ORDER_REF}@telegram.org"
     assert signature == _api_signature(body)
     assert intent.provider_payment_id == "777"
@@ -87,13 +119,6 @@ async def test_create_payment_prefers_the_order_email(monkeypatch: pytest.Monkey
     )
     await _gateway().create_payment(make_order(customer_email="buyer@example.com"))
     assert http.last_json()["email"] == "buyer@example.com"
-
-
-async def test_create_payment_requires_customer_ip() -> None:
-    settings = {key: value for key, value in _SETTINGS.items() if key != "customer_ip"}
-    gateway = FreeKassaGateway(settings=settings, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
-    with pytest.raises(PaymentGatewayError):
-        await gateway.create_payment(make_order())
 
 
 async def test_parse_webhook_verifies_sign_without_an_ip_check() -> None:

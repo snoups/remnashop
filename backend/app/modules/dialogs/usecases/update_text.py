@@ -8,6 +8,8 @@ from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
+from app.modules.dialogs.repository import DialogRepository
+from app.modules.dialogs.validation import validate_window_text
 from app.modules.translations import (
     TranslationEntryDto,
     TranslationsRepository,
@@ -30,9 +32,14 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
     required_permission = Permission.DIALOGS_TEXT_UPDATE
 
     def __init__(
-        self, translations_repository: TranslationsRepository, uow: UnitOfWork, redis: Redis
+        self,
+        translations_repository: TranslationsRepository,
+        dialog_repository: DialogRepository,
+        uow: UnitOfWork,
+        redis: Redis,
     ) -> None:
         self._translations_repository = translations_repository
+        self._dialog_repository = dialog_repository
         self._uow = uow
         self._redis = redis
 
@@ -58,6 +65,19 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
                 # (bot commands, notifications) that the general editor guards more
                 # strictly and repushes on change.
                 raise ValidationError(f"'{full_key}' is not an editable dialog text key")
+
+            if not data.value.strip() and await self._dialog_repository.is_button_text_key(
+                full_key
+            ):
+                # Telegram rejects the whole keyboard over one button with no text.
+                raise ValidationError("A button label cannot be empty")
+
+            window_key = catalog.window_key_for_text_key(full_key)
+            window = await self._dialog_repository.get_by_key(window_key) if window_key else None
+            if window is not None:
+                validate_window_text(
+                    data.value, has_banner=window.banner_name is not None, locale=data.locale
+                )
 
             # Newlines are fine here, unlike in the general translations editor:
             # serialize_to_fluent() indents continuation lines, and a window's

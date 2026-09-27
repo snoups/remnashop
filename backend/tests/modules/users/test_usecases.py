@@ -128,11 +128,11 @@ async def test_create_admin_stores_permission_overrides(
             client_ip="127.0.0.1",
             login="newadmin2",
             name="New Admin 2",
-            permission_grants=[Permission.OWN_ACCOUNT_MANAGE],
+            permission_grants=[Permission.EVENT_LOG_VIEW],
         ),
     )
 
-    assert admin.permission_grants == [Permission.OWN_ACCOUNT_MANAGE]
+    assert admin.permission_grants == [Permission.EVENT_LOG_VIEW]
 
 
 async def test_create_admin_rejects_manage_admins_grant(
@@ -595,7 +595,7 @@ async def test_owner_can_demote_admin(
             client_ip="127.0.0.1",
             login="todemote",
             name="X",
-            permission_grants=[Permission.OWN_ACCOUNT_MANAGE],
+            permission_grants=[Permission.EVENT_LOG_VIEW],
         ),
     )
 
@@ -1022,6 +1022,54 @@ async def test_register_telegram_user_returns_existing_user_without_duplicating(
     second = await use_case.system(data)
 
     assert first.id == second.id
+
+
+async def test_register_telegram_user_syncs_changed_telegram_profile(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
+    created = await use_case.system(
+        RegisterTelegramUserDto(telegram_id=779, name="Bob", username="bob", language=Locale.EN)
+    )
+    assert created.username == "bob"
+
+    renamed = await use_case.system(
+        RegisterTelegramUserDto(telegram_id=779, name="Robert", username=None, language=Locale.EN)
+    )
+
+    assert renamed.id == created.id
+    assert renamed.name == "Robert"
+    assert renamed.username is None
+    async with uow:
+        stored = await user_repository.get_by_telegram_id(779)
+    assert stored is not None and stored.name == "Robert" and stored.username is None
+
+
+async def test_register_telegram_user_keeps_a_staff_name(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    async with uow:
+        await user_repository.create(
+            CreateUserDto(name="Dashboard Name", role=Role.ADMIN, telegram_id=780)
+        )
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
+
+    user = await use_case.system(
+        RegisterTelegramUserDto(telegram_id=780, name="Tg Name", username="adm", language=Locale.EN)
+    )
+
+    assert user.name == "Dashboard Name"
+    assert user.username == "adm"
 
 
 async def test_register_telegram_user_publishes_event_only_on_creation(
@@ -1511,7 +1559,7 @@ async def test_demote_admin_revokes_sessions_and_passkeys(
             client_ip="127.0.0.1",
             login="losesaccess",
             name="X",
-            permission_grants=[Permission.OWN_ACCOUNT_MANAGE],
+            permission_grants=[Permission.EVENT_LOG_VIEW],
         ),
     )
     async with uow:

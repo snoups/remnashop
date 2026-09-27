@@ -3,18 +3,32 @@ import { apiGet, apiPost, apiPut } from "@shared/api/http";
 export interface BotSettings {
   is_configured: boolean;
   drop_pending_updates: boolean;
-  banners_enabled: boolean;
 }
 
 export interface UpdateBotSettingsPayload {
   token?: string;
   secret_token?: string;
   drop_pending_updates?: boolean;
-  banners_enabled?: boolean;
 }
 
 export function getBotSettings(signal?: AbortSignal): Promise<BotSettings> {
   return apiGet<BotSettings>("/settings/bot", signal);
+}
+
+export interface BotStatus {
+  is_configured: boolean;
+  is_running: boolean;
+  webhook_url: string | null;
+  pending_update_count: number;
+  error: string | null;
+}
+
+export function getBotStatus(signal?: AbortSignal): Promise<BotStatus> {
+  return apiGet<BotStatus>("/settings/bot/status", signal);
+}
+
+export function getBotLogs(signal?: AbortSignal): Promise<string[]> {
+  return apiGet<string[]>("/settings/bot/logs", signal);
 }
 
 export function updateBotSettings(payload: UpdateBotSettingsPayload): Promise<BotSettings> {
@@ -35,8 +49,14 @@ export interface UpdateBotCommandsResult {
   telegram_sync_failed: boolean;
 }
 
-export function getBotCommands(signal?: AbortSignal): Promise<BotCommandItem[]> {
-  return apiGet<BotCommandItem[]>("/settings/bot/commands", signal);
+export function getBotCommands(
+  signal?: AbortSignal,
+  defaultOrder = false,
+): Promise<BotCommandItem[]> {
+  return apiGet<BotCommandItem[]>(
+    `/settings/bot/commands${defaultOrder ? "?default_order=true" : ""}`,
+    signal,
+  );
 }
 
 export function updateBotCommands(commands: BotCommandItem[]): Promise<UpdateBotCommandsResult> {

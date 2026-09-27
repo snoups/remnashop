@@ -5,12 +5,26 @@ from decimal import Decimal
 from typing import Callable, Final, Optional, cast
 
 from loguru import logger
-from sqlalchemy import ColumnElement, CursorResult, exists, false, func, or_, select, update
+from sqlalchemy import (
+    ARRAY,
+    BigInteger,
+    ColumnElement,
+    CursorResult,
+    Text,
+    any_,
+    exists,
+    false,
+    func,
+    literal,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user import User
-from app.core.enums import Role
-from app.core.exceptions import ValidationError
+from app.core.enums import Locale, Role
+from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.users.dto import (
     DEFAULT_PAGE_SIZE,
     CreateUserDto,
@@ -27,6 +41,33 @@ _REFERRAL_CODE_MAX_ATTEMPTS: Final[int] = 5
 # asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
 # large bulk-block batch still fits after other predicates are added.
 _MAX_IN_PARAMS: Final[int] = 20_000
+
+
+def _search_filter(search: str) -> ColumnElement[bool]:
+    pattern = f"%{search}%"
+    search_filters: list[ColumnElement[bool]] = [
+        User.name.ilike(pattern),
+        User.login.ilike(pattern),
+        User.username.ilike(pattern),
+        User.email.ilike(pattern),
+    ]
+    # telegram_id is a BigInteger column -- a longer digit string is
+    # a valid `search` value but out of range for the DB type, and
+    # would otherwise raise NumericValueOutOfRange from asyncpg.
+    if search.isdigit() and int(search).bit_length() < 63:
+        search_filters.append(User.telegram_id == int(search))
+    return or_(*search_filters)
+
+
+def _identity_filter(telegram_ids: set[int], emails: set[str]) -> ColumnElement[bool]:
+    # one array bind each instead of IN (...) -- a blacklist source can exceed
+    # asyncpg's 32,767 bind-parameter cap. emails are expected lowercased.
+    return or_(
+        User.telegram_id == any_(literal(list(telegram_ids), ARRAY(BigInteger)))
+        if telegram_ids
+        else false(),
+        func.lower(User.email) == any_(literal(list(emails), ARRAY(Text))) if emails else false(),
+    )
 
 
 class UserRepository:
@@ -173,19 +214,7 @@ class UserRepository:
     ) -> tuple[list[UserDto], int]:
         filters: list[ColumnElement[bool]] = [User.role.in_(roles)]
         if search:
-            pattern = f"%{search}%"
-            search_filters: list[ColumnElement[bool]] = [
-                User.name.ilike(pattern),
-                User.login.ilike(pattern),
-                User.username.ilike(pattern),
-                User.email.ilike(pattern),
-            ]
-            # telegram_id is a BigInteger column -- a longer digit string is
-            # a valid `search` value but out of range for the DB type, and
-            # would otherwise raise NumericValueOutOfRange from asyncpg.
-            if search.isdigit() and int(search).bit_length() < 63:
-                search_filters.append(User.telegram_id == int(search))
-            filters.append(or_(*search_filters))
+            filters.append(_search_filter(search))
         if is_blocked is not None:
             filters.append(User.is_blocked == is_blocked)
 
@@ -202,6 +231,19 @@ class UserRepository:
         rows = (await self.session.scalars(stmt)).all()
 
         return self._convert_to_dto_list(list(rows)), int(total or 0)
+
+    async def update_telegram_profile(
+        self, user_id: int, *, name: str, username: Optional[str], language: Locale
+    ) -> UserDto:
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            raise NotFoundError(f"User '{user_id}' not found")
+        db_user.name = name
+        db_user.username = username
+        db_user.language = language
+        await self.session.flush()
+        await self.session.refresh(db_user)
+        return self._convert_to_dto(db_user)
 
     async def update_fields(self, user_id: int, data: UpdateUserDto) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
@@ -302,18 +344,83 @@ class UserRepository:
             select(User)
             .where(User.role == Role.USER)
             .where(User.is_blocked.is_(False))
-            .where(
-                or_(
-                    User.telegram_id.in_(telegram_ids) if telegram_ids else false(),
-                    func.lower(User.email).in_(emails) if emails else false(),
-                )
-            )
+            .where(_identity_filter(telegram_ids, emails))
         )
         rows = list((await self.session.execute(stmt)).scalars())
         for row in rows:
             row.is_blocked = True
         await self.session.flush()
         return [row.id for row in rows]
+
+    async def list_matching(
+        self,
+        telegram_ids: set[int],
+        emails: set[str],
+        *,
+        roles: list[Role],
+        search: Optional[str] = None,
+        page: int = 1,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> tuple[list[UserDto], int]:
+        if not telegram_ids and not emails:
+            return [], 0
+        filters = [User.role.in_(roles), _identity_filter(telegram_ids, emails)]
+        if search:
+            filters.append(_search_filter(search))
+
+        total = await self.session.scalar(select(func.count()).select_from(User).where(*filters))
+        stmt = (
+            select(User)
+            .where(*filters)
+            .order_by(User.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        rows = (await self.session.scalars(stmt)).all()
+        return self._convert_to_dto_list(list(rows)), total or 0
+
+    async def count_matching(
+        self, telegram_ids: set[int], emails: set[str], *, roles: list[Role]
+    ) -> int:
+        if not telegram_ids and not emails:
+            return 0
+        stmt = (
+            select(func.count())
+            .select_from(User)
+            .where(User.role.in_(roles), _identity_filter(telegram_ids, emails))
+        )
+        return await self.session.scalar(stmt) or 0
+
+    async def unblock_matching(
+        self, telegram_ids: set[int], emails: set[str], *, roles: list[Role]
+    ) -> int:
+        if not telegram_ids and not emails:
+            return 0
+        stmt = (
+            update(User)
+            .where(
+                User.role.in_(roles),
+                User.is_blocked.is_(True),
+                _identity_filter(telegram_ids, emails),
+            )
+            .values(is_blocked=False)
+        )
+        result = await self.session.execute(stmt)
+        return cast(CursorResult, result).rowcount
+
+    async def matching_identities(
+        self, telegram_ids: set[int], emails: set[str], *, roles: list[Role]
+    ) -> tuple[set[int], set[str]]:
+        if not telegram_ids and not emails:
+            return set(), set()
+        stmt = select(User.telegram_id, User.email).where(
+            User.role.in_(roles), _identity_filter(telegram_ids, emails)
+        )
+        rows = (await self.session.execute(stmt)).all()
+        return (
+            {tid for tid, _ in rows if tid in telegram_ids},
+            {email.lower() for _, email in rows if email and email.lower() in emails},
+        )
 
     async def delete(self, user_id: int) -> bool:
         db_user = await self.session.get(User, user_id)

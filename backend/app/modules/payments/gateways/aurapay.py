@@ -29,6 +29,7 @@ _PAID_STATUS: Final[str] = "PAID"
 _MAX_LIFETIME_MINUTES: Final[int] = 43200
 
 
+# Docs: https://docs.aurapay.tech/
 class AuraPayGateway(PaymentGateway):
     currency = Currency.RUB
 

@@ -23,7 +23,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
 
   return (
     <DialogPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-3xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-glass-border bg-surface/40 p-8 text-center shadow-2xl backdrop-blur-xl">
           <div className="relative">
             <div className="flex size-[72px] items-center justify-center rounded-full border border-primary/40 bg-accent shadow-[0_0_46px_rgba(34,211,238,0.28)]">

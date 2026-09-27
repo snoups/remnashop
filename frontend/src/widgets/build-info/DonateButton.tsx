@@ -21,7 +21,6 @@ export function DonateButton() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label={t("donate.button")}
-        title={t("donate.button")}
         className={SIDEBAR_PILL_CLASSNAME}
         initial="rest"
         whileHover="hover"

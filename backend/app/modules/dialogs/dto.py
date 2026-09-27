@@ -25,6 +25,8 @@ class DialogButtonDto(BaseDto, TimestampMixin):
     target_window_key: Optional[str] = None
     url_value: Optional[str] = None
     is_hidden: bool = False
+    # Shipped with a seed window; can be edited but never hidden.
+    is_system: bool = False
 
 
 class DialogWindowDto(BaseDto, TimestampMixin):
@@ -32,6 +34,7 @@ class DialogWindowDto(BaseDto, TimestampMixin):
     kind: DialogWindowKind
     flow: DialogFlow
     banner_name: Optional[str] = None
+    name: Optional[str] = None
     is_enabled: bool = True
     position: int = 0
     slot: Optional[int] = None
@@ -45,6 +48,7 @@ class UpdateDialogWindowDto:
     banner_name: Optional[str] = None
     banner_name_provided: bool = False
     is_enabled: Optional[bool] = None
+    name: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -64,6 +68,7 @@ class DialogButtonInputDto:
 @dataclass(frozen=True, kw_only=True)
 class CreateCustomWindowDto:
     banner_name: Optional[str] = None
+    name: Optional[str] = None
     position: int = 0
 
 
@@ -80,6 +85,7 @@ class DialogWindowExportDto:
     key: str
     kind: DialogWindowKind
     banner_name: Optional[str]
+    name: Optional[str] = None
     is_enabled: bool
     position: int
     buttons: list[DialogButtonInputDto]

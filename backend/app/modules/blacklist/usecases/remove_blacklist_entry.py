@@ -37,7 +37,9 @@ class RemoveBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto])
             async with self._uow:
                 if await self._blacklist_repository.remove_entry(data.kind, data.value):
                     await self._event_publisher.publish(
-                        BlacklistEntryRemovedEvent(kind=data.kind.value, value=normalized)
+                        BlacklistEntryRemovedEvent(
+                            actor=actor, kind=data.kind.value, value=normalized
+                        )
                     )
 
         async with self._uow:

@@ -1,7 +1,8 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Final, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,8 +13,10 @@ from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import ReferralRewardType
 from app.core.exceptions import ConflictError
 from app.modules.referrals.dto import (
+    DEFAULT_PAGE_SIZE,
     ReferralDto,
     ReferralRewardDto,
+    ReferralRewardTotalsDto,
     ReferralSettingsDto,
     UpdateReferralSettingsDto,
 )
@@ -88,6 +91,58 @@ class ReferralRepository:
         )
         rows = await self.session.execute(stmt)
         return {int(level): int(count) for level, count in rows.all()}
+
+    async def list_paginated(
+        self,
+        *,
+        level: Optional[int] = None,
+        created_from: Optional[datetime] = None,
+        page: int = 1,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> tuple[list[ReferralDto], int]:
+        filters: list[ColumnElement[bool]] = []
+        if level is not None:
+            filters.append(Referral.level == level)
+        if created_from is not None:
+            filters.append(Referral.created_at >= created_from)
+
+        count_stmt = select(func.count()).select_from(Referral).where(*filters)
+        total = await self.session.scalar(count_stmt)
+
+        stmt = (
+            select(Referral)
+            .where(*filters)
+            .order_by(Referral.created_at.desc(), Referral.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        rows = (await self.session.scalars(stmt)).all()
+        return [self._to_dto(row) for row in rows], int(total or 0)
+
+    async def reward_totals_by_referral(
+        self, referral_ids: list[int]
+    ) -> dict[int, ReferralRewardTotalsDto]:
+        if not referral_ids:
+            return {}
+        stmt = (
+            select(
+                ReferralReward.referral_id,
+                ReferralReward.type,
+                func.count(),
+                func.sum(ReferralReward.amount),
+            )
+            .where(ReferralReward.referral_id.in_(referral_ids))
+            .group_by(ReferralReward.referral_id, ReferralReward.type)
+        )
+        counts: dict[int, int] = {}
+        amounts: dict[int, dict[ReferralRewardType, Decimal]] = {}
+        for referral_id, reward_type, count, amount in (await self.session.execute(stmt)).all():
+            counts[referral_id] = counts.get(referral_id, 0) + int(count)
+            amounts.setdefault(referral_id, {})[reward_type] = Decimal(amount)
+        return {
+            referral_id: ReferralRewardTotalsDto(count=count, amounts=amounts[referral_id])
+            for referral_id, count in counts.items()
+        }
 
     async def create_reward(
         self,

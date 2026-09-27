@@ -11,6 +11,7 @@ from app.modules.plans import PlanRepository
 from app.modules.pricing.dto import (
     BASE_PRICE_PRECISION,
     MIN_BASE_PRICE,
+    NON_ANCHOR_CURRENCIES,
     RATE_PRECISION,
     PriceBookDto,
     SwitchAnchorCurrencyDto,
@@ -41,6 +42,9 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: SwitchAnchorCurrencyDto) -> PriceBookDto:
+        if data.new_anchor in NON_ANCHOR_CURRENCIES:
+            raise ValidationError(f"{data.new_anchor} cannot be the anchor currency")
+
         async with self._uow:
             table = await self._pricing_repository.get_rate_table()
             old_anchor = table.anchor

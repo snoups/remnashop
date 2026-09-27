@@ -183,6 +183,16 @@ class BackupRepository:
         row = await self.session.scalar(stmt)
         return self._to_run_dto(row) if row is not None else None
 
+    async def count_by_status(self) -> tuple[int, int, int]:
+        completed = BackupRun.status == BackupRunStatus.COMPLETED
+        stmt = select(
+            func.count().filter(completed),
+            func.count().filter(BackupRun.status == BackupRunStatus.FAILED),
+            func.coalesce(func.sum(BackupRun.size_bytes).filter(completed), 0),
+        )
+        completed_count, failed_count, total_size = (await self.session.execute(stmt)).one()
+        return int(completed_count), int(failed_count), int(total_size)
+
     async def delete_run(self, run_id: int) -> None:
         row = await self._get_row(run_id)
         await self.session.delete(row)

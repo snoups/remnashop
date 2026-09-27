@@ -7,14 +7,16 @@ from app.modules.settings.repository import SettingsRepository
 from app.modules.users import UserDto
 
 
-class GetBotCommandsUseCase(UseCase[None, list[BotCommandDto]]):
+class GetBotCommandsUseCase(UseCase[bool, list[BotCommandDto]]):
     required_permission = Permission.BOT_COMMANDS_VIEW
 
     def __init__(self, settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
         self._settings_repository = settings_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> list[BotCommandDto]:
+    # data is the reset-order flag: True hands back BOT_COMMANDS' own order
+    # instead of the stored one, for the dashboard's "reset order" button.
+    async def _execute(self, actor: UserDto, data: bool) -> list[BotCommandDto]:
         async with self._uow:
             rows = await self._settings_repository.list_bot_commands()
             stored = {item.command: item for item in rows}
@@ -25,5 +27,6 @@ class GetBotCommandsUseCase(UseCase[None, list[BotCommandDto]]):
                 else BotCommandDto(command=current.command, sort_order=index, enabled=True)
                 for index, current in enumerate(BOT_COMMANDS)
             ]
-            merged.sort(key=lambda item: item.sort_order)
+            if not data:
+                merged.sort(key=lambda item: item.sort_order)
             return merged

@@ -1,21 +1,72 @@
 import {
+  Activity,
   AlertCircle,
+  Anchor,
+  AtSign,
+  Ban,
+  Braces,
+  CalendarClock,
   Check,
   ChevronDown,
+  CircleCheck,
   Clock,
+  Coins,
   Copy,
+  Crosshair,
+  Crown,
   Filter,
+  Fingerprint,
+  Gift,
   Globe,
+  HandCoins,
+  Hash,
   History,
   Inbox,
+  Info,
+  KeyRound,
+  Languages,
+  Link,
   Loader2,
+  Lock,
+  LockOpen,
+  LogIn,
+  LogOut,
+  Mail,
+  Package,
+  PackagePlus,
+  RefreshCcw,
+  RefreshCw,
+  Repeat,
   Search,
+  Send,
+  Server,
+  Shield,
+  ShieldAlert,
+  ShieldBan,
+  ShieldCheck,
+  ShieldMinus,
+  ShieldPlus,
+  ShieldX,
+  ShoppingCart,
+  Siren,
+  Star,
   Tag,
+  Tags,
+  Ticket,
+  TicketCheck,
+  Undo2,
+  Unlink,
   User,
+  UserMinus,
+  UserPlus,
+  UserX,
+  Users,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { TFunction } from "i18next";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -25,7 +76,10 @@ import {
   listEventLog,
 } from "@entities/event-log/api";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { useMeasuredHeight } from "@shared/lib/use-measured-height";
+import { BounceIcon } from "@shared/ui/BounceIcon";
 import { DatePickerField } from "@shared/ui/DatePickerField";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { Modal, useModalClose } from "@shared/ui/Modal";
@@ -44,6 +98,65 @@ const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], string> = {
   USER: "eventLog.filters.categoryUser",
   SETTINGS: "eventLog.filters.categorySettings",
 };
+const EVENT_ICONS: Record<string, LucideIcon> = {
+  LoginSucceededEvent: LogIn,
+  LoginFailedEvent: ShieldX,
+  OwnerBootstrappedEvent: Crown,
+  BootstrapConflictEvent: ShieldAlert,
+  OAuthLoginSucceededEvent: LogIn,
+  OAuthLoginFailedEvent: ShieldX,
+  OAuthIdentityConnectedEvent: Link,
+  OAuthIdentityDisconnectedEvent: Unlink,
+  SessionRevokedEvent: LogOut,
+  SessionTheftDetectedEvent: Siren,
+  UserSessionRevokedByAdminEvent: LogOut,
+  AdminCreatedEvent: UserPlus,
+  AdminPromotedEvent: ShieldPlus,
+  AdminPermissionsUpdatedEvent: ShieldCheck,
+  AdminDemotedEvent: ShieldMinus,
+  AdminDeletedEvent: UserMinus,
+  UserDeletedEvent: UserX,
+  TelegramUserRegisteredEvent: Send,
+  LocaleActivatedEvent: Languages,
+  LocaleDeactivatedEvent: Languages,
+  AnchorSwitchedEvent: Anchor,
+  BasePricesAdjustedEvent: Tags,
+  ApiTokenCreatedEvent: KeyRound,
+  ApiTokenRevokedEvent: KeyRound,
+  BlacklistEntryAddedEvent: Ban,
+  BlacklistEntryRemovedEvent: CircleCheck,
+  BlacklistReconciledEvent: RefreshCw,
+  CurrencyRateChangedEvent: Coins,
+  OidcIssuerChangedEvent: Server,
+  PasskeyLoginFailedEvent: Fingerprint,
+  PasskeyLoginSucceededEvent: Fingerprint,
+  PasskeyRegisteredEvent: Fingerprint,
+  PasskeyRemovedEvent: Fingerprint,
+  PlanChangedEvent: Package,
+  PointsWithdrawalRequestedEvent: HandCoins,
+  PromocodeActivatedEvent: TicketCheck,
+  PromocodeChangedEvent: Ticket,
+  ReferralAttachedEvent: Users,
+  ReferralRewardIssuedEvent: Gift,
+  SubscriptionAddOnGrantedEvent: PackagePlus,
+  SubscriptionChangedEvent: Repeat,
+  SubscriptionPurchasedEvent: ShoppingCart,
+  SubscriptionRenewedEvent: CalendarClock,
+  SubscriptionStatusSyncedEvent: RefreshCcw,
+  TelegramRegistrationBlockedEvent: ShieldBan,
+  UserBlockedEvent: Lock,
+  UserPointsAdjustedEvent: Star,
+  UserUnblockedEvent: LockOpen,
+  UsersBulkBlockedEvent: Lock,
+  UsersBulkUnblockedEvent: LockOpen,
+  PaymentOrderRefundedEvent: Undo2,
+};
+
+function EventTypeIcon({ eventType, className }: { eventType: string; className?: string }) {
+  const Icon = EVENT_ICONS[eventType] ?? History;
+  return <Icon className={className} />;
+}
+
 const FILTER_DEBOUNCE_MS = 200;
 // Only surface the dimmed-loading state once a refetch has been in flight
 // this long -- most requests resolve well under it, so typing quickly no
@@ -53,10 +166,6 @@ const FETCH_INDICATOR_DELAY_MS = 150;
 // derives payload keys from that dataclass's field names, so this has to stay in sync by hand.
 const PAYLOAD_TARGET_KEY = "target";
 
-function isKnownCategory(category: string): category is (typeof CATEGORIES)[number] {
-  return (CATEGORIES as readonly string[]).includes(category);
-}
-
 function getTargetLogin(entry: EventLogEntry): string | undefined {
   return entry.payload &&
     typeof entry.payload === "object" &&
@@ -65,8 +174,59 @@ function getTargetLogin(entry: EventLogEntry): string | undefined {
     : undefined;
 }
 
-function describeEntry(entry: EventLogEntry): string {
-  const actor = entry.actor_login ?? "—";
+interface UserSnapshot {
+  id?: number | null;
+  login?: string | null;
+  name?: string | null;
+  role?: string | null;
+  telegram_id?: number | null;
+  username?: string | null;
+  email?: string | null;
+}
+
+// Mirrors `_sanitize_user` (backend/app/core/outbox_event_publisher.py); rows
+// written before telegram_id/username/email were added carry only id/login/name/role.
+function getUserSnapshot(entry: EventLogEntry, key: string): UserSnapshot | undefined {
+  const value = entry.payload?.[key];
+  return value && typeof value === "object" ? (value as UserSnapshot) : undefined;
+}
+
+function getInitiator(entry: EventLogEntry): UserSnapshot | undefined {
+  const snapshot = getUserSnapshot(entry, "actor") ?? getUserSnapshot(entry, "user");
+  if (snapshot) return snapshot;
+  if (entry.actor_id === null && !entry.actor_login && !entry.actor_name) return undefined;
+  return { id: entry.actor_id, login: entry.actor_login, name: entry.actor_name };
+}
+
+// Requests from someone not signed in -- no actor exists, only the request's IP.
+const ANONYMOUS_EVENT_TYPES: ReadonlySet<string> = new Set([
+  "LoginFailedEvent",
+  "OAuthLoginFailedEvent",
+  "PasskeyLoginFailedEvent",
+  "BootstrapConflictEvent",
+  "SessionTheftDetectedEvent",
+]);
+
+// The API-token actor has id 0 (api/dependencies/public.py), the system actor role SYSTEM.
+function isApiToken(user: UserSnapshot): boolean {
+  return user.id === 0;
+}
+
+function isSystemActor(user: UserSnapshot): boolean {
+  return user.role === "SYSTEM";
+}
+
+function getMissingInitiatorKey(entry: EventLogEntry): string {
+  return ANONYMOUS_EVENT_TYPES.has(entry.event_type) ? "eventLog.detail.anonymous" : "eventLog.detail.system";
+}
+
+function describeEntry(entry: EventLogEntry, t: TFunction): string {
+  const initiator = getInitiator(entry);
+  const actor = !initiator
+    ? t(getMissingInitiatorKey(entry))
+    : isSystemActor(initiator)
+      ? t("eventLog.detail.system")
+      : (initiator.login ?? initiator.name ?? "—");
   const target = getTargetLogin(entry);
   return target ? `${actor} → ${target}` : actor;
 }
@@ -84,9 +244,96 @@ interface EventDetailDialogProps {
   onClose: () => void;
 }
 
+type EventDetailTab = "details" | "payload";
+
+const sectionClassName = "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-1.5";
+const sectionTitleClassName =
+  "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
+
+interface ParticipantSectionProps {
+  title: string;
+  icon: ComponentType<{ className?: string }>;
+  user: UserSnapshot | undefined;
+  missingLabel?: string;
+  ipAddress?: string | null;
+}
+
+function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }: ParticipantSectionProps) {
+  const { t } = useTranslation();
+  const isSystem = user !== undefined && isSystemActor(user);
+  const name = isSystem ? t("eventLog.detail.system") : (user?.name ?? missingLabel ?? "—");
+  const roleLabel =
+    user === undefined || isSystem
+      ? undefined
+      : isApiToken(user)
+        ? t("eventLog.detail.apiToken")
+        : user.role
+          ? t(`roles.${user.role}`)
+          : undefined;
+  // id 0 and below is a synthetic actor (API token / system), not a real row
+  const userId = user?.id && user.id > 0 ? String(user.id) : undefined;
+  // the system actor carries telegram_id -1 (core/usecase.py's _system_actor)
+  const telegramId = user?.telegram_id && user.telegram_id > 0 ? String(user.telegram_id) : undefined;
+
+  return (
+    <section className={sectionClassName}>
+      <h3 className={sectionTitleClassName}>
+        <Icon className="size-3.5" />
+        {title}
+      </h3>
+      <InfoRow icon={User} label={t("eventLog.detail.name")} copyValue={user?.name ?? undefined}>
+        <span className="truncate">{name}</span>
+      </InfoRow>
+      {user?.login && (
+        <InfoRow icon={KeyRound} label={t("users.details.login")} copyValue={user.login}>
+          <span className="truncate">{user.login}</span>
+        </InfoRow>
+      )}
+      {userId && (
+        <InfoRow icon={Hash} label={t("users.details.id")} copyValue={userId}>
+          {userId}
+        </InfoRow>
+      )}
+      {user?.email && (
+        <InfoRow icon={Mail} label={t("users.details.email")} copyValue={user.email}>
+          <span className="truncate">{user.email}</span>
+        </InfoRow>
+      )}
+      {roleLabel && (
+        <InfoRow icon={Shield} label={t("eventLog.detail.role")}>
+          {roleLabel}
+        </InfoRow>
+      )}
+      {ipAddress && (
+        <InfoRow icon={Globe} label={t("eventLog.detail.ip")} copyValue={ipAddress}>
+          {ipAddress}
+        </InfoRow>
+      )}
+      {(telegramId || user?.username) && (
+        <div className="m-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-1">
+          <h4 className={sectionTitleClassName}>
+            <Send className="size-3.5" />
+            {t("eventLog.detail.telegram")}
+          </h4>
+          {telegramId && (
+            <InfoRow icon={Hash} label={t("users.details.telegramId")} copyValue={telegramId}>
+              {telegramId}
+            </InfoRow>
+          )}
+          {user?.username && (
+            <InfoRow icon={AtSign} label={t("users.details.username")} copyValue={user.username}>
+              <span className="truncate">@{user.username}</span>
+            </InfoRow>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function EventDetailDialog({ entry, onClose }: EventDetailDialogProps) {
   return (
-    <Modal onClose={onClose} size="sm" scrollable>
+    <Modal onClose={onClose} size="lg" scrollable>
       <EventDetailDialogBody entry={entry} />
     </Modal>
   );
@@ -94,13 +341,23 @@ function EventDetailDialog({ entry, onClose }: EventDetailDialogProps) {
 
 function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
   const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
   const close = useModalClose();
-  const target = getTargetLogin(entry);
+  const [tab, setTab] = useState<EventDetailTab>("details");
+  const targetUser = getUserSnapshot(entry, PAYLOAD_TARGET_KEY);
   const otherPayload = Object.fromEntries(
     Object.entries(entry.payload ?? {}).filter(([key]) => key !== PAYLOAD_TARGET_KEY),
   );
   const hasOtherPayload = Object.keys(otherPayload).length > 0;
   const [isCopied, setIsCopied] = useState(false);
+  const [contentRef, contentHeight] = useMeasuredHeight();
+
+  const tabs: { key: EventDetailTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
+    { key: "details", label: t("eventLog.detail.tabs.details"), icon: Info },
+    ...(hasOtherPayload
+      ? [{ key: "payload" as const, label: t("eventLog.detail.tabs.payload"), icon: Braces }]
+      : []),
+  ];
 
   const handleCopyPayload = () => {
     navigator.clipboard?.writeText(JSON.stringify(otherPayload, null, 2)).catch(() => {});
@@ -110,73 +367,140 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <History className="size-4" />
+            <EventTypeIcon eventType={entry.event_type} className="size-4" />
           </div>
-          {t(`eventLog.events.${entry.event_type}`)}
-        </h2>
+          <h2 className="truncate text-base font-bold text-foreground">
+            {t(`eventLog.events.${entry.event_type}`)}
+          </h2>
+        </div>
         <button
           type="button"
           onClick={close}
           aria-label={t("profile.edit.close")}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
         >
           <X className="size-4" />
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="flex flex-col gap-1 px-3 py-3">
-          <InfoRow icon={Clock} label={t("eventLog.columns.occurredAt")}>
-            {formatOccurredAt(entry.occurred_at)}
-          </InfoRow>
-          <InfoRow icon={Tag} label={t("eventLog.filters.category")}>
-            {isKnownCategory(entry.category) ? t(CATEGORY_LABEL_KEYS[entry.category]) : entry.category}
-          </InfoRow>
-          <InfoRow
-            icon={User}
-            label={t("eventLog.columns.actor")}
-            copyValue={entry.actor_login ?? entry.actor_name ?? undefined}
+      {tabs.length > 1 && (
+        <div className="px-4 pb-3 pt-4">
+          <div
+            role="tablist"
+            className="flex gap-1 rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md"
           >
-            {entry.actor_login ?? entry.actor_name ?? "—"}
-            {entry.actor_id !== null && <span className="text-muted-foreground">#{entry.actor_id}</span>}
-          </InfoRow>
-          {target && (
-            <InfoRow icon={User} label={t("eventLog.detail.target")} copyValue={target}>
-              {target}
-            </InfoRow>
-          )}
-          {entry.ip_address && (
-            <InfoRow icon={Globe} label={t("eventLog.detail.ip")} copyValue={entry.ip_address}>
-              {entry.ip_address}
-            </InfoRow>
-          )}
-        </div>
-
-        {hasOtherPayload && (
-          <div className="border-t border-border px-5 py-4">
-            <p className={fieldLabelClassName}>{t("eventLog.detail.payload")}</p>
-            <div className="relative mt-2">
-              <button
-                type="button"
-                onClick={handleCopyPayload}
-                aria-label={t("eventLog.detail.copyPayload")}
-                className="absolute right-2 top-2 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
-              >
-                {isCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-              </button>
-              <pre
-                className={`overflow-x-auto rounded-xl border border-border p-3 pr-10 font-mono text-[11.5px] text-foreground/80 transition-colors ${
-                  isCopied ? "bg-success/10" : "bg-input/60"
-                }`}
-              >
-                {JSON.stringify(otherPayload, null, 2)}
-              </pre>
-            </div>
+            {tabs.map((item) => {
+              const isActive = tab === item.key;
+              return (
+                <motion.button
+                  key={item.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setTab(item.key)}
+                  className="group relative isolate block min-w-0 flex-1 rounded-full text-sm font-medium"
+                  initial="rest"
+                  whileHover="hover"
+                  whileTap="tap"
+                >
+                  <motion.span
+                    aria-hidden
+                    variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+                    className={`absolute inset-0 rounded-full transition-colors ${
+                      isActive ? "bg-accent" : "group-hover:bg-white/[0.06]"
+                    }`}
+                  />
+                  <span
+                    className={`relative z-10 flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-[13px] ${
+                      isActive ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    <BounceIcon icon={item.icon} size={14} hoverSize={17} />
+                    {item.label}
+                  </span>
+                </motion.button>
+              );
+            })}
           </div>
-        )}
+        </div>
+      )}
+
+      <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "" : "pt-4"}`}>
+        <motion.div
+          animate={{ height: contentHeight }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="overflow-hidden"
+        >
+          <div ref={contentRef}>
+            {tab === "details" && (
+              <div className="flex flex-col gap-3">
+                <section className={sectionClassName}>
+                  <h3 className={sectionTitleClassName}>
+                    <Activity className="size-3.5" />
+                    {t("eventLog.detail.sections.event")}
+                  </h3>
+                  <InfoRow icon={Hash} label={t("eventLog.detail.id")} copyValue={String(entry.id)}>
+                    {entry.id}
+                  </InfoRow>
+                  <InfoRow icon={Clock} label={t("eventLog.columns.occurredAt")}>
+                    {formatOccurredAt(entry.occurred_at)}
+                  </InfoRow>
+                  <InfoRow icon={Tag} label={t("eventLog.detail.eventCode")} copyValue={entry.event_type}>
+                    {entry.event_type}
+                  </InfoRow>
+                </section>
+
+                <ParticipantSection
+                  title={t("eventLog.columns.actor")}
+                  icon={User}
+                  user={getInitiator(entry)}
+                  missingLabel={t(getMissingInitiatorKey(entry))}
+                  ipAddress={entry.ip_address}
+                />
+                {targetUser && (
+                  <ParticipantSection title={t("eventLog.detail.target")} icon={Crosshair} user={targetUser} />
+                )}
+              </div>
+            )}
+
+            {tab === "payload" && (
+              <section className={sectionClassName}>
+                <div className="flex items-center justify-between py-1 pl-2.5 pr-1">
+                  <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
+                    <Braces className="size-3.5" />
+                    {t("eventLog.detail.json")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleCopyPayload}
+                    aria-label={t("eventLog.detail.copyPayload")}
+                    className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+                  >
+                    <Copy className="size-3.5" />
+                  </button>
+                </div>
+                <div className="relative m-1">
+                  <pre
+                    className={`overflow-x-auto rounded-xl bg-input/60 p-3 font-mono text-[11.5px] text-foreground/80 transition-opacity ${
+                      isCopied ? "opacity-20" : ""
+                    }`}
+                  >
+                    {JSON.stringify(otherPayload, null, 2)}
+                  </pre>
+                  {isCopied && (
+                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 text-[12.5px] font-medium text-success">
+                      <Check className="size-3.5" />
+                      {t("app.copied")}
+                    </span>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        </motion.div>
       </div>
     </>
   );
@@ -188,7 +512,7 @@ export function EventLogPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [category, setCategory] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useUrlSearch();
   const [dateFromInput, setDateFromInput] = useState("");
   const [dateToInput, setDateToInput] = useState("");
   const [page, setPage] = useState(1);
@@ -346,17 +670,17 @@ export function EventLogPage() {
             )}
             {state.items.length > 0 && (
               <>
-                <div className="overflow-x-auto">
+                <div className="-mx-2 overflow-x-auto">
                   {/* px-2 reserves headroom so the rows' whileTap scale (below) grows into
                       padding, not past this track's own box -- keeps the scroll container's
                       measured width stable and avoids a scrollbar flicker on tap. */}
                   <div className="min-w-[640px] px-2">
-                    <div className="grid grid-cols-[170px_1.2fr_1fr_140px] gap-4 border-b border-border px-3 pb-2.5">
-                      <span className={fieldLabelClassName}>
-                        {t("eventLog.columns.occurredAt")}
-                      </span>
+                    <div className="grid grid-cols-[1.2fr_170px_1fr_140px] gap-4 border-b border-border px-3 pb-2.5">
                       <span className={fieldLabelClassName}>
                         {t("eventLog.columns.eventType")}
+                      </span>
+                      <span className={fieldLabelClassName}>
+                        {t("eventLog.columns.occurredAt")}
                       </span>
                       <span className={fieldLabelClassName}>{t("eventLog.columns.actor")}</span>
                       <span className={fieldLabelClassName}>{t("eventLog.detail.ip")}</span>
@@ -375,16 +699,22 @@ export function EventLogPage() {
                             }
                           }}
                           {...bounceTap(bounceStrength, 0.03)}
-                          className="grid cursor-pointer grid-cols-[170px_1.2fr_1fr_140px] items-center gap-4 rounded-full px-3 py-2.5 transition-colors hover:bg-white/[0.04]"
+                          className="grid cursor-pointer grid-cols-[1.2fr_170px_1fr_140px] items-center gap-4 rounded-full px-3 py-2.5 transition-colors hover:bg-white/[0.04]"
                         >
+                          <span className="flex min-w-0 items-center gap-3 text-[13.5px] font-medium text-foreground/90">
+                            <span
+                              aria-hidden
+                              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
+                            >
+                              <EventTypeIcon eventType={entry.event_type} className="size-4" />
+                            </span>
+                            <span className="truncate">{t(`eventLog.events.${entry.event_type}`)}</span>
+                          </span>
                           <span className="truncate font-mono text-[12.5px] text-foreground/80">
                             {formatOccurredAt(entry.occurred_at)}
                           </span>
-                          <span className="truncate text-[13.5px] font-medium text-foreground/90">
-                            {t(`eventLog.events.${entry.event_type}`)}
-                          </span>
                           <span className="truncate text-[12.5px] text-foreground">
-                            {describeEntry(entry)}
+                            {describeEntry(entry, t)}
                           </span>
                           <span className="truncate font-mono text-[12.5px] text-foreground">
                             {entry.ip_address ?? "—"}

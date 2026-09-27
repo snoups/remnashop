@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from typing import Optional
 from uuid import uuid4
 
 import pytest
@@ -11,9 +12,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
     PaymentGatewayType,
+    PaymentOrderStatus,
     PlanAvailability,
     PlanType,
     PurchaseType,
+    Role,
     SubscriptionStatus,
 )
 from app.core.exceptions import PermissionDeniedError, ValidationError
@@ -24,6 +27,7 @@ from app.modules.payments.dto import CreateCheckoutDto, PaymentOrderDto
 from app.modules.payments.gateways.registry import GATEWAY_REGISTRY
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
+from app.modules.payments.usecases.create_test_payment import CreateTestPaymentUseCase
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -463,6 +467,38 @@ async def test_create_checkout_renew_rejects_a_target_belonging_to_another_user(
         )
 
 
+async def test_checkout_asks_for_an_email_when_the_gateway_needs_a_receipt(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    gateways_repository: GatewaysRepository,
+    uow: UnitOfWork,
+    fake_gateway: _FakeGateway,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    async with uow:
+        await gateways_repository.update_settings(
+            PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k", "vat_code": "1"}
+        )
+        await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+
+    def _dto(email: Optional[str]) -> CreateCheckoutDto:
+        return CreateCheckoutDto(
+            user_id=actor.id,
+            plan_id=plan.id,
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+            customer_email=email,
+        )
+
+    with pytest.raises(ValidationError):
+        await create_checkout_use_case(actor, _dto(None))
+
+    await create_checkout_use_case(actor, _dto("buyer@example.com"))
+    assert fake_gateway.create_payment_calls[0].customer_email == "buyer@example.com"
+
+
 async def test_checkout_rejects_an_unimplemented_gateway(
     create_checkout_use_case: CreateCheckoutUseCase,
     actor: UserDto,
@@ -536,3 +572,44 @@ async def test_checkout_rejects_a_currency_the_gateway_does_not_settle(
                 gateway_type=PaymentGatewayType.YOOKASSA,
             ),
         )
+
+
+async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_list(
+    gateways_repository: GatewaysRepository,
+    payment_order_repository: PaymentOrderRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    fake_gateway: _FakeGateway,
+    _active_yookassa: None,
+) -> None:
+    owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
+    use_case = CreateTestPaymentUseCase(
+        gateways_repository, payment_order_repository, uow, _FakeFactory(fake_gateway)
+    )
+
+    result = await use_case(owner, PaymentGatewayType.YOOKASSA)
+
+    assert result.confirmation_url == fake_gateway.confirmation_url
+    order = await payment_order_repository.get_by_id(result.order_id)
+    assert order.is_test
+    assert order.status is PaymentOrderStatus.PENDING
+    assert order.external_payment_id == "yk-fake-id"
+    assert order.currency is Currency.RUB
+    assert await payment_order_repository.list_paginated() == ([], 0)
+
+
+async def test_test_payment_rejects_an_unconfigured_gateway(
+    gateways_repository: GatewaysRepository,
+    payment_order_repository: PaymentOrderRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    fake_gateway: _FakeGateway,
+) -> None:
+    owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
+    use_case = CreateTestPaymentUseCase(
+        gateways_repository, payment_order_repository, uow, _FakeFactory(fake_gateway)
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(owner, PaymentGatewayType.YOOKASSA)
+    assert fake_gateway.create_payment_calls == []

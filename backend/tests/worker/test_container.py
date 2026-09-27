@@ -43,9 +43,10 @@ async def test_worker_container_resolves_outbox_task_dependencies(
     await container.close()
 
 
-async def test_worker_container_resolves_translation_task_dependencies(
+async def test_worker_container_resolves_translation_dependencies(
     config: AppConfig,
 ) -> None:
+    # settings' UpdateBotCommandsUseCase reaches TranslationsRepository.
     container = create_worker_container(config)
     async with container(scope=Scope.REQUEST) as request_container:
         await request_container.get(TranslationsRepository)

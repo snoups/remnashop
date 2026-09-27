@@ -56,6 +56,8 @@ def test_subscription_changed_event_carries_previous_subscription_id() -> None:
 
 
 def test_subscription_addon_granted_event_carries_addon_id() -> None:
-    event = SubscriptionAddOnGrantedEvent(user=_user(), subscription_id=1, addon_id=3, amount=10)
+    event = SubscriptionAddOnGrantedEvent(
+        user=_user(), target=_user(), subscription_id=1, addon_id=3, amount=10
+    )
     assert event.addon_id == 3
     assert event.amount == 10

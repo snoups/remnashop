@@ -6,7 +6,9 @@ from app.modules.settings.usecases import (
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
     GetBotCommandsUseCase,
+    GetBotLogsUseCase,
     GetBotSettingsUseCase,
+    GetBotStatusUseCase,
     GetOAuthSettingsUseCase,
     GetPublicAppearanceImageUseCase,
     GetPublicAppearanceUseCase,
@@ -30,6 +32,8 @@ class SettingsProvider(Provider):
 
     settings_repository = provide(SettingsRepository)
     get_bot_settings_use_case = provide(GetBotSettingsUseCase)
+    get_bot_status_use_case = provide(GetBotStatusUseCase)
+    get_bot_logs_use_case = provide(GetBotLogsUseCase)
     update_bot_settings_use_case = provide(UpdateBotSettingsUseCase)
     restart_bot_use_case = provide(RestartBotUseCase)
     get_shop_settings_use_case = provide(GetShopSettingsUseCase)

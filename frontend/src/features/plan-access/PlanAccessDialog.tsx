@@ -107,6 +107,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
           </label>
           <textarea
             id="plan-access-telegram-ids"
+            spellCheck={false}
             value={telegramIds}
             onChange={(event) => setTelegramIds(event.target.value)}
             rows={3}
@@ -121,6 +122,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
           </label>
           <textarea
             id="plan-access-emails"
+            spellCheck={false}
             value={emails}
             onChange={(event) => setEmails(event.target.value)}
             rows={3}

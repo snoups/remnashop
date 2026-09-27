@@ -204,6 +204,7 @@ async def test_grant_addon_task_body_grants_an_entitlement(
     granted = await grant_addon(
         subscription_repository=subscription_repository,
         addon_repository=addon_repository,
+        user_repository=user_repository,
         remnawave_sdk=remnawave_sdk,
         uow=uow,
         event_publisher=event_publisher,

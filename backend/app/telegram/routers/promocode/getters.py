@@ -10,11 +10,10 @@ from app.core.constants import DEFAULT_BANNER_NAME, USER_KEY
 from app.core.enums import PromocodeRewardType
 from app.core.utils.i18n_helpers import i18n_format_expire_time
 from app.modules.banners import BannerRepository
-from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
-from app.telegram.dialogs.rendering import render_window_text
+from app.telegram.dialogs.rendering import label_with_icon, render_window_text
 from app.telegram.i18n import get_translator
 
 
@@ -23,7 +22,6 @@ async def subscription_main_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
     banner_repository: FromDishka[BannerRepository],
-    settings_repository: FromDishka[SettingsRepository],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -31,7 +29,6 @@ async def subscription_main_getter(
     runner = get_translator(i18n, user)
     banner = await get_banner_media(
         banner_repository,
-        settings_repository,
         config,
         DEFAULT_BANNER_NAME,
         user.language,
@@ -40,8 +37,8 @@ async def subscription_main_getter(
     return {
         "banner": banner,
         "message": render_window_text(runner, "msg-subscription-main"),
-        "promocode_text": runner.get("btn-subscription.promocode"),
-        "back_text": runner.get("btn-back.general"),
+        "promocode_text": label_with_icon(runner, "btn-subscription.promocode"),
+        "back_text": label_with_icon(runner, "btn-back.general"),
     }
 
 
@@ -55,7 +52,7 @@ async def promocode_input_getter(
     runner = get_translator(i18n, user)
     return {
         "input_message": render_window_text(runner, "msg-promocode-input"),
-        "cancel_text": runner.get("btn-promocode.cancel"),
+        "cancel_text": label_with_icon(runner, "btn-promocode.cancel"),
     }
 
 
@@ -79,7 +76,7 @@ async def promocode_target_getter(
     return {
         "subscriptions": subscriptions,
         "target_message": render_window_text(runner, "msg-promocode-target"),
-        "cancel_text": runner.get("btn-promocode.cancel"),
+        "cancel_text": label_with_icon(runner, "btn-promocode.cancel"),
     }
 
 
@@ -109,6 +106,6 @@ async def promocode_confirm_getter(
         "will_replace_message": render_window_text(runner, "msg-promocode-confirm-will-replace")
         if will_replace
         else "",
-        "confirm_text": runner.get("btn-promocode.confirm"),
-        "cancel_text": runner.get("btn-promocode.cancel"),
+        "confirm_text": label_with_icon(runner, "btn-promocode.confirm"),
+        "cancel_text": label_with_icon(runner, "btn-promocode.cancel"),
     }

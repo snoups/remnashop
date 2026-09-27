@@ -288,7 +288,6 @@ def upgrade() -> None:
         sa.Column("token", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("secret_token", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("drop_pending_updates", sa.Boolean(), server_default="false", nullable=False),
-        sa.Column("banners_enabled", sa.Boolean(), server_default="true", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -410,6 +409,7 @@ def upgrade() -> None:
         sa.Column("kind", sa.String(length=16), nullable=False),
         sa.Column("flow", sa.String(length=16), nullable=False),
         sa.Column("banner_name", sa.String(length=160), nullable=True),
+        sa.Column("name", sa.String(length=128), nullable=True),
         sa.Column("is_enabled", sa.Boolean(), server_default=sa.text("true"), nullable=False),
         sa.Column("position", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.Column("slot", sa.Integer(), nullable=True),
@@ -514,7 +514,6 @@ def upgrade() -> None:
                 "WATA",
                 "ROLLYPAY",
                 "ANTILOPAY",
-                "OVERPAY",
                 "PAYPALYCH",
                 "RIOPAY",
                 "AURAPAY",
@@ -522,7 +521,6 @@ def upgrade() -> None:
                 "LAVA",
                 "CLOUDPAYMENTS",
                 "PAYPEAR",
-                "TRIBUTE",
                 name="payment_gateway_type",
             ),
             nullable=False,
@@ -747,7 +745,7 @@ def upgrade() -> None:
         sa.Column("personal_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("purchase_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
-        sa.Column("points", sa.Numeric(precision=12, scale=2), server_default="0", nullable=False),
+        sa.Column("points", sa.Numeric(precision=12, scale=0), server_default="0", nullable=False),
         sa.Column("is_trial_available", sa.Boolean(), server_default="true", nullable=False),
         sa.Column(
             "created_at",
@@ -933,6 +931,9 @@ def upgrade() -> None:
         sa.Column("position", sa.Integer(), nullable=False),
         sa.Column("custom_emoji_id", sa.String(length=32), nullable=False),
         sa.Column("fallback_emoji", sa.String(length=16), nullable=False),
+        sa.Column("thumbnail", sa.LargeBinary(), nullable=True),
+        sa.Column("animation", sa.LargeBinary(), nullable=True),
+        sa.Column("animation_kind", sa.String(length=8), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -967,6 +968,7 @@ def upgrade() -> None:
                 "REFERRAL",
                 "PRICING",
                 "PLANS",
+                "PAYMENT",
                 name="event_category",
             ),
             nullable=False,
@@ -1335,6 +1337,7 @@ def upgrade() -> None:
                 "REFERRAL",
                 "PRICING",
                 "PLANS",
+                "PAYMENT",
                 name="event_category",
             ),
             nullable=False,
@@ -1396,7 +1399,6 @@ def upgrade() -> None:
                 "WATA",
                 "ROLLYPAY",
                 "ANTILOPAY",
-                "OVERPAY",
                 "PAYPALYCH",
                 "RIOPAY",
                 "AURAPAY",
@@ -1404,7 +1406,6 @@ def upgrade() -> None:
                 "LAVA",
                 "CLOUDPAYMENTS",
                 "PAYPEAR",
-                "TRIBUTE",
                 name="payment_gateway_type",
             ),
             nullable=False,
@@ -1412,7 +1413,7 @@ def upgrade() -> None:
         sa.Column("external_payment_id", sa.String(length=128), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("PENDING", "PAID", "FAILED", "EXPIRED", "CANCELED", name="paymentorderstatus"),
+            sa.Enum("PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED", name="paymentorderstatus"),
             server_default="PENDING",
             nullable=False,
         ),
@@ -1429,6 +1430,7 @@ def upgrade() -> None:
         sa.Column("idempotency_key", sa.String(length=36), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("fulfilled_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("is_test", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -1512,7 +1514,7 @@ def upgrade() -> None:
         sa.Column(
             "type", sa.Enum("EXTRA_DAYS", "POINTS", name="referralrewardtype"), nullable=False
         ),
-        sa.Column("amount", sa.Numeric(precision=12, scale=2), nullable=False),
+        sa.Column("amount", sa.Numeric(precision=12, scale=0), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

@@ -1,42 +1,34 @@
-import { AlertCircle, Info, KeyRound, LaptopMinimal, UserMinus } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, KeyRound, LaptopMinimal, UserMinus } from "lucide-react";
+import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type Admin, demoteAdmin, listAdmins } from "@entities/admin/api";
+import { ROLE_BADGE_CLASSNAME, getAdminInitials } from "@entities/admin/display";
+import { prefetchPermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { AdminCreateForm } from "@features/admin-create/AdminCreateForm";
 import { AdminPasswordModal } from "@features/admin-create/AdminPasswordModal";
-import { AdminPermissionsForm } from "@features/admin-update-permissions/AdminPermissionsForm";
-import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
-import { UserSessionsDialog } from "@features/user-sessions/UserSessionsDialog";
+import { AdminDetailsDialog, type AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useCurrentUser } from "@entities/user/use-current-user";
-import type { Role } from "@shared/types/rbac";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Spinner } from "@shared/ui/Spinner";
 
-const ROLE_BADGE_CLASSNAME: Record<Role, string> = {
-  USER: "border-border bg-white/[0.04] text-muted-foreground",
-  ADMIN: "border-border bg-white/[0.06] text-foreground/80",
-  OWNER: "border-primary/40 bg-accent text-primary",
-  SYSTEM: "border-warning/30 bg-warning/10 text-warning",
-};
-
-function getInitials(admin: Admin): string {
-  return (admin.login ?? admin.name).slice(0, 2).toUpperCase();
-}
-
 export function AdminsPage() {
   const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
   const [state, reload] = useAsyncResource(listAdmins);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
-  const [detailsAdmin, setDetailsAdmin] = useState<Admin | null>(null);
-  const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
-  const [sessionsAdmin, setSessionsAdmin] = useState<Admin | null>(null);
+  const [details, setDetails] = useState<{ admin: Admin; tab: AdminDetailsTab } | null>(null);
   const [pendingDemote, setPendingDemote] = useState<Admin | null>(null);
   const currentUserState = useCurrentUser();
+
+  // warm the catalog so the details dialog's Permissions tab opens without a spinner
+  useEffect(prefetchPermissionCatalog, []);
   const canViewSessions =
     currentUserState.kind === "ready" &&
     currentUserState.data.effective_permissions.includes("USER_SESSIONS_VIEW");
@@ -52,46 +44,38 @@ export function AdminsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex">
-        <AdminCreateForm
-          onCreated={(password) => {
-            setRevealedPassword(password);
-            reload();
-          }}
-        />
-      </div>
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      {state.kind === "loading" && <Spinner className="py-12" />}
+      {state.kind === "error" && (
+        <div className="flex flex-col items-center gap-2 py-12 text-error">
+          <AlertCircle className="size-5" />
+          <p className="text-sm">{t("admins.loadError")}</p>
+        </div>
+      )}
+      {state.kind === "ready" && (
+        <>
+          <AdminCreateForm
+            onCreated={(password) => {
+              setRevealedPassword(password);
+              reload();
+            }}
+          />
 
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        {state.kind === "loading" && <Spinner className="py-12" />}
-        {state.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("admins.loadError")}</p>
-          </div>
-        )}
-        {state.kind === "ready" && (
-          <div className="flex flex-col divide-y divide-border/50">
-            {state.data.map((admin) => {
-              const menuItems: ActionMenuItem[] = [
-                {
-                  label: t("users.details.button"),
-                  icon: Info,
-                  onClick: () => setDetailsAdmin(admin),
-                },
-              ];
-              if (canViewSessions) {
+          <div className="grid grid-cols-[auto_minmax(0,max-content)_auto_1fr_auto] gap-x-3 divide-y divide-border/50">
+            {[...state.data].sort((a, b) => Number(b.id === currentUserId) - Number(a.id === currentUserId)).map((admin) => {
+              const menuItems: ActionMenuItem[] = [];
+              if (admin.role === "ADMIN") {
+                menuItems.push({
+                  label: t("admins.details.tabs.permissions"),
+                  icon: KeyRound,
+                  onClick: () => setDetails({ admin, tab: "permissions" }),
+                });
+              }
+              if (canViewSessions && admin.id !== currentUserId) {
                 menuItems.push({
                   label: t("sessions.title"),
                   icon: LaptopMinimal,
-                  onClick: () => setSessionsAdmin(admin),
-                });
-              }
-              if (admin.role === "ADMIN" || admin.id === currentUserId) {
-                menuItems.push({
-                  label: t("admins.permissionsForm.title"),
-                  icon: KeyRound,
-                  onClick: () => setEditingAdmin(admin),
+                  onClick: () => setDetails({ admin, tab: "sessions" }),
                 });
               }
               if (admin.role === "ADMIN") {
@@ -104,63 +88,66 @@ export function AdminsPage() {
               }
 
               return (
-                <div
+                <motion.div
                   key={admin.id}
-                  className="flex items-center justify-between gap-3 rounded-full px-3 py-2.5 [transition-property:background-color] duration-150 hover:bg-white/[0.04]"
+                  {...bounceTap(bounceStrength, 0.03)}
+                  className="relative col-span-full grid grid-cols-subgrid items-center has-[[aria-expanded=true]]:z-20 gap-y-0 rounded-full px-3 py-2.5 [transition-property:background-color] duration-150 hover:bg-white/[0.04]"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12.5px] font-bold text-foreground">
-                      {getInitials(admin)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-[13.5px] font-medium text-foreground">{admin.name}</p>
-                        <span
-                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide ${ROLE_BADGE_CLASSNAME[admin.role]}`}
-                        >
-                          {t(`roles.${admin.role}`)}
-                        </span>
-                      </div>
-                      <p className="truncate font-mono text-[12px] text-muted-foreground">
-                        {admin.login ?? "—"}
-                      </p>
-                    </div>
+                  {/* whole-row hit area; sits under the menu and channel icons (z-10) */}
+                  <button
+                    type="button"
+                    onClick={() => setDetails({ admin, tab: "profile" })}
+                    aria-label={`${t("users.details.button")}: ${admin.name}`}
+                    className="absolute inset-0 cursor-pointer rounded-full"
+                  />
+                  <div
+                    className={`row-span-2 flex size-9 items-center justify-center rounded-full text-[12.5px] font-bold ${
+                      admin.role === "OWNER" ? "bg-accent text-primary" : "bg-white/[0.06] text-foreground"
+                    }`}
+                  >
+                    {getAdminInitials(admin)}
                   </div>
-
-                  <ActionMenu items={menuItems} />
-                </div>
+                  <p className="min-w-0 truncate text-[13.5px] font-medium text-foreground">{admin.name}</p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-px text-[10.5px] font-semibold uppercase tracking-wide ${ROLE_BADGE_CLASSNAME[admin.role]}`}
+                    >
+                      {t(`roles.${admin.role}`)}
+                    </span>
+                    {admin.id === currentUserId && (
+                      <span className="shrink-0 whitespace-nowrap text-[12px] text-muted-foreground">
+                        · {t("admins.you")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative z-10 col-start-5 row-span-2 row-start-1 flex items-center justify-end">
+                    <ActionMenu items={menuItems} />
+                  </div>
+                  <p className="col-span-3 col-start-2 min-w-0 truncate font-mono text-[12px] text-muted-foreground">
+                    {admin.login ?? "—"}
+                  </p>
+                </motion.div>
               );
             })}
           </div>
-        )}
-      </div>
-
-      {detailsAdmin && (
-        <UserDetailsDialog user={detailsAdmin} onClose={() => setDetailsAdmin(null)} />
+        </>
       )}
 
-      {editingAdmin && (
-        <AdminPermissionsForm
-          admin={editingAdmin}
-          readOnly={editingAdmin.id === currentUserId}
-          onUpdated={() => {
-            setEditingAdmin(null);
-            reload();
+      {details && (
+        <AdminDetailsDialog
+          admin={details.admin}
+          initialTab={details.tab}
+          canViewSessions={canViewSessions && details.admin.id !== currentUserId}
+          onUpdated={reload}
+          onClose={(followUp) => {
+            if (followUp === "demote") setPendingDemote(details.admin);
+            setDetails(null);
           }}
-          onCancel={() => setEditingAdmin(null)}
         />
       )}
 
       {revealedPassword && (
         <AdminPasswordModal password={revealedPassword} onClose={() => setRevealedPassword(null)} />
-      )}
-
-      {sessionsAdmin && (
-        <UserSessionsDialog
-          userId={sessionsAdmin.id}
-          userName={sessionsAdmin.name}
-          onClose={() => setSessionsAdmin(null)}
-        />
       )}
 
       {pendingDemote && (
@@ -180,3 +167,4 @@ export function AdminsPage() {
     </div>
   );
 }
+

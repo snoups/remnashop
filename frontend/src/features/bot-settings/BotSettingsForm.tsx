@@ -1,15 +1,23 @@
-import { Bot } from "lucide-react";
+import { Bot, ScrollText, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getErrorMessage } from "@shared/api/http";
-import { getBotSettings, restartBot, updateBotSettings } from "@entities/settings/api";
+import {
+  getBotLogs,
+  getBotSettings,
+  getBotStatus,
+  restartBot,
+  updateBotSettings,
+  type BotStatus,
+} from "@entities/settings/api";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { Modal, useModalClose } from "@shared/ui/Modal";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
@@ -25,6 +33,82 @@ function generateSecretToken(): string {
   return randomString(SECRET_TOKEN_CHARSET, SECRET_TOKEN_LENGTH);
 }
 
+function StatusBadge({ status }: { status: BotStatus }) {
+  const { t } = useTranslation();
+  // Configured means a token is stored; running means Telegram has a webhook
+  // for it and isn't reporting a delivery error -- only the second one says
+  // the bot is actually answering.
+  const queued =
+    status.pending_update_count > 0
+      ? t("settings.bot.pendingUpdates", { total: status.pending_update_count })
+      : null;
+  const failure =
+    status.error !== null ? t("settings.bot.statusError", { message: status.error }) : null;
+  const hint = [failure, queued].filter((line) => line !== null).join("\n\n") || null;
+  const [tone, label] = !status.is_configured
+    ? ["bg-warning/10 text-warning", t("settings.bot.notConfigured")]
+    : status.is_running
+      ? ["bg-success/10 text-success", t("settings.bot.running")]
+      : ["bg-error/10 text-error", t("settings.bot.stopped")];
+
+  return (
+    <span
+      className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-transparent px-4 py-1.5 text-[13px] font-semibold ${tone}`}
+    >
+      {label}
+      {hint !== null && <FieldHint text={hint} side="bottom" align="end" />}
+    </span>
+  );
+}
+
+function BotLogsDialogBody() {
+  const { t } = useTranslation();
+  const close = useModalClose();
+  const bounceStrength = useBounceStrength();
+  const [state, reload] = useAsyncResource(getBotLogs);
+
+  return (
+    <>
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-5 py-4">
+        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] backdrop-blur-md">
+            <ScrollText className="size-4" />
+          </div>
+          {t("settings.bot.logsTitle")}
+        </h2>
+        {state.kind === "loading" && <Spinner />}
+        <motion.button
+          type="button"
+          onClick={reload}
+          {...bounceTap(bounceStrength)}
+          className="ml-auto flex h-8 w-fit items-center rounded-full border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-white/5"
+        >
+          {t("settings.bot.refreshLogs")}
+        </motion.button>
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t("settings.bot.closeLogs")}
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col p-5">
+        <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border bg-input/60 p-3 font-mono text-[11.5px] leading-relaxed text-foreground/80">
+          {state.kind === "error"
+            ? t("settings.bot.logsLoadError")
+            : state.kind === "ready"
+              ? state.data.length > 0
+                ? state.data.join("\n")
+                : t("settings.bot.logsEmpty")
+              : null}
+        </pre>
+      </div>
+    </>
+  );
+}
+
 export function BotSettingsForm() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
@@ -32,18 +116,16 @@ export function BotSettingsForm() {
   const [secretToken, setSecretToken] = useState("");
   const [dropPendingUpdates, setDropPendingUpdates] = useState(false);
   const [initialDropPendingUpdates, setInitialDropPendingUpdates] = useState(false);
-  const [bannersEnabled, setBannersEnabled] = useState(false);
-  const [initialBannersEnabled, setInitialBannersEnabled] = useState(false);
   const [state, , setData] = useAsyncResource(getBotSettings, (settings) => {
     setDropPendingUpdates(settings.drop_pending_updates);
     setInitialDropPendingUpdates(settings.drop_pending_updates);
-    setBannersEnabled(settings.banners_enabled);
-    setInitialBannersEnabled(settings.banners_enabled);
   });
+  const [statusState, reloadStatus] = useAsyncResource(getBotStatus);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [restartCooldown, setRestartCooldown] = useState(0);
   const [isSecretCopied, setIsSecretCopied] = useState(false);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
 
   useEffect(() => {
     if (restartCooldown === 0) return;
@@ -62,12 +144,7 @@ export function BotSettingsForm() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (
-      !token &&
-      !secretToken &&
-      dropPendingUpdates === initialDropPendingUpdates &&
-      bannersEnabled === initialBannersEnabled
-    ) {
+    if (!token && !secretToken && dropPendingUpdates === initialDropPendingUpdates) {
       toast.error(t("settings.bot.errorEmptyFields"));
       return;
     }
@@ -84,13 +161,12 @@ export function BotSettingsForm() {
         token: token || undefined,
         secret_token: secretToken || undefined,
         drop_pending_updates: dropPendingUpdates,
-        banners_enabled: bannersEnabled,
       });
       setData(settings);
       setToken("");
       setSecretToken("");
       setInitialDropPendingUpdates(settings.drop_pending_updates);
-      setInitialBannersEnabled(settings.banners_enabled);
+      reloadStatus();
       toast.success(t("settings.bot.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
@@ -105,6 +181,7 @@ export function BotSettingsForm() {
 
     try {
       await restartBot();
+      reloadStatus();
       toast.success(t("settings.bot.restartRequested"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
@@ -121,24 +198,18 @@ export function BotSettingsForm() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-foreground">{t("settings.bot.title")}</h2>
-            {state.kind === "loading" && <Spinner className="justify-start" />}
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.bot.description")}</p>
           </div>
-          {state.kind === "ready" && (
-            <span
-              className={`ml-auto shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                state.data.is_configured ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
-              }`}
-            >
-              {state.data.is_configured ? t("settings.bot.configured") : t("settings.bot.notConfigured")}
-            </span>
-          )}
-          {state.kind === "error" && (
-            <span className="ml-auto shrink-0 rounded-full bg-error/10 px-3 py-1.5 text-[12px] font-semibold text-error">
+          {state.kind === "loading" && <Spinner className="ml-auto" />}
+          {statusState.kind === "ready" && <StatusBadge status={statusState.data} />}
+          {(state.kind === "error" || statusState.kind === "error") && (
+            <span className="ml-auto shrink-0 rounded-full border border-transparent bg-error/10 px-4 py-1.5 text-[13px] font-semibold text-error">
               {t("settings.bot.loadErrorBadge")}
             </span>
           )}
         </div>
+
+        <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
           <div className="flex flex-col gap-1">
@@ -201,17 +272,6 @@ export function BotSettingsForm() {
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3 py-2">
-            <span className="flex items-center gap-1.5 text-sm text-foreground/80">
-              {t("settings.bot.bannersEnabledLabel")}
-              <FieldHint text={t("settings.bot.bannersEnabledHint")} />
-            </span>
-            <Switch
-              checked={bannersEnabled}
-              onChange={setBannersEnabled}
-              ariaLabel={t("settings.bot.bannersEnabledLabel")}
-            />
-          </div>
 
           <div className="flex items-center gap-2">
             <motion.button
@@ -238,8 +298,23 @@ export function BotSettingsForm() {
             </motion.button>
 
             <FieldHint text={t("settings.bot.applyChangesDescription")} />
+
+            <motion.button
+              type="button"
+              onClick={() => setIsLogsOpen(true)}
+              {...bounceTap(bounceStrength)}
+              className="ml-auto w-fit rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
+            >
+              {t("settings.bot.showLogs")}
+            </motion.button>
           </div>
         </form>
+
+        {isLogsOpen && (
+          <Modal onClose={() => setIsLogsOpen(false)} size="xl" scrollable>
+            <BotLogsDialogBody />
+          </Modal>
+        )}
     </div>
   );
 }

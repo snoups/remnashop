@@ -3,8 +3,10 @@ from uuid import uuid4
 
 import pytest
 from remnapy import RemnawaveSDK
+from sqlalchemy import select
 
 from app.core.constants import GB_TO_BYTES
+from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Currency, Locale, PlanType, PurchaseType, Role
 from app.core.exceptions import (
@@ -117,7 +119,12 @@ async def test_system_can_grant_addon_and_push_limit_to_panel(
         )
     )
     use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     granted = await use_case.system(
@@ -131,6 +138,53 @@ async def test_system_can_grant_addon_and_push_limit_to_panel(
     panel_payload = remnawave_store[granted.remnawave_user_id]
     assert panel_payload["trafficLimitBytes"] == 150 * GB_TO_BYTES
     assert panel_payload["hwidDeviceLimit"] == 3  # unchanged, base plan value
+
+
+async def test_grant_addon_event_records_subscription_owner_as_target(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    addon_repository: AddOnRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    buyer, subscription_id = await _create_subscription(
+        plan_repository,
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        436,
+    )
+    addon = await addon_repository.create(
+        CreateAddOnDto(
+            name="traffic-10gb", type=AddOnType.TRAFFIC, amount=10, base_price=Decimal("0.99")
+        )
+    )
+    use_case = GrantAddOnUseCase(
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    await use_case.system(GrantAddOnDto(subscription_id=subscription_id, addon_id=addon.id))
+
+    row = (
+        await subscription_repository.session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == "SubscriptionAddOnGrantedEvent"
+            )
+        )
+    ).one()
+    assert row.payload["target"]["id"] == buyer.id
+    assert row.payload["target"]["telegram_id"] == 436
 
 
 async def test_real_actor_cannot_call_grant_addon_directly(
@@ -159,7 +213,12 @@ async def test_real_actor_cannot_call_grant_addon_directly(
         )
     )
     use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -187,7 +246,12 @@ async def test_grant_addon_unknown_addon_raises_not_found(
         433,
     )
     use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     with pytest.raises(NotFoundError):
@@ -224,7 +288,12 @@ async def test_grant_addon_retried_after_panel_failure_does_not_double_grant(
         )
     )
     use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     calls = {"n": 0}
@@ -283,7 +352,12 @@ async def test_system_can_grant_devices_addon_without_clearing_traffic_limit(
         )
     )
     use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
 
     granted = await use_case.system(

@@ -14,6 +14,8 @@ import {
 // glslVersion is left at its default. `#version 300 es` itself is added for any
 // non-raw ShaderMaterial regardless of that flag, so leaving it default is what
 // makes this shader's `varying`/`gl_FragColor` syntax actually compile.
+const MIN_FRAME_INTERVAL_MS = 1000 / 30;
+
 const VERTEX_SHADER = `
 varying vec2 vUv;
 
@@ -25,6 +27,7 @@ void main() {
 
 const FRAGMENT_SHADER = `
 uniform float uTime;
+uniform float uTimeSin;
 uniform float uScrollProgress;
 uniform float uOpacity;
 uniform vec3 uColourPalette[4];
@@ -125,7 +128,7 @@ void main() {
     uv += snoise(vec3(uv - i * 0.2, uTime + i * 32.0)) * uUvDistortionIntensity;
   }
 
-  float colourInput = snoise(vec3(uv, sin(uTime))) * 0.5 + 0.5;
+  float colourInput = snoise(vec3(uv, uTimeSin)) * 0.5 + 0.5;
   vec3 colour = cosineGradientColour(colourInput, uColourPalette[0], uColourPalette[1], uColourPalette[2], uColourPalette[3]);
   colour = uHueRotationMatrix * colour;
   gl_FragColor = vec4(colour * 1.4 * uOpacity, uOpacity);
@@ -167,7 +170,10 @@ export function ShaderBackground() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const renderer = new THREE.WebGLRenderer({ canvas, context: gl, antialias: false, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 1, not min(devicePixelRatio, 2): every fragment costs 4 snoise() calls
+    // (~400 ALU ops), so a retina buffer quadruples GPU load for a blurred
+    // noise gradient that has no detail to resolve at that density.
+    renderer.setPixelRatio(1);
     renderer.setSize(window.innerWidth, window.innerHeight, false);
 
     const scene = new THREE.Scene();
@@ -175,6 +181,7 @@ export function ShaderBackground() {
     const geometry = new THREE.PlaneGeometry(2, 2);
     const uniforms = {
       uTime: { value: 0 },
+      uTimeSin: { value: 0 },
       uScrollProgress: { value: 0 },
       uOpacity: { value: PALETTE.opacity },
       uColourPalette: { value: PALETTE.colours as THREE.Vector3[] },
@@ -227,21 +234,57 @@ export function ShaderBackground() {
     }
     canvas.addEventListener("webglcontextlost", onContextLost, false);
 
-    const start = performance.now();
+    let start = performance.now();
+    let lastDraw = 0;
 
     function render() {
-      uniforms.uTime.value = ((performance.now() - start) / 1000) * shaderDebugState.speed;
-      if (enabledRef.current) renderFrame();
+      const now = performance.now();
       if (!reduceMotion) {
         frame = requestAnimationFrame(render);
       }
+      // rAF runs at display refresh — 120Hz on ProMotion — while
+      // DEFAULT_TIME_SCALE makes the motion slow enough that 30fps is
+      // indistinguishable from it.
+      if (now - lastDraw < MIN_FRAME_INTERVAL_MS) return;
+      lastDraw = now;
+      uniforms.uTime.value = ((now - start) / 1000) * shaderDebugState.speed;
+      // Same reason the hue matrix is precomputed in shaderState.ts: one value
+      // per frame, not per fragment.
+      uniforms.uTimeSin.value = Math.sin(uniforms.uTime.value);
+      if (enabledRef.current) renderFrame();
     }
     render();
+
+    // rAF only stops on its own when the tab is hidden, not when the window
+    // merely loses focus -- a dashboard sitting on a second monitor keeps
+    // paying full GPU cost. `start` absorbs the paused span so uTime stays
+    // continuous and the pattern doesn't jump on return.
+    let pausedAt = 0;
+
+    function onBlur() {
+      if (pausedAt) return;
+      pausedAt = performance.now();
+      cancelAnimationFrame(frame);
+    }
+
+    function onFocus() {
+      if (!pausedAt) return;
+      start += performance.now() - pausedAt;
+      pausedAt = 0;
+      render();
+    }
+
+    if (!reduceMotion) {
+      window.addEventListener("blur", onBlur);
+      window.addEventListener("focus", onFocus);
+    }
 
     return () => {
       uniformsRef.current = null;
       shaderDebugState.uniforms = null;
       if (!reduceMotion) cancelAnimationFrame(frame);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll);
       canvas.removeEventListener("webglcontextlost", onContextLost);

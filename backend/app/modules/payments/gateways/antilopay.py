@@ -38,6 +38,7 @@ _OK_CODE: Final[int] = 0
 _NOT_FOUND_CODE: Final[int] = 8
 
 
+# Docs: https://doc.antilopay.com/AntilopayAPI.pdf
 class AntilopayGateway(PaymentGateway):
     currency = Currency.RUB
 

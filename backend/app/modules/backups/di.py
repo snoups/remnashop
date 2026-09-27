@@ -8,6 +8,7 @@ from app.modules.backups.usecases import (
     DownloadBackupRunUseCase,
     GetBackupRunUseCase,
     GetBackupSettingsUseCase,
+    GetBackupStatsUseCase,
     ListBackupRunsUseCase,
     UpdateBackupSettingsUseCase,
 )
@@ -19,6 +20,7 @@ class BackupsProvider(Provider):
 
     backup_repository = provide(BackupRepository)
     get_backup_settings_use_case = provide(GetBackupSettingsUseCase)
+    get_backup_stats_use_case = provide(GetBackupStatsUseCase)
     update_backup_settings_use_case = provide(UpdateBackupSettingsUseCase)
     create_backup_run_use_case = provide(CreateBackupRunUseCase)
     list_backup_runs_use_case = provide(ListBackupRunsUseCase)

@@ -1535,7 +1535,12 @@ async def test_change_does_not_reparent_addon_entitlement_to_the_new_row(
         )
     )
     grant_use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
     await grant_use_case.system(
         GrantAddOnDto(subscription_id=old_subscription.id, addon_id=addon.id)
@@ -1617,7 +1622,12 @@ async def test_trial_upgrade_does_not_reparent_addon_entitlement_to_the_new_row(
         )
     )
     grant_use_case = GrantAddOnUseCase(
-        subscription_repository, addon_repository, remnawave_sdk, uow, event_publisher
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
     )
     await grant_use_case.system(GrantAddOnDto(subscription_id=trial.id, addon_id=addon.id))
 

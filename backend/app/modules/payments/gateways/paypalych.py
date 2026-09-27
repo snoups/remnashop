@@ -37,6 +37,7 @@ def _parse_postback(body: bytes) -> dict[str, str]:
     return {str(key): str(value) for key, value in data.items()}
 
 
+# Docs: https://pally.info/reference/api
 class PaypalychGateway(PaymentGateway):
     currency = Currency.RUB
 

@@ -24,15 +24,10 @@ from app.modules.oauth.events import (
     OAuthLoginSucceededEvent,
 )
 from app.modules.referrals.tasks import assign_referral_rewards_task
-from app.modules.settings.events import LocaleActivatedEvent, LocaleDeactivatedEvent
 from app.modules.subscriptions.events import (
     SubscriptionChangedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
-)
-from app.modules.translations.tasks import (
-    copy_locale_translations_task,
-    delete_locale_translations_task,
 )
 from app.modules.users.dto import UserDto
 
@@ -56,8 +51,6 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
         SessionTheftDetectedEvent(user_id=1, session_id=1),
         SessionRevokedEvent(user=_USER, session_id=1),
         UserSessionRevokedByAdminEvent(actor=_USER, target=_TARGET, session_id=1),
-        LocaleActivatedEvent(locale=Locale.RU),
-        LocaleDeactivatedEvent(locale=Locale.RU),
         SubscriptionPurchasedEvent(user=_USER, subscription_id=1, plan_id=1, purchase_type="NEW"),
         SubscriptionRenewedEvent(user=_USER, subscription_id=1, duration_days=30),
     ]
@@ -154,12 +147,11 @@ async def test_shutdown_clears_handlers() -> None:
     assert bus._handlers == {}
 
 
-def test_autodiscover_registers_auth_and_translations_handlers() -> None:
+def test_autodiscover_registers_auth_handlers() -> None:
     bus = EventBus()
     bus.autodiscover()
 
     assert "LoginFailedEvent" in bus._handlers
-    assert "LocaleActivatedEvent" in bus._handlers
 
 
 @pytest.mark.parametrize("event_type", list(_REGISTERED_EVENTS), ids=list(_REGISTERED_EVENTS))
@@ -168,16 +160,14 @@ async def test_autodiscovered_handler_reads_its_real_payload_shape(
 ) -> None:
     # Every migrated handler reads entry.payload[...] instead of an event
     # attribute -- a wrong key would only surface as a caught, logged
-    # exception (EventBus.dispatch_stored) or, for the locale-deletion
-    # handler, as a task that silently never fires. This proves each one
-    # still matches what OutboxEventPublisher actually writes. Handlers that
+    # exception (EventBus.dispatch_stored) or, for a handler that kicks a
+    # task, as a task that silently never fires. This proves each one still
+    # matches what OutboxEventPublisher actually writes. Handlers that
     # .kiq() a taskiq task are stubbed out here since actually reaching the
     # broker is outside what this test is about.
     async def _noop_kiq(*args: Any, **kwargs: Any) -> None:
         return None
 
-    monkeypatch.setattr(copy_locale_translations_task, "kiq", _noop_kiq)
-    monkeypatch.setattr(delete_locale_translations_task, "kiq", _noop_kiq)
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _noop_kiq)
 
     bus = EventBus()

@@ -25,7 +25,6 @@ class PaymentGatewayType(UpperStrEnum):
     WATA = auto()
     ROLLYPAY = auto()
     ANTILOPAY = auto()
-    OVERPAY = auto()
     PAYPALYCH = auto()
     RIOPAY = auto()
     AURAPAY = auto()
@@ -33,7 +32,6 @@ class PaymentGatewayType(UpperStrEnum):
     LAVA = auto()
     CLOUDPAYMENTS = auto()
     PAYPEAR = auto()
-    TRIBUTE = auto()
 
 
 class PlanType(UpperStrEnum):
@@ -145,8 +143,8 @@ class PaymentOrderStatus(UpperStrEnum):
     PENDING = auto()
     PAID = auto()
     FAILED = auto()
-    EXPIRED = auto()
     CANCELED = auto()
+    REFUNDED = auto()
 
 
 class BackupKind(UpperStrEnum):
@@ -280,6 +278,11 @@ class BannerFormat(StrEnum):
     WEBP = auto()
 
 
+class AppearanceResetScope(StrEnum):
+    BRANDING = auto()
+    COLORS = auto()
+
+
 class AppearanceImageKind(StrEnum):
     LOGO = auto()
     FAVICON = auto()
@@ -289,6 +292,7 @@ class AppearanceImageFormat(StrEnum):
     JPG = auto()
     PNG = auto()
     WEBP = auto()
+    SVG = auto()
 
 
 class DialogWindowKind(StrEnum):

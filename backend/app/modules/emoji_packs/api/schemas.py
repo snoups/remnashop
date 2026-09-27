@@ -1,9 +1,13 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
 class EmojiPackItemResponse(BaseModel):
     custom_emoji_id: str
     fallback_emoji: str
+    # "lottie", "video", or null when this emoji has no animation stored.
+    animation_kind: Optional[str]
 
 
 class EmojiPackResponse(BaseModel):

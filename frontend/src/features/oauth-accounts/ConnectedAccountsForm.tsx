@@ -1,5 +1,5 @@
 import { startRegistration } from "@simplewebauthn/browser";
-import { Fingerprint, KeyRound, Link2, Pencil, Trash2, X } from "lucide-react";
+import { Fingerprint, Inbox, KeyRound, Link2, Pencil, Trash2, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
@@ -90,18 +90,20 @@ export function ConnectedAccountsForm() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <Link2 className="size-4" />
         </div>
         <div>
           <h2 className="text-sm font-bold text-foreground">{t("profile.oauthAccounts.title")}</h2>
-          <p className="text-[12.5px] text-muted-foreground">{t("profile.oauthAccounts.description")}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("profile.oauthAccounts.description")}</p>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-col">
+      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+
+      <div className="mt-4 flex flex-col divide-y divide-border/50">
         {state.kind === "loading" && (
           <Spinner />
         )}
@@ -279,9 +281,12 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
         </button>
       </div>
 
-      <div className="flex flex-col gap-1 px-5 pb-5 pt-4">
+      <div className="flex flex-col divide-y divide-border/50 px-5 pb-5 pt-4">
         {passkeys.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t("profile.passkeys.empty")}</p>
+          <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+            <Inbox className="size-5" />
+            <p className="text-sm">{t("profile.passkeys.empty")}</p>
+          </div>
         )}
         {passkeys.map((passkey) => (
           <div

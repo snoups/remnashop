@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 import app.modules.payments.gateways.riopay as riopay_module
+from app.core.enums import PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.gateways.riopay import RioPayGateway
 from app.modules.payments.gateways.valutix import ValutixGateway
@@ -107,6 +108,19 @@ async def test_parse_webhook_failed_order_does_not_claim() -> None:
     raw, headers = _signed_hook("FAILED")
     signal = await _gateway().parse_webhook(webhook(raw, headers))
     assert signal is not None and signal.claims_paid is False
+    assert signal.reported_status is PaymentOrderStatus.FAILED
+
+
+@pytest.mark.parametrize(
+    ("status", "reported_status"),
+    [("CANCELED", PaymentOrderStatus.CANCELED), ("EXPIRED", PaymentOrderStatus.CANCELED)],
+)
+async def test_parse_webhook_reports_canceled_and_expired_as_canceled(
+    status: str, reported_status: PaymentOrderStatus
+) -> None:
+    raw, headers = _signed_hook(status)
+    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    assert signal is not None and signal.reported_status is reported_status
 
 
 @pytest.mark.parametrize(("cls", "token_setting", "host"), _GATEWAYS)

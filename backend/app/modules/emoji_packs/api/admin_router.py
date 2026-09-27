@@ -1,8 +1,9 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.api.dependencies.admin import require_admin
+from app.core.exceptions import ValidationError
 from app.modules.emoji_packs.api.schemas import (
     EmojiPackItemResponse,
     EmojiPackResponse,
@@ -27,6 +28,7 @@ def _to_response(pack: EmojiPackDto) -> EmojiPackResponse:
             EmojiPackItemResponse(
                 custom_emoji_id=item.custom_emoji_id,
                 fallback_emoji=item.fallback_emoji,
+                animation_kind=item.animation_kind,
             )
             for item in pack.items
         ],
@@ -49,7 +51,10 @@ async def import_emoji_pack(
     use_case: FromDishka[ImportEmojiPackUseCase],
     actor: UserDto = Depends(require_admin),
 ) -> EmojiPackResponse:
-    return _to_response(await use_case(actor, payload.link))
+    try:
+        return _to_response(await use_case(actor, payload.link))
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
 
 @router.delete("/{set_name}", status_code=status.HTTP_204_NO_CONTENT)

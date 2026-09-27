@@ -2,12 +2,13 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Final, Optional, cast
 
-from sqlalchemy import CursorResult, func, select, update
+from sqlalchemy import ColumnElement, CursorResult, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import INT32_MAX
 from app.core.db.models.payment_order import PaymentOrder
 from app.core.db.timestamp import NOW_FUNC
-from app.core.enums import Currency, PaymentGatewayType, PaymentOrderStatus
+from app.core.enums import Currency, PaymentGatewayType, PaymentOrderStatus, PurchaseType
 from app.core.exceptions import NotFoundError
 from app.modules.payments.dto import DEFAULT_PAGE_SIZE, CreatePaymentOrderDto, PaymentOrderDto
 from app.modules.subscriptions import PlanSnapshot
@@ -15,6 +16,10 @@ from app.modules.subscriptions import PlanSnapshot
 # asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
 # large attributed-user list still fits after other predicates are added.
 _MAX_IN_PARAMS: Final[int] = 20_000
+
+# Test orders never provision a subscription and must stay out of every
+# revenue/analytics/reconciliation query, and out of the admin order list.
+_NOT_TEST: Final[ColumnElement[bool]] = PaymentOrder.is_test.is_(False)
 
 
 class PaymentOrderRepository:
@@ -41,6 +46,7 @@ class PaymentOrderRepository:
             customer_email=row.customer_email,
             idempotency_key=row.idempotency_key,
             expires_at=row.expires_at,
+            is_test=row.is_test,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -62,6 +68,7 @@ class PaymentOrderRepository:
             customer_email=data.customer_email,
             idempotency_key=data.idempotency_key,
             expires_at=data.expires_at,
+            is_test=data.is_test,
         )
         self.session.add(row)
         await self.session.flush()
@@ -111,6 +118,21 @@ class PaymentOrderRepository:
         await self.session.refresh(row)
         return self._to_dto(row)
 
+    async def mark_status_if(
+        self,
+        order_id: int,
+        status: PaymentOrderStatus,
+        *,
+        current: frozenset[PaymentOrderStatus],
+    ) -> bool:
+        # conditional in SQL so a status that landed meanwhile (e.g. PAID) wins
+        result = await self.session.execute(
+            update(PaymentOrder)
+            .where(PaymentOrder.id == order_id, PaymentOrder.status.in_(current))
+            .values(status=status, updated_at=NOW_FUNC)
+        )
+        return cast(CursorResult, result).rowcount > 0
+
     async def list_expired_pending(self, cutoff: datetime) -> list[PaymentOrderDto]:
         rows = (
             await self.session.scalars(
@@ -122,7 +144,7 @@ class PaymentOrderRepository:
         ).all()
         return [self._to_dto(row) for row in rows]
 
-    async def mark_expired_pending(self, cutoff: datetime) -> int:
+    async def cancel_expired_pending(self, cutoff: datetime) -> int:
         # A bulk Core update() bypasses the ORM's attribute-level onupdate
         # hook, so updated_at (shown in the admin router) has to be set
         # explicitly here -- it wouldn't otherwise bump on this path.
@@ -132,7 +154,7 @@ class PaymentOrderRepository:
                 PaymentOrder.status == PaymentOrderStatus.PENDING,
                 PaymentOrder.expires_at <= cutoff,
             )
-            .values(status=PaymentOrderStatus.EXPIRED, updated_at=NOW_FUNC)
+            .values(status=PaymentOrderStatus.CANCELED, updated_at=NOW_FUNC)
         )
         return cast(CursorResult, result).rowcount
 
@@ -143,6 +165,7 @@ class PaymentOrderRepository:
             await self.session.scalars(
                 select(PaymentOrder).where(
                     PaymentOrder.status == PaymentOrderStatus.PAID,
+                    _NOT_TEST,
                     PaymentOrder.fulfilled_at.is_(None),
                     PaymentOrder.updated_at <= cutoff,
                     PaymentOrder.updated_at >= since,
@@ -164,10 +187,36 @@ class PaymentOrderRepository:
         self,
         *,
         status: Optional[PaymentOrderStatus] = None,
+        gateway_type: Optional[PaymentGatewayType] = None,
+        purchase_type: Optional[PurchaseType] = None,
+        created_from: Optional[datetime] = None,
+        search: Optional[str] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[PaymentOrderDto], int]:
-        filters = [PaymentOrder.status == status] if status is not None else []
+        filters: list[ColumnElement[bool]] = [_NOT_TEST]
+        if status is not None:
+            filters.append(PaymentOrder.status == status)
+        if gateway_type is not None:
+            filters.append(PaymentOrder.gateway_type == gateway_type)
+        if purchase_type is not None:
+            filters.append(PaymentOrder.purchase_type == purchase_type)
+        if created_from is not None:
+            filters.append(PaymentOrder.created_at >= created_from)
+        if search:
+            pattern = f"%{search}%"
+            search_filters: list[ColumnElement[bool]] = [
+                PaymentOrder.external_payment_id.ilike(pattern),
+                PaymentOrder.customer_email.ilike(pattern),
+                PaymentOrder.plan_snapshot["name"].astext.ilike(pattern),
+            ]
+            # id/user_id are Integer; a longer digit string would overflow asyncpg
+            if search.isdigit() and int(search) <= INT32_MAX:
+                search_filters += [
+                    PaymentOrder.id == int(search),
+                    PaymentOrder.user_id == int(search),
+                ]
+            filters.append(or_(*search_filters))
 
         count_stmt = select(func.count()).select_from(PaymentOrder).where(*filters)
         total = await self.session.scalar(count_stmt)
@@ -182,6 +231,15 @@ class PaymentOrderRepository:
         rows = (await self.session.scalars(stmt)).all()
         return [self._to_dto(row) for row in rows], int(total or 0)
 
+    async def list_gateway_types(self) -> list[PaymentGatewayType]:
+        rows = await self.session.scalars(
+            select(PaymentOrder.gateway_type)
+            .where(_NOT_TEST)
+            .distinct()
+            .order_by(PaymentOrder.gateway_type)
+        )
+        return list(rows)
+
     async def sum_paid_final_price_by_user_ids(
         self, user_ids: list[int]
     ) -> dict[Currency, Decimal]:
@@ -195,6 +253,7 @@ class PaymentOrderRepository:
                 .where(
                     PaymentOrder.user_id.in_(chunk),
                     PaymentOrder.status == PaymentOrderStatus.PAID,
+                    _NOT_TEST,
                 )
                 .group_by(PaymentOrder.currency)
             )
@@ -212,6 +271,7 @@ class PaymentOrderRepository:
             stmt = select(PaymentOrder.user_id.distinct()).where(
                 PaymentOrder.user_id.in_(chunk),
                 PaymentOrder.status == PaymentOrderStatus.PAID,
+                _NOT_TEST,
             )
             result = await self.session.execute(stmt)
             paid.update(result.scalars().all())
@@ -228,6 +288,7 @@ class PaymentOrderRepository:
                 .where(
                     PaymentOrder.user_id.in_(chunk),
                     PaymentOrder.status == PaymentOrderStatus.PAID,
+                    _NOT_TEST,
                 )
                 .group_by(PaymentOrder.user_id)
                 .having(func.count() > 1)
@@ -252,6 +313,7 @@ class PaymentOrderRepository:
                 .where(
                     PaymentOrder.user_id.in_(chunk),
                     PaymentOrder.status == PaymentOrderStatus.PAID,
+                    _NOT_TEST,
                     PaymentOrder.updated_at >= since,
                 )
                 .distinct()
@@ -263,7 +325,7 @@ class PaymentOrderRepository:
     async def sum_paid_final_price_per_user(self) -> dict[int, dict[Currency, Decimal]]:
         stmt = (
             select(PaymentOrder.user_id, PaymentOrder.currency, func.sum(PaymentOrder.final_price))
-            .where(PaymentOrder.status == PaymentOrderStatus.PAID)
+            .where(PaymentOrder.status == PaymentOrderStatus.PAID, _NOT_TEST)
             .group_by(PaymentOrder.user_id, PaymentOrder.currency)
         )
         rows = (await self.session.execute(stmt)).tuples()
@@ -277,6 +339,7 @@ class PaymentOrderRepository:
             await self.session.scalar(
                 select(func.count()).where(
                     PaymentOrder.status == PaymentOrderStatus.PAID,
+                    _NOT_TEST,
                     PaymentOrder.updated_at >= since,
                 )
             )
@@ -288,6 +351,7 @@ class PaymentOrderRepository:
             select(PaymentOrder.currency, func.sum(PaymentOrder.final_price))
             .where(
                 PaymentOrder.status == PaymentOrderStatus.PAID,
+                _NOT_TEST,
                 PaymentOrder.updated_at >= since,
             )
             .group_by(PaymentOrder.currency)
@@ -303,6 +367,7 @@ class PaymentOrderRepository:
             select(day_col, PaymentOrder.currency, func.sum(PaymentOrder.final_price))
             .where(
                 PaymentOrder.status == PaymentOrderStatus.PAID,
+                _NOT_TEST,
                 PaymentOrder.updated_at >= since,
             )
             .group_by(day_col, PaymentOrder.currency)

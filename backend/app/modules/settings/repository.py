@@ -13,7 +13,7 @@ from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import get_or_create_singleton
-from app.core.enums import AppearanceImageKind, Locale
+from app.core.enums import AppearanceImageKind, AppearanceResetScope, Locale
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
     AppearanceSettingsDto,
@@ -56,7 +56,6 @@ class SettingsRepository:
             token=SecretStr(row.token) if row.token is not None else None,
             secret_token=SecretStr(row.secret_token) if row.secret_token is not None else None,
             drop_pending_updates=row.drop_pending_updates,
-            banners_enabled=row.banners_enabled,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -79,8 +78,6 @@ class SettingsRepository:
             row.secret_token = data.secret_token
         if data.drop_pending_updates is not None:
             row.drop_pending_updates = data.drop_pending_updates
-        if data.banners_enabled is not None:
-            row.banners_enabled = data.banners_enabled
 
         await self.session.flush()
         await self.session.refresh(row)
@@ -207,13 +204,15 @@ class SettingsRepository:
         await self.session.refresh(row)
         return self._to_appearance_dto(row)
 
-    async def reset_appearance_settings(self) -> AppearanceSettingsDto:
+    async def reset_appearance_settings(self, scope: AppearanceResetScope) -> AppearanceSettingsDto:
         row = await self._get_or_create_singleton(AppearanceSettings)
 
-        row.brand_name = None
-        row.primary_color = None
-        row.shader_palette = None
-        row.shader_enabled = True
+        if scope == AppearanceResetScope.BRANDING:
+            row.brand_name = None
+        else:
+            row.primary_color = None
+            row.shader_palette = None
+            row.shader_enabled = True
 
         await self.session.flush()
         await self.session.refresh(row)

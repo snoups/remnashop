@@ -1,18 +1,24 @@
+import asyncio
 import re
-from typing import Final
+from typing import Any, Final, Optional
 
 import httpx
 
 from app.modules.emoji_packs.dto import EmojiPackItemDto, FetchedEmojiPack
 
 _TIMEOUT_S: Final[float] = 10.0
-_API_URL: Final[str] = "https://api.telegram.org/bot{token}/getStickerSet"
+_API_URL: Final[str] = "https://api.telegram.org/bot{token}/{method}"
+_FILE_URL: Final[str] = "https://api.telegram.org/file/bot{token}/{path}"
 # t.me/addemoji/<name>, with or without scheme, query or trailing slash -- or the
 # bare name, which is what an admin who already knows it will paste.
 _SET_NAME_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?:https?://)?(?:t\.me/addemoji/)?([A-Za-z0-9_]{1,64})/?(?:\?.*)?$"
 )
 _CUSTOM_EMOJI_TYPE: Final[str] = "custom_emoji"
+_DOWNLOAD_CONCURRENCY: Final[int] = 8
+_GZIP_MAGIC: Final[bytes] = b"\x1f\x8b"
+LOTTIE_KIND: Final[str] = "lottie"
+VIDEO_KIND: Final[str] = "video"
 
 
 def parse_set_name(link: str) -> str:
@@ -26,9 +32,20 @@ async def fetch_emoji_pack(token: str, set_name: str) -> FetchedEmojiPack:
     # Plain HTTP rather than aiogram: the api process does not install the
     # telegram extra, so importing Bot here would break it outright.
     async with httpx.AsyncClient(timeout=_TIMEOUT_S) as client:
-        response = await client.post(_API_URL.format(token=token), json={"name": set_name})
+        response = await client.post(
+            _API_URL.format(token=token, method="getStickerSet"), json={"name": set_name}
+        )
+        payload = response.json()
+        pack = parse_emoji_pack_payload(payload, set_name)
+        artwork = await _download_artwork(client, token, payload["result"]["stickers"])
 
-    return parse_emoji_pack_payload(response.json(), set_name)
+    return FetchedEmojiPack(
+        set_name=pack.set_name,
+        title=pack.title,
+        items=[
+            item.model_copy(update=artwork.get(item.custom_emoji_id, {})) for item in pack.items
+        ],
+    )
 
 
 def parse_emoji_pack_payload(payload: dict, set_name: str) -> FetchedEmojiPack:
@@ -53,3 +70,52 @@ def parse_emoji_pack_payload(payload: dict, set_name: str) -> FetchedEmojiPack:
             if sticker.get("custom_emoji_id")
         ],
     )
+
+
+async def _download_artwork(
+    client: httpx.AsyncClient, token: str, stickers: list[dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
+    # Two files per emoji: the static .webp thumbnail every browser draws, and
+    # the animation itself -- a gzipped lottie (.tgs) or a .webm, both of which
+    # the dashboard plays and neither of which an <img> can.
+    semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
+
+    async def download(file_id: Optional[str]) -> Optional[bytes]:
+        if file_id is None:
+            return None
+        async with semaphore:
+            try:
+                info = await client.get(
+                    _API_URL.format(token=token, method="getFile"), params={"file_id": file_id}
+                )
+                file_path = info.json()["result"]["file_path"]
+                file = await client.get(_FILE_URL.format(token=token, path=file_path))
+                file.raise_for_status()
+            except (httpx.HTTPError, KeyError):
+                # Losing a file costs that emoji its artwork, not the import.
+                return None
+            return file.content
+
+    async def artwork_of(sticker: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        thumbnail, animation = await asyncio.gather(
+            download((sticker.get("thumbnail") or sticker.get("thumb") or {}).get("file_id")),
+            download(sticker.get("file_id")),
+        )
+        return sticker["custom_emoji_id"], {
+            "thumbnail": thumbnail,
+            "animation": animation,
+            "animation_kind": _animation_kind(animation),
+        }
+
+    downloaded = await asyncio.gather(
+        *(artwork_of(sticker) for sticker in stickers if sticker.get("custom_emoji_id"))
+    )
+    return dict(downloaded)
+
+
+def _animation_kind(animation: Optional[bytes]) -> Optional[str]:
+    if animation is None:
+        return None
+    # A .tgs is gzipped lottie JSON, served as-is under Content-Encoding: gzip;
+    # anything else Telegram hands back here is a .webm.
+    return LOTTIE_KIND if animation.startswith(_GZIP_MAGIC) else VIDEO_KIND

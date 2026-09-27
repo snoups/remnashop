@@ -64,6 +64,28 @@ class AdLinkStatsResponse(BaseModel):
     daily_registrations: list[DailyAttributionCountResponse]
 
 
+class AdLinkMetricsResponse(BaseModel):
+    ad_link_id: int
+    attributions_count: int
+    paid_count: int
+    revenue: Decimal
+    cost: Decimal
+    roi: Optional[Decimal] = None
+
+
+class AdvertisingSummaryResponse(BaseModel):
+    report_currency: Currency
+    attributions_count: int
+    attributions_by_channel: dict[AdLinkChannel, int]
+    paid_count: int
+    conversion_rate: Decimal
+    revenue: Decimal
+    cost: Decimal
+    cpa: Optional[Decimal] = None
+    roi: Optional[Decimal] = None
+    links: list[AdLinkMetricsResponse]
+
+
 class AttributedUserResponse(BaseModel):
     user_id: int
     name: str

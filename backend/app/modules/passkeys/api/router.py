@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -9,6 +7,7 @@ from app.core.config import AppConfig
 from app.core.constants import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, TIME_1M
 from app.core.exceptions import AuthenticationError
 from app.core.utils.http import resolve_client_ip
+from app.core.utils.time import datetime_now
 from app.modules.auth.api.schemas import AuthResponse
 from app.modules.auth.session_issuer import IssuedSession
 from app.modules.passkeys.api.schemas import VerifyPasskeyAuthenticationRequest
@@ -29,7 +28,7 @@ def _set_session_cookies(response: Response, issued: IssuedSession, secure: bool
         secure=secure,
         samesite="lax",
         path=REFRESH_COOKIE_PATH,
-        max_age=int((issued.expires_at - datetime.now(timezone.utc)).total_seconds()),
+        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
     )
     response.set_cookie(
         CSRF_COOKIE_NAME,
@@ -38,7 +37,7 @@ def _set_session_cookies(response: Response, issued: IssuedSession, secure: bool
         secure=secure,
         samesite="lax",
         path="/",
-        max_age=int((issued.expires_at - datetime.now(timezone.utc)).total_seconds()),
+        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
     )
 
 

@@ -26,6 +26,7 @@ class EventCategory(UpperStrEnum):
     REFERRAL = auto()
     PRICING = auto()
     PLANS = auto()
+    PAYMENT = auto()
 
 
 @dataclass(frozen=True, kw_only=True)

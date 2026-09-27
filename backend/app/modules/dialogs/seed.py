@@ -10,9 +10,13 @@ async def ensure_dialogs_seeded(
     settings_repository: SettingsRepository,
 ) -> None:
     locales = await settings_repository.list_active_locales()
-    for window in catalog.all_windows():
+    for position, window in enumerate(catalog.all_windows()):
         await dialog_repository.upsert_seed(
-            window.key, window.flow, window.banner_name, catalog.window_snapshot(window.key)
+            window.key,
+            window.flow,
+            window.banner_name,
+            catalog.window_snapshot(window.key),
+            position=position,
         )
         text_keys = set(window.text_keys) | {b.text_key for b in window.buttons}
         for locale in locales:

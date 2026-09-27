@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -139,20 +139,36 @@ class TranslationsRepository:
         await self.session.refresh(row)
         return self._to_dto(row)
 
+    async def reset_locale(self, locale: Locale) -> None:
+        await self.session.execute(
+            update(BotTranslation)
+            .where(BotTranslation.locale == locale)
+            .values(value=BotTranslation.default_value)
+        )
+
     async def copy_locale_from(self, source: Locale, target: Locale) -> None:
         entries = await self.list_by_locale(source)
-        rows = [
-            BotTranslation(
-                locale=target,
-                message_id=entry.message_id,
-                attribute_id=entry.attribute_id,
-                value=entry.value,
-                default_value=entry.value,
-            )
-            for entry in entries
-        ]
-        self.session.add_all(rows)
-        await self.session.flush()
+        if not entries:
+            return
+
+        # Deactivating a locale keeps its rows, so reactivating it must not
+        # overwrite the translations somebody already wrote.
+        stmt = pg_insert(BotTranslation).on_conflict_do_nothing(
+            index_elements=["locale", "message_id", "attribute_id"]
+        )
+        await self.session.execute(
+            stmt,
+            [
+                {
+                    "locale": target,
+                    "message_id": entry.message_id,
+                    "attribute_id": entry.attribute_id,
+                    "value": entry.value,
+                    "default_value": entry.value,
+                }
+                for entry in entries
+            ],
+        )
 
     async def delete_locale(self, locale: Locale) -> None:
         await self.session.execute(delete(BotTranslation).where(BotTranslation.locale == locale))

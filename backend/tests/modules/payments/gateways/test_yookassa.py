@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 import app.modules.payments.gateways.yookassa as yookassa_module
+from app.core.enums import PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.gateways.yookassa import YooKassaGateway
 from tests.modules.payments.gateways.support import (
@@ -64,6 +65,14 @@ async def test_parse_webhook_flags_only_payment_succeeded() -> None:
     assert refund is not None and refund.claims_paid is False
 
 
+async def test_parse_webhook_payment_canceled_reports_canceled() -> None:
+    signal = await _gateway().parse_webhook(
+        webhook({"event": "payment.canceled", "object": _payment(status="canceled")})
+    )
+    assert signal is not None and signal.claims_paid is False
+    assert signal.reported_status is PaymentOrderStatus.CANCELED
+
+
 async def test_parse_webhook_rejects_malformed_body() -> None:
     with pytest.raises(PaymentGatewayError):
         await _gateway().parse_webhook(webhook(b"not json"))
@@ -117,3 +126,17 @@ async def test_fetch_payment_propagates_http_errors(monkeypatch: pytest.MonkeyPa
     assert signal is not None
     with pytest.raises(httpx.HTTPStatusError):
         await _gateway().confirm(make_order(external_payment_id="yk-1"), signal)
+
+
+async def test_parse_webhook_refund_reports_refunded_against_the_payment() -> None:
+    signal = await _gateway().parse_webhook(
+        webhook(
+            {
+                "event": "refund.succeeded",
+                "object": {"id": "rf-1", "payment_id": "yk-1", "status": "succeeded"},
+            }
+        )
+    )
+    assert signal is not None and signal.claims_paid is False
+    assert signal.reported_status is PaymentOrderStatus.REFUNDED
+    assert signal.provider_payment_id == "yk-1"

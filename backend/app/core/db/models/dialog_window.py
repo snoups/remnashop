@@ -24,6 +24,8 @@ class DialogWindow(BaseSql, TimestampMixin):
     # NULL -- no banner; DEFAULT_BANNER_NAME -- the shared one; anything else --
     # this window's own, named after its key.
     banner_name: Mapped[Optional[str]] = mapped_column(String(160))
+    # Editor-only label of a custom window; never shown to bot users.
+    name: Mapped[Optional[str]] = mapped_column(String(128))
     is_enabled: Mapped[bool] = mapped_column(server_default=text("true"))
     position: Mapped[int] = mapped_column(server_default=text("0"))
     # Only custom windows hold one; seed windows render through their own

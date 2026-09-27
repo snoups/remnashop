@@ -1,10 +1,11 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Final, NamedTuple, Optional, cast
 
 from sqlalchemy import CursorResult, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models import EventOutboxEntry
+from app.core.utils.time import datetime_now
 
 _MAX_ATTEMPTS: Final[int] = 5
 
@@ -46,7 +47,7 @@ class EventOutboxRepository:
     async def mark_processed(self, entry_id: int) -> None:
         row = await self.session.get(EventOutboxEntry, entry_id)
         if row is not None:
-            row.processed_at = datetime.now(timezone.utc)
+            row.processed_at = datetime_now()
             await self.session.flush()
 
     async def delete_processed_before(self, cutoff: datetime) -> int:

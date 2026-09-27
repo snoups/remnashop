@@ -1,16 +1,19 @@
+from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
 import pytest
 from aiogram import Bot
 from aiogram.methods.set_my_commands import SetMyCommands
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AppearanceImageKind, Locale, Role
+from app.core.enums import AppearanceImageKind, AppearanceResetScope, Locale, Role
 from app.core.exceptions import (
     ConflictError,
     NotFoundError,
@@ -19,8 +22,9 @@ from app.core.exceptions import (
 )
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
-from app.modules.settings.bot_commands import BotCommand
+from app.modules.settings.bot_commands import BOT_COMMANDS, BotCommand
 from app.modules.settings.dto import (
+    BotStatusDto,
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
@@ -37,6 +41,7 @@ from app.modules.settings.usecases import (
     DeleteAppearanceLogoUseCase,
     GetBotCommandsUseCase,
     GetBotSettingsUseCase,
+    GetBotStatusUseCase,
     GetOAuthSettingsUseCase,
     GetPublicAppearanceImageUseCase,
     GetPublicAppearanceUseCase,
@@ -61,11 +66,29 @@ OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Loc
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
+@pytest.fixture(autouse=True)
+async def _seed_actor_rows(session: AsyncSession) -> None:
+    # event_outbox.actor_id is a real FK into users -- the actor DTOs above
+    # are bare, not inserted rows.
+    for user_id in (1, 2):
+        session.add(
+            User(
+                id=user_id,
+                name=f"u{user_id}",
+                telegram_id=user_id,
+                role=Role.USER,
+                language=Locale.EN,
+                is_blocked=False,
+            )
+        )
+    await session.flush()
+
+
 async def _seed_en(
     settings_repository: SettingsRepository, translations_repository: TranslationsRepository
 ) -> None:
     await settings_repository.add_active_locale(Locale.EN)
-    await translations_repository.seed_missing(Locale.EN, "command", "menu", "Open the main menu")
+    await translations_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
 
 
 async def test_owner_can_view_and_update_bot_settings(
@@ -81,6 +104,67 @@ async def test_owner_can_view_and_update_bot_settings(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
     assert updated.is_configured
+
+
+async def test_bot_status_is_unconfigured_without_a_token(
+    settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    status = await GetBotStatusUseCase(settings_repository, uow)(OWNER)
+
+    assert status.is_configured is False
+    assert status.is_running is False
+
+
+async def test_bot_status_is_running_when_telegram_reports_a_webhook(
+    settings_repository: SettingsRepository, uow: UnitOfWork, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await UpdateBotSettingsUseCase(settings_repository, uow)(
+        OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
+    )
+
+    async def _fake_fetch(token: str) -> BotStatusDto:
+        assert token == "123:abcdef"
+        return BotStatusDto(
+            is_configured=True,
+            webhook_url="https://bot.example.com/webhook",
+            pending_update_count=2,
+        )
+
+    monkeypatch.setattr(
+        "app.modules.settings.usecases.get_bot_status.fetch_bot_status", _fake_fetch
+    )
+
+    status = await GetBotStatusUseCase(settings_repository, uow)(OWNER)
+
+    assert status.is_running is True
+    assert status.pending_update_count == 2
+
+
+async def test_bot_status_is_not_running_while_telegram_reports_an_error(
+    settings_repository: SettingsRepository, uow: UnitOfWork, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A configured token whose webhook Telegram cannot reach is exactly the
+    # case the badge has to tell apart from "configured".
+    await UpdateBotSettingsUseCase(settings_repository, uow)(
+        OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
+    )
+
+    async def _failing_fetch(token: str) -> BotStatusDto:
+        return BotStatusDto(
+            is_configured=True,
+            webhook_url="https://bot.example.com/webhook",
+            error="Connection refused",
+        )
+
+    monkeypatch.setattr(
+        "app.modules.settings.usecases.get_bot_status.fetch_bot_status", _failing_fetch
+    )
+
+    status = await GetBotStatusUseCase(settings_repository, uow)(OWNER)
+
+    assert status.is_configured is True
+    assert status.is_running is False
+    assert status.error == "Connection refused"
 
 
 async def test_regular_user_cannot_view_bot_settings(
@@ -312,13 +396,13 @@ async def test_owner_can_update_and_list_bot_commands(
     )
     get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
-    result = await update_use_case(OWNER, [("menu", True)])
+    result = await update_use_case(OWNER, [("start", True)])
 
-    assert [c.command for c in result.commands] == ["menu"]
+    assert [c.command for c in result.commands] == ["start"]
     assert result.telegram_sync_failed is False
 
     listed = await get_use_case(OWNER)
-    assert [c.command for c in listed] == ["menu"]
+    assert [c.command for c in listed] == ["start"]
 
 
 async def test_get_bot_commands_defaults_to_current_registry_when_db_is_empty(
@@ -329,8 +413,21 @@ async def test_get_bot_commands_defaults_to_current_registry_when_db_is_empty(
 
     listed = await get_use_case(OWNER)
 
-    assert [c.command for c in listed] == ["menu"]
+    assert [c.command for c in listed] == ["start"]
     assert listed[0].enabled is True
+
+
+async def test_get_bot_commands_with_default_order_ignores_the_stored_order(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+) -> None:
+    await settings_repository.replace_bot_commands([("start", False)])
+    get_use_case = GetBotCommandsUseCase(settings_repository, uow)
+
+    listed = await get_use_case(OWNER, True)
+
+    assert [c.command for c in listed] == [c.command for c in BOT_COMMANDS]
+    assert listed[0].enabled is False
 
 
 async def test_update_bot_commands_rejects_unknown_command(
@@ -344,7 +441,7 @@ async def test_update_bot_commands_rejects_unknown_command(
     )
 
     with pytest.raises(ValidationError):
-        await update_use_case(OWNER, [("menu", True), ("help", True)])
+        await update_use_case(OWNER, [("start", True), ("help", True)])
 
 
 async def test_update_bot_commands_rejects_missing_command(
@@ -370,7 +467,7 @@ async def test_get_bot_commands_drops_stale_rows_not_in_registry(
 
     listed = await get_use_case(OWNER)
 
-    assert [c.command for c in listed] == ["menu"]
+    assert [c.command for c in listed] == ["start"]
 
 
 async def test_regular_user_cannot_view_bot_commands(
@@ -394,7 +491,7 @@ async def test_regular_user_cannot_update_bot_commands(
     )
 
     with pytest.raises(PermissionDeniedError):
-        await update_use_case(REGULAR_USER, [("menu", True)])
+        await update_use_case(REGULAR_USER, [("start", True)])
 
 
 async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigured(
@@ -407,7 +504,7 @@ async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigur
         settings_repository, translations_repository, uow, config
     )
 
-    result = await update_use_case(OWNER, [("menu", True)])
+    result = await update_use_case(OWNER, [("start", True)])
 
     assert result.telegram_sync_failed is False
 
@@ -421,7 +518,9 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
 ) -> None:
     await _seed_en(settings_repository, translations_repository)
     await settings_repository.add_active_locale(Locale.RU)
-    await translations_repository.seed_missing(Locale.RU, "command", "menu", "Открыть главное меню")
+    await translations_repository.seed_missing(
+        Locale.RU, "command", "start", "Открыть главное меню"
+    )
 
     settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
     await settings_use_case(
@@ -440,14 +539,14 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
 
     monkeypatch.setattr(Bot, "__call__", _capturing_call)
 
-    result = await update_use_case(OWNER, [("menu", True)])
+    result = await update_use_case(OWNER, [("start", True)])
 
     assert result.telegram_sync_failed is False
     active_locales = await settings_repository.list_active_locales()
     expected_language_codes = [locale.value for locale in active_locales] + [None]
     assert [p.language_code for p in pushed] == expected_language_codes
     for method in pushed:
-        assert [c.command for c in method.commands] == ["menu"]
+        assert [c.command for c in method.commands] == ["start"]
 
 
 async def test_update_bot_commands_resolves_distinct_text_per_locale(
@@ -459,8 +558,10 @@ async def test_update_bot_commands_resolves_distinct_text_per_locale(
 ) -> None:
     await settings_repository.add_active_locale(Locale.EN)
     await settings_repository.add_active_locale(Locale.RU)
-    await translations_repository.seed_missing(Locale.EN, "command", "menu", "Open the main menu")
-    await translations_repository.seed_missing(Locale.RU, "command", "menu", "Открыть главное меню")
+    await translations_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
+    await translations_repository.seed_missing(
+        Locale.RU, "command", "start", "Открыть главное меню"
+    )
 
     settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
     await settings_use_case(
@@ -479,7 +580,7 @@ async def test_update_bot_commands_resolves_distinct_text_per_locale(
 
     monkeypatch.setattr(Bot, "__call__", _capturing_call)
 
-    result = await update_use_case(OWNER, [("menu", True)])
+    result = await update_use_case(OWNER, [("start", True)])
 
     assert result.telegram_sync_failed is False
     assert [p.language_code for p in pushed] == ["en", "ru", None]
@@ -507,7 +608,7 @@ async def test_update_bot_commands_reports_sync_failure_when_locale_file_missing
         settings_repository, translations_repository, uow, config
     )
 
-    result = await update_use_case(OWNER, [("menu", True)])
+    result = await update_use_case(OWNER, [("start", True)])
 
     assert result.telegram_sync_failed is True
 
@@ -521,13 +622,15 @@ async def test_update_bot_commands_excludes_disabled_from_telegram_push(
 ) -> None:
     await _seed_en(settings_repository, translations_repository)
     await settings_repository.add_active_locale(Locale.RU)
-    await translations_repository.seed_missing(Locale.RU, "command", "menu", "Открыть главное меню")
+    await translations_repository.seed_missing(
+        Locale.RU, "command", "start", "Открыть главное меню"
+    )
 
     monkeypatch.setattr(
         update_bot_commands,
         "BOT_COMMANDS",
         (
-            BotCommand(command="menu", description_key="command.menu"),
+            BotCommand(command="start", description_key="command.start"),
             BotCommand(command="help", description_key="command.missing"),
         ),
     )
@@ -550,12 +653,12 @@ async def test_update_bot_commands_excludes_disabled_from_telegram_push(
     monkeypatch.setattr(Bot, "__call__", _capturing_call)
 
     # "help" is disabled, so its unresolved description_key ("command.missing")
-    # never gets looked up -- only "menu" (enabled) is pushed.
-    result = await update_use_case(OWNER, [("menu", True), ("help", False)])
+    # never gets looked up -- only "start" (enabled) is pushed.
+    result = await update_use_case(OWNER, [("start", True), ("help", False)])
 
     assert result.telegram_sync_failed is False
     for method in pushed:
-        assert [c.command for c in method.commands] == ["menu"]
+        assert [c.command for c in method.commands] == ["start"]
 
 
 async def test_update_bot_commands_reports_telegram_sync_failure_on_missing_translation(
@@ -568,7 +671,7 @@ async def test_update_bot_commands_reports_telegram_sync_failure_on_missing_tran
     monkeypatch.setattr(
         update_bot_commands,
         "BOT_COMMANDS",
-        (BotCommand(command="menu", description_key="command.missing"),),
+        (BotCommand(command="start", description_key="command.missing"),),
     )
 
     settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
@@ -580,7 +683,7 @@ async def test_update_bot_commands_reports_telegram_sync_failure_on_missing_tran
         settings_repository, translations_repository, uow, config
     )
 
-    result = await update_use_case(OWNER, [("menu", True)])
+    result = await update_use_case(OWNER, [("start", True)])
 
     assert result.telegram_sync_failed is True
 
@@ -606,15 +709,20 @@ async def test_update_bot_commands_reports_telegram_sync_success(
 
     monkeypatch.setattr(update_use_case, "_push_to_telegram", _succeeding_push)
 
-    result = await update_use_case(OWNER, [("menu", True)])
+    result = await update_use_case(OWNER, [("start", True)])
 
     assert result.telegram_sync_failed is False
 
 
 async def test_owner_can_add_and_list_active_locales(
-    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
+    add_use_case = AddLocaleUseCase(
+        settings_repository, translations_repository, uow, event_publisher
+    )
     list_use_case = ListActiveLocalesUseCase(settings_repository, uow)
 
     await add_use_case(OWNER, Locale.RU)
@@ -622,13 +730,55 @@ async def test_owner_can_add_and_list_active_locales(
     assert set(await list_use_case(OWNER)) == {Locale.RU}
 
 
+async def test_add_locale_copies_english_translations_in_the_same_transaction(
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    # The dashboard re-reads the translations as soon as this returns, so the
+    # copy cannot wait on a worker task.
+    await translations_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
+    add_use_case = AddLocaleUseCase(
+        settings_repository, translations_repository, uow, event_publisher
+    )
+
+    await add_use_case(OWNER, Locale.RU)
+
+    copied = await translations_repository.get(Locale.RU, "command", "start")
+    assert copied is not None
+    assert copied.value == "Open the main menu"
+
+
+async def test_add_locale_keeps_the_translations_of_a_reactivated_locale(
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await translations_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
+    await translations_repository.seed_missing(Locale.RU, "command", "start", "Открыть меню")
+    add_use_case = AddLocaleUseCase(
+        settings_repository, translations_repository, uow, event_publisher
+    )
+
+    await add_use_case(OWNER, Locale.RU)
+
+    kept = await translations_repository.get(Locale.RU, "command", "start")
+    assert kept is not None
+    assert kept.value == "Открыть меню"
+
+
 async def test_add_locale_publishes_locale_activated_event(
     settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     session: AsyncSession,
     event_publisher: EventPublisher,
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
+    add_use_case = AddLocaleUseCase(
+        settings_repository, translations_repository, uow, event_publisher
+    )
 
     await add_use_case(OWNER, Locale.RU)
 
@@ -640,12 +790,18 @@ async def test_add_locale_publishes_locale_activated_event(
         )
     ).one()
     assert row.payload["locale"] == Locale.RU
+    assert row.actor_login == OWNER.login
 
 
 async def test_add_locale_rejects_duplicate(
-    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
+    add_use_case = AddLocaleUseCase(
+        settings_repository, translations_repository, uow, event_publisher
+    )
     await add_use_case(OWNER, Locale.RU)
 
     with pytest.raises(ConflictError):
@@ -654,12 +810,15 @@ async def test_add_locale_rejects_duplicate(
 
 async def test_remove_locale_publishes_locale_deactivated_event(
     settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
     uow: UnitOfWork,
     session: AsyncSession,
     event_publisher: EventPublisher,
     config: AppConfig,
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
+    add_use_case = AddLocaleUseCase(
+        settings_repository, translations_repository, uow, event_publisher
+    )
     remove_use_case = RemoveLocaleUseCase(settings_repository, uow, event_publisher, config)
     await add_use_case(OWNER, Locale.RU)
 
@@ -704,9 +863,14 @@ async def test_remove_locale_rejects_a_non_en_default_locale(
 
 
 async def test_regular_user_cannot_add_locale(
-    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    settings_repository: SettingsRepository,
+    translations_repository: TranslationsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
 ) -> None:
-    add_use_case = AddLocaleUseCase(settings_repository, uow, event_publisher)
+    add_use_case = AddLocaleUseCase(
+        settings_repository, translations_repository, uow, event_publisher
+    )
 
     with pytest.raises(PermissionDeniedError):
         await add_use_case(REGULAR_USER, Locale.RU)
@@ -730,8 +894,14 @@ async def test_admin_with_only_bot_commands_permission_cannot_update_bot_setting
         await update_use_case(limited_admin, UpdateBotSettingsDto(token="123:abcdef"))
 
 
-# Real PNG bytes so uploads exercise the actual magic-byte check.
-FAKE_PNG_APPEARANCE: bytes = b"\x89PNG\r\n\x1a\n" + b"fake-png-body"
+def _png(width: int, height: int) -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", (width, height)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+# Real PNG bytes so uploads exercise the magic-byte and dimension checks.
+FAKE_PNG_APPEARANCE: bytes = _png(128, 128)
 
 
 def _appearance_config(config: AppConfig, tmp_path: Path) -> AppConfig:
@@ -795,12 +965,16 @@ async def test_owner_can_reset_appearance_settings(
             shader_enabled=False,
         ),
     )
-    settings = await reset_use_case(OWNER)
+    settings = await reset_use_case(OWNER, AppearanceResetScope.COLORS)
 
-    assert settings.brand_name is None
+    assert settings.brand_name == "Acme VPN"
     assert settings.primary_color is None
     assert settings.shader_palette is None
     assert settings.shader_enabled is True
+
+    settings = await reset_use_case(OWNER, AppearanceResetScope.BRANDING)
+
+    assert settings.brand_name is None
 
 
 async def test_regular_user_cannot_reset_appearance_settings(
@@ -809,7 +983,7 @@ async def test_regular_user_cannot_reset_appearance_settings(
     use_case = ResetAppearanceSettingsUseCase(settings_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER)
+        await use_case(REGULAR_USER, AppearanceResetScope.BRANDING)
 
 
 async def test_owner_can_upload_and_fetch_logo(
@@ -830,22 +1004,52 @@ async def test_owner_can_upload_and_fetch_logo(
     assert content_type == "image/png"
 
 
-async def test_upload_rejects_svg_content_type(
+_SVG_NS: str = "xmlns='http://www.w3.org/2000/svg'"
+
+
+async def test_upload_accepts_plain_square_svg(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
     logo_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
-    favicon_use_case = UploadAppearanceFaviconUseCase(settings_repository, cfg, uow)
-    svg_data = b"<svg xmlns='http://www.w3.org/2000/svg'></svg>"
+    svg_data = f"<svg {_SVG_NS} viewBox='0 0 64 64'><rect width='64' height='64'/></svg>".encode()
+
+    settings = await logo_use_case(
+        OWNER, UploadAppearanceImageInput(content_type="image/svg+xml", data=svg_data)
+    )
+
+    assert settings.has_logo is True
+    assert (tmp_path / "appearance" / "logo.svg").read_bytes() == svg_data
+
+
+@pytest.mark.parametrize(
+    "svg",
+    [
+        f"<svg {_SVG_NS} viewBox='0 0 64 32'></svg>",
+        f"<svg {_SVG_NS}></svg>",
+        f"<svg {_SVG_NS} viewBox='0 0 64 64'><script>alert(1)</script></svg>",
+        f"<svg {_SVG_NS} viewBox='0 0 64 64' onload='alert(1)'></svg>",
+        f"<svg {_SVG_NS} viewBox='0 0 64 64'><a href='javascript:alert(1)'><rect/></a></svg>",
+        f"<svg {_SVG_NS} viewBox='0 0 64 64'><foreignObject></foreignObject></svg>",
+        f"<!DOCTYPE svg [<!ENTITY a 'x'>]><svg {_SVG_NS} viewBox='0 0 64 64'>&a;</svg>",
+        "<html><body></body></html>",
+        "not xml at all",
+    ],
+)
+async def test_upload_rejects_unsafe_or_invalid_svg(
+    settings_repository: SettingsRepository,
+    config: AppConfig,
+    uow: UnitOfWork,
+    tmp_path: Path,
+    svg: str,
+) -> None:
+    use_case = UploadAppearanceFaviconUseCase(
+        settings_repository, _appearance_config(config, tmp_path), uow
+    )
 
     with pytest.raises(ValidationError):
-        await logo_use_case(
-            OWNER, UploadAppearanceImageInput(content_type="image/svg+xml", data=svg_data)
-        )
-
-    with pytest.raises(ValidationError):
-        await favicon_use_case(
-            OWNER, UploadAppearanceImageInput(content_type="image/svg+xml", data=svg_data)
+        await use_case(
+            OWNER, UploadAppearanceImageInput(content_type="image/svg+xml", data=svg.encode())
         )
 
 
@@ -883,10 +1087,55 @@ async def test_upload_rejects_oversized_file(
     use_case = UploadAppearanceLogoUseCase(
         settings_repository, _appearance_config(config, tmp_path), uow
     )
-    oversized = FAKE_PNG_APPEARANCE + b"x" * (2 * 1024 * 1024 + 1)
+    oversized = FAKE_PNG_APPEARANCE + b"x" * (1024 * 1024 + 1)
 
     with pytest.raises(ValidationError):
         await use_case(OWNER, UploadAppearanceImageInput(content_type="image/png", data=oversized))
+
+
+async def test_upload_favicon_has_its_own_weight_limit(
+    settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
+) -> None:
+    use_case = UploadAppearanceFaviconUseCase(
+        settings_repository, _appearance_config(config, tmp_path), uow
+    )
+    oversized = _png(32, 32) + b"x" * (256 * 1024 + 1)
+
+    with pytest.raises(ValidationError):
+        await use_case(OWNER, UploadAppearanceImageInput(content_type="image/png", data=oversized))
+
+
+@pytest.mark.parametrize(("width", "height"), [(128, 64), (64, 64), (2048, 2048)])
+async def test_upload_logo_rejects_bad_dimensions(
+    settings_repository: SettingsRepository,
+    config: AppConfig,
+    uow: UnitOfWork,
+    tmp_path: Path,
+    width: int,
+    height: int,
+) -> None:
+    use_case = UploadAppearanceLogoUseCase(
+        settings_repository, _appearance_config(config, tmp_path), uow
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER, UploadAppearanceImageInput(content_type="image/png", data=_png(width, height))
+        )
+
+
+async def test_upload_favicon_accepts_small_square(
+    settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
+) -> None:
+    use_case = UploadAppearanceFaviconUseCase(
+        settings_repository, _appearance_config(config, tmp_path), uow
+    )
+
+    settings = await use_case(
+        OWNER, UploadAppearanceImageInput(content_type="image/png", data=_png(32, 32))
+    )
+
+    assert settings.has_favicon is True
 
 
 async def test_get_appearance_image_missing_raises_not_found(

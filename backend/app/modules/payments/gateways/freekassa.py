@@ -1,5 +1,8 @@
+import asyncio
+import socket
 import time
 from typing import Any, Final, Optional
+from urllib.parse import urlsplit
 
 import orjson
 
@@ -27,11 +30,39 @@ from app.modules.payments.gateways.common import (
 
 _API_BASE: Final[str] = "https://api.fk.life/v1"
 _PAID_ORDER_STATUS: Final[str] = "1"
+# The API insists on an `ip`; it's this server's, not the buyer's (the checkout
+# request doesn't carry one). Last resort if the domain doesn't resolve.
+_FALLBACK_SERVER_IP: Final[str] = "127.0.0.1"
 
 
+_SERVER_IP_TTL_S: Final[float] = 300.0
+_server_ip_cache: Final[dict[str, tuple[str, float]]] = {}
+
+
+async def _resolve_server_ip(webhook_url: str) -> str:
+    host = urlsplit(webhook_url).hostname
+    if host is None:
+        return _FALLBACK_SERVER_IP
+    cached = _server_ip_cache.get(host)
+    if cached is not None and cached[1] > time.monotonic():
+        return cached[0]
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(host, None, family=socket.AF_INET)
+    except OSError:
+        return _FALLBACK_SERVER_IP
+    ip = str(infos[0][4][0])
+    _server_ip_cache[host] = (ip, time.monotonic() + _SERVER_IP_TTL_S)
+    return ip
+
+
+# Docs: https://docs.freekassa.net/
 class FreeKassaGateway(PaymentGateway):
     currency = Currency.RUB
     ack = WebhookAck(body="YES")
+
+    @classmethod
+    def requires_customer_email(cls, settings: dict[str, str]) -> bool:
+        return True
 
     def _signed(self, params: dict[str, Any]) -> dict[str, Any]:
         joined = "|".join(str(value) for _, value in sorted(params.items()))
@@ -39,11 +70,7 @@ class FreeKassaGateway(PaymentGateway):
         return {**params, "signature": signature}
 
     async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
-        email = (
-            self._optional("customer_email")
-            or order.customer_email
-            or f"user_{order.idempotency_key}@telegram.org"
-        )
+        email = order.customer_email or f"user_{order.idempotency_key}@telegram.org"
         data = self._signed(
             {
                 "shopId": int(self._require("shop_id")),
@@ -51,7 +78,7 @@ class FreeKassaGateway(PaymentGateway):
                 "paymentId": order.idempotency_key,
                 "i": int(self._require("payment_system_id")),
                 "email": email,
-                "ip": self._require("customer_ip"),
+                "ip": await _resolve_server_ip(self._webhook_url),
                 "amount": f"{order.final_price:.2f}",
                 "currency": order.currency.value,
                 "success_url": self._return_url,

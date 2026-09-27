@@ -1,11 +1,14 @@
-import { Palette, Upload, X } from "lucide-react";
+import { Palette, RotateCcw, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   type AppearanceImageKind,
+  type AppearanceResetScope,
+  type AppearanceSettings,
   appearanceImageUrl,
+  DEFAULT_FAVICON_HREF,
   deleteAppearanceImage,
   getAppearance,
   resetAppearanceSettings,
@@ -19,12 +22,21 @@ import { DEFAULT_ACCENT_COLOR, DEFAULT_SHADER_PALETTE_HEX, hexToHueDegrees, hueR
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { toast } from "@shared/lib/toast";
+import { BrandLogo } from "@shared/ui/BrandLogo";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 
-const ACCEPTED_FILE_TYPES = "image/jpeg,image/png,image/webp";
+const SVG_MIME_TYPE = "image/svg+xml";
+const ACCEPTED_FILE_TYPES = `image/jpeg,image/png,image/webp,${SVG_MIME_TYPE}`;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+
+// Mirrors the backend's per-kind limits (upload_appearance_image.py) so a bad
+// file is rejected before the upload, with a localized message.
+const IMAGE_LIMITS: Record<AppearanceImageKind, { minSide: number; maxSide: number; maxKb: number }> = {
+  logo: { minSide: 128, maxSide: 1024, maxKb: 1024 },
+  favicon: { minSide: 32, maxSide: 512, maxKb: 256 },
+};
 
 // A handful of common, high-contrast accent choices -- a shortcut for admins
 // who don't want to fiddle with the picker. The picker itself still covers
@@ -46,16 +58,24 @@ const ACCENT_COLOR_PRESETS: readonly string[] = [
 // uniform expects, in order -- see app/shaderState.ts.
 const SHADER_PALETTE_KEYS = ["base", "amplitude", "frequency", "phase"] as const;
 
+const SUBHEADING_CLASS = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70";
+const PRIMARY_BUTTON_CLASS =
+  "flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50";
+const SECONDARY_BUTTON_CLASS =
+  "flex-1 whitespace-nowrap rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50";
+
 interface ImageSlotProps {
   kind: AppearanceImageKind;
   hasImage: boolean;
   label: string;
+  hint: string;
   canUpload: boolean;
   canDelete: boolean;
-  onChanged: () => void;
+  className?: string;
+  onChanged: (hasImage: boolean) => void;
 }
 
-function ImageSlot({ kind, hasImage, label, canUpload, canDelete, onChanged }: ImageSlotProps) {
+function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, className = "", onChanged }: ImageSlotProps) {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
   const [isBusy, setIsBusy] = useState(false);
@@ -65,10 +85,34 @@ function ImageSlot({ kind, hasImage, label, canUpload, canDelete, onChanged }: I
     event.target.value = "";
     if (!file) return;
 
+    const limits = IMAGE_LIMITS[kind];
+    if (file.size > limits.maxKb * 1024) {
+      toast.error(t("settings.appearance.imageTooLarge", { maxKb: limits.maxKb }));
+      return;
+    }
+
     setIsBusy(true);
     try {
+      // Vector: no pixel size to check here; the server validates markup and aspect ratio.
+      const bitmap = file.type === SVG_MIME_TYPE ? undefined : await createImageBitmap(file).catch(() => null);
+      if (bitmap === null) {
+        toast.error(t("settings.appearance.imageUnreadable"));
+        return;
+      }
+      if (bitmap) {
+        const { width, height } = bitmap;
+        bitmap.close();
+        if (width !== height) {
+          toast.error(t("settings.appearance.imageNotSquare"));
+          return;
+        }
+        if (width < limits.minSide || width > limits.maxSide) {
+          toast.error(t("settings.appearance.imageSideOutOfRange", { min: limits.minSide, max: limits.maxSide }));
+          return;
+        }
+      }
       await uploadAppearanceImage(kind, file);
-      onChanged();
+      onChanged(true);
     } catch (err) {
       toast.error(getErrorMessage(err, t("settings.appearance.uploadError")));
     } finally {
@@ -80,7 +124,7 @@ function ImageSlot({ kind, hasImage, label, canUpload, canDelete, onChanged }: I
     setIsBusy(true);
     try {
       await deleteAppearanceImage(kind);
-      onChanged();
+      onChanged(false);
     } catch (err) {
       toast.error(getErrorMessage(err, t("settings.appearance.deleteError")));
     } finally {
@@ -89,13 +133,26 @@ function ImageSlot({ kind, hasImage, label, canUpload, canDelete, onChanged }: I
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${className}`}>
       <span className="text-[12.5px] font-semibold text-muted-foreground">{label}</span>
-      <div className="relative flex aspect-video w-40 items-center justify-center overflow-hidden rounded-xl border border-border bg-input/60">
+      <div
+        className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-input/60 ${
+          hasImage ? "border border-border" : "border border-dashed border-white/[0.16]"
+        }`}
+      >
         {hasImage ? (
           <img src={appearanceImageUrl(kind)} alt="" className="h-full w-full object-contain p-2" />
         ) : (
-          <span className="text-[11px] text-muted-foreground">{t("settings.appearance.upload")}</span>
+          <>
+            {kind === "logo" ? (
+              <BrandLogo className="size-1/2 text-primary" />
+            ) : (
+              <img src={DEFAULT_FAVICON_HREF} alt="" className="size-1/2 object-contain" />
+            )}
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-muted-foreground">
+              {t("settings.appearance.defaultImage")}
+            </span>
+          </>
         )}
         {hasImage && canDelete && (
           <motion.button
@@ -104,7 +161,7 @@ function ImageSlot({ kind, hasImage, label, canUpload, canDelete, onChanged }: I
             disabled={isBusy}
             aria-label={t("settings.appearance.delete")}
             {...bounceTap(bounceStrength)}
-            className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/75 disabled:opacity-60"
+            className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/75 disabled:opacity-60"
           >
             <X className="size-3" />
           </motion.button>
@@ -113,7 +170,7 @@ function ImageSlot({ kind, hasImage, label, canUpload, canDelete, onChanged }: I
       {canUpload && (
         <motion.label
           {...bounceTap(bounceStrength)}
-          className="flex w-40 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border py-1.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-white/[0.06] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          className="flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border py-1.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-white/[0.06] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
         >
           <input
             type="file"
@@ -126,14 +183,30 @@ function ImageSlot({ kind, hasImage, label, canUpload, canDelete, onChanged }: I
           {hasImage ? t("settings.appearance.replace") : t("settings.appearance.upload")}
         </motion.label>
       )}
+      <span className="text-[11.5px] text-muted-foreground/70">{hint}</span>
     </div>
+  );
+}
+
+interface SectionProps {
+  footer?: ReactNode;
+  onSubmit?: (event: FormEvent) => void;
+  children: ReactNode;
+}
+
+// Actions pinned to the bottom so side-by-side sections line their buttons up.
+function Section({ footer, onSubmit, children }: SectionProps) {
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+      <div className="flex flex-1 flex-col gap-4">{children}</div>
+      {footer && <div className="flex items-center gap-2">{footer}</div>}
+    </form>
   );
 }
 
 export function AppearanceSettingsForm() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
-  const [state, reload] = useAsyncResource(getAppearance);
   const reloadAppearance = useReloadAppearance();
   const { setPreviewColor, setPreviewPalette, setPreviewShaderEnabled } = useAppearancePreview();
   const userState = useCurrentUser();
@@ -150,20 +223,30 @@ export function AppearanceSettingsForm() {
   const [shaderPalette, setShaderPalette] = useState<string[]>([...DEFAULT_SHADER_PALETTE_HEX]);
   const [paletteTouched, setPaletteTouched] = useState(false);
   const [shaderEnabled, setShaderEnabled] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
+  const [isSavingColors, setIsSavingColors] = useState(false);
+  const [resettingScope, setResettingScope] = useState<AppearanceResetScope | null>(null);
 
-  useEffect(() => {
-    if (state.kind !== "ready") return;
-    const loadedColor = state.data.primary_color ?? DEFAULT_ACCENT_COLOR;
-    setBrandName(state.data.brand_name ?? "");
+  // Seeded per section, and only on load or that section's own reset -- never
+  // on a save or image change, which would wipe the other section's unsaved edits.
+  const seedBranding = (data: AppearanceSettings) => {
+    setBrandName(data.brand_name ?? "");
+  };
+
+  const seedColors = (data: AppearanceSettings) => {
+    const loadedColor = data.primary_color ?? DEFAULT_ACCENT_COLOR;
     setAccentColor(loadedColor);
     setPreviousColor(ACCENT_COLOR_PRESETS.includes(loadedColor.toLowerCase()) ? null : loadedColor);
     setColorTouched(false);
-    setShaderPalette(state.data.shader_palette ?? [...DEFAULT_SHADER_PALETTE_HEX]);
+    setShaderPalette(data.shader_palette ?? [...DEFAULT_SHADER_PALETTE_HEX]);
     setPaletteTouched(false);
-    setShaderEnabled(state.data.shader_enabled);
-  }, [state]);
+    setShaderEnabled(data.shader_enabled);
+  };
+
+  const [state, , setData] = useAsyncResource(getAppearance, (data) => {
+    seedBranding(data);
+    seedColors(data);
+  });
 
   // Keeps the free-typed hex field in sync whenever accentColor changes for
   // any other reason (picker, a preset swatch, or a fresh load) -- and,
@@ -175,8 +258,8 @@ export function AppearanceSettingsForm() {
 
   // Previews the picked color across the whole dashboard (CSS tokens, shader
   // hue) without saving it -- clears back to the real, saved color once
-  // colorTouched resets (a successful save or reset re-fetches and settles
-  // colorTouched back to false, see the effect above).
+  // colorTouched resets (a successful save or reset settles colorTouched
+  // back to false).
   useEffect(() => {
     setPreviewColor(colorTouched ? accentColor : null);
   }, [accentColor, colorTouched, setPreviewColor]);
@@ -238,44 +321,94 @@ export function AppearanceSettingsForm() {
     if (HEX_COLOR_PATTERN.test(value)) setAccent(value.toLowerCase());
   };
 
-  const handleSave = async (event: FormEvent) => {
+  const handleSaveBranding = async (event: FormEvent) => {
     event.preventDefault();
-    setIsSaving(true);
+    setIsSavingBranding(true);
     try {
-      await updateAppearance({
-        brand_name: brandName.trim() || undefined,
-        primary_color: colorTouched ? accentColor : undefined,
-        shader_palette: paletteTouched ? shaderPalette : undefined,
-        shader_enabled: shaderEnabled,
-      });
-      reload();
+      await updateAppearance({ brand_name: brandName.trim() || undefined });
       reloadAppearance();
       toast.success(t("settings.appearance.saveSuccess"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("settings.appearance.saveError")));
     } finally {
-      setIsSaving(false);
+      setIsSavingBranding(false);
     }
   };
 
-  const handleReset = async () => {
-    setIsResetting(true);
+  const handleSaveColors = async (event: FormEvent) => {
+    event.preventDefault();
+    setIsSavingColors(true);
     try {
-      await resetAppearanceSettings();
-      reload();
+      await updateAppearance({
+        primary_color: colorTouched ? accentColor : undefined,
+        shader_palette: paletteTouched ? shaderPalette : undefined,
+        shader_enabled: shaderEnabled,
+      });
+      reloadAppearance();
+      setColorTouched(false);
+      setPaletteTouched(false);
+      toast.success(t("settings.appearance.saveSuccess"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("settings.appearance.saveError")));
+    } finally {
+      setIsSavingColors(false);
+    }
+  };
+
+  const handleReset = async (scope: AppearanceResetScope) => {
+    setResettingScope(scope);
+    try {
+      let data = await resetAppearanceSettings(scope);
+      if (scope === "branding") {
+        // Each image goes through its own delete endpoint so its permission still applies.
+        if (data.has_logo && permissions.includes("APPEARANCE_LOGO_DELETE")) {
+          await deleteAppearanceImage("logo");
+          data = { ...data, has_logo: false };
+        }
+        if (data.has_favicon && permissions.includes("APPEARANCE_FAVICON_DELETE")) {
+          await deleteAppearanceImage("favicon");
+          data = { ...data, has_favicon: false };
+        }
+        seedBranding(data);
+      } else {
+        seedColors(data);
+      }
+      setData(data);
       reloadAppearance();
       toast.success(t("settings.appearance.resetSuccess"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("settings.appearance.resetError")));
     } finally {
-      setIsResetting(false);
+      setResettingScope(null);
     }
   };
 
-  const handleImageChanged = () => {
-    reload();
+  const handleImageChanged = (kind: AppearanceImageKind, hasImage: boolean) => {
+    if (state.kind !== "ready") return;
+    setData({ ...state.data, [kind === "logo" ? "has_logo" : "has_favicon"]: hasImage });
     reloadAppearance();
   };
+
+  const resetButton = (scope: AppearanceResetScope) =>
+    permissions.includes("APPEARANCE_SETTINGS_RESET") && (
+      <motion.button
+        type="button"
+        onClick={() => void handleReset(scope)}
+        disabled={resettingScope !== null}
+        {...bounceTap(bounceStrength)}
+        className={SECONDARY_BUTTON_CLASS}
+      >
+        {t("settings.appearance.reset")}
+      </motion.button>
+    );
+
+  const canManage = permissions.includes("APPEARANCE_SETTINGS_MANAGE");
+  const canLogo = permissions.includes("APPEARANCE_LOGO_UPLOAD") || permissions.includes("APPEARANCE_LOGO_DELETE");
+  const canFavicon =
+    permissions.includes("APPEARANCE_FAVICON_UPLOAD") || permissions.includes("APPEARANCE_FAVICON_DELETE");
+
+  const swatchClass = (active: boolean) =>
+    `size-8 rounded-full ${active ? "outline-2 outline-offset-2 outline-muted-foreground" : "ring-1 ring-white/10"}`;
 
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -284,24 +417,38 @@ export function AppearanceSettingsForm() {
           <Palette className="size-4" />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-foreground">{t("settings.appearance.title")}</h2>
-          {state.kind === "loading" && <Spinner className="justify-start" />}
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.appearance.description")}</p>
+          <h2 className="text-sm font-bold text-foreground">{t("settings.appearance.dashboardTitle")}</h2>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.appearance.dashboardDescription")}</p>
         </div>
       </div>
 
-      {state.kind === "error" && (
-        <p className="mt-4 text-sm text-error">{t("settings.appearance.loadError")}</p>
-      )}
+      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+
+      {state.kind === "loading" && <Spinner className="mt-4" />}
+      {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("settings.appearance.loadError")}</p>}
 
       {state.kind === "ready" && (
-        <div className="mt-4 flex flex-col gap-6">
-          {permissions.includes("APPEARANCE_SETTINGS_MANAGE") && (
-            <form onSubmit={(event) => void handleSave(event)} className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <span className="text-[12.5px] font-semibold text-muted-foreground">
-                  {t("settings.appearance.section.branding")}
-                </span>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {(canManage || canLogo || canFavicon) && (
+            <Section
+              onSubmit={(event) => void handleSaveBranding(event)}
+              footer={
+                <>
+                  {canManage && (
+                    <motion.button
+                      type="submit"
+                      disabled={isSavingBranding}
+                      {...bounceTap(bounceStrength)}
+                      className={PRIMARY_BUTTON_CLASS}
+                    >
+                      {t("settings.appearance.save")}
+                    </motion.button>
+                  )}
+                  {resetButton("branding")}
+                </>
+              }
+            >
+              {canManage && (
                 <div className="flex flex-col gap-1">
                   <label htmlFor="appearance-brand-name" className="text-sm font-medium text-foreground/80">
                     {t("settings.appearance.brandNameLabel")}
@@ -313,18 +460,59 @@ export function AppearanceSettingsForm() {
                     onChange={(event) => setBrandName(event.target.value)}
                     placeholder={t("settings.appearance.brandNamePlaceholder")}
                     maxLength={64}
-                    className="w-56 rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                    className="w-full rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
                   />
                 </div>
-              </div>
+              )}
+              {(canLogo || canFavicon) && (
+                <div className="flex flex-wrap gap-4">
+                  {canLogo && (
+                    <ImageSlot
+                      kind="logo"
+                      hasImage={state.data.has_logo}
+                      label={t("settings.appearance.logoLabel")}
+                      hint={t("settings.appearance.logoHint")}
+                      canUpload={permissions.includes("APPEARANCE_LOGO_UPLOAD")}
+                      canDelete={permissions.includes("APPEARANCE_LOGO_DELETE")}
+                      className="min-w-0 flex-1"
+                      onChanged={(hasImage) => handleImageChanged("logo", hasImage)}
+                    />
+                  )}
+                  {canFavicon && (
+                    <ImageSlot
+                      kind="favicon"
+                      hasImage={state.data.has_favicon}
+                      label={t("settings.appearance.faviconLabel")}
+                      hint={t("settings.appearance.faviconHint")}
+                      canUpload={permissions.includes("APPEARANCE_FAVICON_UPLOAD")}
+                      canDelete={permissions.includes("APPEARANCE_FAVICON_DELETE")}
+                      className="min-w-0 flex-1"
+                      onChanged={(hasImage) => handleImageChanged("favicon", hasImage)}
+                    />
+                  )}
+                </div>
+              )}
+            </Section>
+          )}
 
-              <span aria-hidden className="h-px bg-border" />
-
-              <div className="flex flex-col gap-3 rounded-xl bg-white/[0.02] p-3">
-                <span className="text-[12.5px] font-semibold text-muted-foreground">
-                  {t("settings.appearance.section.accentColor")}
-                </span>
-
+          {canManage && (
+            <Section
+              onSubmit={(event) => void handleSaveColors(event)}
+              footer={
+                <>
+                  <motion.button
+                    type="submit"
+                    disabled={isSavingColors}
+                    {...bounceTap(bounceStrength)}
+                    className={PRIMARY_BUTTON_CLASS}
+                  >
+                    {t("settings.appearance.save")}
+                  </motion.button>
+                  {resetButton("colors")}
+                </>
+              }
+            >
+              <div className="flex items-center gap-3.5 rounded-xl bg-white/[0.03] p-3">
                 <div className="flex flex-col gap-1">
                   <label htmlFor="appearance-accent-hex" className="text-sm font-medium text-foreground/80">
                     {t("settings.appearance.accentColorLabel")}
@@ -342,151 +530,87 @@ export function AppearanceSettingsForm() {
                       onChange={handleHexInputChange}
                       maxLength={7}
                       spellCheck={false}
-                      className="w-24 rounded-xl border border-border bg-input/60 px-3 py-2 text-sm font-mono text-foreground outline-none focus:border-primary"
+                      className="w-28 rounded-xl border border-border bg-input/60 px-3 py-2 font-mono text-sm text-foreground outline-none transition-colors focus:border-primary"
                     />
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-semibold text-muted-foreground/70">
-                    {t("settings.appearance.presetsLabel")}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {ACCENT_COLOR_PRESETS.map((preset) => (
-                      <motion.button
-                        key={preset}
-                        type="button"
-                        onClick={() => setAccent(preset)}
-                        aria-label={preset}
-                        style={{ backgroundColor: preset }}
-                        whileHover={{ scale: 1.15 }}
-                        {...bounceTap(bounceStrength)}
-                        className={`size-7 rounded-full border-2 ${
-                          accentColor.toLowerCase() === preset ? "border-foreground" : "border-transparent"
-                        }`}
-                      />
-                    ))}
-                    {previousColor && (
-                      <>
-                        <span aria-hidden className="h-6 w-px bg-border" />
-                        <motion.button
-                          type="button"
-                          onClick={() => setAccent(previousColor)}
-                          aria-label={t("settings.appearance.previousColorLabel")}
-                          title={t("settings.appearance.previousColorLabel")}
-                          style={{ backgroundColor: previousColor }}
-                          whileHover={{ scale: 1.15 }}
-                          {...bounceTap(bounceStrength)}
-                          className={`size-7 rounded-full border-2 ${
-                            accentColor.toLowerCase() === previousColor.toLowerCase()
-                              ? "border-foreground"
-                              : "border-transparent"
-                          }`}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1.5 border-t border-white/[0.06] pt-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[11px] font-semibold text-muted-foreground/70">
-                      {t("settings.appearance.shaderEnabledLabel")}
-                    </span>
-                    <Switch
-                      checked={shaderEnabled}
-                      onChange={setShaderEnabled}
-                      ariaLabel={t("settings.appearance.shaderEnabledLabel")}
-                    />
-                  </div>
-                  <span className="text-[11px] font-semibold text-muted-foreground/70">
-                    {t("settings.appearance.shaderPaletteLabel")}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {SHADER_PALETTE_KEYS.map((key, index) => {
-                      const rawColor = shaderPalette[index] ?? DEFAULT_SHADER_PALETTE_HEX[index];
-                      return (
-                        <div key={key} className="flex flex-col items-center gap-1">
-                          <ColorPickerField
-                            value={rawColor}
-                            onChange={(value) => setPaletteColor(index, value)}
-                            displayValue={hueRotateHex(rawColor, shaderHueRadians)}
-                            ariaLabel={t(`settings.appearance.shaderPalette.${key}`)}
-                          />
-                          <span className="text-[11px] text-muted-foreground">
-                            {t(`settings.appearance.shaderPalette.${key}`)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <span aria-hidden className="h-px bg-border" />
-
-              <div className="flex items-center gap-2">
-                <motion.button
-                  type="submit"
-                  disabled={isSaving}
-                  {...bounceTap(bounceStrength)}
-                  className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {t("settings.appearance.save")}
-                </motion.button>
-                {permissions.includes("APPEARANCE_SETTINGS_RESET") && (
+                {previousColor && (
                   <motion.button
                     type="button"
-                    onClick={() => void handleReset()}
-                    disabled={isResetting}
+                    onClick={() => setAccent(previousColor)}
+                    aria-label={t("settings.appearance.previousColorLabel")}
+                    style={{ backgroundColor: previousColor }}
+                    whileHover={{ scale: 1.15 }}
                     {...bounceTap(bounceStrength)}
-                    className="w-fit rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t("settings.appearance.reset")}
-                  </motion.button>
+                    className={`ml-auto ${swatchClass(accentColor.toLowerCase() === previousColor.toLowerCase())}`}
+                  />
                 )}
               </div>
-            </form>
-          )}
 
-          {(permissions.includes("APPEARANCE_LOGO_UPLOAD") ||
-            permissions.includes("APPEARANCE_LOGO_DELETE") ||
-            permissions.includes("APPEARANCE_FAVICON_UPLOAD") ||
-            permissions.includes("APPEARANCE_FAVICON_DELETE")) && (
-            <>
-              {permissions.includes("APPEARANCE_SETTINGS_MANAGE") && (
-                <span aria-hidden className="h-px bg-border" />
-              )}
-              <div className="flex flex-col gap-2">
-                <span className="text-[12.5px] font-semibold text-muted-foreground">
-                  {t("settings.appearance.section.images")}
-                </span>
-                <div className="flex flex-wrap gap-4">
-                  {(permissions.includes("APPEARANCE_LOGO_UPLOAD") ||
-                    permissions.includes("APPEARANCE_LOGO_DELETE")) && (
-                    <ImageSlot
-                      kind="logo"
-                      hasImage={state.data.has_logo}
-                      label={t("settings.appearance.logoLabel")}
-                      canUpload={permissions.includes("APPEARANCE_LOGO_UPLOAD")}
-                      canDelete={permissions.includes("APPEARANCE_LOGO_DELETE")}
-                      onChanged={handleImageChanged}
+              <div className="flex flex-col gap-2.5">
+                <span className={SUBHEADING_CLASS}>{t("settings.appearance.presetsLabel")}</span>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {ACCENT_COLOR_PRESETS.map((preset) => (
+                    <motion.button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAccent(preset)}
+                      aria-label={preset}
+                      style={{ backgroundColor: preset }}
+                      whileHover={{ scale: 1.15 }}
+                      {...bounceTap(bounceStrength)}
+                      className={swatchClass(accentColor.toLowerCase() === preset)}
                     />
-                  )}
-                  {(permissions.includes("APPEARANCE_FAVICON_UPLOAD") ||
-                    permissions.includes("APPEARANCE_FAVICON_DELETE")) && (
-                    <ImageSlot
-                      kind="favicon"
-                      hasImage={state.data.has_favicon}
-                      label={t("settings.appearance.faviconLabel")}
-                      canUpload={permissions.includes("APPEARANCE_FAVICON_UPLOAD")}
-                      canDelete={permissions.includes("APPEARANCE_FAVICON_DELETE")}
-                      onChanged={handleImageChanged}
-                    />
-                  )}
+                  ))}
                 </div>
               </div>
-            </>
+
+              <div className="flex flex-col gap-2.5 border-t border-white/[0.06] pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className={SUBHEADING_CLASS}>{t("settings.appearance.shaderEnabledLabel")}</span>
+                  <Switch
+                    checked={shaderEnabled}
+                    onChange={setShaderEnabled}
+                    ariaLabel={t("settings.appearance.shaderEnabledLabel")}
+                  />
+                </div>
+                <div
+                  className={`grid grid-cols-2 gap-2 transition-opacity ${shaderEnabled ? "" : "opacity-40"}`}
+                >
+                  {SHADER_PALETTE_KEYS.map((key, index) => {
+                    const rawColor = shaderPalette[index] ?? DEFAULT_SHADER_PALETTE_HEX[index];
+                    const shownColor = hueRotateHex(rawColor, shaderHueRadians);
+                    const defaultColor = DEFAULT_SHADER_PALETTE_HEX[index];
+                    return (
+                      <div key={key} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-2.5 py-2">
+                        <ColorPickerField
+                          value={rawColor}
+                          onChange={(value) => setPaletteColor(index, value)}
+                          displayValue={shownColor}
+                          ariaLabel={t(`settings.appearance.shaderPalette.${key}`)}
+                        />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate text-[12.5px] font-medium text-foreground">
+                            {t(`settings.appearance.shaderPalette.${key}`)}
+                          </span>
+                          <span className="font-mono text-[11px] text-muted-foreground">{shownColor}</span>
+                        </div>
+                        <motion.button
+                          type="button"
+                          onClick={() => setPaletteColor(index, defaultColor)}
+                          disabled={rawColor.toLowerCase() === defaultColor}
+                          aria-label={t("settings.appearance.resetColor")}
+                          {...bounceTap(bounceStrength)}
+                          className="ml-auto flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:bg-white/[0.08] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-foreground/70"
+                        >
+                          <RotateCcw className="size-3.5" />
+                        </motion.button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Section>
           )}
         </div>
       )}

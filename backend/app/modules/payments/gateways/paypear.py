@@ -27,6 +27,7 @@ _PAID_STATUS: Final[str] = "CONFIRMED"
 _PAID_EVENT: Final[str] = "payment.confirmed"
 
 
+# Docs: https://paypear.ru/docs/
 class PayPearGateway(PaymentGateway):
     currency = Currency.RUB
 

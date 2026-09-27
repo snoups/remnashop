@@ -25,6 +25,7 @@ export interface DialogButtonItem {
   target_window_key: string | null;
   url_value: string | null;
   is_hidden: boolean;
+  is_system: boolean;
 }
 
 export interface DialogWindow {
@@ -32,6 +33,7 @@ export interface DialogWindow {
   kind: DialogWindowKind;
   flow: DialogFlow;
   banner_name: string | null;
+  name: string | null;
   is_enabled: boolean;
   position: number;
   text_keys: string[];
@@ -132,15 +134,46 @@ const URL_VARIABLE_RE = /\$\{([a-z0-9_.]+)\}/g;
  * a whole keyboard over one bad button URL. */
 export const URL_SCHEMES = ["https://", "http://", "tg://"];
 
-export type UrlProblem = { kind: "scheme" } | { kind: "variable"; name: string };
+export type UrlProblem =
+  | { kind: "scheme" }
+  | { kind: "malformed" }
+  | { kind: "variable"; name: string };
 
 export function urlProblem(value: string, variableKeys: string[]): UrlProblem | null {
+  if (/\s/.test(value) || URL_SCHEMES.includes(value)) return { kind: "malformed" };
   for (const match of value.matchAll(URL_VARIABLE_RE)) {
     if (!variableKeys.includes(match[1])) return { kind: "variable", name: match[1] };
   }
   const literal = value.replace(URL_VARIABLE_RE, "");
   if (literal && !URL_SCHEMES.some((scheme) => literal.startsWith(scheme))) {
     return { kind: "scheme" };
+  }
+  return null;
+}
+
+/** Mirrors modules/dialogs/validation.py: Telegram refuses the whole keyboard
+ * or message past these. */
+export const MAX_BUTTONS_PER_ROW = 8;
+export const MAX_BUTTONS = 100;
+export const MAX_TEXT_LENGTH = 4096;
+export const MAX_CAPTION_LENGTH = 1024;
+
+const PREMIUM_EMOJI_RE = /\[([^[\]]{1,16})\]\(emoji:(\d{1,24})\)/g;
+
+/** What Telegram counts: UTF-16 units, with premium emoji markup as its glyph. */
+export function sentTextLength(value: string): number {
+  return value.replace(PREMIUM_EMOJI_RE, "$1").length;
+}
+
+export function buttonLimitProblem(
+  buttons: DialogButtonItem[],
+): { kind: "row" | "total"; max: number } | null {
+  const shown = buttons.filter((button) => !button.is_hidden);
+  if (shown.length > MAX_BUTTONS) return { kind: "total", max: MAX_BUTTONS };
+  const perRow = new Map<number, number>();
+  for (const button of shown) perRow.set(button.row, (perRow.get(button.row) ?? 0) + 1);
+  if ([...perRow.values()].some((count) => count > MAX_BUTTONS_PER_ROW)) {
+    return { kind: "row", max: MAX_BUTTONS_PER_ROW };
   }
   return null;
 }
@@ -178,7 +211,7 @@ export function getCatalog(signal?: AbortSignal): Promise<DialogCatalog> {
 
 export function updateWindow(
   key: string,
-  data: { banner_name?: string | null; is_enabled?: boolean },
+  data: { banner_name?: string | null; is_enabled?: boolean; name?: string },
 ): Promise<DialogWindow> {
   return apiPut<DialogWindow, typeof data>(`/dialogs/windows/${encodeURIComponent(key)}`, data);
 }
@@ -190,14 +223,12 @@ export function replaceButtons(key: string, buttons: DialogButtonInput[]): Promi
   );
 }
 
-export function createCustomWindow(
-  titleText: string,
-  bannerName?: string | null,
-): Promise<DialogWindow> {
-  return apiPost<DialogWindow, { title_text: string; banner_name?: string | null }>(
-    "/dialogs/windows",
-    { title_text: titleText, banner_name: bannerName },
-  );
+/** The banner is deliberately not sent: the backend then starts the window on
+ * the shared one, which is what every window gets until an admin says otherwise. */
+export function createCustomWindow(name: string): Promise<DialogWindow> {
+  return apiPost<DialogWindow, { name: string }>("/dialogs/windows", {
+    name,
+  });
 }
 
 export function deleteCustomWindow(key: string): Promise<null> {

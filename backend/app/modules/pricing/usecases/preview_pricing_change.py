@@ -8,6 +8,7 @@ from app.core.usecase import UseCase
 from app.modules.plans import PlanDto, PlanDurationDto, PlanRepository
 from app.modules.pricing.dto import (
     BASE_PRICE_PRECISION,
+    NON_ANCHOR_CURRENCIES,
     RATE_PRECISION,
     AdjustBasePricesDto,
     CurrencyRateTable,
@@ -41,6 +42,8 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
             set_count = sum(x is not None for x in (data.rate, data.anchor, data.adjust))
             if set_count != 1:
                 raise ValidationError("Exactly one of rate/anchor/adjust must be set")
+            if data.anchor in NON_ANCHOR_CURRENCIES:
+                raise ValidationError(f"{data.anchor} cannot be the anchor currency")
 
             table = await self._pricing_repository.get_rate_table()
             plans = await self._plan_repository.list_all()

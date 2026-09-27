@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 from app.core.events import EventCategory, SystemEvent, UserEvent
+
+if TYPE_CHECKING:
+    from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -34,6 +39,8 @@ class SubscriptionChangedEvent(UserEvent):
 @dataclass(frozen=True, kw_only=True)
 class SubscriptionAddOnGrantedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    # the subscription's owner -- `user` is the system actor on the promocode path
+    target: Optional[UserDto]
     subscription_id: int
     addon_id: int
     amount: int

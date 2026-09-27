@@ -1,3 +1,5 @@
+from typing import Final
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, HTTPException, Response, status
@@ -12,6 +14,13 @@ from app.modules.settings.usecases import (
 )
 
 router = APIRouter(prefix="/appearance", tags=["appearance"])
+
+# Uploads may be SVG: opened directly, the file must not run scripts or load
+# anything, and must never be sniffed into another type.
+_IMAGE_HEADERS: Final[dict[str, str]] = {
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    "X-Content-Type-Options": "nosniff",
+}
 
 
 def _to_appearance_response(settings: AppearanceSettingsDto) -> AppearanceResponse:
@@ -39,7 +48,7 @@ async def get_appearance_logo(use_case: FromDishka[GetPublicAppearanceImageUseCa
         data, content_type = await use_case.execute(AppearanceImageKind.LOGO)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    return Response(content=data, media_type=content_type)
+    return Response(content=data, media_type=content_type, headers=_IMAGE_HEADERS)
 
 
 @router.get("/favicon")
@@ -49,4 +58,4 @@ async def get_appearance_favicon(use_case: FromDishka[GetPublicAppearanceImageUs
         data, content_type = await use_case.execute(AppearanceImageKind.FAVICON)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    return Response(content=data, media_type=content_type)
+    return Response(content=data, media_type=content_type, headers=_IMAGE_HEADERS)

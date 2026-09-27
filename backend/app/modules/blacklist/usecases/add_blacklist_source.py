@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from app.core.db.uow import UnitOfWork
@@ -7,6 +8,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.http import assert_public_https_host
 from app.modules.blacklist.dto import AddBlacklistSourceDto, BlacklistSourceDto
+from app.modules.blacklist.normalize import derive_source_name
 from app.modules.blacklist.repository import BlacklistRepository
 
 if TYPE_CHECKING:
@@ -26,4 +28,5 @@ class AddBlacklistSourceUseCase(UseCase[AddBlacklistSourceDto, BlacklistSourceDt
     async def _execute(self, actor: UserDto, data: AddBlacklistSourceDto) -> BlacklistSourceDto:
         await assert_public_https_host(data.url)
         async with self._uow:
-            return await self._blacklist_repository.add_source(data)
+            name = (data.name or "").strip() or derive_source_name(data.url)
+            return await self._blacklist_repository.add_source(replace(data, name=name))

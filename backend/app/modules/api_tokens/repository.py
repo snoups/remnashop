@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import or_, select
@@ -6,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.api_token import ApiToken
 from app.core.security.permissions import Permission
+from app.core.utils.time import datetime_now
 from app.modules.api_tokens.dto import ApiTokenDto, CreateApiTokenDto
 
 
@@ -39,7 +39,7 @@ class ApiTokenRepository:
         return self._to_dto(row)
 
     async def get_active_by_hash(self, token_hash: str) -> Optional[ApiTokenDto]:
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         stmt = select(ApiToken).where(
             ApiToken.token_hash == token_hash,
             ApiToken.revoked_at.is_(None),
@@ -51,11 +51,11 @@ class ApiTokenRepository:
     async def touch_last_used(self, token_id: int) -> None:
         row = await self.session.get(ApiToken, token_id)
         if row is not None:
-            row.last_used_at = datetime.now(timezone.utc)
+            row.last_used_at = datetime_now()
             await self.session.flush()
 
     async def list_active(self) -> list[ApiTokenDto]:
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         stmt = (
             select(ApiToken)
             .where(
@@ -76,7 +76,7 @@ class ApiTokenRepository:
         row = await self.session.scalar(stmt)
         if row is None:
             return None
-        row.revoked_at = datetime.now(timezone.utc)
+        row.revoked_at = datetime_now()
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_dto(row)

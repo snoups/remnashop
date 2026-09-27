@@ -1,11 +1,12 @@
 import base64
 import hashlib
 import json
+from typing import Optional
 
 import pytest
 
 import app.modules.payments.gateways.cryptomus as cryptomus_module
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.cryptomus import CryptomusGateway
@@ -85,11 +86,23 @@ async def test_parse_webhook_rejects_a_tampered_body() -> None:
 
 
 @pytest.mark.parametrize(
-    ("status", "claims"), [("paid_over", True), ("wrong_amount", False), ("check", False)]
+    ("status", "claims", "reported_status"),
+    [
+        ("paid_over", True, None),
+        ("check", False, None),
+        ("cancel", False, PaymentOrderStatus.CANCELED),
+        ("fail", False, PaymentOrderStatus.FAILED),
+        ("system_fail", False, PaymentOrderStatus.FAILED),
+        ("wrong_amount", False, PaymentOrderStatus.FAILED),
+        ("refund_paid", False, PaymentOrderStatus.REFUNDED),
+    ],
 )
-async def test_parse_webhook_status_mapping(status: str, claims: bool) -> None:
+async def test_parse_webhook_status_mapping(
+    status: str, claims: bool, reported_status: Optional[PaymentOrderStatus]
+) -> None:
     signal = await _gateway().parse_webhook(webhook(_hook(status)))
     assert signal is not None and signal.claims_paid is claims
+    assert signal.reported_status is reported_status
 
 
 @pytest.mark.parametrize(("cls", "host"), _GATEWAYS)

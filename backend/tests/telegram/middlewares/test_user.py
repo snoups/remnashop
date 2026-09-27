@@ -1,8 +1,10 @@
+from types import SimpleNamespace
 from typing import Any
 
 from aiogram.enums import ChatType
 from aiogram.types import Chat, Message
 from aiogram.types import User as AiogramUser
+from fluentogram import TranslatorHub
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,7 @@ from app.core.config import AppConfig
 from app.core.constants import CONFIG_KEY, CONTAINER_KEY, USER_KEY
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
+from app.core.enums import Locale
 from app.core.ports import EventPublisher
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.repository import UserRepository
@@ -31,6 +34,8 @@ class _FakeContainer:
         self._event_publisher = event_publisher
 
     async def get(self, dependency_type: type) -> Any:
+        if dependency_type is TranslatorHub:
+            return SimpleNamespace(translators_map={"en": [], "ru": []})
         assert dependency_type is RegisterTelegramUserUseCase
         return RegisterTelegramUserUseCase(
             self._user_repository, self._blacklist_repository, self._uow, self._event_publisher
@@ -133,3 +138,34 @@ async def test_user_middleware_carries_ad_link_code_from_start_payload(
     ).all()
     assert len(rows) == 1
     assert rows[0].payload["ad_link_code"] == "middleware-code"
+
+
+async def test_user_middleware_syncs_username_and_an_active_telegram_language(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    config: AppConfig,
+) -> None:
+    container = _FakeContainer(user_repository, blacklist_repository, uow, event_publisher)
+
+    async def run(sender: AiogramUser) -> Any:
+        data: dict[str, Any] = {
+            "event_chat": Chat(id=sender.id, type=ChatType.PRIVATE),
+            "event_from_user": sender,
+            CONTAINER_KEY: container,
+            CONFIG_KEY: config,
+        }
+        await _run_middleware(data)
+        return data[USER_KEY]
+
+    base = {"id": 6262, "is_bot": False, "first_name": "Ann"}
+    created = await run(AiogramUser(**base, username="ann", language_code="ru"))
+    assert created.username == "ann" and created.language == Locale.RU
+
+    # an inactive Telegram language keeps the stored one
+    kept = await run(AiogramUser(**base, username="ann2", language_code="de"))
+    assert kept.username == "ann2" and kept.language == Locale.RU
+
+    switched = await run(AiogramUser(**base, username="ann2", language_code="en-US"))
+    assert switched.language == Locale.EN

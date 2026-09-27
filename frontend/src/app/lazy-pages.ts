@@ -37,9 +37,6 @@ export const BotSettingsPage = lazy(() =>
 export const DashboardPage = lazy(() =>
   import("@pages/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
-export const DialogsPage = lazy(() =>
-  import("@pages/dialogs/DialogsPage").then((m) => ({ default: m.DialogsPage })),
-);
 export const EventLogPage = lazy(() =>
   import("@pages/event-log/EventLogPage").then((m) => ({ default: m.EventLogPage })),
 );
@@ -67,6 +64,12 @@ export const PromocodesPage = lazy(() =>
 );
 export const ReferralsPage = lazy(() =>
   import("@pages/referrals/ReferralsPage").then((m) => ({ default: m.ReferralsPage })),
+);
+export const ReferralsListPage = lazy(() =>
+  import("@pages/referrals/ReferralsListPage").then((m) => ({ default: m.ReferralsListPage })),
+);
+export const ReferralSettingsPage = lazy(() =>
+  import("@pages/referrals/ReferralSettingsPage").then((m) => ({ default: m.ReferralSettingsPage })),
 );
 export const SettingsPage = lazy(() =>
   import("@pages/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),

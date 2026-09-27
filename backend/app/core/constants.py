@@ -47,6 +47,7 @@ ENCRYPTED_PREFIX: Final[str] = "enc_"
 REDIS_KEY_PREFIX: Final[str] = "remnashop:"
 
 TELEGRAM_RESTART_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:restart"
+TELEGRAM_LOGS_KEY: Final[str] = f"{REDIS_KEY_PREFIX}telegram:logs"
 DIALOG_CONFIG_CHANGED_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:dialog-config-changed"
 TRANSLATION_CHANGED_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:translation-changed"
 

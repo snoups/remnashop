@@ -12,6 +12,7 @@ from app.modules.banners.api import admin_router as banners_admin_router
 from app.modules.blacklist.api import admin_router as blacklist_admin_router
 from app.modules.dialogs.api import admin_router as dialogs_admin_router
 from app.modules.emoji_packs.api import admin_router as emoji_packs_admin_router
+from app.modules.emoji_packs.api import public_router as emoji_packs_public_router
 from app.modules.event_log.api import event_log_admin_router
 from app.modules.gateways.api import admin_router as gateways_admin_router
 from app.modules.oauth.api import admin_router as oauth_admin_router
@@ -63,6 +64,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     backups_admin_router,
     banners_admin_router,
     emoji_packs_admin_router,
+    emoji_packs_public_router,
     blacklist_admin_router,
     event_log_admin_router,
     gateways_admin_router,

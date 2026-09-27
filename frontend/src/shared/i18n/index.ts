@@ -1,6 +1,9 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+import { getDebugState } from "@shared/lib/debug-bar";
+import { toast } from "@shared/lib/toast";
+
 import en from "./locales/en.json";
 import ru from "./locales/ru.json";
 
@@ -21,6 +24,8 @@ function detectInitialLanguage(): SupportedLanguage {
   return isSupportedLanguage(browserLanguage) ? browserLanguage : "en";
 }
 
+const reportedKeys = new Set<string>();
+
 void i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
@@ -29,6 +34,13 @@ void i18n.use(initReactI18next).init({
   lng: detectInitialLanguage(),
   fallbackLng: "en",
   interpolation: { escapeValue: false },
+  saveMissing: true,
+  missingKeyHandler: (_languages, _namespace, key) => {
+    if (!getDebugState().missingKeys || reportedKeys.has(key)) return;
+    reportedKeys.add(key);
+    // Deferred: a handler firing mid-render can't synchronously push a toast.
+    setTimeout(() => toast.warning(`i18n: ${key}`), 0);
+  },
 });
 
 i18n.on("languageChanged", (language) => {

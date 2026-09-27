@@ -1,4 +1,4 @@
-import { MonitorSmartphone, Trash2 } from "lucide-react";
+import { Inbox, MonitorSmartphone, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -17,11 +17,16 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke }: Ses
   const bounceStrength = useBounceStrength();
 
   if (sessions.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t("sessions.empty")}</p>;
+    return (
+      <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+        <Inbox className="size-5" />
+        <p className="text-sm">{t("sessions.empty")}</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col divide-y divide-border/50">
       {sessions.map((session) => {
         const { browser, os } = parseUserAgent(session.user_agent);
         const isCurrent = session.id === currentSessionId;
@@ -32,7 +37,6 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke }: Ses
             onClick={() => onRequestRevoke(session)}
             {...bounceTap(bounceStrength)}
             aria-label={t("sessions.revoke")}
-            title={t("sessions.revoke")}
             className="group flex w-full items-center justify-between gap-3 rounded-full px-[12.5px] py-2.5 text-left transition-colors hover:bg-white/[0.04]"
           >
             <div className="flex items-center gap-3">

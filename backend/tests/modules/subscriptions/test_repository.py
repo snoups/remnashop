@@ -534,6 +534,38 @@ async def test_list_paginated_excludes_deleted_by_default(
     assert dead.id in [item.id for item in deleted_items]
 
 
+async def test_list_paginated_search_matches_id_and_user_id(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="search-buyer"))
+    sub = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=9201,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=10,
+            device_limit=1,
+            traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
+            is_trial=False,
+            internal_squads=[],
+            external_squad=None,
+            expire_at=datetime_now() + timedelta(days=1),
+            url="https://fake-panel.test/sub/search",
+            plan_snapshot=make_plan_snapshot(is_trial=False),
+        )
+    )
+
+    by_user, _ = await subscription_repository.list_paginated(search=str(buyer.id))
+    assert sub.id in [item.id for item in by_user]
+
+    none, total = await subscription_repository.list_paginated(search="no-such-sub-zzz")
+    assert (none, total) == ([], 0)
+
+    huge, _ = await subscription_repository.list_paginated(search="9" * 30)
+    assert huge == []
+
+
 async def test_delete_stale_idempotency_keys_removes_only_old_rows(
     subscription_repository: SubscriptionRepository,
     session: AsyncSession,

@@ -93,7 +93,7 @@ async def test_confirm_rejects_a_forged_webhook(monkeypatch: pytest.MonkeyPatch)
     assert await _gateway().confirm(make_order(external_payment_id="9755"), signal) is None
 
 
-async def test_confirm_trusts_the_id_scoped_query_when_order_no_is_absent(
+async def test_confirm_rejects_a_payment_without_order_no(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     install_http(
@@ -102,9 +102,7 @@ async def test_confirm_trusts_the_id_scoped_query_when_order_no_is_absent(
     signal = await _gateway().parse_webhook(webhook(_payment()))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(external_payment_id="9755"), signal)
-
-    assert confirmed is not None
+    assert await _gateway().confirm(make_order(external_payment_id="9755"), signal) is None
 
 
 async def test_confirm_rejects_a_different_order_no(monkeypatch: pytest.MonkeyPatch) -> None:

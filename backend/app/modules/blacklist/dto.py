@@ -46,3 +46,16 @@ class ToggleBlacklistSourceDto:
 class ParsedSourceList:
     telegram_ids: list[int] = field(default_factory=list)
     emails: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlacklistOriginDto:
+    # None = the manual list
+    source_id: Optional[int] = None
+    source_name: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlacklistOriginsDto:
+    telegram_ids: dict[int, list[BlacklistOriginDto]] = field(default_factory=dict)
+    emails: dict[str, list[BlacklistOriginDto]] = field(default_factory=dict)

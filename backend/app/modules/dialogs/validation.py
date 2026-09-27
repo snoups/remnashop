@@ -1,16 +1,46 @@
-from app.core.enums import ButtonLinkType, DialogWindowKind
+from collections import Counter
+from typing import Final
+
+from app.core.enums import ButtonLinkType, DialogWindowKind, Locale
 from app.core.exceptions import ValidationError
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto
 
+# Telegram's own limits; going over any of them fails the whole message.
+MAX_BUTTONS_PER_ROW: Final[int] = 8
+MAX_BUTTONS: Final[int] = 100
+MAX_TEXT_LENGTH: Final[int] = 4096
+# A window with a banner goes out as a photo, and this is the caption limit.
+MAX_CAPTION_LENGTH: Final[int] = 1024
+
+
+def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> None:
+    if not has_banner and not value.strip():
+        raise ValidationError(f"Window text ({locale}) cannot be empty without a banner")
+    # Telegram counts UTF-16 code units of the text as sent, where premium
+    # emoji markup is just its glyph. Fluent placeables count as written --
+    # what a variable expands to is only known at render time.
+    sent = catalog.PREMIUM_EMOJI_RE.sub(r"\1", value)
+    length = len(sent.encode("utf-16-le")) // 2
+    limit = MAX_CAPTION_LENGTH if has_banner else MAX_TEXT_LENGTH
+    if length > limit:
+        raise ValidationError(
+            f"Window text ({locale}) is {length} characters long, the limit is {limit}"
+            + (" with a banner" if has_banner else "")
+        )
+
 
 def validate_url_value(url_value: str) -> None:
+    if any(char.isspace() for char in url_value):
+        raise ValidationError("URL cannot contain spaces")
     for name in catalog.URL_VARIABLE_RE.findall(url_value):
         if name not in catalog.variable_keys():
             raise ValidationError(f"Unknown URL variable: {name}")
     literal = catalog.URL_VARIABLE_RE.sub("", url_value)
     if literal and not literal.startswith(catalog.URL_SCHEMES):
         raise ValidationError(f"URL must start with one of: {', '.join(catalog.URL_SCHEMES)}")
+    if url_value in catalog.URL_SCHEMES:
+        raise ValidationError("URL has nothing after the scheme")
 
 
 def validate_buttons(
@@ -20,7 +50,21 @@ def validate_buttons(
     window_kind: DialogWindowKind,
     navigable: set[str],
     seed_actions: set[str],
+    system_text_keys: set[str],
 ) -> None:
+    shown = [button for button in buttons if not button.is_hidden]
+    if len(shown) > MAX_BUTTONS:
+        raise ValidationError(
+            f"'{window_key}' has {len(shown)} buttons, the limit is {MAX_BUTTONS}"
+        )
+    per_row = Counter(button.row for button in shown)
+    for row, count in per_row.items():
+        if count > MAX_BUTTONS_PER_ROW:
+            raise ValidationError(
+                f"Row {row} in '{window_key}' has {count} buttons, "
+                f"the limit is {MAX_BUTTONS_PER_ROW}"
+            )
+
     seen: set[tuple[int, int]] = set()
     for button in buttons:
         position = (button.row, button.column)
@@ -36,6 +80,8 @@ def validate_buttons(
             # row -- bot command descriptions, notifications -- so the bound
             # belongs at the boundary every write path already passes through.
             raise ValidationError(f"'{button.text_key}' is not an editable dialog text key")
+        if button.is_hidden and button.text_key in system_text_keys:
+            raise ValidationError(f"System button '{button.text_key}' cannot be hidden")
         _validate_button(button, window_kind, navigable, seed_actions)
 
 

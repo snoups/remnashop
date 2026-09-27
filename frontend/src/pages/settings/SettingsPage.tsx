@@ -1,4 +1,13 @@
-import { Ban, Bot, Coins, CreditCard, Database, KeyRound, Palette, SlidersHorizontal } from "lucide-react";
+import {
+  Ban,
+  Bot,
+  Coins,
+  CreditCard,
+  Database,
+  KeyRound,
+  Palette,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Outlet, useMatch } from "react-router-dom";
 
@@ -23,7 +32,8 @@ export function SettingsPage() {
     permissions.includes("GATEWAYS_VIEW") ||
     permissions.includes("GATEWAYS_UPDATE") ||
     permissions.includes("GATEWAYS_TOGGLE") ||
-    permissions.includes("GATEWAYS_REORDER");
+    permissions.includes("GATEWAYS_REORDER") ||
+    permissions.includes("GATEWAYS_TEST");
   const canManageBackups = permissions.includes("BACKUPS_VIEW");
   const canViewBlacklist = permissions.includes("BLACKLIST_VIEW");
   const canViewPricing = permissions.includes("PRICING_VIEW");

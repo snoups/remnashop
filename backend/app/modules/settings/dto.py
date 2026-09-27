@@ -10,7 +10,6 @@ class BotSettingsDto(BaseDto, TimestampMixin):
     token: Optional[SecretStr] = None
     secret_token: Optional[SecretStr] = None
     drop_pending_updates: bool = False
-    banners_enabled: bool = True
 
     @property
     def is_configured(self) -> bool:
@@ -18,11 +17,22 @@ class BotSettingsDto(BaseDto, TimestampMixin):
 
 
 @dataclass(frozen=True, kw_only=True)
+class BotStatusDto:
+    is_configured: bool
+    webhook_url: Optional[str] = None
+    pending_update_count: int = 0
+    error: Optional[str] = None
+
+    @property
+    def is_running(self) -> bool:
+        return self.webhook_url is not None and self.error is None
+
+
+@dataclass(frozen=True, kw_only=True)
 class UpdateBotSettingsDto:
     token: Optional[str] = None
     secret_token: Optional[str] = None
     drop_pending_updates: Optional[bool] = None
-    banners_enabled: Optional[bool] = None
 
 
 class ShopSettingsDto(BaseDto, TimestampMixin):

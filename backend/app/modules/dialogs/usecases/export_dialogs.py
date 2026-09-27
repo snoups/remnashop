@@ -77,6 +77,7 @@ def _to_export(window: DialogWindowDto) -> DialogWindowExportDto:
         key=window.key,
         kind=window.kind,
         banner_name=window.banner_name,
+        name=window.name,
         is_enabled=window.is_enabled,
         position=window.position,
         buttons=[

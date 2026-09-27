@@ -148,3 +148,19 @@ async def test_delete_run_removes_row(backup_repository: BackupRepository, uow: 
 
     with pytest.raises(NotFoundError):
         await backup_repository.get_run(run.id)
+
+
+async def test_count_by_status_sums_only_completed_sizes(
+    backup_repository: BackupRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        for size in (100, 250):
+            run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+            await backup_repository.mark_completed(
+                run.id, file_path=f"/x/{size}.dump", size_bytes=size, checksum_sha256="a" * 64
+            )
+        failed = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.ASSETS))
+        await backup_repository.mark_failed(failed.id, error="boom")
+        await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.ASSETS))
+
+    assert await backup_repository.count_by_status() == (2, 1, 350)

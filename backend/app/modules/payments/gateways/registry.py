@@ -50,6 +50,7 @@ GATEWAY_REGISTRY: Final[dict[PaymentGatewayType, type[PaymentGateway]]] = {
     PaymentGatewayType.PAYPALYCH: PaypalychGateway,
 }
 
+# TELEGRAM_STARS docs: https://core.telegram.org/bots/payments-stars
 # Gateways with no HTTP adapter (paid off-site, e.g. inside Telegram) still
 # need a settlement currency for the checkout currency check.
 NON_HTTP_GATEWAY_CURRENCIES: Final[dict[PaymentGatewayType, Currency]] = {

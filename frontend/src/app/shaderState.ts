@@ -26,6 +26,7 @@ export const DEFAULT_TIME_SCALE = 0.2;
 
 export type ShaderUniforms = {
   uTime: { value: number };
+  uTimeSin: { value: number };
   uScrollProgress: { value: number };
   uOpacity: { value: number };
   uColourPalette: { value: THREE.Vector3[] };

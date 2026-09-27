@@ -269,7 +269,97 @@ async def test_list_paginated_filters_by_status(
     assert total >= 2
 
 
-async def test_mark_expired_pending_only_touches_expired_pending_rows(
+async def test_list_paginated_filters_by_gateway_purchase_type_and_created_from(
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        stars_renew = await payment_order_repository.create(
+            CreatePaymentOrderDto(
+                **{
+                    **_order_dto(
+                        user_id=user_id, plan_id=plan_id, idempotency_key="key-filter-stars"
+                    ).__dict__,
+                    "gateway_type": PaymentGatewayType.TELEGRAM_STARS,
+                    "purchase_type": PurchaseType.RENEW,
+                }
+            )
+        )
+        old_yookassa = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-filter-old")
+        )
+    now = datetime_now()
+    await session.execute(
+        update(PaymentOrder)
+        .where(PaymentOrder.id == old_yookassa.id)
+        .values(created_at=now - timedelta(days=40))
+    )
+
+    by_gateway, _ = await payment_order_repository.list_paginated(
+        gateway_type=PaymentGatewayType.TELEGRAM_STARS
+    )
+    assert [order.id for order in by_gateway] == [stars_renew.id]
+
+    by_type, _ = await payment_order_repository.list_paginated(purchase_type=PurchaseType.RENEW)
+    assert [order.id for order in by_type] == [stars_renew.id]
+
+    recent, _ = await payment_order_repository.list_paginated(created_from=now - timedelta(days=30))
+    recent_ids = {order.id for order in recent}
+    assert stars_renew.id in recent_ids
+    assert old_yookassa.id not in recent_ids
+
+
+async def test_list_gateway_types_returns_distinct_non_test_gateways(
+    payment_order_repository: PaymentOrderRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        for key in ("gw-1", "gw-2"):
+            await payment_order_repository.create(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=key)
+            )
+        test_order = await payment_order_repository.create(
+            CreatePaymentOrderDto(
+                **{
+                    **_order_dto(
+                        user_id=user_id, plan_id=plan_id, idempotency_key="gw-test"
+                    ).__dict__,
+                    "gateway_type": PaymentGatewayType.HELEKET,
+                }
+            )
+        )
+    await session.execute(
+        update(PaymentOrder).where(PaymentOrder.id == test_order.id).values(is_test=True)
+    )
+
+    assert await payment_order_repository.list_gateway_types() == [PaymentGatewayType.YOOKASSA]
+
+
+async def test_list_paginated_search_matches_id_and_user_id(
+    payment_order_repository: PaymentOrderRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    async with uow:
+        order = await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-search")
+        )
+
+    by_id, _ = await payment_order_repository.list_paginated(search=str(order.id))
+    assert order.id in [item.id for item in by_id]
+
+    none, total = await payment_order_repository.list_paginated(search="no-such-order-zzz")
+    assert (none, total) == ([], 0)
+
+    huge, _ = await payment_order_repository.list_paginated(search="9" * 30)
+    assert huge == []
+
+
+async def test_cancel_expired_pending_only_touches_expired_pending_rows(
     payment_order_repository: PaymentOrderRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
     async with uow:
@@ -298,11 +388,11 @@ async def test_mark_expired_pending_only_touches_expired_pending_rows(
         )
         await payment_order_repository.mark_status(expired_paid.id, PaymentOrderStatus.PAID)
 
-        marked = await payment_order_repository.mark_expired_pending(datetime_now())
+        marked = await payment_order_repository.cancel_expired_pending(datetime_now())
 
     assert marked == 1
     assert (await payment_order_repository.get_by_id(expired_pending.id)).status == (
-        PaymentOrderStatus.EXPIRED
+        PaymentOrderStatus.CANCELED
     )
     assert (await payment_order_repository.get_by_id(future_pending.id)).status == (
         PaymentOrderStatus.PENDING

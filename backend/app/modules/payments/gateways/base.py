@@ -5,7 +5,7 @@ from typing import Final, Optional
 
 import httpx
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 
@@ -33,6 +33,9 @@ class WebhookSignal:
     # Set only where the signature binds the amount and the status API
     # reports a net figure (Robokassa, YooMoney).
     amount: Optional[Decimal] = None
+    # A non-paid outcome the provider reported (FAILED/CANCELED/REFUNDED);
+    # None where the provider only ever notifies about successful payments.
+    reported_status: Optional[PaymentOrderStatus] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -67,6 +70,12 @@ class PaymentGateway(ABC):
         self._settings = settings
         self._webhook_url = webhook_url
         self._return_url = return_url
+
+    @classmethod
+    def requires_customer_email(cls, settings: dict[str, str]) -> bool:
+        """True when create_payment needs a real buyer email (fiscal receipt), so
+        checkout asks the customer for one instead of sending a placeholder."""
+        return False
 
     def _require(self, key: str) -> str:
         value = self._settings.get(key)

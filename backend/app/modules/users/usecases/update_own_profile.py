@@ -8,6 +8,7 @@ from app.core.ports import SessionRevoker
 from app.core.security import hash_password, verify_password
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.users.display_name import clean_display_name
 from app.modules.users.dto import UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
@@ -35,6 +36,12 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto]):
         self._session_revoker = session_revoker
 
     async def _execute(self, actor: UserDto, data: UpdateOwnProfileDto) -> UserDto:
+        name = None
+        if data.name is not None:
+            name = clean_display_name(data.name)
+            if not name:
+                raise ValidationError("Name must contain letters or digits")
+
         password_hash = None
 
         if data.new_password is not None:
@@ -52,7 +59,7 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto]):
 
         async with self._uow:
             updated = await self._user_repository.update_fields(
-                actor.id, UpdateUserDto(name=data.name, password_hash=password_hash)
+                actor.id, UpdateUserDto(name=name, password_hash=password_hash)
             )
             if password_hash is not None:
                 # A password change is a signal the account may have been

@@ -31,4 +31,4 @@ class ReferralReward(BaseSql, TimestampMixin):
     # PaymentOrder.idempotency_key of the payment that earned this reward
     payment_key: Mapped[str] = mapped_column(String(36))
     type: Mapped[ReferralRewardType]
-    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 0))

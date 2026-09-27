@@ -1,4 +1,6 @@
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from typing import Optional
+
+from sqlalchemy import ForeignKey, LargeBinary, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
@@ -31,3 +33,9 @@ class EmojiPackItem(BaseSql, TimestampMixin):
     # picker renders, and what a button stores when the admin picks a standard
     # emoji instead of a premium one.
     fallback_emoji: Mapped[str] = mapped_column(String(16))
+    # Static .webp Telegram renders for this emoji -- the only form of it a
+    # browser can draw. Deferred: a pack listing has no use for the bytes.
+    thumbnail: Mapped[Optional[bytes]] = mapped_column(LargeBinary(), deferred=True)
+    # The animation itself: gzipped lottie (.tgs) or .webm, stored verbatim.
+    animation: Mapped[Optional[bytes]] = mapped_column(LargeBinary(), deferred=True)
+    animation_kind: Mapped[Optional[str]] = mapped_column(String(8))

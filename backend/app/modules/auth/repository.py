@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Final, Optional, cast
 
 from sqlalchemy import ColumnElement, CursorResult, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user_session import UserSession
+from app.core.utils.time import datetime_now
 from app.modules.auth.dto import CreateSessionDto, SessionDto
 
 _ROTATION_GRACE_SECONDS: Final[int] = 30
@@ -18,11 +19,11 @@ class SessionRepository:
         return SessionDto.model_validate(row, from_attributes=True)
 
     def _active_clause(self) -> tuple[ColumnElement[bool], ColumnElement[bool]]:
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         return (UserSession.revoked_at.is_(None), UserSession.expires_at > now)
 
     async def create(self, data: CreateSessionDto) -> SessionDto:
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         row = UserSession(
             user_id=data.user_id,
             refresh_token_hash=data.refresh_token_hash,
@@ -48,7 +49,7 @@ class SessionRepository:
         return self._to_dto(row) if row else None
 
     async def get_by_previous_hash_in_grace(self, refresh_token_hash: str) -> Optional[SessionDto]:
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         stmt = select(UserSession).where(
             UserSession.previous_refresh_token_hash == refresh_token_hash,
             UserSession.previous_hash_grace_until.is_not(None),
@@ -69,7 +70,7 @@ class SessionRepository:
         # already elapsed" (theft) from "this hash was never issued at all"
         # (plain invalid token) -- get_by_current_hash/get_by_previous_hash_in_grace
         # intentionally can't tell these apart, since both simply fail to match.
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         stmt = select(UserSession).where(
             UserSession.previous_refresh_token_hash == refresh_token_hash,
             UserSession.previous_hash_grace_until.is_not(None),
@@ -94,7 +95,7 @@ class SessionRepository:
         stmt = select(UserSession).where(UserSession.id == session_id).with_for_update()
         row = await self.session.scalar(stmt)
         assert row is not None
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         if extend_grace:
             row.previous_refresh_token_hash = row.refresh_token_hash
             row.previous_hash_grace_until = now + timedelta(seconds=_ROTATION_GRACE_SECONDS)
@@ -107,7 +108,7 @@ class SessionRepository:
     async def revoke_by_id(self, session_id: int) -> None:
         row = await self.session.get(UserSession, session_id)
         if row is not None:
-            row.revoked_at = datetime.now(timezone.utc)
+            row.revoked_at = datetime_now()
             await self.session.flush()
 
     async def revoke_active_by_fingerprint(
@@ -116,7 +117,7 @@ class SessionRepository:
         # Matches Telegram-style "logging in again from the same device
         # replaces the old session" -- login has no device id to key off of,
         # so ip_address + user_agent is the closest available fingerprint.
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         user_agent_clause = (
             UserSession.user_agent.is_(None)
             if user_agent is None
@@ -136,7 +137,7 @@ class SessionRepository:
         await self.session.flush()
 
     async def revoke_all_by_user(self, user_id: int) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime_now()
         stmt = (
             update(UserSession)
             .where(UserSession.user_id == user_id, *self._active_clause())

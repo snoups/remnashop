@@ -13,6 +13,8 @@ from app.core.utils.time import datetime_now
 from app.modules.blacklist.dto import (
     AddBlacklistSourceDto,
     BlacklistDto,
+    BlacklistOriginDto,
+    BlacklistOriginsDto,
     BlacklistSourceDto,
     ParsedSourceList,
 )
@@ -177,3 +179,26 @@ class BlacklistRepository:
             ids.update(row.blocked_telegram_ids)
             emails.update(row.blocked_emails)
         return ids, emails
+
+    async def identity_origins(self) -> BlacklistOriginsDto:
+        origins = BlacklistOriginsDto()
+        manual = await self.session.get(Blacklist, _SINGLETON_ID)
+        lists: list[tuple[BlacklistOriginDto, list[int], list[str]]] = []
+        if manual:
+            lists.append((BlacklistOriginDto(), manual.blocked_telegram_ids, manual.blocked_emails))
+        rows = (
+            await self.session.execute(
+                select(BlacklistSource)
+                .where(BlacklistSource.enabled.is_(True))
+                .order_by(BlacklistSource.id)
+            )
+        ).scalars()
+        for row in rows:
+            origin = BlacklistOriginDto(source_id=row.id, source_name=row.name or row.url)
+            lists.append((origin, row.blocked_telegram_ids, row.blocked_emails))
+        for origin, telegram_ids, emails in lists:
+            for telegram_id in telegram_ids:
+                origins.telegram_ids.setdefault(telegram_id, []).append(origin)
+            for email in emails:
+                origins.emails.setdefault(email, []).append(origin)
+        return origins

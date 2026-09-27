@@ -39,3 +39,11 @@ class BackupRunPageResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class BackupStatsResponse(BaseModel):
+    completed_count: int
+    failed_count: int
+    total_size_bytes: int
+    last_database_backup: Optional[BackupRunResponse] = None
+    next_run_at: Optional[datetime] = None

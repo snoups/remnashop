@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from dishka import FromDishka
@@ -5,12 +6,17 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.enums import PaymentOrderStatus
+from app.core.enums import PaymentGatewayType, PaymentOrderStatus, PurchaseType
 from app.core.exceptions import NotFoundError
-from app.modules.payments.api.schemas import PaymentOrderPageResponse, PaymentOrderResponse
-from app.modules.payments.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaymentOrderDto
+from app.modules.payments.api.schemas import (
+    PaymentOrderPageResponse,
+    PaymentOrderResponse,
+    PaymentOrderUserResponse,
+)
+from app.modules.payments.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaymentOrderWithUserDto
 from app.modules.payments.usecases import (
     GetPaymentOrderUseCase,
+    ListPaymentOrderGatewaysUseCase,
     ListPaymentOrdersInput,
     ListPaymentOrdersUseCase,
 )
@@ -19,10 +25,19 @@ from app.modules.users import UserDto
 router = APIRouter(prefix="/payments/orders", tags=["payments"])
 
 
-def _to_response(order: PaymentOrderDto) -> PaymentOrderResponse:
+def _to_response(item: PaymentOrderWithUserDto) -> PaymentOrderResponse:
+    order, user = item.order, item.user
     return PaymentOrderResponse(
         id=order.id,
         user_id=order.user_id,
+        user=PaymentOrderUserResponse(
+            name=user.name,
+            username=user.username,
+            telegram_id=user.telegram_id,
+            email=user.email,
+        )
+        if user is not None
+        else None,
         plan_id=order.plan_id,
         plan_snapshot=order.plan_snapshot.to_json(),
         duration_days=order.duration_days,
@@ -50,13 +65,36 @@ async def list_payment_orders(
     use_case: FromDishka[ListPaymentOrdersUseCase],
     actor: UserDto = Depends(require_admin),
     status_filter: Optional[PaymentOrderStatus] = Query(None, alias="status"),
+    gateway_type: Optional[PaymentGatewayType] = None,
+    purchase_type: Optional[PurchaseType] = None,
+    created_from: Optional[datetime] = None,
+    search: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> PaymentOrderPageResponse:
-    orders, total = await use_case(
-        actor, ListPaymentOrdersInput(status=status_filter, page=page, page_size=page_size)
+    items, total = await use_case(
+        actor,
+        ListPaymentOrdersInput(
+            status=status_filter,
+            gateway_type=gateway_type,
+            purchase_type=purchase_type,
+            created_from=created_from,
+            search=search,
+            page=page,
+            page_size=page_size,
+        ),
     )
-    return PaymentOrderPageResponse(items=[_to_response(order) for order in orders], total=total)
+    return PaymentOrderPageResponse(items=[_to_response(item) for item in items], total=total)
+
+
+# declared before /{order_id} so "gateways" isn't parsed as an order id
+@router.get("/gateways", response_model=list[PaymentGatewayType])
+@inject
+async def list_payment_order_gateways(
+    use_case: FromDishka[ListPaymentOrderGatewaysUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> list[PaymentGatewayType]:
+    return await use_case(actor, None)
 
 
 @router.get("/{order_id}", response_model=PaymentOrderResponse)
@@ -67,7 +105,7 @@ async def get_payment_order(
     actor: UserDto = Depends(require_admin),
 ) -> PaymentOrderResponse:
     try:
-        order = await use_case(actor, order_id)
+        item = await use_case(actor, order_id)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    return _to_response(order)
+    return _to_response(item)

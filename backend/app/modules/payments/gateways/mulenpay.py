@@ -24,6 +24,7 @@ _PAID_STATUS_CODE: Final[int] = 3
 _PAID_CALLBACK_STATUS: Final[str] = "success"
 
 
+# Docs: https://docs.mulenpay.com/
 class MulenPayGateway(PaymentGateway):
     currency = Currency.RUB
     API_BASE: ClassVar[str] = "https://mulenpay.ru/api"
@@ -43,6 +44,7 @@ class MulenPayGateway(PaymentGateway):
             "shopId": shop_id,
             "description": f"Order #{order.id}",
             "sign": self._sign(currency, amount, shop_id),
+            "website_url": self._return_url,
             "items": [
                 {
                     "description": f"Order #{order.id}",
@@ -54,6 +56,9 @@ class MulenPayGateway(PaymentGateway):
                 }
             ],
         }
+        if order.customer_email:
+            # Without it the receipt goes to the shop owner's email.
+            payload["client"] = order.customer_email
         response = await http_client.post(
             f"{self.API_BASE}/v2/payments", json=payload, headers=self._headers()
         )

@@ -1,86 +1,86 @@
-import { Filter, Pencil, X } from "lucide-react";
+import { Check, Copy, Lock, Ticket, Trash2, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Promocode, type PromocodeAvailability, updatePromocode } from "@entities/promocodes/api";
+import type { AddOnListItem } from "@entities/addons/api";
+import type { Plan } from "@entities/plans/api";
+import { type Promocode, updatePromocode } from "@entities/promocodes/api";
+import {
+  describeReward,
+  getPromocodeStatus,
+  limitsDraftOf,
+  limitsToPayload,
+  PROMOCODE_STATUS_BADGE_CLASSNAME,
+  REWARD_TYPE_ICON,
+} from "@entities/promocodes/display";
+import {
+  PromocodeLimitsFields,
+  PromocodeSwitchRow,
+  promocodeSectionClassName,
+  promocodeSectionTitleClassName,
+} from "@entities/promocodes/PromocodeLimitsFields";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
-import { parseOptionalInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
-import { DatePickerField } from "@shared/ui/DatePickerField";
 import { Modal, useModalClose } from "@shared/ui/Modal";
-import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Switch } from "@shared/ui/Switch";
 
-const AVAILABILITIES: PromocodeAvailability[] = ["ALL", "NEW", "EXISTING", "INVITED", "ALLOWED"];
-
-const fieldClassName =
-  "rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
-
-function parseLines(value: string): string[] {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-}
-
-function toDateInput(iso: string | null): string {
-  return iso ? iso.slice(0, 10) : "";
-}
+const COPIED_RESET_MS = 1500;
 
 interface PromocodeEditDialogProps {
   promocode: Promocode;
+  addons: AddOnListItem[];
+  plans: Plan[];
+  /** omitted when the actor can't delete; the page owns the confirmation */
+  onDelete?: () => void;
   onClose: () => void;
   onSaved: (promocode: Promocode) => void;
 }
 
-export function PromocodeEditDialog({ promocode, onClose, onSaved }: PromocodeEditDialogProps) {
+export function PromocodeEditDialog({ onClose, ...props }: PromocodeEditDialogProps) {
   return (
-    <Modal onClose={onClose} size="sm">
-      <PromocodeEditDialogBody promocode={promocode} onSaved={onSaved} />
+    <Modal onClose={onClose} size="lg" scrollable>
+      <PromocodeEditDialogBody {...props} />
     </Modal>
   );
 }
 
 function PromocodeEditDialogBody({
   promocode,
+  addons,
+  plans,
+  onDelete,
   onSaved,
-}: Pick<PromocodeEditDialogProps, "promocode" | "onSaved">) {
+}: Omit<PromocodeEditDialogProps, "onClose">) {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
   const close = useModalClose();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [isActive, setIsActive] = useState(promocode.is_active);
-  const [availability, setAvailability] = useState<PromocodeAvailability>(promocode.availability);
-  const [allowedUserIds, setAllowedUserIds] = useState(promocode.allowed_user_ids.join("\n"));
-  const [expiresAt, setExpiresAt] = useState(toDateInput(promocode.expires_at));
-  const [maxActivations, setMaxActivations] = useState(
-    promocode.max_activations !== null ? String(promocode.max_activations) : "",
-  );
-  const [isReusable, setIsReusable] = useState(promocode.is_reusable);
+  const [limits, setLimits] = useState(() => limitsDraftOf(promocode));
+
+  const status = getPromocodeStatus(promocode);
+  const RewardIcon = REWARD_TYPE_ICON[promocode.reward_type];
+
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(promocode.code).catch(() => {});
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), COPIED_RESET_MS);
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    const parsedMaxActivations = parseOptionalInt(maxActivations, 1);
-    if (parsedMaxActivations === undefined) {
+    const limitsPayload = limitsToPayload(limits);
+    if (limitsPayload === undefined) {
       toast.error(t("errors.invalidNumber"));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const updated = await updatePromocode(promocode.id, {
-        is_active: isActive,
-        availability,
-        allowed_user_ids: parseLines(allowedUserIds)
-          .map((id) => Number(id))
-          .filter((id) => Number.isFinite(id)),
-        expires_at: expiresAt ? `${expiresAt}T23:59:59.000Z` : null,
-        max_activations: parsedMaxActivations,
-        is_reusable: isReusable,
-      });
+      const updated = await updatePromocode(promocode.id, { is_active: isActive, ...limitsPayload });
       toast.success(t("promocodes.edit.saved"));
       onSaved(updated);
       close();
@@ -93,13 +93,30 @@ function PromocodeEditDialogBody({
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Pencil className="size-4" />
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div
+            className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
+              status === "ACTIVE" ? "bg-primary/10 text-primary" : "bg-white/[0.06] text-muted-foreground"
+            }`}
+          >
+            <Ticket className="size-4" />
           </div>
-          <span className="truncate font-mono">{promocode.code}</span>
-        </h2>
+          <h2 className="truncate font-mono text-base font-bold text-foreground">{promocode.code}</h2>
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label={t("promocodes.copyAria", { code: promocode.code })}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+          >
+            {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+          </button>
+          <span
+            className={`shrink-0 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide ${PROMOCODE_STATUS_BADGE_CLASSNAME[status]}`}
+          >
+            {t(`promocodes.status.${status}`)}
+          </span>
+        </div>
         <button
           type="button"
           onClick={close}
@@ -110,76 +127,55 @@ function PromocodeEditDialogBody({
         </button>
       </div>
 
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4 px-5 pb-5 pt-4">
-        <label className="flex items-center gap-2.5 text-sm font-medium text-foreground/80">
-          <Switch checked={isActive} onChange={setIsActive} ariaLabel={t("promocodes.edit.activeLabel")} />
-          {t("promocodes.edit.activeLabel")}
-        </label>
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+          <section className={promocodeSectionClassName}>
+            <h3 className={promocodeSectionTitleClassName}>{t("promocodes.sections.reward")}</h3>
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <RewardIcon className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[28px] font-bold leading-none tracking-tight text-foreground">
+                  {describeReward(promocode, addons, plans, t)}
+                </p>
+                <p className="mt-1 text-[12.5px] text-muted-foreground">
+                  {t(`promocodes.rewardType.${promocode.reward_type}`)}
+                </p>
+              </div>
+              <span className="flex shrink-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                <Lock className="size-3" />
+                {t("promocodes.edit.rewardLocked")}
+              </span>
+            </div>
+          </section>
 
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-foreground/80">{t("promocodes.edit.availabilityLabel")}</span>
-          <SelectDropdown
-            id="promo-edit-availability"
-            value={availability}
-            onChange={(value) => setAvailability(value as PromocodeAvailability)}
-            icon={Filter}
-            placeholder={t(`promocodes.availability.${availability}`)}
-            options={AVAILABILITIES.map((value) => ({ value, label: t(`promocodes.availability.${value}`) }))}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="promo-edit-allowed-users" className="text-sm font-medium text-foreground/80">
-            {t("promocodes.edit.allowedUserIdsLabel")}
-          </label>
-          <textarea
-            id="promo-edit-allowed-users"
-            value={allowedUserIds}
-            onChange={(event) => setAllowedUserIds(event.target.value)}
-            rows={3}
-            className={`${fieldClassName} resize-none font-mono`}
-          />
-          <span className="text-[11.5px] text-muted-foreground">{t("promocodes.edit.allowedUserIdsHint")}</span>
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex flex-1 flex-col gap-1">
-            <span className="text-sm font-medium text-foreground/80">{t("promocodes.edit.expiresLabel")}</span>
-            <DatePickerField
-              id="promo-edit-expires-at"
-              value={expiresAt}
-              onChange={setExpiresAt}
-              placeholder={t("promocodes.edit.expiresPlaceholder")}
-              clearAriaLabel={t("promocodes.edit.clearDate")}
+          <PromocodeLimitsFields idPrefix="promo-edit" value={limits} onChange={setLimits}>
+            <PromocodeSwitchRow
+              label={t("promocodes.edit.activeLabel")}
+              hint={t("promocodes.edit.activeHint")}
+              checked={isActive}
+              onChange={setIsActive}
             />
-          </div>
-          <div className="flex flex-1 flex-col gap-1">
-            <label htmlFor="promo-edit-max-activations" className="text-sm font-medium text-foreground/80">
-              {t("promocodes.edit.maxActivationsLabel")}
-            </label>
-            <input
-              id="promo-edit-max-activations"
-              type="number"
-              min={1}
-              step="1"
-              value={maxActivations}
-              onChange={(event) => setMaxActivations(event.target.value)}
-              placeholder={t("promocodes.edit.maxActivationsHint")}
-              className={fieldClassName}
-            />
-          </div>
+          </PromocodeLimitsFields>
         </div>
 
-        <label className="flex items-center gap-2.5 text-sm font-medium text-foreground/80">
-          <Switch checked={isReusable} onChange={setIsReusable} ariaLabel={t("promocodes.edit.reusableLabel")} />
-          {t("promocodes.edit.reusableLabel")}
-        </label>
-
-        <div className="flex gap-2">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-3.5">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="flex items-center gap-1.5 rounded-full bg-error/10 px-3.5 py-2 text-sm font-medium text-error transition-colors hover:bg-error/20"
+            >
+              <Trash2 className="size-3.5" />
+              {t("promocodes.delete.confirmButton")}
+            </button>
+          )}
+          <span className="flex-1" />
           <button
             type="button"
             onClick={close}
-            className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
           >
             {t("promocodes.edit.cancel")}
           </button>
@@ -187,7 +183,7 @@ function PromocodeEditDialogBody({
             type="submit"
             disabled={isSubmitting}
             {...bounceTap(bounceStrength)}
-            className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? t("promocodes.edit.saving") : t("promocodes.edit.save")}
           </motion.button>

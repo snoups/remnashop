@@ -17,7 +17,6 @@ import {
   BlacklistPage,
   BotSettingsPage,
   DashboardPage,
-  DialogsPage,
   EventLogPage,
   GatewaysSettingsPage,
   GeneralSettingsPage,
@@ -29,6 +28,8 @@ import {
   PricingPage,
   ProfilePage,
   PromocodesPage,
+  ReferralSettingsPage,
+  ReferralsListPage,
   ReferralsPage,
   SettingsPage,
   SubscriptionsPage,
@@ -57,7 +58,6 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPage /> },
-      { path: "dialogs", element: <DialogsPage /> },
       {
         path: "settings",
         element: <SettingsPage />,
@@ -79,7 +79,14 @@ export const router = createBrowserRouter([
       { path: "payments", element: <PaymentsPage /> },
       { path: "plans", element: <PlansPage /> },
       { path: "promocodes", element: <PromocodesPage /> },
-      { path: "referrals", element: <ReferralsPage /> },
+      {
+        path: "referrals",
+        element: <ReferralsPage />,
+        children: [
+          { index: true, element: <ReferralsListPage /> },
+          { path: "settings", element: <ReferralSettingsPage /> },
+        ],
+      },
       { path: "advertising", element: <AdvertisingPage /> },
       {
         path: "analytics",

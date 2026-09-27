@@ -26,6 +26,7 @@ from app.modules.backups.usecases import (
     DownloadBackupRunUseCase,
     GetBackupRunUseCase,
     GetBackupSettingsUseCase,
+    GetBackupStatsUseCase,
     ListBackupRunsUseCase,
     UpdateBackupSettingsUseCase,
 )
@@ -62,6 +63,7 @@ class _BackupsProvider(Provider):
 
     backup_repository = provide(BackupRepository)
     get_backup_settings_use_case = provide(GetBackupSettingsUseCase)
+    get_backup_stats_use_case = provide(GetBackupStatsUseCase)
     update_backup_settings_use_case = provide(UpdateBackupSettingsUseCase)
     create_backup_run_use_case = provide(CreateBackupRunUseCase)
     list_backup_runs_use_case = provide(ListBackupRunsUseCase)
@@ -288,3 +290,17 @@ async def test_owner_can_delete_run(
 
     response = await client.get(f"{API_V1}/backups/runs/{run_id}", headers=owner_headers)
     assert response.status_code == 404
+
+
+async def test_owner_can_get_stats(
+    client: httpx.AsyncClient, owner_headers: dict[str, str]
+) -> None:
+    await client.post(f"{API_V1}/backups/runs", json={"kind": "DATABASE"}, headers=owner_headers)
+    await client.put(f"{API_V1}/backups/settings", json={"enabled": True}, headers=owner_headers)
+
+    response = await client.get(f"{API_V1}/backups/stats", headers=owner_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["completed_count"] == 0  # the run is still PENDING
+    assert body["last_database_backup"] is None
+    assert body["next_run_at"] is not None

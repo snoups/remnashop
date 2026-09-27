@@ -3,7 +3,7 @@ from typing import Any, Final, Optional
 
 import orjson
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -25,12 +25,19 @@ from app.modules.payments.gateways.common import (
 
 _API_BASE: Final[str] = "https://rollypay.io/api/v1"
 _PAID_STATUS: Final[str] = "paid"
+_REPORTED_STATUSES: Final[dict[str, PaymentOrderStatus]] = {
+    "canceled": PaymentOrderStatus.CANCELED,
+    "expired": PaymentOrderStatus.CANCELED,
+    "refunded": PaymentOrderStatus.REFUNDED,
+    "chargeback": PaymentOrderStatus.REFUNDED,
+}
 
 
 def _is_paid(data: dict[str, Any]) -> bool:
     return data.get("status") == _PAID_STATUS and data.get("test") is not True
 
 
+# Docs: https://docs.rollypay.io/
 class RollyPayGateway(PaymentGateway):
     currency = Currency.RUB
 
@@ -82,6 +89,7 @@ class RollyPayGateway(PaymentGateway):
             reference=str(data.get("order_id") or ""),
             claims_paid=_is_paid(data),
             provider_payment_id=str(payment_id),
+            reported_status=_REPORTED_STATUSES.get(str(data.get("status"))),
         )
 
     async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:

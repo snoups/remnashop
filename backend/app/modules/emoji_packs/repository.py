@@ -23,6 +23,7 @@ class EmojiPackRepository:
                 EmojiPackItemDto(
                     custom_emoji_id=item.custom_emoji_id,
                     fallback_emoji=item.fallback_emoji,
+                    animation_kind=item.animation_kind,
                 )
                 for item in items
             ],
@@ -69,12 +70,32 @@ class EmojiPackRepository:
                     position=position,
                     custom_emoji_id=item.custom_emoji_id,
                     fallback_emoji=item.fallback_emoji,
+                    thumbnail=item.thumbnail,
+                    animation=item.animation,
+                    animation_kind=item.animation_kind,
                 )
             )
         await self.session.flush()
         # The bulk delete above expires the pack row itself, timestamps included.
         await self.session.refresh(row)
         return self._to_dto(row, await self._items_of(row.id))
+
+    async def get_thumbnail(self, custom_emoji_id: str) -> Optional[bytes]:
+        return await self.session.scalar(
+            select(EmojiPackItem.thumbnail).where(EmojiPackItem.custom_emoji_id == custom_emoji_id)
+        )
+
+    async def get_animation(self, custom_emoji_id: str) -> Optional[tuple[bytes, str]]:
+        row = (
+            await self.session.execute(
+                select(EmojiPackItem.animation, EmojiPackItem.animation_kind).where(
+                    EmojiPackItem.custom_emoji_id == custom_emoji_id
+                )
+            )
+        ).first()
+        if row is None or row.animation is None or row.animation_kind is None:
+            return None
+        return row.animation, row.animation_kind
 
     async def delete(self, set_name: str) -> bool:
         row = await self.session.scalar(select(EmojiPack).where(EmojiPack.set_name == set_name))

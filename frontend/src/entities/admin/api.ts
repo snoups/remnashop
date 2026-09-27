@@ -11,9 +11,14 @@ export interface Admin {
   email: string | null;
   language: string;
   is_blocked: boolean;
+  personal_discount: number;
+  purchase_discount: number;
+  points: string;
+  is_trial_available: boolean;
   created_at: string | null;
   permission_grants: Permission[];
   permission_revokes: Permission[];
+  role_permissions: Permission[];
   effective_permissions: Permission[];
 }
 

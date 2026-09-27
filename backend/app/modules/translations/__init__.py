@@ -13,7 +13,10 @@ from app.modules.translations.serializer import (
 from app.modules.translations.publish import publish_translation_change
 from app.modules.translations.di import get_translations_providers
 from app.modules.translations.usecases import (
+    ExportTranslationsUseCase,
+    ImportTranslationsUseCase,
     ListTranslationsUseCase,
+    ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
     UpdateTranslationUseCase,
 )
@@ -21,7 +24,10 @@ from app.modules.translations.usecases.reset_translation import ResetTranslation
 from app.modules.translations.usecases.update_translation import UpdateTranslationInput
 
 __all__ = [
+    "ExportTranslationsUseCase",
+    "ImportTranslationsUseCase",
     "ListTranslationsUseCase",
+    "ResetAllTranslationsUseCase",
     "ResetTranslationInput",
     "ResetTranslationUseCase",
     "TranslationEntryDto",

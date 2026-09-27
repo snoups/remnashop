@@ -133,9 +133,10 @@ def test_admin_does_not_have_manage_api_tokens_by_default() -> None:
     assert not PermissionPolicy.has_permission(ADMIN, Permission.API_TOKENS_MANAGE)
 
 
-def test_manage_own_account_is_not_token_grantable() -> None:
+def test_manage_own_account_is_not_grantable() -> None:
+    # every privileged role has it by default, and revoking it breaks GET /users/me
     assert Permission.OWN_ACCOUNT_MANAGE not in TOKEN_GRANTABLE_PERMISSIONS
-    assert Permission.OWN_ACCOUNT_MANAGE in GRANTABLE_PERMISSIONS  # still grantable to real admins
+    assert Permission.OWN_ACCOUNT_MANAGE not in GRANTABLE_PERMISSIONS
 
 
 def test_every_catalog_permission_has_metadata() -> None:
@@ -147,6 +148,7 @@ def test_every_catalog_permission_has_metadata() -> None:
         Permission.PRICING_RATES_MANAGE,
         Permission.PRICING_ANCHOR_MANAGE,
         Permission.USERS_UNBLOCK_ALL,
+        Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
     }
     assert set(Permission) - PERMISSION_METADATA.keys() == non_catalog
 
@@ -154,6 +156,8 @@ def test_every_catalog_permission_has_metadata() -> None:
 def test_role_permissions_admin_matches_expected_defaults() -> None:
     assert ROLE_PERMISSIONS[Role.ADMIN] == {
         Permission.BOT_SETTINGS_VIEW,
+        Permission.BOT_STATUS_VIEW,
+        Permission.BOT_LOGS_VIEW,
         Permission.BOT_COMMANDS_VIEW,
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_COMMANDS_MANAGE,
@@ -176,6 +180,9 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.TRANSLATIONS_VIEW,
         Permission.TRANSLATIONS_UPDATE,
         Permission.TRANSLATIONS_RESET,
+        Permission.TRANSLATIONS_RESET_ALL,
+        Permission.TRANSLATIONS_EXPORT,
+        Permission.TRANSLATIONS_IMPORT,
         Permission.DIALOGS_WINDOWS_VIEW,
         Permission.DIALOGS_CATALOG_VIEW,
         Permission.DIALOGS_EXPORT,
@@ -221,7 +228,9 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.USERS_DISCOUNT_MANAGE,
         Permission.PAYMENTS_VIEW,
         Permission.PAYMENTS_ORDER_VIEW,
+        Permission.PAYMENTS_GATEWAYS_VIEW,
         Permission.REFERRALS_VIEW,
+        Permission.REFERRALS_LIST,
         Permission.REFERRALS_SETTINGS_VIEW,
         Permission.REFERRALS_SETTINGS_MANAGE,
         Permission.REFERRALS_POINTS_MANAGE,
@@ -343,6 +352,7 @@ def test_subscriptions_permissions_granted_to_admin_by_default() -> None:
 def test_admin_role_has_all_referrals_permissions() -> None:
     admin_perms = ROLE_PERMISSIONS[Role.ADMIN]
     assert Permission.REFERRALS_VIEW in admin_perms
+    assert Permission.REFERRALS_LIST in admin_perms
     assert Permission.REFERRALS_SETTINGS_VIEW in admin_perms
     assert Permission.REFERRALS_SETTINGS_MANAGE in admin_perms
     assert Permission.REFERRALS_POINTS_MANAGE in admin_perms
@@ -357,6 +367,7 @@ def test_backups_permissions_are_grantable_but_not_default_admin() -> None:
         Permission.BACKUPS_RUN_CREATE,
         Permission.BACKUPS_RUN_DOWNLOAD,
         Permission.BACKUPS_RUN_DELETE,
+        Permission.BACKUPS_STATS_VIEW,
     )
     admin_default = ROLE_PERMISSIONS[Role.ADMIN]
     owner_default = ROLE_PERMISSIONS[Role.OWNER]
@@ -376,10 +387,12 @@ def test_blacklist_permissions_are_owner_only_by_default() -> None:
         Permission.BLACKLIST_SOURCE_REMOVE,
         Permission.BLACKLIST_SOURCE_TOGGLE,
         Permission.BLACKLIST_SYNC,
+        Permission.BLACKLIST_MATCHES_VIEW,
         Permission.USERS_BLOCK,
         Permission.USERS_UNBLOCK,
         Permission.USERS_BULK_BLOCK,
         Permission.USERS_UNBLOCK_ALL,
+        Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
     ):
         assert perm in ROLE_PERMISSIONS[Role.OWNER]
         assert perm not in ROLE_PERMISSIONS[Role.ADMIN]

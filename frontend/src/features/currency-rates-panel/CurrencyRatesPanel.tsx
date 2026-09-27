@@ -1,4 +1,4 @@
-import { Coins, Filter } from "lucide-react";
+import { Anchor, Coins, Filter, Gauge, Info } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,10 +19,13 @@ import { getErrorMessage } from "@shared/api/http";
 import { parseOptionalInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { FieldHint } from "@shared/ui/FieldHint";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
-const CURRENCIES: Currency[] = ["USD", "XTR", "RUB"];
+const CURRENCIES: Currency[] = ["USD", "RUB", "XTR"];
+const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
 const ROUNDING_MODES: RoundingMode[] = ["INTEGER", "DECIMAL_2"];
+const CURRENCY_SYMBOLS: Record<Currency, string> = { USD: "$", XTR: "★", RUB: "₽" };
 
 const inputClassName =
   "rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50";
@@ -39,20 +42,32 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
     userState.kind === "ready" && userState.data.effective_permissions.includes("PRICING_RATES_MANAGE");
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Coins className="size-4" />
+    <>
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+            <Coins className="size-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-foreground">{t("pricing.rates.title")}</h2>
+            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.rates.description")}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("pricing.rates.title")}</h2>
-          <p className="text-[12.5px] text-muted-foreground">{t("pricing.rates.description")}</p>
-        </div>
-      </div>
 
-      {canManageRates && (
-        <>
-          <div className="mt-4 flex flex-col gap-3">
+        <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+
+        {canManageRates && (
+          <div className="mt-4 grid items-center gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground xl:col-span-2">
+              <Info className="size-3.5 shrink-0" aria-hidden />
+              {t("pricing.anchor.description")}
+            </p>
+            <AnchorSwitcher anchorCurrency={book.settings.anchor_currency} onChanged={onChanged} />
+          </div>
+        )}
+
+        {canManageRates && (
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {CURRENCIES.map((currency) => {
               const rate = book.rate_table.find((row) => row.currency === currency);
               if (!rate) return null;
@@ -66,17 +81,17 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
               );
             })}
           </div>
+        )}
 
-          <div className="my-4 border-t border-border" />
+      </div>
 
-          <AnchorSwitcher anchorCurrency={book.settings.anchor_currency} onChanged={onChanged} />
-        </>
-      )}
-
-      <div className="my-4 border-t border-border" />
-
-      <GlobalSettings pricePerDay={book.settings.price_per_day} pricePerGb={book.settings.price_per_gb} onChanged={onChanged} />
-    </div>
+      <GlobalSettings
+        anchorCurrency={book.settings.anchor_currency}
+        pricePerDay={book.settings.price_per_day}
+        pricePerGb={book.settings.price_per_gb}
+        onChanged={onChanged}
+      />
+    </>
   );
 }
 
@@ -84,7 +99,6 @@ interface RateRowState {
   rate: string;
   rounding_mode: RoundingMode;
   charm_ending: string;
-  min_amount: string;
 }
 
 function toRowState(rate: CurrencyRate): RateRowState {
@@ -92,7 +106,6 @@ function toRowState(rate: CurrencyRate): RateRowState {
     rate: rate.rate,
     rounding_mode: rate.rounding_mode,
     charm_ending: rate.charm_ending === null ? "" : String(rate.charm_ending),
-    min_amount: rate.min_amount,
   };
 }
 
@@ -112,6 +125,12 @@ function RateRow({
 
   useEffect(() => setForm(toRowState(rate)), [rate]);
 
+  const initial = toRowState(rate);
+  const isDirty =
+    form.rate !== initial.rate ||
+    form.rounding_mode !== initial.rounding_mode ||
+    form.charm_ending !== initial.charm_ending;
+
   // undefined means the charm-ending field holds something that isn't a
   // valid optional integer -- callers reject the submit instead of sending it.
   const buildBody = () => {
@@ -121,7 +140,7 @@ function RateRow({
       rate: form.rate,
       rounding_mode: form.rounding_mode,
       charm_ending: charmEnding,
-      min_amount: form.min_amount,
+      min_amount: rate.min_amount,
     };
   };
 
@@ -158,17 +177,25 @@ function RateRow({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-white/[0.02] p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-sm font-bold text-foreground">{rate.currency}</span>
+    <div
+      className={`flex flex-col gap-3.5 rounded-xl border p-3.5 transition-colors ${
+        isDirty ? "border-primary/35 bg-primary/[0.04]" : "border-border bg-white/[0.02]"
+      }`}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="flex size-[34px] items-center justify-center rounded-[10px] border border-glass-border bg-white/[0.05] text-base font-bold text-foreground">
+          {CURRENCY_SYMBOLS[rate.currency]}
+        </span>
+        <span className="text-[15px] font-bold tracking-wide text-foreground">{rate.currency}</span>
         {isAnchor && (
-          <span className="rounded-full border border-primary/40 bg-accent px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-primary">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-primary/40 bg-accent px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-primary">
+            <Anchor className="size-2.5" aria-hidden />
             {t("pricing.anchor.badge")}
           </span>
         )}
       </div>
-      <form onSubmit={(event) => void handleSubmit(event)} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+      <form onSubmit={(event) => void handleSubmit(event)} className="grid grid-cols-2 gap-3">
+        <label className="col-span-2 flex flex-col gap-1.5 text-[12px] text-muted-foreground">
           {t("pricing.rates.rateLabel")}
           <input
             type="number"
@@ -181,7 +208,7 @@ function RateRow({
             className={inputClassName}
           />
         </label>
-        <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+        <div className="col-span-2 flex flex-col gap-1.5 text-[12px] text-muted-foreground">
           <span>{t("pricing.rates.roundingModeLabel")}</span>
           <SelectDropdown
             value={form.rounding_mode}
@@ -194,8 +221,11 @@ function RateRow({
             }))}
           />
         </div>
-        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-          {t("pricing.rates.charmEndingLabel")}
+        <label className="col-span-2 flex flex-col gap-1.5 text-[12px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            {t("pricing.rates.charmEndingLabel")}
+            <FieldHint text={t("pricing.rates.charmEndingHint")} />
+          </span>
           <input
             type="number"
             step="1"
@@ -207,26 +237,15 @@ function RateRow({
             className={inputClassName}
           />
         </label>
-        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-          {t("pricing.rates.minAmountLabel")}
-          <input
-            type="number"
-            step="any"
-            min="0"
-            required
-            value={form.min_amount}
-            onChange={(event) => setForm((prev) => ({ ...prev, min_amount: event.target.value }))}
-            className={inputClassName}
-          />
-        </label>
-        <div className="col-span-2 sm:col-span-4">
+        <div className="col-span-2 flex items-center gap-2.5">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isDirty}
             className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? t("pricing.rates.saving") : t("pricing.rates.save")}
           </button>
+          {isDirty && <span className="text-xs text-warning">{t("pricing.rates.unsaved")}</span>}
         </div>
       </form>
 
@@ -254,13 +273,15 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
 
   useEffect(() => setSelected(anchorCurrency), [anchorCurrency]);
 
-  const handlePreview = async () => {
+  const handlePreview = async (currency: Currency) => {
+    setSelected(currency);
     setIsLoading(true);
     try {
-      const preview = await previewPricingChange({ anchor: selected });
+      const preview = await previewPricingChange({ anchor: currency });
       setDiff(preview);
     } catch (err) {
       toast.error(getErrorMessage(err, t("pricing.anchor.saveError")));
+      setSelected(anchorCurrency);
     } finally {
       setIsLoading(false);
     }
@@ -279,28 +300,27 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
   };
 
   return (
-    <div>
-      <h3 className="text-sm font-bold text-foreground">{t("pricing.anchor.title")}</h3>
-      <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.anchor.description")}</p>
-      <div className="mt-2.5 flex items-center gap-2">
-        <div className="w-40">
-          <SelectDropdown
-            value={selected}
-            onChange={(value) => setSelected(value as Currency)}
-            icon={Filter}
-            placeholder={selected}
-            options={CURRENCIES.map((currency) => ({ value: currency, label: currency }))}
-          />
-        </div>
+    <div role="group" aria-label={t("pricing.anchor.title")} className="flex w-full items-center gap-1 rounded-full border border-border bg-white/[0.03] p-[3px]">
+      <span className="flex items-center gap-1.5 pl-3 pr-2 text-xs text-muted-foreground">
+        <Anchor className="size-3.5" aria-hidden />
+        {t("pricing.anchor.title")}
+      </span>
+      {ANCHOR_CURRENCIES.map((currency) => (
         <button
+          key={currency}
           type="button"
-          disabled={selected === anchorCurrency || isLoading}
-          onClick={() => void handlePreview()}
-          className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={isLoading}
+          aria-pressed={currency === anchorCurrency}
+          onClick={() => currency !== anchorCurrency && void handlePreview(currency)}
+          className={`flex-1 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed ${
+            currency === anchorCurrency
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+          }`}
         >
-          {t("pricing.anchor.change")}
+          {currency}
         </button>
-      </div>
+      ))}
 
       {diff && (
         <ConfirmDialog
@@ -323,10 +343,12 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
 }
 
 function GlobalSettings({
+  anchorCurrency,
   pricePerDay,
   pricePerGb,
   onChanged,
 }: {
+  anchorCurrency: Currency;
   pricePerDay: string | null;
   pricePerGb: string | null;
   onChanged: () => void;
@@ -359,36 +381,58 @@ function GlobalSettings({
   };
 
   return (
-    <div>
-      <h3 className="text-sm font-bold text-foreground">{t("pricing.settings.title")}</h3>
-      <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.settings.description")}</p>
-      <form onSubmit={(event) => void handleSubmit(event)} className="mt-2.5 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-          {t("pricing.settings.pricePerDayLabel")}
-          <input
-            type="number"
-            step="any"
-            min="0"
-            value={perDay}
-            onChange={(event) => setPerDay(event.target.value)}
-            className={inputClassName}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-          {t("pricing.settings.pricePerGbLabel")}
-          <input
-            type="number"
-            step="any"
-            min="0"
-            value={perGb}
-            onChange={(event) => setPerGb(event.target.value)}
-            className={inputClassName}
-          />
-        </label>
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="flex items-center gap-2.5">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+          <Gauge className="size-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-foreground">{t("pricing.settings.title")}</h2>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.settings.description")}</p>
+        </div>
+      </div>
+
+      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+
+      <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5 text-[12px] text-muted-foreground">
+            {t("pricing.settings.pricePerDayLabel")}
+            <div className="relative">
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={perDay}
+                onChange={(event) => setPerDay(event.target.value)}
+                className={`${inputClassName} w-full pr-14`}
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {anchorCurrency}
+              </span>
+            </div>
+          </label>
+          <label className="flex flex-col gap-1.5 text-[12px] text-muted-foreground">
+            {t("pricing.settings.pricePerGbLabel")}
+            <div className="relative">
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={perGb}
+                onChange={(event) => setPerGb(event.target.value)}
+                className={`${inputClassName} w-full pr-14`}
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {anchorCurrency}
+              </span>
+            </div>
+          </label>
+        </div>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? t("pricing.settings.saving") : t("pricing.settings.save")}
         </button>

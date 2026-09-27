@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useEffect, useRef } from "react";
 import type { ComponentType, MouseEvent } from "react";
 import { NavLink } from "react-router-dom";
 
@@ -62,9 +63,22 @@ function Tab({ to, end, icon, label, isActive, bounceStrength }: TabBarItem & { 
 
 export function TabBar({ items, bounceStrength }: { items: TabBarItem[]; bounceStrength: number }) {
   const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
+  const navRef = useRef<HTMLElement>(null);
+  const activeKey = items.find((item) => item.isActive)?.key;
+
+  // Deep link to a tab past the visible edge: bring it into view. Scrolls the
+  // tab strip only, scrollIntoView would also move the page.
+  useEffect(() => {
+    const active = navRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    const container = active?.parentElement;
+    if (!container || !active) return;
+    container.scrollTo({
+      left: active.offsetLeft - (container.clientWidth - active.offsetWidth) / 2,
+    });
+  }, [activeKey]);
 
   return (
-    <nav className="inline-flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
+    <nav ref={navRef} className="inline-flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
       {/* No padding/margin of its own -- stays inset by the pill's `p-1`
           evenly on all four sides, same as before scrolling was added, so
           this box is a smaller *concentric* capsule and its `rounded-full`

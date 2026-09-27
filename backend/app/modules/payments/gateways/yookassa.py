@@ -2,7 +2,7 @@ from typing import Final, Optional
 
 import orjson
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -19,6 +19,11 @@ from app.modules.payments.gateways.common import PROVIDER_API_TIMEOUT_S, parse_j
 _API_BASE: Final[str] = "https://api.yookassa.ru/v3"
 _PAID_STATUS: Final[str] = "succeeded"
 _PAID_EVENT: Final[str] = "payment.succeeded"
+_REPORTED_EVENTS: Final[dict[str, PaymentOrderStatus]] = {
+    "payment.canceled": PaymentOrderStatus.CANCELED,
+    "refund.succeeded": PaymentOrderStatus.REFUNDED,
+}
+_REFUND_EVENT_PREFIX: Final[str] = "refund."
 
 
 def _build_receipt(order: PaymentOrderDto, settings: dict[str, str]) -> Optional[dict[str, object]]:
@@ -33,8 +38,13 @@ def _build_receipt(order: PaymentOrderDto, settings: dict[str, str]) -> Optional
     return {"customer": {"email": order.customer_email}, "items": [item]}
 
 
+# Docs: https://yookassa.ru/developers
 class YooKassaGateway(PaymentGateway):
     currency = Currency.RUB
+
+    @classmethod
+    def requires_customer_email(cls, settings: dict[str, str]) -> bool:
+        return bool(settings.get("vat_code"))
 
     def _auth(self) -> tuple[str, str]:
         return self._require("shop_id"), self._require("api_key")
@@ -70,12 +80,17 @@ class YooKassaGateway(PaymentGateway):
         obj = payload.get("object")
         if not isinstance(obj, dict):
             raise PaymentGatewayError("Malformed YooKassa webhook")
+        event = str(payload.get("event"))
         metadata = obj.get("metadata") or {}
-        payment_id = obj.get("id")
+        # a refund object carries its payment under payment_id; its own id is the refund's
+        payment_id = (
+            obj.get("payment_id") if event.startswith(_REFUND_EVENT_PREFIX) else obj.get("id")
+        )
         return WebhookSignal(
             reference=str(metadata.get("order_ref", "")),
-            claims_paid=payload.get("event") == _PAID_EVENT,
+            claims_paid=event == _PAID_EVENT,
             provider_payment_id=str(payment_id) if payment_id else None,
+            reported_status=_REPORTED_EVENTS.get(event),
         )
 
     async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:

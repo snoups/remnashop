@@ -28,6 +28,7 @@ _PAID_STATUS: Final[str] = "success"
 _MAX_EXPIRE_MINUTES: Final[int] = 7200
 
 
+# Docs: https://developer.lava.ru/
 class LavaGateway(PaymentGateway):
     currency = Currency.RUB
 

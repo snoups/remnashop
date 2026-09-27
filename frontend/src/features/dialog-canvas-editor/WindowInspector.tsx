@@ -1,5 +1,6 @@
 import { Image as ImageIcon, RotateCcw, Trash2, Upload } from "lucide-react";
-import { useRef, useState, type ChangeEvent } from "react";
+import { motion } from "motion/react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { deleteBanner, restoreDefaultBanner, uploadBanner } from "@entities/banners/api";
@@ -8,6 +9,8 @@ import { bannerMode, bannerNameForMode, resetWindow, updateWindow } from "@entit
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/Switch";
 
@@ -17,6 +20,8 @@ const MODES: BannerMode[] = ["none", "shared", "own"];
 
 interface WindowInspectorProps {
   window: DialogWindow;
+  /** What the tree calls this window: its key is a uuid for a custom one. */
+  label: string;
   /** The locale the preview is showing: a banner file belongs to one. */
   activeLocale: string | null;
   bannerUrl: string | null;
@@ -26,12 +31,14 @@ interface WindowInspectorProps {
 
 export function WindowInspector({
   window,
+  label,
   activeLocale,
   bannerUrl,
   onWindowUpdated,
   onBannerChanged,
 }: WindowInspectorProps) {
   const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
   const currentUserState = useCurrentUser();
   const permissions = currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
   const canUpdate = permissions.includes("DIALOGS_WINDOWS_UPDATE");
@@ -42,6 +49,11 @@ export function WindowInspector({
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [nameDraft, setNameDraft] = useState(window.name ?? "");
+
+  useEffect(() => {
+    setNameDraft(window.name ?? "");
+  }, [window.key, window.name]);
 
   const mode = bannerMode(window.banner_name);
 
@@ -53,6 +65,23 @@ export function WindowInspector({
       });
       onWindowUpdated(updated);
     } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    }
+  };
+
+  const handleNameCommit = async () => {
+    const next = nameDraft.trim();
+    if (!next) {
+      setNameDraft(window.name ?? "");
+      return;
+    }
+    if (next === window.name) return;
+    try {
+      const updated = await updateWindow(window.key, { name: next });
+      onWindowUpdated(updated);
+      toast.success(t("dialogs.inspector.saved"));
+    } catch (err) {
+      setNameDraft(window.name ?? "");
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
     }
   };
@@ -120,7 +149,49 @@ export function WindowInspector({
   };
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold text-foreground">{label}</span>
+          {window.kind === "seed" && (
+            <span className="shrink-0 rounded-full border border-border bg-white/[0.04] px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("dialogs.windowList.seedBadge")}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard?.writeText(window.key).catch(() => {});
+            toast.success(t("dialogs.inspector.keyCopied"));
+          }}
+          aria-label={t("dialogs.inspector.copyKey")}
+          className="block max-w-full truncate text-left font-mono text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {window.key}
+        </button>
+      </div>
+
+      {window.kind === "custom" && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-foreground/80">
+            {t("dialogs.inspector.nameLabel")}
+          </span>
+          <input
+            type="text"
+            value={nameDraft}
+            maxLength={128}
+            disabled={!canUpdate}
+            onChange={(event) => setNameDraft(event.target.value)}
+            onBlur={() => void handleNameCommit()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+            className="w-full rounded-lg border border-border bg-input/60 px-2.5 py-1.5 text-[13px] disabled:opacity-40"
+          />
+        </div>
+      )}
+
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[13px] font-medium text-foreground/80">
@@ -129,42 +200,38 @@ export function WindowInspector({
           <Switch
             checked={window.is_enabled}
             onChange={(value) => void handleEnabledChange(value)}
-            disabled={!canUpdate}
+            disabled={!canUpdate || window.kind === "seed"}
             ariaLabel={t("dialogs.inspector.enabledLabel")}
           />
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {t("dialogs.inspector.enabledHint")}
-        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <span className="text-[13px] font-medium text-foreground/80">
           {t("dialogs.inspector.bannerLabel")}
         </span>
-        <div className="flex gap-0.5 rounded-full bg-white/[0.05] p-0.5">
-          {MODES.map((item) => (
-            <button
-              key={item}
-              type="button"
-              disabled={!canUpdate}
-              onClick={() => void handleModeChange(item)}
-              className={`flex-1 cursor-pointer rounded-full px-1 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed ${
-                item === mode
-                  ? "bg-accent font-medium text-primary"
-                  : "text-foreground/40 hover:text-foreground/70"
-              }`}
-            >
-              {t(`dialogs.inspector.bannerMode.${item}`)}
-            </button>
-          ))}
-        </div>
+        <PillTabs
+          items={MODES.map((item) => ({
+            key: item,
+            label: t(`dialogs.inspector.bannerMode.${item}`),
+          }))}
+          activeKey={mode}
+          onSelect={(item) => void handleModeChange(item)}
+          disabled={!canUpdate}
+          compact
+        />
 
         {mode !== "none" && (
           <div className="flex flex-col gap-2 rounded-xl border border-border bg-input/60 p-2">
-            <div className="relative flex h-[72px] items-center justify-center overflow-hidden rounded-lg bg-white/[0.04]">
+            {/* With a banner the slot takes the picture's own ratio; empty, it
+                holds 16:9 so the box does not sit there squashed. */}
+            <div
+              className={`relative flex items-center justify-center overflow-hidden rounded-lg ${
+                bannerUrl ? "" : "aspect-video bg-white/[0.04]"
+              }`}
+            >
               {bannerUrl ? (
-                <img src={bannerUrl} alt="" className="size-full object-cover" />
+                <img src={bannerUrl} alt="" className="block w-full" />
               ) : (
                 <ImageIcon className="size-5 text-muted-foreground" />
               )}
@@ -190,7 +257,7 @@ export function WindowInspector({
                   className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11.5px] text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
                 >
                   <Upload className="size-3" />
-                  {t("dialogs.inspector.bannerReplace")}
+                  {t(bannerUrl ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}
                 </button>
               )}
               {canDeleteBanner && bannerUrl && (
@@ -199,46 +266,45 @@ export function WindowInspector({
                   disabled={isBusy}
                   onClick={() => void handleBannerDelete()}
                   aria-label={t("dialogs.inspector.bannerDelete")}
-                  className="flex size-6 cursor-pointer items-center justify-center rounded-full border border-error/20 bg-error/[0.08] text-error transition-colors hover:bg-error/15 disabled:opacity-40"
+                  className="ml-auto flex size-6 cursor-pointer items-center justify-center rounded-full border border-error/20 bg-error/[0.08] text-error transition-colors hover:bg-error/15 disabled:opacity-40"
                 >
                   <Trash2 className="size-3" />
+                </button>
+              )}
+              {mode === "shared" && canRestoreDefault && (
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => void handleRestoreDefault()}
+                  aria-label={t("dialogs.inspector.bannerRestoreDefault")}
+                  className={`flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:bg-white/[0.06] disabled:opacity-40 ${
+                    canDeleteBanner && bannerUrl ? "" : "ml-auto"
+                  }`}
+                >
+                  <RotateCcw className="size-3" />
                 </button>
               )}
             </div>
           </div>
         )}
-
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {t(`dialogs.inspector.bannerHint.${mode}`)}
-        </p>
-
-        {mode === "shared" && canRestoreDefault && (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => void handleRestoreDefault()}
-            className="cursor-pointer self-start text-xs text-muted-foreground underline underline-offset-[3px] transition-colors hover:text-foreground/80 disabled:opacity-40"
-          >
-            {t("dialogs.inspector.bannerRestoreDefault")}
-          </button>
-        )}
       </div>
 
       {canReset ? (
-        <button
+        <motion.button
           type="button"
           onClick={() => setIsResetConfirmOpen(true)}
-          className="mt-auto flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border px-3 py-2 text-[13px] text-foreground/80 transition-colors hover:bg-white/[0.06]"
+          {...bounceTap(bounceStrength)}
+          className="mt-auto flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-[13px] text-foreground/80 transition-colors hover:bg-white/[0.06]"
         >
           <RotateCcw className="size-3.5" />
           {t("dialogs.inspector.resetWindow")}
-        </button>
+        </motion.button>
       ) : null}
 
       {isResetConfirmOpen && (
         <ConfirmDialog
           title={t("dialogs.inspector.resetWindow")}
-          message={t("dialogs.inspector.resetWindowConfirm", { key: window.key })}
+          message={t("dialogs.inspector.resetWindowConfirm", { name: label })}
           confirmLabel={t("dialogs.inspector.resetWindowConfirmButton")}
           cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
           danger

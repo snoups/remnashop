@@ -69,6 +69,22 @@ async def test_create_payment_signs_lowercase_currency_and_stores_the_id(
     assert body["items"][0]["price"] == 500.0
 
 
+async def test_create_payment_sends_the_buyer_email_and_return_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    http = install_http(
+        monkeypatch,
+        mulenpay_module,
+        json_response({"success": True, "paymentUrl": "https://pay/1", "id": 1}, 201),
+    )
+    await _gateway().create_payment(make_order(customer_email="buyer@example.com"))
+    assert http.last_json()["client"] == "buyer@example.com"
+    assert http.last_json()["website_url"] == RETURN_URL
+
+    await _gateway().create_payment(make_order())
+    assert "client" not in http.last_json()
+
+
 async def test_create_payment_uses_the_configured_vat_code(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

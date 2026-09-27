@@ -22,6 +22,7 @@ from app.modules.advertising.usecases import (
     DeleteAdLinkUseCase,
     GenerateAdLinkCodeUseCase,
     GetAdLinkStatsUseCase,
+    GetAdvertisingSummaryUseCase,
     ListAdLinkAttributedUsersUseCase,
     ListAdLinksUseCase,
     UpdateAdLinkUseCase,
@@ -68,6 +69,7 @@ class _AdvertisingProvider(Provider):
     list_ad_links_use_case = provide(ListAdLinksUseCase)
     generate_ad_link_code_use_case = provide(GenerateAdLinkCodeUseCase)
     get_ad_link_stats_use_case = provide(GetAdLinkStatsUseCase)
+    get_advertising_summary_use_case = provide(GetAdvertisingSummaryUseCase)
     list_ad_link_attributed_users_use_case = provide(ListAdLinkAttributedUsersUseCase)
 
 
@@ -217,3 +219,26 @@ async def test_get_stats_for_unknown_ad_link_returns_404(
         f"{API_V1}/advertising/links/999999/stats", headers=admin_auth_headers
     )
     assert response.status_code == 404
+
+
+async def test_get_summary_returns_totals_and_per_link_metrics(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        f"{API_V1}/advertising/links",
+        json={"name": "Summary", "code": "summary-router", "cost": "50"},
+        headers=admin_auth_headers,
+    )
+    assert created.status_code == 201
+
+    response = await client.get(
+        f"{API_V1}/advertising/summary",
+        params={"created_from": "2020-01-01T00:00:00Z"},
+        headers=admin_auth_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["attributions_count"] == 0
+    assert body["roi"] is not None
+    assert [link["ad_link_id"] for link in body["links"]] == [created.json()["id"]]

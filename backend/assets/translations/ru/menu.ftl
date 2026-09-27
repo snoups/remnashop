@@ -2,7 +2,7 @@ msg-main-menu = Главное меню, { $name }!
 msg-window-gone = Этот экран больше недоступен.
 msg-menu-devices = Ваши устройства ({ $current_count }/{ $max_count })
 msg-menu-devices-confirm-delete = Удалить это устройство?
-msg-menu-devices-confirm-delete-all = Удалить ВСЕ устройства?
+msg-menu-devices-confirm-delete-all = Удалить все устройства? Каждое придётся подключать заново.
 msg-menu-devices-confirm-reissue = Перевыпустить ссылку подключения? Старая ссылка перестанет работать.
 
 btn-menu =
@@ -38,7 +38,7 @@ ntf-devices =
     .reissued = Ссылка подключения перевыпущена.
 
 ntf-common =
-    .cooldown-active = Подождите до { $available_at }, прежде чем повторить это действие.
+    .cooldown-active = Повторить это действие можно после { $available_at }.
     .trial-unavailable = Пробный период недоступен.
     .connect-not-available = Подключение недоступно.
     .access-restricted = Доступ ограничен.

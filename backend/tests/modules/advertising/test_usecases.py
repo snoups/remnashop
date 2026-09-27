@@ -20,6 +20,7 @@ from app.core.utils.time import datetime_now
 from app.modules.advertising.dto import (
     CreateAdLinkDto,
     GetAdLinkStatsDto,
+    GetAdvertisingSummaryDto,
     ListAdLinkAttributedUsersDto,
     ListAdLinksDto,
     UpdateAdLinkDto,
@@ -30,6 +31,7 @@ from app.modules.advertising.usecases import (
     DeleteAdLinkUseCase,
     GenerateAdLinkCodeUseCase,
     GetAdLinkStatsUseCase,
+    GetAdvertisingSummaryUseCase,
     ListAdLinkAttributedUsersUseCase,
     ListAdLinksUseCase,
     UpdateAdLinkUseCase,
@@ -387,3 +389,104 @@ async def test_list_ad_link_attributed_users_unknown_id_raises_not_found(
 
     with pytest.raises(NotFoundError):
         await use_case(OWNER, ListAdLinkAttributedUsersDto(ad_link_id=999_999))
+
+
+async def test_get_ad_link_stats_created_from_excludes_older_attributions(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+    user_repository: UserRepository,
+) -> None:
+    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    ad_link = await create(OWNER, CreateAdLinkDto(name="Period", code="stats-period"))
+    user = await user_repository.create(CreateUserDto(name="Period User", telegram_id=942_001))
+    await ad_link_repository.create_attribution(
+        ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
+    )
+    use_case = GetAdLinkStatsUseCase(
+        ad_link_repository, payment_order_repository, pricing_repository, uow
+    )
+
+    future = await use_case(
+        OWNER,
+        GetAdLinkStatsDto(ad_link_id=ad_link.id, created_from=datetime_now() + timedelta(days=1)),
+    )
+    past = await use_case(
+        OWNER,
+        GetAdLinkStatsDto(ad_link_id=ad_link.id, created_from=datetime_now() - timedelta(days=1)),
+    )
+
+    assert future.attributions_count == 0
+    assert future.daily_registrations == []
+    assert past.attributions_count == 1
+
+
+async def test_get_advertising_summary_aggregates_links(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+    user_repository: UserRepository,
+    plan_id: int,
+) -> None:
+    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    paid_link = await create(
+        OWNER, CreateAdLinkDto(name="Paid", code="summary-paid", cost=Decimal("100"))
+    )
+    free_link = await create(OWNER, CreateAdLinkDto(name="Free", code="summary-free"))
+    payer = await user_repository.create(CreateUserDto(name="Payer", telegram_id=943_001))
+    non_payer = await user_repository.create(CreateUserDto(name="NonPayer", telegram_id=943_002))
+    web_user = await user_repository.create(CreateUserDto(name="Web", telegram_id=943_003))
+    await ad_link_repository.create_attribution(
+        ad_link_id=paid_link.id, user_id=payer.id, channel=AdLinkChannel.BOT
+    )
+    await ad_link_repository.create_attribution(
+        ad_link_id=paid_link.id, user_id=non_payer.id, channel=AdLinkChannel.BOT
+    )
+    await ad_link_repository.create_attribution(
+        ad_link_id=free_link.id, user_id=web_user.id, channel=AdLinkChannel.WEBCABINET
+    )
+    async with uow:
+        order = await payment_order_repository.create(
+            _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="summary-paid-1")
+        )
+    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+
+    use_case = GetAdvertisingSummaryUseCase(
+        ad_link_repository, payment_order_repository, pricing_repository, uow
+    )
+    summary = await use_case(OWNER, GetAdvertisingSummaryDto(report_currency=Currency.RUB))
+
+    assert summary.attributions_count == 3
+    assert summary.attributions_by_channel == {
+        AdLinkChannel.BOT: 2,
+        AdLinkChannel.WEBCABINET: 1,
+    }
+    assert summary.paid_count == 1
+    assert summary.revenue == Decimal("500")
+    assert summary.cost == Decimal("100")
+    assert summary.roi == Decimal("4")
+    metrics = {link.ad_link_id: link for link in summary.links}
+    assert metrics[paid_link.id].attributions_count == 2
+    assert metrics[paid_link.id].paid_count == 1
+    assert metrics[paid_link.id].roi == Decimal("4")
+    assert metrics[free_link.id].attributions_count == 1
+    assert metrics[free_link.id].roi is None
+
+    inactive_only = await use_case(OWNER, GetAdvertisingSummaryDto(is_active=False))
+    assert inactive_only.links == []
+    assert inactive_only.cpa is None
+
+
+async def test_regular_user_cannot_get_advertising_summary(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+) -> None:
+    use_case = GetAdvertisingSummaryUseCase(
+        ad_link_repository, payment_order_repository, pricing_repository, uow
+    )
+    with pytest.raises(PermissionDeniedError):
+        await use_case(REGULAR_USER, GetAdvertisingSummaryDto())

@@ -21,6 +21,10 @@ from app.modules.referrals.usecases.attach_referral import AttachReferralDto, At
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
+from app.modules.referrals.usecases.list_referrals import (
+    ListReferralsInput,
+    ListReferralsUseCase,
+)
 from app.modules.referrals.usecases.request_points_withdrawal import (
     RequestPointsWithdrawalDto,
     RequestPointsWithdrawalUseCase,
@@ -352,14 +356,14 @@ async def test_get_own_referral_stats_includes_reward_history(
         subscription_id=subscription_id,
         payment_key="order-1",
         type=ReferralRewardType.POINTS,
-        amount=Decimal("7.50"),
+        amount=Decimal("7"),
     )
     use_case = GetOwnReferralStatsUseCase(referral_repository, uow)
 
     stats = await use_case(referrer)
 
     assert len(stats.rewards) == 1
-    assert stats.rewards[0].amount == Decimal("7.50")
+    assert stats.rewards[0].amount == Decimal("7")
 
 
 async def test_get_own_referral_stats_tolerates_synthetic_actor(
@@ -426,3 +430,32 @@ async def test_get_user_referral_stats_includes_reward_history(
 
     assert len(stats.rewards) == 1
     assert stats.rewards[0].amount == Decimal("9")
+
+
+async def test_list_referrals_requires_permission(
+    referral_repository: ReferralRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    use_case = ListReferralsUseCase(referral_repository, user_repository, uow)
+    regular_actor = UserDto(id=999, name="Bob", role=Role.USER, language=Locale.EN)
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(regular_actor, ListReferralsInput())
+
+
+async def test_list_referrals_joins_users_and_empty_rewards(
+    referral_repository: ReferralRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    referrer = await _create_user(user_repository, 5101)
+    referred = await _create_user(user_repository, 5102)
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=referred.id, level=1
+    )
+    use_case = ListReferralsUseCase(referral_repository, user_repository, uow)
+
+    items, total = await use_case(OWNER, ListReferralsInput())
+
+    assert total == 1
+    assert items[0].referred is not None and items[0].referred.id == referred.id
+    assert items[0].referrer is not None and items[0].referrer.id == referrer.id
+    assert items[0].rewards.count == 0
+    assert items[0].rewards.amounts == {}

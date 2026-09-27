@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 
-import { appearanceImageUrl, getAppearance } from "@entities/appearance/api";
+import { appearanceImageUrl, DEFAULT_FAVICON_HREF, getAppearance } from "@entities/appearance/api";
 import { deriveTheme } from "@shared/lib/color";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 
@@ -30,8 +30,6 @@ function applyTheme(primaryColor: string | null) {
   root.setProperty("--color-accent", theme.accent);
   root.setProperty("--color-accent-foreground", theme.accentForeground);
 }
-
-const DEFAULT_FAVICON_HREF = "/favicon.svg";
 
 function applyFavicon(hasFavicon: boolean) {
   const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');

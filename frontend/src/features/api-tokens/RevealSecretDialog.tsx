@@ -13,7 +13,7 @@ interface RevealSecretDialogProps {
 
 export function RevealSecretDialog({ secret, onDone }: RevealSecretDialogProps) {
   return (
-    <Modal onClose={onDone} size="sm" dismissable={false}>
+    <Modal onClose={onDone} size="lg" dismissable={false}>
       <RevealSecretDialogBody secret={secret} />
     </Modal>
   );
@@ -46,7 +46,7 @@ function RevealSecretDialogBody({ secret }: { secret: string }) {
 
       <div className="px-5 pt-4">
         <p className="text-[12.5px] font-medium text-error">{t("apiTokens.secretWarning")}</p>
-        <code className="mt-3 block break-all rounded-xl border border-border bg-white/[0.04] p-3 text-[12.5px] text-foreground">
+        <code className="mt-3 block overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-white/[0.04] p-3 text-[12.5px] text-foreground">
           {secret}
         </code>
       </div>

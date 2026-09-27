@@ -1,3 +1,4 @@
+import { Inbox } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -45,7 +46,10 @@ export function AnalyticsLtvPage() {
       {state.kind === "ready" && (
         <div className="rounded-2xl border border-border bg-surface/40 p-4">
           {isEmpty ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("analytics.ltv.empty")}</p>
+            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+              <Inbox className="size-5" />
+              <p className="text-sm">{t("analytics.ltv.empty")}</p>
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

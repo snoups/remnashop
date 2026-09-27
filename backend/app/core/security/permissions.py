@@ -18,6 +18,8 @@ class Permission(UpperStrEnum):
     ANALYTICS_COHORTS_VIEW = auto()
     ANALYTICS_LTV_VIEW = auto()
     BOT_SETTINGS_VIEW = auto()
+    BOT_STATUS_VIEW = auto()
+    BOT_LOGS_VIEW = auto()
     BOT_COMMANDS_VIEW = auto()
     BOT_SETTINGS_MANAGE = auto()
     BOT_COMMANDS_MANAGE = auto()
@@ -40,6 +42,9 @@ class Permission(UpperStrEnum):
     TRANSLATIONS_VIEW = auto()
     TRANSLATIONS_UPDATE = auto()
     TRANSLATIONS_RESET = auto()
+    TRANSLATIONS_RESET_ALL = auto()
+    TRANSLATIONS_EXPORT = auto()
+    TRANSLATIONS_IMPORT = auto()
     DIALOGS_WINDOWS_VIEW = auto()
     DIALOGS_CATALOG_VIEW = auto()
     DIALOGS_WINDOWS_UPDATE = auto()
@@ -70,6 +75,8 @@ class Permission(UpperStrEnum):
     GATEWAYS_UPDATE = auto()
     GATEWAYS_TOGGLE = auto()
     GATEWAYS_REORDER = auto()
+    GATEWAYS_TEST = auto()
+    GATEWAYS_TEST_VIEW = auto()
     PLANS_VIEW = auto()
     PLANS_CREATE = auto()
     PLANS_UPDATE = auto()
@@ -104,7 +111,9 @@ class Permission(UpperStrEnum):
     PROMOCODES_GENERATE_CODE = auto()
     PAYMENTS_VIEW = auto()
     PAYMENTS_ORDER_VIEW = auto()
+    PAYMENTS_GATEWAYS_VIEW = auto()
     REFERRALS_VIEW = auto()
+    REFERRALS_LIST = auto()
     REFERRALS_SETTINGS_VIEW = auto()
     REFERRALS_SETTINGS_MANAGE = auto()
     REFERRALS_POINTS_MANAGE = auto()
@@ -115,6 +124,7 @@ class Permission(UpperStrEnum):
     BACKUPS_RUN_CREATE = auto()
     BACKUPS_RUN_DOWNLOAD = auto()
     BACKUPS_RUN_DELETE = auto()
+    BACKUPS_STATS_VIEW = auto()
     BLACKLIST_VIEW = auto()
     BLACKLIST_SOURCES_VIEW = auto()
     BLACKLIST_ENTRY_ADD = auto()
@@ -123,10 +133,12 @@ class Permission(UpperStrEnum):
     BLACKLIST_SOURCE_REMOVE = auto()
     BLACKLIST_SOURCE_TOGGLE = auto()
     BLACKLIST_SYNC = auto()
+    BLACKLIST_MATCHES_VIEW = auto()
     USERS_BLOCK = auto()
     USERS_UNBLOCK = auto()
     USERS_BULK_BLOCK = auto()
     USERS_UNBLOCK_ALL = auto()
+    USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
     AD_LINKS_VIEW = auto()
     AD_LINKS_STATS_VIEW = auto()
     AD_LINKS_USERS_VIEW = auto()
@@ -144,6 +156,8 @@ class PermissionMeta:
 
 PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BOT_SETTINGS_VIEW: PermissionMeta(resource="bot_settings", kind="read"),
+    Permission.BOT_STATUS_VIEW: PermissionMeta(resource="bot_settings", kind="read"),
+    Permission.BOT_LOGS_VIEW: PermissionMeta(resource="bot_settings", kind="read"),
     Permission.BOT_COMMANDS_VIEW: PermissionMeta(resource="bot_settings", kind="read"),
     Permission.BOT_SETTINGS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_COMMANDS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
@@ -166,6 +180,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSLATIONS_VIEW: PermissionMeta(resource="translations", kind="read"),
     Permission.TRANSLATIONS_UPDATE: PermissionMeta(resource="translations", kind="write"),
     Permission.TRANSLATIONS_RESET: PermissionMeta(resource="translations", kind="write"),
+    Permission.TRANSLATIONS_RESET_ALL: PermissionMeta(resource="translations", kind="write"),
+    Permission.TRANSLATIONS_EXPORT: PermissionMeta(resource="translations", kind="read"),
+    Permission.TRANSLATIONS_IMPORT: PermissionMeta(resource="translations", kind="write"),
     Permission.DIALOGS_WINDOWS_VIEW: PermissionMeta(resource="dialogs", kind="read"),
     Permission.DIALOGS_CATALOG_VIEW: PermissionMeta(resource="dialogs", kind="read"),
     Permission.DIALOGS_WINDOWS_UPDATE: PermissionMeta(resource="dialogs", kind="write"),
@@ -193,6 +210,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.GATEWAYS_UPDATE: PermissionMeta(resource="gateways", kind="write"),
     Permission.GATEWAYS_TOGGLE: PermissionMeta(resource="gateways", kind="write"),
     Permission.GATEWAYS_REORDER: PermissionMeta(resource="gateways", kind="write"),
+    Permission.GATEWAYS_TEST: PermissionMeta(resource="gateways", kind="write"),
+    Permission.GATEWAYS_TEST_VIEW: PermissionMeta(resource="gateways", kind="read"),
     Permission.PLANS_VIEW: PermissionMeta(resource="plans", kind="read"),
     Permission.PLANS_CREATE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_UPDATE: PermissionMeta(resource="plans", kind="write"),
@@ -225,7 +244,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PROMOCODES_GENERATE_CODE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PAYMENTS_VIEW: PermissionMeta(resource="payments", kind="read"),
     Permission.PAYMENTS_ORDER_VIEW: PermissionMeta(resource="payments", kind="read"),
+    Permission.PAYMENTS_GATEWAYS_VIEW: PermissionMeta(resource="payments", kind="read"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_LIST: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_SETTINGS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_SETTINGS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_POINTS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
@@ -236,6 +257,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BACKUPS_RUN_CREATE: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_DOWNLOAD: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_RUN_DELETE: PermissionMeta(resource="backups", kind="write"),
+    Permission.BACKUPS_STATS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BLACKLIST_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.BLACKLIST_SOURCES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.BLACKLIST_ENTRY_ADD: PermissionMeta(resource="blacklist", kind="write"),
@@ -244,6 +266,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BLACKLIST_SOURCE_REMOVE: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_SOURCE_TOGGLE: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_SYNC: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.BLACKLIST_MATCHES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.USERS_BLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_UNBLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_BULK_BLOCK: PermissionMeta(resource="users", kind="write"),
@@ -260,9 +283,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ANALYTICS_LTV_VIEW: PermissionMeta(resource="analytics", kind="read"),
 }
 
-GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA) | {
-    Permission.OWN_ACCOUNT_MANAGE,
-}
+GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA)
 
 TOKEN_GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA)
 
@@ -271,6 +292,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
     Role.OWNER: set(Permission),
     Role.ADMIN: {
         Permission.BOT_SETTINGS_VIEW,
+        Permission.BOT_STATUS_VIEW,
+        Permission.BOT_LOGS_VIEW,
         Permission.BOT_COMMANDS_VIEW,
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_COMMANDS_MANAGE,
@@ -293,6 +316,9 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.TRANSLATIONS_VIEW,
         Permission.TRANSLATIONS_UPDATE,
         Permission.TRANSLATIONS_RESET,
+        Permission.TRANSLATIONS_RESET_ALL,
+        Permission.TRANSLATIONS_EXPORT,
+        Permission.TRANSLATIONS_IMPORT,
         Permission.DIALOGS_WINDOWS_VIEW,
         Permission.DIALOGS_CATALOG_VIEW,
         Permission.DIALOGS_WINDOWS_UPDATE,
@@ -338,7 +364,9 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.USERS_DISCOUNT_MANAGE,
         Permission.PAYMENTS_VIEW,
         Permission.PAYMENTS_ORDER_VIEW,
+        Permission.PAYMENTS_GATEWAYS_VIEW,
         Permission.REFERRALS_VIEW,
+        Permission.REFERRALS_LIST,
         Permission.REFERRALS_SETTINGS_VIEW,
         Permission.REFERRALS_SETTINGS_MANAGE,
         Permission.REFERRALS_POINTS_MANAGE,

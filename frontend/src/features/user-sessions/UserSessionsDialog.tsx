@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SessionList } from "@entities/auth/SessionList";
-import { type Session, listUserSessions, revokeUserSession } from "@entities/auth/sessions";
+import {
+  type Session,
+  listOwnSessions,
+  listUserSessions,
+  revokeOwnSession,
+  revokeUserSession,
+} from "@entities/auth/sessions";
+import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
@@ -30,12 +37,17 @@ function UserSessionsDialogBody({ userId, userName }: Pick<UserSessionsDialogPro
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
   const close = useModalClose();
-  const [state, reload] = useAsyncResource((signal) => listUserSessions(userId, signal));
+  const currentUserState = useCurrentUser();
+  // the per-user endpoints reject equal-role targets, which includes yourself
+  const isSelf = currentUserState.kind === "ready" && currentUserState.data.id === userId;
+  const [state, reload] = useAsyncResource((signal) =>
+    isSelf ? listOwnSessions(signal) : listUserSessions(userId, signal),
+  );
   const [pendingRevoke, setPendingRevoke] = useState<Session | null>(null);
 
   const handleRevoke = async (sessionId: number) => {
     try {
-      await revokeUserSession(userId, sessionId);
+      await (isSelf ? revokeOwnSession(sessionId) : revokeUserSession(userId, sessionId));
       reload();
     } catch (err) {
       toast.error(getErrorMessage(err, t("sessions.revokeError")));

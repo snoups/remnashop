@@ -2,16 +2,19 @@ import asyncio
 from pathlib import Path
 from typing import Final
 
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
+from app.modules.auth import reset_owner_access
 from app.modules.settings import enable_password_login
 
 # Break-glass tool, run via `docker exec -it <api-container> python -m app.cli` --
-# mirrors Remnawave's own built-in rescue CLI. More rescue actions (reset password,
-# bootstrap owner) get their own menu entry here later.
+# mirrors Remnawave's own built-in rescue CLI.
 _MENU: Final[str] = """Remnashop Rescue CLI
     1. Enable password authentication
     2. Restore backup
+    3. Reset owner access (new password, clear IP allowlist)
     0. Exit
 """
 
@@ -20,6 +23,33 @@ async def _enable_password_login() -> None:
     config = AppConfig.get()
     await enable_password_login(config)
     print("Password authentication enabled.")
+
+
+async def _reset_owner_access() -> None:
+    if not _confirm(
+        "This resets the owner's password, clears their IP allowlist and signs them "
+        "out everywhere. Continue?"
+    ):
+        print("Aborted.")
+        return
+
+    config = AppConfig.get()
+    engine = create_async_engine(config.database.dsn)
+    try:
+        async with AsyncSession(engine) as session:
+            result = await reset_owner_access(session, config.crypt_key.get_secret_value())
+    finally:
+        await engine.dispose()
+
+    if result is None:
+        print("No owner exists yet -- bootstrap one from the dashboard.")
+        return
+
+    # a new password is useless if password login itself is switched off
+    await enable_password_login(config)
+    owner, password = result
+    print(f"Owner access reset. Login: {owner.login}")
+    print(f"New password: {password}")
 
 
 def _confirm(prompt: str) -> bool:
@@ -73,6 +103,8 @@ async def _run() -> None:
         await _enable_password_login()
     elif choice == "2":
         await _restore_backup()
+    elif choice == "3":
+        await _reset_owner_access()
     elif choice == "0":
         pass
     else:

@@ -13,6 +13,7 @@ from app.modules.backups.api.schemas import (
     BackupRunPageResponse,
     BackupRunResponse,
     BackupSettingsResponse,
+    BackupStatsResponse,
     CreateBackupRunRequest,
     UpdateBackupSettingsRequest,
 )
@@ -28,6 +29,7 @@ from app.modules.backups.usecases import (
     DownloadBackupRunUseCase,
     GetBackupRunUseCase,
     GetBackupSettingsUseCase,
+    GetBackupStatsUseCase,
     ListBackupRunsInput,
     ListBackupRunsUseCase,
     UpdateBackupSettingsUseCase,
@@ -78,6 +80,23 @@ async def update_settings(
 ) -> BackupSettingsResponse:
     settings = await use_case(actor, UpdateBackupSettingsDto(**body.model_dump()))
     return _to_settings_response(settings)
+
+
+@router.get("/stats", response_model=BackupStatsResponse)
+@inject
+async def get_stats(
+    use_case: FromDishka[GetBackupStatsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> BackupStatsResponse:
+    stats = await use_case(actor)
+    latest = stats.last_database_backup
+    return BackupStatsResponse(
+        completed_count=stats.completed_count,
+        failed_count=stats.failed_count,
+        total_size_bytes=stats.total_size_bytes,
+        last_database_backup=_to_run_response(latest) if latest is not None else None,
+        next_run_at=stats.next_run_at,
+    )
 
 
 @router.post("/runs", response_model=BackupRunResponse, status_code=status.HTTP_202_ACCEPTED)

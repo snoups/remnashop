@@ -77,6 +77,14 @@ function UserDetailsDialogBody({ user }: { user: UserListItem }) {
           value={user.telegram_id !== null ? String(user.telegram_id) : "—"}
         />
         <DetailRow label={t("users.details.email")} value={user.email ?? "—"} />
+        <DetailRow label={t("users.details.referralCode")} value={user.referral_code ?? "—"} />
+        <DetailRow label={t("users.details.points")} value={user.points} />
+        <DetailRow label={t("users.details.personalDiscount")} value={`${user.personal_discount}%`} />
+        <DetailRow label={t("users.details.purchaseDiscount")} value={`${user.purchase_discount}%`} />
+        <DetailRow
+          label={t("users.details.trialAvailable")}
+          value={user.is_trial_available ? t("users.details.yes") : t("users.details.no")}
+        />
         <DetailRow label={t("users.details.language")} value={user.language.toUpperCase()} />
         <DetailRow
           label={t("users.details.status")}

@@ -2,7 +2,7 @@ from typing import ClassVar, Final, Optional
 
 import orjson
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -23,8 +23,14 @@ from app.modules.payments.gateways.common import (
 )
 
 _PAID_STATUS: Final[str] = "COMPLETED"
+_REPORTED_STATUSES: Final[dict[str, PaymentOrderStatus]] = {
+    "CANCELED": PaymentOrderStatus.CANCELED,
+    "FAILED": PaymentOrderStatus.FAILED,
+    "EXPIRED": PaymentOrderStatus.CANCELED,
+}
 
 
+# Docs: https://docs.riopay.online/ru/docs
 class RioPayGateway(PaymentGateway):
     currency = Currency.RUB
     API_BASE: ClassVar[str] = "https://api.riopay.online"
@@ -79,6 +85,7 @@ class RioPayGateway(PaymentGateway):
             reference=str(data.get("externalId") or ""),
             claims_paid=status == _PAID_STATUS,
             provider_payment_id=str(order_id),
+            reported_status=_REPORTED_STATUSES.get(str(status)),
         )
 
     async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:

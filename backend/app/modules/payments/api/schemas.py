@@ -22,9 +22,17 @@ class CheckoutResponse(BaseModel):
     confirmation_url: Optional[str] = None
 
 
+class PaymentOrderUserResponse(BaseModel):
+    name: str
+    username: Optional[str]
+    telegram_id: Optional[int]
+    email: Optional[str]
+
+
 class PaymentOrderResponse(BaseModel):
     id: int
     user_id: int
+    user: Optional[PaymentOrderUserResponse]
     # None once the plan is deleted -- plan_snapshot is the durable record of
     # what was actually ordered, always populated regardless of plan_id.
     plan_id: Optional[int]

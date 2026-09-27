@@ -101,9 +101,11 @@ export function OAuthSettingsForm() {
         </div>
         <div>
           <h2 className="text-sm font-bold text-foreground">{t("settings.oauth.title")}</h2>
-          <p className="text-[12.5px] text-muted-foreground">{t("settings.oauth.description")}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.oauth.description")}</p>
         </div>
       </div>
+
+      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
       {state.kind === "loading" && (
         <Spinner className="mt-4" />
@@ -113,7 +115,7 @@ export function OAuthSettingsForm() {
       )}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
-          <div className="flex flex-col">
+          <div className="flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
             <ProviderPanel
               provider="github"
               icon={GithubIcon}
@@ -256,6 +258,7 @@ function ProviderPanel({
   fields,
 }: ProviderPanelProps) {
   const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -279,7 +282,7 @@ function ProviderPanel({
 
   return (
     <div>
-      <div
+      <motion.div
         role="button"
         tabIndex={0}
         onClick={() => setIsOpen((open) => !open)}
@@ -288,6 +291,7 @@ function ProviderPanel({
           event.preventDefault();
           setIsOpen((open) => !open);
         }}
+        {...bounceTap(bounceStrength, 0.03)}
         className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
@@ -317,7 +321,7 @@ function ProviderPanel({
             ariaLabel={t("settings.oauth.enableAria", { provider: label })}
           />
         </div>
-      </div>
+      </motion.div>
 
       <AnimatePresence initial={false}>
         {isOpen && (
@@ -370,6 +374,7 @@ function PasskeyPanel({
   onToggled,
 }: PasskeyPanelProps) {
   const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -387,7 +392,7 @@ function PasskeyPanel({
 
   return (
     <div>
-      <div
+      <motion.div
         role="button"
         tabIndex={0}
         onClick={() => setIsOpen((open) => !open)}
@@ -396,6 +401,7 @@ function PasskeyPanel({
           event.preventDefault();
           setIsOpen((open) => !open);
         }}
+        {...bounceTap(bounceStrength, 0.03)}
         className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
@@ -427,7 +433,7 @@ function PasskeyPanel({
             ariaLabel={t("settings.oauth.enableAria", { provider: t("settings.oauth.passkeyTitle") })}
           />
         </div>
-      </div>
+      </motion.div>
 
       <AnimatePresence initial={false}>
         {isOpen && (

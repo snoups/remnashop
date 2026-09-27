@@ -3,9 +3,31 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { AsyncState } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
 
+// Catalog only changes with a backend deploy, so one fetch per page load is enough. Kept as data, not a
+// promise, so a remounted picker renders ready on its first frame instead of flashing a spinner.
+let cachedCatalog: PermissionCatalogEntry[] | null = null;
+let inflightCatalog: Promise<PermissionCatalogEntry[]> | null = null;
+
+function loadPermissionCatalog(): Promise<PermissionCatalogEntry[]> {
+  if (cachedCatalog) return Promise.resolve(cachedCatalog);
+  inflightCatalog ??= getPermissionCatalog()
+    .then((entries) => {
+      cachedCatalog = entries;
+      return entries;
+    })
+    .finally(() => {
+      inflightCatalog = null;
+    });
+  return inflightCatalog;
+}
+
+export function prefetchPermissionCatalog(): void {
+  loadPermissionCatalog().catch(() => {});
+}
+
 export function usePermissionCatalog(): AsyncState<PermissionCatalogEntry[]> {
-  const [state] = useAsyncResource(getPermissionCatalog);
-  return state;
+  const [state] = useAsyncResource(loadPermissionCatalog);
+  return cachedCatalog ? { kind: "ready", data: cachedCatalog } : state;
 }
 
 export interface PermissionCategoryGroup {

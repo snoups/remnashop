@@ -30,6 +30,7 @@ _PAID_STATUS: Final[str] = "paid"
 _PAID_UPDATE: Final[str] = "invoice_paid"
 
 
+# Docs: https://help.cr.bot/ru/articles/10279948-crypto-pay-api
 class CryptoPayGateway(PaymentGateway):
     currency = Currency.USD
 

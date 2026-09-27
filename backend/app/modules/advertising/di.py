@@ -6,6 +6,7 @@ from app.modules.advertising.usecases import (
     DeleteAdLinkUseCase,
     GenerateAdLinkCodeUseCase,
     GetAdLinkStatsUseCase,
+    GetAdvertisingSummaryUseCase,
     ListAdLinkAttributedUsersUseCase,
     ListAdLinksUseCase,
     UpdateAdLinkUseCase,
@@ -22,6 +23,7 @@ class AdvertisingProvider(Provider):
     list_ad_links_use_case = provide(ListAdLinksUseCase)
     generate_ad_link_code_use_case = provide(GenerateAdLinkCodeUseCase)
     get_ad_link_stats_use_case = provide(GetAdLinkStatsUseCase)
+    get_advertising_summary_use_case = provide(GetAdvertisingSummaryUseCase)
     list_ad_link_attributed_users_use_case = provide(ListAdLinkAttributedUsersUseCase)
 
 

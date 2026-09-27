@@ -250,12 +250,12 @@ async def test_get_by_referral_code_unknown_returns_none(
 async def test_credit_points_adds_to_existing_points(user_repository: UserRepository) -> None:
     created = await user_repository.create(CreateUserDto(name="a", telegram_id=4))
 
-    await user_repository.credit_points(created.id, Decimal("15.50"))
-    await user_repository.credit_points(created.id, Decimal("4.50"))
+    await user_repository.credit_points(created.id, Decimal("15"))
+    await user_repository.credit_points(created.id, Decimal("5"))
 
     updated = await user_repository.get_by_id(created.id)
     assert updated is not None
-    assert updated.points == Decimal("20.00")
+    assert updated.points == Decimal("20")
 
 
 async def test_credit_points_refuses_to_overdraw(user_repository: UserRepository) -> None:
@@ -392,3 +392,15 @@ async def test_list_id_and_registration_date_since_pairs_id_with_utc_date(
     user_id, registered_on = pairs[0]
     assert user_id == in_window.id
     assert registered_on == datetime_now().date()
+
+
+async def test_block_matching_handles_more_ids_than_bind_param_cap(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    target = await _create_user(user_repository, uow, telegram_id=40_000_001)
+    telegram_ids = set(range(40_000_000, 40_040_000))
+
+    async with uow:
+        blocked = await user_repository.block_matching(telegram_ids, set())
+
+    assert blocked == [target.id]

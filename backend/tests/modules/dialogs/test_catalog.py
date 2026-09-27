@@ -120,9 +120,9 @@ def test_is_editable_text_key_accepts_catalog_and_custom_keys() -> None:
 
 
 def test_is_editable_text_key_rejects_rows_outside_the_dialogs_namespace() -> None:
-    # command.menu is a bot command description: documented as never
+    # command.start is a bot command description: documented as never
     # admin-editable, and reachable through import only while the allowlist is
     # derived from submitted button text_keys rather than from the catalog.
     _register_menu_window()
-    assert not catalog.is_editable_text_key("command.menu")
+    assert not catalog.is_editable_text_key("command.start")
     assert not catalog.is_editable_text_key("ntf-subscription-expiring")

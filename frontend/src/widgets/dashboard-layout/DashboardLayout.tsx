@@ -30,7 +30,7 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
         <Sidebar />
         <div className="my-3 mr-3 flex flex-1 flex-col overflow-hidden rounded-3xl border border-glass-border bg-surface/50 shadow-2xl backdrop-blur-[28px] backdrop-saturate-150">
           <Header onLogout={onLogout} />
-          <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto px-8 pb-8 pt-4">
+          <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] px-8 pb-8 pt-4">
             <Suspense fallback={null}>
               <Outlet />
             </Suspense>

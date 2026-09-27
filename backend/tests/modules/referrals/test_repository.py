@@ -96,10 +96,10 @@ async def test_create_reward_persists_amount(
         subscription_id=subscription_id,
         payment_key="order-1",
         type=ReferralRewardType.POINTS,
-        amount=Decimal("12.50"),
+        amount=Decimal("12"),
     )
 
-    assert reward.amount == Decimal("12.50")
+    assert reward.amount == Decimal("12")
     assert reward.type == ReferralRewardType.POINTS
     assert reward.subscription_id == subscription_id
 
@@ -121,7 +121,7 @@ async def test_create_reward_rejects_duplicate_payment_referral_pair(
         subscription_id=subscription_id,
         payment_key="order-1",
         type=ReferralRewardType.POINTS,
-        amount=Decimal("12.50"),
+        amount=Decimal("12"),
     )
     # another payment for the same subscription is a separate reward
     await referral_repository.create_reward(
@@ -130,7 +130,7 @@ async def test_create_reward_rejects_duplicate_payment_referral_pair(
         subscription_id=subscription_id,
         payment_key="order-2",
         type=ReferralRewardType.POINTS,
-        amount=Decimal("12.50"),
+        amount=Decimal("12"),
     )
 
     with pytest.raises(ConflictError):
@@ -140,7 +140,7 @@ async def test_create_reward_rejects_duplicate_payment_referral_pair(
             subscription_id=subscription_id,
             payment_key="order-1",
             type=ReferralRewardType.POINTS,
-            amount=Decimal("12.50"),
+            amount=Decimal("12"),
         )
 
 
@@ -183,3 +183,62 @@ async def test_update_settings_partial_leaves_other_fields_untouched(
 
     assert updated.enabled is True  # untouched
     assert updated.max_level == 3
+
+
+async def test_list_paginated_filters_by_level_newest_first(
+    referral_repository: ReferralRepository, user_repository: UserRepository
+) -> None:
+    root = await _create_user(user_repository, 2101)
+    child = await _create_user(user_repository, 2102)
+    grandchild = await _create_user(user_repository, 2103)
+    first = await referral_repository.create_referral(referrer_id=root, referred_id=child, level=1)
+    second = await referral_repository.create_referral(
+        referrer_id=child, referred_id=grandchild, level=2
+    )
+
+    items, total = await referral_repository.list_paginated()
+    assert total == 2
+    assert {item.id for item in items} == {first.id, second.id}
+
+    items, total = await referral_repository.list_paginated(level=2)
+    assert total == 1
+    assert items[0].referred_id == grandchild
+
+    items, total = await referral_repository.list_paginated(page=2, page_size=1)
+    assert total == 2
+    assert len(items) == 1
+
+
+async def test_reward_totals_by_referral_sums_per_type(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    referrer_id = await _create_user(user_repository, 2111)
+    referred_id = await _create_user(user_repository, 2112)
+    edge = await referral_repository.create_referral(
+        referrer_id=referrer_id, referred_id=referred_id, level=1
+    )
+    subscription_id = await _create_subscription(subscription_repository, referred_id, 2112)
+    for key, reward_type, amount in (
+        ("order-a", ReferralRewardType.EXTRA_DAYS, "7"),
+        ("order-b", ReferralRewardType.EXTRA_DAYS, "3"),
+        ("order-c", ReferralRewardType.POINTS, "50"),
+    ):
+        await referral_repository.create_reward(
+            referral_id=edge.id,
+            referrer_id=referrer_id,
+            subscription_id=subscription_id,
+            payment_key=key,
+            type=reward_type,
+            amount=Decimal(amount),
+        )
+
+    totals = await referral_repository.reward_totals_by_referral([edge.id, edge.id + 999])
+
+    assert set(totals) == {edge.id}
+    assert totals[edge.id].count == 3
+    assert totals[edge.id].amounts == {
+        ReferralRewardType.EXTRA_DAYS: Decimal("10"),
+        ReferralRewardType.POINTS: Decimal("50"),
+    }

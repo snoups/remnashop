@@ -57,6 +57,28 @@ class AdLinkStatsDto(BaseDto):
     daily_registrations: list[DailyAttributionCountDto] = Field(default_factory=list)
 
 
+class AdLinkMetricsDto(BaseDto):
+    ad_link_id: int
+    attributions_count: int
+    paid_count: int
+    revenue: Decimal
+    cost: Decimal
+    roi: Optional[Decimal] = None
+
+
+class AdvertisingSummaryDto(BaseDto):
+    report_currency: Currency
+    attributions_count: int
+    attributions_by_channel: dict[AdLinkChannel, int] = Field(default_factory=dict)
+    paid_count: int
+    conversion_rate: Decimal
+    revenue: Decimal
+    cost: Decimal
+    cpa: Optional[Decimal] = None
+    roi: Optional[Decimal] = None
+    links: list[AdLinkMetricsDto] = Field(default_factory=list)
+
+
 @dataclass(frozen=True, kw_only=True)
 class CreateAdLinkDto:
     name: str
@@ -89,6 +111,15 @@ class ListAdLinksDto:
 class GetAdLinkStatsDto:
     ad_link_id: int
     report_currency: Optional[Currency] = None
+    # Counts only attributions made at or after this moment; None = all time.
+    created_from: Optional[datetime] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetAdvertisingSummaryDto:
+    is_active: Optional[bool] = None
+    report_currency: Optional[Currency] = None
+    created_from: Optional[datetime] = None
 
 
 @dataclass(frozen=True, kw_only=True)

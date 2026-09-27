@@ -1,3 +1,4 @@
+import { Inbox } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -49,7 +50,10 @@ export function AnalyticsCohortsPage() {
       {state.kind === "ready" && (
         <div className="overflow-x-auto rounded-2xl border border-border bg-surface/40 p-4">
           {state.data.cohorts.every((row) => row.cohort_size === 0) ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("analytics.cohorts.empty")}</p>
+            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+              <Inbox className="size-5" />
+              <p className="text-sm">{t("analytics.cohorts.empty")}</p>
+            </div>
           ) : (
             <table className="w-full text-xs">
               <thead className="border-b border-border text-muted-foreground">

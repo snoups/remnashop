@@ -3,7 +3,7 @@ from typing import Any, ClassVar, Final, Optional
 
 import orjson
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -27,8 +27,16 @@ from app.modules.payments.gateways.common import (
 _MIN_LIFETIME_S: Final[int] = 300
 _MAX_LIFETIME_S: Final[int] = 43200
 _PAID_STATUSES: Final[frozenset[str]] = frozenset({"paid", "paid_over"})
+_REPORTED_STATUSES: Final[dict[str, PaymentOrderStatus]] = {
+    "cancel": PaymentOrderStatus.CANCELED,
+    "fail": PaymentOrderStatus.FAILED,
+    "system_fail": PaymentOrderStatus.FAILED,
+    "wrong_amount": PaymentOrderStatus.FAILED,
+    "refund_paid": PaymentOrderStatus.REFUNDED,
+}
 
 
+# Docs: https://doc.cryptomus.com/
 class CryptomusGateway(PaymentGateway):
     currency = Currency.USD
     API_BASE: ClassVar[str] = "https://api.cryptomus.com"
@@ -89,6 +97,7 @@ class CryptomusGateway(PaymentGateway):
             reference=str(order_ref),
             claims_paid=data.get("status") in _PAID_STATUSES,
             provider_payment_id=str(invoice_uuid) if invoice_uuid else None,
+            reported_status=_REPORTED_STATUSES.get(str(data.get("status"))),
         )
 
     async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:

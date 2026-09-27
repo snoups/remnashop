@@ -24,20 +24,24 @@ class DialogRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    def _button_to_dto(self, row: DialogButton) -> DialogButtonDto:
-        return DialogButtonDto.model_validate(row, from_attributes=True)
+    def _button_to_dto(self, row: DialogButton, system_text_keys: set[str]) -> DialogButtonDto:
+        dto = DialogButtonDto.model_validate(row, from_attributes=True)
+        dto.is_system = row.text_key in system_text_keys
+        return dto
 
     def _to_dto(self, row: DialogWindow) -> DialogWindowDto:
+        system_text_keys = _system_text_keys(row)
         return DialogWindowDto(
             id=row.id,
             key=row.key,
             kind=row.kind,
             flow=row.flow,
             banner_name=row.banner_name,
+            name=row.name,
             is_enabled=row.is_enabled,
             position=row.position,
             slot=row.slot,
-            buttons=[self._button_to_dto(b) for b in row.buttons],
+            buttons=[self._button_to_dto(b, system_text_keys) for b in row.buttons],
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -75,6 +79,12 @@ class DialogRepository:
         )
         return set(result)
 
+    async def list_custom_keys(self) -> set[str]:
+        result = await self.session.scalars(
+            select(DialogWindow.key).where(DialogWindow.kind == DialogWindowKind.CUSTOM)
+        )
+        return set(result)
+
     def _button_from_snapshot(self, window_id: int, raw: dict) -> DialogButton:
         return DialogButton(
             window_id=window_id,
@@ -96,8 +106,14 @@ class DialogRepository:
         flow: DialogFlow,
         banner_name: Optional[str],
         default_snapshot: dict,
+        position: int = 0,
     ) -> bool:
-        if await self._get_row(key) is not None:
+        existing = await self._get_row(key)
+        if existing is not None:
+            # The catalog owns where a seed window sits in its flow, so a reordered
+            # flow has to move the row that is already there.
+            existing.position = position
+            await self.session.flush()
             return False
         window = DialogWindow(
             key=key,
@@ -105,6 +121,7 @@ class DialogRepository:
             flow=flow,
             banner_name=banner_name,
             is_enabled=True,
+            position=position,
             default_snapshot=default_snapshot,
         )
         self.session.add(window)
@@ -120,6 +137,10 @@ class DialogRepository:
             row.banner_name = data.banner_name
         if data.is_enabled is not None:
             row.is_enabled = data.is_enabled
+        if data.name is not None:
+            if row.kind != DialogWindowKind.CUSTOM:
+                raise ValidationError("Only custom windows can be renamed")
+            row.name = data.name
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_dto(row)
@@ -179,6 +200,7 @@ class DialogRepository:
             kind=DialogWindowKind.CUSTOM,
             flow=DialogFlow.CUSTOM,
             banner_name=data.banner_name,
+            name=data.name,
             is_enabled=True,
             position=data.position,
             slot=await self._claim_free_slot(),
@@ -204,6 +226,13 @@ class DialogRepository:
             if b.get("action_key")
         }
 
+    async def is_button_text_key(self, text_key: str) -> bool:
+        stmt = select(DialogButton.id).where(DialogButton.text_key == text_key).limit(1)
+        return await self.session.scalar(stmt) is not None
+
+    async def system_text_keys(self, key: str) -> set[str]:
+        return _system_text_keys(await self._get_row_or_raise(key))
+
     async def reset_to_snapshot(self, key: str) -> DialogWindowDto:
         row = await self.session.scalar(
             select(DialogWindow).where(DialogWindow.key == key).with_for_update()
@@ -224,3 +253,9 @@ class DialogRepository:
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_dto(row)
+
+
+def _system_text_keys(row: DialogWindow) -> set[str]:
+    if row.kind != DialogWindowKind.SEED:
+        return set()
+    return {b["text_key"] for b in row.default_snapshot.get("buttons", [])}

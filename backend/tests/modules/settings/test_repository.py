@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.oauth_settings import OAuthSettings
-from app.core.enums import AppearanceImageKind, Locale
+from app.core.enums import AppearanceImageKind, AppearanceResetScope, Locale
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
     UpdateAppearanceSettingsDto,
@@ -81,20 +81,6 @@ async def test_stored_value_is_encrypted_at_rest(
     ).one()
     assert row.token != "123:abcdef"
     assert row.secret_token != "webhook-secret"
-
-
-async def test_banners_enabled_toggle_roundtrips(
-    settings_repository: SettingsRepository,
-) -> None:
-    await settings_repository.update_bot_settings(UpdateBotSettingsDto(banners_enabled=True))
-
-    settings = await settings_repository.get_bot_settings()
-    assert settings.banners_enabled is True
-
-    await settings_repository.update_bot_settings(UpdateBotSettingsDto(banners_enabled=False))
-
-    settings = await settings_repository.get_bot_settings()
-    assert settings.banners_enabled is False
 
 
 async def test_get_oauth_settings_defaults_to_unconfigured(
@@ -378,7 +364,7 @@ async def test_update_appearance_settings_persists_partial_updates(
     assert settings.shader_enabled is False
 
 
-async def test_reset_appearance_settings_clears_name_and_color(
+async def test_reset_appearance_settings_clears_only_its_scope(
     settings_repository: SettingsRepository,
 ) -> None:
     await settings_repository.update_appearance_settings(
@@ -389,9 +375,14 @@ async def test_reset_appearance_settings_clears_name_and_color(
             shader_enabled=False,
         )
     )
-    settings = await settings_repository.reset_appearance_settings()
+    settings = await settings_repository.reset_appearance_settings(AppearanceResetScope.BRANDING)
 
     assert settings.brand_name is None
+    assert settings.primary_color == "#ff0000"
+    assert settings.shader_enabled is False
+
+    settings = await settings_repository.reset_appearance_settings(AppearanceResetScope.COLORS)
+
     assert settings.primary_color is None
     assert settings.shader_palette is None
     assert settings.shader_enabled is True

@@ -1,0 +1,310 @@
+import { ChevronLeft, ChevronRight, Inbox, Search, Unlock, UserX } from "lucide-react";
+import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import {
+  listBlacklistMatches,
+  type BlacklistMatch,
+  type BlacklistMatchFilters,
+  type BlacklistMatchPage,
+  type BlacklistMatchUser,
+  type BlacklistOrigin,
+  unblockBlacklistMatches,
+} from "@entities/blacklist/api";
+import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
+import { getErrorMessage } from "@shared/api/http";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { toast } from "@shared/lib/toast";
+import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { FieldHint } from "@shared/ui/FieldHint";
+import { Spinner } from "@shared/ui/Spinner";
+
+import { BlacklistCard, KindBadge } from "./BlacklistCard";
+
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 200;
+
+type Origin = BlacklistMatchFilters["origin"];
+
+function matchOrigins(match: BlacklistMatch): BlacklistOrigin[] {
+  const byKey = new Map<string, BlacklistOrigin>();
+  for (const hit of match.hits) for (const origin of hit.origins) byKey.set(String(origin.source_id), origin);
+  return [...byKey.values()];
+}
+
+type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: BlacklistMatchPage };
+
+interface BlacklistMatchesCardProps {
+  // bumped by the page whenever the blacklist changes
+  reloadKey: number;
+  canUnblockAll: boolean;
+  onUnblocked: () => void;
+}
+
+export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: BlacklistMatchesCardProps) {
+  const { t } = useTranslation();
+  const bounceStrength = useBounceStrength();
+  const [isUnblockConfirmOpen, setIsUnblockConfirmOpen] = useState(false);
+  const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [search, setSearch] = useState("");
+  const [origin, setOrigin] = useState<Origin>(undefined);
+  const [page, setPage] = useState(1);
+  const [detailsUser, setDetailsUser] = useState<BlacklistMatchUser | null>(null);
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    listBlacklistMatches({ search: debouncedSearch || undefined, origin, page, pageSize: PAGE_SIZE }, controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        // the list shrank under us (entry removed, source disabled)
+        if (data.items.length === 0 && page > 1) {
+          setPage(1);
+          return;
+        }
+        setState({ kind: "ready", data });
+      })
+      .catch(() => {
+        // keep the last page on screen; only show the error when there's nothing else
+        if (!controller.signal.aborted) setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
+      });
+    return () => controller.abort();
+  }, [debouncedSearch, origin, page, reloadKey]);
+
+  const data = state.kind === "ready" ? state.data : null;
+  const originLabel = (value: BlacklistOrigin) =>
+    value.source_id === null ? t("blacklist.matches.manualOrigin") : (value.source_name ?? "—");
+  const pageCount = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
+
+  const handleUnblockAll = async () => {
+    try {
+      const result = await unblockBlacklistMatches();
+      toast.success(t("blacklist.matches.unblockAll.success", { count: result.unblocked }));
+      onUnblocked();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("blacklist.matches.unblockAll.error")));
+    }
+  };
+
+  const changeOrigin = (value: Origin) => {
+    setOrigin(value);
+    setPage(1);
+  };
+
+  return (
+    <BlacklistCard
+      icon={UserX}
+      title={t("blacklist.matches.title")}
+      description={t("blacklist.matches.description")}
+      action={
+        data !== null &&
+        data.all_total > 0 && (
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="rounded-full border border-transparent bg-error/10 px-4 py-2 text-[12.5px] leading-5 font-semibold text-error">
+              {t("blacklist.matches.count", { count: data.all_total })}
+            </span>
+            {canUnblockAll && (
+              <motion.button
+                type="button"
+                onClick={() => setIsUnblockConfirmOpen(true)}
+                {...bounceTap(bounceStrength)}
+                className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] leading-5 font-semibold text-foreground/90 transition-colors hover:bg-white/5"
+              >
+                <Unlock className="size-3.5" />
+                {t("blacklist.matches.unblockAll.button")}
+              </motion.button>
+            )}
+          </div>
+        )
+      }
+    >
+      {state.kind === "loading" && <Spinner className="mt-4" />}
+      {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("blacklist.matches.loadError")}</p>}
+      {data !== null && data.all_total === 0 && (
+        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+          <Inbox className="size-5" />
+          <p className="text-sm">{t("blacklist.matches.empty")}</p>
+        </div>
+      )}
+
+      {data !== null && data.all_total > 0 && (
+        <>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-40 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder={t("blacklist.matches.searchPlaceholder")}
+                aria-label={t("blacklist.matches.searchPlaceholder")}
+                className="w-full rounded-xl border border-border bg-input/60 py-2 pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary"
+              />
+            </div>
+            <div className="w-full sm:w-64">
+              <PillTabs
+                items={(
+                  [
+                    ["ALL", t("blacklist.matches.allOrigins"), data.all_total],
+                    ["manual", t("blacklist.matches.manualOrigin"), data.manual_total],
+                    ["lists", t("blacklist.matches.listsOrigin"), data.lists_total],
+                  ] as const
+                ).map(([key, label, count]) => ({
+                  key,
+                  label: (
+                    <>
+                      {label} <span className="text-[11.5px] tabular-nums opacity-70">{count}</span>
+                    </>
+                  ),
+                }))}
+                activeKey={origin ?? "ALL"}
+                onSelect={(key) => changeOrigin(key === "ALL" ? undefined : key)}
+              />
+            </div>
+          </div>
+
+          <div className="-mx-2 mt-2 -mb-1 overflow-x-auto px-2 py-1">
+            <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13px]">
+              <thead>
+                <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 [&>th]:border-b [&>th]:border-border">
+                  <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnUser")}</th>
+                  <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnHit")}</th>
+                  <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnOrigin")}</th>
+                  <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnStatus")}</th>
+                  <th scope="col" className="w-10 px-3 py-2">
+                    <span className="sr-only">{t("blacklist.matches.openUser")}</span>
+                  </th>
+                </tr>
+                <tr aria-hidden className="h-1" />
+              </thead>
+              <tbody className="[&>tr:not(:last-child)>td]:border-b [&>tr:not(:last-child)>td]:border-border/50">
+                {data.items.map((match) => (
+                  <motion.tr
+                    key={match.user.id}
+                    onClick={() => setDetailsUser(match.user)}
+                    {...bounceTap(bounceStrength, 0.03)}
+                    className="cursor-pointer [&>td]:transition-colors hover:[&>td]:bg-white/[0.04] [&>td:first-child]:rounded-l-full [&>td:last-child]:rounded-r-full"
+                  >
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground">
+                          {match.user.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{match.user.name}</p>
+                          <p className="truncate text-[12px] text-muted-foreground">
+                            {match.user.username ? `@${match.user.username}` : `#${match.user.id}`}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1">
+                        {match.hits.map((hit) => (
+                          <div key={hit.kind} className="flex items-center gap-2">
+                            <KindBadge
+                              kind={hit.kind}
+                              label={
+                                hit.kind === "TELEGRAM_ID"
+                                  ? t("blacklist.manual.kindTelegramId")
+                                  : t("blacklist.manual.kindEmail")
+                              }
+                            />
+                            <span className="truncate font-mono text-[12.5px] text-foreground">{hit.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-foreground/80">
+                      {matchOrigins(match).map(originLabel).join(", ")}
+                    </td>
+                    <td className="px-3 py-2">
+                      {match.user.is_blocked ? (
+                        <span className="inline-flex rounded-full bg-error/10 px-2.5 py-0.5 text-[12px] font-semibold text-error">
+                          {t("blacklist.matches.blocked")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-0.5 text-[12px] font-semibold text-warning">
+                          {t("blacklist.matches.pending")}
+                          <FieldHint text={t("blacklist.matches.pendingHint")} />
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsUser(match.user)}
+                        aria-label={t("blacklist.matches.openUser")}
+                        className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                      >
+                        <ChevronRight className="size-4" />
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+            {data.total === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("blacklist.matches.noResults")}</p>
+            )}
+          </div>
+
+          {pageCount > 1 && (
+            <div className="mt-3 flex items-center justify-between gap-3 px-3">
+              <span className="text-[12.5px] tabular-nums text-muted-foreground">
+                {t("blacklist.matches.range", {
+                  from: (page - 1) * PAGE_SIZE + 1,
+                  to: (page - 1) * PAGE_SIZE + data.items.length,
+                  total: data.total,
+                })}
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page <= 1}
+                  aria-label={t("blacklist.matches.prevPage")}
+                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= pageCount}
+                  aria-label={t("blacklist.matches.nextPage")}
+                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {isUnblockConfirmOpen && (
+        <ConfirmDialog
+          title={t("blacklist.matches.unblockAll.title")}
+          message={t("blacklist.matches.unblockAll.confirm")}
+          confirmLabel={t("blacklist.matches.unblockAll.button")}
+          cancelLabel={t("blacklist.matches.unblockAll.cancelButton")}
+          danger
+          size="md"
+          onConfirm={() => {
+            void handleUnblockAll();
+            setIsUnblockConfirmOpen(false);
+          }}
+          onCancel={() => setIsUnblockConfirmOpen(false)}
+        />
+      )}
+      {detailsUser && <UserDetailsDialog user={detailsUser} onClose={() => setDetailsUser(null)} />}
+    </BlacklistCard>
+  );
+}

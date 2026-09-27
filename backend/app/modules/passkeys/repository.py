@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
 from typing import Optional, cast
 
 from sqlalchemy import CursorResult, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.passkey_credential import PasskeyCredential
+from app.core.utils.time import datetime_now
 from app.modules.passkeys.dto import CreatePasskeyCredentialDto, PasskeyCredentialDto
 
 
@@ -61,7 +61,7 @@ class PasskeyRepository:
     async def update_after_authentication(self, id: int, sign_count: int) -> None:
         row = await self.session.get_one(PasskeyCredential, id)
         row.sign_count = sign_count
-        row.last_used_at = datetime.now(timezone.utc)
+        row.last_used_at = datetime_now()
         await self.session.flush()
 
     async def delete_all_by_user(self, user_id: int) -> int:

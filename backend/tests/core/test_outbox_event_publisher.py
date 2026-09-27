@@ -77,6 +77,16 @@ async def test_admin_created_payload_shape(session) -> None:
     assert row.payload["target"]["role"] == "ADMIN"
 
 
+async def test_user_snapshot_includes_contact_fields(session) -> None:
+    target = ADMIN.model_copy(
+        update={"telegram_id": 123456789, "username": "admin_tg", "email": "admin@example.com"}
+    )
+    row = await _published_row(session, AdminCreatedEvent(actor=OWNER, target=target))
+    assert row.payload["target"]["telegram_id"] == 123456789
+    assert row.payload["target"]["username"] == "admin_tg"
+    assert row.payload["target"]["email"] == "admin@example.com"
+
+
 async def test_admin_permissions_updated_payload_includes_grants_and_revokes(session) -> None:
     event = AdminPermissionsUpdatedEvent(
         actor=OWNER, target=ADMIN, permission_grants=["BOT_SETTINGS_MANAGE"], permission_revokes=[]

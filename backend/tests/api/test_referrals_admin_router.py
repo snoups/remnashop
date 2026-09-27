@@ -23,6 +23,7 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.referrals import get_referrals_providers
+from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscription_revoker_providers
 from app.modules.translations import get_translations_providers
@@ -155,8 +156,54 @@ async def test_adjust_user_points_updates_and_returns_the_new_points(
 ) -> None:
     response = await client.post(
         f"{API_V1}/users/{user_id}/points",
-        json={"delta": "10.50"},
+        json={"delta": "10"},
         headers=admin_auth_headers,
     )
     assert response.status_code == 200
-    assert Decimal(response.json()["points"]) == Decimal("10.50")
+    assert Decimal(response.json()["points"]) == Decimal("10")
+
+
+async def test_adjust_user_points_rejects_a_fractional_delta(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
+) -> None:
+    response = await client.post(
+        f"{API_V1}/users/{user_id}/points",
+        json={"delta": "10.5"},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 422
+
+
+async def test_list_referrals_returns_page(
+    client: httpx.AsyncClient,
+    admin_auth_headers: dict[str, str],
+    user_repository: UserRepository,
+    session: AsyncSession,
+) -> None:
+    referrer = await user_repository.create(CreateUserDto(name="inviter", telegram_id=900_201))
+    referred = await user_repository.create(CreateUserDto(name="invitee", telegram_id=900_202))
+    await ReferralRepository(session).create_referral(
+        referrer_id=referrer.id, referred_id=referred.id, level=1
+    )
+
+    response = await client.get(
+        f"{API_V1}/referrals", params={"level": 1}, headers=admin_auth_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    item = body["items"][0]
+    assert item["referred"]["name"] == "invitee"
+    assert item["referrer"]["name"] == "inviter"
+    assert item["reward_count"] == 0
+    assert item["reward_amounts"] == {}
+
+
+async def test_list_referrals_rejects_out_of_range_level(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str]
+) -> None:
+    response = await client.get(
+        f"{API_V1}/referrals", params={"level": 4}, headers=admin_auth_headers
+    )
+    assert response.status_code == 422

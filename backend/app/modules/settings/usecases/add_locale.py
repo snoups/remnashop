@@ -5,6 +5,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings.events import LocaleActivatedEvent
 from app.modules.settings.repository import SettingsRepository
+from app.modules.translations import TranslationsRepository
 from app.modules.users import UserDto
 
 
@@ -14,16 +15,22 @@ class AddLocaleUseCase(UseCase[Locale, list[Locale]]):
     def __init__(
         self,
         settings_repository: SettingsRepository,
+        translations_repository: TranslationsRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
         self._settings_repository = settings_repository
+        self._translations_repository = translations_repository
         self._uow = uow
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: Locale) -> list[Locale]:
         async with self._uow:
             await self._settings_repository.add_active_locale(data)
+            # In the same transaction, not a worker task: the dashboard
+            # re-reads the translations right after this returns, and an
+            # async copy loses that race -- the new locale reads as empty.
+            await self._translations_repository.copy_locale_from(Locale.EN, data)
             locales = await self._settings_repository.list_active_locales()
-            await self._event_publisher.publish(LocaleActivatedEvent(locale=data))
+            await self._event_publisher.publish(LocaleActivatedEvent(actor=actor, locale=data))
         return locales

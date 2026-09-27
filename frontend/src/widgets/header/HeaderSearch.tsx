@@ -1,0 +1,254 @@
+import { CornerDownLeft, CreditCard, Layers, ScrollText, Search, Tag, Ticket, User as UserIcon } from "lucide-react";
+import { motion } from "motion/react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+
+import { listPaymentOrders, type PaymentOrderItem } from "@entities/payments/api";
+import { listPlans, type Plan } from "@entities/plans/api";
+import { listPromocodes, type Promocode } from "@entities/promocodes/api";
+import { listSubscriptions, type SubscriptionListItem } from "@entities/subscriptions/api";
+import { listUsers, type UserListItem } from "@entities/user/api";
+import { useCurrentUser } from "@entities/user/use-current-user";
+import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { useClickOutside } from "@shared/lib/use-click-outside";
+import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
+
+const DEBOUNCE_MS = 250;
+const USER_LIMIT = 5;
+const RESULT_LIMIT = 3;
+const SETTINGS_TABS = [
+  ["general", ""],
+  ["bot", "/bot"],
+  ["apiTokens", "/api-tokens"],
+  ["appearance", "/appearance"],
+  ["gateways", "/gateways"],
+  ["backups", "/backups"],
+  ["blacklist", "/blacklist"],
+  ["pricing", "/pricing"],
+] as const;
+
+interface Entry {
+  id: string;
+  label: string;
+  hint?: string;
+  to: string;
+  icon: ComponentType<{ className?: string }>;
+}
+
+const matches = (haystack: string, tokens: string[]) => {
+  const lower = haystack.toLowerCase();
+  return tokens.every((token) => lower.includes(token));
+};
+
+export function HeaderSearch() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const bounceStrength = useBounceStrength();
+  const userState = useCurrentUser();
+  const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const canViewUsers = permissions.includes("USERS_VIEW");
+
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [orders, setOrders] = useState<PaymentOrderItem[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionListItem[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [promocodes, setPromocodes] = useState<Promocode[]>([]);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useClickOutside(rootRef, open, () => setOpen(false));
+
+  const debounced = useDebouncedValue(query.trim(), DEBOUNCE_MS);
+
+  // Paginated lists are searched server-side per query; plans and promocodes
+  // are small unpaginated lists, fetched once on first use and filtered here.
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const ignore = () => {};
+    const search = debounced;
+    if (!search) {
+      setUsers([]);
+      setOrders([]);
+      setSubscriptions([]);
+      return;
+    }
+    if (canViewUsers) listUsers({ search, pageSize: USER_LIMIT }, signal).then((p) => setUsers(p.items)).catch(ignore);
+    if (permissions.includes("PAYMENTS_VIEW"))
+      listPaymentOrders({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setOrders(p.items)).catch(ignore);
+    if (permissions.includes("SUBSCRIPTIONS_VIEW"))
+      listSubscriptions({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setSubscriptions(p.items)).catch(ignore);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
+  }, [debounced, userState]);
+
+  const wantsCatalog = debounced !== "";
+  useEffect(() => {
+    if (!wantsCatalog) return;
+    if (permissions.includes("PLANS_VIEW") && plans.length === 0) listPlans().then(setPlans).catch(() => {});
+    if (permissions.includes("PROMOCODES_VIEW") && promocodes.length === 0)
+      listPromocodes().then(setPromocodes).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once per session on first query
+  }, [wantsCatalog, userState]);
+
+  const pages = useMemo<Entry[]>(() => {
+    const nav = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission)).map(
+      (item) => ({ id: `nav:${item.key}`, label: t(`sidebar.${item.key}`), to: item.to, icon: item.icon }),
+    );
+    const settings = NAV_ITEMS.find((item) => item.key === "settings");
+    const tabs = settings
+      ? SETTINGS_TABS.map(([key, suffix]) => ({
+          id: `settings:${key}`,
+          label: t(`settings.tabs.${key}`),
+          hint: t("sidebar.settings"),
+          to: `${settings.to}${suffix}`,
+          icon: settings.icon,
+        }))
+      : [];
+    return [...nav, ...tabs];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
+  }, [t, userState]);
+
+  const entries = useMemo<Entry[]>(() => {
+    const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return [];
+    const found = pages.filter((entry) => matches(`${entry.label} ${entry.hint ?? ""}`, tokens));
+    const people = users.map((user) => ({
+      id: `user:${user.id}`,
+      label: user.name,
+      hint: [user.username && `@${user.username}`, user.login, user.email, user.telegram_id]
+        .filter(Boolean)
+        .join(" · "),
+      to: `/dashboard/users?search=${encodeURIComponent(debounced)}`,
+      icon: UserIcon,
+    }));
+    const link = (path: string) => `${path}?search=${encodeURIComponent(debounced)}`;
+    const orderEntries = orders.map((order) => ({
+      id: `order:${order.id}`,
+      label: `${t("header.searchOrders")} #${order.id}`,
+      hint: [order.plan_snapshot.name, order.status].filter(Boolean).join(" · "),
+      to: link("/dashboard/payments"),
+      icon: CreditCard,
+    }));
+    const subscriptionEntries = subscriptions.map((sub) => ({
+      id: `subscription:${sub.id}`,
+      label: `${t("header.searchSubscriptions")} #${sub.id}`,
+      hint: [sub.tag, `user ${sub.user_id}`].filter(Boolean).join(" · "),
+      to: link("/dashboard/subscriptions"),
+      icon: Layers,
+    }));
+    const planEntries = plans
+      .filter((plan) => matches(`${plan.name} ${plan.public_code} ${plan.tag ?? ""}`, tokens))
+      .slice(0, RESULT_LIMIT)
+      .map((plan) => ({
+        id: `plan:${plan.id}`,
+        label: plan.name,
+        hint: t("header.searchPlan"),
+        to: "/dashboard/plans",
+        icon: Tag,
+      }));
+    const promocodeEntries = promocodes
+      .filter((promocode) => matches(promocode.code, tokens))
+      .slice(0, RESULT_LIMIT)
+      .map((promocode) => ({
+        id: `promocode:${promocode.id}`,
+        label: promocode.code,
+        hint: t("header.searchPromocode"),
+        to: `/dashboard/promocodes?search=${encodeURIComponent(promocode.code)}`,
+        icon: Ticket,
+      }));
+    const eventEntries = permissions.includes("EVENT_LOG_VIEW")
+      ? [
+          {
+            id: "events",
+            label: t("header.searchEvents"),
+            hint: debounced,
+            to: link("/dashboard/event-log"),
+            icon: ScrollText,
+          },
+        ]
+      : [];
+    return [
+      ...found,
+      ...people,
+      ...orderEntries,
+      ...subscriptionEntries,
+      ...planEntries,
+      ...promocodeEntries,
+      ...eventEntries,
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
+  }, [query, pages, users, orders, subscriptions, plans, promocodes, debounced, t, userState]);
+
+  useEffect(() => setActive(0), [entries]);
+
+  const go = (entry: Entry) => {
+    navigate(entry.to);
+    setOpen(false);
+    setQuery("");
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape") setOpen(false);
+    else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActive((index) => (index + step + entries.length) % Math.max(entries.length, 1));
+    } else if (event.key === "Enter" && entries[active]) go(entries[active]);
+  };
+
+  return (
+    <div ref={rootRef} className="relative flex min-w-40 max-w-80 flex-1">
+      <motion.label
+        {...bounceTap(bounceStrength, 0.03)}
+        className="group flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] px-3.5 py-2 transition-colors not-focus-within:hover:bg-white/[0.08] focus-within:border-primary"
+      >
+        <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder={t("header.searchPlaceholder")}
+          className="w-full min-w-0 border-0 bg-transparent text-[13px] text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
+        />
+      </motion.label>
+
+      {open && query.trim() && (
+        <div className="absolute left-0 top-full z-30 mt-2 w-80 rounded-popover border border-white/[0.14] bg-popover/60 p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150">
+          {/* scroll lives inside the padding -- on the popover itself the
+              scrollbar column paints over the rounded corners */}
+          <div className="max-h-96 overflow-y-auto">
+          {entries.length === 0 ? (
+            <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("header.searchEmpty")}</p>
+          ) : (
+            entries.map((entry, index) => (
+              <button
+                key={entry.id}
+                type="button"
+                onMouseEnter={() => setActive(index)}
+                onClick={() => go(entry)}
+                className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] ${
+                  index === active ? "bg-accent text-primary" : "text-foreground"
+                }`}
+              >
+                <entry.icon className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                {entry.hint && <span className="max-w-32 truncate text-[11px] text-muted-foreground">{entry.hint}</span>}
+                {index === active && <CornerDownLeft className="size-3.5 shrink-0" />}
+              </button>
+            ))
+          )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

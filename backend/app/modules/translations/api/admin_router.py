@@ -5,11 +5,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.api.dependencies.admin import require_admin
 from app.core.enums import Locale
 from app.core.exceptions import NotFoundError, ValidationError
-from app.modules.translations.api.schemas import TranslationEntryItem, UpdateTranslationRequest
-from app.modules.translations.dto import TranslationEntryDto
+from app.modules.translations.api.schemas import (
+    TranslationEntryItem,
+    TranslationsExportPayload,
+    TranslationsImportResult,
+    TranslationTextExportItem,
+    UpdateTranslationRequest,
+)
+from app.modules.translations.dto import TranslationEntryDto, TranslationTextExportDto
 from app.modules.translations.usecases import (
+    ExportTranslationsUseCase,
+    ImportTranslationsUseCase,
     ListTranslationsUseCase,
+    ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
+    TranslationsImportInput,
     UpdateTranslationUseCase,
 )
 from app.modules.translations.usecases.reset_translation import ResetTranslationInput
@@ -37,6 +47,64 @@ async def list_translations(
 ) -> list[TranslationEntryItem]:
     entries = await use_case(actor)
     return [_to_item(entry) for entry in entries]
+
+
+@router.get("/export", response_model=TranslationsExportPayload)
+@inject
+async def export_translations(
+    use_case: FromDishka[ExportTranslationsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> TranslationsExportPayload:
+    export = await use_case(actor)
+    return TranslationsExportPayload(
+        version=export.version,
+        texts=[
+            TranslationTextExportItem(
+                locale=text.locale,
+                message_id=text.message_id,
+                attribute_id=text.attribute_id,
+                value=text.value,
+            )
+            for text in export.texts
+        ],
+    )
+
+
+@router.post("/import", response_model=TranslationsImportResult)
+@inject
+async def import_translations(
+    payload: TranslationsExportPayload,
+    use_case: FromDishka[ImportTranslationsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> TranslationsImportResult:
+    try:
+        result = await use_case(
+            actor,
+            TranslationsImportInput(
+                version=payload.version,
+                texts=[
+                    TranslationTextExportDto(
+                        locale=text.locale,
+                        message_id=text.message_id,
+                        attribute_id=text.attribute_id,
+                        value=text.value,
+                    )
+                    for text in payload.texts
+                ],
+            ),
+        )
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    return TranslationsImportResult(applied=result.applied, skipped=result.skipped)
+
+
+@router.post("/reset-all", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def reset_all_translations(
+    use_case: FromDishka[ResetAllTranslationsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> None:
+    await use_case(actor)
 
 
 @router.put("/{locale}/{message_id}", response_model=TranslationEntryItem)

@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "Remnashop Dashboard"
+    "title": "Remnashop Dashboard",
+    "copied": "Copied"
   },
   "toast": {
     "close": "Dismiss"
@@ -19,7 +20,6 @@
   "auth": {
     "loginPageTitle": "Sign in",
     "bootstrapPageTitle": "Registration",
-    "loading": "Loading…",
     "login": "Login",
     "loginPlaceholder": "Enter your login",
     "password": "Password",
@@ -103,7 +103,6 @@
   },
   "analytics": {
     "title": "Analytics",
-    "loading": "Loading…",
     "loadError": "Couldn't load analytics. Try refreshing.",
     "kpi": {
       "revenue": "Revenue",
@@ -149,7 +148,7 @@
       "title": "Cohort retention",
       "titleHint": "Each row is users who registered in that month. M0, M1... show the share of them still active 0, 1... months later.",
       "loadError": "Couldn't load cohorts. Try refreshing.",
-      "empty": "No registrations in this window yet.",
+      "empty": "No data yet.",
       "cohortColumn": "Cohort",
       "sizeColumn": "Users"
     },
@@ -157,13 +156,12 @@
       "title": "Lifetime value distribution",
       "titleHint": "How many paying users fall into each range of total amount paid to date.",
       "loadError": "Couldn't load LTV distribution. Try refreshing.",
-      "empty": "No paying users yet.",
+      "empty": "No data yet.",
       "usersAxis": "Users"
     }
   },
   "eventLog": {
     "title": "Event log",
-    "loading": "Loading…",
     "loadError": "Failed to load event log.",
     "empty": "No events found.",
     "filters": {
@@ -185,36 +183,83 @@
       "actor": "Initiator"
     },
     "detail": {
+      "name": "Name",
+      "telegram": "Telegram",
+      "system": "System",
+      "anonymous": "Anonymous",
+      "apiToken": "API token",
+      "role": "Role",
       "target": "Target",
       "ip": "IP address",
       "payload": "Payload",
-      "copyPayload": "Copy payload"
+      "copyPayload": "Copy payload",
+      "tabs": {
+        "details": "Details",
+        "payload": "Payload"
+      },
+      "sections": {
+        "event": "Event"
+      },
+      "id": "ID",
+      "eventCode": "Event code",
+      "json": "JSON"
     },
     "pagination": {
       "loadMore": "Show more",
       "loadingMore": "Loading…"
     },
     "events": {
-      "LoginSucceededEvent": "Logged in",
-      "LoginFailedEvent": "Failed login attempt",
-      "OwnerBootstrappedEvent": "Owner account created",
-      "BootstrapConflictEvent": "Bootstrap attempted (owner already exists)",
-      "OAuthLoginSucceededEvent": "Logged in via OAuth",
-      "OAuthLoginFailedEvent": "Failed OAuth login attempt",
-      "OAuthIdentityConnectedEvent": "Connected OAuth account",
-      "OAuthIdentityDisconnectedEvent": "Disconnected OAuth account",
+      "LoginSucceededEvent": "Login",
+      "LoginFailedEvent": "Login failed",
+      "OwnerBootstrappedEvent": "Owner created",
+      "BootstrapConflictEvent": "Owner creation attempt",
+      "OAuthLoginSucceededEvent": "OAuth login",
+      "OAuthLoginFailedEvent": "OAuth login failed",
+      "OAuthIdentityConnectedEvent": "OAuth account linked",
+      "OAuthIdentityDisconnectedEvent": "OAuth account unlinked",
       "SessionRevokedEvent": "Session revoked",
-      "SessionTheftDetectedEvent": "Session theft detected",
-      "UserSessionRevokedByAdminEvent": "User session revoked by admin",
+      "SessionTheftDetectedEvent": "Session theft",
+      "UserSessionRevokedByAdminEvent": "Session revoked by admin",
       "AdminCreatedEvent": "Admin created",
-      "AdminPromotedEvent": "User promoted to admin",
-      "AdminPermissionsUpdatedEvent": "Admin permissions updated",
+      "AdminPromotedEvent": "Admin appointed",
+      "AdminPermissionsUpdatedEvent": "Admin permissions changed",
       "AdminDemotedEvent": "Admin demoted",
       "AdminDeletedEvent": "Admin deleted",
       "UserDeletedEvent": "User deleted",
-      "TelegramUserRegisteredEvent": "New user via Telegram",
+      "TelegramUserRegisteredEvent": "Telegram sign-up",
       "LocaleActivatedEvent": "Locale added",
-      "LocaleDeactivatedEvent": "Locale removed"
+      "LocaleDeactivatedEvent": "Locale removed",
+      "AnchorSwitchedEvent": "Anchor currency changed",
+      "BasePricesAdjustedEvent": "Base prices changed",
+      "ApiTokenCreatedEvent": "API token created",
+      "ApiTokenRevokedEvent": "API token revoked",
+      "BlacklistEntryAddedEvent": "Blacklist entry added",
+      "BlacklistEntryRemovedEvent": "Blacklist entry removed",
+      "BlacklistReconciledEvent": "Blacklist auto-block",
+      "CurrencyRateChangedEvent": "Currency rate changed",
+      "OidcIssuerChangedEvent": "OIDC issuer changed",
+      "PasskeyLoginFailedEvent": "Passkey login failed",
+      "PasskeyLoginSucceededEvent": "Passkey login",
+      "PasskeyRegisteredEvent": "Passkey added",
+      "PasskeyRemovedEvent": "Passkey removed",
+      "PlanChangedEvent": "Plan changed",
+      "PointsWithdrawalRequestedEvent": "Points withdrawal request",
+      "PromocodeActivatedEvent": "Promocode activated",
+      "PromocodeChangedEvent": "Promocode changed",
+      "ReferralAttachedEvent": "Referral attached",
+      "ReferralRewardIssuedEvent": "Referral reward",
+      "SubscriptionAddOnGrantedEvent": "Add-on granted",
+      "SubscriptionChangedEvent": "Subscription changed",
+      "SubscriptionPurchasedEvent": "Subscription purchased",
+      "SubscriptionRenewedEvent": "Subscription renewed",
+      "SubscriptionStatusSyncedEvent": "Subscription synced",
+      "TelegramRegistrationBlockedEvent": "Sign-up blocked",
+      "UserBlockedEvent": "User blocked",
+      "UserPointsAdjustedEvent": "Points adjusted",
+      "UserUnblockedEvent": "User unblocked",
+      "UsersBulkBlockedEvent": "Bulk block",
+      "UsersBulkUnblockedEvent": "Bulk unblock",
+      "PaymentOrderRefundedEvent": "Payment refunded"
     }
   },
   "sidebar": {
@@ -235,7 +280,6 @@
   },
   "admins": {
     "title": "Admins",
-    "loading": "Loading…",
     "loadError": "Failed to load admins.",
     "create": {
       "button": "Create admin",
@@ -251,15 +295,10 @@
       "close": "I've copied it"
     },
     "permissionsForm": {
-      "title": "Edit permissions",
-      "headers": {
-        "permission": "Permission",
-        "grant": "Grant",
-        "revoke": "Revoke"
-      },
       "cancel": "Cancel",
       "submit": "Save",
-      "error": "Failed to update permissions."
+      "error": "Failed to update permissions.",
+      "reset": "Reset"
     },
     "demote": {
       "button": "Demote to user",
@@ -267,11 +306,24 @@
       "confirm": "Demote this admin to a regular user? Their login and permissions will be cleared.",
       "cancel": "Cancel",
       "error": "Failed to demote admin."
+    },
+    "you": "you",
+    "details": {
+      "tabs": {
+        "profile": "Profile",
+        "permissions": "Permissions",
+        "sessions": "Sessions"
+      },
+      "sections": {
+        "account": "Account",
+        "purchases": "Purchases"
+      },
+      "close": "Close",
+      "blocked": "Blocked"
     }
   },
   "users": {
     "title": "Users",
-    "loading": "Loading…",
     "loadError": "Failed to load users.",
     "empty": "No users found.",
     "blocked": "Blocked",
@@ -319,10 +371,17 @@
       "username": "Username",
       "telegramId": "Telegram ID",
       "email": "Email",
+      "referralCode": "Referral code",
+      "points": "Points",
+      "personalDiscount": "Personal discount",
+      "purchaseDiscount": "Next purchase discount",
+      "trialAvailable": "Trial available",
+      "yes": "Yes",
+      "no": "No",
       "language": "Language",
       "status": "Status",
       "active": "Active",
-      "createdAt": "Created"
+      "createdAt": "Registration date"
     }
   },
   "header": {
@@ -331,7 +390,15 @@
     "profile": "Profile",
     "logout": "Log out",
     "searchPlaceholder": "Search",
-    "notifications": "Notifications"
+    "searchEmpty": "Nothing found",
+    "notifications": "Notifications",
+    "shaderOn": "Turn the background shader on",
+    "shaderOff": "Turn the background shader off",
+    "searchEvents": "Search event log",
+    "searchOrders": "Order",
+    "searchSubscriptions": "Subscription",
+    "searchPromocode": "Promocode",
+    "searchPlan": "Plan"
   },
   "settings": {
     "title": "Settings",
@@ -347,11 +414,13 @@
     },
     "bot": {
       "title": "Telegram Bot",
-      "description": "Telegram bot configuration.",
-      "loading": "Loading…",
+      "description": "Telegram bot configuration",
       "loadErrorBadge": "error",
-      "configured": "configured",
       "notConfigured": "not configured",
+      "running": "running",
+      "stopped": "not running",
+      "statusError": "Error: {{message}}",
+      "pendingUpdates": "Pending updates: {{total}}",
       "tokenLabel": "Bot token",
       "tokenHint": "Issued by @BotFather when the bot is created. Used to send messages as the bot and to register the webhook.",
       "secretTokenLabel": "Webhook secret token",
@@ -366,60 +435,44 @@
       "errorInvalidToken": "Invalid bot token format",
       "dropPendingUpdatesLabel": "Drop pending updates when setting the webhook",
       "dropPendingUpdatesHint": "Discards any updates Telegram queued up before the webhook was set, instead of delivering that backlog once it goes live.",
-      "bannersEnabledLabel": "Show banners",
-      "bannersEnabledHint": "Attaches an image to bot messages where a banner is configured. Falls back to text-only if no matching banner file is found.",
       "applyChangesDescription": "Restarts the telegram process so it picks up the saved token/secret. Has no effect if the process isn't currently running.",
       "restartBot": "Restart",
       "restarting": "Restarting…",
       "restartCooldown": "Restarting ({{seconds}}s)",
-      "restartRequested": "Restart requested. The bot process will come back up with the saved settings shortly."
+      "restartRequested": "Restart requested. The bot process will come back up with the saved settings shortly.",
+      "showLogs": "Logs",
+      "logsTitle": "Telegram bot logs",
+      "closeLogs": "Close",
+      "refreshLogs": "Refresh",
+      "logsEmpty": "No logs yet. They appear once the telegram process starts.",
+      "logsLoadError": "Failed to load logs."
     },
     "botCommands": {
-      "title": "Bot commands",
-      "description": "Commands shown in the Telegram menu.",
-      "loading": "Loading…",
+      "title": "Commands",
+      "description": "Available commands and their order",
       "loadError": "Failed to load commands.",
       "enabledLabel": "Enabled",
+      "resetOrder": "Reset order",
       "dragHandle": "Drag to reorder",
       "save": "Save",
       "saving": "Saving…",
       "saved": "Saved.",
       "savedTelegramSyncFailed": "Saved, but Telegram wasn't updated. Try saving again."
     },
-    "translationsEditor": {
-      "title": "Bot translations",
-      "description": "Edit the text the bot shows per locale.",
-      "loading": "Loading translations...",
-      "loadError": "Failed to load translations.",
-      "addLocale": "Add locale",
-      "removeLocale": "Remove",
-      "resetToDefault": "Reset",
-      "saved": "Translation saved.",
-      "savedTelegramSyncFailed": "Saved, but Telegram sync failed.",
-      "reset": "Translation reset to default."
-    },
     "banners": {
       "uploadError": "Failed to upload banner.",
-      "deleteError": "Failed to delete banner.",
-      "unsupportedFormat": "Unsupported file format"
+      "deleteError": "Failed to delete banner."
     },
     "appearance": {
-      "title": "Appearance",
-      "description": "Configure the dashboard's accent color and branding.",
-      "loading": "Loading…",
       "loadError": "Failed to load appearance settings.",
-      "section": {
-        "branding": "Branding",
-        "accentColor": "Accent color",
-        "images": "Images"
-      },
+      "dashboardTitle": "Dashboard",
+      "dashboardDescription": "Branding and colors of the dashboard",
       "brandNameLabel": "Brand name",
       "brandNamePlaceholder": "Remnashop",
       "accentColorLabel": "Accent color",
       "presetsLabel": "Presets",
       "previousColorLabel": "Previous color",
       "shaderEnabledLabel": "Background shader",
-      "shaderPaletteLabel": "Background shader colors",
       "shaderPalette": {
         "base": "Base",
         "amplitude": "Amplitude",
@@ -428,6 +481,13 @@
       },
       "logoLabel": "Logo",
       "faviconLabel": "Favicon",
+      "logoHint": "SVG, PNG, JPG or WebP · square 128–1024 px · up to 1 MB",
+      "faviconHint": "SVG, PNG, JPG or WebP · square 32–512 px · up to 256 KB",
+      "imageTooLarge": "File is too large (max {{maxKb}} KB).",
+      "imageUnreadable": "Couldn't read the image.",
+      "imageNotSquare": "The image must be square.",
+      "imageSideOutOfRange": "Image side must be between {{min}} and {{max}} px.",
+      "defaultImage": "Default",
       "upload": "Upload",
       "replace": "Replace",
       "delete": "Delete",
@@ -437,13 +497,13 @@
       "uploadError": "Failed to upload image.",
       "deleteError": "Failed to delete image.",
       "reset": "Reset to default",
-      "resetSuccess": "Reverted to the default brand name and color.",
+      "resetColor": "Reset to default color",
+      "resetSuccess": "Reset to defaults.",
       "resetError": "Failed to reset appearance settings."
     },
     "oauth": {
       "title": "OAuth providers",
-      "description": "Manage dashboard sign-in methods for admins.",
-      "loading": "Loading…",
+      "description": "Manage dashboard sign-in methods for admins",
       "loadError": "Failed to load current status.",
       "configured": "configured",
       "notConfigured": "not configured",
@@ -492,15 +552,15 @@
         "accessSetupIntro": "After filling in the Client ID and Client secret, you need to list the admin IDs allowed to sign in.",
         "accessSetupSteps": [
           "From the account you want to grant access, message @Get_myidrobot",
-          "The bot replies with your ID -- enter it into the corresponding field"
+          "The bot replies with your ID — enter it into the corresponding field"
         ],
         "knownIssuesTitle": "Troubleshooting known issues",
         "knownIssuesIntro": "Protections layered in front of the panel (cookie policies and similar) can misbehave with Telegram OAuth2.",
         "knownIssuesProxyTip": "Use the /oauth2/ path in your reverse proxy to work around this.",
         "errorBotDomainTitle": "Error: BOT_DOMAIN_INVALID",
-        "errorBotDomainBody": "This happens when the bot's domain isn't configured correctly -- revisit \"Setting up the bot\" above and redo it step by step if needed.",
+        "errorBotDomainBody": "This happens when the bot's domain isn't configured correctly — revisit \"Setting up the bot\" above and redo it step by step if needed.",
         "errorNoCodeTitle": "Error: no confirmation code arrives from Telegram at login",
-        "errorNoCodeBody": "This isn't something fixable on Remnashop's side. Try a bot created a while ago, or a different browser. You can also try signing in on one of Telegram's own \"official\" surfaces first, e.g. fragment.com -- since the Telegram session is shared within the browser, that can help the panel sign-in go through."
+        "errorNoCodeBody": "This isn't something fixable on Remnashop's side. Try a bot created a while ago, or a different browser. You can also try signing in on one of Telegram's own \"official\" surfaces first, e.g. fragment.com — since the Telegram session is shared within the browser, that can help the panel sign-in go through."
       },
       "githubGuide": {
         "title": "OAuth2: GitHub",
@@ -535,8 +595,7 @@
     },
     "shop": {
       "title": "Shop",
-      "description": "Per-user subscription limits and device/link reset rules.",
-      "loading": "Loading…",
+      "description": "Per-user subscription limits and device/link reset rules",
       "loadError": "Failed to load shop settings.",
       "maxActiveSubscriptionsLabel": "Max active subscriptions per user",
       "unlimitedPlaceholder": "Unlimited",
@@ -550,7 +609,6 @@
       "saved": "Saved."
     },
     "gateways": {
-      "loading": "Loading…",
       "loadError": "Failed to load payment gateways.",
       "configured": "configured",
       "notConfigured": "not configured",
@@ -560,9 +618,23 @@
       "saving": "Saving…",
       "saved": "Saved.",
       "errorEmptyFields": "Enter at least one field to update",
+      "docsAria": "{{gateway}} documentation",
+      "webhookLabel": "Webhook URL",
+      "copyWebhookAria": "Copy webhook URL",
       "toggleError": "Failed to update gateway status.",
-      "moveUp": "Move up",
-      "moveDown": "Move down",
+      "testPayment": "Test payment",
+      "testPaymentCreating": "Creating…",
+      "testPaymentPaid": "Test payment received.",
+      "testPaymentStatus": {
+        "PENDING": "Waiting for the test payment… It will not grant a subscription or count in statistics.",
+        "PAID": "Test payment received — the gateway works.",
+        "FAILED": "The test payment failed.",
+        "CANCELED": "The test payment was not paid and was canceled.",
+        "REFUNDED": "The test payment was refunded."
+      },
+      "testPaymentError": "Failed to create a test payment.",
+      "title": "Payment gateways",
+      "description": "Configure payment gateways and their availability to customers",
       "types": {
         "TELEGRAM_STARS": "Telegram Stars",
         "YOOKASSA": "YooKassa",
@@ -578,37 +650,46 @@
         "ROBOKASSA": "RoboKassa",
         "URLPAY": "UrlPay",
         "WATA": "Wata",
-        "ROLLYPAY": "RollyPay"
+        "ROLLYPAY": "RollyPay",
+        "ANTILOPAY": "Antilopay",
+        "AURAPAY": "AuraPay",
+        "CLOUDPAYMENTS": "CloudPayments",
+        "LAVA": "Lava",
+        "PAYPALYCH": "Paypalych",
+        "PAYPEAR": "PayPear",
+        "RIOPAY": "RioPay",
+        "SEVERPAY": "SeverPay"
       },
       "fields": {
         "YOOKASSA": {
           "shop_id": "Shop ID",
           "api_key": "API key",
-          "customer": "Customer email (for receipts)",
           "vat_code": "VAT code"
         },
         "YOOMONEY": {
           "wallet_id": "Wallet ID",
-          "secret_key": "Secret key"
+          "secret_key": "Secret key",
+          "access_token": "Access token"
         },
         "CRYPTOMUS": {
           "merchant_id": "Merchant ID",
-          "api_key": "API key"
+          "api_key": "API key",
+          "currency": "Currency"
         },
         "HELEKET": {
           "merchant_id": "Merchant ID",
-          "api_key": "API key"
+          "api_key": "API key",
+          "currency": "Currency"
         },
         "CRYPTOPAY": {
-          "api_key": "API key"
+          "api_key": "API key",
+          "currency": "Currency"
         },
         "FREEKASSA": {
           "shop_id": "Shop ID",
           "api_key": "API key",
           "secret_word_2": "Secret word #2",
-          "payment_system_id": "Payment system ID",
-          "customer_email": "Customer email",
-          "customer_ip": "Customer IP"
+          "payment_system_id": "Payment system ID"
         },
         "MULENPAY": {
           "api_key": "API key",
@@ -637,24 +718,72 @@
           "vat_code": "VAT code"
         },
         "WATA": {
-          "api_key": "API key"
+          "api_key": "API key",
+          "currency": "Currency"
         },
         "VALUTIX": {
-          "api_key": "API key"
+          "api_key": "API key",
+          "service_id": "Service ID",
+          "currency": "Currency"
         },
         "ROLLYPAY": {
-          "api_key": "API key"
+          "api_key": "API key",
+          "signing_secret": "Signing secret",
+          "currency": "Currency"
+        },
+        "ANTILOPAY": {
+          "secret_id": "Secret ID",
+          "private_key": "Private key",
+          "public_key": "Public key",
+          "project_id": "Project ID",
+          "currency": "Currency"
+        },
+        "PAYPALYCH": {
+          "api_token": "API token",
+          "shop_id": "Shop ID",
+          "currency": "Currency"
+        },
+        "RIOPAY": {
+          "api_token": "API token",
+          "service_id": "Service ID",
+          "currency": "Currency"
+        },
+        "AURAPAY": {
+          "api_key": "API key",
+          "shop_id": "Shop ID",
+          "secret_key": "Secret key"
+        },
+        "SEVERPAY": {
+          "mid": "Merchant ID (mid)",
+          "token": "Token",
+          "currency": "Currency"
+        },
+        "LAVA": {
+          "shop_id": "Shop ID",
+          "secret_key": "Secret key",
+          "webhook_secret": "Webhook secret"
+        },
+        "CLOUDPAYMENTS": {
+          "public_id": "Public ID",
+          "api_secret": "API secret",
+          "currency": "Currency"
+        },
+        "PAYPEAR": {
+          "shop_id": "Shop ID",
+          "secret_key": "Secret key",
+          "currency": "Currency"
         }
       }
     }
   },
   "apiTokens": {
     "title": "API tokens",
-    "description": "Tokens for programmatic access to the dashboard API.",
-    "loading": "Loading…",
-    "loadError": "Failed to load.",
-    "empty": "No API tokens.",
-    "create": "Create token",
+    "description": "Tokens for programmatic access to the dashboard API",
+    "loadError": "Failed to load API tokens.",
+    "empty": "No API tokens yet",
+    "emptyHint": "A token gives a script or integration API access with the permissions you pick. The secret is shown once, right after creation.",
+    "createFirst": "Create token",
+    "create": "Create",
     "createTitle": "Create API token",
     "createNotice": "The token secret is shown only once, right after creation — save it somewhere safe.",
     "nameLabel": "Name",
@@ -668,7 +797,6 @@
     "expiresIn180Days": "180 days",
     "expiresIn365Days": "365 days",
     "neverExpires": "Never expires",
-    "expiresAt": "Expires {{date}}",
     "submit": "Create",
     "cancel": "Cancel",
     "createError": "Failed to create token.",
@@ -677,9 +805,12 @@
     "copy": "Copy",
     "copied": "Copied",
     "done": "Done",
-    "lastUsed": "Last used {{date}}",
+    "columnToken": "Token",
+    "columnLastUsed": "Last used",
+    "columnExpiry": "Expires",
+    "ofDays": "of {{count}}",
+    "collapse": "Show less",
     "neverUsed": "Never used",
-    "createdAt": "Created {{date}}",
     "revoke": "Revoke",
     "revokeTitle": "Revoke API token",
     "revokeConfirm": "Any script or integration using this token will lose access immediately.",
@@ -687,7 +818,6 @@
   },
   "profile": {
     "title": "Profile",
-    "loading": "Loading…",
     "loadError": "Failed to load profile.",
     "edit": {
       "button": "Edit",
@@ -709,8 +839,7 @@
     },
     "oauthAccounts": {
       "title": "Sign-in methods",
-      "description": "Sign in without a password — using a linked account or a passkey.",
-      "loading": "Loading…",
+      "description": "Sign in without a password — using a linked account or a passkey",
       "loadError": "Failed to load.",
       "github": "GitHub",
       "telegram": "Telegram",
@@ -723,19 +852,14 @@
     },
     "passkeys": {
       "title": "Passkeys",
-      "description": "Devices you can sign in with instead of your password.",
-      "loading": "Loading…",
-      "loadError": "Failed to load.",
       "empty": "No passkeys registered yet.",
       "addButton": "Add a passkey",
       "adding": "Waiting for your device…",
       "manage": "Manage",
       "close": "Close",
       "namePrompt": "Name this passkey",
-      "namePlaceholder": "e.g. MacBook Touch ID",
       "rename": "Rename",
       "delete": "Delete",
-      "deleteTitle": "Delete passkey",
       "deleteConfirm": "This device will no longer be able to sign in with this passkey.",
       "lastUsed": "Last used {{date}}",
       "neverUsed": "Never used",
@@ -747,19 +871,16 @@
     },
     "accountSecurity": {
       "title": "IP allowlist",
-      "description": "Restrict your own account to specific IP addresses or CIDR ranges.",
+      "description": "Restrict your own account to specific IP addresses or CIDR ranges",
       "placeholder": "e.g. 203.0.113.5 or 203.0.113.0/24, one per line",
       "submit": "Save",
-      "loading": "Loading…",
       "loadError": "Failed to load.",
-      "saveError": "Failed to save.",
-      "selfLockoutError": "Your current IP is not in the list you submitted -- this would lock you out."
+      "saveError": "Failed to save."
     }
   },
   "sessions": {
     "title": "Active sessions",
-    "description": "Devices currently signed in to this account.",
-    "loading": "Loading…",
+    "description": "Devices currently signed in to this account",
     "loadError": "Failed to load.",
     "empty": "No active sessions.",
     "revoke": "Revoke",
@@ -785,13 +906,13 @@
     "PUBLIC": "Public access",
     "BOT_SETTINGS_VIEW": "View bot settings",
     "BOT_COMMANDS_VIEW": "View bot commands",
-    "BOT_SETTINGS_MANAGE": "Bot settings",
-    "BOT_COMMANDS_MANAGE": "Bot commands",
+    "BOT_SETTINGS_MANAGE": "Edit bot settings",
+    "BOT_COMMANDS_MANAGE": "Edit bot commands",
     "BOT_RESTART": "Restart bot",
     "SHOP_SETTINGS_VIEW": "View shop settings",
-    "SHOP_SETTINGS_MANAGE": "Shop settings",
+    "SHOP_SETTINGS_MANAGE": "Edit shop settings",
     "OAUTH_SETTINGS_VIEW": "View OAuth settings",
-    "OAUTH_SETTINGS_MANAGE": "OAuth settings",
+    "OAUTH_SETTINGS_MANAGE": "Edit OAuth settings",
     "BANNERS_VIEW": "View banners",
     "BANNERS_IMAGE_VIEW": "View banner image",
     "BANNERS_UPLOAD": "Upload banners",
@@ -805,13 +926,13 @@
     "OWN_ACCOUNT_MANAGE": "Own account",
     "ADMINS_MANAGE": "Manage admins",
     "API_TOKENS_MANAGE": "Manage API tokens",
-    "EVENT_LOG_VIEW": "Event log",
+    "EVENT_LOG_VIEW": "View event log",
     "USERS_VIEW": "View users",
     "USERS_DELETE": "Delete users",
     "USERS_DISCOUNT_MANAGE": "Manage user discounts",
     "USER_SESSIONS_VIEW": "View user sessions",
     "USER_SESSIONS_REVOKE": "Revoke user sessions",
-    "APPEARANCE_SETTINGS_MANAGE": "Appearance settings",
+    "APPEARANCE_SETTINGS_MANAGE": "Edit appearance settings",
     "APPEARANCE_SETTINGS_RESET": "Reset appearance settings",
     "APPEARANCE_LOGO_UPLOAD": "Upload logo",
     "APPEARANCE_LOGO_DELETE": "Delete logo",
@@ -821,6 +942,8 @@
     "GATEWAYS_UPDATE": "Update gateway settings",
     "GATEWAYS_TOGGLE": "Enable/disable gateways",
     "GATEWAYS_REORDER": "Reorder gateways",
+    "GATEWAYS_TEST": "Create test payments",
+    "GATEWAYS_TEST_VIEW": "View test payment status",
     "PLANS_VIEW": "View plans",
     "PLANS_CREATE": "Create plans",
     "PLANS_UPDATE": "Edit plans",
@@ -855,7 +978,9 @@
     "PROMOCODES_GENERATE_CODE": "Generate promocode codes",
     "PAYMENTS_VIEW": "View payments",
     "PAYMENTS_ORDER_VIEW": "View payment order details",
+    "PAYMENTS_GATEWAYS_VIEW": "View gateways used in orders",
     "REFERRALS_VIEW": "View referrals",
+    "REFERRALS_LIST": "View referral list",
     "REFERRALS_SETTINGS_VIEW": "View referral settings",
     "REFERRALS_SETTINGS_MANAGE": "Manage referral settings",
     "REFERRALS_POINTS_MANAGE": "Adjust referral points",
@@ -866,6 +991,7 @@
     "BACKUPS_RUN_CREATE": "Run backups",
     "BACKUPS_RUN_DOWNLOAD": "Download backups",
     "BACKUPS_RUN_DELETE": "Delete backup runs",
+    "BACKUPS_STATS_VIEW": "View backup statistics",
     "BLACKLIST_VIEW": "View blacklist",
     "BLACKLIST_SOURCES_VIEW": "View blacklist sources",
     "BLACKLIST_ENTRY_ADD": "Add blacklist entries",
@@ -874,10 +1000,12 @@
     "BLACKLIST_SOURCE_REMOVE": "Remove blacklist sources",
     "BLACKLIST_SOURCE_TOGGLE": "Enable/disable blacklist sources",
     "BLACKLIST_SYNC": "Sync blacklist sources",
+    "BLACKLIST_MATCHES_VIEW": "View users matched by the blacklist",
     "USERS_BLOCK": "Block users",
     "USERS_UNBLOCK": "Unblock users",
     "USERS_BULK_BLOCK": "Bulk-block users",
     "USERS_UNBLOCK_ALL": "Unblock all users",
+    "USERS_UNBLOCK_BLACKLIST_MATCHES": "Unblock all blacklist matches",
     "AD_LINKS_VIEW": "View advertising links",
     "AD_LINKS_STATS_VIEW": "View advertising stats",
     "AD_LINKS_USERS_VIEW": "View attributed users",
@@ -888,12 +1016,32 @@
     "ANALYTICS_VIEW": "View analytics",
     "ANALYTICS_FUNNEL_VIEW": "View conversion funnel",
     "ANALYTICS_COHORTS_VIEW": "View cohort retention",
-    "ANALYTICS_LTV_VIEW": "View LTV distribution"
+    "ANALYTICS_LTV_VIEW": "View LTV distribution",
+    "BOT_STATUS_VIEW": "View bot status",
+    "BOT_LOGS_VIEW": "View bot logs",
+    "BANNERS_RESTORE_DEFAULT": "Restore default banner",
+    "EMOJI_PACKS_VIEW": "View emoji packs",
+    "EMOJI_PACKS_IMPORT": "Import emoji packs",
+    "EMOJI_PACKS_DELETE": "Delete emoji packs",
+    "TRANSLATIONS_RESET_ALL": "Reset all translations",
+    "TRANSLATIONS_EXPORT": "Export translations",
+    "TRANSLATIONS_IMPORT": "Import translations",
+    "DIALOGS_WINDOWS_VIEW": "View bot windows",
+    "DIALOGS_CATALOG_VIEW": "View window catalog",
+    "DIALOGS_WINDOWS_UPDATE": "Edit windows",
+    "DIALOGS_WINDOWS_BUTTONS_UPDATE": "Edit window buttons",
+    "DIALOGS_WINDOWS_CREATE": "Create windows",
+    "DIALOGS_WINDOWS_DELETE": "Delete windows",
+    "DIALOGS_WINDOWS_RESET": "Reset a window",
+    "DIALOGS_WINDOWS_RESET_ALL": "Reset all windows",
+    "DIALOGS_TEXT_UPDATE": "Edit window texts",
+    "DIALOGS_EXPORT": "Export windows",
+    "DIALOGS_IMPORT": "Import windows"
   },
   "permissionCategories": {
-    "botSettings": "Bot Settings",
-    "shopSettings": "Shop Settings",
-    "oauthSettings": "OAuth Settings",
+    "botSettings": "Telegram Bot",
+    "shopSettings": "Shop",
+    "oauthSettings": "OAuth providers",
     "banners": "Banners",
     "locales": "Locales",
     "translations": "Translations",
@@ -912,36 +1060,36 @@
     "backups": "Backups",
     "blacklist": "Blacklist",
     "adLinks": "Advertising Links",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "dialogs": "Bot windows",
+    "emojiPacks": "Emoji packs"
   },
   "permissionPicker": {
     "read": "Read",
-    "write": "Write"
+    "write": "Write",
+    "changed": "changed"
   },
   "buildInfo": {
     "title": "Build info",
     "close": "Close",
-    "version": "Version",
+    "version": "Current version",
     "branch": "Branch",
     "commit": "Commit",
     "commitDate": "Commit date",
     "copyCommit": "Copy commit hash",
-    "copied": "Copied",
-    "localBuild": "Local build",
     "githubButton": "GitHub",
     "telegramButton": "Telegram"
   },
   "pricing": {
-    "loading": "Loading pricing data…",
     "loadError": "Failed to load pricing data.",
     "rates": {
       "title": "Currency rates",
-      "description": "Conversion rates, rounding, and minimum amounts used to derive prices in each currency.",
+      "description": "Conversion rates, rounding and minimum amounts per currency",
       "rateLabel": "Rate",
       "roundingModeLabel": "Rounding",
-      "charmEndingLabel": "Charm ending",
+      "charmEndingLabel": "Price ending",
+      "charmEndingHint": "A calculated price is rounded up to the nearest value with this ending. For example, with ending 99 a price of 249 becomes 299. Pinned prices are not affected. Leave empty to disable.",
       "charmEndingPlaceholder": "e.g. 99",
-      "minAmountLabel": "Minimum amount",
       "save": "Save",
       "saving": "Saving…",
       "saved": "Rate updated.",
@@ -950,7 +1098,8 @@
       "confirmTitle": "Confirm rate change",
       "confirmMessage": "This will recalculate every price shown in {{currency}}. Review the changes below:",
       "confirmButton": "Apply",
-      "cancelButton": "Cancel"
+      "cancelButton": "Cancel",
+      "unsaved": "Unsaved changes"
     },
     "roundingModes": {
       "INTEGER": "Round to whole number",
@@ -958,9 +1107,8 @@
     },
     "anchor": {
       "title": "Anchor currency",
-      "description": "The anchor currency's rate is fixed at 1 -- every other currency is derived from it.",
+      "description": "The anchor currency's rate is fixed at 1 — every other currency is derived from it",
       "badge": "Anchor",
-      "change": "Change anchor",
       "confirmTitle": "Switch anchor currency",
       "confirmMessage": "Switching the anchor to {{currency}} will recalculate every derived price. Review the changes below:",
       "confirmButton": "Switch",
@@ -969,18 +1117,18 @@
       "saveError": "Failed to switch the anchor currency."
     },
     "settings": {
-      "title": "Usage-based pricing",
-      "description": "Optional per-day / per-GB pricing, used elsewhere in the shop.",
+      "title": "Usage-based price",
+      "description": "Optional price per day and per GB",
       "pricePerDayLabel": "Price per day",
       "pricePerGbLabel": "Price per GB",
       "save": "Save",
       "saving": "Saving…",
-      "saved": "Settings updated.",
+      "saved": "Settings saved.",
       "saveError": "Failed to update settings."
     },
     "matrix": {
       "title": "Price matrix",
-      "description": "Base prices and per-currency overrides for every plan duration and addon.",
+      "description": "Base prices and per-currency overrides for plans and addons",
       "item": "Item",
       "basePrice": "Base price",
       "plansSection": "Plans",
@@ -988,7 +1136,6 @@
       "empty": "No plans or addons yet.",
       "pinned": "Pinned override",
       "clearPin": "Clear override",
-      "anchorReadOnly": "Anchor currency — edit via the base price column",
       "saved": "Price updated.",
       "saveError": "Failed to update the price.",
       "planNotFound": "Could not resolve the plan for this row.",
@@ -998,7 +1145,8 @@
       "scopeLabel": "Scope",
       "scope": {
         "ALL_PLANS": "All plan durations",
-        "ALL_ADDONS": "All addons"
+        "ALL_ADDONS": "All addons",
+        "SELECTED": "Selected items"
       },
       "factorLabel": "Factor",
       "factorPlaceholder": "e.g. 1.10 for +10%",
@@ -1007,7 +1155,7 @@
       "previewError": "Failed to preview the change.",
       "cancel": "Cancel",
       "confirmTitle": "Confirm bulk adjustment",
-      "confirmMessage": "{{count}} price(s) will change:",
+      "confirmMessage": "Prices to change: {{count}}",
       "apply": "Apply",
       "applied": "Base prices updated.",
       "applyError": "Failed to adjust base prices."
@@ -1019,31 +1167,34 @@
     }
   },
   "blacklist": {
-    "loading": "Loading…",
     "manual": {
       "title": "Manual entries",
-      "description": "Telegram IDs and emails blocked from registering or logging in, added by hand.",
-      "kind": "Kind",
-      "kindTelegramId": "Telegram ID",
+      "description": "Telegram IDs and emails blocked by hand",
+      "kindTelegramId": "Telegram",
       "kindEmail": "Email",
-      "valuePlaceholder": "Telegram ID or email",
       "add": "Add",
       "remove": "Remove",
       "empty": "No manual entries yet.",
       "loadError": "Failed to load the blacklist.",
       "addError": "Failed to add the entry.",
-      "removeError": "Failed to remove the entry."
+      "removeError": "Failed to remove the entry.",
+      "searchPlaceholder": "Search entries",
+      "filterAll": "All",
+      "noResults": "Nothing found.",
+      "showMore": "Show {{count}} more",
+      "valueLabel": "Telegram ID or email",
+      "valuePlaceholder": "243323533 or name@example.com"
     },
     "sources": {
       "title": "Sources",
-      "description": "External lists synced periodically to add entries to the blacklist automatically.",
+      "description": "External lists synced automatically",
       "urlPlaceholder": "https://example.com/list.txt",
-      "namePlaceholder": "Name (optional)",
+      "namePlaceholder": "e.g. Remnashop",
       "add": "Add source",
       "remove": "Remove source",
-      "removeConfirm": "Remove the source {{url}}? The identities it contributed leave the blacklist immediately; users already blocked stay blocked.",
+      "removeConfirm": "Remove the source “{{name}}”?\nThe entries it contributed leave the blacklist immediately. Users already blocked stay blocked.",
       "enabled": "Enabled",
-      "entriesCount": "{{count}} entries",
+      "entriesCount": "Entries: {{count}}",
       "lastSynced": "Last synced {{date}}",
       "neverSynced": "Never synced",
       "syncNow": "Sync now",
@@ -1055,67 +1206,130 @@
       "toggleError": "Failed to update the source.",
       "syncError": "Failed to start the sync.",
       "removeConfirmButton": "Remove",
-      "removeCancelButton": "Cancel"
+      "removeCancelButton": "Cancel",
+      "urlLabel": "List URL",
+      "nameLabel": "Name (optional)"
+    },
+    "matches": {
+      "title": "Matched users",
+      "description": "Registered users found on the blacklist",
+      "count": "Matches: {{count}}",
+      "loadError": "Failed to load matched users.",
+      "empty": "No registered users match the blacklist.",
+      "searchPlaceholder": "Name, @username, ID or email",
+      "allOrigins": "All",
+      "manualOrigin": "Manual",
+      "listsOrigin": "Lists",
+      "columnUser": "User",
+      "columnHit": "Match",
+      "columnOrigin": "List",
+      "columnStatus": "Status",
+      "openUser": "Open user",
+      "pending": "pending block",
+      "pendingHint": "Will be blocked when the blacklist is next applied to users. This happens hourly and after every change to the list.",
+      "noResults": "Nothing found.",
+      "range": "{{from}}–{{to}} of {{total}}",
+      "prevPage": "Previous page",
+      "nextPage": "Next page",
+      "blocked": "blocked",
+      "unblockAll": {
+        "button": "Unblock all",
+        "title": "Unblock all matched users",
+        "confirm": "Every matched user will be unblocked and their entries removed from the manual list.\nUsers that are on external lists will be blocked again on the next sync.",
+        "success": "Unblocked {{count}} user(s).",
+        "error": "Failed to unblock users.",
+        "cancelButton": "Cancel"
+      }
     }
   },
   "backups": {
-    "loading": "Loading…",
     "loadError": "Failed to load backups.",
-    "empty": "No backup runs yet.",
+    "empty": "No backups yet.",
     "kind": {
       "DATABASE": "Database",
-      "ASSETS": "Assets"
+      "ASSETS": "Files"
+    },
+    "kindDescription": {
+      "DATABASE": "Users, subscriptions, payments",
+      "ASSETS": "Logo, favicon, banners"
     },
     "status": {
-      "PENDING": "Pending",
+      "PENDING": "Queued",
       "RUNNING": "Running",
       "COMPLETED": "Completed",
       "FAILED": "Failed"
     },
-    "settings": {
-      "enabledLabel": "Scheduled backups",
-      "intervalLabel": "Interval (hours)",
-      "maxFilesLabel": "Keep last",
-      "maxFilesHint": "files",
+    "schedule": {
+      "title": "Scheduled backups",
+      "description": "Database snapshots and rotation",
+      "badgeOn": "enabled",
+      "badgeOff": "disabled",
+      "enabledLabel": "Back up on a schedule",
+      "enabledHint": "Database only. Files are backed up manually.",
+      "intervalLabel": "Interval",
+      "intervalUnit": "h",
+      "preset": "{{hours}}h",
+      "maxFilesLabel": "Copies to keep",
+      "maxFilesHint": "Older copies are deleted after every successful run, separately for each kind.",
+      "nextRun": "Next run",
+      "lastBackup": "Last backup",
       "save": "Save",
       "saving": "Saving…",
+      "intervalHint": "The new interval counts from the last successful backup.",
       "saved": "Settings saved.",
-      "error": "Failed to save settings.",
-      "runNow": "Run backup now",
-      "runKindLabel": "Kind",
+      "error": "Failed to save settings."
+    },
+    "manual": {
+      "title": "Manual run",
+      "description": "One-off backup outside the schedule",
+      "kindLabel": "What to back up",
+      "runNow": "Run now",
+      "runHint": "At most one backup of each kind runs at a time.",
       "runStarted": "Backup started.",
-      "runError": "Failed to start the backup."
+      "runError": "Failed to start the backup.",
+      "storageLabel": "Storage",
+      "statCompleted": "Copies",
+      "statSize": "Size",
+      "statFailed": "Failures"
     },
     "runs": {
-      "title": "Backup runs",
-      "sizeUnknown": "—",
+      "title": "Backup history",
+      "description": "Download and delete finished backups",
+      "filterLabel": "Filter by kind",
+      "filterAll": "All",
+      "triggerSchedule": "Scheduled",
+      "triggerManual": "Manual",
+      "durationUnderSecond": "under a second",
+      "durationSeconds": "{{seconds}}s",
+      "durationMinutes": "{{minutes}}m {{seconds}}s",
+      "shown": "Showing {{shown}} of {{total}}",
       "downloadButton": "Download",
       "downloadError": "Failed to download the backup.",
-      "deleteButton": "Delete run",
-      "deleteConfirm": "Permanently delete this backup run? This cannot be undone.",
-      "deleteError": "Failed to delete the backup run.",
-      "createdAt": "Created",
-      "finishedAt": "Finished",
-      "notFinished": "—",
+      "deleteButton": "Delete backup",
+      "deleteConfirm": "Permanently delete this backup? This cannot be undone.",
+      "deleteError": "Failed to delete the backup.",
       "loadMore": "Show more",
       "loadingMore": "Loading…",
       "deleteConfirmButton": "Delete",
       "deleteCancelButton": "Cancel"
+    },
+    "units": {
+      "byte": "B",
+      "kilobyte": "KB",
+      "megabyte": "MB",
+      "gigabyte": "GB",
+      "terabyte": "TB"
     }
   },
   "advertising": {
     "title": "Advertising links",
-    "loading": "Loading…",
     "loadError": "Failed to load advertising links.",
     "empty": "No advertising links yet.",
     "filters": {
-      "status": "Status",
       "statusAll": "All",
       "statusActive": "Active",
-      "statusInactive": "Inactive"
-    },
-    "fields": {
-      "cost": "Cost"
+      "statusInactive": "Inactive",
+      "period": "Period"
     },
     "pagination": {
       "loadMore": "Show more",
@@ -1140,7 +1354,8 @@
       "save": "Create",
       "saving": "Creating…",
       "saved": "Advertising link created.",
-      "error": "Failed to create the advertising link."
+      "error": "Failed to create the advertising link.",
+      "codeInvalid": "Only Latin letters, digits, \"_\" and \"-\"."
     },
     "edit": {
       "button": "Edit",
@@ -1155,7 +1370,8 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Advertising link updated.",
-      "error": "Failed to update the advertising link."
+      "error": "Failed to update the advertising link.",
+      "activeHint": "A paused link stops crediting new sign-ups."
     },
     "delete": {
       "button": "Delete link",
@@ -1165,8 +1381,6 @@
       "cancelButton": "Cancel"
     },
     "stats": {
-      "button": "Stats",
-      "title": "Link stats",
       "close": "Close",
       "attributions": "Attributions",
       "paidCount": "Paid",
@@ -1182,26 +1396,74 @@
       "hasPaid": "Paid",
       "notPaid": "Not paid",
       "loadMore": "Show more",
-      "loadingMore": "Loading…"
-    }
+      "loadingMore": "Loading…",
+      "daily": "Sign-ups per day",
+      "peak": "peak {{count}} · {{day}}",
+      "channels": "Channels",
+      "economics": "Economics",
+      "channelSplit": "bot {{bot}} · web {{web}}"
+    },
+    "description": "Tagged deep links: every sign-up through one is credited to its source.",
+    "count_one": "{{count}} link",
+    "count_other": "{{count}} links",
+    "columns": {
+      "link": "Link",
+      "paid": "Paid",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused"
+    },
+    "startParam": "Start parameter",
+    "startParamHint": "Append it to your bot link: t.me/<bot>?start=ad_…",
+    "copyStartParam": "Copy start parameter",
+    "pause": "Pause",
+    "resume": "Resume"
   },
   "dialogs": {
-    "title": "Bot dialogs",
-    "loading": "Loading…",
+    "title": "Window editor",
+    "description": "Bot window content and navigation",
+    "texts": {
+      "title": "Locale editor",
+      "description": "Locales, notifications, errors and other messages",
+      "languages": "Languages · {{total}}",
+      "localeSource": "source · {{total}}",
+      "untranslated": "Not translated to the selected locale",
+      "localeTranslated": "{{translated}} / {{total}}",
+      "loadError": "Could not load the texts.",
+      "importConfirm": "Replace the translations with this file? Strings of active locales are overwritten, the rest are skipped.",
+      "imported": "Imported {{applied}} strings, skipped {{skipped}}.",
+      "importInvalid": "This file is not a translations export.",
+      "resetAllConfirm": "Reset every active locale back to its original strings? This cannot be undone.",
+      "resetAllDone": "Translations reset."
+    },
+    "emojiPacks": {
+      "title": "Emoji",
+      "description": "Telegram premium emoji packs",
+      "linkPlaceholder": "t.me/addemoji/...",
+      "add": "Add",
+      "adding": "Adding…",
+      "imported": "Pack “{{title}}” added.",
+      "empty": "No emoji packs added yet.",
+      "loadError": "Could not load the packs.",
+      "close": "Close",
+      "delete": "Remove pack",
+      "deleteConfirm": "Remove “{{title}}”? Buttons already using its emoji will fall back to the plain glyph.",
+      "deleteConfirmButton": "Remove"
+    },
     "loadError": "Failed to load dialog windows.",
     "windowList": {
       "addWindow": "Add window",
-      "addWindowMessage": "Custom windows start empty -- add buttons after creating it.",
       "addWindowConfirm": "Create",
       "addWindowCancel": "Cancel",
-      "addWindowTitlePlaceholder": "Window title text",
+      "addWindowTitlePlaceholder": "Window name",
       "deleteWindow": "Delete window",
-      "deleteWindowConfirm": "Delete \"{{key}}\"? This can't be undone.",
+      "deleteWindowConfirm": "Delete \"{{key}}\"? This cannot be undone.",
       "deleteWindowConfirmButton": "Delete",
       "deleteWindowCancelButton": "Cancel",
       "deleted": "Window deleted.",
       "limitReached": "Window limit reached — delete one to add another.",
-      "title": "Windows",
       "flows": {
         "menu": "Menu",
         "purchase": "Purchase",
@@ -1229,24 +1491,20 @@
       "noText": "(no text set)",
       "emptyButtons": "This window has no buttons.",
       "newButton": "New button",
-      "unreachable": "No button leads here yet, so this window can't be reached in the bot.",
-      "editText": "Edit the message text",
-      "editButton": "Click to edit, drag to move",
-      "unlabelledButton": "No label",
-      "newRow": "Drag a button here to start a new row"
+      "unlabelledButton": "No label"
     },
     "inspector": {
-      "windowTitle": "Window settings",
+      "copyKey": "Copy window internal name",
+      "keyCopied": "Window internal name copied",
       "bannerLabel": "Banner",
-      "bannerNone": "None",
+      "nameLabel": "Window name",
       "enabledLabel": "Show in the bot",
-      "enabledHint": "Buttons leading to this window disappear too.",
       "resetWindow": "Reset changes",
-      "resetWindowConfirm": "Reset \"{{key}}\" to its default banner and buttons? This can't be undone.",
+      "resetWindowConfirm": "Reset \"{{key}}\" to its default banner and buttons? This cannot be undone.",
       "resetWindowConfirmButton": "Reset",
       "resetWindowCancelButton": "Cancel",
-      "resetAll": "Reset all to defaults",
-      "resetAllConfirm": "Reset every dialog window to its shipped default? This can't be undone.",
+      "resetAll": "Reset all",
+      "resetAllConfirm": "Reset every dialog window to its shipped defaults? This cannot be undone.",
       "resetAllConfirmButton": "Reset all",
       "saved": "Saved.",
       "resetDone": "Reset to defaults.",
@@ -1257,18 +1515,16 @@
       "buttonLabel": "Label",
       "buttonStyle": "Style",
       "buttonStyleNone": "None",
-      "buttonIcon": "Emoji",
       "buttonCondition": "Visibility condition",
       "buttonConditionNone": "Always visible",
       "buttonLinkType": "Action type",
-      "buttonActionHint": "Bound to action \"{{key}}\" -- action buttons keep their action, only style/position/visibility are editable.",
+      "buttonActionHint": "Bound to action \"{{key}}\" — action buttons keep their action, only style/position/visibility are editable.",
       "buttonTarget": "Target window",
       "buttonTargetNone": "Choose a window",
       "buttonUrl": "URL",
-      "buttonHidden": "Hidden",
       "buttonDelete": "Delete button",
       "buttonAdd": "Add button",
-      "buttonsSave": "Save buttons",
+      "buttonsSave": "Save",
       "buttonsDiscard": "Discard changes",
       "buttonLabelPending": "Save the button grid first to unlock editing this label.",
       "discardSwitchConfirm": "Discard unsaved button changes and switch windows?",
@@ -1276,8 +1532,11 @@
       "buttonUrlEmpty": "A URL button needs a link.",
       "buttonUrlScheme": "The link must start with {{schemes}}.",
       "buttonUrlVariable": "Unknown variable: {{name}}.",
+      "buttonUrlMalformed": "The link is incomplete or contains spaces.",
+      "buttonsRowLimit": "A row fits at most {{max}} buttons — Telegram's limit.",
+      "buttonsTotalLimit": "A window fits at most {{max}} buttons — Telegram's limit.",
+      "textTooLong": "{{length}} of {{max}} characters — Telegram will not send this text.",
       "buttonUrlInvalidGrid": "Fix the button link before saving.",
-      "buttonLabelEmpty": "A button with no label is skipped in the bot — Telegram rejects it.",
       "emptySelection": "Pick the text or a button on the canvas to edit it.",
       "tabWindow": "Window",
       "tabElement": "Element",
@@ -1286,32 +1545,25 @@
         "shared": "Shared",
         "own": "Own"
       },
-      "bannerHint": {
-        "none": "This window is sent without a banner.",
-        "shared": "One banner for every window that uses it — replacing it here changes it everywhere.",
-        "own": "Only for this window, one file per locale. Locales without a file fall back to the shared banner."
-      },
+      "bannerUpload": "Upload",
       "bannerReplace": "Replace",
       "bannerDelete": "Delete the banner",
       "emojiPick": "Pick an emoji",
       "emojiStandard": "Standard",
+      "emojiManage": "Manage packs",
       "emojiClear": "Remove the emoji",
-      "emojiPremiumHint": "Premium emoji only show up for bots whose owner has Telegram Premium.",
       "emojiGroup": {
         "smileys": "Smileys",
         "people": "People",
         "nature": "Nature",
         "food": "Food",
         "travel": "Travel",
+        "activities": "Activities",
         "objects": "Objects",
-        "symbols": "Symbols"
+        "symbols": "Symbols",
+        "flags": "Flags"
       },
-      "dirtyTitle": "Unsaved keyboard changes",
-      "emojiAddPack": "Add an emoji pack",
-      "emojiPackLinkPlaceholder": "t.me/addemoji/...",
-      "emojiPackAdd": "Add",
-      "emojiPackDelete": "Remove this pack",
-      "emojiSearch": "Search by English name",
+      "dirtyTitle": "Unsaved changes",
       "bannerRestoreDefault": "Restore the shipped banner"
     },
     "toolbar": {
@@ -1325,7 +1577,11 @@
   },
   "referrals": {
     "title": "Referrals",
-    "loading": "Loading…",
+    "subtitle": "Who invited whom and what they earned for it.",
+    "tabs": {
+      "list": "List",
+      "settings": "Settings"
+    },
     "loadError": "Failed to load referral settings.",
     "settings": {
       "enabledLabel": "Referral program",
@@ -1344,11 +1600,49 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Settings saved.",
-      "error": "Failed to save settings."
+      "error": "Failed to save settings.",
+      "programTitle": "Referral program",
+      "programDescription": "General reward rules.",
+      "enabledDescription": "Users get a referral link and earn rewards.",
+      "accrualDescription": "Which payments by the invited user earn a reward.",
+      "rewardTypeDescription": {
+        "EXTRA_DAYS": "Days are added to the referrer's active subscription.",
+        "POINTS": "Points accumulate on the user's balance."
+      },
+      "levelsTitle": "Levels & rewards",
+      "levelsDescription": "Invitation chain depth and the reward at each level.",
+      "levelDescription": {
+        "1": "Invited the buyer directly",
+        "2": "Invited the level 1 referrer",
+        "3": "Next up the invitation chain"
+      },
+      "levelUnused": "Not used — increase the number of levels",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "disabledNote": "The program is off — no new rewards are granted, settings are kept.",
+      "preview": {
+        "title": "How it works",
+        "description": "Preview of the current settings.",
+        "trigger": "The invited user pays",
+        "triggerText": {
+          "FIRST_PAYMENT": "for their first subscription only — a one-time reward",
+          "EVERY_PAYMENT": "for any subscription or renewal — a reward every time"
+        },
+        "who": {
+          "1": "Their inviter",
+          "2": "Inviter's inviter",
+          "3": "Third up the chain"
+        },
+        "footnote": {
+          "EXTRA_DAYS": "Each level earns its own amount, independently of the others.",
+          "POINTS": "A user's points can be adjusted manually from their referral stats."
+        }
+      }
     },
     "stats": {
       "button": "Referral stats",
-      "title": "Referral stats",
       "close": "Close",
       "referralCodeLabel": "Referral code",
       "referrerLabel": "Referred by",
@@ -1363,11 +1657,37 @@
       "adjustSaved": "Points adjusted.",
       "adjustError": "Failed to adjust points.",
       "loadError": "Failed to load referral stats."
+    },
+    "list": {
+      "levelAll": "All levels",
+      "level": "Level {{level}}",
+      "levelBadge": "Lvl {{level}}",
+      "levelFilter": "Level",
+      "periodFilter": "Period",
+      "columns": {
+        "referred": "Invited",
+        "referrer": "Invited by",
+        "level": "Level",
+        "rewards": "Rewards",
+        "time": "Time"
+      },
+      "rewardCount_one": "{{count}} payout",
+      "rewardCount_other": "{{count}} payouts",
+      "noRewards": "no payouts yet",
+      "deletedUser": "Deleted user",
+      "empty": "No referrals yet.",
+      "loadError": "Failed to load referrals.",
+      "noPermission": "You don't have permission to view the referral list."
+    },
+    "units": {
+      "EXTRA_DAYS_one": "day",
+      "EXTRA_DAYS_other": "days",
+      "POINTS_one": "point",
+      "POINTS_other": "points"
     }
   },
   "promocodes": {
     "title": "Promocodes",
-    "loading": "Loading…",
     "loadError": "Failed to load promocodes.",
     "empty": "No promocodes yet.",
     "noExpiry": "No expiry",
@@ -1398,7 +1718,7 @@
       "codePlaceholder": "e.g. WELCOME30",
       "generate": "Generate",
       "rewardTypeLabel": "Reward type",
-      "rewardDaysLabel": "Extra days",
+      "rewardDaysLabel": "Days to add",
       "rewardPercentLabel": "Discount (%)",
       "rewardAddonLabel": "Add-on",
       "rewardAddonPlaceholder": "Select an add-on",
@@ -1407,41 +1727,25 @@
       "rewardPlanPlaceholder": "Select a plan",
       "rewardPlanEmpty": "No plans exist yet",
       "rewardDurationDaysLabel": "Duration (days)",
-      "availabilityLabel": "Availability",
-      "allowedUserIdsLabel": "Allowed user IDs",
-      "allowedUserIdsHint": "One per line",
-      "expiresLabel": "Expires",
-      "expiresPlaceholder": "No expiry",
-      "clearDate": "Clear date",
-      "maxActivationsLabel": "Max activations",
-      "maxActivationsHint": "Empty = unlimited",
-      "reusableLabel": "Reusable by the same user",
       "cancel": "Cancel",
       "close": "Close",
       "save": "Create",
       "saving": "Creating…",
       "saved": "Promocode created.",
-      "error": "Failed to create the promocode."
+      "error": "Failed to create the promocode.",
+      "daysSuffix": "days"
     },
     "edit": {
       "button": "Edit",
-      "title": "Edit promocode",
       "activeLabel": "Active",
-      "availabilityLabel": "Availability",
-      "allowedUserIdsLabel": "Allowed user IDs",
-      "allowedUserIdsHint": "One per line",
-      "expiresLabel": "Expires",
-      "expiresPlaceholder": "No expiry",
-      "clearDate": "Clear date",
-      "maxActivationsLabel": "Max activations",
-      "maxActivationsHint": "Empty = unlimited",
-      "reusableLabel": "Reusable by the same user",
       "cancel": "Cancel",
       "close": "Close",
       "save": "Save",
       "saving": "Saving…",
       "saved": "Promocode updated.",
-      "error": "Failed to update the promocode."
+      "error": "Failed to update the promocode.",
+      "activeHint": "A disabled code can't be redeemed",
+      "rewardLocked": "Can't be changed"
     },
     "delete": {
       "button": "Delete promocode",
@@ -1449,11 +1753,52 @@
       "error": "Failed to delete the promocode.",
       "confirmButton": "Delete",
       "cancelButton": "Cancel"
+    },
+    "description": "Codes customers redeem for days, traffic, devices, subscriptions or discounts.",
+    "copyAria": "Copy code {{code}}",
+    "noMatches": "No promocodes match the filters.",
+    "status": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Disabled",
+      "EXPIRED": "Expired"
+    },
+    "filters": {
+      "statusAll": "All statuses",
+      "rewardAll": "All rewards"
+    },
+    "columns": {
+      "code": "Promocode",
+      "status": "Status"
+    },
+    "sections": {
+      "code": "Code",
+      "reward": "Reward",
+      "limits": "Restrictions"
+    },
+    "rewardTypeShort": {
+      "DURATION": "Days",
+      "TRAFFIC": "Traffic",
+      "DEVICES": "Devices",
+      "SUBSCRIPTION": "Subscription",
+      "PERSONAL_DISCOUNT": "Personal discount",
+      "PURCHASE_DISCOUNT": "Purchase discount"
+    },
+    "limits": {
+      "availabilityLabel": "Who can use it",
+      "allowedUserIdsLabel": "Allowed user IDs",
+      "allowedUserIdsPlaceholder": "Type an ID and press Enter",
+      "removeUserAria": "Remove {{id}}",
+      "expiresLabel": "Valid until",
+      "expiresPlaceholder": "No expiry",
+      "clearDate": "Clear date",
+      "maxActivationsLabel": "Activation limit",
+      "maxActivationsHint": "Unlimited",
+      "reusableLabel": "Reusable",
+      "reusableHint": "One user can redeem it more than once"
     }
   },
   "plans": {
     "title": "Plans",
-    "loading": "Loading…",
     "loadError": "Failed to load plans.",
     "empty": "No plans yet.",
     "unlimited": "Unlimited",
@@ -1537,24 +1882,29 @@
   },
   "payments": {
     "title": "Payments",
-    "loading": "Loading…",
     "loadError": "Failed to load payments.",
-    "empty": "No payment orders found.",
+    "empty": "No payments found.",
     "orderLabel": "Order #{{id}}",
     "filters": {
-      "status": "Status",
-      "statusAll": "All statuses"
+      "statusAll": "All statuses",
+      "gatewayAll": "All gateways",
+      "purchaseTypeAll": "All purchase types"
     },
     "status": {
       "PENDING": "Pending",
       "PAID": "Paid",
       "FAILED": "Failed",
-      "EXPIRED": "Expired",
-      "CANCELED": "Canceled"
+      "CANCELED": "Canceled",
+      "REFUNDED": "Refunded"
     },
-    "fields": {
-      "expires": "Expires"
+    "columns": {
+      "order": "Order",
+      "amount": "Amount",
+      "created": "Created",
+      "status": "Status"
     },
+    "today": "Today",
+    "yesterday": "Yesterday",
     "pagination": {
       "loadMore": "Show more",
       "loadingMore": "Loading…"
@@ -1570,30 +1920,39 @@
       "PURCHASE": "Purchase"
     },
     "details": {
-      "button": "Details",
       "close": "Close",
-      "user": "User",
-      "gateway": "Gateway",
+      "total": "Total",
+      "plan": "Plan",
       "purchaseType": "Purchase type",
       "targetSubscription": "Target subscription",
       "externalPaymentId": "External payment ID",
-      "discount": "Discount",
-      "customerEmail": "Customer email",
+      "discount": "{{percent}}% off · {{source}}",
+      "customerEmail": "Receipt email",
       "idempotencyKey": "Idempotency key",
-      "expiresAt": "Expires at",
-      "price": "Price",
-      "none": "—"
+      "createdAt": "Created at",
+      "none": "—",
+      "id": "ID",
+      "status": "Status",
+      "gateway": "Gateway",
+      "sections": {
+        "purchase": "Purchase",
+        "payment": "Payment",
+        "user": "User",
+        "telegram": "Telegram"
+      },
+      "name": "Name"
     }
   },
   "subscriptions": {
     "title": "Subscriptions",
-    "loading": "Loading…",
     "loadError": "Failed to load subscriptions.",
     "empty": "No subscriptions found.",
     "trial": "Trial",
     "unlimited": "Unlimited",
     "userLabel": "User #{{id}}",
     "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Subscription ID, user ID, tag, or plan",
       "status": "Status",
       "statusAll": "All statuses"
     },
@@ -1655,5 +2014,29 @@
     "communityTitle": "Private chat",
     "communityDescription": "A paid subscription on Boosty that gives access to a private support chat.",
     "communityButton": "Subscribe"
+  },
+  "debugBar": {
+    "testToast": "Send a test toast",
+    "testToastMessage": "Test toast: {{variant}}",
+    "burstToasts": "Send every toast variant at once",
+    "testToastLong": "A deliberately long toast, so the stack, the wrapping and the width in the gutter can all be seen at once instead of one at a time.",
+    "expireToken": "Expire the access token",
+    "tokenExpired": "Access token replaced with an invalid one",
+    "missingKeys": "Report missing translation keys",
+    "wipeStorage": "Wipe local storage and reload",
+    "apiFailure": {
+      "off": "Force API requests to fail",
+      "network": "Forcing network errors — click for server errors",
+      "server": "Forcing server errors — click to stop"
+    },
+    "latency": {
+      "off": "Slow every request down",
+      "on": "Slowed by {{seconds}}s — click to change"
+    },
+    "noPermissions": "Drop every permission (frontend only)",
+    "fakeUpdate": "Pretend a newer release exists",
+    "copySnapshot": "Copy an environment snapshot",
+    "snapshotCopied": "Snapshot copied to the clipboard",
+    "snapshotFailed": "Could not reach the clipboard"
   }
 }

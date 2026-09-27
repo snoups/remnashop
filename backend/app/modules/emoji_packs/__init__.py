@@ -3,6 +3,8 @@ from app.modules.emoji_packs.dto import EmojiPackDto, EmojiPackItemDto, FetchedE
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.emoji_packs.usecases import (
     DeleteEmojiPackUseCase,
+    GetEmojiPackAnimationUseCase,
+    GetEmojiPackThumbnailUseCase,
     ImportEmojiPackUseCase,
     ListEmojiPacksUseCase,
 )
@@ -13,6 +15,8 @@ __all__ = [
     "EmojiPackItemDto",
     "EmojiPackRepository",
     "FetchedEmojiPack",
+    "GetEmojiPackAnimationUseCase",
+    "GetEmojiPackThumbnailUseCase",
     "ImportEmojiPackUseCase",
     "ListEmojiPacksUseCase",
     "get_emoji_packs_providers",

@@ -12,6 +12,7 @@ from app.core.enums import (
     PurchaseType,
 )
 from app.modules.subscriptions import PlanSnapshot
+from app.modules.users import UserDto
 
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
@@ -43,12 +44,19 @@ class PaymentOrderDto(BaseDto, TimestampMixin):
     customer_email: Optional[str] = None
     idempotency_key: str
     expires_at: datetime
+    is_test: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
+class PaymentOrderWithUserDto:
+    order: PaymentOrderDto
+    user: Optional[UserDto]
 
 
 @dataclass(frozen=True, kw_only=True)
 class CreatePaymentOrderDto:
     user_id: int
-    plan_id: int
+    plan_id: Optional[int]
     plan_snapshot: PlanSnapshot
     duration_days: int
     currency: Currency
@@ -62,6 +70,7 @@ class CreatePaymentOrderDto:
     customer_email: Optional[str]
     idempotency_key: str
     expires_at: datetime
+    is_test: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -79,3 +88,9 @@ class CreateCheckoutDto:
 class CheckoutResultDto(BaseDto):
     order_id: int
     confirmation_url: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class TestPaymentDto:
+    order_id: int
+    confirmation_url: Optional[str]

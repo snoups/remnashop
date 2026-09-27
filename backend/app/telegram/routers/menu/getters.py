@@ -8,7 +8,6 @@ from fluentogram import TranslatorHub
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
 from app.modules.banners import BannerRepository
-from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
     GetAvailableTrialUseCase,
     ListDevicesUseCase,
@@ -19,6 +18,7 @@ from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data
 from app.telegram.dialogs.rendering import (
+    label_with_icon,
     render_dialog_buttons,
     render_window_text,
     resolve_variable_kwargs,
@@ -38,7 +38,6 @@ async def menu_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
     banner_repository: FromDishka[BannerRepository],
-    settings_repository: FromDishka[SettingsRepository],
     subscription_repository: FromDishka[SubscriptionRepository],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
@@ -53,7 +52,6 @@ async def menu_getter(
     banner = (
         await get_banner_media(
             banner_repository,
-            settings_repository,
             config,
             window.banner_name,
             user.language,
@@ -68,7 +66,7 @@ async def menu_getter(
     )
     data["banner"] = banner
     data["menu_text"] = render_window_text(runner, "msg-main-menu", **resolve_variable_kwargs(data))
-    data["subscription_text"] = runner.get("btn-menu.subscription")
+    data["subscription_text"] = label_with_icon(runner, "btn-menu.subscription")
     data["buttons"] = await render_dialog_buttons("menu.main", dialog_config_cache, runner, data)
     return data
 

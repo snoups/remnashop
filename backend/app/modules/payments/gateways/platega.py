@@ -2,7 +2,7 @@ from typing import Final, Optional
 
 import orjson
 
-from app.core.enums import Currency
+from app.core.enums import Currency, PaymentOrderStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.payments.dto import PaymentOrderDto
 from app.modules.payments.gateways.base import (
@@ -26,8 +26,13 @@ _API_BASE: Final[str] = "https://app.platega.io"
 _SINGLE_METHOD_ENDPOINT: Final[str] = "transaction/process"
 _MULTI_METHOD_ENDPOINT: Final[str] = "v2/transaction/process"
 _PAID_STATUS: Final[str] = "CONFIRMED"
+_REPORTED_STATUSES: Final[dict[str, PaymentOrderStatus]] = {
+    "CANCELED": PaymentOrderStatus.CANCELED,
+    "CHARGEBACKED": PaymentOrderStatus.REFUNDED,
+}
 
 
+# Docs: https://docs.platega.io/
 class PlategaGateway(PaymentGateway):
     currency = Currency.RUB
 
@@ -45,8 +50,11 @@ class PlategaGateway(PaymentGateway):
                 "currency": order.currency.value,
             },
             "description": f"Order #{order.id}",
+            "payload": order.idempotency_key,
             "return": self._return_url,
             "failedUrl": self._return_url,
+            # Required for some merchant categories; without it antifraud is off.
+            "metadata": {"userId": str(order.user_id)},
         }
         endpoint = _SINGLE_METHOD_ENDPOINT
         if payment_method:
@@ -87,6 +95,7 @@ class PlategaGateway(PaymentGateway):
             reference="",
             claims_paid=data.get("status") == _PAID_STATUS,
             provider_payment_id=str(transaction_id),
+            reported_status=_REPORTED_STATUSES.get(str(data.get("status"))),
         )
 
     async def fetch_payment(self, order: PaymentOrderDto, signal: WebhookSignal) -> ProviderPayment:
@@ -104,6 +113,6 @@ class PlategaGateway(PaymentGateway):
             paid=data.get("status") == _PAID_STATUS,
             amount=to_decimal(details.get("amount")),
             currency=details.get("currency"),
-            reference=order.idempotency_key,
+            reference=str(data.get("payload") or ""),
             provider_payment_id=str(data.get("id") or order.external_payment_id),
         )

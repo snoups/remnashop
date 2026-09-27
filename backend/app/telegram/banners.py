@@ -6,23 +6,15 @@ from aiogram_dialog.api.entities import MediaAttachment
 from app.core.config import AppConfig
 from app.core.enums import Locale
 from app.modules.banners import BannerRepository, banner_path
-from app.modules.settings import SettingsRepository
 
 
 async def get_banner_media(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
     config: AppConfig,
     name: str,
     locale: Locale,
     default_locale: Locale,
 ) -> Optional[MediaAttachment]:
-    # The dashboard's global switch: one place to take every banner off the air
-    # without touching each window's own setting.
-    bot_settings = await settings_repository.get_bot_settings()
-    if not bot_settings.banners_enabled:
-        return None
-
     banner = await banner_repository.find_for_display(name, locale, default_locale)
     if banner is None:
         return None

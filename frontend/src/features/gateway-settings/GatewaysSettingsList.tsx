@@ -1,14 +1,12 @@
+import { CreditCard } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import {
   getGatewayCatalog,
   listGateways,
-  reorderGateways,
   type Gateway,
   type GatewayCatalogEntry,
 } from "@entities/gateways/api";
-import { getErrorMessage } from "@shared/api/http";
-import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -28,51 +26,47 @@ export function GatewaysSettingsList() {
   const { t } = useTranslation();
   const [state, , setData] = useAsyncResource(loadGatewaysData);
 
-  if (state.kind === "error") {
-    return <p className="text-sm text-error">{t("settings.gateways.loadError")}</p>;
-  }
-
-  if (state.kind === "loading") {
-    return <Spinner />;
-  }
-
-  const { gateways, catalog } = state.data;
-  const fieldsByType = new Map(catalog.map((entry) => [entry.type, entry.fields]));
-
-  const moveGateway = async (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= gateways.length) return;
-
-    const reordered = [...gateways];
-    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    setData({ gateways: reordered, catalog });
-
-    try {
-      const updated = await reorderGateways(reordered.map((gateway) => gateway.type));
-      setData({ gateways: updated, catalog });
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
-      setData({ gateways, catalog });
-    }
-  };
-
   return (
-    <div className="flex flex-col gap-3">
-      {gateways.map((gateway, index) => (
-        <GatewaySettingsCard
-          key={gateway.type}
-          gateway={gateway}
-          fields={fieldsByType.get(gateway.type) ?? []}
-          onChanged={(updated) =>
-            setData({
-              gateways: gateways.map((existing) => (existing.type === updated.type ? updated : existing)),
-              catalog,
-            })
-          }
-          onMoveUp={index > 0 ? () => void moveGateway(index, -1) : undefined}
-          onMoveDown={index < gateways.length - 1 ? () => void moveGateway(index, 1) : undefined}
-        />
-      ))}
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="flex items-center gap-2.5">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+          <CreditCard className="size-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-foreground">{t("settings.gateways.title")}</h2>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.gateways.description")}</p>
+        </div>
+      </div>
+
+      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+
+      {state.kind === "loading" && <Spinner className="mt-4" />}
+      {state.kind === "error" && (
+        <p className="mt-4 text-sm text-error">{t("settings.gateways.loadError")}</p>
+      )}
+      {state.kind === "ready" && (
+        <div className="mt-4 flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
+          {state.data.gateways.map((gateway) => {
+            const entry = state.data.catalog.find((candidate) => candidate.type === gateway.type);
+            return (
+              <GatewaySettingsCard
+                key={gateway.type}
+                gateway={gateway}
+                fields={entry?.fields ?? []}
+                webhookUrl={entry?.webhook_url ?? null}
+                onChanged={(updated) =>
+                  setData({
+                    ...state.data,
+                    gateways: state.data.gateways.map((existing) =>
+                      existing.type === updated.type ? updated : existing,
+                    ),
+                  })
+                }
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

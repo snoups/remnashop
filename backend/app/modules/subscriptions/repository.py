@@ -2,10 +2,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Final, Optional, cast
 
-from sqlalchemy import CursorResult, Numeric, delete, func, select
+from sqlalchemy import ColumnElement, CursorResult, Numeric, delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import INT32_MAX
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription import Subscription
@@ -136,6 +137,7 @@ class SubscriptionRepository:
         self,
         *,
         status: Optional[SubscriptionStatus] = None,
+        search: Optional[str] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[SubscriptionDto], int]:
@@ -143,10 +145,24 @@ class SubscriptionRepository:
         # DELETED rows are now routine history (trial->paid conversions,
         # plan CHANGEs), not just the rare explicit-delete case this default
         # was written around. Pass status=DELETED explicitly to see them.
+        filters: list[ColumnElement[bool]] = []
         if status is None:
-            filters = [Subscription.status != SubscriptionStatus.DELETED]
+            filters.append(Subscription.status != SubscriptionStatus.DELETED)
         else:
-            filters = [Subscription.status == status]
+            filters.append(Subscription.status == status)
+        if search:
+            pattern = f"%{search}%"
+            search_filters: list[ColumnElement[bool]] = [
+                Subscription.tag.ilike(pattern),
+                Subscription.plan_snapshot["name"].astext.ilike(pattern),
+            ]
+            # id/user_id are Integer; a longer digit string would overflow asyncpg
+            if search.isdigit() and int(search) <= INT32_MAX:
+                search_filters += [
+                    Subscription.id == int(search),
+                    Subscription.user_id == int(search),
+                ]
+            filters.append(or_(*search_filters))
 
         count_stmt = select(func.count()).select_from(Subscription).where(*filters)
         total = await self.session.scalar(count_stmt)

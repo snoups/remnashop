@@ -71,7 +71,7 @@ def register_menu_metadata() -> None:
             key="menu.devices",
             flow=DialogFlow.MENU,
             text_keys=("msg-menu-devices",),
-            banner_name=None,  # matches current no-banner behavior
+            banner_name=DEFAULT_BANNER_NAME,
             buttons=(
                 catalog.CatalogButton(
                     key="delete_all",
@@ -107,7 +107,7 @@ def register_menu_metadata() -> None:
             key="menu.device_confirm_delete",
             flow=DialogFlow.MENU,
             text_keys=("msg-menu-devices-confirm-delete",),
-            banner_name=None,
+            banner_name=DEFAULT_BANNER_NAME,
             buttons=(
                 catalog.CatalogButton(
                     key="confirm_delete",
@@ -134,7 +134,7 @@ def register_menu_metadata() -> None:
             key="menu.device_confirm_delete_all",
             flow=DialogFlow.MENU,
             text_keys=("msg-menu-devices-confirm-delete-all",),
-            banner_name=None,
+            banner_name=DEFAULT_BANNER_NAME,
             buttons=(
                 catalog.CatalogButton(
                     key="confirm_delete_all",
@@ -161,7 +161,7 @@ def register_menu_metadata() -> None:
             key="menu.device_confirm_reissue",
             flow=DialogFlow.MENU,
             text_keys=("msg-menu-devices-confirm-reissue",),
-            banner_name=None,
+            banner_name=DEFAULT_BANNER_NAME,
             buttons=(
                 catalog.CatalogButton(
                     key="confirm_reissue",

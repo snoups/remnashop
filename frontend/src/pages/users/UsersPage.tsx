@@ -33,6 +33,7 @@ import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialo
 import { UserSessionsDialog } from "@features/user-sessions/UserSessionsDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { toast } from "@shared/lib/toast";
 import { useCurrentUser } from "@entities/user/use-current-user";
@@ -82,7 +83,7 @@ export function UsersPage() {
   const bounceStrength = useBounceStrength();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useUrlSearch();
   const [role, setRole] = useState("");
   const [isBlocked, setIsBlocked] = useState("");
   const [page, setPage] = useState(1);

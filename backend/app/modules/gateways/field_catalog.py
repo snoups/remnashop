@@ -33,7 +33,6 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
     PaymentGatewayType.YOOKASSA: (
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="customer", kind=GatewayFieldKind.TEXT, required=False),
         GatewayFieldSpec(key="vat_code", kind=GatewayFieldKind.NUMBER, required=False),
     ),
     PaymentGatewayType.YOOMONEY: (
@@ -60,8 +59,6 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="secret_word_2", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="payment_system_id", kind=GatewayFieldKind.NUMBER),
-        GatewayFieldSpec(key="customer_email", kind=GatewayFieldKind.TEXT, required=False),
-        GatewayFieldSpec(key="customer_ip", kind=GatewayFieldKind.TEXT),
     ),
     PaymentGatewayType.MULENPAY: (
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
@@ -145,21 +142,6 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
         GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
     ),
-    # Overpay's real integration authenticates with a client-certificate
-    # (.p12 + passphrase, mTLS) on top of username/password -- confirm the
-    # exact handshake against Overpay's own API docs before wiring an
-    # adapter; a plain api_key placeholder would be a lie about what it
-    # actually needs.
-    PaymentGatewayType.OVERPAY: (
-        GatewayFieldSpec(key="username", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="password", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="project_id", kind=GatewayFieldKind.TEXT),
-    ),
-    # A reference Tribute integration is a non-functional stub (hardcoded
-    # payment_url, signature computed over str(dict) rather than the raw
-    # webhook body) -- not something to port faithfully. Placeholder until
-    # Tribute's real API is confirmed.
-    PaymentGatewayType.TRIBUTE: (GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),),
 }
 
 

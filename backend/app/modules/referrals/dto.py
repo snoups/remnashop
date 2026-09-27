@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Optional
+from typing import Final, Optional
 
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import ReferralAccrualStrategy, ReferralRewardType
+from app.modules.users import UserDto
+
+DEFAULT_PAGE_SIZE: Final[int] = 50
+MAX_PAGE_SIZE: Final[int] = 200
 
 
 class ReferralDto(BaseDto, TimestampMixin):
@@ -44,3 +48,18 @@ class UpdateReferralSettingsDto:
     accrual_strategy: Optional[ReferralAccrualStrategy] = None
     reward_type: Optional[ReferralRewardType] = None
     reward_amounts: Optional[dict[int, Decimal]] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReferralRewardTotalsDto:
+    count: int
+    # keyed by type: reward_type can change between payouts
+    amounts: dict[ReferralRewardType, Decimal]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReferralListItemDto:
+    referral: ReferralDto
+    referred: Optional[UserDto]
+    referrer: Optional[UserDto]
+    rewards: ReferralRewardTotalsDto

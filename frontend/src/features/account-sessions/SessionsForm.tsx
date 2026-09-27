@@ -35,18 +35,20 @@ export function SessionsForm() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <LaptopMinimal className="size-4" />
         </div>
         <div>
           <h2 className="text-sm font-bold text-foreground">{t("sessions.title")}</h2>
-          <p className="text-[12.5px] text-muted-foreground">{t("sessions.description")}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("sessions.description")}</p>
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+
+      <div className="mt-4">
         {state.kind === "loading" && <Spinner />}
         {state.kind === "error" && <p className="text-sm text-error">{t("sessions.loadError")}</p>}
         {state.kind === "ready" && (
