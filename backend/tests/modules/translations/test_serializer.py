@@ -1,4 +1,5 @@
 import pytest
+from fluent_compiler.bundle import FluentBundle
 
 from app.core.enums import Locale
 from app.modules.translations.dto import TranslationEntryDto
@@ -6,6 +7,7 @@ from app.modules.translations.serializer import (
     find_disallowed_placeable,
     serialize_to_fluent,
     split_message_key,
+    strip_serializer_escapes,
 )
 
 
@@ -107,6 +109,35 @@ def test_unmatched_brace_without_closing_brace_is_not_caught_here() -> None:
     # the separate FluentBundle.check_messages() compile check the caller
     # (UpdateDialogTextUseCase) runs on the full candidate text afterward.
     assert find_disallowed_placeable("Hi { unterminated", _ALLOWED) is None
+
+
+def test_premium_emoji_at_text_start_is_allowed() -> None:
+    assert find_disallowed_placeable("[🌊](emoji:5) Hi, { $name }!", _ALLOWED) is None
+
+
+@pytest.mark.parametrize(
+    "line", ["[🌊](emoji:5) Hi, { $name }!", "* star { $name }", ".dot { $name }"]
+)
+def test_special_char_at_continuation_line_start_is_allowed(line: str) -> None:
+    assert find_disallowed_placeable(f"First\n{line}", _ALLOWED) is None
+
+
+def test_empty_attribute_value_round_trips() -> None:
+    text = serialize_to_fluent([_entry("btn", "a", "Label"), _entry("btn", "a-icon-id", "")])
+    bundle = FluentBundle.from_string("en", text=text)
+
+    assert bundle.check_messages() == []
+    assert bundle.format("btn.a")[0] == "Label"
+    assert strip_serializer_escapes(bundle.format("btn.a-icon-id")[0]) == ""
+
+
+@pytest.mark.parametrize("line", ["[🌊](emoji:5) x", "* star", ".dot"])
+def test_special_char_at_continuation_line_start_round_trips(line: str) -> None:
+    value = f"First\n{line}"
+    bundle = FluentBundle.from_string("en", text=serialize_to_fluent([_entry("msg", "", value)]))
+
+    assert bundle.check_messages() == []
+    assert strip_serializer_escapes(bundle.format("msg")[0]) == value
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,4 @@
-import { Coins, Dices, Link2, X } from "lucide-react";
-import { motion } from "motion/react";
+import { Coins, Dices, Link2, Loader2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,18 +6,25 @@ import {
   type AdLink,
   AD_LINK_CODE_MAX_LENGTH,
   AD_LINK_CODE_PATTERN,
-  AD_LINK_START_PREFIX,
   createAdLink,
   generateAdLinkCode,
 } from "@entities/advertising/api";
-import { CURRENCY_SYMBOL } from "@entities/payments/api";
+import { type AdLinkChannels, ChannelsPicker } from "@entities/advertising/ChannelsPicker";
+import { CURRENCY_ICON } from "@entities/payments/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
-import { Modal, useModalClose } from "@shared/ui/Modal";
+import { blockNonDecimalKeys } from "@shared/lib/number-input";
+import { Modal } from "@shared/ui/Modal";
+import { useModalClose } from "@shared/ui/modal-hooks";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Button } from "@shared/ui/Button";
+import { Card } from "@shared/ui/Card";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { TextInput, TextArea } from "@shared/ui/TextInput";
+import { Field } from "@shared/ui/Field";
 
 const CURRENCIES = ["USD", "XTR", "RUB"];
+const FORM_ID = "adlink-create-form";
 
 interface AdLinkCreateDialogProps {
   canGenerateCode: boolean;
@@ -26,12 +32,10 @@ interface AdLinkCreateDialogProps {
   onSaved: (adLink: AdLink) => void;
 }
 
-const fieldClassName =
-  "rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
 
 export function AdLinkCreateDialog({ canGenerateCode, onClose, onSaved }: AdLinkCreateDialogProps) {
   return (
-    <Modal onClose={onClose} size="sm">
+    <Modal onClose={onClose} size="lg" scrollable>
       <AdLinkCreateDialogBody canGenerateCode={canGenerateCode} onSaved={onSaved} />
     </Modal>
   );
@@ -42,7 +46,6 @@ function AdLinkCreateDialogBody({
   onSaved,
 }: Pick<AdLinkCreateDialogProps, "canGenerateCode" | "onSaved">) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const close = useModalClose();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
@@ -50,15 +53,21 @@ function AdLinkCreateDialogBody({
   const [cost, setCost] = useState("0");
   const [currency, setCurrency] = useState("USD");
   const [note, setNote] = useState("");
+  const [channels, setChannels] = useState<AdLinkChannels>({ allow_bot: true, allow_webcabinet: true });
   const trimmedCode = code.trim();
   const isCodeInvalid = trimmedCode !== "" && !AD_LINK_CODE_PATTERN.test(trimmedCode);
   const canSubmit = name.trim() !== "" && trimmedCode !== "" && !isCodeInvalid;
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleGenerate = async () => {
+    setIsGenerating(true);
     try {
       setCode(await generateAdLinkCode());
     } catch (err) {
       toast.error(getErrorMessage(err, t("advertising.create.error")));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -71,6 +80,7 @@ function AdLinkCreateDialogBody({
         code: code.trim(),
         cost,
         cost_currency: currency,
+        ...channels,
         note: note.trim() || null,
       });
       toast.success(t("advertising.create.saved"));
@@ -85,138 +95,106 @@ function AdLinkCreateDialogBody({
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Link2 className="size-4" />
-          </div>
-          {t("advertising.create.title")}
-        </h2>
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("advertising.create.close")}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
+      <DialogHeader icon={Link2} title={t("advertising.create.title")} closeLabel={t("advertising.create.close")} />
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3">
+          <Card variant="form">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label={t("advertising.create.nameLabel")} htmlFor="adlink-name" required>
+                <TextInput
+                  id="adlink-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  maxLength={255}
+                />
+              </Field>
+              <Field label={t("advertising.channels.label")}>
+                <ChannelsPicker value={channels} onChange={setChannels} />
+              </Field>
+              <Field label={t("advertising.create.costLabel")} htmlFor="adlink-cost">
+                <TextInput
+                  id="adlink-cost"
+                  type="number"
+                  onKeyDown={blockNonDecimalKeys}
+                  min={0}
+                  step="0.01"
+                  value={cost}
+                  onChange={(event) => setCost(event.target.value)}
+                />
+              </Field>
+              <Field label={t("advertising.create.currencyLabel")} htmlFor="adlink-currency">
+                <SelectDropdown
+                  variant="form"
+                  id="adlink-currency"
+                  value={currency}
+                  onChange={setCurrency}
+                  icon={Coins}
+                  placeholder={currency}
+                  options={CURRENCIES.map((value) => ({
+                    value,
+                    label: t(`advertising.currencies.${value}`),
+                    icon: CURRENCY_ICON[value],
+                  }))}
+                />
+              </Field>
+            </div>
+          </Card>
+
+          <Card variant="form">
+            <Field label={t("advertising.create.codeLabel")} htmlFor="adlink-code" required>
+              <div className="flex gap-2">
+                <TextInput
+                  id="adlink-code"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  placeholder={t("advertising.create.codePlaceholder")}
+                  maxLength={AD_LINK_CODE_MAX_LENGTH}
+                  aria-invalid={isCodeInvalid}
+                  aria-describedby={isCodeInvalid ? "adlink-code-hint" : undefined}
+                  className="flex-1 font-mono"
+                />
+                {canGenerateCode && (
+                  <Button
+                    variant="secondary"
+                    size="field"
+                    onClick={() => void handleGenerate()}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Dices className="size-3.5" />}
+                    {t("advertising.create.generate")}
+                  </Button>
+                )}
+              </div>
+              {isCodeInvalid && (
+                <p id="adlink-code-hint" className="text-[12px] text-error">
+                  {t("advertising.create.codeInvalid")}
+                </p>
+              )}
+            </Field>
+          </Card>
+
+          <Card variant="form">
+            <Field label={t("advertising.create.noteLabel")} htmlFor="adlink-note">
+              <TextArea
+                id="adlink-note"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                rows={2}
+              />
+            </Field>
+          </Card>
+        </form>
       </div>
 
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4 px-5 pb-5 pt-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="adlink-name" className="text-sm font-medium text-foreground/80">
-            {t("advertising.create.nameLabel")}
-          </label>
-          <input
-            id="adlink-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={255}
-            className={fieldClassName}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="adlink-code" className="text-sm font-medium text-foreground/80">
-            {t("advertising.create.codeLabel")}
-          </label>
-          <div className="flex gap-2">
-            <input
-              id="adlink-code"
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              placeholder={t("advertising.create.codePlaceholder")}
-              maxLength={AD_LINK_CODE_MAX_LENGTH}
-              aria-invalid={isCodeInvalid}
-              aria-describedby="adlink-code-hint"
-              className={`${fieldClassName} flex-1 font-mono ${isCodeInvalid ? "border-error focus:border-error" : ""}`}
-            />
-            {canGenerateCode && (
-              <motion.button
-                type="button"
-                onClick={() => void handleGenerate()}
-                {...bounceTap(bounceStrength)}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-[12.5px] font-medium text-foreground/90 transition-colors hover:bg-white/5"
-              >
-                <Dices className="size-3.5" />
-                {t("advertising.create.generate")}
-              </motion.button>
-            )}
-          </div>
-          <p id="adlink-code-hint" className={`text-[12px] ${isCodeInvalid ? "text-error" : "text-muted-foreground"}`}>
-            {isCodeInvalid ? (
-              t("advertising.create.codeInvalid")
-            ) : (
-              <>
-                {t("advertising.startParam")}:{" "}
-                <span className="font-mono text-foreground/80">
-                  ?start={AD_LINK_START_PREFIX}
-                  {trimmedCode || "…"}
-                </span>
-              </>
-            )}
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex flex-1 flex-col gap-1">
-            <label htmlFor="adlink-cost" className="text-sm font-medium text-foreground/80">
-              {t("advertising.create.costLabel")}
-            </label>
-            <input
-              id="adlink-cost"
-              type="number"
-              min={0}
-              step="0.01"
-              value={cost}
-              onChange={(event) => setCost(event.target.value)}
-              className={fieldClassName}
-            />
-          </div>
-          <div className="flex flex-1 flex-col gap-1">
-            <span className="text-sm font-medium text-foreground/80">{t("advertising.create.currencyLabel")}</span>
-            <SelectDropdown
-              id="adlink-currency"
-              value={currency}
-              onChange={setCurrency}
-              icon={Coins}
-              placeholder={currency}
-              options={CURRENCIES.map((value) => ({ value, label: `${value} ${CURRENCY_SYMBOL[value]}` }))}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="adlink-note" className="text-sm font-medium text-foreground/80">
-            {t("advertising.create.noteLabel")}
-          </label>
-          <textarea
-            id="adlink-note"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            rows={2}
-            className={`${fieldClassName} resize-none`}
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={close}
-            className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
-          >
-            {t("advertising.create.cancel")}
-          </button>
-          <motion.button
-            type="submit"
-            disabled={isSubmitting || !canSubmit}
-            {...bounceTap(bounceStrength)}
-            className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSubmitting ? t("advertising.create.saving") : t("advertising.create.save")}
-          </motion.button>
-        </div>
-      </form>
+      <div className="flex justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
+        <Button variant="outline" onClick={close}>
+          {t("advertising.create.cancel")}
+        </Button>
+        <Button variant="accent" type="submit" form={FORM_ID} disabled={isSubmitting || !canSubmit}>
+          {isSubmitting ? t("advertising.create.saving") : t("advertising.create.save")}
+        </Button>
+      </div>
     </>
   );
 }

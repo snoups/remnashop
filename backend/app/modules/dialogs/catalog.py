@@ -8,7 +8,7 @@ from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow
 Resolver = Callable[..., object]
 
 # Fluent variable identifiers are plain identifiers -- no dots. The catalog's
-# own dotted keys (e.g. "subscription.url") are only ever used by the render
+# dotted keys, if any are ever registered, are only usable by the render
 # engine's own ${var} substitution in url_value, which is unrelated to Fluent
 # and has no such restriction; this filters them out of what's offered for use
 # inside real Fluent `{ $var }` text.
@@ -63,6 +63,9 @@ class CatalogWindow:
     text_keys: tuple[str, ...]
     banner_name: Optional[str]
     buttons: tuple[CatalogButton, ...] = ()
+    # passed by this window's own getter (e.g. a device count), on top of the
+    # global variables every text may use
+    text_variables: tuple[str, ...] = ()
 
 
 _WINDOWS: Final[dict[str, CatalogWindow]] = {}
@@ -70,6 +73,8 @@ _ACTION_KEYS: Final[set[str]] = set()
 _ACTIONS: Final[dict[str, Resolver]] = {}
 _CONDITIONS: Final[dict[str, Resolver]] = {}
 _VARIABLES: Final[dict[str, Resolver]] = {}
+# variable -> the group the editor's picker lists it under ("user", "subscription", ...)
+_VARIABLE_CATEGORIES: Final[dict[str, str]] = {}
 
 
 def _register(registry: dict[str, object], key: str, value: object, label: str) -> None:
@@ -107,12 +112,15 @@ def register_condition(key: str, resolver: Resolver) -> None:
 _RESERVED_VARIABLE_NAMES: Final[frozenset[str]] = frozenset({"key", "self"})
 
 
-def register_variable(key: str, resolver: Resolver) -> None:
+def register_variable(key: str, resolver: Resolver, *, category: str) -> None:
+    # Named <category>_<field> (user_name, not name): a bare field name is
+    # ambiguous once more than one thing in the bot has it.
     if key in _RESERVED_VARIABLE_NAMES:
         # These collide with runner.get(key, **kwargs)'s own positional params
         # -> "got multiple values for argument" at render time.
         raise ValueError(f"Reserved variable name: {key}")
     _register(_VARIABLES, key, resolver, "variable")  # type: ignore[arg-type]
+    _VARIABLE_CATEGORIES[key] = category
 
 
 def all_windows() -> tuple[CatalogWindow, ...]:
@@ -162,6 +170,10 @@ def variable_keys() -> frozenset[str]:
     return frozenset(_VARIABLES)
 
 
+def variable_categories() -> dict[str, str]:
+    return dict(_VARIABLE_CATEGORIES)
+
+
 def text_variable_keys() -> frozenset[str]:
     return frozenset(key for key in _VARIABLES if _FLUENT_IDENTIFIER_RE.match(key))
 
@@ -183,6 +195,10 @@ def icon_text_key(text_key: str) -> str:
 
 def icon_id_text_key(text_key: str) -> str:
     return f"{text_key}{ICON_ID_KEY_SUFFIX}"
+
+
+def is_icon_text_key(key: str) -> bool:
+    return key.endswith((ICON_KEY_SUFFIX, ICON_ID_KEY_SUFFIX))
 
 
 def is_editable_text_key(key: str) -> bool:
@@ -233,3 +249,4 @@ def _reset_for_tests() -> None:
     _ACTIONS.clear()
     _CONDITIONS.clear()
     _VARIABLES.clear()
+    _VARIABLE_CATEGORIES.clear()

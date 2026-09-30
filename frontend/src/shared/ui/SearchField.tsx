@@ -1,35 +1,77 @@
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { motion } from "motion/react";
+import { useRef, type ComponentProps } from "react";
+import { useTranslation } from "react-i18next";
 
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { IconButton } from "@shared/ui/IconButton";
 
 interface SearchFieldProps {
   id: string;
   label: string;
+  /** no visible label; it stays as the input's aria-label */
+  hideLabel?: boolean;
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
 }
 
-export function SearchField({ id, label, placeholder, value, onChange }: SearchFieldProps) {
+/** Clears a search input; the browsers' own (x) is hidden in app/styles.css since Firefox has none.
+ * `size`/`className` put it at an equal inset from the field's top, bottom and right edge. */
+export function SearchClearButton({
+  onClear,
+  size,
+  className,
+}: {
+  onClear: () => void;
+  size: ComponentProps<typeof IconButton>["size"];
+  className: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <IconButton size={size} onClick={onClear} aria-label={t("app.clearSearch")} className={className}>
+      <X className="size-3.5" />
+    </IconButton>
+  );
+}
+
+// glass: filters and search, not form fields (those use TextInput)
+export function SearchField({ id, label, hideLabel = false, placeholder, value, onChange }: SearchFieldProps) {
   const bounceStrength = useBounceStrength();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-      <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </label>
-      <motion.div className="group relative" {...bounceTap(bounceStrength)}>
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
+      {!hideLabel && <span className={EYEBROW_CLASS}>{label}</span>}
+      {/* border sits on the scaled element itself -- scaling a wrapper around a bordered <input> leaves seams in Firefox */}
+      <motion.label
+        {...bounceTap(bounceStrength, 0.04)}
+        className="group flex w-full items-center gap-2.5 rounded-full border border-glass-border bg-white/[0.03] px-3 py-2 backdrop-blur-md transition-colors not-focus-within:hover:bg-white/[0.06] focus-within:border-primary"
+      >
+        <Search className="size-3.5 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
         <input
+          ref={inputRef}
           id={id}
-          type="text"
+          type="search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-xl border border-border bg-input/60 py-2 pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary"
+          aria-label={label}
+          className="w-full min-w-0 border-0 bg-transparent text-sm font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground"
         />
-      </motion.div>
+        {value && (
+          // 24px in a 36px-tall field: 6px inset top, bottom and right (px-3 minus 6)
+          <SearchClearButton
+            size="6"
+            className="-my-0.5 -mr-1.5"
+            onClear={() => {
+              onChange("");
+              inputRef.current?.focus();
+            }}
+          />
+        )}
+      </motion.label>
     </div>
   );
 }

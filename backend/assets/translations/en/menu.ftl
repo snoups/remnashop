@@ -1,6 +1,7 @@
-msg-main-menu = Main menu, { $name }!
+msg-main-menu = Main menu, { $user_name }!
 msg-window-gone = This screen is no longer available.
-msg-menu-devices = Your devices ({ $current_count }/{ $max_count })
+msg-paysupport = To request a refund, contact support.
+msg-menu-devices = Your devices ({ $devices_current }/{ $devices_max })
 msg-menu-devices-confirm-delete = Delete this device?
 msg-menu-devices-confirm-delete-all = Delete every device? Each one has to be connected again.
 msg-menu-devices-confirm-reissue = Reissue the connection link? The old link will stop working.

@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
+from app.core.enums import ReferralRewardType
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import (
@@ -18,6 +19,9 @@ from app.modules.users import UserDto, UserRepository
 class ListReferralsInput:
     level: Optional[int] = None
     created_from: Optional[datetime] = None
+    search: Optional[str] = None
+    has_rewards: Optional[bool] = None
+    reward_type: Optional[ReferralRewardType] = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
 
@@ -42,6 +46,9 @@ class ListReferralsUseCase(UseCase[ListReferralsInput, tuple[list[ReferralListIt
             referrals, total = await self._referral_repository.list_paginated(
                 level=data.level,
                 created_from=data.created_from,
+                search=data.search,
+                has_rewards=data.has_rewards,
+                reward_type=data.reward_type,
                 page=data.page,
                 page_size=data.page_size,
             )

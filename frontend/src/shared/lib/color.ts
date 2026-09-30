@@ -35,6 +35,36 @@ function mixWithWhite(hex: string, ratio: number): string {
   return rgbToHex(r + (255 - r) * ratio, g + (255 - g) * ratio, b + (255 - b) * ratio);
 }
 
+function shade(hex: string, ratio: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  return rgbToHex(r * (1 - ratio), g * (1 - ratio), b * (1 - ratio));
+}
+
+// WCAG relative luminance / contrast ratio
+function luminance(hex: string): number {
+  const [r, g, b] = hexToRgb(hex).map((channel) => {
+    const c = channel / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrastRatio(a: string, b: string): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+const MIN_TEXT_CONTRAST = 4.5;
+
+// dark tint of the accent itself, so solid-button text stays in its hue;
+// white where the tint can't reach AA (indigo, custom dark accents)
+function primaryForeground(primaryColor: string): string {
+  const tint = shade(primaryColor, 0.85);
+  const tintContrast = contrastRatio(primaryColor, tint);
+  if (tintContrast >= MIN_TEXT_CONTRAST) return tint;
+  return contrastRatio(primaryColor, "#ffffff") > tintContrast ? "#ffffff" : tint;
+}
+
 // The form's blank-state placeholder and the shader's reference color --
 // ShaderBackground rotates its native palette's hue by the delta between the
 // admin's picked accent and this value, so this is the anchor "no rotation"
@@ -98,17 +128,19 @@ export function hueRotateHex(hex: string, angleRadians: number): string {
 
 export interface DerivedTheme {
   primary: string;
+  primaryForeground: string;
   primaryHover: string;
   accent: string;
   accentForeground: string;
 }
 
-// Admins pick one accent color; the other three tokens styles.css already
-// defines (--color-primary-hover/--color-accent/--color-accent-foreground)
+// Admins pick one accent color; the other tokens styles.css already defines
+// (--color-primary-foreground/-hover, --color-accent/-foreground)
 // are derived from it so buttons/links/highlights stay coherent.
 export function deriveTheme(primaryColor: string): DerivedTheme {
   return {
     primary: primaryColor,
+    primaryForeground: primaryForeground(primaryColor),
     primaryHover: mixWithWhite(primaryColor, 0.35),
     accent: `${primaryColor}1f`,
     accentForeground: mixWithWhite(primaryColor, 0.75),

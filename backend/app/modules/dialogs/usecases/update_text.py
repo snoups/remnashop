@@ -82,7 +82,10 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
             # Newlines are fine here, unlike in the general translations editor:
             # serialize_to_fluent() indents continuation lines, and a window's
             # body is the one piece of bot text that genuinely wants paragraphs.
-            disallowed = find_disallowed_placeable(data.value, catalog.text_variable_keys())
+            allowed_variables = catalog.text_variable_keys()
+            if window_key and catalog.has_window(window_key):
+                allowed_variables |= set(catalog.get_window(window_key).text_variables)
+            disallowed = find_disallowed_placeable(data.value, allowed_variables)
             if disallowed is not None:
                 raise ValidationError(disallowed)
 
@@ -112,6 +115,13 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
                 raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
 
         async with self._uow:
+            if catalog.is_icon_text_key(full_key):
+                # An icon row exists only once something sets it: the assets seed
+                # a few glyphs and no premium ids. Empty default, so a reset
+                # takes the icon off.
+                await self._translations_repository.seed_missing(
+                    data.locale, data.message_id, data.attribute_id, ""
+                )
             updated = await self._translations_repository.update_value(
                 data.locale, data.message_id, data.attribute_id, data.value
             )

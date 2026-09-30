@@ -24,6 +24,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.passkeys import get_passkey_revoker_providers
+from app.modules.pricing import PricingRepository
 from app.modules.referrals import get_referrals_providers
 from app.modules.referrals.dto import UpdateReferralSettingsDto
 from app.modules.referrals.repository import ReferralRepository
@@ -47,6 +48,13 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
+def _pricing_repository_provider() -> Provider:
+    # just the repository: the settings usecases read the anchor currency from it
+    provider = Provider(scope=Scope.REQUEST)
+    provider.provide(PricingRepository)
+    return provider
+
+
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
@@ -59,6 +67,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_settings_providers(),
         *get_translations_providers(),
         *get_referrals_providers(),
+        _pricing_repository_provider(),
         *get_blacklist_providers(),
         _TestSessionProvider(session),
     ]

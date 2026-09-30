@@ -104,7 +104,9 @@ def setup_logger(config: AppConfig) -> None:
         "uvicorn.access",
         "fastapi",
     ):
-        logging.getLogger(logger_name).handlers = [intercept_handler]
+        uvicorn_logger = logging.getLogger(logger_name)
+        uvicorn_logger.handlers = [intercept_handler]
+        uvicorn_logger.propagate = False  # parent/root carry the same handler
 
 
 def add_redis_sink(config: AppConfig, key: str) -> None:

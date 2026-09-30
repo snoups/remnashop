@@ -1,16 +1,15 @@
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, BarChart3, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { type AdLink, type AdLinkChannel, getAdLinkStats } from "@entities/advertising/api";
+import { type AdLink, getAdLinkStats } from "@entities/advertising/api";
 import { formatMoney, formatPercent, roiClassName } from "@entities/advertising/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Tooltip } from "@shared/ui/Tooltip";
+import { Card } from "@shared/ui/Card";
+import { KpiTile } from "@shared/ui/KpiTile";
 
 const CHART_FALLBACK_DAYS = 30;
 const DAY_MS = 86_400_000;
-const CHANNELS: { channel: AdLinkChannel; dot: string }[] = [
-  { channel: "BOT", dot: "bg-primary" },
-  { channel: "WEBCABINET", dot: "bg-violet-400" },
-];
 
 interface AdLinkStatsPanelProps {
   adLink: AdLink;
@@ -24,8 +23,6 @@ function lastDays(count: number): string[] {
   return Array.from({ length: count }, (_, i) => new Date(today - (count - 1 - i) * DAY_MS).toISOString().slice(0, 10));
 }
 
-const cardClassName = "rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3.5";
-const labelClassName = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
 export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStatsPanelProps) {
   const { t, i18n } = useTranslation();
@@ -48,93 +45,104 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
   }
 
   const stats = state.data;
-  const counts = new Map(stats.daily_registrations.map((row) => [row.day, row.count]));
-  const days = lastDays(periodDays || CHART_FALLBACK_DAYS).map((day) => ({ day, count: counts.get(day) ?? 0 }));
+  const rows = new Map(stats.daily_registrations.map((row) => [row.day, row]));
+  const days = lastDays(periodDays || CHART_FALLBACK_DAYS).map((day) => ({
+    day,
+    count: rows.get(day)?.count ?? 0,
+    byChannel: rows.get(day)?.by_channel ?? {},
+  }));
   const peak = days.reduce((best, day) => (day.count > best.count ? day : best), days[0]);
   const formatDay = (day: string) =>
     new Date(`${day}T00:00:00Z`).toLocaleDateString(i18n.language, { day: "numeric", month: "short", timeZone: "UTC" });
+  const formatLongDay = (day: string) =>
+    new Date(`${day}T00:00:00Z`).toLocaleDateString(i18n.language, { day: "numeric", month: "long", timeZone: "UTC" });
   const none = t("advertising.stats.none");
 
   return (
-    <div className="grid gap-3 md:grid-cols-[1.6fr_1fr_1fr]">
-      <div className={cardClassName}>
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <KpiTile
+          label={t("advertising.stats.attributions")}
+          value={String(stats.attributions_count)}
+          hint={t("advertising.stats.channelSplit", {
+            bot: stats.attributions_by_channel.BOT ?? 0,
+            web: stats.attributions_by_channel.WEBCABINET ?? 0,
+          })}
+        />
+        <KpiTile
+          label={t("advertising.stats.paidCount")}
+          value={String(stats.paid_count)}
+          hint={`${t("advertising.stats.conversionRate")} ${
+            stats.attributions_count > 0 ? formatPercent(stats.conversion_rate, i18n.language) : none
+          }`}
+        />
+        <KpiTile
+          label={t("advertising.stats.cost")}
+          value={formatMoney(stats.cost, stats.report_currency, i18n.language)}
+          hint={`${t("advertising.stats.cpa")} ${
+            stats.cpa !== null ? formatMoney(stats.cpa, stats.report_currency, i18n.language) : none
+          }`}
+        />
+        <KpiTile
+          label={t("advertising.stats.revenue")}
+          value={formatMoney(stats.revenue, stats.report_currency, i18n.language)}
+          hint={
+            <>
+              {t("advertising.stats.roi")}{" "}
+              <span className={`font-semibold ${roiClassName(stats.roi)}`}>
+                {stats.roi !== null ? formatPercent(stats.roi, i18n.language, true) : none}
+              </span>
+            </>
+          }
+        />
+      </div>
+
+      <Card>
         <div className="flex items-baseline justify-between gap-2">
-          <span className={labelClassName}>{t("advertising.stats.daily")}</span>
+          <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
+            <BarChart3 className="size-3.5" />
+            {t("advertising.stats.daily")}
+          </h3>
           {peak.count > 0 && (
             <span className="text-[12px] tabular-nums text-muted-foreground">
               {t("advertising.stats.peak", { count: peak.count, day: formatDay(peak.day) })}
             </span>
           )}
         </div>
-        <div className="mt-3 flex h-20 items-end gap-[3px]">
-          {days.map((day) => (
-            <div
-              key={day.day}
-              className={`min-h-px flex-1 rounded-t-[3px] ${
-                day.count > 0 && day.day === peak.day ? "bg-primary" : "bg-primary/35"
-              }`}
-              style={{ height: peak.count > 0 ? `${(day.count / peak.count) * 100}%` : "1px" }}
-            />
-          ))}
+        <div className="mt-3 flex h-24 items-end gap-[3px]">
+          {days.map((day, index) => {
+            const split = t("advertising.stats.channelSplit", {
+              bot: day.byChannel.BOT ?? 0,
+              web: day.byChannel.WEBCABINET ?? 0,
+            });
+            const heading = `${formatLongDay(day.day)}: ${day.count}`;
+            const edge = index / days.length;
+            return (
+              <div
+                key={day.day}
+                role="img"
+                aria-label={day.count > 0 ? `${heading}. ${split}` : heading}
+                className="group relative flex h-full flex-1 items-end"
+              >
+                <div
+                  className={`min-h-px w-full rounded-t-[3px] transition-colors group-hover:bg-primary ${
+                    day.count > 0 && day.day === peak.day ? "bg-primary" : "bg-primary/35"
+                  }`}
+                  style={{ height: peak.count > 0 ? `${(day.count / peak.count) * 100}%` : "1px" }}
+                />
+                <Tooltip
+                  text={day.count > 0 ? `${heading}\n${split}` : heading}
+                  side={edge < 0.25 ? "top-start" : edge > 0.75 ? "top-end" : "top"}
+                />
+              </div>
+            );
+          })}
         </div>
         <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
           <span>{formatDay(days[0].day)}</span>
           <span>{formatDay(days[days.length - 1].day)}</span>
         </div>
-      </div>
-
-      <div className={`${cardClassName} flex flex-col gap-3`}>
-        <span className={labelClassName}>{t("advertising.stats.channels")}</span>
-        <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-white/[0.06]">
-          {CHANNELS.map(({ channel, dot }) => {
-            const count = stats.attributions_by_channel[channel] ?? 0;
-            return count > 0 ? (
-              <div key={channel} className={dot} style={{ width: `${(count / stats.attributions_count) * 100}%` }} />
-            ) : null;
-          })}
-        </div>
-        <div className="flex flex-col gap-2 text-[13px]">
-          {CHANNELS.map(({ channel, dot }) => {
-            const count = stats.attributions_by_channel[channel] ?? 0;
-            return (
-              <div key={channel} className="flex items-center gap-2">
-                <span className={`size-2 rounded-full ${dot}`} />
-                <span className="flex-1 text-foreground">{t(`advertising.channel.${channel}`)}</span>
-                <span className="font-semibold tabular-nums text-foreground">{count}</span>
-                <span className="w-10 text-right tabular-nums text-muted-foreground">
-                  {stats.attributions_count > 0
-                    ? formatPercent(String(count / stats.attributions_count), i18n.language)
-                    : none}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className={`${cardClassName} grid grid-cols-2 content-start gap-x-2.5 gap-y-3`}>
-        <span className={`${labelClassName} col-span-2`}>{t("advertising.stats.economics")}</span>
-        <Metric label={t("advertising.stats.revenue")} value={formatMoney(stats.revenue, stats.report_currency, i18n.language)} />
-        <Metric label={t("advertising.stats.cost")} value={formatMoney(stats.cost, stats.report_currency, i18n.language)} />
-        <Metric
-          label={t("advertising.stats.cpa")}
-          value={stats.cpa !== null ? formatMoney(stats.cpa, stats.report_currency, i18n.language) : none}
-        />
-        <Metric
-          label={t("advertising.stats.roi")}
-          value={stats.roi !== null ? formatPercent(stats.roi, i18n.language, true) : none}
-          className={roiClassName(stats.roi)}
-        />
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value, className = "text-foreground" }: { label: string; value: string; className?: string }) {
-  return (
-    <div>
-      <div className="text-[11.5px] text-muted-foreground">{label}</div>
-      <div className={`text-[15px] font-semibold tabular-nums ${className}`}>{value}</div>
+      </Card>
     </div>
   );
 }

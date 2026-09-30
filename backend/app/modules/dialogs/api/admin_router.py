@@ -92,6 +92,8 @@ def _to_catalog_response(catalog: DialogCatalogDto) -> DialogCatalogResponse:
         condition_keys=catalog.condition_keys,
         variable_keys=catalog.variable_keys,
         text_variable_keys=catalog.text_variable_keys,
+        window_text_variable_keys=catalog.window_text_variable_keys,
+        variable_categories=catalog.variable_categories,
         seed_window_keys=catalog.seed_window_keys,
         navigable_window_keys=catalog.navigable_window_keys,
         custom_window_limit=catalog.custom_window_limit,

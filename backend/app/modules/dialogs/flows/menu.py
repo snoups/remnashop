@@ -25,8 +25,12 @@ def register_menu_metadata() -> None:
     )
     catalog.register_condition("has_devices", lambda data: bool(data.get("has_devices")))
 
-    catalog.register_variable("subscription.url", lambda data: data.get("connect_url", ""))
-    catalog.register_variable("name", lambda data: data.get("name", ""))
+    # the first active subscription's -- a user with several gets that one
+    catalog.register_variable(
+        "subscription_url", lambda data: data.get("connect_url", ""), category="subscription"
+    )
+    catalog.register_variable("user_name", lambda data: data.get("name", ""), category="user")
+    catalog.register_variable("user_points", lambda data: data.get("points", ""), category="user")
 
     catalog.register_window(
         catalog.CatalogWindow(
@@ -41,7 +45,7 @@ def register_menu_metadata() -> None:
                     row=0,
                     column=0,
                     link_type=ButtonLinkType.URL,
-                    url_value="${subscription.url}",
+                    url_value="${subscription_url}",
                     visibility_condition="connectable",
                 ),
                 catalog.CatalogButton(
@@ -72,6 +76,7 @@ def register_menu_metadata() -> None:
             flow=DialogFlow.MENU,
             text_keys=("msg-menu-devices",),
             banner_name=DEFAULT_BANNER_NAME,
+            text_variables=("devices_current", "devices_max"),
             buttons=(
                 catalog.CatalogButton(
                     key="delete_all",

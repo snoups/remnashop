@@ -54,14 +54,11 @@ class ApiTokenRepository:
             row.last_used_at = datetime_now()
             await self.session.flush()
 
-    async def list_active(self) -> list[ApiTokenDto]:
-        now = datetime_now()
+    # expired tokens stay listed (shown as expired) until revoked
+    async def list_not_revoked(self) -> list[ApiTokenDto]:
         stmt = (
             select(ApiToken)
-            .where(
-                ApiToken.revoked_at.is_(None),
-                or_(ApiToken.expires_at.is_(None), ApiToken.expires_at > now),
-            )
+            .where(ApiToken.revoked_at.is_(None))
             .order_by(ApiToken.created_at.desc())
         )
         rows = await self.session.scalars(stmt)

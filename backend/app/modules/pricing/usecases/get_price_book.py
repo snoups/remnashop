@@ -39,7 +39,7 @@ async def build_price_book(
             kind="plan_duration",
             ref_id=duration.id,
             plan_id=plan.id,
-            label=f"{plan.name} / {duration.days}d",
+            name=plan.name,
             days=duration.days,
             base_price=duration.base_price,
             cells=_build_cells(
@@ -57,7 +57,7 @@ async def build_price_book(
         PriceBookRow(
             kind="addon",
             ref_id=addon.id,
-            label=addon.name,
+            name=addon.name,
             days=None,
             base_price=addon.base_price,
             cells=_build_cells(

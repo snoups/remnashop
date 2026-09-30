@@ -1,11 +1,13 @@
-import { ChevronRight, MessagesSquare, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogFlow, DialogWindow } from "@entities/dialogs/api";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { CreateWindowDialog } from "@features/dialog-canvas-editor/CreateWindowDialog";
 
 interface WindowSwitcherProps {
   windows: DialogWindow[];
@@ -19,7 +21,8 @@ interface WindowSwitcherProps {
   canCreate: boolean;
   isLimitReached: boolean;
   canDelete: boolean;
-  onCreate: (name: string) => void;
+  /** resolves true once created; the dialog stays open on false */
+  onCreate: (name: string) => Promise<boolean>;
   onDelete: (key: string) => void;
 }
 
@@ -84,7 +87,7 @@ function WindowChip({
       <button
         type="button"
         onClick={onSelect}
-        className={`relative z-10 flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 py-1.5 text-left text-[13px] ${
+        className={`relative z-10 flex h-[30px] min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 text-left text-[13px] ${
           isSelected ? "font-medium text-primary" : "text-foreground/80"
         } ${window.is_enabled ? "" : "opacity-55"}`}
       >
@@ -126,9 +129,7 @@ export function WindowSwitcher({
   const bounceStrength = useBounceStrength();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DialogWindow | null>(null);
-  const [name, setName] = useState("");
-  // Only what somebody clicked is remembered; everything else follows the
-  // selection, so the flow holding the open window is the one left expanded.
+  // only what somebody clicked is remembered; everything else starts expanded
   const [toggledFlows, setToggledFlows] = useState<Record<string, boolean>>({});
 
   const branches = FLOW_ORDER.map((flow) => ({
@@ -136,8 +137,7 @@ export function WindowSwitcher({
     items: windows.filter((window) => window.flow === flow),
   })).filter((branch) => branch.items.length > 0);
 
-  const activeFlow = windows.find((window) => window.key === selectedKey)?.flow ?? null;
-  const isFlowCollapsed = (flow: DialogFlow) => toggledFlows[flow] ?? flow !== activeFlow;
+  const isFlowCollapsed = (flow: DialogFlow) => toggledFlows[flow] ?? false;
 
   const toggleFlow = (flow: DialogFlow) =>
     setToggledFlows((current) => ({ ...current, [flow]: !isFlowCollapsed(flow) }));
@@ -153,7 +153,7 @@ export function WindowSwitcher({
               onClick={() => toggleFlow(flow)}
               initial="rest"
               whileTap="tap"
-              className="group relative isolate flex w-full cursor-pointer items-center gap-1 rounded-full px-1.5 py-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
+              className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
             >
               <motion.span
                 aria-hidden
@@ -170,24 +170,22 @@ export function WindowSwitcher({
                 {items.length}
               </span>
             </motion.button>
-            {!isCollapsed && (
-              <div className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
-                {items.map((window) => (
-                  <WindowChip
-                    key={window.key}
-                    window={window}
-                    label={labelOf(window)}
-                    isSelected={window.key === selectedKey}
-                    isUnreachable={unreachableKeys.has(window.key)}
-                    isDirty={window.key === dirtyKey}
-                    canDelete={canDelete}
-                    bounceStrength={bounceStrength}
-                    onSelect={() => onSelect(window.key)}
-                    onDelete={() => setDeleteTarget(window)}
-                  />
-                ))}
-              </div>
-            )}
+            <Collapse open={!isCollapsed} className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
+              {items.map((window) => (
+                <WindowChip
+                  key={window.key}
+                  window={window}
+                  label={labelOf(window)}
+                  isSelected={window.key === selectedKey}
+                  isUnreachable={unreachableKeys.has(window.key)}
+                  isDirty={window.key === dirtyKey}
+                  canDelete={canDelete}
+                  bounceStrength={bounceStrength}
+                  onSelect={() => onSelect(window.key)}
+                  onDelete={() => setDeleteTarget(window)}
+                />
+              ))}
+            </Collapse>
           </div>
         );
       })}
@@ -196,7 +194,7 @@ export function WindowSwitcher({
           type="button"
           onClick={() => setIsCreateOpen(true)}
           {...bounceTap(bounceStrength)}
-          className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 py-1.5 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+          className="mt-1 flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="size-3.5" />
           {t("dialogs.windowList.addWindow")}
@@ -207,32 +205,10 @@ export function WindowSwitcher({
           {t("dialogs.windowList.limitReached")}
         </span>
       )}
-      {isCreateOpen && (
-        <ConfirmDialog
-          title={t("dialogs.windowList.addWindow")}
-          icon={MessagesSquare}
-          confirmLabel={t("dialogs.windowList.addWindowConfirm")}
-          cancelLabel={t("dialogs.windowList.addWindowCancel")}
-          onConfirm={() => {
-            if (!name.trim()) return;
-            onCreate(name.trim());
-            setIsCreateOpen(false);
-            setName("");
-          }}
-          onCancel={() => setIsCreateOpen(false)}
-        >
-          <input
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t("dialogs.windowList.addWindowTitlePlaceholder")}
-            className="mb-2 w-full rounded-lg border border-border bg-input/60 px-2.5 py-1.5 text-[13px]"
-          />
-        </ConfirmDialog>
-      )}
+      {isCreateOpen && <CreateWindowDialog onCreate={onCreate} onClose={() => setIsCreateOpen(false)} />}
       {deleteTarget && (
         <ConfirmDialog
-          title={t("dialogs.windowList.deleteWindow")}
+          title={t("dialogs.windowList.deleteWindowTitle")}
           message={t("dialogs.windowList.deleteWindowConfirm", { name: labelOf(deleteTarget) })}
           confirmLabel={t("dialogs.windowList.deleteWindowConfirmButton")}
           cancelLabel={t("dialogs.windowList.deleteWindowCancelButton")}

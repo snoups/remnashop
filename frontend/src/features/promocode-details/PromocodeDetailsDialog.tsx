@@ -1,0 +1,239 @@
+import { BarChart3, CalendarClock, Check, Copy, Hash, Pause, Pencil, Play, Repeat, ShieldCheck, Ticket, Trash2, Users } from "lucide-react";
+import { motion } from "motion/react";
+import { useRef, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+
+import type { AddOnListItem } from "@entities/addons/api";
+import type { Plan } from "@entities/plans/api";
+import { type Promocode, updatePromocode } from "@entities/promocodes/api";
+import {
+  describeReward,
+  getPromocodeStatus,
+  limitsDraftOf,
+  limitsToPayload,
+  PROMOCODE_STATUS_BADGE_TONE,
+  REWARD_TYPE_ICON,
+} from "@entities/promocodes/display";
+import { PromocodeLimitsFields } from "@entities/promocodes/PromocodeLimitsFields";
+import { PromocodeUsersList } from "@features/promocode-details/PromocodeUsersList";
+import { getErrorMessage } from "@shared/api/http";
+import { toast } from "@shared/lib/toast";
+import { useMeasuredHeight } from "@shared/lib/use-measured-height";
+import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
+import { InfoRow } from "@shared/ui/InfoRow";
+import { KpiTile } from "@shared/ui/KpiTile";
+import { Modal } from "@shared/ui/Modal";
+import { useModalClose } from "@shared/ui/modal-hooks";
+import { Button } from "@shared/ui/Button";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { Badge } from "@shared/ui/Badge";
+import { Card } from "@shared/ui/Card";
+import { IconButton } from "@shared/ui/IconButton";
+import { formatDate } from "@shared/lib/relative-time";
+
+export type PromocodeDetailsFollowUp = "delete";
+
+type PromocodeDetailsTab = "overview" | "users" | "settings";
+
+const COPIED_RESET_MS = 1500;
+const FORM_ID = "promocode-settings-form";
+
+interface PromocodeDetailsDialogProps {
+  promocode: Promocode;
+  /** all-time activations; undefined while the summary is unavailable */
+  usedCount?: number;
+  addons: AddOnListItem[];
+  plans: Plan[];
+  canViewUsers: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  onSaved: (promocode: Promocode) => void;
+  /** Fires after the exit animation; `followUp` is the action picked in the footer, if any. */
+  onClose: (followUp?: PromocodeDetailsFollowUp) => void;
+}
+
+export function PromocodeDetailsDialog({ onClose, ...props }: PromocodeDetailsDialogProps) {
+  // the delete confirmation opens only once this modal has animated out
+  const followUpRef = useRef<PromocodeDetailsFollowUp | undefined>(undefined);
+
+  return (
+    <Modal onClose={() => onClose(followUpRef.current)} size="lg" scrollable>
+      <PromocodeDetailsDialogBody
+        {...props}
+        onFollowUp={(followUp) => {
+          followUpRef.current = followUp;
+        }}
+      />
+    </Modal>
+  );
+}
+
+function PromocodeDetailsDialogBody({
+  promocode,
+  usedCount,
+  addons,
+  plans,
+  canViewUsers,
+  canUpdate,
+  canDelete,
+  onSaved,
+  onFollowUp,
+}: Omit<PromocodeDetailsDialogProps, "onClose"> & { onFollowUp: (followUp: PromocodeDetailsFollowUp) => void }) {
+  const { t, i18n } = useTranslation();
+  const close = useModalClose();
+  const [tab, setTab] = useState<PromocodeDetailsTab>("overview");
+  const [contentRef, contentHeight] = useMeasuredHeight();
+  const [isCopied, setIsCopied] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [limits, setLimits] = useState(() => limitsDraftOf(promocode));
+
+  const status = getPromocodeStatus(promocode);
+  const RewardIcon = REWARD_TYPE_ICON[promocode.reward_type];
+  const none = t("promocodes.stats.none");
+
+  const tabs: DialogTabItem<PromocodeDetailsTab>[] = [
+    { key: "overview", label: t("promocodes.details.tabs.overview"), icon: BarChart3 },
+    ...(canViewUsers ? [{ key: "users" as const, label: t("promocodes.details.tabs.users"), icon: Users }] : []),
+    ...(canUpdate ? [{ key: "settings" as const, label: t("promocodes.details.tabs.settings"), icon: Pencil }] : []),
+  ];
+
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(promocode.code).catch(() => {});
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), COPIED_RESET_MS);
+  };
+
+  const handleToggleActive = async () => {
+    setIsToggling(true);
+    try {
+      onSaved(await updatePromocode(promocode.id, { is_active: !promocode.is_active }));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("promocodes.edit.error")));
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const limitsPayload = limitsToPayload(limits);
+    if (limitsPayload === undefined) {
+      toast.error(t("errors.invalidNumber"));
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      onSaved(await updatePromocode(promocode.id, limitsPayload));
+      toast.success(t("promocodes.edit.saved"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("promocodes.edit.error")));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const expires = promocode.expires_at
+    ? formatDate(promocode.expires_at, i18n.language)
+    : t("promocodes.noExpiry");
+
+  return (
+    <>
+      <DialogHeader
+        icon={Ticket}
+        tone={status === "ACTIVE" ? "primary" : "muted"}
+        title={<span className="font-mono">{promocode.code}</span>}
+        badges={
+          <>
+            <IconButton size="6" onClick={handleCopy} aria-label={t("promocodes.copyAria", { code: promocode.code })}>
+              {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+            </IconButton>
+            <Badge tone={PROMOCODE_STATUS_BADGE_TONE[status]}>{t(`promocodes.status.${status}`)}</Badge>
+          </>
+        }
+        subtitle={t(`promocodes.rewardType.${promocode.reward_type}`)}
+        closeLabel={t("promocodes.details.close")}
+      />
+
+      {tabs.length > 1 && (
+        <div className="px-4 pb-3 pt-4">
+          <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
+        </div>
+      )}
+
+      <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "" : "pt-4"}`}>
+        <motion.div
+          animate={{ height: contentHeight }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="overflow-hidden"
+        >
+          <div ref={contentRef}>
+            {tab === "overview" && (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <KpiTile
+                    icon={RewardIcon}
+                    label={t("promocodes.sections.reward")}
+                    value={describeReward(promocode, addons, plans, t)}
+                    hint={t(`promocodes.availability.${promocode.availability}`)}
+                  />
+                  <KpiTile
+                    icon={Hash}
+                    label={t("promocodes.details.used")}
+                    value={usedCount !== undefined ? String(usedCount) : none}
+                    valueSuffix={t("promocodes.details.ofMax", { max: promocode.max_activations ?? "∞" })}
+                  />
+                </div>
+
+                <Card variant="list" title={t("promocodes.sections.limits")} icon={ShieldCheck}>
+                  <InfoRow icon={Users} label={t("promocodes.details.availability")}>
+                    <span className="truncate">{t(`promocodes.availability.${promocode.availability}`)}</span>
+                  </InfoRow>
+                  <InfoRow icon={CalendarClock} label={t("promocodes.details.expires")}>
+                    <span className="truncate">{expires}</span>
+                  </InfoRow>
+                  <InfoRow icon={Repeat} label={t("promocodes.details.reusable")}>
+                    {promocode.is_reusable ? t("promocodes.details.yes") : t("promocodes.details.no")}
+                  </InfoRow>
+                </Card>
+              </div>
+            )}
+            {tab === "users" && <PromocodeUsersList promocode={promocode} />}
+            {tab === "settings" && (
+              <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)}>
+                <PromocodeLimitsFields idPrefix="promo-edit" value={limits} onChange={setLimits} />
+              </form>
+            )}
+          </div>
+        </motion.div>
+      </div>
+
+      {tab === "settings" && (
+        <div className="flex items-center justify-between gap-2 border-t border-white/[0.07] px-5 py-4">
+          <div className="flex gap-2">
+            {canDelete && (
+              <Button
+                variant="danger"
+                type="button"
+                onClick={() => {
+                  onFollowUp("delete");
+                  close();
+                }}
+              >
+                <Trash2 className="size-3.5" />
+                {t("promocodes.delete.button")}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => void handleToggleActive()} disabled={isToggling}>
+              {promocode.is_active ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+              {promocode.is_active ? t("promocodes.pause") : t("promocodes.resume")}
+            </Button>
+          </div>
+          <Button variant="accent" type="submit" form={FORM_ID} disabled={isSubmitting}>
+            {isSubmitting ? t("promocodes.edit.saving") : t("promocodes.edit.save")}
+          </Button>
+        </div>
+      )}
+    </>
+  );
+}

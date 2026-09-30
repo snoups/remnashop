@@ -32,7 +32,8 @@ export interface PriceBookRow {
   kind: "plan_duration" | "addon";
   ref_id: number;
   plan_id: number | null;
-  label: string;
+  /** plain plan/add-on name; pair it with `days` via pricingRowLabel */
+  name: string;
   days: number | null;
   base_price: string;
   cells: PriceBookCell[];
@@ -46,7 +47,8 @@ export interface PriceBook {
 }
 
 export interface PricingDiffRow {
-  label: string;
+  name: string;
+  days: number | null;
   currency: Currency;
   old: string;
   new: string;
@@ -133,4 +135,12 @@ export function setAddonBasePrice(addonId: number, basePrice: string): Promise<v
   return apiPut<unknown, { base_price: string }>(`/addons/${addonId}/base-price`, {
     base_price: basePrice,
   }).then(() => undefined);
+}
+
+/** "Стандарт · 30 дн." for a plan duration, just the name for an add-on. */
+export function pricingRowLabel(
+  row: { name: string; days: number | null },
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  return row.days === null ? row.name : `${row.name} · ${t("plans.daysShort", { count: row.days })}`;
 }

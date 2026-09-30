@@ -11,6 +11,7 @@ import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
+import { POPOVER_CLASS } from "@shared/ui/classes";
 
 interface LocalesManagerProps {
   locales: ActiveLocalesResult;
@@ -73,7 +74,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
       aria-selected={isActive}
       disabled={locale === DEFAULT_LOCALE || isPending}
       onClick={() => void toggle(locale, isActive)}
-      className="flex w-full items-center gap-2.5 rounded-popover-item px-2.5 py-2 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
+      className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
     >
       <span
         aria-hidden
@@ -99,7 +100,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         {...bounceTap(bounceStrength)}
-        className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] px-4 text-[13px] text-foreground/80 transition-colors hover:bg-white/[0.06]"
+        className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
       >
         <Globe className="size-3.5" />
         {t("dialogs.texts.languages", { total: active.length })}
@@ -124,7 +125,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
               role="listbox"
               aria-multiselectable
               onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
-              className="fixed z-30 min-w-40 rounded-popover border border-white/[0.14] bg-popover/60 p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150"
+              className={`${POPOVER_CLASS} fixed z-30 min-w-40 p-1.5`}
             >
               {/* the scroll lives inside the padding -- on the popover itself the
                   scrollbar column paints over the rounded right corners */}

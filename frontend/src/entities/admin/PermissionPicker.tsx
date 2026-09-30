@@ -1,40 +1,43 @@
 import {
   Ban,
+  BarChart3,
   Bot,
   Check,
   ChevronRight,
   Coins,
   CreditCard,
   Database,
-  Gift,
   Globe,
   Image,
   KeyRound,
   Languages,
   Layers,
   Link2,
+  MessagesSquare,
   Minus,
   Monitor,
   Package,
+  PackagePlus,
   Palette,
   ScrollText,
+  Share2,
   Shield,
+  Smile,
   Store,
-  Tag,
   Ticket,
   Users,
   Wallet,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { usePermissionCatalog, groupCatalogByResource } from "@entities/admin/use-permission-catalog";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
 import type { Permission } from "@shared/types/rbac";
+import { ChoiceChip } from "@shared/ui/ChoiceChip";
 
 interface PermissionPickerProps {
   selected: Set<Permission>;
@@ -48,22 +51,25 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   bot_settings: Bot,
   oauth_settings: KeyRound,
   banners: Image,
+  emoji_packs: Smile,
+  dialogs: MessagesSquare,
   locales: Globe,
   translations: Languages,
   event_log: ScrollText,
+  analytics: BarChart3,
   users: Users,
   user_sessions: Monitor,
   appearance: Palette,
   gateways: CreditCard,
   blacklist: Ban,
   shop_settings: Store,
-  plans: Tag,
+  plans: Package,
   pricing: Coins,
   subscriptions: Layers,
-  addons: Package,
+  addons: PackagePlus,
   promocodes: Ticket,
   payments: Wallet,
-  referrals: Gift,
+  referrals: Share2,
   backups: Database,
   ad_links: Link2,
 };
@@ -96,7 +102,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (catalogState.kind === "loading") {
-    return <Spinner />;
+    return <Spinner size="card" />;
   }
   if (catalogState.kind === "error") {
     return <p className="text-sm text-error">{t("apiTokens.loadError")}</p>;
@@ -130,7 +136,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
 
         return (
           <div key={group.resource} className="flex flex-col">
-            <div className="-mx-2 flex h-[41px] items-center gap-2 rounded-full px-2 transition-colors hover:bg-white/[0.04]">
+            <div className="-mx-2 flex h-11 items-center gap-2 rounded-full px-2 transition-colors hover:bg-white/[0.04]">
               <button
                 type="button"
                 onClick={() => toggleExpand(group.resource)}
@@ -168,16 +174,26 @@ export function PermissionPicker(props: PermissionPickerProps) {
               </div>
             </div>
 
-            {isExpanded && (
-              <div className="flex flex-col divide-y divide-border/50 pl-6">
-                {group.read.map((permission) => (
-                  <PermissionRow key={permission} permission={permission} {...props} />
-                ))}
-                {group.write.map((permission) => (
-                  <PermissionRow key={permission} permission={permission} {...props} />
-                ))}
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-col divide-y divide-border/50 pl-6">
+                    {group.read.map((permission) => (
+                      <PermissionRow key={permission} permission={permission} {...props} />
+                    ))}
+                    {group.write.map((permission) => (
+                      <PermissionRow key={permission} permission={permission} {...props} />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       })}
@@ -193,27 +209,23 @@ interface KindPillProps {
 }
 
 function KindPill({ label, state, disabled, onClick }: KindPillProps) {
-  const bounceStrength = useBounceStrength();
   const isActive = state === "on" || state === "partial";
   return (
-    <motion.button
-      type="button"
+    <ChoiceChip
       onClick={(event) => {
         event.stopPropagation();
         onClick();
       }}
       disabled={disabled}
-      {...bounceTap(bounceStrength)}
-      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-        isActive
-          ? "border-primary/40 bg-accent text-primary"
-          : "border-border text-muted-foreground hover:bg-white/5"
-      }`}
+      active={isActive}
+      size="sm"
+      // 28px: row is h-11 with px-2, so an 8px inset all round keeps the corners concentric
+      className="h-7"
     >
       {state === "on" && <Check className="size-3.5" />}
       {state === "partial" && <Minus className="size-3.5" />}
       {label}
-    </motion.button>
+    </ChoiceChip>
   );
 }
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from dishka import FromDishka
@@ -6,14 +7,20 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.admin import require_admin
+from app.core.enums import ReferralRewardType
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.referrals.api.schemas import (
     AdjustPointsRequest,
+    InvitedUserPageResponse,
+    InvitedUserResponse,
+    ReferralLinksResponse,
     ReferralListItemResponse,
     ReferralPageResponse,
+    ReferralRevenueResponse,
     ReferralRewardResponse,
     ReferralSettingsResponse,
     ReferralStatsResponse,
+    ReferralSummaryResponse,
     ReferralUserResponse,
     UpdateReferralSettingsRequest,
 )
@@ -30,11 +37,25 @@ from app.modules.referrals.usecases.adjust_user_points import (
     AdjustUserPointsUseCase,
 )
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
+from app.modules.referrals.usecases.get_referral_summary import (
+    GetReferralSummaryInput,
+    GetReferralSummaryUseCase,
+)
+from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
+from app.modules.referrals.usecases.get_user_referral_revenue import (
+    GetUserReferralRevenueUseCase,
+)
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
+from app.modules.referrals.usecases.list_invited_users import (
+    ListInvitedUsersInput,
+    ListInvitedUsersUseCase,
+)
 from app.modules.referrals.usecases.list_referrals import (
     ListReferralsInput,
     ListReferralsUseCase,
 )
+from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
+from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
 from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
 from app.modules.users import UserDto
 
@@ -47,7 +68,9 @@ def _settings_to_response(dto: ReferralSettingsDto) -> ReferralSettingsResponse:
         max_level=dto.max_level,
         accrual_strategy=dto.accrual_strategy,
         reward_type=dto.reward_type,
+        reward_strategy=dto.reward_strategy,
         reward_amounts=dto.reward_amounts,
+        anchor_currency=dto.anchor_currency,
     )
 
 
@@ -58,9 +81,20 @@ def _stats_to_response(dto: ReferralStatsDto) -> ReferralStatsResponse:
         points=dto.points,
         counts_by_level=dto.counts_by_level,
         rewards=[
-            ReferralRewardResponse(type=r.type, amount=r.amount, created_at=r.created_at)
+            ReferralRewardResponse(
+                type=r.type,
+                amount=r.amount,
+                created_at=r.created_at,
+                buyer=_user_to_response(dto.users.get(r.buyer_id))
+                if r.buyer_id is not None
+                else None,
+                level=dto.buyer_levels.get(r.buyer_id) if r.buyer_id is not None else None,
+            )
             for r in dto.rewards
         ],
+        referrer=_user_to_response(dto.users.get(dto.referrer_id))
+        if dto.referrer_id is not None
+        else None,
     )
 
 
@@ -91,14 +125,61 @@ async def list_referrals(
     actor: UserDto = Depends(require_admin),
     level: Optional[int] = Query(None, ge=1, le=3),
     created_from: Optional[datetime] = None,
+    search: Optional[str] = None,
+    has_rewards: Optional[bool] = None,
+    reward_type: Optional[ReferralRewardType] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> ReferralPageResponse:
     items, total = await use_case(
         actor,
-        ListReferralsInput(level=level, created_from=created_from, page=page, page_size=page_size),
+        ListReferralsInput(
+            level=level,
+            created_from=created_from,
+            search=search,
+            has_rewards=has_rewards,
+            reward_type=reward_type,
+            page=page,
+            page_size=page_size,
+        ),
     )
     return ReferralPageResponse(items=[_list_item_to_response(item) for item in items], total=total)
+
+
+@router.get("/referrals/summary", response_model=ReferralSummaryResponse)
+@inject
+async def get_referral_summary(
+    use_case: FromDishka[GetReferralSummaryUseCase],
+    actor: UserDto = Depends(require_admin),
+    level: Optional[int] = Query(None, ge=1, le=3),
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    search: Optional[str] = None,
+    has_rewards: Optional[bool] = None,
+    reward_type: Optional[ReferralRewardType] = None,
+) -> ReferralSummaryResponse:
+    summary = await use_case(
+        actor,
+        GetReferralSummaryInput(
+            level=level,
+            created_from=created_from,
+            created_to=created_to,
+            search=search,
+            has_rewards=has_rewards,
+            reward_type=reward_type,
+        ),
+    )
+    return ReferralSummaryResponse(
+        total_count=summary.total_count,
+        referrers_count=summary.referrers_count,
+        rewarded_count=summary.rewarded_count,
+        conversion_rate=(
+            Decimal(summary.rewarded_count) / summary.total_count
+            if summary.total_count > 0
+            else Decimal(0)
+        ),
+        reward_amounts=summary.reward_amounts,
+    )
 
 
 @router.get("/referrals/settings", response_model=ReferralSettingsResponse)
@@ -117,17 +198,30 @@ async def update_referral_settings(
     use_case: FromDishka[UpdateReferralSettingsUseCase],
     actor: UserDto = Depends(require_admin),
 ) -> ReferralSettingsResponse:
-    updated = await use_case(
-        actor,
-        UpdateReferralSettingsDto(
-            enabled=payload.enabled,
-            max_level=payload.max_level,
-            accrual_strategy=payload.accrual_strategy,
-            reward_type=payload.reward_type,
-            reward_amounts=payload.reward_amounts,
-        ),
-    )
+    try:
+        updated = await use_case(
+            actor,
+            UpdateReferralSettingsDto(
+                enabled=payload.enabled,
+                max_level=payload.max_level,
+                accrual_strategy=payload.accrual_strategy,
+                reward_type=payload.reward_type,
+                reward_strategy=payload.reward_strategy,
+                reward_amounts=payload.reward_amounts,
+            ),
+        )
+    except ValidationError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     return _settings_to_response(updated)
+
+
+@router.post("/referrals/settings/reset", response_model=ReferralSettingsResponse)
+@inject
+async def reset_referral_settings(
+    use_case: FromDishka[ResetReferralSettingsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> ReferralSettingsResponse:
+    return _settings_to_response(await use_case(actor))
 
 
 @router.get("/users/{user_id}/referrals", response_model=ReferralStatsResponse)
@@ -160,4 +254,85 @@ async def adjust_user_points(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     except ValidationError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    return _stats_to_response(stats)
+
+
+@router.get("/users/{user_id}/referrals/revenue", response_model=ReferralRevenueResponse)
+@inject
+async def get_user_referral_revenue(
+    user_id: int,
+    use_case: FromDishka[GetUserReferralRevenueUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> ReferralRevenueResponse:
+    try:
+        revenue = await use_case(actor, user_id)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return ReferralRevenueResponse(
+        amount=revenue.amount, currency=revenue.currency, paying_count=revenue.paying_count
+    )
+
+
+@router.get("/users/{user_id}/referrals/invited", response_model=InvitedUserPageResponse)
+@inject
+async def list_invited_users(
+    user_id: int,
+    use_case: FromDishka[ListInvitedUsersUseCase],
+    actor: UserDto = Depends(require_admin),
+    level: Optional[int] = Query(None, ge=1, le=3),
+    search: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+) -> InvitedUserPageResponse:
+    try:
+        items, total = await use_case(
+            actor,
+            ListInvitedUsersInput(
+                user_id=user_id, level=level, search=search, page=page, page_size=page_size
+            ),
+        )
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return InvitedUserPageResponse(
+        items=[
+            InvitedUserResponse(
+                user=_user_to_response(item.user),
+                via=_user_to_response(item.via),
+                level=item.depth,
+                created_at=item.created_at,
+                reward_amounts=item.reward_amounts,
+            )
+            for item in items
+        ],
+        total=total,
+    )
+
+
+@router.get("/users/{user_id}/referral-links", response_model=ReferralLinksResponse)
+@inject
+async def get_user_referral_links(
+    user_id: int,
+    use_case: FromDishka[GetUserReferralLinksUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> ReferralLinksResponse:
+    try:
+        links = await use_case(actor, user_id)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return ReferralLinksResponse(bot_url=links.bot_url, webcabinet_url=links.webcabinet_url)
+
+
+@router.post("/users/{user_id}/referral-code/reset", response_model=ReferralStatsResponse)
+@inject
+async def reset_user_referral_code(
+    user_id: int,
+    reset_use_case: FromDishka[ResetReferralCodeUseCase],
+    stats_use_case: FromDishka[GetUserReferralStatsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> ReferralStatsResponse:
+    try:
+        await reset_use_case(actor, user_id)
+        stats = await stats_use_case(actor, user_id)
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     return _stats_to_response(stats)

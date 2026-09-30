@@ -21,6 +21,8 @@ class AdLink(BaseSql, TimestampMixin):
     cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal(0), server_default="0")
     cost_currency: Mapped[Currency] = mapped_column(default=Currency.USD, server_default="USD")
     is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
+    allow_bot: Mapped[bool] = mapped_column(default=True, server_default="true")
+    allow_webcabinet: Mapped[bool] = mapped_column(default=True, server_default="true")
     note: Mapped[Optional[str]] = mapped_column(Text)
     # No ondelete cascade to a deleted admin's other data -- just detach the
     # attribution, same treatment Promocode gives reward_addon_id/reward_plan_id.

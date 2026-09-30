@@ -92,3 +92,25 @@ async def test_record_attribution_duplicate_is_swallowed(
     )
 
     assert await ad_link_repository.count_attributions(ad_link.id) == 1
+
+
+async def test_record_attribution_disallowed_channel_is_a_no_op(
+    ad_link_repository: AdLinkRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        ad_link = await ad_link_repository.create(
+            CreateAdLinkDto(name="Web Only", code="task-web-only", allow_bot=False)
+        )
+        user = await user_repository.create(CreateUserDto(name="WebOnly", telegram_id=950_009))
+
+    await record_ad_link_attribution(
+        user_id=user.id,
+        ad_link_code="task-web-only",
+        channel=AdLinkChannel.BOT.value,
+        ad_link_repository=ad_link_repository,
+        uow=uow,
+    )
+
+    assert await ad_link_repository.count_attributions(ad_link.id) == 0

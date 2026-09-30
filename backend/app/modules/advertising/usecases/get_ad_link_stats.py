@@ -1,29 +1,17 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
+from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.advertising.dto import AdLinkStatsDto, DailyAttributionCountDto, GetAdLinkStatsDto
+from app.modules.advertising.dto import AdLinkStatsDto, GetAdLinkStatsDto
 from app.modules.advertising.repository import AdLinkRepository
 from app.modules.payments import PaymentOrderRepository
-from app.modules.pricing import CurrencyRateTable, PricingRepository
+from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.users import UserDto
 
 _ZERO: Final[Decimal] = Decimal(0)
-
-
-def convert_for_report(
-    amount: Decimal, from_currency: Currency, to_currency: Currency, rates: CurrencyRateTable
-) -> Decimal:
-    # Display-only reporting conversion, deliberately not pricing.resolve_price:
-    # no rounding/charm-ending applied -- those are checkout-display rules,
-    # not something a revenue/CPA report should carry.
-    if from_currency == to_currency:
-        return amount
-    anchor_amount = amount / rates.for_currency(from_currency).rate
-    return anchor_amount * rates.for_currency(to_currency).rate
 
 
 class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
@@ -77,7 +65,11 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
                 ad_link.cost, ad_link.cost_currency, report_currency, rate_table
             )
 
-            cpa = cost / attributions_count if attributions_count > 0 else None
+            cpa = (
+                (cost / len(paid_user_ids)).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
+                if paid_user_ids
+                else None
+            )
             roi = (revenue - cost) / cost if cost > 0 else None
             conversion_rate = (
                 Decimal(len(paid_user_ids)) / attributions_count
@@ -100,7 +92,5 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
                 report_currency=report_currency,
                 cpa=cpa,
                 roi=roi,
-                daily_registrations=[
-                    DailyAttributionCountDto(day=day, count=count) for day, count in daily
-                ],
+                daily_registrations=daily,
             )

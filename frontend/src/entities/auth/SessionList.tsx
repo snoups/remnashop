@@ -1,10 +1,13 @@
-import { Inbox, MonitorSmartphone, Trash2 } from "lucide-react";
+import { MonitorSmartphone, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
+import { formatDateTime } from "@shared/lib/relative-time";
 import type { Session } from "@entities/auth/sessions";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { parseUserAgent } from "@shared/lib/parse-user-agent";
+import { EmptyState } from "@shared/ui/EmptyState";
+import { Badge } from "@shared/ui/Badge";
 
 interface SessionListProps {
   sessions: Session[];
@@ -13,15 +16,12 @@ interface SessionListProps {
 }
 
 export function SessionList({ sessions, currentSessionId, onRequestRevoke }: SessionListProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const bounceStrength = useBounceStrength();
 
   if (sessions.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-        <Inbox className="size-5" />
-        <p className="text-sm">{t("sessions.empty")}</p>
-      </div>
+      <EmptyState text={t("sessions.empty")} />
     );
   }
 
@@ -47,13 +47,13 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke }: Ses
                 <p className="flex items-center gap-2 text-[13px] font-medium text-foreground">
                   {browser} · {os}
                   {isCurrent && (
-                    <span className="rounded-full bg-accent px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-primary">
+                    <Badge tone="accent">
                       {t("sessions.thisDevice")}
-                    </span>
+                    </Badge>
                   )}
                 </p>
                 <p className="text-[12px] text-muted-foreground">
-                  {session.ip_address} · {t("sessions.lastUsed", { date: new Date(session.last_used_at).toLocaleString() })}
+                  {session.ip_address} · {t("sessions.lastUsed", { date: formatDateTime(session.last_used_at, i18n.language) })}
                 </p>
               </div>
             </div>

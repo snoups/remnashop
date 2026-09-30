@@ -4,7 +4,7 @@ import pytest
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AdLinkChannel, Currency
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.advertising.dto import CreateAdLinkDto, UpdateAdLinkDto
 from app.modules.advertising.repository import AdLinkRepository
 from app.modules.users.dto import CreateUserDto
@@ -95,7 +95,7 @@ async def test_attribution_lifecycle(
 
     daily = await ad_link_repository.daily_attribution_counts(ad_link.id)
     assert len(daily) == 1
-    assert daily[0][1] == 1
+    assert daily[0].count == 1
 
     attributions, total = await ad_link_repository.list_attributions_paginated(ad_link.id)
     assert total == 1
@@ -119,3 +119,71 @@ async def test_create_attribution_twice_for_same_user_raises_conflict(
         await ad_link_repository.create_attribution(
             ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.WEBCABINET
         )
+
+
+async def test_get_user_attribution_returns_link_or_none(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    user_repository: UserRepository,
+) -> None:
+    async with uow:
+        ad_link = await ad_link_repository.create(CreateAdLinkDto(name="Promo", code="attr-user"))
+    user = await user_repository.create(CreateUserDto(name="Came", telegram_id=920_101))
+    other = await user_repository.create(CreateUserDto(name="Organic", telegram_id=920_102))
+    await ad_link_repository.create_attribution(
+        ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
+    )
+
+    attribution = await ad_link_repository.get_user_attribution(user.id)
+
+    assert attribution is not None
+    assert (attribution.name, attribution.code) == ("Promo", "attr-user")
+    assert await ad_link_repository.get_user_attribution(other.id) is None
+
+
+async def test_update_rejects_disabling_every_channel(
+    ad_link_repository: AdLinkRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        ad_link = await ad_link_repository.create(
+            CreateAdLinkDto(name="Channels", code="channels", allow_webcabinet=False)
+        )
+
+    with pytest.raises(ValidationError):
+        await ad_link_repository.update(UpdateAdLinkDto(ad_link_id=ad_link.id, allow_bot=False))
+
+
+async def test_daily_attribution_counts_split_by_channel(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    user_repository: UserRepository,
+) -> None:
+    async with uow:
+        ad_link = await ad_link_repository.create(CreateAdLinkDto(name="Daily", code="daily-split"))
+    for index, channel in enumerate(
+        [AdLinkChannel.BOT, AdLinkChannel.BOT, AdLinkChannel.WEBCABINET]
+    ):
+        user = await user_repository.create(
+            CreateUserDto(name=f"Daily {index}", telegram_id=920_101 + index)
+        )
+        await ad_link_repository.create_attribution(
+            ad_link_id=ad_link.id, user_id=user.id, channel=channel
+        )
+
+    [day] = await ad_link_repository.daily_attribution_counts(ad_link.id)
+    assert day.count == 3
+    assert day.by_channel == {AdLinkChannel.BOT: 2, AdLinkChannel.WEBCABINET: 1}
+
+
+async def test_list_paginated_puts_active_first_then_newest(
+    ad_link_repository: AdLinkRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        old_active = await ad_link_repository.create(CreateAdLinkDto(name="A", code="order-a"))
+        paused = await ad_link_repository.create(CreateAdLinkDto(name="B", code="order-b"))
+        new_active = await ad_link_repository.create(CreateAdLinkDto(name="C", code="order-c"))
+    await ad_link_repository.update(UpdateAdLinkDto(ad_link_id=paused.id, is_active=False))
+
+    links, _ = await ad_link_repository.list_paginated()
+    ours = [link.id for link in links if link.code.startswith("order-")]
+    assert ours == [new_active.id, old_active.id, paused.id]

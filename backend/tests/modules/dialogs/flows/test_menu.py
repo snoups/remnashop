@@ -53,7 +53,7 @@ def test_register_menu_metadata_populates_full_catalog() -> None:
         "connectable",
         "has_devices",
     } <= catalog.condition_keys()
-    assert "subscription.url" in catalog.variable_keys()
+    assert "subscription_url" in catalog.variable_keys()
     # This is the parity regression test: no handler is bound anywhere here,
     # yet the keys are fully visible -- exactly what the api process needs.
     assert catalog.has_action_handler("get_trial") is False

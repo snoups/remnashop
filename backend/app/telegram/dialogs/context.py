@@ -19,6 +19,7 @@ async def build_condition_data(
     trial = await get_available_trial(user)
     return {
         "name": user.name,
+        "points": str(user.points),
         "has_subscription": subscription is not None,
         "connectable": subscription is not None
         and subscription.status == SubscriptionStatus.ACTIVE,

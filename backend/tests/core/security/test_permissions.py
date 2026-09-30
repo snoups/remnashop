@@ -225,18 +225,31 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PROMOCODES_UPDATE,
         Permission.PROMOCODES_DELETE,
         Permission.PROMOCODES_GENERATE_CODE,
+        Permission.PROMOCODES_ACTIVATIONS_VIEW,
+        Permission.PROMOCODES_SUMMARY_VIEW,
+        Permission.PROMOCODES_USERS_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,
         Permission.PAYMENTS_VIEW,
+        Permission.PAYMENTS_SUMMARY_VIEW,
         Permission.PAYMENTS_ORDER_VIEW,
         Permission.PAYMENTS_GATEWAYS_VIEW,
         Permission.REFERRALS_VIEW,
+        Permission.REFERRALS_LINKS_VIEW,
+        Permission.REFERRALS_INVITED_VIEW,
+        Permission.REFERRALS_REVENUE_VIEW,
         Permission.REFERRALS_LIST,
+        Permission.REFERRALS_SUMMARY_VIEW,
         Permission.REFERRALS_SETTINGS_VIEW,
         Permission.REFERRALS_SETTINGS_MANAGE,
+        Permission.REFERRALS_SETTINGS_RESET,
         Permission.REFERRALS_POINTS_MANAGE,
+        Permission.REFERRALS_CODE_RESET,
         Permission.AD_LINKS_VIEW,
         Permission.AD_LINKS_STATS_VIEW,
+        Permission.AD_LINKS_SUMMARY_VIEW,
         Permission.AD_LINKS_USERS_VIEW,
+        Permission.AD_LINKS_USER_ATTRIBUTION_VIEW,
+        Permission.AD_LINKS_SHARE_VIEW,
         Permission.AD_LINKS_CREATE,
         Permission.AD_LINKS_GENERATE_CODE,
         Permission.AD_LINKS_UPDATE,
@@ -352,10 +365,16 @@ def test_subscriptions_permissions_granted_to_admin_by_default() -> None:
 def test_admin_role_has_all_referrals_permissions() -> None:
     admin_perms = ROLE_PERMISSIONS[Role.ADMIN]
     assert Permission.REFERRALS_VIEW in admin_perms
+    assert Permission.REFERRALS_LINKS_VIEW in admin_perms
+    assert Permission.REFERRALS_INVITED_VIEW in admin_perms
+    assert Permission.REFERRALS_REVENUE_VIEW in admin_perms
     assert Permission.REFERRALS_LIST in admin_perms
+    assert Permission.REFERRALS_SUMMARY_VIEW in admin_perms
     assert Permission.REFERRALS_SETTINGS_VIEW in admin_perms
     assert Permission.REFERRALS_SETTINGS_MANAGE in admin_perms
+    assert Permission.REFERRALS_SETTINGS_RESET in admin_perms
     assert Permission.REFERRALS_POINTS_MANAGE in admin_perms
+    assert Permission.REFERRALS_CODE_RESET in admin_perms
 
 
 def test_backups_permissions_are_grantable_but_not_default_admin() -> None:

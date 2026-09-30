@@ -344,3 +344,23 @@ async def test_claim_activation_refuses_a_repeat_after_reusable_was_turned_off(
         )
 
     assert await promocode_repository.get_activation_by_user(promo.id, user_id) is not None
+
+
+async def test_list_activations_by_user_returns_only_that_users_codes(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository
+) -> None:
+    first = await promocode_repository.create(_create_dto("MINE1"))
+    second = await promocode_repository.create(_create_dto("MINE2"))
+    user_id = await _create_user(user_repository, 1101)
+    other_id = await _create_user(user_repository, 1102)
+    for promo in (first, second):
+        await promocode_repository.claim_activation(
+            promocode_id=promo.id, user_id=user_id, subscription_id=None
+        )
+    await promocode_repository.claim_activation(
+        promocode_id=first.id, user_id=other_id, subscription_id=None
+    )
+
+    activations = await promocode_repository.list_activations_by_user(user_id)
+
+    assert {a.code for a in activations} == {"MINE1", "MINE2"}

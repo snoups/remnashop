@@ -74,6 +74,7 @@ class UserResponse(BaseModel):
     points: Decimal
     is_trial_available: bool
     created_at: Optional[datetime]
+    deleted_at: Optional[datetime] = None
 
 
 class BlacklistOriginResponse(BaseModel):
@@ -100,9 +101,22 @@ class BlacklistMatchPageResponse(BaseModel):
     lists_total: int
 
 
+class UserListItemResponse(UserResponse):
+    active_subscriptions: int
+
+
 class UserPageResponse(BaseModel):
-    items: list[UserResponse]
+    items: list[UserListItemResponse]
     total: int
+
+
+class UserListStatsResponse(BaseModel):
+    total: int
+    new: int
+    subscribed: int
+    blocked: int
+    new_previous: int
+    total_growth: int
 
 
 class CreateAdminRequest(BaseModel):

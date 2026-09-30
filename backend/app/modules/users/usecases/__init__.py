@@ -6,6 +6,10 @@ from app.modules.users.usecases.delete_admin import DeleteAdminDto, DeleteAdminU
 from app.modules.users.usecases.delete_user import DeleteUserDto, DeleteUserUseCase
 from app.modules.users.usecases.demote_admin import DemoteAdminDto, DemoteAdminUseCase
 from app.modules.users.usecases.get_current_user import GetCurrentUserUseCase
+from app.modules.users.usecases.get_user_list_stats import (
+    GetUserListStatsInput,
+    GetUserListStatsUseCase,
+)
 from app.modules.users.usecases.list_admins import ListAdminsUseCase
 from app.modules.users.usecases.list_blacklist_matches import (
     BlacklistHitDto,
@@ -52,6 +56,8 @@ __all__ = [
     "DemoteAdminDto",
     "DemoteAdminUseCase",
     "GetCurrentUserUseCase",
+    "GetUserListStatsInput",
+    "GetUserListStatsUseCase",
     "ListAdminsUseCase",
     "ListBlacklistMatchesInput",
     "ListBlacklistMatchesUseCase",

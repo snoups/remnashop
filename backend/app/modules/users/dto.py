@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Final, Literal, Optional
 
 from app.core.constants import REMNASHOP_PREFIX, WEB_PREFIX
 from app.core.dto import BaseDto, TimestampMixin
@@ -9,6 +10,10 @@ from app.core.utils.time import datetime_now
 
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
+
+UserSort = Literal["created_at", "points", "discount", "name", "channels", "subscriptions"]
+# exclude: live users only (the default); include: both; only: soft-deleted ones
+DeletedFilter = Literal["exclude", "include", "only"]
 
 
 class UserDto(BaseDto, TimestampMixin):
@@ -30,9 +35,14 @@ class UserDto(BaseDto, TimestampMixin):
     ip_allowlist: Optional[list[str]] = None
     personal_discount: int = 0
     purchase_discount: int = 0
+    personal_discount_promocode_id: Optional[int] = None
+    purchase_discount_promocode_id: Optional[int] = None
 
     referral_code: Optional[str] = None
     points: Decimal = Decimal(0)
+    notifications_seen_at: Optional[datetime] = None
+    notification_groups: Optional[list[str]] = None
+    deleted_at: Optional[datetime] = None
 
     @property
     def contact_label(self) -> str:
@@ -79,6 +89,10 @@ class UserDto(BaseDto, TimestampMixin):
         return description
 
 
+class UserListItemDto(UserDto):
+    active_subscriptions: int = 0
+
+
 @dataclass(frozen=True, kw_only=True)
 class CreateUserDto:
     name: str
@@ -105,6 +119,9 @@ class UpdateUserDto:
     ip_allowlist: Optional[list[str]] = None
     personal_discount: Optional[int] = None
     purchase_discount: Optional[int] = None
+    # written together with its discount above, so any other writer clears it
+    personal_discount_promocode_id: Optional[int] = None
+    purchase_discount_promocode_id: Optional[int] = None
     is_trial_available: Optional[bool] = None
 
 
@@ -127,3 +144,15 @@ class BulkBlockResultDto:
     blocked: int
     added_to_list: int
     skipped: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserListStatsDto:
+    total: int
+    new: int
+    subscribed: int
+    blocked: int
+    # registrations in the window just before `new`'s
+    new_previous: int
+    # registrations within TOTAL_GROWTH_WINDOW
+    total_growth: int

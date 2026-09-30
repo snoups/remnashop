@@ -8,6 +8,7 @@ from app.modules.subscriptions.events import (
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
 )
+from app.modules.users.events import TelegramUserRegisteredEvent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,6 +37,11 @@ class UserPointsAdjustedEvent(ActorTargetEvent):
     delta: str
 
 
+@dataclass(frozen=True, kw_only=True)
+class ReferralCodeResetEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.REFERRAL
+
+
 async def _kick_rewards(entry: StoredEvent, *, is_new_purchase: bool) -> None:
     payment_key = entry.payload.get("payment_key")
     if not payment_key:
@@ -59,7 +65,20 @@ async def _on_subscription_renewed_or_changed(entry: StoredEvent) -> None:
     await _kick_rewards(entry, is_new_purchase=False)
 
 
+async def _on_telegram_user_registered(entry: StoredEvent) -> None:
+    referral_code = entry.payload.get("referral_code")
+    if not referral_code:
+        return
+
+    from app.modules.referrals.tasks import attach_referral_on_registration_task  # noqa: PLC0415
+
+    await attach_referral_on_registration_task.kiq(  # type: ignore[call-overload]
+        user_id=entry.payload["user"]["id"], referral_code=referral_code
+    )
+
+
 def register_subscribers(bus: EventBus) -> None:
+    bus.subscribe(TelegramUserRegisteredEvent, _on_telegram_user_registered)
     bus.subscribe(SubscriptionPurchasedEvent, _on_subscription_purchased)
     bus.subscribe(SubscriptionRenewedEvent, _on_subscription_renewed_or_changed)
     bus.subscribe(SubscriptionChangedEvent, _on_subscription_renewed_or_changed)

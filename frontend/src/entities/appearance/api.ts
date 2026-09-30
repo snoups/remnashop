@@ -29,14 +29,12 @@ export function updateAppearance(payload: UpdateAppearancePayload): Promise<Appe
   return apiPut<AppearanceSettings, UpdateAppearancePayload>("/settings/appearance", payload);
 }
 
-export type AppearanceResetScope = "branding" | "colors";
-
-// Clears one scope's fields back to unset -- unlike updateAppearance, which
-// only ever writes fields it's given (undefined means "don't touch"), this is
-// the only way to explicitly revert them to the default. Images are separate:
+// Clears every field back to unset -- unlike updateAppearance, which only
+// ever writes fields it's given (undefined means "don't touch"), this is the
+// only way to explicitly revert them to the default. Images are separate:
 // deleteAppearanceImage.
-export function resetAppearanceSettings(scope: AppearanceResetScope): Promise<AppearanceSettings> {
-  return apiDelete<AppearanceSettings>(`/settings/appearance?scope=${scope}`);
+export function resetAppearanceSettings(): Promise<AppearanceSettings> {
+  return apiDelete<AppearanceSettings>("/settings/appearance");
 }
 
 // Image URLs never change on their own, so a replaced logo/favicon would keep

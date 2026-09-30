@@ -1,7 +1,11 @@
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.referral import Referral
 from app.core.enums import ReferralAccrualStrategy, ReferralRewardType, SubscriptionStatus
 from app.core.exceptions import ConflictError
 from app.core.utils.time import datetime_now
@@ -72,10 +76,11 @@ async def test_count_by_level_groups_correctly(
     c = await _create_user(user_repository, 2007)
     await referral_repository.create_referral(referrer_id=referrer_id, referred_id=a, level=1)
     await referral_repository.create_referral(referrer_id=referrer_id, referred_id=b, level=1)
-    await referral_repository.create_referral(referrer_id=referrer_id, referred_id=c, level=2)
+    await referral_repository.create_referral(referrer_id=a, referred_id=c, level=2)
 
-    counts = await referral_repository.count_by_level(referrer_id)
-    assert counts == {1: 2, 2: 1}
+    # depth is relative to the user asked about, not the edge's stored level
+    assert await referral_repository.count_by_level(referrer_id) == {1: 2, 2: 1}
+    assert await referral_repository.count_by_level(a) == {1: 1}
 
 
 async def test_create_reward_persists_amount(
@@ -207,6 +212,196 @@ async def test_list_paginated_filters_by_level_newest_first(
     items, total = await referral_repository.list_paginated(page=2, page_size=1)
     assert total == 2
     assert len(items) == 1
+
+
+async def test_list_paginated_filters_by_search_and_rewards(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    root = await _create_user(user_repository, 2111)
+    rewarded_child = await _create_user(user_repository, 2112)
+    plain_child = await _create_user(user_repository, 2113)
+    rewarded = await referral_repository.create_referral(
+        referrer_id=root, referred_id=rewarded_child, level=1
+    )
+    plain = await referral_repository.create_referral(
+        referrer_id=root, referred_id=plain_child, level=1
+    )
+    subscription_id = await _create_subscription(subscription_repository, rewarded_child, 2112)
+    await referral_repository.create_reward(
+        referral_id=rewarded.id,
+        referrer_id=root,
+        subscription_id=subscription_id,
+        payment_key="order-search",
+        type=ReferralRewardType.POINTS,
+        amount=Decimal("5"),
+    )
+
+    # the referrer's telegram id matches both edges; the referred one's only its own
+    _, total = await referral_repository.list_paginated(search="2111")
+    assert total == 2
+    items, total = await referral_repository.list_paginated(search="2113")
+    assert total == 1
+    assert items[0].id == plain.id
+
+    items, _ = await referral_repository.list_paginated(has_rewards=True)
+    assert [item.id for item in items] == [rewarded.id]
+    items, _ = await referral_repository.list_paginated(has_rewards=False)
+    assert [item.id for item in items] == [plain.id]
+
+    items, _ = await referral_repository.list_paginated(reward_type=ReferralRewardType.POINTS)
+    assert [item.id for item in items] == [rewarded.id]
+    _, total = await referral_repository.list_paginated(reward_type=ReferralRewardType.EXTRA_DAYS)
+    assert total == 0
+
+
+async def test_summarize_counts_and_sums_filtered_referrals(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    root = await _create_user(user_repository, 2121)
+    child = await _create_user(user_repository, 2122)
+    other_child = await _create_user(user_repository, 2123)
+    grandchild = await _create_user(user_repository, 2124)
+    rewarded = await referral_repository.create_referral(
+        referrer_id=root, referred_id=child, level=1
+    )
+    await referral_repository.create_referral(referrer_id=root, referred_id=other_child, level=1)
+    await referral_repository.create_referral(referrer_id=child, referred_id=grandchild, level=2)
+    subscription_id = await _create_subscription(subscription_repository, child, 2122)
+    for key, reward_type, amount in (
+        ("order-a", ReferralRewardType.POINTS, "5"),
+        ("order-b", ReferralRewardType.POINTS, "3"),
+        ("order-c", ReferralRewardType.EXTRA_DAYS, "7"),
+    ):
+        await referral_repository.create_reward(
+            referral_id=rewarded.id,
+            referrer_id=root,
+            subscription_id=subscription_id,
+            payment_key=key,
+            type=reward_type,
+            amount=Decimal(amount),
+        )
+
+    summary = await referral_repository.summarize()
+    assert summary.total_count == 3
+    assert summary.referrers_count == 2
+    assert summary.rewarded_count == 1
+    assert summary.reward_amounts == {
+        ReferralRewardType.POINTS: Decimal("8"),
+        ReferralRewardType.EXTRA_DAYS: Decimal("7"),
+    }
+
+    summary = await referral_repository.summarize(level=2)
+    assert summary.total_count == 1
+    assert summary.rewarded_count == 0
+    assert summary.reward_amounts == {}
+
+
+async def test_summarize_created_to_is_a_snapshot(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    session: AsyncSession,
+) -> None:
+    root = await _create_user(user_repository, 2131)
+    old_child = await _create_user(user_repository, 2132)
+    new_child = await _create_user(user_repository, 2133)
+    old = await referral_repository.create_referral(
+        referrer_id=root, referred_id=old_child, level=1
+    )
+    await referral_repository.create_referral(referrer_id=root, referred_id=new_child, level=1)
+    await session.execute(
+        update(Referral)
+        .where(Referral.id == old.id)
+        .values(created_at=datetime_now() - timedelta(days=10))
+    )
+    # invited before the snapshot, rewarded after it
+    subscription_id = await _create_subscription(subscription_repository, old_child, 2132)
+    await referral_repository.create_reward(
+        referral_id=old.id,
+        referrer_id=root,
+        subscription_id=subscription_id,
+        payment_key="order-snapshot",
+        type=ReferralRewardType.POINTS,
+        amount=Decimal("5"),
+    )
+
+    snapshot = await referral_repository.summarize(created_to=datetime_now() - timedelta(days=1))
+    assert snapshot.total_count == 1
+    assert snapshot.rewarded_count == 0
+    assert snapshot.reward_amounts == {}
+    live = await referral_repository.summarize()
+    assert live.total_count == 2
+    assert live.rewarded_count == 1
+
+
+async def test_downline_lists_relative_depth_and_buyer_rewards(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    root = await _create_user(user_repository, 2131)
+    child = await _create_user(user_repository, 2132)
+    grandchild = await _create_user(user_repository, 2133)
+    great = await _create_user(user_repository, 2134)
+    too_deep = await _create_user(user_repository, 2135)
+    root_edge = await referral_repository.create_referral(
+        referrer_id=root, referred_id=child, level=1
+    )
+    await referral_repository.create_referral(referrer_id=child, referred_id=grandchild, level=2)
+    await referral_repository.create_referral(referrer_id=grandchild, referred_id=great, level=3)
+    await referral_repository.create_referral(referrer_id=great, referred_id=too_deep, level=3)
+
+    entries, total = await referral_repository.list_downline(root)
+    assert total == 3  # capped at three hops
+    assert {(e.referred_id, e.parent_id, e.depth) for e in entries} == {
+        (child, root, 1),
+        (grandchild, child, 2),
+        (great, grandchild, 3),
+    }
+    entries, total = await referral_repository.list_downline(root, depth=2)
+    assert total == 1
+    assert entries[0].referred_id == grandchild
+    _, total = await referral_repository.list_downline(root, search="2134")
+    assert total == 1
+
+    subscription_id = await _create_subscription(subscription_repository, grandchild, 2133)
+    await referral_repository.create_reward(
+        referral_id=root_edge.id,
+        referrer_id=root,
+        subscription_id=subscription_id,
+        payment_key="order-downline",
+        type=ReferralRewardType.POINTS,
+        amount=Decimal("4"),
+    )
+    assert await referral_repository.reward_totals_by_buyer(root, [child, grandchild]) == {
+        grandchild: {ReferralRewardType.POINTS: Decimal("4")}
+    }
+    rewards = await referral_repository.list_rewards_by_referrer(root)
+    assert [r.buyer_id for r in rewards] == [grandchild]
+    assert await referral_repository.downline_depths(root, [grandchild]) == {grandchild: 2}
+
+
+async def test_list_paginated_search_puts_the_users_own_edge_first(
+    referral_repository: ReferralRepository, user_repository: UserRepository
+) -> None:
+    root = await _create_user(user_repository, 2141)
+    child = await _create_user(user_repository, 2142)
+    grandchild = await _create_user(user_repository, 2143)
+    own = await referral_repository.create_referral(referrer_id=root, referred_id=child, level=1)
+    invited = await referral_repository.create_referral(
+        referrer_id=child, referred_id=grandchild, level=2
+    )
+
+    # the invite is newer, so without the search boost it would come first
+    items, _ = await referral_repository.list_paginated()
+    assert [item.id for item in items][:2] == [invited.id, own.id]
+    items, total = await referral_repository.list_paginated(search="2142")
+    assert total == 2
+    assert [item.id for item in items] == [own.id, invited.id]
 
 
 async def test_reward_totals_by_referral_sums_per_type(

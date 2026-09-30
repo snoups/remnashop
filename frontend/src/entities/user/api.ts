@@ -23,6 +23,20 @@ export function updateOwnProfile(payload: UpdateOwnProfileRequest): Promise<Curr
   return apiPatch<CurrentUser, UpdateOwnProfileRequest>("/users/me", payload);
 }
 
+// opened from elsewhere (ad link users) with a user whose details to show
+export interface UsersLocationState {
+  userId: number;
+  /** the user is soft-deleted: the Users page has to list deleted accounts to find them */
+  deleted?: boolean;
+}
+
+/** Users-page link that opens this user's card; a deleted user's name is wiped, so they're found by id. */
+export function userCardLink(user: { id: number; name: string }): { to: string; state: UsersLocationState } {
+  const deleted = !user.name;
+  const params = new URLSearchParams({ search: deleted ? String(user.id) : user.name });
+  return { to: `/dashboard/users?${params.toString()}`, state: { userId: user.id, deleted } };
+}
+
 export interface UserListItem {
   id: number;
   name: string;
@@ -39,6 +53,10 @@ export interface UserListItem {
   points: string;
   is_trial_available: boolean;
   created_at: string | null;
+  /** set once the account is soft-deleted; name and contacts are wiped then */
+  deleted_at?: string | null;
+  // list endpoint only
+  active_subscriptions?: number;
 }
 
 export const DEFAULT_PAGE_SIZE = 50;
@@ -48,12 +66,36 @@ export interface UserListPage {
   total: number;
 }
 
+export type UserSort = "created_at" | "points" | "discount" | "name" | "channels" | "subscriptions";
+
+// exclude: live accounts only (the default); include: both; only: deleted ones
+export type DeletedFilter = "exclude" | "include" | "only";
+
+// which blacklist a blocked user is on: the manual list or external sources
+export type BlockedBy = "manual" | "lists";
+
 export interface UserListFilters {
   search?: string;
-  role?: Role;
-  isBlocked?: boolean;
+  includeStaff?: boolean;
+  blockedBy?: BlockedBy;
+  deleted?: DeletedFilter;
+  hasSubscription?: boolean;
+  isTrialAvailable?: boolean;
+  sort?: UserSort;
+  descending?: boolean;
   page?: number;
   pageSize?: number;
+}
+
+export interface UserListStats {
+  total: number;
+  new: number;
+  subscribed: number;
+  blocked: number;
+  /** registrations in the 7 days before `new`'s window */
+  new_previous: number;
+  /** registrations over the last 30 days */
+  total_growth: number;
 }
 
 export function listUsers(
@@ -62,12 +104,21 @@ export function listUsers(
 ): Promise<UserListPage> {
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
-  if (filters.role) params.set("role", filters.role);
-  if (filters.isBlocked !== undefined) params.set("is_blocked", String(filters.isBlocked));
+  if (filters.includeStaff) params.set("include_staff", "true");
+  if (filters.blockedBy) params.set("blocked_by", filters.blockedBy);
+  if (filters.deleted) params.set("deleted", filters.deleted);
+  if (filters.hasSubscription !== undefined) params.set("has_subscription", String(filters.hasSubscription));
+  if (filters.isTrialAvailable !== undefined) params.set("is_trial_available", String(filters.isTrialAvailable));
+  if (filters.sort) params.set("sort", filters.sort);
+  if (filters.descending !== undefined) params.set("descending", String(filters.descending));
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
   return apiGet<UserListPage>(`/users?${params.toString()}`, signal);
+}
+
+export function getUserListStats(includeStaff: boolean, signal?: AbortSignal): Promise<UserListStats> {
+  return apiGet<UserListStats>(`/users/stats${includeStaff ? "?include_staff=true" : ""}`, signal);
 }
 
 export function deleteUser(userId: number): Promise<void> {
@@ -80,12 +131,4 @@ export function blockUser(userId: number): Promise<UserListItem> {
 
 export function unblockUser(userId: number): Promise<UserListItem> {
   return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/unblock`, {});
-}
-
-export interface UnblockAllResult {
-  unblocked: number;
-}
-
-export function unblockAllUsers(): Promise<UnblockAllResult> {
-  return apiPost<UnblockAllResult, Record<string, never>>("/users/unblock-all", {});
 }

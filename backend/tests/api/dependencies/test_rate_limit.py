@@ -15,6 +15,7 @@ from app.core.config import AppConfig
 from app.core.security import create_access_token
 
 JWT_SECRET = "test-secret-at-least-32-bytes-long-ok"
+OTHER_JWT_SECRET = "a-completely-different-secret-32-bytes"
 
 
 def _make_request(
@@ -108,7 +109,7 @@ def test_resolve_identity_uses_user_id_with_a_valid_token() -> None:
 
 
 def test_resolve_identity_falls_back_to_ip_with_a_token_signed_by_a_different_secret() -> None:
-    token = create_access_token(user_id=42, session_id=1, secret="a-completely-different-secret")
+    token = create_access_token(user_id=42, session_id=1, secret=OTHER_JWT_SECRET)
     request = _make_request(headers={"authorization": f"Bearer {token}"})
 
     identity = _resolve_rate_limit_identity(request, JWT_SECRET)

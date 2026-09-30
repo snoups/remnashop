@@ -1,4 +1,4 @@
-import { BarChart3, CreditCard, Gift, LayoutGrid, Layers, Link2, ScrollText, Settings, ShieldCheck, Tag, Ticket, Users } from "lucide-react";
+import { BarChart3, CreditCard, LayoutGrid, Layers, Link2, Package, ScrollText, Settings, Share2, ShieldCheck, Ticket, Users } from "lucide-react";
 import type { ComponentType } from "react";
 
 import type { Permission } from "@shared/types/rbac";
@@ -22,9 +22,9 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "analytics", to: "/dashboard/analytics", icon: BarChart3, permission: "ANALYTICS_VIEW" },
   { key: "users", to: "/dashboard/users", icon: Users, permission: "USERS_VIEW" },
   { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, permission: "SUBSCRIPTIONS_VIEW" },
-  { key: "plans", to: "/dashboard/plans", icon: Tag, permission: "PLANS_VIEW" },
+  { key: "plans", to: "/dashboard/plans", icon: Package, permission: "PLANS_VIEW" },
   { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, permission: "PROMOCODES_VIEW" },
-  { key: "referrals", to: "/dashboard/referrals", icon: Gift, permission: "REFERRALS_SETTINGS_VIEW" },
+  { key: "referrals", to: "/dashboard/referrals", icon: Share2, permission: "REFERRALS_LIST" },
   { key: "advertising", to: "/dashboard/advertising", icon: Link2, permission: "AD_LINKS_VIEW" },
   { key: "payments", to: "/dashboard/payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
   { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, permission: "ADMINS_MANAGE" },

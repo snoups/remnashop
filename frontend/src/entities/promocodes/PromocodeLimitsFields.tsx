@@ -1,21 +1,20 @@
 import { Users, X } from "lucide-react";
-import { useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { PromocodeAvailability } from "@entities/promocodes/api";
 import { AVAILABILITIES, type PromocodeLimitsDraft } from "@entities/promocodes/display";
+import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { DatePickerField } from "@shared/ui/DatePickerField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
+import { TextInput } from "@shared/ui/TextInput";
+import { Card } from "@shared/ui/Card";
+import { Field } from "@shared/ui/Field";
+import { IconButton } from "@shared/ui/IconButton";
 
-export const promocodeFieldClassName =
-  "rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
-export const promocodeSectionClassName = "flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3.5 pb-3.5 pt-1.5";
-export const promocodeSectionTitleClassName =
-  "pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
-const labelClassName = "text-sm font-medium text-foreground/80";
 
-export function PromocodeSwitchRow({
+function PromocodeSwitchRow({
   label,
   hint,
   checked,
@@ -48,11 +47,9 @@ interface PromocodeLimitsFieldsProps {
   idPrefix: string;
   value: PromocodeLimitsDraft;
   onChange: (value: PromocodeLimitsDraft) => void;
-  /** rendered first inside the section, e.g. the edit dialog's "Active" switch */
-  children?: ReactNode;
 }
 
-export function PromocodeLimitsFields({ idPrefix, value, onChange, children }: PromocodeLimitsFieldsProps) {
+export function PromocodeLimitsFields({ idPrefix, value, onChange }: PromocodeLimitsFieldsProps) {
   const { t } = useTranslation();
   const [idDraft, setIdDraft] = useState("");
   const set = (patch: Partial<PromocodeLimitsDraft>) => onChange({ ...value, ...patch });
@@ -78,13 +75,10 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, children }: P
   };
 
   return (
-    <section className={promocodeSectionClassName}>
-      <h3 className={promocodeSectionTitleClassName}>{t("promocodes.sections.limits")}</h3>
-      {children}
-
-      <div className="flex flex-col gap-1">
-        <span className={labelClassName}>{t("promocodes.limits.availabilityLabel")}</span>
+    <Card variant="form">
+      <Field label={t("promocodes.limits.availabilityLabel")} htmlFor={`${idPrefix}-availability`}>
         <SelectDropdown
+          variant="form"
           id={`${idPrefix}-availability`}
           value={value.availability}
           onChange={(availability) => set({ availability: availability as PromocodeAvailability })}
@@ -92,71 +86,63 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, children }: P
           placeholder={t(`promocodes.availability.${value.availability}`)}
           options={AVAILABILITIES.map((option) => ({ value: option, label: t(`promocodes.availability.${option}`) }))}
         />
-      </div>
+      </Field>
 
       {value.availability === "ALLOWED" && (
-        <div className="flex flex-col gap-1.5 rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
-          <label htmlFor={`${idPrefix}-allowed-users`} className={labelClassName}>
-            {t("promocodes.limits.allowedUserIdsLabel")}
-          </label>
-          <div className="flex flex-wrap items-center gap-1.5">
+        <Field label={t("promocodes.limits.allowedUserIdsLabel")} htmlFor={`${idPrefix}-allowed-users`} className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
+          <div className="flex min-h-9.5 flex-wrap items-center gap-1.5 rounded-[19px] border border-border bg-input/60 px-1.5 py-1 focus-within:border-primary">
             {value.allowedUserIds.map((id) => (
               <span
                 key={id}
-                className="flex items-center gap-1 rounded-full bg-white/[0.06] py-0.5 pl-2.5 pr-1 font-mono text-[12.5px] text-foreground"
+                className="flex items-center gap-1 rounded-full bg-white/[0.06] py-0.5 pl-2.5 pr-0.5 font-mono text-[12.5px] text-foreground"
               >
                 {id}
-                <button
-                  type="button"
+                <IconButton size="18px"
                   onClick={() => set({ allowedUserIds: value.allowedUserIds.filter((other) => other !== id) })}
                   aria-label={t("promocodes.limits.removeUserAria", { id })}
-                  className="flex size-[18px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
                 >
                   <X className="size-2.5" />
-                </button>
+                </IconButton>
               </span>
             ))}
             <input
               id={`${idPrefix}-allowed-users`}
               inputMode="numeric"
               value={idDraft}
-              onChange={(event) => setIdDraft(event.target.value)}
+              onChange={(event) => setIdDraft(event.target.value.replace(/\D/g, ""))}
               onKeyDown={handleIdKeyDown}
               onPaste={handleIdPaste}
               onBlur={() => addIds(idDraft)}
               placeholder={t("promocodes.limits.allowedUserIdsPlaceholder")}
-              className="min-w-36 flex-1 bg-transparent px-1.5 py-1 font-mono text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
+              className="min-w-36 flex-1 bg-transparent px-1.5 py-1 font-mono text-sm text-foreground outline-none"
             />
           </div>
-        </div>
+        </Field>
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <span className={labelClassName}>{t("promocodes.limits.expiresLabel")}</span>
+        <Field label={t("promocodes.limits.expiresLabel")} htmlFor={`${idPrefix}-expires-at`}>
           <DatePickerField
+            variant="form"
             id={`${idPrefix}-expires-at`}
             value={value.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}
             placeholder={t("promocodes.limits.expiresPlaceholder")}
             clearAriaLabel={t("promocodes.limits.clearDate")}
           />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor={`${idPrefix}-max-activations`} className={labelClassName}>
-            {t("promocodes.limits.maxActivationsLabel")}
-          </label>
-          <input
+        </Field>
+        <Field label={t("promocodes.limits.maxActivationsLabel")} htmlFor={`${idPrefix}-max-activations`}>
+          <TextInput
             id={`${idPrefix}-max-activations`}
             type="number"
+            onKeyDown={blockNonIntegerKeys}
             min={1}
             step="1"
             value={value.maxActivations}
             onChange={(event) => set({ maxActivations: event.target.value })}
             placeholder={t("promocodes.limits.maxActivationsHint")}
-            className={promocodeFieldClassName}
           />
-        </div>
+        </Field>
       </div>
 
       <PromocodeSwitchRow
@@ -165,6 +151,6 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, children }: P
         checked={value.isReusable}
         onChange={(isReusable) => set({ isReusable })}
       />
-    </section>
+    </Card>
   );
 }

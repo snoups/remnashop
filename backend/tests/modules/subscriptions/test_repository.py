@@ -73,6 +73,34 @@ async def test_created_subscription_has_no_addon_effect_on_limits(
     assert created.effective_device_limit == created.device_limit == 3
 
 
+async def test_addon_on_unlimited_subscription_keeps_it_unlimited(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    user_id = await _create_user(user_repository, 114)
+    created = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=user_id,
+            remnawave_user_id=5004,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=0,
+            device_limit=0,
+            expire_at=_EXPIRE_AT,
+            url="https://example.com/sub/token",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+
+    await subscription_repository.grant_entitlement(
+        subscription_id=created.id, addon_id=None, addon_type=AddOnType.TRAFFIC, amount=50
+    )
+    granted = await subscription_repository.grant_entitlement(
+        subscription_id=created.id, addon_id=None, addon_type=AddOnType.DEVICES, amount=2
+    )
+
+    assert granted.effective_traffic_limit == 0
+    assert granted.effective_device_limit == 0
+
+
 async def test_update_unknown_subscription_raises_not_found(
     subscription_repository: SubscriptionRepository,
 ) -> None:

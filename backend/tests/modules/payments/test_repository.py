@@ -269,6 +269,30 @@ async def test_list_paginated_filters_by_status(
     assert total >= 2
 
 
+async def test_summarize_groups_by_status_and_currency_and_honours_filters(
+    payment_order_repository: PaymentOrderRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    async with uow:
+        await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-sum-pending")
+        )
+        paid_ids = []
+        for key in ("key-sum-paid-1", "key-sum-paid-2"):
+            order = await payment_order_repository.create(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=key)
+            )
+            paid_ids.append(order.id)
+    for order_id in paid_ids:
+        await payment_order_repository.mark_status(order_id, PaymentOrderStatus.PAID)
+
+    rows = await payment_order_repository.summarize()
+    assert (PaymentOrderStatus.PAID, Currency.RUB, 2, Decimal("1000"), Decimal("1000")) in rows
+    assert (PaymentOrderStatus.PENDING, Currency.RUB, 1, Decimal("500"), Decimal("500")) in rows
+
+    rows = await payment_order_repository.summarize(status=PaymentOrderStatus.PAID)
+    assert rows == [(PaymentOrderStatus.PAID, Currency.RUB, 2, Decimal("1000"), Decimal("1000"))]
+
+
 async def test_list_paginated_filters_by_gateway_purchase_type_and_created_from(
     payment_order_repository: PaymentOrderRepository,
     uow: UnitOfWork,

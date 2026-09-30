@@ -10,6 +10,7 @@ import type {
   UpdatePromocodeRequest,
 } from "@entities/promocodes/api";
 import { parseOptionalInt } from "@shared/lib/number-input";
+import type { BadgeTone } from "@shared/ui/Badge";
 
 export type PromocodeStatus = "ACTIVE" | "INACTIVE" | "EXPIRED";
 export type PromocodeReward = Pick<
@@ -24,7 +25,7 @@ export interface PromocodeLimitsDraft {
   isReusable: boolean;
 }
 type LimitsPayload = Required<Omit<UpdatePromocodeRequest, "is_active">>;
-type TranslateFn = (key: string) => string;
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 export const PROMOCODE_STATUSES: PromocodeStatus[] = ["ACTIVE", "INACTIVE", "EXPIRED"];
 export const REWARD_TYPES: PromocodeRewardType[] = [
@@ -46,10 +47,10 @@ export const REWARD_TYPE_ICON: Record<PromocodeRewardType, ComponentType<{ class
   PURCHASE_DISCOUNT: Percent,
 };
 
-export const PROMOCODE_STATUS_BADGE_CLASSNAME: Record<PromocodeStatus, string> = {
-  ACTIVE: "border-success/30 bg-success/10 text-success",
-  INACTIVE: "border-border bg-white/[0.04] text-muted-foreground",
-  EXPIRED: "border-warning/30 bg-warning/10 text-warning",
+export const PROMOCODE_STATUS_BADGE_TONE: Record<PromocodeStatus, BadgeTone> = {
+  ACTIVE: "success",
+  INACTIVE: "neutral",
+  EXPIRED: "warning",
 };
 
 export function getPromocodeStatus(promo: Promocode): PromocodeStatus {
@@ -65,7 +66,7 @@ export function describeReward(
 ): string {
   switch (promo.reward_type) {
     case "DURATION":
-      return `+${promo.reward ?? 0}d`;
+      return `+${t("plans.daysShort", { count: promo.reward ?? 0 })}`;
     case "TRAFFIC":
     case "DEVICES": {
       const addon = addons.find((a) => a.id === promo.reward_addon_id);
@@ -74,7 +75,7 @@ export function describeReward(
     case "SUBSCRIPTION": {
       const plan = plans.find((p) => p.id === promo.reward_plan_id);
       const planLabel = plan ? plan.name : t("promocodes.rewardType.SUBSCRIPTION");
-      return `${planLabel} · ${promo.reward_duration_days ?? 0}d`;
+      return `${planLabel} · ${t("plans.daysShort", { count: promo.reward_duration_days ?? 0 })}`;
     }
     case "PERSONAL_DISCOUNT":
     case "PURCHASE_DISCOUNT":

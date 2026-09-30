@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Protocol
 
@@ -22,6 +23,8 @@ class Actor(Protocol):
     points: Decimal
     password_hash: Optional[str]
     is_trial_available: bool
+    notifications_seen_at: Optional[datetime]
+    notification_groups: Optional[list[str]]
 
     @property
     def is_privileged(self) -> bool: ...
@@ -47,3 +50,5 @@ class SyntheticActor:
     points: Decimal = Decimal(0)
     password_hash: Optional[str] = None
     is_trial_available: bool = False
+    notifications_seen_at: Optional[datetime] = None
+    notification_groups: Optional[list[str]] = None

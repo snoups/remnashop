@@ -11,6 +11,7 @@ from app.modules.auth import SessionRepository
 from app.modules.banners import get_banners_providers
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.passkeys import get_passkey_revoker_providers
+from app.modules.payments import PaymentOrderRepository
 from app.modules.plans import get_plans_providers
 from app.modules.pricing import get_pricing_providers
 from app.modules.promocodes import get_promocodes_providers
@@ -42,6 +43,10 @@ def create_aiogram_container(
     session_revoker_provider = Provider(scope=Scope.REQUEST)
     session_revoker_provider.provide(SessionRepository)
     session_revoker_provider.alias(source=SessionRepository, provides=SessionRevoker)
+    # GetPromocodeSummaryUseCase (registered by get_promocodes_providers())
+    # reads payment orders; the bot never serves it, so no payments usecases.
+    payment_orders_provider = Provider(scope=Scope.REQUEST)
+    payment_orders_provider.provide(PaymentOrderRepository)
 
     providers = [
         AiogramProvider(),
@@ -58,5 +63,6 @@ def create_aiogram_container(
         *get_blacklist_providers(),
         DialogConfigProvider(),
         session_revoker_provider,
+        payment_orders_provider,
     ]
     return make_async_container(*providers, context=context)

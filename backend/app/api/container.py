@@ -20,7 +20,7 @@ from app.modules.payments import get_payments_providers
 from app.modules.plans import get_plans_providers
 from app.modules.pricing import get_pricing_providers
 from app.modules.promocodes import get_promocodes_providers
-from app.modules.referrals import get_referrals_providers
+from app.modules.referrals import get_referrals_providers, get_referrals_revenue_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import get_subscriptions_providers
 from app.modules.translations import get_translations_providers
@@ -40,6 +40,7 @@ def create_api_container(config: AppConfig) -> AsyncContainer:
         *get_pricing_providers(),
         *get_promocodes_providers(),
         *get_referrals_providers(),
+        *get_referrals_revenue_providers(),
         *get_backups_providers(),
         *get_subscriptions_providers(),
         *get_banners_providers(),

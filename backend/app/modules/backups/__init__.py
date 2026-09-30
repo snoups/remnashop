@@ -21,6 +21,7 @@ from app.modules.backups.usecases import (
     GetBackupSettingsUseCase,
     GetBackupStatsUseCase,
     ListBackupRunsUseCase,
+    ResetBackupSettingsUseCase,
     UpdateBackupSettingsUseCase,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     "ListBackupRunsUseCase",
     "ProvenanceResult",
     "ProvenanceStatus",
+    "ResetBackupSettingsUseCase",
     "UpdateBackupSettingsDto",
     "UpdateBackupSettingsUseCase",
     "get_backups_providers",

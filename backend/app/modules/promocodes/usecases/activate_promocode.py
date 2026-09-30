@@ -204,13 +204,21 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
                 if promo.reward:
                     async with self._uow:
                         await self._user_repository.update_fields(
-                            actor.id, UpdateUserDto(personal_discount=promo.reward)
+                            actor.id,
+                            UpdateUserDto(
+                                personal_discount=promo.reward,
+                                personal_discount_promocode_id=promo.id,
+                            ),
                         )
             elif promo.reward_type is PromocodeRewardType.PURCHASE_DISCOUNT:
                 if promo.reward:
                     async with self._uow:
                         await self._user_repository.update_fields(
-                            actor.id, UpdateUserDto(purchase_discount=promo.reward)
+                            actor.id,
+                            UpdateUserDto(
+                                purchase_discount=promo.reward,
+                                purchase_discount_promocode_id=promo.id,
+                            ),
                         )
         except Exception:
             # The claim above is already committed -- an orphaned activation

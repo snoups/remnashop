@@ -24,8 +24,10 @@ class RegisterTelegramUserDto:
     # True when `language` is the user's own Telegram language (and active),
     # not the deployment default -- only then may it overwrite a stored one.
     sync_language: bool = False
-    # Raw deep-link payload, opaque to `users` -- advertising resolves it.
+    # Raw deep-link payloads, opaque to `users` -- advertising and referrals
+    # resolve them.
     ad_link_code: Optional[str] = None
+    referral_code: Optional[str] = None
 
 
 class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
@@ -71,7 +73,11 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                     await self._event_publisher.publish(TelegramRegistrationBlockedEvent(user=user))
                     return user
                 await self._event_publisher.publish(
-                    TelegramUserRegisteredEvent(user=user, ad_link_code=data.ad_link_code)
+                    TelegramUserRegisteredEvent(
+                        user=user,
+                        ad_link_code=data.ad_link_code,
+                        referral_code=data.referral_code,
+                    )
                 )
         except IntegrityError:
             # Lost a concurrent registration race (two updates from the same

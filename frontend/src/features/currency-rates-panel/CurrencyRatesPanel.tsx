@@ -1,5 +1,5 @@
 import { Anchor, Coins, Filter, Gauge, Info } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -16,19 +16,21 @@ import {
 import { PricingDiffList } from "@entities/pricing/PricingDiffList";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { parseOptionalInt } from "@shared/lib/number-input";
+import { blockNonDecimalKeys, blockNonIntegerKeys, parseOptionalInt, toTwoDecimals } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { FieldHint } from "@shared/ui/FieldHint";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Button } from "@shared/ui/Button";
+import { Badge } from "@shared/ui/Badge";
+import { SuffixInput, TextInput } from "@shared/ui/TextInput";
+import { Card } from "@shared/ui/Card";
+import { Field } from "@shared/ui/Field";
 
 const CURRENCIES: Currency[] = ["USD", "RUB", "XTR"];
 const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
 const ROUNDING_MODES: RoundingMode[] = ["INTEGER", "DECIMAL_2"];
 const CURRENCY_SYMBOLS: Record<Currency, string> = { USD: "$", XTR: "★", RUB: "₽" };
 
-const inputClassName =
-  "rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 interface CurrencyRatesPanelProps {
   book: PriceBook;
@@ -43,7 +45,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
 
   return (
     <>
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <Card>
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
             <Coins className="size-4" />
@@ -83,7 +85,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
           </div>
         )}
 
-      </div>
+      </Card>
 
       <GlobalSettings
         anchorCurrency={book.settings.anchor_currency}
@@ -103,7 +105,7 @@ interface RateRowState {
 
 function toRowState(rate: CurrencyRate): RateRowState {
   return {
-    rate: rate.rate,
+    rate: toTwoDecimals(rate.rate),
     rounding_mode: rate.rounding_mode,
     charm_ending: rate.charm_ending === null ? "" : String(rate.charm_ending),
   };
@@ -119,6 +121,7 @@ function RateRow({
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
+  const idPrefix = useId();
   const [form, setForm] = useState<RateRowState>(() => toRowState(rate));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [diff, setDiff] = useState<PricingDiff | null>(null);
@@ -130,6 +133,8 @@ function RateRow({
     form.rate !== initial.rate ||
     form.rounding_mode !== initial.rounding_mode ||
     form.charm_ending !== initial.charm_ending;
+  // mirrors the backend's rate > 0; the input's min="0" would let 0 through
+  const isRateInvalid = form.rate.trim() !== "" && !(Number(form.rate) > 0);
 
   // undefined means the charm-ending field holds something that isn't a
   // valid optional integer -- callers reject the submit instead of sending it.
@@ -137,7 +142,8 @@ function RateRow({
     const charmEnding = parseOptionalInt(form.charm_ending, 0);
     if (charmEnding === undefined) return undefined;
     return {
-      rate: form.rate,
+      // the field shows the rate rounded; untouched, the stored precision goes back as-is
+      rate: form.rate === initial.rate ? rate.rate : form.rate,
       rounding_mode: form.rounding_mode,
       charm_ending: charmEnding,
       min_amount: rate.min_amount,
@@ -188,29 +194,49 @@ function RateRow({
         </span>
         <span className="text-[15px] font-bold tracking-wide text-foreground">{rate.currency}</span>
         {isAnchor && (
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-primary/40 bg-accent px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-primary">
+          <Badge tone="accent" className="ml-auto">
             <Anchor className="size-2.5" aria-hidden />
             {t("pricing.anchor.badge")}
-          </span>
+          </Badge>
         )}
       </div>
       <form onSubmit={(event) => void handleSubmit(event)} className="grid grid-cols-2 gap-3">
-        <label className="col-span-2 flex flex-col gap-1.5 text-[12px] text-muted-foreground">
-          {t("pricing.rates.rateLabel")}
-          <input
+        <Field
+          label={t("pricing.rates.rateLabel")}
+          htmlFor={`${idPrefix}-rate`}
+          error={isRateInvalid ? t("pricing.rates.rateInvalid") : undefined}
+          className="col-span-2"
+        >
+          <TextInput
+            id={`${idPrefix}-rate`}
             type="number"
+            onKeyDown={blockNonDecimalKeys}
             step="any"
             min="0"
             required
             disabled={isAnchor}
+            aria-invalid={isRateInvalid}
             value={form.rate}
             onChange={(event) => setForm((prev) => ({ ...prev, rate: event.target.value }))}
-            className={inputClassName}
           />
-        </label>
-        <div className="col-span-2 flex flex-col gap-1.5 text-[12px] text-muted-foreground">
-          <span>{t("pricing.rates.roundingModeLabel")}</span>
+        </Field>
+        <Field label={t("pricing.rates.charmEndingLabel")} htmlFor={`${idPrefix}-charm`} info={t("pricing.rates.charmEndingHint")} className="col-span-2">
+          <TextInput
+            id={`${idPrefix}-charm`}
+            type="number"
+            onKeyDown={blockNonIntegerKeys}
+            step="1"
+            min="0"
+            max="99"
+            placeholder={t("pricing.rates.charmEndingPlaceholder")}
+            value={form.charm_ending}
+            onChange={(event) => setForm((prev) => ({ ...prev, charm_ending: event.target.value }))}
+          />
+        </Field>
+        <Field label={t("pricing.rates.roundingModeLabel")} htmlFor={`${idPrefix}-rounding`} className="col-span-2">
           <SelectDropdown
+            variant="form"
+            id={`${idPrefix}-rounding`}
             value={form.rounding_mode}
             onChange={(value) => setForm((prev) => ({ ...prev, rounding_mode: value as RoundingMode }))}
             icon={Filter}
@@ -220,31 +246,16 @@ function RateRow({
               label: t(`pricing.roundingModes.${mode}`),
             }))}
           />
-        </div>
-        <label className="col-span-2 flex flex-col gap-1.5 text-[12px] text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            {t("pricing.rates.charmEndingLabel")}
-            <FieldHint text={t("pricing.rates.charmEndingHint")} />
-          </span>
-          <input
-            type="number"
-            step="1"
-            min="0"
-            max="99"
-            placeholder={t("pricing.rates.charmEndingPlaceholder")}
-            value={form.charm_ending}
-            onChange={(event) => setForm((prev) => ({ ...prev, charm_ending: event.target.value }))}
-            className={inputClassName}
-          />
-        </label>
+        </Field>
         <div className="col-span-2 flex items-center gap-2.5">
-          <button
+          <Button
+            variant="accent"
+            className="w-fit"
             type="submit"
-            disabled={isSubmitting || !isDirty}
-            className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isSubmitting || !isDirty || isRateInvalid}
           >
             {isSubmitting ? t("pricing.rates.saving") : t("pricing.rates.save")}
-          </button>
+          </Button>
           {isDirty && <span className="text-xs text-warning">{t("pricing.rates.unsaved")}</span>}
         </div>
       </form>
@@ -252,7 +263,8 @@ function RateRow({
       {diff && (
         <ConfirmDialog
           title={t("pricing.rates.confirmTitle")}
-          message={t("pricing.rates.confirmMessage", { currency: rate.currency })}
+          icon={Coins}
+          message={t("pricing.rates.confirmMessage", { currency: t(`pricing.currencyIn.${rate.currency}`) })}
           confirmLabel={t("pricing.rates.confirmButton")}
           cancelLabel={t("pricing.rates.cancelButton")}
           onConfirm={() => void handleConfirm()}
@@ -300,8 +312,8 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
   };
 
   return (
-    <div role="group" aria-label={t("pricing.anchor.title")} className="flex w-full items-center gap-1 rounded-full border border-border bg-white/[0.03] p-[3px]">
-      <span className="flex items-center gap-1.5 pl-3 pr-2 text-xs text-muted-foreground">
+    <div role="group" aria-label={t("pricing.anchor.title")} className="flex w-full items-center gap-1 rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
+      <span className="flex items-center gap-1.5 pl-3 pr-2 text-xs text-foreground">
         <Anchor className="size-3.5" aria-hidden />
         {t("pricing.anchor.title")}
       </span>
@@ -312,10 +324,8 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
           disabled={isLoading}
           aria-pressed={currency === anchorCurrency}
           onClick={() => currency !== anchorCurrency && void handlePreview(currency)}
-          className={`flex-1 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed ${
-            currency === anchorCurrency
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+          className={`flex h-[30px] flex-1 items-center justify-center rounded-full px-3 text-[12.5px] transition-colors disabled:cursor-not-allowed ${
+            currency === anchorCurrency ? "bg-accent text-primary" : "text-foreground/70 hover:bg-white/[0.06]"
           }`}
         >
           {currency}
@@ -325,7 +335,7 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
       {diff && (
         <ConfirmDialog
           title={t("pricing.anchor.confirmTitle")}
-          message={t("pricing.anchor.confirmMessage", { currency: selected })}
+          message={t("pricing.anchor.confirmMessage", { currency: t(`pricing.currencyTo.${selected}`) })}
           confirmLabel={t("pricing.anchor.confirmButton")}
           cancelLabel={t("pricing.anchor.cancelButton")}
           danger
@@ -354,13 +364,13 @@ function GlobalSettings({
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
-  const [perDay, setPerDay] = useState(pricePerDay ?? "");
-  const [perGb, setPerGb] = useState(pricePerGb ?? "");
+  const [perDay, setPerDay] = useState(toTwoDecimals(pricePerDay ?? ""));
+  const [perGb, setPerGb] = useState(toTwoDecimals(pricePerGb ?? ""));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    setPerDay(pricePerDay ?? "");
-    setPerGb(pricePerGb ?? "");
+    setPerDay(toTwoDecimals(pricePerDay ?? ""));
+    setPerGb(toTwoDecimals(pricePerGb ?? ""));
   }, [pricePerDay, pricePerGb]);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -381,7 +391,7 @@ function GlobalSettings({
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <Card>
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <Gauge className="size-4" />
@@ -396,47 +406,40 @@ function GlobalSettings({
 
       <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-[12px] text-muted-foreground">
-            {t("pricing.settings.pricePerDayLabel")}
-            <div className="relative">
-              <input
-                type="number"
-                step="any"
-                min="0"
-                value={perDay}
-                onChange={(event) => setPerDay(event.target.value)}
-                className={`${inputClassName} w-full pr-14`}
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                {anchorCurrency}
-              </span>
-            </div>
-          </label>
-          <label className="flex flex-col gap-1.5 text-[12px] text-muted-foreground">
-            {t("pricing.settings.pricePerGbLabel")}
-            <div className="relative">
-              <input
-                type="number"
-                step="any"
-                min="0"
-                value={perGb}
-                onChange={(event) => setPerGb(event.target.value)}
-                className={`${inputClassName} w-full pr-14`}
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                {anchorCurrency}
-              </span>
-            </div>
-          </label>
+          <Field label={t("pricing.settings.pricePerDayLabel")} htmlFor="pricing-per-day">
+            <SuffixInput
+              id="pricing-per-day"
+              type="number"
+              onKeyDown={blockNonDecimalKeys}
+              step="any"
+              min="0"
+              value={perDay}
+              onChange={(event) => setPerDay(event.target.value)}
+              suffix={anchorCurrency}
+            />
+          </Field>
+          <Field label={t("pricing.settings.pricePerGbLabel")} htmlFor="pricing-per-gb">
+            <SuffixInput
+              id="pricing-per-gb"
+              type="number"
+              onKeyDown={blockNonDecimalKeys}
+              step="any"
+              min="0"
+              value={perGb}
+              onChange={(event) => setPerGb(event.target.value)}
+              suffix={anchorCurrency}
+            />
+          </Field>
         </div>
-        <button
+        <Button
+          variant="accent"
+          className="w-fit"
           type="submit"
           disabled={isSubmitting}
-          className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? t("pricing.settings.saving") : t("pricing.settings.save")}
-        </button>
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 }

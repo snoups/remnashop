@@ -18,8 +18,13 @@ class AdLinkDto(BaseDto, TimestampMixin):
     cost: Decimal = Decimal(0)
     cost_currency: Currency = Currency.USD
     is_active: bool = True
+    allow_bot: bool = True
+    allow_webcabinet: bool = True
     note: Optional[str] = None
     created_by: Optional[int] = None
+
+    def allows(self, channel: AdLinkChannel) -> bool:
+        return self.allow_bot if channel == AdLinkChannel.BOT else self.allow_webcabinet
 
 
 class AdLinkAttributionDto(BaseDto):
@@ -40,6 +45,7 @@ class AttributedUserDto(BaseDto):
 class DailyAttributionCountDto(BaseDto):
     day: date
     count: int
+    by_channel: dict[AdLinkChannel, int] = Field(default_factory=dict)
 
 
 class AdLinkStatsDto(BaseDto):
@@ -85,6 +91,8 @@ class CreateAdLinkDto:
     code: str
     cost: Decimal = Decimal(0)
     cost_currency: Currency = Currency.USD
+    allow_bot: bool = True
+    allow_webcabinet: bool = True
     note: Optional[str] = None
     created_by: Optional[int] = None
 
@@ -97,6 +105,8 @@ class UpdateAdLinkDto:
     cost: Optional[Decimal] = None
     cost_currency: Optional[Currency] = None
     is_active: Optional[bool] = None
+    allow_bot: Optional[bool] = None
+    allow_webcabinet: Optional[bool] = None
     note: Optional[str] = None
 
 
@@ -120,6 +130,8 @@ class GetAdvertisingSummaryDto:
     is_active: Optional[bool] = None
     report_currency: Optional[Currency] = None
     created_from: Optional[datetime] = None
+    # snapshot as of this moment: later attributions and payments are left out
+    created_to: Optional[datetime] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -127,3 +139,19 @@ class ListAdLinkAttributedUsersDto:
     ad_link_id: int
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserAdAttributionDto:
+    ad_link_id: int
+    name: str
+    code: str
+    channel: AdLinkChannel
+    attributed_at: datetime
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdLinkShareUrlsDto:
+    # None = channel not allowed on this link, or its base URL isn't known
+    bot_url: Optional[str] = None
+    webcabinet_url: Optional[str] = None

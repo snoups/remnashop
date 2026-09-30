@@ -15,7 +15,7 @@ export function PricingPage() {
   }
 
   if (state.kind === "loading") {
-    return <Spinner />;
+    return <Spinner size="page" />;
   }
 
   return (

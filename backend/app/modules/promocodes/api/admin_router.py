@@ -1,6 +1,8 @@
+from dataclasses import asdict
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.admin import require_admin
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
@@ -8,15 +10,29 @@ from app.core.utils.time import range_start_utc
 from app.modules.promocodes.api.schemas import (
     CreatePromocodeRequest,
     GeneratedPromocodeCodeResponse,
+    PromocodeActivatedUserPageResponse,
+    PromocodeActivatedUserResponse,
     PromocodeResponse,
+    PromocodeSummaryResponse,
     UpdatePromocodeRequest,
+    UserPromocodeActivationResponse,
 )
-from app.modules.promocodes.dto import CreatePromocodeDto, PromocodeDto, UpdatePromocodeDto
+from app.modules.promocodes.dto import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    CreatePromocodeDto,
+    ListPromocodeActivatedUsersDto,
+    PromocodeDto,
+    UpdatePromocodeDto,
+)
 from app.modules.promocodes.usecases import (
     CreatePromocodeUseCase,
     DeletePromocodeUseCase,
     GeneratePromocodeCodeUseCase,
+    GetPromocodeSummaryUseCase,
+    ListPromocodeActivatedUsersUseCase,
     ListPromocodesUseCase,
+    ListUserPromocodeActivationsUseCase,
     UpdatePromocodeUseCase,
 )
 from app.modules.users import UserDto
@@ -39,6 +55,7 @@ def _to_response(promo: PromocodeDto) -> PromocodeResponse:
         expires_at=promo.expires_at,
         max_activations=promo.max_activations,
         is_reusable=promo.is_reusable,
+        created_at=promo.created_at,
     )
 
 
@@ -50,6 +67,49 @@ async def list_promocodes(
 ) -> list[PromocodeResponse]:
     promocodes = await use_case(actor)
     return [_to_response(promo) for promo in promocodes]
+
+
+@router.get("/activations", response_model=list[UserPromocodeActivationResponse])
+@inject
+async def list_user_promocode_activations(
+    user_id: int,
+    use_case: FromDishka[ListUserPromocodeActivationsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> list[UserPromocodeActivationResponse]:
+    activations = await use_case(actor, user_id)
+    return [UserPromocodeActivationResponse(**asdict(item)) for item in activations]
+
+
+@router.get("/summary", response_model=PromocodeSummaryResponse)
+@inject
+async def get_promocode_summary(
+    use_case: FromDishka[GetPromocodeSummaryUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> PromocodeSummaryResponse:
+    return PromocodeSummaryResponse(**asdict(await use_case(actor)))
+
+
+@router.get("/{promocode_id}/users", response_model=PromocodeActivatedUserPageResponse)
+@inject
+async def list_promocode_activated_users(
+    promocode_id: int,
+    use_case: FromDishka[ListPromocodeActivatedUsersUseCase],
+    actor: UserDto = Depends(require_admin),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+) -> PromocodeActivatedUserPageResponse:
+    try:
+        users, total = await use_case(
+            actor,
+            ListPromocodeActivatedUsersDto(
+                promocode_id=promocode_id, page=page, page_size=page_size
+            ),
+        )
+    except NotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    return PromocodeActivatedUserPageResponse(
+        items=[PromocodeActivatedUserResponse(**asdict(user)) for user in users], total=total
+    )
 
 
 @router.post("", response_model=PromocodeResponse, status_code=status.HTTP_201_CREATED)

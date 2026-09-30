@@ -64,12 +64,20 @@ def _rates(rub_rate: Decimal = Decimal("1")) -> CurrencyRateTable:
     )
 
 
-def _user(*, personal_discount: int = 0, purchase_discount: int = 0) -> UserDto:
+def _user(
+    *,
+    personal_discount: int = 0,
+    purchase_discount: int = 0,
+    personal_discount_promocode_id: Optional[int] = None,
+    purchase_discount_promocode_id: Optional[int] = None,
+) -> UserDto:
     return UserDto(
         name="buyer",
         role=Role.USER,
         personal_discount=personal_discount,
         purchase_discount=purchase_discount,
+        personal_discount_promocode_id=personal_discount_promocode_id,
+        purchase_discount_promocode_id=purchase_discount_promocode_id,
     )
 
 
@@ -206,3 +214,15 @@ def test_quote_price_derives_from_rate() -> None:
     rates = _rates(rub_rate=Decimal("95"))
     quote = quote_price(plan, 30, Currency.RUB, _user(), rates)
     assert quote.base_price == Decimal("190")
+
+
+def test_quote_price_carries_the_winning_discounts_promocode() -> None:
+    plan = _plan(base_price=Decimal("500"))
+    user = _user(
+        personal_discount=10,
+        purchase_discount=20,
+        personal_discount_promocode_id=1,
+        purchase_discount_promocode_id=2,
+    )
+    assert quote_price(plan, 30, Currency.RUB, user, _rates()).discount_promocode_id == 2
+    assert quote_price(plan, 30, Currency.RUB, _user(), _rates()).discount_promocode_id is None

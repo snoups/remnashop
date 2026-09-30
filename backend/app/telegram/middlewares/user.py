@@ -9,7 +9,7 @@ from app.core.config import AppConfig
 from app.core.constants import CONFIG_KEY, CONTAINER_KEY, USER_KEY
 from app.core.enums import Locale, MiddlewareEventType
 from app.modules.users import RegisterTelegramUserDto, RegisterTelegramUserUseCase
-from app.telegram.middlewares._codes import parse_ad_link_code
+from app.telegram.middlewares._codes import parse_ad_link_code, parse_referral_code
 from app.telegram.middlewares.base import EventTypedMiddleware
 
 
@@ -54,6 +54,7 @@ class UserMiddleware(EventTypedMiddleware):
                 language=telegram_language or config.default_locale,
                 sync_language=telegram_language is not None,
                 ad_link_code=parse_ad_link_code(event),
+                referral_code=parse_referral_code(event),
             )
         )
         return await handler(event, data)

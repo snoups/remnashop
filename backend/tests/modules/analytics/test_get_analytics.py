@@ -122,6 +122,34 @@ async def test_kpi_against_seeded_fixtures(
     assert analytics.kpi.arpu == analytics.kpi.total_revenue_by_currency[Currency.RUB]
 
 
+async def test_mrr_is_rounded_to_cents(
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+) -> None:
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=840_101,
+        remnawave_user_id=840_101,
+        status=SubscriptionStatus.ACTIVE,
+        expire_at=datetime_now() + timedelta(days=90),
+        price_paid=Decimal("100"),
+        currency=Currency.RUB,
+        duration_days=90,
+    )
+
+    use_case = _use_case(
+        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+    )
+    analytics = await use_case(OWNER, GetAnalyticsDto(days=7))
+
+    # 100 / 90 * 30 = 33.333... -- unrounded, the API ships all ~28 digits
+    assert analytics.kpi.mrr == Decimal("33.33")
+
+
 async def test_churn_snapshot_matches_the_repository_formula(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,

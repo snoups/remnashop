@@ -15,6 +15,7 @@ import {
 // non-raw ShaderMaterial regardless of that flag, so leaving it default is what
 // makes this shader's `varying`/`gl_FragColor` syntax actually compile.
 const MIN_FRAME_INTERVAL_MS = 1000 / 30;
+const BUFFER_SCALE = 0.5;
 
 const VERTEX_SHADER = `
 varying vec2 vUv;
@@ -170,11 +171,14 @@ export function ShaderBackground() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const renderer = new THREE.WebGLRenderer({ canvas, context: gl, antialias: false, alpha: false });
-    // 1, not min(devicePixelRatio, 2): every fragment costs 4 snoise() calls
-    // (~400 ALU ops), so a retina buffer quadruples GPU load for a blurred
-    // noise gradient that has no detail to resolve at that density.
-    renderer.setPixelRatio(1);
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    // Half a CSS pixel per buffer pixel, upscaled by the browser: every fragment
+    // costs 4 snoise() calls (~400 ALU ops), and a low-frequency gradient that
+    // sits under a backdrop-blur has no detail to lose at quarter density.
+    // Scaled here, not via setPixelRatio(0.5): three.js floors the buffer but rounds the
+    // viewport, so an odd window width left the viewport a pixel wider than the buffer.
+    const resize = () =>
+      renderer.setSize(Math.ceil(window.innerWidth * BUFFER_SCALE), Math.ceil(window.innerHeight * BUFFER_SCALE), false);
+    resize();
 
     const scene = new THREE.Scene();
     const camera = new THREE.Camera();
@@ -206,7 +210,7 @@ export function ShaderBackground() {
     renderFrame();
 
     function onResize() {
-      renderer.setSize(window.innerWidth, window.innerHeight, false);
+      resize();
       renderFrame();
     }
     window.addEventListener("resize", onResize);

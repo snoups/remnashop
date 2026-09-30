@@ -18,7 +18,7 @@ from app.modules.blacklist.dto import (
     BlacklistSourceDto,
     ParsedSourceList,
 )
-from app.modules.blacklist.normalize import normalize_identity
+from app.modules.blacklist.normalize import normalize_identity, removal_key
 
 _SINGLETON_ID: Final[int] = 1
 
@@ -71,7 +71,7 @@ class BlacklistRepository:
         return True
 
     async def remove_entry(self, kind: BlacklistKind, value: str) -> bool:
-        normalized = normalize_identity(kind, value)
+        normalized = removal_key(kind, value)
         if normalized is None:
             return False
         row = await self.session.get(Blacklist, _SINGLETON_ID)

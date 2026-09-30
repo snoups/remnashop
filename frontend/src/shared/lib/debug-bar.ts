@@ -6,6 +6,7 @@ export type LatencyMode = 0 | 2000 | 10000;
 
 export interface DebugState {
   barVisible: boolean;
+  barCollapsed: boolean;
   apiFailure: ApiFailureMode;
   latency: LatencyMode;
   noPermissions: boolean;
@@ -14,11 +15,13 @@ export interface DebugState {
 }
 
 // Debug-bar switches, per browser -- nothing here reaches the backend. The bar
-// itself is hidden behind a long press on the sidebar version pill.
+// itself is hidden behind a long press on the sidebar version pill or, where
+// the sidebar is gone (mobile), on the header's page title.
 const STORAGE_KEY = "remnashop_debug";
 
 const DEFAULT_STATE: DebugState = {
   barVisible: false,
+  barCollapsed: false,
   apiFailure: "off",
   latency: 0,
   noPermissions: false,

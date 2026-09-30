@@ -56,17 +56,37 @@ async def test_revoked_token_not_returned_by_get_active_by_hash(
     assert found is None
 
 
-async def test_list_active_excludes_revoked(
+async def test_list_not_revoked_excludes_revoked(
     api_token_repository: ApiTokenRepository, uow: UnitOfWork
 ) -> None:
     kept_id = await _create(api_token_repository, uow, name="kept", token_hash="kept-hash")
     revoked_id = await _create(api_token_repository, uow, name="revoked", token_hash="revoked-hash")
     await api_token_repository.revoke_by_id(revoked_id)
 
-    active = await api_token_repository.list_active()
-    active_ids = {token.id for token in active}
-    assert kept_id in active_ids
-    assert revoked_id not in active_ids
+    listed = await api_token_repository.list_not_revoked()
+    listed_ids = {token.id for token in listed}
+    assert kept_id in listed_ids
+    assert revoked_id not in listed_ids
+
+
+async def test_list_not_revoked_includes_expired(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        expired = await api_token_repository.create(
+            CreateApiTokenDto(
+                name="expired",
+                permissions=[Permission.BANNERS_UPLOAD],
+                token_hash="expired-hash",
+                created_by_user_id=None,
+                expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+            )
+        )
+        await uow.commit()
+
+    listed_ids = {token.id for token in await api_token_repository.list_not_revoked()}
+    assert expired.id in listed_ids
+    assert await api_token_repository.get_active_by_hash("expired-hash") is None
 
 
 async def test_touch_last_used_sets_timestamp(

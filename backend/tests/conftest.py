@@ -18,6 +18,7 @@ os.environ.setdefault("DATABASE_PORT", "5432")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 
+from decimal import Decimal
 from typing import AsyncIterator
 
 import httpx
@@ -43,6 +44,7 @@ from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing import repository as pricing_repository_module
 from app.modules.pricing.repository import PricingRepository
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals.repository import ReferralRepository
@@ -134,6 +136,15 @@ def settings_repository(session: AsyncSession) -> SettingsRepository:
 @pytest.fixture
 def pricing_repository(session: AsyncSession) -> PricingRepository:
     return PricingRepository(session)
+
+
+@pytest.fixture(autouse=True)
+def _unit_seed_rates(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Revenue/ROI tests aggregate across currencies and assume 1:1 cross rates;
+    # keeps them independent of the production seed (RUB 85, XTR 77).
+    seed = pricing_repository_module._SEED_RATES
+    unit = {currency: (Decimal("1"), *rest) for currency, (_, *rest) in seed.items()}
+    monkeypatch.setattr(pricing_repository_module, "_SEED_RATES", unit)
 
 
 @pytest.fixture

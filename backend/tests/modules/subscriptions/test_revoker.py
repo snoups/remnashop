@@ -1,3 +1,6 @@
+from sqlalchemy import update
+
+from app.core.db.models.subscription import Subscription
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import CreateSubscriptionDto
@@ -19,10 +22,17 @@ async def test_revoke_all_by_user_deletes_the_users_live_panel_identities(
     owner = await user_repository.create(CreateUserDto(name="gone", telegram_id=7301))
     bystander = await user_repository.create(CreateUserDto(name="stays", telegram_id=7302))
     live = await remnawave_sdk.users.create_user(_create_request("rs_live"))
+    expired = await remnawave_sdk.users.create_user(_create_request("rs_expired"))
     already_deleted = await remnawave_sdk.users.create_user(_create_request("rs_deleted"))
     other = await remnawave_sdk.users.create_user(_create_request("rs_other"))
     async with uow:
-        await _subscription(subscription_repository, owner.id, live.id)
+        live_row = await _subscription(subscription_repository, owner.id, live.id)
+        expired_row = await _subscription(subscription_repository, owner.id, expired.id)
+        await subscription_repository.session.execute(
+            update(Subscription)
+            .where(Subscription.id == expired_row.id)
+            .values(status=SubscriptionStatus.EXPIRED)
+        )
         deleted_row = await _subscription(subscription_repository, owner.id, already_deleted.id)
         await subscription_repository.mark_deleted(deleted_row.id)
         await _subscription(subscription_repository, bystander.id, other.id)
@@ -34,7 +44,14 @@ async def test_revoke_all_by_user_deletes_the_users_live_panel_identities(
     ).revoke_all_by_user(owner.id)
 
     assert live.id not in remnawave_store
+    # an expired subscription still has a panel identity -- it goes too
+    assert expired.id not in remnawave_store
     assert other.id in remnawave_store
+    # rows are kept as history but can't be reconciled back to life
+    for row in (live_row, expired_row):
+        assert (await subscription_repository.get_by_id(row.id)).status == (
+            SubscriptionStatus.DELETED
+        )
 
 
 def _create_request(username: str):

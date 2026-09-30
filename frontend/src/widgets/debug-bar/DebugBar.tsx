@@ -1,8 +1,11 @@
 import {
   Bell,
   BellRing,
+  ChevronsDownUp,
+  ChevronsUpDown,
   ClipboardCopy,
   Eraser,
+  FlaskConical,
   KeyRound,
   Languages,
   PackagePlus,
@@ -11,9 +14,10 @@ import {
   Turtle,
   Wifi,
   WifiOff,
+  X,
 } from "lucide-react";
-import { motion } from "motion/react";
-import type { ComponentType } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
@@ -45,6 +49,8 @@ const FAILURE_ICON: Record<ApiFailureMode, ComponentType<{ className?: string }>
 
 const LATENCY_CYCLE: Record<LatencyMode, LatencyMode> = { 0: 2000, 2000: 10000, 10000: 0 };
 
+const BAR_TRANSITION = { duration: 0.22, ease: [0.2, 0.8, 0.2, 1] } as const;
+
 let next = 0;
 
 function DebugButton({
@@ -52,11 +58,13 @@ function DebugButton({
   label,
   active,
   onClick,
+  className = "",
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   active?: boolean;
   onClick: () => void;
+  className?: string;
 }) {
   const bounceStrength = useBounceStrength();
 
@@ -67,7 +75,7 @@ function DebugButton({
       aria-label={label}
       aria-pressed={active}
       {...bounceTap(bounceStrength, 0.12)}
-      className={`group relative flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border transition-colors ${
+      className={`${className} group relative flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border transition-colors ${
         active
           ? "bg-accent text-primary"
           : "bg-white/[0.05] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
@@ -82,7 +90,7 @@ function DebugButton({
 export function DebugBar() {
   const { t, i18n } = useTranslation();
   const state = useDebugState();
-  const { barVisible, apiFailure, latency, noPermissions, fakeUpdate, missingKeys } = state;
+  const { barVisible, barCollapsed, apiFailure, latency, noPermissions, fakeUpdate, missingKeys } = state;
 
   if (!barVisible) return null;
 
@@ -121,44 +129,131 @@ export function DebugBar() {
       .catch(() => toast.error(t("debugBar.snapshotFailed")));
   };
 
+  // Stateful switches -- the ones left on stay visible while the bar is collapsed.
+  const toggles = [
+    {
+      key: "apiFailure",
+      icon: FAILURE_ICON[apiFailure],
+      label: t(`debugBar.apiFailure.${apiFailure}`),
+      active: apiFailure !== "off",
+      onClick: () => setDebugState({ apiFailure: FAILURE_CYCLE[apiFailure] }),
+    },
+    {
+      key: "latency",
+      icon: Turtle,
+      label: t(latency ? "debugBar.latency.on" : "debugBar.latency.off", { seconds: latency / 1000 }),
+      active: latency !== 0,
+      onClick: () => setDebugState({ latency: LATENCY_CYCLE[latency] }),
+    },
+    {
+      key: "noPermissions",
+      icon: ShieldOff,
+      label: t("debugBar.noPermissions"),
+      active: noPermissions,
+      onClick: () => setDebugState({ noPermissions: !noPermissions }),
+    },
+    {
+      key: "fakeUpdate",
+      icon: PackagePlus,
+      label: t("debugBar.fakeUpdate"),
+      active: fakeUpdate,
+      onClick: () => setDebugState({ fakeUpdate: !fakeUpdate }),
+    },
+    {
+      key: "missingKeys",
+      icon: Languages,
+      label: t("debugBar.missingKeys"),
+      active: missingKeys,
+      onClick: () => setDebugState({ missingKeys: !missingKeys }),
+    },
+  ];
+  const toggleItems = toggles.map(({ key, ...toggle }) => ({ key, node: <DebugButton {...toggle} /> }));
+  const divider = { key: "divider", node: <span aria-hidden className="block h-6 w-px bg-glass-border md:h-px md:w-6" /> };
+
+  const items: { key: string; node: ReactNode; className?: string }[] = barCollapsed
+    ? [
+        ...(toggles.some((toggle) => toggle.active) ? [divider] : []),
+        ...toggleItems.filter((_, i) => toggles[i].active),
+        {
+          key: "expand",
+          node: (
+            <DebugButton
+              icon={ChevronsUpDown}
+              label={t("debugBar.expand")}
+              onClick={() => setDebugState({ barCollapsed: false })}
+            />
+          ),
+        },
+      ]
+    : [
+        divider,
+        { key: "shader", node: <ShaderToggle /> },
+        { key: "toast", node: <DebugButton icon={Bell} label={t("debugBar.testToast")} onClick={sendToast} /> },
+        { key: "burst", node: <DebugButton icon={BellRing} label={t("debugBar.burstToasts")} onClick={burstToasts} /> },
+        ...toggleItems.slice(0, 2),
+        {
+          key: "expireToken",
+          node: <DebugButton icon={KeyRound} label={t("debugBar.expireToken")} onClick={expireToken} />,
+        },
+        ...toggleItems.slice(2),
+        {
+          key: "debugPage",
+          // full navigation: the bar renders outside the router, so no client-side navigate here
+          node: (
+            <DebugButton
+              icon={FlaskConical}
+              label={t("debugBar.openDebugPage")}
+              onClick={() => window.location.assign("/dashboard/debug")}
+            />
+          ),
+        },
+        {
+          key: "snapshot",
+          node: <DebugButton icon={ClipboardCopy} label={t("debugBar.copySnapshot")} onClick={copySnapshot} />,
+        },
+        { key: "wipe", node: <DebugButton icon={Eraser} label={t("debugBar.wipeStorage")} onClick={wipeStorage} /> },
+        {
+          key: "collapse",
+          node: (
+            <DebugButton
+              icon={ChevronsDownUp}
+              label={t("debugBar.collapse")}
+              onClick={() => setDebugState({ barCollapsed: true })}
+            />
+          ),
+          // top of the column on desktop, next to close on mobile
+          className: "order-first md:order-none",
+        },
+      ];
+
   return (
-    <div className="fixed bottom-4 left-4 z-50 flex flex-col items-center gap-2 rounded-full border border-glass-border bg-popover/50 p-1.5 backdrop-blur-2xl backdrop-saturate-150">
-      <ShaderToggle />
-      <DebugButton icon={Bell} label={t("debugBar.testToast")} onClick={sendToast} />
-      <DebugButton icon={BellRing} label={t("debugBar.burstToasts")} onClick={burstToasts} />
-      <DebugButton
-        icon={FAILURE_ICON[apiFailure]}
-        label={t(`debugBar.apiFailure.${apiFailure}`)}
-        active={apiFailure !== "off"}
-        onClick={() => setDebugState({ apiFailure: FAILURE_CYCLE[apiFailure] })}
-      />
-      <DebugButton
-        icon={Turtle}
-        label={t(latency ? "debugBar.latency.on" : "debugBar.latency.off", { seconds: latency / 1000 })}
-        active={latency !== 0}
-        onClick={() => setDebugState({ latency: LATENCY_CYCLE[latency] })}
-      />
-      <DebugButton icon={KeyRound} label={t("debugBar.expireToken")} onClick={expireToken} />
-      <DebugButton
-        icon={ShieldOff}
-        label={t("debugBar.noPermissions")}
-        active={noPermissions}
-        onClick={() => setDebugState({ noPermissions: !noPermissions })}
-      />
-      <DebugButton
-        icon={PackagePlus}
-        label={t("debugBar.fakeUpdate")}
-        active={fakeUpdate}
-        onClick={() => setDebugState({ fakeUpdate: !fakeUpdate })}
-      />
-      <DebugButton
-        icon={Languages}
-        label={t("debugBar.missingKeys")}
-        active={missingKeys}
-        onClick={() => setDebugState({ missingKeys: !missingKeys })}
-      />
-      <DebugButton icon={ClipboardCopy} label={t("debugBar.copySnapshot")} onClick={copySnapshot} />
-      <DebugButton icon={Eraser} label={t("debugBar.wipeStorage")} onClick={wipeStorage} />
-    </div>
+    // mobile: a scrollable row above the bottom nav (BottomNav: ~46px pill + its bottom margin).
+    // borderRadius inline, not rounded-full -- motion only corrects layout distortion for style values.
+    <motion.div
+      layout
+      transition={BAR_TRANSITION}
+      style={{ borderRadius: 9999 }}
+      className="no-scrollbar fixed bottom-[calc(max(0.5rem,env(safe-area-inset-bottom))+3.5rem)] left-2 z-50 flex max-w-[calc(100vw-1rem)] items-center gap-2 overflow-x-auto border border-glass-border bg-popover/50 p-1.5 backdrop-blur-2xl backdrop-saturate-150 md:bottom-4 md:left-4 md:max-w-none md:flex-col-reverse md:overflow-visible"
+    >
+      <motion.div layout="position" transition={BAR_TRANSITION}>
+        <DebugButton icon={X} label={t("debugBar.close")} onClick={() => setDebugState({ barVisible: false })} />
+      </motion.div>
+      <AnimatePresence initial={false} mode="popLayout">
+        {items.map(({ key, node, className = "" }) => (
+          <motion.div
+            key={key}
+            layout="position"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.6 }}
+            transition={BAR_TRANSITION}
+            // ShaderToggle renders nothing when the shader is off dashboard-wide
+            className={`${className} shrink-0 empty:hidden`}
+          >
+            {node}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </motion.div>
   );
 }

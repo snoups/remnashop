@@ -58,3 +58,16 @@ class PaymentOrderResponse(BaseModel):
 class PaymentOrderPageResponse(BaseModel):
     items: list[PaymentOrderResponse]
     total: int
+
+
+class PaymentOrderSummaryResponse(BaseModel):
+    report_currency: Currency
+    total_count: int
+    pending_count: int
+    paid_count: int
+    conversion_rate: Decimal
+    revenue: Decimal
+    average_check: Optional[Decimal]
+    average_discount: Optional[Decimal]
+    discount_amount: Decimal
+    refunded_amount: Decimal

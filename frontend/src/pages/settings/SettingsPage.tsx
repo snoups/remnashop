@@ -6,6 +6,7 @@ import {
   Database,
   KeyRound,
   Palette,
+  Share2,
   SlidersHorizontal,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -37,6 +38,7 @@ export function SettingsPage() {
   const canManageBackups = permissions.includes("BACKUPS_VIEW");
   const canViewBlacklist = permissions.includes("BLACKLIST_VIEW");
   const canViewPricing = permissions.includes("PRICING_VIEW");
+  const canViewReferrals = permissions.includes("REFERRALS_SETTINGS_VIEW");
   const isGeneralActive = useMatch({ path: "/dashboard/settings", end: true }) !== null;
   const isBotActive = useMatch("/dashboard/settings/bot") !== null;
   const isApiTokensActive = useMatch("/dashboard/settings/api-tokens") !== null;
@@ -45,6 +47,7 @@ export function SettingsPage() {
   const isBackupsActive = useMatch("/dashboard/settings/backups") !== null;
   const isBlacklistActive = useMatch("/dashboard/settings/blacklist") !== null;
   const isPricingActive = useMatch("/dashboard/settings/pricing") !== null;
+  const isReferralsActive = useMatch("/dashboard/settings/referrals") !== null;
 
   const items: TabBarItem[] = [
     { key: "general", to: "", end: true, icon: SlidersHorizontal, label: t("settings.tabs.general"), isActive: isGeneralActive },
@@ -66,6 +69,9 @@ export function SettingsPage() {
       : []),
     ...(canViewPricing
       ? [{ key: "pricing", to: "pricing", icon: Coins, label: t("settings.tabs.pricing"), isActive: isPricingActive }]
+      : []),
+    ...(canViewReferrals
+      ? [{ key: "referrals", to: "referrals", icon: Share2, label: t("settings.tabs.referrals"), isActive: isReferralsActive }]
       : []),
   ];
 

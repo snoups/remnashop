@@ -1,5 +1,5 @@
 import { AlertCircle, Cpu, Loader2, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
@@ -29,12 +29,14 @@ import type {
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
-import { PeriodToggle } from "@shared/ui/PeriodToggle";
-import { StatCard } from "@shared/ui/StatCard";
+import { PeriodPills } from "@shared/ui/PeriodPills";
+import { KpiTile } from "@shared/ui/KpiTile";
+import { LIST_BODY_CLASS } from "@shared/ui/classes";
+import { formatDateTime } from "@shared/lib/relative-time";
 
 type OverviewState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Overview };
 
-export function fillDailySeries<T extends { day: string }>(
+function fillDailySeries<T extends { day: string }>(
   sparse: T[],
   days: number,
   emptyValue: (day: string) => T,
@@ -50,6 +52,14 @@ export function fillDailySeries<T extends { day: string }>(
   }
   return result;
 }
+
+// theme tokens, not hex: --color-primary follows the dashboard's appearance settings
+const CHART_TICK = { fill: "var(--color-muted-foreground)", fontSize: 11 };
+const CHART_TOOLTIP_STYLE = {
+  contentStyle: { background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 12 },
+  labelStyle: { color: "var(--color-foreground)" },
+  itemStyle: { color: "var(--color-foreground)" },
+};
 
 function TrendChart({
   title,
@@ -74,7 +84,8 @@ function TrendChart({
   granularity: OverviewGranularity;
   valueName?: string;
 }) {
-  const gradientId = `overview-trend-${color.replace("#", "")}`;
+  const { t } = useTranslation();
+  const gradientId = useId();
   return (
     <div className="rounded-2xl border border-border bg-surface/40 p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -83,7 +94,7 @@ function TrendChart({
           {total && <p className="mt-1 text-2xl font-bold text-foreground">{total}</p>}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <PeriodToggle value={days} onChange={onDaysChange} />
+          <PeriodPills value={days} onChange={onDaysChange} ariaLabel={t("dashboard.periodLabel")} />
           {badges && badges.length > 0 && (
             <div className="flex gap-1.5">
               {badges.map((badge) => (
@@ -106,20 +117,18 @@ function TrendChart({
               <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e8ecfb17" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
           <XAxis
             dataKey="day"
             tickFormatter={(value: string) => (granularity === "month" ? value.slice(0, 7) : value.slice(5))}
-            tick={{ fill: "#8b93b8", fontSize: 11 }}
+            tick={CHART_TICK}
             axisLine={false}
             tickLine={false}
           />
-          <YAxis tick={{ fill: "#8b93b8", fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+          <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={40} />
           <Tooltip
             formatter={(value) => valueFormatter(Number(value))}
-            contentStyle={{ background: "#393c47", border: "1px solid #e8ecfb17", borderRadius: 12 }}
-            labelStyle={{ color: "#e8ecfb" }}
-            itemStyle={{ color: "#e8ecfb" }}
+            {...CHART_TOOLTIP_STYLE}
           />
           <Area type="monotone" name={valueName ?? title} dataKey="value" stroke={color} strokeWidth={2} fill={`url(#${gradientId})`} dot={false} />
         </AreaChart>
@@ -129,7 +138,7 @@ function TrendChart({
 }
 
 function RecentEventsCard({ refreshKey }: { refreshKey: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [state, reload] = useAsyncResource((signal) => listEventLog({ pageSize: 8 }, signal));
 
   useEffect(() => {
@@ -157,7 +166,7 @@ function RecentEventsCard({ refreshKey }: { refreshKey: number }) {
         </div>
       )}
       {state.kind === "ready" && (
-        <div className="flex flex-col divide-y divide-border/50">
+        <div className={`${LIST_BODY_CLASS}`}>
           {state.data.items.length === 0 && (
             <p className="py-4 text-sm text-muted-foreground">{t("dashboard.noEvents")}</p>
           )}
@@ -165,7 +174,7 @@ function RecentEventsCard({ refreshKey }: { refreshKey: number }) {
             <div key={entry.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span className="truncate text-foreground">{t(`eventLog.events.${entry.event_type}`)}</span>
               <span className="shrink-0 text-[11px] text-muted-foreground">
-                {new Date(entry.occurred_at).toLocaleString()}
+                {formatDateTime(entry.occurred_at, i18n.language)}
               </span>
             </div>
           ))}
@@ -231,7 +240,7 @@ function RevenueCard({ refreshKey }: { refreshKey: number }) {
       days={days}
       onDaysChange={setDays}
       data={revenueChartData}
-      color="#00c758"
+      color="var(--color-success)"
       valueFormatter={(v) => `${v.toFixed(2)} ${payments.report_currency}`}
       granularity={state.data.granularity}
     />
@@ -274,7 +283,7 @@ function RegistrationsCard({ refreshKey }: { refreshKey: number }) {
       days={days}
       onDaysChange={setDays}
       data={registrationChartData}
-      color="#22d3ee"
+      color="var(--color-primary)"
       valueFormatter={(v) => String(v)}
       granularity={state.data.granularity}
     />
@@ -322,9 +331,9 @@ function OnlineCard({ refreshKey }: { refreshKey: number }) {
 }
 
 const SUBSCRIPTION_SLICE_COLORS = {
-  active: "#22d3ee",
-  limited: "#f99c00",
-  expired: "#8b93b8",
+  active: "var(--color-primary)",
+  limited: "var(--color-warning)",
+  expired: "var(--color-muted-foreground)",
 } as const;
 
 function SubscriptionsDonut({ subscriptions }: { subscriptions: OverviewSubscriptions }) {
@@ -359,9 +368,7 @@ function SubscriptionsDonut({ subscriptions }: { subscriptions: OverviewSubscrip
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: "#393c47", border: "1px solid #e8ecfb17", borderRadius: 12 }}
-                  labelStyle={{ color: "#e8ecfb" }}
-                  itemStyle={{ color: "#e8ecfb" }}
+                  {...CHART_TOOLTIP_STYLE}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -573,7 +580,7 @@ export function DashboardPage() {
         </div>
       )}
       {kpiState.kind === "ready" && kpiState.data.users && (
-        <StatCard
+        <KpiTile
           icon={Users}
           label={t("dashboard.stats.totalUsers")}
           value={String(kpiState.data.users.total)}

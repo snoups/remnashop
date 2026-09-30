@@ -62,14 +62,11 @@ export const ProfilePage = lazy(() => import("@pages/profile/ProfilePage").then(
 export const PromocodesPage = lazy(() =>
   import("@pages/promocodes/PromocodesPage").then((m) => ({ default: m.PromocodesPage })),
 );
-export const ReferralsPage = lazy(() =>
-  import("@pages/referrals/ReferralsPage").then((m) => ({ default: m.ReferralsPage })),
-);
 export const ReferralsListPage = lazy(() =>
   import("@pages/referrals/ReferralsListPage").then((m) => ({ default: m.ReferralsListPage })),
 );
 export const ReferralSettingsPage = lazy(() =>
-  import("@pages/referrals/ReferralSettingsPage").then((m) => ({ default: m.ReferralSettingsPage })),
+  import("@pages/settings/ReferralSettingsPage").then((m) => ({ default: m.ReferralSettingsPage })),
 );
 export const SettingsPage = lazy(() =>
   import("@pages/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
@@ -78,3 +75,12 @@ export const SubscriptionsPage = lazy(() =>
   import("@pages/subscriptions/SubscriptionsPage").then((m) => ({ default: m.SubscriptionsPage })),
 );
 export const UsersPage = lazy(() => import("@pages/users/UsersPage").then((m) => ({ default: m.UsersPage })));
+export const DebugPage = lazy(() =>
+  import("@pages/debug/DebugPage").then((m) => ({ default: m.DebugPage })),
+);
+export const DebugKitPage = lazy(() =>
+  import("@pages/debug/DebugPage").then((m) => ({ default: m.DebugKitPage })),
+);
+export const DebugVariantsPage = lazy(() =>
+  import("@pages/debug/DebugVariantsPage").then((m) => ({ default: m.DebugVariantsPage })),
+);

@@ -1,3 +1,5 @@
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getErrorMessage } from "@shared/api/http";
@@ -5,6 +7,7 @@ import { getOAuthLoginAuthorizeUrl, type OAuthProvider } from "@entities/auth/oa
 import { isHttpsUrl } from "@shared/lib/external-links";
 import { setOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
+import { Button } from "@shared/ui/Button";
 
 const PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
@@ -15,6 +18,8 @@ interface OAuthLoginButtonsProps {
 
 export function OAuthLoginButtons({ oauthProviders, oidcDisplayName }: OAuthLoginButtonsProps) {
   const { t } = useTranslation();
+  // stays set on success: the page is about to navigate away to the provider
+  const [pending, setPending] = useState<OAuthProvider | null>(null);
 
   const providerLabels: Record<OAuthProvider, string> = {
     github: t("profile.oauthAccounts.github"),
@@ -27,30 +32,34 @@ export function OAuthLoginButtons({ oauthProviders, oidcDisplayName }: OAuthLogi
   if (enabled.length === 0) return null;
 
   const handleClick = async (provider: OAuthProvider) => {
+    setPending(provider);
     try {
       const { authorization_url } = await getOAuthLoginAuthorizeUrl(provider);
       if (!isHttpsUrl(authorization_url)) {
         toast.error(t("auth.errors.unsafeAuthorizationUrl"));
+        setPending(null);
         return;
       }
       setOAuthFlow("login");
       window.location.href = authorization_url;
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      setPending(null);
     }
   };
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-2">
       {enabled.map((provider) => (
-        <button
+        <Button
           key={provider}
-          type="button"
+          variant="outline"
           onClick={() => void handleClick(provider)}
-          className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition hover:bg-white/5"
+          disabled={pending !== null}
         >
+          {pending === provider && <Loader2 className="size-3.5 animate-spin" />}
           {t("auth.oauth.continueWith", { provider: providerLabels[provider] })}
-        </button>
+        </Button>
       ))}
     </div>
   );

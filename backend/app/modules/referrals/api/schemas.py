@@ -4,7 +4,12 @@ from typing import Annotated, Optional, TypeAlias
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import ReferralAccrualStrategy, ReferralRewardType
+from app.core.enums import (
+    Currency,
+    ReferralAccrualStrategy,
+    ReferralRewardStrategy,
+    ReferralRewardType,
+)
 
 _WholeDecimal: TypeAlias = Annotated[Decimal, Field(decimal_places=0)]
 
@@ -14,7 +19,9 @@ class ReferralSettingsResponse(BaseModel):
     max_level: int
     accrual_strategy: ReferralAccrualStrategy
     reward_type: ReferralRewardType
+    reward_strategy: ReferralRewardStrategy
     reward_amounts: dict[int, Decimal]
+    anchor_currency: Optional[Currency]
 
 
 class UpdateReferralSettingsRequest(BaseModel):
@@ -22,13 +29,30 @@ class UpdateReferralSettingsRequest(BaseModel):
     max_level: Optional[int] = Field(default=None, ge=1, le=3)
     accrual_strategy: Optional[ReferralAccrualStrategy] = None
     reward_type: Optional[ReferralRewardType] = None
+    reward_strategy: Optional[ReferralRewardStrategy] = None
     reward_amounts: Optional[dict[int, _WholeDecimal]] = None
+
+
+class ReferralUserResponse(BaseModel):
+    id: int
+    name: str
+    username: Optional[str]
+    telegram_id: Optional[int]
 
 
 class ReferralRewardResponse(BaseModel):
     type: ReferralRewardType
     amount: Decimal
     created_at: Optional[datetime]
+    # admin view only
+    buyer: Optional[ReferralUserResponse] = None
+    level: Optional[int] = None
+
+
+class ReferralRevenueResponse(BaseModel):
+    amount: Decimal
+    currency: Currency
+    paying_count: int
 
 
 class ReferralStatsResponse(BaseModel):
@@ -37,13 +61,13 @@ class ReferralStatsResponse(BaseModel):
     points: Decimal
     counts_by_level: dict[int, int]
     rewards: list[ReferralRewardResponse]
+    # admin view only
+    referrer: Optional[ReferralUserResponse] = None
 
 
-class ReferralUserResponse(BaseModel):
-    id: int
-    name: str
-    username: Optional[str]
-    telegram_id: Optional[int]
+class ReferralLinksResponse(BaseModel):
+    bot_url: Optional[str]
+    webcabinet_url: Optional[str]
 
 
 class ReferralListItemResponse(BaseModel):
@@ -61,6 +85,14 @@ class ReferralPageResponse(BaseModel):
     total: int
 
 
+class ReferralSummaryResponse(BaseModel):
+    total_count: int
+    referrers_count: int
+    rewarded_count: int
+    conversion_rate: Decimal
+    reward_amounts: dict[ReferralRewardType, Decimal]
+
+
 class AdjustPointsRequest(BaseModel):
     delta: _WholeDecimal
 
@@ -71,3 +103,16 @@ class AttachReferralRequest(BaseModel):
 
 class WithdrawPointsRequest(BaseModel):
     amount: _WholeDecimal = Field(gt=0)
+
+
+class InvitedUserResponse(BaseModel):
+    user: Optional[ReferralUserResponse]
+    via: Optional[ReferralUserResponse]
+    level: int
+    created_at: Optional[datetime]
+    reward_amounts: dict[ReferralRewardType, Decimal]
+
+
+class InvitedUserPageResponse(BaseModel):
+    items: list[InvitedUserResponse]
+    total: int

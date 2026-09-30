@@ -47,7 +47,7 @@ class BlacklistMatchPageDto:
     lists_total: int
 
 
-def _identities_of(
+def identities_of(
     origins: BlacklistOriginsDto, origin: Optional[BlacklistMatchOrigin] = None
 ) -> tuple[set[int], set[str]]:
     if origin is None:
@@ -102,16 +102,16 @@ class ListBlacklistMatchesUseCase(UseCase[ListBlacklistMatchesInput, BlacklistMa
         async with self._uow:
             origins = await self._blacklist_repository.identity_origins()
             all_total = await self._user_repository.count_matching(
-                *_identities_of(origins), roles=_ROLES
+                *identities_of(origins), roles=_ROLES
             )
             manual_total = await self._user_repository.count_matching(
-                *_identities_of(origins, "manual"), roles=_ROLES
+                *identities_of(origins, "manual"), roles=_ROLES
             )
             lists_total = await self._user_repository.count_matching(
-                *_identities_of(origins, "lists"), roles=_ROLES
+                *identities_of(origins, "lists"), roles=_ROLES
             )
             users, total = await self._user_repository.list_matching(
-                *_identities_of(origins, data.origin),
+                *identities_of(origins, data.origin),
                 roles=_ROLES,
                 search=data.search,
                 page=data.page,

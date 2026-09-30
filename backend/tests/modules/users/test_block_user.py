@@ -6,7 +6,9 @@ from app.core.enums import Locale, Role
 from app.core.events import BaseEvent
 from app.core.exceptions import PermissionDeniedError
 from app.core.security.permissions import Permission
+from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
+from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.users.dto import CreateUserDto, PromoteAdminDto, UserDto
 from app.modules.users.events import UsersBulkBlockedEvent, UsersBulkUnblockedEvent
 from app.modules.users.repository import UserRepository
@@ -69,10 +71,19 @@ async def test_block_user_sets_flag_and_writes_cascade_entry(
     uow,
     event_publisher,
     owner,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
     target = await user_repository.create(CreateUserDto(telegram_id=500, name="t"))
 
-    use_case = BlockUserUseCase(user_repository, blacklist_repository, uow, event_publisher)
+    use_case = BlockUserUseCase(
+        user_repository,
+        blacklist_repository,
+        uow,
+        event_publisher,
+        session_repository,
+        passkey_repository,
+    )
     result = await use_case(owner, target.id)
     assert result.is_blocked is True
 
@@ -81,7 +92,12 @@ async def test_block_user_sets_flag_and_writes_cascade_entry(
 
 
 async def test_block_user_role_guard(
-    user_repository: UserRepository, blacklist_repository, uow, event_publisher
+    user_repository: UserRepository,
+    blacklist_repository,
+    uow,
+    event_publisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
     # An ADMIN actor cannot block another ADMIN (equal role -> actor.role > target.role is False).
     admin_actor = UserDto(id=2, telegram_id=2, name="a", role=Role.ADMIN)
@@ -96,18 +112,36 @@ async def test_block_user_role_guard(
         ),
     )
 
-    use_case = BlockUserUseCase(user_repository, blacklist_repository, uow, event_publisher)
+    use_case = BlockUserUseCase(
+        user_repository,
+        blacklist_repository,
+        uow,
+        event_publisher,
+        session_repository,
+        passkey_repository,
+    )
     with pytest.raises(PermissionDeniedError):
         await use_case(admin_actor, target.id)
 
 
 async def test_unblock_removes_manual_cascade_entry(
-    user_repository: UserRepository, blacklist_repository, uow, event_publisher, owner
+    user_repository: UserRepository,
+    blacklist_repository,
+    uow,
+    event_publisher,
+    owner,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
 ) -> None:
     target = await user_repository.create(CreateUserDto(telegram_id=600, name="t"))
-    await BlockUserUseCase(user_repository, blacklist_repository, uow, event_publisher)(
-        owner, target.id
-    )
+    await BlockUserUseCase(
+        user_repository,
+        blacklist_repository,
+        uow,
+        event_publisher,
+        session_repository,
+        passkey_repository,
+    )(owner, target.id)
     await UnblockUserUseCase(user_repository, blacklist_repository, uow, event_publisher)(
         owner, target.id
     )

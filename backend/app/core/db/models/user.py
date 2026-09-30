@@ -1,7 +1,8 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import BigInteger, CheckConstraint, Index, Numeric, String, text
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -57,6 +58,13 @@ class User(BaseSql, TimestampMixin):
     ip_allowlist: Mapped[Optional[list[str]]] = mapped_column(JSONB)
     personal_discount: Mapped[int] = mapped_column(default=0, server_default="0")
     purchase_discount: Mapped[int] = mapped_column(default=0, server_default="0")
+    # the promocode that set each discount; NULL when an admin set it or it's 0
+    personal_discount_promocode_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("promocodes.id", ondelete="SET NULL")
+    )
+    purchase_discount_promocode_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("promocodes.id", ondelete="SET NULL")
+    )
     # Nullable: generated on every new create(), pre-existing rows may lack
     # one (see the plan's Global Constraints) -- multiple NULLs are fine
     # under a UNIQUE index.
@@ -68,3 +76,9 @@ class User(BaseSql, TimestampMixin):
     # PurchaseSubscriptionUseCase._purchase_new -- so "has a trial row"
     # would give the wrong answer post-conversion).
     is_trial_available: Mapped[bool] = mapped_column(default=True, server_default="true")
+    # dashboard bell: events up to this moment count as read
+    notifications_seen_at: Mapped[Optional[datetime]]
+    # NULL = the default (critical) groups; see NOTIFICATION_GROUPS
+    notification_groups: Mapped[Optional[list[str]]] = mapped_column(JSONB)
+    # soft delete: the row stays for payment/referral history, personal data is wiped
+    deleted_at: Mapped[Optional[datetime]]

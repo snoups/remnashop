@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 
 from app.core.enums import Currency, DiscountSource
 from app.core.exceptions import ValidationError
@@ -19,22 +20,23 @@ def _base_price(
     raise ValidationError(f"Plan '{plan.public_code}' has no duration of '{duration_days}' days")
 
 
-def _effective_discount(user: UserDto) -> tuple[int, DiscountSource]:
+def _effective_discount(user: UserDto) -> tuple[int, DiscountSource, Optional[int]]:
+    # (percent, source, promocode that set it)
     personal = user.personal_discount
     purchase = user.purchase_discount
     percent = min(max(personal, purchase), 100)
     if percent == 0:
-        return 0, DiscountSource.NONE
+        return 0, DiscountSource.NONE, None
     if personal >= purchase:
-        return percent, DiscountSource.PERSONAL
-    return percent, DiscountSource.PURCHASE
+        return percent, DiscountSource.PERSONAL, user.personal_discount_promocode_id
+    return percent, DiscountSource.PURCHASE, user.purchase_discount_promocode_id
 
 
 def quote_price(
     plan: PlanDto, duration_days: int, currency: Currency, user: UserDto, rates: CurrencyRateTable
 ) -> PriceQuote:
     base_price = _base_price(plan, duration_days, currency, rates)
-    discount_percent, discount_source = _effective_discount(user)
+    discount_percent, discount_source, discount_promocode_id = _effective_discount(user)
 
     if discount_percent >= 100:
         return PriceQuote(
@@ -42,6 +44,7 @@ def quote_price(
             discount_percent=100,
             discount_source=discount_source,
             final_price=Decimal(0),
+            discount_promocode_id=discount_promocode_id,
         )
 
     if discount_percent == 0:
@@ -55,4 +58,5 @@ def quote_price(
         discount_percent=discount_percent,
         discount_source=discount_source,
         final_price=final_price,
+        discount_promocode_id=discount_promocode_id,
     )

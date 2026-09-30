@@ -1,8 +1,18 @@
-import { Filter, Pencil, Plus, Trash2, X } from "lucide-react";
+import { closestCenter, DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ArrowDownUp, Columns2, GripVertical, Infinity as InfinityIcon, Layers, Plus, Smartphone, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState, type FormEvent } from "react";
+import { type ComponentType, type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { CURRENCY_SYMBOL } from "@entities/payments/api";
 import {
   type CreatePlanRequest,
   createPlan,
@@ -14,14 +24,28 @@ import {
 } from "@entities/plans/api";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
-import { parseRequiredInt } from "@shared/lib/number-input";
+import { blockNonDecimalKeys, blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
-import { Modal, useModalClose } from "@shared/ui/Modal";
-import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Modal } from "@shared/ui/Modal";
+import { useModalClose } from "@shared/ui/modal-hooks";
 import { Switch } from "@shared/ui/Switch";
+import { Button } from "@shared/ui/Button";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { SuffixInput, TextInput, TextArea } from "@shared/ui/TextInput";
+import { Card } from "@shared/ui/Card";
+import { Field } from "@shared/ui/Field";
+import { IconButton } from "@shared/ui/IconButton";
+import { ChoiceChip } from "@shared/ui/ChoiceChip";
 
 const PLAN_TYPES: PlanType[] = ["TRAFFIC", "DEVICES", "BOTH", "UNLIMITED"];
+const PLAN_TYPE_ICON: Record<PlanType, ComponentType<{ className?: string }>> = {
+  TRAFFIC: ArrowDownUp,
+  DEVICES: Smartphone,
+  BOTH: Columns2,
+  UNLIMITED: InfinityIcon,
+};
 const STRATEGIES: TrafficLimitStrategy[] = ["NO_RESET", "DAY", "WEEK", "MONTH", "MONTH_ROLLING"];
+const DURATION_PRESETS = [7, 30, 60, 90, 180, 365];
 
 interface DurationRow {
   id: string;
@@ -31,22 +55,27 @@ interface DurationRow {
 
 interface PlanEditDialogProps {
   plan: Plan | null;
+  anchorCurrency: string | null;
   onClose: () => void;
   onSaved: (plan: Plan) => void;
 }
 
-const fieldClassName =
-  "rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
+const labelClassName = "text-sm font-medium text-foreground/80";
+const hintClassName = "text-[12px] text-muted-foreground";
 
-export function PlanEditDialog({ plan, onClose, onSaved }: PlanEditDialogProps) {
+export function PlanEditDialog({ plan, anchorCurrency, onClose, onSaved }: PlanEditDialogProps) {
   return (
-    <Modal onClose={onClose} size="lg" scrollable>
-      <PlanEditDialogBody plan={plan} onSaved={onSaved} />
+    <Modal onClose={onClose} size="xl" scrollable>
+      <PlanEditDialogBody plan={plan} anchorCurrency={anchorCurrency} onSaved={onSaved} />
     </Modal>
   );
 }
 
-function PlanEditDialogBody({ plan, onSaved }: Pick<PlanEditDialogProps, "plan" | "onSaved">) {
+function PlanEditDialogBody({
+  plan,
+  anchorCurrency,
+  onSaved,
+}: Pick<PlanEditDialogProps, "plan" | "anchorCurrency" | "onSaved">) {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
   const close = useModalClose();
@@ -63,14 +92,35 @@ function PlanEditDialogBody({ plan, onSaved }: Pick<PlanEditDialogProps, "plan" 
   const [isTrial, setIsTrial] = useState(plan?.is_trial ?? false);
   const [isActive, setIsActive] = useState(plan?.is_active ?? true);
   const [durations, setDurations] = useState<DurationRow[]>(
-    (plan?.durations ?? []).map((d) => ({ id: crypto.randomUUID(), days: String(d.days), base_price: d.base_price })),
+    (plan?.durations ?? [])
+      .slice()
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((d) => ({ id: crypto.randomUUID(), days: String(d.days), base_price: d.base_price })),
+  );
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const addDuration = () =>
-    setDurations((rows) => [...rows, { id: crypto.randomUUID(), days: "30", base_price: "0" }]);
+  const addDuration = (days: string) =>
+    setDurations((rows) => [...rows, { id: crypto.randomUUID(), days, base_price: "0" }]);
   const removeDuration = (id: string) => setDurations((rows) => rows.filter((row) => row.id !== id));
   const updateDuration = (id: string, patch: Partial<DurationRow>) =>
     setDurations((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  const handleDurationDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    setDurations((rows) =>
+      arrayMove(
+        rows,
+        rows.findIndex((row) => row.id === active.id),
+        rows.findIndex((row) => row.id === over.id),
+      ),
+    );
+  };
+
+  const usedDays = new Set(durations.map((row) => Number(row.days)));
+  const presets = DURATION_PRESETS.filter((days) => !usedDays.has(days));
+  const currencySuffix = anchorCurrency ? (CURRENCY_SYMBOL[anchorCurrency] ?? anchorCurrency) : null;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -146,217 +196,323 @@ function PlanEditDialogBody({ plan, onSaved }: Pick<PlanEditDialogProps, "plan" 
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Pencil className="size-4" />
-          </div>
-          {isCreate ? t("plans.edit.createTitle") : t("plans.edit.editTitle")}
-        </h2>
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("plans.edit.close")}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
+      <DialogHeader
+        icon={Layers}
+        title={isCreate ? t("plans.edit.createTitle") : t("plans.edit.editTitle")}
+        closeLabel={t("plans.edit.close")}
+      />
 
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="flex flex-col gap-4 px-5 pb-4 pt-4">
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="plan-public-code" className="text-sm font-medium text-foreground/80">
-                {t("plans.edit.publicCodeLabel")}
-              </label>
-              <input
-                id="plan-public-code"
-                value={publicCode}
-                onChange={(event) => setPublicCode(event.target.value)}
-                placeholder={t("plans.edit.publicCodePlaceholder")}
-                disabled={!isCreate}
-                className={`${fieldClassName} disabled:cursor-not-allowed disabled:opacity-50`}
-              />
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+          <Card variant="form">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label={t("plans.edit.publicCodeLabel")} htmlFor="plan-public-code" required>
+                <TextInput
+                  id="plan-public-code"
+                  value={publicCode}
+                  onChange={(event) => setPublicCode(event.target.value)}
+                  placeholder={t("plans.edit.publicCodePlaceholder")}
+                  disabled={!isCreate}
+                  autoComplete="off"
+                  className="font-mono"
+                />
+                {!isCreate && <span className={hintClassName}>{t("plans.edit.publicCodeHint")}</span>}
+              </Field>
+              <Field label={t("plans.edit.nameLabel")} htmlFor="plan-name" required>
+                <TextInput
+                  id="plan-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </Field>
             </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="plan-name" className="text-sm font-medium text-foreground/80">
-                {t("plans.edit.nameLabel")}
-              </label>
-              <input
-                id="plan-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className={fieldClassName}
+            <Field label={t("plans.edit.descriptionLabel")} htmlFor="plan-description">
+              <TextArea
+                id="plan-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={2}
               />
-            </div>
-          </div>
+            </Field>
+            <Field label={t("plans.edit.tagLabel")} htmlFor="plan-tag">
+              <TextInput id="plan-tag" value={tag} onChange={(event) => setTag(event.target.value)}  />
+              <span className={hintClassName}>{t("plans.edit.tagHint")}</span>
+            </Field>
+          </Card>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="plan-description" className="text-sm font-medium text-foreground/80">
-              {t("plans.edit.descriptionLabel")}
-            </label>
-            <textarea
-              id="plan-description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={2}
-              className={`${fieldClassName} resize-none`}
-            />
-          </div>
+          <Card variant="form">
+            <Field label={t("plans.edit.typeLabel")}>
+              <div role="radiogroup" aria-label={t("plans.edit.typeLabel")} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {PLAN_TYPES.map((value) => {
+                  const Icon = PLAN_TYPE_ICON[value];
+                  const isSelected = type === value;
+                  return (
+                    <motion.button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => setType(value)}
+                      {...bounceTap(bounceStrength, 0.03)}
+                      className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
+                        isSelected
+                          ? "border-primary/50 bg-accent text-primary"
+                          : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.05]"
+                      }`}
+                    >
+                      <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
+                      <span className="text-[12.5px] font-semibold">{t(`plans.edit.type.${value}`)}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </Field>
+          </Card>
 
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="plan-tag" className="text-sm font-medium text-foreground/80">
-                {t("plans.edit.tagLabel")}
-              </label>
-              <input
-                id="plan-tag"
-                value={tag}
-                onChange={(event) => setTag(event.target.value)}
-                className={fieldClassName}
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <span className="text-sm font-medium text-foreground/80">{t("plans.edit.typeLabel")}</span>
-              <SelectDropdown
-                id="plan-type"
-                value={type}
-                onChange={(value) => setType(value as PlanType)}
-                icon={Filter}
-                placeholder={t(`plans.edit.type.${type}`)}
-                options={PLAN_TYPES.map((value) => ({ value, label: t(`plans.edit.type.${value}`) }))}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="plan-traffic" className="text-sm font-medium text-foreground/80">
-                {t("plans.edit.trafficLabel")}
-              </label>
-              <input
+          <Card variant="form">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <LimitField
                 id="plan-traffic"
-                type="number"
-                min={0}
-                step="1"
+                label={t("plans.edit.trafficShortLabel")}
+                suffix={t("plans.edit.trafficSuffix")}
                 value={trafficLimit}
-                onChange={(event) => setTrafficLimit(event.target.value)}
-                className={fieldClassName}
+                onChange={setTrafficLimit}
+                hint={t("plans.edit.limitHint")}
               />
-              <span className="text-[11.5px] text-muted-foreground">{t("plans.edit.trafficHint")}</span>
-            </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="plan-devices" className="text-sm font-medium text-foreground/80">
-                {t("plans.edit.deviceLabel")}
-              </label>
-              <input
+              <LimitField
                 id="plan-devices"
-                type="number"
-                min={0}
-                step="1"
+                label={t("plans.edit.deviceShortLabel")}
+                suffix={t("plans.edit.deviceSuffix")}
                 value={deviceLimit}
-                onChange={(event) => setDeviceLimit(event.target.value)}
-                className={fieldClassName}
+                onChange={setDeviceLimit}
+                hint={t("plans.edit.limitHint")}
               />
-              <span className="text-[11.5px] text-muted-foreground">{t("plans.edit.deviceHint")}</span>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-foreground/80">{t("plans.edit.strategyLabel")}</span>
-            <SelectDropdown
-              id="plan-strategy"
-              value={strategy}
-              onChange={(value) => setStrategy(value as TrafficLimitStrategy)}
-              icon={Filter}
-              placeholder={t(`plans.edit.strategy.${strategy}`)}
-              options={STRATEGIES.map((value) => ({ value, label: t(`plans.edit.strategy.${value}`) }))}
-            />
-          </div>
-
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2.5 text-sm font-medium text-foreground/80">
-              <Switch checked={isTrial} onChange={setIsTrial} ariaLabel={t("plans.edit.isTrialLabel")} />
-              {t("plans.edit.isTrialLabel")}
-            </label>
-            {!isCreate && (
-              <label className="flex items-center gap-2.5 text-sm font-medium text-foreground/80">
-                <Switch checked={isActive} onChange={setIsActive} ariaLabel={t("plans.edit.isActiveLabel")} />
-                {t("plans.edit.isActiveLabel")}
-              </label>
-            )}
-          </div>
-
-          {!isCreate && (
-            <div className="flex flex-col gap-2 border-t border-border pt-4">
-              <span className="text-sm font-medium text-foreground/80">{t("plans.edit.durationsTitle")}</span>
-              <p className="text-[11.5px] text-muted-foreground">{t("plans.edit.durationsHint")}</p>
-              {durations.map((row) => (
-                <div key={row.id} className="flex items-end gap-2">
-                  <div className="flex flex-1 flex-col gap-1">
-                    <span className="text-[11px] text-muted-foreground">{t("plans.edit.daysLabel")}</span>
-                    <input
-                      type="number"
-                      min={1}
-                      step="1"
-                      value={row.days}
-                      onChange={(event) => updateDuration(row.id, { days: event.target.value })}
-                      className={fieldClassName}
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col gap-1">
-                    <span className="text-[11px] text-muted-foreground">{t("plans.edit.basePriceLabel")}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={row.base_price}
-                      onChange={(event) => updateDuration(row.id, { base_price: event.target.value })}
-                      className={fieldClassName}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeDuration(row.id)}
-                    aria-label={t("plans.edit.removeDuration")}
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-error/10 hover:text-error"
+            <div className="flex flex-col gap-1.5">
+              <span className={labelClassName}>{t("plans.edit.strategyLabel")}</span>
+              <div role="radiogroup" aria-label={t("plans.edit.strategyLabel")} className="flex flex-wrap gap-1.5">
+                {STRATEGIES.map((value) => (
+                  <ChoiceChip
+                    key={value}
+                    role="radio"
+                    aria-checked={strategy === value}
+                    onClick={() => setStrategy(value)}
+                    active={strategy === value}
                   >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              ))}
-              <motion.button
-                type="button"
-                onClick={addDuration}
-                {...bounceTap(bounceStrength)}
-                className="flex items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12.5px] font-medium text-foreground/90 transition-colors hover:bg-white/5"
-              >
-                <Plus className="size-3.5" />
-                {t("plans.edit.addDuration")}
-              </motion.button>
+                    {t(`plans.edit.strategy.${value}`)}
+                  </ChoiceChip>
+                ))}
+              </div>
             </div>
-          )}
+          </Card>
+
+          <Card variant="form">
+            <Field label={t("plans.edit.sections.durations")} hint={t("plans.edit.durationsHint")}>
+              {isCreate ? (
+                <p className="text-[12.5px] text-muted-foreground">{t("plans.edit.durationsAfterCreate")}</p>
+              ) : (
+                <>
+                  {durations.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <div className="grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_36px] gap-2 text-[11px] text-muted-foreground">
+                        <span />
+                        <span>{t("plans.edit.daysLabel")}</span>
+                        <span>{t("plans.edit.basePriceLabel")}</span>
+                        <span />
+                      </div>
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDurationDragEnd}>
+                        <SortableContext items={durations.map((row) => row.id)} strategy={verticalListSortingStrategy}>
+                          {durations.map((row) => (
+                            <DurationRowItem
+                              key={row.id}
+                              row={row}
+                              currencySuffix={currencySuffix}
+                              onChange={(patch) => updateDuration(row.id, patch)}
+                              onRemove={() => removeDuration(row.id)}
+                            />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 text-[12px] text-muted-foreground">{t("plans.edit.addPresetLabel")}</span>
+                    {presets.map((days) => (
+                      <PresetButton key={days} onClick={() => addDuration(String(days))}>
+                        {days}
+                      </PresetButton>
+                    ))}
+                    <PresetButton onClick={() => addDuration("")}>{t("plans.edit.customDuration")}</PresetButton>
+                  </div>
+                </>
+              )}
+            </Field>
+          </Card>
+
+          <Card variant="form">
+            {!isCreate && (
+              <ToggleRow
+                label={t("plans.edit.isActiveLabel")}
+                hint={t("plans.edit.isActiveHint")}
+                checked={isActive}
+                onChange={setIsActive}
+              />
+            )}
+            <ToggleRow
+              label={t("plans.edit.isTrialLabel")}
+              hint={t("plans.edit.isTrialHint")}
+              checked={isTrial}
+              onChange={setIsTrial}
+            />
+          </Card>
         </div>
 
-        <div className="flex shrink-0 gap-2 border-t border-border px-5 py-4">
-          <button
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.07] px-5 py-3.5">
+          <Button
+            variant="outline"
             type="button"
             onClick={close}
-            className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
           >
             {t("plans.edit.cancel")}
-          </button>
-          <motion.button
+          </Button>
+          <Button
+            variant="accent"
             type="submit"
             disabled={isSubmitting}
-            {...bounceTap(bounceStrength)}
-            className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? t("plans.edit.saving") : t("plans.edit.save")}
-          </motion.button>
+          </Button>
         </div>
       </form>
     </>
+  );
+}
+
+function LimitField({
+  id,
+  label,
+  suffix,
+  value,
+  onChange,
+  hint,
+}: {
+  id: string;
+  label: string;
+  suffix: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint: string;
+}) {
+  return (
+    <Field label={label} htmlFor={id}>
+      <SuffixInput
+        id={id}
+        type="number"
+        onKeyDown={blockNonIntegerKeys}
+        min={0}
+        step="1"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        suffix={suffix}
+      />
+      <span className={hintClassName}>{hint}</span>
+    </Field>
+  );
+}
+
+function DurationRowItem({
+  row,
+  currencySuffix,
+  onChange,
+  onRemove,
+}: {
+  row: DurationRow;
+  currencySuffix: string | null;
+  onChange: (patch: Partial<DurationRow>) => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation();
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_36px] items-center gap-2 ${isDragging ? "relative z-10" : ""}`}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        aria-label={t("plans.edit.dragDuration")}
+        {...attributes}
+        {...listeners}
+        className="flex h-9 cursor-grab touch-none items-center justify-center text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+      <SuffixInput
+        type="number"
+        onKeyDown={blockNonIntegerKeys}
+        min={1}
+        step="1"
+        value={row.days}
+        onChange={(event) => onChange({ days: event.target.value })}
+        aria-label={t("plans.edit.daysLabel")}
+        suffix={t("plans.edit.daysSuffix")}
+      />
+      <SuffixInput
+        type="number"
+        onKeyDown={blockNonDecimalKeys}
+        min={0}
+        step="0.01"
+        value={row.base_price}
+        onChange={(event) => onChange({ base_price: event.target.value })}
+        aria-label={t("plans.edit.basePriceLabel")}
+        suffix={currencySuffix}
+      />
+      <IconButton size="9.5" tone="danger"
+        onClick={onRemove}
+        aria-label={t("plans.edit.removeDuration")}
+      >
+        <Trash2 className="size-4" />
+      </IconButton>
+    </div>
+  );
+}
+
+function PresetButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onClick}
+    >
+      <Plus className="size-3" />
+      {children}
+    </Button>
+  );
+}
+
+function ToggleRow({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-[14px] border border-border bg-white/[0.02] px-3 py-2.5">
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13.5px] font-semibold text-foreground">{label}</span>
+        <span className={hintClassName}>{hint}</span>
+      </span>
+      <Switch checked={checked} onChange={onChange} ariaLabel={label} />
+    </div>
   );
 }

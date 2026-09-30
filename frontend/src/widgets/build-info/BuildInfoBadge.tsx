@@ -1,8 +1,9 @@
-import { ArrowUpCircle, Check, Clock, Copy, GitBranch, GitCommit, Info, Star, X } from "lucide-react";
+import { ArrowUpCircle, Check, Clock, Copy, GitBranch, GitCommit, Info, Star } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { formatDateTime } from "@shared/lib/relative-time";
 import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toggleDebugBar, useDebugState } from "@shared/lib/debug-bar";
@@ -11,7 +12,12 @@ import { isNewerVersion } from "@shared/lib/version-compare";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { InfoRow } from "@shared/ui/InfoRow";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { useDialogFocus } from "@shared/ui/modal-hooks";
+import { Tag } from "@shared/ui/Tag";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
+import { IconButton } from "@shared/ui/IconButton";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 interface GithubRelease {
   tag_name: string;
@@ -21,10 +27,10 @@ interface GithubRelease {
 const LONG_PRESS_MS = 600;
 
 const footerLinkClassName =
-  "flex flex-1 items-center justify-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-glass-border hover:bg-white/[0.06] hover:text-primary";
+  "flex flex-1 items-center justify-center gap-2 rounded-full border border-border h-9 px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-glass-border hover:bg-white/[0.06] hover:text-primary";
 
 export function BuildInfoBadge() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const bounceStrength = useBounceStrength();
   const { fakeUpdate } = useDebugState();
   const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
@@ -151,33 +157,18 @@ export function BuildInfoBadge() {
               onClick={() => setIsOpen(false)}
             />
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 8 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="relative z-50 w-full max-w-sm rounded-dialog border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-                  <Info className="size-4" />
-                </div>
-                {t("buildInfo.title")}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                aria-label={t("buildInfo.close")}
-                className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+            <BuildInfoPanel onEscape={() => setIsOpen(false)}>
+            <DialogHeader
+              icon={Info}
+              title={t("buildInfo.title")}
+              onClose={() => setIsOpen(false)}
+              closeLabel={t("buildInfo.close")}
+            />
 
             <div className="flex flex-col gap-3 px-5 pb-5 pt-4">
               <div className="flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <div className={EYEBROW_CLASS}>
                     {t("buildInfo.version")}
                   </div>
                   <div className="mt-0.5 font-mono text-lg font-bold text-foreground">v{currentVersion}</div>
@@ -198,13 +189,13 @@ export function BuildInfoBadge() {
 
               <div className="flex flex-col">
                 {isOfficialBuild && metadata.git.branch && (
-                  <InfoRow icon={GitBranch} label={t("buildInfo.branch")}>
+                  <InfoRow icon={GitBranch} label={t("buildInfo.branch")} mono>
                     {metadata.git.branch}
                   </InfoRow>
                 )}
 
                 {isOfficialBuild && metadata.git.commit_sha && (
-                  <InfoRow icon={GitCommit} label={t("buildInfo.commit")}>
+                  <InfoRow icon={GitCommit} label={t("buildInfo.commit")} mono>
                     <a
                       href={`${metadata.repository_url}/commit/${metadata.git.commit_sha}`}
                       target="_blank"
@@ -213,26 +204,22 @@ export function BuildInfoBadge() {
                     >
                       {metadata.git.commit_sha.slice(0, 7)}
                     </a>
-                    <button
-                      type="button"
+                    <IconButton size="6"
                       onClick={handleCopyCommit}
                       aria-label={t("buildInfo.copyCommit")}
-                      className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
                     >
                       {isCopied ? (
                         <Check className="size-3.5 text-success" />
                       ) : (
                         <Copy className="size-3.5" />
                       )}
-                    </button>
+                    </IconButton>
                   </InfoRow>
                 )}
 
                 {isOfficialBuild && metadata.git.commit_sha && metadata.git.commit_date && (
-                  <InfoRow icon={Clock} label={t("buildInfo.commitDate")}>
-                    <span className="font-sans font-medium text-foreground">
-                      {new Date(metadata.git.commit_date).toLocaleString()}
-                    </span>
+                  <InfoRow icon={Clock} label={t("buildInfo.commitDate")} mono>
+                    {formatDateTime(metadata.git.commit_date, i18n.language)}
                   </InfoRow>
                 )}
               </div>
@@ -258,18 +245,41 @@ export function BuildInfoBadge() {
                   <GithubIcon className="size-4" />
                   {t("buildInfo.githubButton")}
                   {stars !== null && (
-                    <span className="flex items-center gap-0.5 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[11px] font-semibold text-foreground">
+                    <Tag>
                       <Star className="size-2.5" />
                       {stars}
-                    </span>
+                    </Tag>
                   )}
                 </motion.a>
               </div>
             </div>
-            </motion.div>
+            </BuildInfoPanel>
           </motion.div>
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// Own overlay and animation on purpose (not Modal), but the same keyboard and a11y behaviour as one:
+// mounted only while open, so useDialogFocus runs on open and restores focus on close.
+function BuildInfoPanel({ onEscape, children }: { onEscape: () => void; children: ReactNode }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(panelRef, onEscape);
+
+  return (
+    <motion.div
+      ref={panelRef}
+      role="dialog"
+      aria-modal
+      tabIndex={-1}
+      initial={{ opacity: 0, scale: 0.94, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.94, y: 8 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="relative z-50 w-full max-w-sm rounded-dialog border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] outline-none backdrop-blur-2xl backdrop-saturate-150"
+    >
+      {children}
+    </motion.div>
   );
 }

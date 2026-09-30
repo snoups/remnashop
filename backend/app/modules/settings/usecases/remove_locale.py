@@ -5,6 +5,7 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.settings.command_translations import delete_bot_commands_for_locale
 from app.modules.settings.events import LocaleDeactivatedEvent
 from app.modules.settings.repository import SettingsRepository
 from app.modules.users import UserDto
@@ -37,4 +38,7 @@ class RemoveLocaleUseCase(UseCase[Locale, list[Locale]]):
             await self._settings_repository.remove_active_locale(data)
             locales = await self._settings_repository.list_active_locales()
             await self._event_publisher.publish(LocaleDeactivatedEvent(actor=actor, locale=data))
+            bot_settings = await self._settings_repository.get_bot_settings()
+        if bot_settings.token is not None:
+            await delete_bot_commands_for_locale(bot_settings.token.get_secret_value(), data)
         return locales

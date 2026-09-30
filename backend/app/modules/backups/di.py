@@ -10,6 +10,7 @@ from app.modules.backups.usecases import (
     GetBackupSettingsUseCase,
     GetBackupStatsUseCase,
     ListBackupRunsUseCase,
+    ResetBackupSettingsUseCase,
     UpdateBackupSettingsUseCase,
 )
 from app.modules.backups.usecases.create_backup_run import RunBackupDispatch
@@ -22,6 +23,7 @@ class BackupsProvider(Provider):
     get_backup_settings_use_case = provide(GetBackupSettingsUseCase)
     get_backup_stats_use_case = provide(GetBackupStatsUseCase)
     update_backup_settings_use_case = provide(UpdateBackupSettingsUseCase)
+    reset_backup_settings_use_case = provide(ResetBackupSettingsUseCase)
     create_backup_run_use_case = provide(CreateBackupRunUseCase)
     list_backup_runs_use_case = provide(ListBackupRunsUseCase)
     get_backup_run_use_case = provide(GetBackupRunUseCase)

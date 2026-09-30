@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PriceAdjustScope
@@ -57,7 +58,8 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
             for plan in plans:
                 for duration in plan.durations:
                     changes += self._diff_row(
-                        label=f"{plan.name} / {duration.days}d",
+                        name=plan.name,
+                        days=duration.days,
                         old_base=duration.base_price,
                         new_base=plan_base_prices.get(duration.id, duration.base_price),
                         overrides_by_currency={o.currency: o.price for o in duration.overrides},
@@ -66,7 +68,7 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                     )
             for addon in addons:
                 changes += self._diff_row(
-                    label=addon.name,
+                    name=addon.name,
                     old_base=addon.base_price,
                     new_base=addon_base_prices.get(addon.id, addon.base_price),
                     overrides_by_currency={o.currency: o.price for o in addon.overrides},
@@ -79,7 +81,8 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
     def _diff_row(
         self,
         *,
-        label: str,
+        name: str,
+        days: Optional[int] = None,
         old_base: Decimal,
         new_base: Decimal,
         overrides_by_currency: dict[Currency, Decimal],
@@ -93,7 +96,9 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
             new_amount = resolve_price(new_base, currency, override, new_table)
             if old_amount != new_amount:
                 rows.append(
-                    PricingDiffRow(label=label, currency=currency, old=old_amount, new=new_amount)
+                    PricingDiffRow(
+                        name=name, days=days, currency=currency, old=old_amount, new=new_amount
+                    )
                 )
         return rows
 

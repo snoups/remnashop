@@ -21,10 +21,12 @@ from app.modules.pricing.dto import (
 
 _SETTINGS_ID: Final[int] = 1
 
-_SEED_RATES: Final[dict[Currency, tuple[RoundingMode, None, Decimal]]] = {
-    Currency.USD: (RoundingMode.DECIMAL_2, None, Decimal("0.01")),
-    Currency.RUB: (RoundingMode.INTEGER, None, Decimal("10")),
-    Currency.XTR: (RoundingMode.INTEGER, None, Decimal("1")),
+# rate is per 1 USD (the default anchor): RUB at Steam's in-game rate, XTR at
+# Telegram's ~$0.013 payout per star
+_SEED_RATES: Final[dict[Currency, tuple[Decimal, RoundingMode, None, Decimal]]] = {
+    Currency.USD: (Decimal("1"), RoundingMode.DECIMAL_2, None, Decimal("0.01")),
+    Currency.RUB: (Decimal("85"), RoundingMode.INTEGER, None, Decimal("10")),
+    Currency.XTR: (Decimal("77"), RoundingMode.INTEGER, None, Decimal("1")),
 }
 
 
@@ -63,10 +65,10 @@ class PricingRepository:
                 [
                     {
                         "currency": currency,
-                        "rate": Decimal("1"),
-                        "rounding_mode": _SEED_RATES[currency][0],
-                        "charm_ending": _SEED_RATES[currency][1],
-                        "min_amount": _SEED_RATES[currency][2],
+                        "rate": _SEED_RATES[currency][0],
+                        "rounding_mode": _SEED_RATES[currency][1],
+                        "charm_ending": _SEED_RATES[currency][2],
+                        "min_amount": _SEED_RATES[currency][3],
                     }
                     for currency in missing
                 ]

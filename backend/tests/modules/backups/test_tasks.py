@@ -6,7 +6,9 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
 
+from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus
 from app.core.utils.time import datetime_now
@@ -22,6 +24,7 @@ async def test_run_backup_marks_failed_when_dump_raises(
     tmp_path: Path,
     config,
     monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     async with uow:
@@ -37,15 +40,27 @@ async def test_run_backup_marks_failed_when_dump_raises(
             backup_repository=backup_repository,
             uow=uow,
             config=config,
+            event_publisher=event_publisher,
         )
 
     failed = await backup_repository.get_run(run.id)
     assert failed.status == BackupRunStatus.FAILED
     assert "boom" in (failed.error or "")
 
+    published = (
+        await backup_repository.session.scalars(
+            select(EventOutboxEntry).where(EventOutboxEntry.event_type == "BackupFailedEvent")
+        )
+    ).all()
+    assert len(published) == 1
+    assert published[0].payload["run_id"] == run.id
+
 
 async def test_run_backup_rejects_second_concurrent_run(
-    backup_repository: BackupRepository, uow: UnitOfWork, config
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    event_publisher,
 ) -> None:
     async with uow:
         first = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
@@ -58,6 +73,7 @@ async def test_run_backup_rejects_second_concurrent_run(
         backup_repository=backup_repository,
         uow=uow,
         config=config,
+        event_publisher=event_publisher,
     )
 
     failed = await backup_repository.get_run(second.id)
@@ -71,6 +87,7 @@ async def test_run_backup_completes_and_signs_database_dump(
     config,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     dump_bytes = b"fake pg_dump bytes"
@@ -88,6 +105,7 @@ async def test_run_backup_completes_and_signs_database_dump(
             backup_repository=backup_repository,
             uow=uow,
             config=config,
+            event_publisher=event_publisher,
         )
 
     completed = await backup_repository.get_run(run.id)
@@ -104,6 +122,7 @@ async def test_run_backup_completes_assets_dump(
     config,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     (tmp_path / "logo.png").write_bytes(b"img")
@@ -117,6 +136,7 @@ async def test_run_backup_completes_assets_dump(
         backup_repository=backup_repository,
         uow=uow,
         config=config,
+        event_publisher=event_publisher,
     )
 
     completed = await backup_repository.get_run(run.id)
@@ -132,6 +152,7 @@ async def test_run_backup_removes_partial_file_on_failure(
     config,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
 
@@ -149,6 +170,7 @@ async def test_run_backup_removes_partial_file_on_failure(
             backup_repository=backup_repository,
             uow=uow,
             config=config,
+            event_publisher=event_publisher,
         )
 
     assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.FAILED
@@ -161,6 +183,7 @@ async def test_run_backup_rotates_old_files_beyond_max_files(
     config,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     async with uow:
@@ -181,6 +204,7 @@ async def test_run_backup_rotates_old_files_beyond_max_files(
                 backup_repository=backup_repository,
                 uow=uow,
                 config=config,
+                event_publisher=event_publisher,
             )
 
     remaining, total = await backup_repository.list_runs(
@@ -234,7 +258,10 @@ async def test_create_assets_dump_builds_temp_file_inside_backups_dir(
 
 
 async def test_auto_backup_noops_when_disabled(
-    backup_repository: BackupRepository, uow: UnitOfWork, config
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    event_publisher,
 ) -> None:
     dispatched = []
 
@@ -242,13 +269,21 @@ async def test_auto_backup_noops_when_disabled(
         dispatched.append(kwargs)
 
     with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(backup_repository=backup_repository, uow=uow, config=config)
+        await auto_backup(
+            backup_repository=backup_repository,
+            uow=uow,
+            config=config,
+            event_publisher=event_publisher,
+        )
 
     assert dispatched == []
 
 
 async def test_auto_backup_runs_when_no_prior_run(
-    backup_repository: BackupRepository, uow: UnitOfWork, config
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    event_publisher,
 ) -> None:
     async with uow:
         await backup_repository.update_settings(
@@ -261,7 +296,12 @@ async def test_auto_backup_runs_when_no_prior_run(
         ran.append(kwargs)
 
     with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(backup_repository=backup_repository, uow=uow, config=config)
+        await auto_backup(
+            backup_repository=backup_repository,
+            uow=uow,
+            config=config,
+            event_publisher=event_publisher,
+        )
 
     assert len(ran) == 1
     assert ran[0]["kind"] == BackupKind.DATABASE
@@ -281,7 +321,10 @@ async def _complete_run_at(
 
 
 async def test_auto_backup_runs_when_last_run_older_than_interval(
-    backup_repository: BackupRepository, uow: UnitOfWork, config
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    event_publisher,
 ) -> None:
     async with uow:
         await backup_repository.update_settings(
@@ -295,13 +338,21 @@ async def test_auto_backup_runs_when_last_run_older_than_interval(
         ran.append(kwargs)
 
     with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(backup_repository=backup_repository, uow=uow, config=config)
+        await auto_backup(
+            backup_repository=backup_repository,
+            uow=uow,
+            config=config,
+            event_publisher=event_publisher,
+        )
 
     assert len(ran) == 1
 
 
 async def test_auto_backup_noops_when_last_run_younger_than_interval(
-    backup_repository: BackupRepository, uow: UnitOfWork, config
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    event_publisher,
 ) -> None:
     async with uow:
         await backup_repository.update_settings(
@@ -315,6 +366,11 @@ async def test_auto_backup_noops_when_last_run_younger_than_interval(
         ran.append(kwargs)
 
     with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(backup_repository=backup_repository, uow=uow, config=config)
+        await auto_backup(
+            backup_repository=backup_repository,
+            uow=uow,
+            config=config,
+            event_publisher=event_publisher,
+        )
 
     assert ran == []

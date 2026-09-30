@@ -447,7 +447,8 @@ async def test_delete_user_endpoint_removes_regular_user(
     )
 
     assert response.status_code == 204
-    assert await user_repository.get_by_id(target.id) is None
+    deleted = await user_repository.get_by_id(target.id)
+    assert deleted is not None and deleted.deleted_at is not None
 
 
 async def test_delete_user_endpoint_rejects_admin_without_grant(
@@ -601,6 +602,39 @@ async def test_unblock_all_endpoint_requires_unblock_all_permission(
     assert response.status_code == 403
 
 
+async def test_list_users_endpoint_applies_date_and_trial_filters(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _owner, token = await _owner_token(user_repository, session_repository, uow, config)
+    async with uow:
+        await user_repository.create(
+            CreateUserDto(name="HTTPFiltered", role=Role.USER, language=Locale.EN)
+        )
+        await uow.commit()
+    today = datetime.now(timezone.utc).date().isoformat()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # a bare date covers the whole day, so a user registered just now matches
+    response = await client.get(
+        "/api/v1/users",
+        params={"created_from": today, "created_to": today, "is_trial_available": "true"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert [(u["name"], u["active_subscriptions"]) for u in items] == [("HTTPFiltered", 0)]
+
+    response = await client.get(
+        "/api/v1/users", params={"is_trial_available": "false"}, headers=headers
+    )
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+
+
 async def test_blacklist_matches_endpoint(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
@@ -623,7 +657,9 @@ async def test_blacklist_matches_endpoint(
     assert response.status_code == 200
     body = response.json()
     assert body["total"] == body["all_total"] == 1
-    assert body["origins"] == [{"origin": {"source_id": None, "source_name": None}, "count": 1}]
+    # a manually added entry, not one pulled in from a list
+    assert body["manual_total"] == 1
+    assert body["lists_total"] == 0
     (match,) = body["items"]
     assert match["user"]["id"] == user.id
     assert match["hits"] == [

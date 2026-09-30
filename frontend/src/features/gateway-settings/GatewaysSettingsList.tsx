@@ -9,6 +9,7 @@ import {
 } from "@entities/gateways/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
+import { Card } from "@shared/ui/Card";
 
 import { GatewaySettingsCard } from "./GatewaySettingsCard";
 
@@ -27,7 +28,7 @@ export function GatewaysSettingsList() {
   const [state, , setData] = useAsyncResource(loadGatewaysData);
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <Card>
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <CreditCard className="size-4" />
@@ -40,7 +41,7 @@ export function GatewaysSettingsList() {
 
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
-      {state.kind === "loading" && <Spinner className="mt-4" />}
+      {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && (
         <p className="mt-4 text-sm text-error">{t("settings.gateways.loadError")}</p>
       )}
@@ -67,6 +68,6 @@ export function GatewaysSettingsList() {
           })}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

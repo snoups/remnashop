@@ -13,7 +13,7 @@ from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import get_or_create_singleton
-from app.core.enums import AppearanceImageKind, AppearanceResetScope, Locale
+from app.core.enums import AppearanceImageKind, Locale
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
     AppearanceSettingsDto,
@@ -204,15 +204,13 @@ class SettingsRepository:
         await self.session.refresh(row)
         return self._to_appearance_dto(row)
 
-    async def reset_appearance_settings(self, scope: AppearanceResetScope) -> AppearanceSettingsDto:
+    async def reset_appearance_settings(self) -> AppearanceSettingsDto:
         row = await self._get_or_create_singleton(AppearanceSettings)
 
-        if scope == AppearanceResetScope.BRANDING:
-            row.brand_name = None
-        else:
-            row.primary_color = None
-            row.shader_palette = None
-            row.shader_enabled = True
+        row.brand_name = None
+        row.primary_color = None
+        row.shader_palette = None
+        row.shader_enabled = True
 
         await self.session.flush()
         await self.session.refresh(row)

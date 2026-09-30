@@ -77,7 +77,7 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
 ) -> None:
     # `name` is a permanently registered catalog variable (menu.register_menu_metadata),
     # so this test relies on that registration rather than adding a scoped one.
-    assert "name" in catalog.variable_keys()
+    assert "user_name" in catalog.variable_keys()
 
     # `name` is a reserved MagicMock kwarg, so it must be assigned after construction.
     user = MagicMock(id=1, language=Locale.EN)
@@ -116,7 +116,7 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
         dialog_config_cache=fake_cache,
     )
 
-    assert captured_kwargs.get("name") == "Test"
+    assert captured_kwargs.get("user_name") == "Test"
 
 
 async def test_device_confirm_getter_routes_message_text_through_resolve_variable_kwargs(
@@ -125,7 +125,7 @@ async def test_device_confirm_getter_routes_message_text_through_resolve_variabl
     # An admin-saved { $name } in msg-menu-devices-confirm-delete must resolve to
     # its default instead of crashing the window -- so the getter has to supply
     # every registered catalog variable, not a bare runner.get().
-    assert "name" in catalog.variable_keys()
+    assert "user_name" in catalog.variable_keys()
 
     dialog_manager = MagicMock()
     dialog_manager.middleware_data = {USER_KEY: MagicMock(id=1, language=Locale.EN)}
@@ -150,4 +150,4 @@ async def test_device_confirm_getter_routes_message_text_through_resolve_variabl
         dialog_config_cache=MagicMock(),
     )
 
-    assert "name" in captured_kwargs
+    assert "user_name" in captured_kwargs

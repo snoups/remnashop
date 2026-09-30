@@ -32,6 +32,7 @@ from app.modules.backups.usecases import (
     GetBackupStatsUseCase,
     ListBackupRunsInput,
     ListBackupRunsUseCase,
+    ResetBackupSettingsUseCase,
     UpdateBackupSettingsUseCase,
 )
 from app.modules.users import UserDto
@@ -79,6 +80,16 @@ async def update_settings(
     actor: UserDto = Depends(require_admin),
 ) -> BackupSettingsResponse:
     settings = await use_case(actor, UpdateBackupSettingsDto(**body.model_dump()))
+    return _to_settings_response(settings)
+
+
+@router.delete("/settings", response_model=BackupSettingsResponse)
+@inject
+async def reset_settings(
+    use_case: FromDishka[ResetBackupSettingsUseCase],
+    actor: UserDto = Depends(require_admin),
+) -> BackupSettingsResponse:
+    settings = await use_case(actor)
     return _to_settings_response(settings)
 
 

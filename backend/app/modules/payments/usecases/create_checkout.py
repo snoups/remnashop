@@ -140,6 +140,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto]):
                     discount_percent=quote.discount_percent,
                     discount_source=quote.discount_source,
                     final_price=quote.final_price,
+                    discount_promocode_id=quote.discount_promocode_id,
                     customer_email=customer_email,
                     idempotency_key=uuid4().hex,
                     expires_at=datetime_now() + _ORDER_TTL,

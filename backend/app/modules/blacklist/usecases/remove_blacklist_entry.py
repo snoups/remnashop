@@ -8,7 +8,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist.dto import BlacklistDto, BlacklistEntryInputDto
 from app.modules.blacklist.events import BlacklistEntryRemovedEvent
-from app.modules.blacklist.normalize import normalize_identity
+from app.modules.blacklist.normalize import removal_key
 from app.modules.blacklist.repository import BlacklistRepository
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ class RemoveBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto])
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: BlacklistEntryInputDto) -> BlacklistDto:
-        normalized = normalize_identity(data.kind, data.value)
+        normalized = removal_key(data.kind, data.value)
         if normalized is not None:
             async with self._uow:
                 if await self._blacklist_repository.remove_entry(data.kind, data.value):

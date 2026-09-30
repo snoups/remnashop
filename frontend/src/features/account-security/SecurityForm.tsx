@@ -1,18 +1,18 @@
 import { Lock } from "lucide-react";
-import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getOwnSecurity, updateOwnSecurity } from "@entities/user/security";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
+import { Button } from "@shared/ui/Button";
+import { TextArea } from "@shared/ui/TextInput";
+import { Card } from "@shared/ui/Card";
 
 export function SecurityForm() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [text, setText] = useState("");
   const [state] = useAsyncResource(getOwnSecurity, (settings) =>
     setText(settings.ip_allowlist.join("\n")),
@@ -32,7 +32,7 @@ export function SecurityForm() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <Card>
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <Lock className="size-4" />
@@ -46,30 +46,30 @@ export function SecurityForm() {
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
       {state.kind === "loading" && (
-        <Spinner className="mt-4" />
+        <Spinner size="card" />
       )}
       {state.kind === "error" && (
         <p className="mt-4 text-sm text-error">{t("profile.accountSecurity.loadError")}</p>
       )}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
-          <textarea
+          <TextArea
             value={text}
             onChange={(event) => setText(event.target.value)}
             placeholder={t("profile.accountSecurity.placeholder")}
             spellCheck={false}
             rows={4}
-            className="w-full min-h-[38px] rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            className="w-full"
           />
-          <motion.button
+          <Button
+            variant="outline"
+            className="mt-2"
             type="submit"
-            {...bounceTap(bounceStrength)}
-            className="mt-2 rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5"
           >
             {t("profile.accountSecurity.submit")}
-          </motion.button>
+          </Button>
         </form>
       )}
-    </div>
+    </Card>
   );
 }

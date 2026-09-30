@@ -15,4 +15,4 @@ class ListApiTokensUseCase(UseCase[None, list[ApiTokenDto]]):
 
     async def _execute(self, actor: UserDto, data: None) -> list[ApiTokenDto]:
         async with self._uow:
-            return await self._api_token_repository.list_active()
+            return await self._api_token_repository.list_not_revoked()

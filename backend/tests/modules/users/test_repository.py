@@ -3,12 +3,14 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SubscriptionStatus
 from app.core.events import EventCategory
 from app.core.exceptions import ValidationError
 from app.core.utils.time import datetime_now
@@ -29,6 +31,25 @@ async def _create_user(
         await uow.commit()
 
     return user
+
+
+def _add_subscription(
+    session: AsyncSession, user_id: int, status: SubscriptionStatus, *, remnawave_user_id: int
+) -> None:
+    session.add(
+        Subscription(
+            user_id=user_id,
+            remnawave_user_id=remnawave_user_id,
+            status=status,
+            traffic_limit=0,
+            device_limit=0,
+            traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
+            internal_squads=[],
+            expire_at=datetime_now() + timedelta(days=30),
+            url="https://example.com/sub",
+            plan_snapshot={},
+        )
+    )
 
 
 async def test_create_and_get_by_id(user_repository: UserRepository, uow: UnitOfWork) -> None:
@@ -404,3 +425,159 @@ async def test_block_matching_handles_more_ids_than_bind_param_cap(
         blocked = await user_repository.block_matching(telegram_ids, set())
 
     assert blocked == [target.id]
+
+
+async def test_list_filtered_sorts_and_filters_by_discount_and_date(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    low = await _create_user(user_repository, uow, name="Low")
+    high = await _create_user(user_repository, uow, name="High")
+    old = await _create_user(user_repository, uow, name="Old")
+    async with uow:
+        await user_repository.update_fields(low.id, UpdateUserDto(personal_discount=5))
+        await user_repository.update_fields(high.id, UpdateUserDto(purchase_discount=30))
+        await uow.commit()
+    await session.execute(
+        update(User).where(User.id == old.id).values(created_at=datetime_now() - timedelta(days=30))
+    )
+
+    by_discount, _ = await user_repository.list_filtered(
+        roles=[Role.USER], has_discount=True, sort="discount"
+    )
+    assert [u.name for u in by_discount] == ["Low", "High"]
+
+    no_discount, _ = await user_repository.list_filtered(roles=[Role.USER], has_discount=False)
+    assert [u.name for u in no_discount] == ["Old"]
+
+    recent, total = await user_repository.list_filtered(
+        roles=[Role.USER], created_from=datetime_now() - timedelta(days=7)
+    )
+    assert {u.name for u in recent} == {"Low", "High"}
+    assert total == 2
+
+
+async def test_list_filtered_sorts_by_name_and_channels(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    await _create_user(user_repository, uow, name="bob", telegram_id=1, email="b@example.com")
+    await _create_user(user_repository, uow, name="Alice")
+    await _create_user(user_repository, uow, name="Carol", telegram_id=2)
+    # newer than Carol, so an id tiebreak alone would put it first
+    await _create_user(user_repository, uow, name="Dave", login="dave")
+
+    by_name, _ = await user_repository.list_filtered(
+        roles=[Role.USER], sort="name", descending=False
+    )
+    assert [u.name for u in by_name] == ["Alice", "bob", "Carol", "Dave"]
+
+    # grouped by channel type (Telegram, then email, then login), not by count
+    by_channels, _ = await user_repository.list_filtered(roles=[Role.USER], sort="channels")
+    assert [u.name for u in by_channels] == ["bob", "Carol", "Dave", "Alice"]
+
+
+async def test_list_filtered_counts_and_sorts_by_active_subscriptions(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    two = await _create_user(user_repository, uow, name="Two")
+    one = await _create_user(user_repository, uow, name="One")
+    await _create_user(user_repository, uow, name="None")
+    # created last (highest id) but registered earliest -- ties go by registration date
+    older = await _create_user(user_repository, uow, name="Older")
+    await session.execute(
+        update(User)
+        .where(User.id == older.id)
+        .values(created_at=datetime_now() - timedelta(days=30))
+    )
+    statuses = [
+        (two.id, SubscriptionStatus.ACTIVE),
+        (two.id, SubscriptionStatus.ACTIVE),
+        (two.id, SubscriptionStatus.EXPIRED),
+        (one.id, SubscriptionStatus.ACTIVE),
+    ]
+    for index, (user_id, status) in enumerate(statuses):
+        _add_subscription(session, user_id, status, remnawave_user_id=900 + index)
+    await session.flush()
+
+    items, _ = await user_repository.list_filtered(roles=[Role.USER], sort="subscriptions")
+    assert [(u.name, u.active_subscriptions) for u in items] == [
+        ("Two", 2),
+        ("One", 1),
+        ("None", 0),
+        ("Older", 0),
+    ]
+
+
+async def test_list_filtered_filters_by_subscription_trial_and_created_to(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    subscribed = await _create_user(user_repository, uow, name="Subscribed")
+    expired = await _create_user(user_repository, uow, name="Expired")
+    old = await _create_user(user_repository, uow, name="Old")
+    _add_subscription(session, subscribed.id, SubscriptionStatus.ACTIVE, remnawave_user_id=701)
+    _add_subscription(session, expired.id, SubscriptionStatus.EXPIRED, remnawave_user_id=702)
+    await session.execute(
+        update(User)
+        .where(User.id == old.id)
+        .values(created_at=datetime_now() - timedelta(days=30), is_trial_available=False)
+    )
+
+    with_sub, _ = await user_repository.list_filtered(roles=[Role.USER], has_subscription=True)
+    assert [u.name for u in with_sub] == ["Subscribed"]
+
+    without_sub, _ = await user_repository.list_filtered(roles=[Role.USER], has_subscription=False)
+    assert {u.name for u in without_sub} == {"Expired", "Old"}
+
+    trial_used, _ = await user_repository.list_filtered(roles=[Role.USER], is_trial_available=False)
+    assert [u.name for u in trial_used] == ["Old"]
+
+    older, total = await user_repository.list_filtered(
+        roles=[Role.USER], created_to=datetime_now() - timedelta(days=7)
+    )
+    assert [u.name for u in older] == ["Old"]
+    assert total == 1
+
+
+async def test_list_stats_counts_within_roles(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    fresh = await _create_user(user_repository, uow, name="Fresh")
+    blocked = await _create_user(user_repository, uow, name="Blocked", is_blocked=True)
+    staff = await _create_user(user_repository, uow, name="Staff", login="staff1", role=Role.ADMIN)
+    last_week = await _create_user(user_repository, uow, name="LastWeek")
+    _add_subscription(session, fresh.id, SubscriptionStatus.EXPIRED, remnawave_user_id=801)
+    _add_subscription(session, blocked.id, SubscriptionStatus.ACTIVE, remnawave_user_id=802)
+    _add_subscription(session, blocked.id, SubscriptionStatus.ACTIVE, remnawave_user_id=803)
+    _add_subscription(session, staff.id, SubscriptionStatus.ACTIVE, remnawave_user_id=804)
+    await session.execute(
+        update(User)
+        .where(User.id == blocked.id)
+        .values(created_at=datetime_now() - timedelta(days=40))
+    )
+    await session.execute(
+        update(User)
+        .where(User.id == last_week.id)
+        .values(created_at=datetime_now() - timedelta(days=10))
+    )
+
+    now = datetime_now()
+    stats = await user_repository.list_stats(
+        roles=[Role.USER],
+        new_since=now - timedelta(days=7),
+        previous_since=now - timedelta(days=14),
+        growth_since=now - timedelta(days=30),
+    )
+
+    assert (stats.total, stats.new, stats.subscribed, stats.blocked) == (3, 1, 1, 1)
+    assert (stats.new_previous, stats.total_growth) == (1, 2)
+
+
+async def test_list_filtered_search_matches_user_id(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    target = await _create_user(user_repository, uow, telegram_id=710_001, name="Findme")
+    await _create_user(user_repository, uow, telegram_id=710_002, name="Other")
+
+    items, _ = await user_repository.list_filtered(roles=[Role.USER], search=str(target.id))
+
+    assert target.id in [item.id for item in items]
+    assert all(item.id == target.id or item.telegram_id == target.id for item in items)

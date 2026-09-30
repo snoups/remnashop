@@ -1,17 +1,21 @@
-import { AlertTriangle, Clock, Eye, Globe, KeyRound, X } from "lucide-react";
-import { motion } from "motion/react";
+import { AlertTriangle, Clock, Eye, Globe, KeyRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createApiToken, type CreatedApiToken } from "@entities/api-tokens/api";
 import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
-import { Modal, useModalClose } from "@shared/ui/Modal";
+import { Modal } from "@shared/ui/Modal";
+import { useModalClose } from "@shared/ui/modal-hooks";
 import { PermissionPicker } from "@entities/admin/PermissionPicker";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import type { Permission } from "@shared/types/rbac";
+import { Button } from "@shared/ui/Button";
+import { Card } from "@shared/ui/Card";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { TextInput } from "@shared/ui/TextInput";
+import { Field } from "@shared/ui/Field";
 
 interface CreateApiTokenDialogProps {
   onCreated: (created: CreatedApiToken) => void;
@@ -34,11 +38,7 @@ const EXPIRY_OPTIONS = [
   { value: "365", labelKey: "apiTokens.expiresIn365Days" },
 ] as const;
 
-const sectionClassName = "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4";
-const labelClassName = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
-const presetClassName =
-  "flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-white/5";
-
+const labelClassName = "text-sm font-medium text-foreground/80";
 export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDialogProps) {
   return (
     <Modal onClose={onCancel} size="lg" scrollable>
@@ -49,7 +49,6 @@ export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDial
 
 function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps, "onCreated">) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const close = useModalClose();
   const catalogState = usePermissionCatalog();
   const [name, setName] = useState("");
@@ -102,22 +101,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <KeyRound className="size-4" />
-          </div>
-          {t("apiTokens.createTitle")}
-        </h2>
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("apiTokens.cancel")}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
+      <DialogHeader icon={KeyRound} title={t("apiTokens.createTitle")} closeLabel={t("apiTokens.cancel")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
@@ -126,24 +110,24 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
             <p className="text-[12px] leading-snug text-warning">{t("apiTokens.createNotice")}</p>
           </div>
 
-          <section className={sectionClassName}>
+          <Card variant="form">
             <div className="flex gap-2">
-              <div className="flex-1">
-                <label className={labelClassName}>{t("apiTokens.nameLabel")}</label>
-                <input
+              <Field label={t("apiTokens.nameLabel")} htmlFor="api-token-name" required className="flex-1">
+                <TextInput
+                  id="api-token-name"
                   type="text"
                   required
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder={t("apiTokens.namePlaceholder")}
-                  className="mt-1.5 w-full rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                  className="mt-1 w-full"
                 />
-              </div>
+              </Field>
 
-              <div className="w-44 shrink-0">
-                <label className={labelClassName}>{t("apiTokens.lifetimeLabel")}</label>
-                <div className="mt-1.5">
+              <Field label={t("apiTokens.lifetimeLabel")} htmlFor="api-token-expiry" className="w-44 shrink-0">
+                <div className="mt-1">
                   <SelectDropdown
+                    variant="form"
                     id="api-token-expiry"
                     value={expiresInDays}
                     onChange={setExpiresInDays}
@@ -152,44 +136,43 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
                     options={EXPIRY_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
                   />
                 </div>
-              </div>
+              </Field>
             </div>
-          </section>
+          </Card>
 
-          <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 pb-4 pt-3">
+          <Card variant="form">
             <div className="flex items-center justify-between gap-2 pb-1.5">
               <span className={labelClassName}>{t("apiTokens.permissionsLabel")}</span>
               <div className="flex gap-1.5">
-                <button type="button" onClick={applyReadOnly} className={presetClassName}>
+                <Button variant="secondary" size="sm" onClick={applyReadOnly}>
                   <Eye className="size-3.5" />
                   {t("apiTokens.readOnly")}
-                </button>
-                <button type="button" onClick={applyFullAccess} className={presetClassName}>
+                </Button>
+                <Button variant="secondary" size="sm" onClick={applyFullAccess}>
                   <Globe className="size-3.5" />
                   {t("apiTokens.fullAccess")}
-                </button>
+                </Button>
               </div>
             </div>
             <PermissionPicker selected={permissions} onToggle={togglePermission} />
-          </section>
+          </Card>
         </div>
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
-          <button
+          <Button
+            variant="outline"
             type="button"
             onClick={close}
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
           >
             {t("apiTokens.cancel")}
-          </button>
-          <motion.button
+          </Button>
+          <Button
+            variant="accent"
             type="submit"
             disabled={isSubmitting || name.trim().length === 0}
-            {...bounceTap(bounceStrength)}
-            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t("apiTokens.submit")}
-          </motion.button>
+          </Button>
         </div>
       </form>
     </>

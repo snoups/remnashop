@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Optional
+from typing import Final, Optional
 
 from app.modules.translations.dto import TranslationEntryDto
 
@@ -18,11 +18,41 @@ def join_message_key(message_id: str, attribute_id: str) -> str:
     return f"{message_id}.{attribute_id}" if attribute_id else message_id
 
 
+# Fluent reads an indented line starting with one of these as a variant key,
+# default variant or attribute -- a premium emoji's `[glyph](emoji:id)` among them.
+_LINE_START_SPECIAL: Final[frozenset[str]] = frozenset("[*.")
+
+
+def _escape_line_start(line: str) -> str:
+    # a string-literal placeable renders as the bare character
+    return f'{{"{line[0]}"}}{line[1:]}' if line[:1] in _LINE_START_SPECIAL else line
+
+
+# Fluent has no empty value -- `key =` alone is a syntax error that takes the
+# whole message down. An unset icon or a banner-only window's blank caption is
+# written as an empty string literal instead.
+_EMPTY_VALUE: Final[str] = '{ "" }'
+
+
+def strip_serializer_escapes(text: str) -> str:
+    """Drop the bidi isolation marks Fluent puts around the serializer's own
+    placeables: an escaped line start (so a rendered `[glyph](emoji:id)` is
+    contiguous again) and an empty value (so it renders as nothing at all)."""
+    text = text.replace("\u2068\u2069", "")
+    for char in _LINE_START_SPECIAL:
+        text = text.replace(f"\u2068{char}\u2069", char)
+    return text
+
+
 def _block(value: str, indent: str) -> str:
     # A Fluent pattern continues onto the next line only while that line is
     # indented, so a stored newline has to carry the indent with it. Fluent
-    # strips the common indent back off when it parses the value.
-    return value.replace("\n", f"\n{indent}")
+    # strips the common indent back off when it parses the value. The first
+    # line sits right after `=`, where these characters are plain text.
+    if not value:
+        return _EMPTY_VALUE
+    first, *rest = value.split("\n")
+    return f"\n{indent}".join([first, *map(_escape_line_start, rest)])
 
 
 def serialize_to_fluent(entries: list[TranslationEntryDto]) -> str:
@@ -69,8 +99,13 @@ def _check_placeable_expression(
     expression: object, allowed_variables: frozenset[str]
 ) -> Optional[str]:
     """Check a single placeable expression. Helper for find_disallowed_placeable."""
-    from fluent.syntax.ast import VariableReference  # noqa: PLC0415
+    from fluent.syntax.ast import StringLiteral, VariableReference  # noqa: PLC0415
 
+    # the serializer's own escapes: a line start (_escape_line_start) or an empty value
+    if isinstance(expression, StringLiteral) and (
+        expression.value in _LINE_START_SPECIAL or expression.value == ""
+    ):
+        return None
     if isinstance(expression, VariableReference):
         if expression.id.name in allowed_variables:
             return None
@@ -101,7 +136,8 @@ def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> O
         Placeable,
     )
 
-    wrapped = "placeholder-id =\n    " + text
+    # wrapped exactly as serialize_to_fluent writes it
+    wrapped = "placeholder-id = " + _block(text, "    ")
     parsed = FluentParser().parse(wrapped)
 
     # If parsing produced Junk, check if text contains placeable-like syntax

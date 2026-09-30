@@ -4,24 +4,19 @@ import { useId, useRef, useState, type ComponentType, type KeyboardEvent } from 
 import { createPortal } from "react-dom";
 
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { anchorFor, type PopoverAnchor } from "@shared/lib/popover-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
+import { BounceIcon } from "@shared/ui/BounceIcon";
+import { POPOVER_CLASS } from "@shared/ui/classes";
+import { FIELD_SURFACE_CLASS } from "@shared/ui/TextInput";
 
 const POPOVER_MAX_HEIGHT = 288;
-const POPOVER_GAP = 8;
-
-type PopoverAnchor = { left: number; width: number } & ({ top: number } | { bottom: number });
-
-function anchorFor(trigger: DOMRect): PopoverAnchor {
-  const box = { left: trigger.left, width: trigger.width };
-  return window.innerHeight - trigger.bottom < POPOVER_MAX_HEIGHT && trigger.top > POPOVER_MAX_HEIGHT
-    ? { ...box, bottom: window.innerHeight - trigger.top + POPOVER_GAP }
-    : { ...box, top: trigger.bottom + POPOVER_GAP };
-}
 
 export interface SelectOption {
   value: string;
   label: string;
+  icon?: ComponentType<{ className?: string }>;
 }
 
 interface SelectDropdownProps {
@@ -32,6 +27,10 @@ interface SelectDropdownProps {
   onChange: (value: string) => void;
   icon: ComponentType<{ className?: string }>;
   disabled?: boolean;
+  // compact: the dialog editor's panels -- 36px, the height of its PillTabs
+  size?: "default" | "compact";
+  // form: inside a form, the same dark surface as TextInput; glass is for filters
+  variant?: "glass" | "form";
 }
 
 export function SelectDropdown({
@@ -42,6 +41,8 @@ export function SelectDropdown({
   onChange,
   icon: Icon,
   disabled = false,
+  size = "default",
+  variant = "glass",
 }: SelectDropdownProps) {
   const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
@@ -59,14 +60,16 @@ export function SelectDropdown({
   useClickOutside([ref, popoverRef], isOpen, () => setIsOpen(false));
   useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
 
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? placeholder;
+  const selectedOption = options.find((option) => option.value === value);
+  const selectedLabel = selectedOption?.label ?? placeholder;
+  const TriggerIcon = selectedOption?.icon ?? Icon;
 
   const toggleOpen = () => {
     setIsOpen((open) => {
       const next = !open;
       if (next) {
         const trigger = triggerRef.current?.getBoundingClientRect();
-        if (trigger) setAnchor(anchorFor(trigger));
+        if (trigger) setAnchor(anchorFor(trigger, POPOVER_MAX_HEIGHT));
         setActiveIndex(Math.max(options.findIndex((option) => option.value === value), 0));
       }
       return next;
@@ -138,10 +141,10 @@ export function SelectDropdown({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-activedescendant={isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-        {...bounceTap(bounceStrength)}
-        className="group flex w-full items-center rounded-xl border border-border bg-input/60 py-2 pl-9 pr-8 text-left text-sm text-foreground outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+        {...bounceTap(bounceStrength, 0.04)}
+        className={`group flex w-full items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : "py-2 text-sm"} font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
       >
-        <Icon className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
+        <TriggerIcon className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown
           className={`pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors transition-transform group-not-focus:group-hover:text-foreground group-focus:text-primary ${isOpen ? "rotate-180" : ""}`}
@@ -163,13 +166,13 @@ export function SelectDropdown({
               onKeyDown={(event) => event.key === "Escape" && setIsOpen(false)}
               // z above Modal's own z-50: the popover lives in the body, so a
               // select inside a dialog still draws over it.
-              className="fixed z-[60] min-w-40 rounded-popover border border-white/[0.14] bg-popover/60 p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150"
+              className={`${POPOVER_CLASS} fixed z-[60] min-w-40 p-1.5`}
             >
               {/* the scroll lives inside the padding -- on the popover itself
                   the scrollbar column paints over the rounded corners */}
               <div className="max-h-72 overflow-y-auto">
                 {options.map((option, index) => (
-                  <button
+                  <motion.button
                     key={option.value}
                     id={optionId(index)}
                     type="button"
@@ -177,11 +180,18 @@ export function SelectDropdown({
                     aria-selected={option.value === value}
                     onClick={() => selectIndex(index)}
                     onMouseEnter={() => setActiveIndex(index)}
-                    className={`flex w-full items-center justify-between gap-2 rounded-popover-item px-2.5 py-2 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
+                    initial="rest"
+                    animate={index === activeIndex ? "hover" : "rest"}
+                    className={`flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
                   >
-                    <span className="truncate">{option.label}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      {option.icon && (
+                        <BounceIcon icon={option.icon} size={14} hoverSize={17} className="text-muted-foreground" />
+                      )}
+                      <span className="truncate">{option.label}</span>
+                    </span>
                     {option.value === value && <Check className="size-3.5 shrink-0 text-primary" />}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </motion.div>

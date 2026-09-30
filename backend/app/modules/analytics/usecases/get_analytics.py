@@ -1,7 +1,8 @@
 from datetime import timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
+from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role, SubscriptionStatus
 from app.core.security.permissions import Permission
@@ -13,9 +14,9 @@ from app.modules.analytics.dto import (
     ChurnSnapshotDto,
     GetAnalyticsDto,
 )
-from app.modules.analytics.window import convert_amount, resolve_since
+from app.modules.analytics.window import resolve_since
 from app.modules.payments import PaymentOrderRepository
-from app.modules.pricing import PricingRepository
+from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.users import UserDto, UserRepository
 
@@ -56,7 +57,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
             )
             total_revenue = sum(
                 (
-                    convert_amount(amount, currency, report_currency, rate_table)
+                    convert_for_report(amount, currency, report_currency, rate_table)
                     for currency, amount in total_revenue_by_currency.items()
                 ),
                 start=Decimal(0),
@@ -65,11 +66,11 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
             mrr_by_currency = await self._subscription_repository.sum_active_mrr_by_currency()
             mrr = sum(
                 (
-                    convert_amount(amount, currency, report_currency, rate_table)
+                    convert_for_report(amount, currency, report_currency, rate_table)
                     for currency, amount in mrr_by_currency.items()
                 ),
                 start=Decimal(0),
-            )
+            ).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
             registered_ids = await self._user_repository.list_ids_registered_since(since, Role.USER)
             paid_ids = await self._payment_order_repository.list_user_ids_with_paid_order(
@@ -80,7 +81,13 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
                 total_revenue_by_currency=total_revenue_by_currency,
                 report_currency=report_currency,
                 mrr=mrr,
-                arpu=(total_revenue / active_subscriptions) if active_subscriptions else Decimal(0),
+                arpu=(
+                    (total_revenue / active_subscriptions).quantize(
+                        ONE_CENT, rounding=ROUND_HALF_UP
+                    )
+                    if active_subscriptions
+                    else Decimal(0)
+                ),
                 active_subscriptions=active_subscriptions,
                 paid_orders_count=await self._payment_order_repository.count_paid_since(since),
                 registered_in_period=len(registered_ids),

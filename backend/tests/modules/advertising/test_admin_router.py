@@ -21,6 +21,7 @@ from app.modules.advertising.usecases import (
     CreateAdLinkUseCase,
     DeleteAdLinkUseCase,
     GenerateAdLinkCodeUseCase,
+    GetAdLinkShareUrlsUseCase,
     GetAdLinkStatsUseCase,
     GetAdvertisingSummaryUseCase,
     ListAdLinkAttributedUsersUseCase,
@@ -69,6 +70,7 @@ class _AdvertisingProvider(Provider):
     list_ad_links_use_case = provide(ListAdLinksUseCase)
     generate_ad_link_code_use_case = provide(GenerateAdLinkCodeUseCase)
     get_ad_link_stats_use_case = provide(GetAdLinkStatsUseCase)
+    get_ad_link_share_urls_use_case = provide(GetAdLinkShareUrlsUseCase)
     get_advertising_summary_use_case = provide(GetAdvertisingSummaryUseCase)
     list_ad_link_attributed_users_use_case = provide(ListAdLinkAttributedUsersUseCase)
 
@@ -242,3 +244,39 @@ async def test_get_summary_returns_totals_and_per_link_metrics(
     assert body["attributions_count"] == 0
     assert body["roi"] is not None
     assert [link["ad_link_id"] for link in body["links"]] == [created.json()["id"]]
+
+
+async def test_share_urls_and_qr_follow_allowed_channels(
+    client: httpx.AsyncClient,
+    admin_auth_headers: dict[str, str],
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com/")
+    created = await client.post(
+        f"{API_V1}/advertising/links",
+        json={"name": "Web", "code": "router-share", "allow_bot": False},
+        headers=admin_auth_headers,
+    )
+    link_id = created.json()["id"]
+
+    share = await client.get(
+        f"{API_V1}/advertising/links/{link_id}/share", headers=admin_auth_headers
+    )
+    assert share.json() == {
+        "bot_url": None,
+        "webcabinet_url": "https://cabinet.example.com/?ad=router-share",
+    }
+
+    qr = await client.get(
+        f"{API_V1}/advertising/links/{link_id}/qr",
+        params={"channel": "WEBCABINET"},
+        headers=admin_auth_headers,
+    )
+    assert qr.headers["content-type"] == "image/png"
+    bot_qr = await client.get(
+        f"{API_V1}/advertising/links/{link_id}/qr",
+        params={"channel": "BOT"},
+        headers=admin_auth_headers,
+    )
+    assert bot_qr.status_code == 404

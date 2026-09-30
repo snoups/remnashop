@@ -2,7 +2,10 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.ad_link_attribution import AdLinkAttribution
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AdLinkChannel,
@@ -210,7 +213,8 @@ async def test_get_ad_link_stats_zero_cost_has_no_roi(
     assert stats.attributions_count == 1
     assert stats.cost == Decimal(0)
     assert stats.roi is None
-    assert stats.cpa == Decimal(0)
+    # attributed but nobody paid yet
+    assert stats.cpa is None
 
 
 async def test_get_ad_link_stats_computes_conversion_and_revenue(
@@ -252,7 +256,7 @@ async def test_get_ad_link_stats_computes_conversion_and_revenue(
     assert stats.revenue == Decimal("500")
     assert stats.cost == Decimal("100")
     assert stats.roi == Decimal("4")
-    assert stats.cpa == Decimal("50")
+    assert stats.cpa == Decimal("100")
 
 
 async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
@@ -467,6 +471,7 @@ async def test_get_advertising_summary_aggregates_links(
     assert summary.revenue == Decimal("500")
     assert summary.cost == Decimal("100")
     assert summary.roi == Decimal("4")
+    assert summary.cpa == Decimal("100")
     metrics = {link.ad_link_id: link for link in summary.links}
     assert metrics[paid_link.id].attributions_count == 2
     assert metrics[paid_link.id].paid_count == 1
@@ -490,3 +495,50 @@ async def test_regular_user_cannot_get_advertising_summary(
     )
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, GetAdvertisingSummaryDto())
+
+
+async def test_get_advertising_summary_created_to_is_a_snapshot(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+    user_repository: UserRepository,
+    plan_id: int,
+) -> None:
+    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    ad_link = await create(OWNER, CreateAdLinkDto(name="Snapshot", code="summary-snapshot"))
+    old = await user_repository.create(CreateUserDto(name="Old", telegram_id=944_001))
+    new = await user_repository.create(CreateUserDto(name="New", telegram_id=944_002))
+    for user in (old, new):
+        await ad_link_repository.create_attribution(
+            ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
+        )
+    await session.execute(
+        update(AdLinkAttribution)
+        .where(AdLinkAttribution.user_id == old.id)
+        .values(created_at=datetime_now() - timedelta(days=10))
+    )
+    # attributed before the snapshot, paid after it
+    async with uow:
+        order = await payment_order_repository.create(
+            _paid_order_dto(user_id=old.id, plan_id=plan_id, idempotency_key="summary-snapshot-1")
+        )
+    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    use_case = GetAdvertisingSummaryUseCase(
+        ad_link_repository, payment_order_repository, pricing_repository, uow
+    )
+
+    snapshot = await use_case(
+        OWNER,
+        GetAdvertisingSummaryDto(
+            report_currency=Currency.RUB, created_to=datetime_now() - timedelta(days=1)
+        ),
+    )
+    live = await use_case(OWNER, GetAdvertisingSummaryDto(report_currency=Currency.RUB))
+
+    assert snapshot.attributions_count == 1
+    assert snapshot.paid_count == 0
+    assert snapshot.revenue == Decimal("0")
+    assert live.attributions_count == 2
+    assert live.paid_count == 1

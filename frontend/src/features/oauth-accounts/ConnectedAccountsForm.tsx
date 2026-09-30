@@ -1,7 +1,6 @@
 import { startRegistration } from "@simplewebauthn/browser";
-import { Fingerprint, Inbox, KeyRound, Link2, Pencil, Trash2, X } from "lucide-react";
-import { motion } from "motion/react";
-import { useState, type ComponentType } from "react";
+import { Fingerprint, KeyRound, Link2, Loader2, Pencil, Trash2 } from "lucide-react";
+import { useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getAuthStatus } from "@entities/auth/api";
@@ -21,14 +20,22 @@ import {
   type Passkey,
 } from "@entities/auth/passkeys";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { isHttpsUrl } from "@shared/lib/external-links";
 import { setOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
-import { Modal, useModalClose } from "@shared/ui/Modal";
+import { EmptyState } from "@shared/ui/EmptyState";
+import { Modal } from "@shared/ui/Modal";
+import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { Card } from "@shared/ui/Card";
+import { Button } from "@shared/ui/Button";
+import { formatDate } from "@shared/lib/relative-time";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Field } from "@shared/ui/Field";
+import { TextInput } from "@shared/ui/TextInput";
 
 const PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
@@ -55,29 +62,36 @@ async function loadConnectedAccountsData(signal?: AbortSignal): Promise<Connecte
 
 export function ConnectedAccountsForm() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, reload] = useAsyncResource(loadConnectedAccountsData);
+  // a successful connect keeps it set: the page is navigating away to the provider
+  const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(null);
 
   const handleConnect = async (provider: OAuthProvider) => {
+    setPendingProvider(provider);
     try {
       const { authorization_url } = await getOAuthConnectAuthorizeUrl(provider);
       if (!isHttpsUrl(authorization_url)) {
         toast.error(t("auth.errors.unsafeAuthorizationUrl"));
+        setPendingProvider(null);
         return;
       }
       setOAuthFlow("connect");
       window.location.href = authorization_url;
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      setPendingProvider(null);
     }
   };
 
   const handleDisconnect = async (provider: OAuthProvider) => {
+    setPendingProvider(provider);
     try {
       await disconnectOAuth(provider);
       reload();
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    } finally {
+      setPendingProvider(null);
     }
   };
 
@@ -90,7 +104,7 @@ export function ConnectedAccountsForm() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <Card>
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <Link2 className="size-4" />
@@ -105,7 +119,7 @@ export function ConnectedAccountsForm() {
 
       <div className="mt-4 flex flex-col divide-y divide-border/50">
         {state.kind === "loading" && (
-          <Spinner />
+          <Spinner size="card" />
         )}
         {state.kind === "error" && (
           <p className="text-sm text-error">{t("profile.oauthAccounts.loadError")}</p>
@@ -136,22 +150,23 @@ export function ConnectedAccountsForm() {
                     </p>
                   </div>
                 </div>
-                <motion.button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() =>
                     void (identity ? handleDisconnect(provider) : handleConnect(provider))
                   }
-                  {...bounceTap(bounceStrength)}
-                  className="shrink-0 rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5"
+                  disabled={pendingProvider !== null}
                 >
+                  {pendingProvider === provider && <Loader2 className="size-3.5 animate-spin" />}
                   {identity ? t("profile.oauthAccounts.disconnect") : t("profile.oauthAccounts.connect")}
-                </motion.button>
+                </Button>
               </div>
             );
           })}
         {state.kind === "ready" && <PasskeyRow passkeys={state.data.passkeys} onChange={reload} />}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -162,7 +177,6 @@ interface PasskeyRowProps {
 
 function PasskeyRow({ passkeys, onChange }: PasskeyRowProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isAdding, setIsAdding] = useState(false);
   const [isManaging, setIsManaging] = useState(false);
 
@@ -204,23 +218,22 @@ function PasskeyRow({ passkeys, onChange }: PasskeyRowProps) {
       </div>
       <div className="flex shrink-0 gap-2">
         {passkeys.length > 0 && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setIsManaging(true)}
-            className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5"
           >
             {t("profile.passkeys.manage")}
-          </button>
+          </Button>
         )}
-        <motion.button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => void handleAdd()}
           disabled={isAdding}
-          {...bounceTap(bounceStrength)}
-          className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isAdding ? t("profile.passkeys.adding") : t("profile.passkeys.addButton")}
-        </motion.button>
+        </Button>
       </div>
 
       {isManaging && (
@@ -238,55 +251,44 @@ interface PasskeysManageDialogBodyProps {
 }
 
 function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBodyProps) {
-  const { t } = useTranslation();
-  const close = useModalClose();
+  const { t, i18n } = useTranslation();
 
-  const handleRename = async (passkey: Passkey) => {
-    const name = window.prompt(t("profile.passkeys.namePrompt"), passkey.name);
-    if (!name || name === passkey.name) return;
+  // "delete:<id>" while that request is in flight
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<Passkey | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Passkey | null>(null);
+
+  const handleRename = async (passkey: Passkey, name: string): Promise<boolean> => {
+    if (name === passkey.name) return true;
     try {
       await renamePasskey(passkey.id, name);
       onChange();
+      return true;
     } catch (err) {
       toast.error(getErrorMessage(err, t("profile.passkeys.renameError")));
+      return false;
     }
   };
 
   const handleDelete = async (passkey: Passkey) => {
-    if (!window.confirm(t("profile.passkeys.deleteConfirm"))) return;
+    setPendingAction(`delete:${passkey.id}`);
     try {
       await deletePasskey(passkey.id);
       onChange();
     } catch (err) {
       toast.error(getErrorMessage(err, t("profile.passkeys.deleteError")));
+    } finally {
+      setPendingAction(null);
     }
   };
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Fingerprint className="size-4" />
-          </div>
-          {t("profile.passkeys.title")}
-        </h2>
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("profile.passkeys.close")}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
+      <DialogHeader icon={Fingerprint} title={t("profile.passkeys.title")} closeLabel={t("profile.passkeys.close")} />
 
       <div className="flex flex-col divide-y divide-border/50 px-5 pb-5 pt-4">
         {passkeys.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
-            <Inbox className="size-5" />
-            <p className="text-sm">{t("profile.passkeys.empty")}</p>
-          </div>
+          <EmptyState text={t("profile.passkeys.empty")} />
         )}
         {passkeys.map((passkey) => (
           <div
@@ -302,7 +304,7 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
                 <p className="text-[12px] text-muted-foreground">
                   {passkey.last_used_at
                     ? t("profile.passkeys.lastUsed", {
-                        date: new Date(passkey.last_used_at).toLocaleDateString(),
+                        date: formatDate(passkey.last_used_at, i18n.language),
                       })
                     : t("profile.passkeys.neverUsed")}
                 </p>
@@ -311,24 +313,116 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
             <div className="flex shrink-0 gap-1">
               <button
                 type="button"
-                onClick={() => void handleRename(passkey)}
+                onClick={() => setRenameTarget(passkey)}
+                disabled={pendingAction !== null}
                 aria-label={t("profile.passkeys.rename")}
-                className="rounded-full p-1.5 text-foreground/70 hover:bg-white/5 hover:text-foreground"
+                className="rounded-full p-1.5 text-foreground/70 hover:bg-white/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Pencil className="size-4" />
               </button>
               <button
                 type="button"
-                onClick={() => void handleDelete(passkey)}
+                onClick={() => setDeleteTarget(passkey)}
+                disabled={pendingAction !== null}
                 aria-label={t("profile.passkeys.delete")}
-                className="rounded-full p-1.5 text-error/80 hover:bg-white/5 hover:text-error"
+                className="rounded-full p-1.5 text-error/80 hover:bg-white/5 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Trash2 className="size-4" />
+                {pendingAction === `delete:${passkey.id}` ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      {renameTarget && (
+        <PasskeyRenameDialog
+          name={renameTarget.name}
+          onRename={(name) => handleRename(renameTarget, name)}
+          onClose={() => setRenameTarget(null)}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmDialog
+          title={t("profile.passkeys.deleteTitle")}
+          message={t("profile.passkeys.deleteConfirm")}
+          confirmLabel={t("profile.passkeys.delete")}
+          cancelLabel={t("profile.passkeys.cancel")}
+          danger
+          onConfirm={() => {
+            void handleDelete(deleteTarget);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+    </>
+  );
+}
+
+interface PasskeyRenameDialogProps {
+  name: string;
+  /** resolves true once saved; false keeps the dialog open with the typed name */
+  onRename: (name: string) => Promise<boolean>;
+  onClose: () => void;
+}
+
+function PasskeyRenameDialog({ name, onRename, onClose }: PasskeyRenameDialogProps) {
+  return (
+    <Modal onClose={onClose} size="sm">
+      <PasskeyRenameDialogBody name={name} onRename={onRename} />
+    </Modal>
+  );
+}
+
+function PasskeyRenameDialogBody({ name, onRename }: Omit<PasskeyRenameDialogProps, "onClose">) {
+  const { t } = useTranslation();
+  const close = useModalClose();
+  const [value, setValue] = useState(name);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const trimmed = value.trim();
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!trimmed) return;
+    setIsSubmitting(true);
+    const saved = await onRename(trimmed);
+    setIsSubmitting(false);
+    if (saved) close();
+  };
+
+  return (
+    <>
+      <DialogHeader icon={Pencil} title={t("profile.passkeys.renameTitle")} />
+
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
+        {/* small form, nothing scrolls: the buttons sit under the fields, no footer */}
+        <div className="flex flex-col gap-3 p-4">
+          <Card variant="form">
+            <Field label={t("profile.passkeys.namePrompt")} htmlFor="passkey-rename" required>
+              <TextInput
+                id="passkey-rename"
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                autoFocus
+                required
+              />
+            </Field>
+          </Card>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" type="button" onClick={close}>
+              {t("profile.passkeys.cancel")}
+            </Button>
+            <Button variant="accent" type="submit" disabled={isSubmitting || !trimmed}>
+              {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
+              {t("profile.passkeys.save")}
+            </Button>
+          </div>
+        </div>
+      </form>
     </>
   );
 }

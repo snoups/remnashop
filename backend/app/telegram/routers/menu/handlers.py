@@ -1,7 +1,7 @@
 from typing import Final
 
 from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.kbd import Button, Keyboard
@@ -38,6 +38,14 @@ async def on_start_command(message: Message, user: UserDto, dialog_manager: Dial
         mode=StartMode.RESET_STACK,
         show_mode=ShowMode.DELETE_AND_SEND,
     )
+
+
+@router.message(Command("paysupport"))
+async def on_paysupport_command(
+    message: Message, user: UserDto, i18n: FromDishka[TranslatorHub]
+) -> None:
+    logger.info(f"{user.log} Called '/paysupport' command")
+    await message.answer(get_translator(i18n, user).get("msg-paysupport"))
 
 
 @inject

@@ -1,7 +1,11 @@
 import { CURRENCY_SYMBOL } from "@entities/payments/api";
 
-export function formatMoney(amount: string, currency: string, language: string): string {
-  const value = new Intl.NumberFormat(language, { maximumFractionDigits: 0 }).format(Number(amount));
+/** `exact` keeps kopecks/cents when there are any (a single order), otherwise whole units (totals). */
+export function formatMoney(amount: string, currency: string, language: string, exact = false): string {
+  const digits = exact && Number(amount) % 1 !== 0 ? 2 : 0;
+  const value = new Intl.NumberFormat(language, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(
+    Number(amount),
+  );
   const symbol = CURRENCY_SYMBOL[currency];
   return symbol ? `${value} ${symbol}` : `${value} ${currency}`;
 }

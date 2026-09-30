@@ -104,6 +104,9 @@ class DialogCatalogDto:
     condition_keys: list[str]
     variable_keys: list[str]
     text_variable_keys: list[str]
+    # per window, on top of text_variable_keys -- only windows that have any
+    window_text_variable_keys: dict[str, list[str]]
+    variable_categories: dict[str, str]
     seed_window_keys: list[str]
     navigable_window_keys: list[str]
     custom_window_limit: int

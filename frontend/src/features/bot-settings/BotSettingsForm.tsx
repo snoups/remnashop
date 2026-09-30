@@ -1,6 +1,6 @@
-import { Bot, ScrollText, X } from "lucide-react";
+import { Bot, ScrollText } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getErrorMessage } from "@shared/api/http";
@@ -17,15 +17,18 @@ import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { FieldHint } from "@shared/ui/FieldHint";
-import { Modal, useModalClose } from "@shared/ui/Modal";
+import { Modal } from "@shared/ui/Modal";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
+import { Button } from "@shared/ui/Button";
+import { DialogHeader } from "@shared/ui/DialogHeader";
 
 // Telegram's secret_token requirement: 1-256 chars, only A-Z, a-z, 0-9, "_", "-".
 const SECRET_TOKEN_CHARSET =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
 const SECRET_TOKEN_LENGTH = 32;
 const RESTART_COOLDOWN_SECONDS = 10;
+const LOGS_POLL_INTERVAL_MS = 3000;
 // Telegram bot token format: numeric bot id, ":", then the 35-char API secret.
 const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]{35}$/;
 
@@ -53,7 +56,7 @@ function StatusBadge({ status }: { status: BotStatus }) {
 
   return (
     <span
-      className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-transparent px-4 py-1.5 text-[13px] font-semibold ${tone}`}
+      className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-transparent px-4 text-[13px] font-semibold ${tone}`}
     >
       {label}
       {hint !== null && <FieldHint text={hint} side="bottom" align="end" />}
@@ -63,39 +66,51 @@ function StatusBadge({ status }: { status: BotStatus }) {
 
 function BotLogsDialogBody() {
   const { t } = useTranslation();
-  const close = useModalClose();
   const bounceStrength = useBounceStrength();
   const [state, reload] = useAsyncResource(getBotLogs);
 
+  useEffect(() => {
+    const timer = setInterval(reload, LOGS_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [reload]);
+
+  const logRef = useRef<HTMLPreElement>(null);
+  // follows the tail unless the user scrolled up to read older lines
+  const stickToBottomRef = useRef(true);
+
+  useLayoutEffect(() => {
+    const el = logRef.current;
+    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight;
+  }, [state]);
+
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] backdrop-blur-md">
-            <ScrollText className="size-4" />
-          </div>
-          {t("settings.bot.logsTitle")}
-        </h2>
-        {state.kind === "loading" && <Spinner />}
-        <motion.button
-          type="button"
-          onClick={reload}
-          {...bounceTap(bounceStrength)}
-          className="ml-auto flex h-8 w-fit items-center rounded-full border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-white/5"
-        >
-          {t("settings.bot.refreshLogs")}
-        </motion.button>
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("settings.bot.closeLogs")}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col p-5">
-        <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border bg-input/60 p-3 font-mono text-[11.5px] leading-relaxed text-foreground/80">
+      <DialogHeader
+        icon={ScrollText}
+        title={t("settings.bot.logsTitle")}
+        actions={
+          <>
+            {state.kind === "loading" && <Spinner />}
+            <motion.button
+              type="button"
+              onClick={reload}
+              {...bounceTap(bounceStrength)}
+              className="flex h-8 w-fit items-center rounded-full border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-white/5"
+            >
+              {t("settings.bot.refreshLogs")}
+            </motion.button>
+          </>
+        }
+        closeLabel={t("settings.bot.closeLogs")}
+      />
+      <div className="flex h-[70vh] flex-col p-5">
+        <pre
+          ref={logRef}
+          onScroll={(event) => {
+            const el = event.currentTarget;
+            stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 16;
+          }}
+          className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border bg-input/60 p-3 font-mono text-[11.5px] leading-relaxed text-foreground/80">
           {state.kind === "error"
             ? t("settings.bot.logsLoadError")
             : state.kind === "ready"
@@ -200,13 +215,18 @@ export function BotSettingsForm() {
             <h2 className="text-sm font-bold text-foreground">{t("settings.bot.title")}</h2>
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.bot.description")}</p>
           </div>
-          {state.kind === "loading" && <Spinner className="ml-auto" />}
-          {statusState.kind === "ready" && <StatusBadge status={statusState.data} />}
-          {(state.kind === "error" || statusState.kind === "error") && (
-            <span className="ml-auto shrink-0 rounded-full border border-transparent bg-error/10 px-4 py-1.5 text-[13px] font-semibold text-error">
-              {t("settings.bot.loadErrorBadge")}
-            </span>
-          )}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <Button variant="outline" onClick={() => setIsLogsOpen(true)}>
+              {t("settings.bot.showLogs")}
+            </Button>
+            {state.kind === "loading" && <Spinner />}
+            {statusState.kind === "ready" && <StatusBadge status={statusState.data} />}
+            {(state.kind === "error" || statusState.kind === "error") && (
+              <span className="flex h-9 shrink-0 items-center rounded-full border border-transparent bg-error/10 px-4 text-[13px] font-semibold text-error">
+                {t("settings.bot.loadErrorBadge")}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
@@ -227,7 +247,7 @@ export function BotSettingsForm() {
               onChange={(event) => setToken(event.target.value)}
               placeholder={t("settings.bot.placeholder")}
               autoComplete="off"
-              className="min-w-0 rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              className="min-w-0 rounded-full border border-border bg-input/60 h-9 px-3 text-sm text-foreground outline-none focus:border-primary"
             />
           </div>
 
@@ -247,7 +267,7 @@ export function BotSettingsForm() {
                 onChange={(event) => setSecretToken(event.target.value)}
                 placeholder={t("settings.bot.placeholder")}
                 autoComplete="off"
-                className="min-w-0 w-full rounded-xl border border-border bg-input/60 px-3 py-2 pr-24 text-sm text-foreground outline-none focus:border-primary"
+                className="min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 pr-24 text-sm text-foreground outline-none focus:border-primary"
               />
               <motion.button
                 type="button"
@@ -274,39 +294,30 @@ export function BotSettingsForm() {
 
 
           <div className="flex items-center gap-2">
-            <motion.button
+            <Button
+              variant="accent"
+              className="w-fit"
               type="submit"
               disabled={isSubmitting}
-              {...bounceTap(bounceStrength)}
-              className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? t("settings.bot.saving") : t("settings.bot.save")}
-            </motion.button>
+            </Button>
 
-            <motion.button
+            <Button
+              variant="outline"
+              className="w-fit"
               type="button"
               onClick={() => void handleRestart()}
               disabled={isRestarting || restartCooldown > 0}
-              {...bounceTap(bounceStrength)}
-              className="w-fit rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isRestarting
                 ? t("settings.bot.restarting")
                 : restartCooldown > 0
                   ? t("settings.bot.restartCooldown", { seconds: restartCooldown })
                   : t("settings.bot.restartBot")}
-            </motion.button>
+            </Button>
 
             <FieldHint text={t("settings.bot.applyChangesDescription")} />
-
-            <motion.button
-              type="button"
-              onClick={() => setIsLogsOpen(true)}
-              {...bounceTap(bounceStrength)}
-              className="ml-auto w-fit rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
-            >
-              {t("settings.bot.showLogs")}
-            </motion.button>
           </div>
         </form>
 

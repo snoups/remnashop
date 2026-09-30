@@ -4,10 +4,9 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.settings import SettingsRepository
+from app.modules.settings import SettingsRepository, repush_bot_commands_if_configured
 from app.modules.translations.publish import publish_translation_change
 from app.modules.translations.repository import TranslationsRepository
-from app.modules.translations.usecases._repush import repush_bot_commands_if_configured
 from app.modules.users import UserDto
 
 

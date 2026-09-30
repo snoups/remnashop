@@ -14,6 +14,7 @@ from app.modules.users import UserDto
 @dataclass(frozen=True, kw_only=True)
 class ListEventLogInput:
     category: Optional[EventCategory] = None
+    actor_id: Optional[int] = None
     search: Optional[str] = None
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
@@ -34,6 +35,7 @@ class ListEventLogUseCase(UseCase[ListEventLogInput, tuple[list[EventLogEntryDto
         async with self._uow:
             return await self._event_log_repository.list(
                 category=data.category,
+                actor_id=data.actor_id,
                 search=data.search,
                 date_from=data.date_from,
                 date_to=data.date_to,

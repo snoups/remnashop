@@ -10,7 +10,7 @@ export type AsyncState<T> =
 export function useAsyncResource<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
   onSuccess?: (data: T) => void,
-): [AsyncState<T>, () => void, (data: T) => void] {
+): [AsyncState<T>, () => void, (data: T | ((prev: T) => T)) => void] {
   const [state, setState] = useState<AsyncState<T>>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -37,7 +37,13 @@ export function useAsyncResource<T>(
   }, [reloadToken]);
 
   const reload = () => setReloadToken((token) => token + 1);
-  const setData = (data: T) => setState({ kind: "ready", data });
+  // An updater sees the latest data even when several writes land back to back;
+  // it's a no-op until the first load has finished.
+  const setData = (data: T | ((prev: T) => T)) =>
+    setState((prev) => {
+      if (typeof data !== "function") return { kind: "ready", data };
+      return prev.kind === "ready" ? { kind: "ready", data: (data as (prev: T) => T)(prev.data) } : prev;
+    });
 
   return [state, reload, setData];
 }

@@ -13,6 +13,7 @@ import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { PremiumEmoji } from "@shared/ui/PremiumEmoji";
 import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
+import { IconButton } from "@shared/ui/IconButton";
 
 /** A standard emoji is a glyph the bot puts in the button's own label; a premium
  * one is an id Telegram renders itself, and only for a bot whose owner has
@@ -20,8 +21,8 @@ import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 export type PickedEmoji = { glyph: string } | { customEmojiId: string; fallback: string };
 
 interface EmojiPickerProps {
-  /** What to show on the trigger: the glyph, or a premium emoji's fallback. */
-  current: string | null;
+  /** What the trigger shows: the chosen emoji, or null for none. */
+  current: ReactNode;
   disabled?: boolean;
   onPick: (picked: PickedEmoji) => void;
   onClear: () => void;
@@ -46,7 +47,7 @@ const POPOVER_MOTION = {
   transition: { duration: 0.15, ease: "easeOut" },
 } as const;
 
-function PackTab({
+export function PackTab({
   isActive,
   bounceStrength,
   label,
@@ -76,7 +77,7 @@ function PackTab({
         }`}
       />
       <span
-        className={`relative z-10 flex size-7 items-center justify-center ${
+        className={`relative z-10 flex h-[26px] items-center justify-center px-3.5 ${
           isActive ? "text-primary" : "text-muted-foreground"
         }`}
       >
@@ -171,9 +172,9 @@ export function EmojiPicker({
               className="fixed z-30 w-72 rounded-popover border border-white/[0.14] bg-popover p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)]"
             >
               {/* TabBar's capsule, scaled down for the popover: the scroller is
-                  inset by the capsule's own p-0.5, so its clip box lines up with
+                  inset by the capsule's own p-1, so its clip box lines up with
                   the outer radius instead of cutting into a pill. */}
-              <nav className="mb-2 flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
+              <nav className="mb-2 flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
                 <div
                   ref={tabsRef}
                   className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto rounded-full"
@@ -196,17 +197,15 @@ export function EmojiPicker({
                     />
                   ))}
                 </div>
-                <button
-                  type="button"
+                <IconButton size="26px" className="ml-auto"
                   onClick={() => {
                     setIsOpen(false);
                     scrollToEmojiPacks();
                   }}
                   aria-label={t("dialogs.inspector.emojiManage")}
-                  className="ml-auto flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
                 >
                   <Plus className="size-[18px]" />
-                </button>
+                </IconButton>
               </nav>
 
               {/* x-hidden, not x-auto: a glyph the font renders wider than its
@@ -227,7 +226,7 @@ export function EmojiPicker({
                             fallback: item.fallback_emoji,
                           })
                         }
-                        className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.06]"
+                        className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
                       >
                         <PremiumEmoji item={item} size={22} />
                       </button>
@@ -245,7 +244,7 @@ export function EmojiPicker({
                             key={emoji.g}
                             type="button"
                             onClick={() => pick({ glyph: emoji.g })}
-                            className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.06]"
+                            className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
                           >
                             {emoji.g}
                           </button>
@@ -263,7 +262,7 @@ export function EmojiPicker({
                     onClear();
                     setIsOpen(false);
                   }}
-                  className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border py-1 text-[11.5px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+                  className="mt-1 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border text-[11.5px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
                 >
                   <X className="size-3" />
                   {t("dialogs.inspector.emojiClear")}

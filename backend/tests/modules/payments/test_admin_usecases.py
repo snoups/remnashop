@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
@@ -17,10 +18,15 @@ from app.core.utils.time import datetime_now
 from app.modules.payments.dto import CreatePaymentOrderDto
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.get_payment_order import GetPaymentOrderUseCase
+from app.modules.payments.usecases.get_payment_order_summary import (
+    GetPaymentOrderSummaryInput,
+    GetPaymentOrderSummaryUseCase,
+)
 from app.modules.payments.usecases.list_payment_orders import (
     ListPaymentOrdersInput,
     ListPaymentOrdersUseCase,
 )
+from app.modules.pricing import PricingRepository
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -139,3 +145,47 @@ async def test_get_payment_order_raises_not_found_for_a_missing_id(
 ) -> None:
     with pytest.raises(NotFoundError):
         await get_payment_order_use_case(admin_actor, 999_999_999)
+
+
+async def test_get_payment_order_summary_counts_and_converts_paid_revenue(
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+    admin_actor: UserDto,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        await payment_order_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="summary-pending")
+        )
+        paid = await payment_order_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="summary-paid"),
+                base_price=Decimal("625"),
+                discount_percent=20,
+            )
+        )
+        await payment_order_repository.mark_status(paid.id, PaymentOrderStatus.PAID)
+        rates = await pricing_repository.get_rate_table()
+
+    use_case = GetPaymentOrderSummaryUseCase(payment_order_repository, pricing_repository, uow)
+    summary = await use_case(admin_actor, GetPaymentOrderSummaryInput())
+
+    expected_revenue = (
+        Decimal("500")
+        / rates.for_currency(Currency.RUB).rate
+        * rates.for_currency(rates.anchor).rate
+    )
+    assert summary.report_currency == rates.anchor
+    assert (summary.total_count, summary.pending_count, summary.paid_count) == (2, 1, 1)
+    assert summary.conversion_rate == Decimal("0.5")
+    assert summary.revenue == expected_revenue
+    assert summary.average_check == expected_revenue
+    assert summary.average_discount == Decimal("0.2")
+    expected_base = (
+        Decimal("625")
+        / rates.for_currency(Currency.RUB).rate
+        * rates.for_currency(rates.anchor).rate
+    )
+    assert summary.discount_amount == expected_base - expected_revenue

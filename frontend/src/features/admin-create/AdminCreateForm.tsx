@@ -1,4 +1,4 @@
-import { UserPlus, X } from "lucide-react";
+import { ShieldPlus } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,8 +6,15 @@ import { useTranslation } from "react-i18next";
 import { createAdmin } from "@entities/admin/api";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { LOGIN_PATTERN } from "@shared/lib/login-validation";
 import { toast } from "@shared/lib/toast";
-import { Modal, useModalClose } from "@shared/ui/Modal";
+import { Modal } from "@shared/ui/Modal";
+import { useModalClose } from "@shared/ui/modal-hooks";
+import { Button } from "@shared/ui/Button";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { TextInput } from "@shared/ui/TextInput";
+import { Card } from "@shared/ui/Card";
+import { Field } from "@shared/ui/Field";
 
 interface AdminCreateFormProps {
   onCreated: (password: string) => void;
@@ -24,10 +31,10 @@ export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
         type="button"
         onClick={() => setIsOpen(true)}
         {...bounceTap(bounceStrength, 0.03)}
-        className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] px-3 py-2.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
+        className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] h-15 px-3 text-[13.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] transition-colors group-hover:bg-transparent">
-          <UserPlus className="size-4" />
+          <ShieldPlus className="size-4" />
         </span>
         {t("admins.create.button")}
       </motion.button>
@@ -43,11 +50,11 @@ export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
 
 function AdminCreateFormBody({ onCreated }: AdminCreateFormProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const close = useModalClose();
   const [login, setLogin] = useState("");
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isLoginInvalid = login.trim() !== "" && !LOGIN_PATTERN.test(login.trim());
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -70,69 +77,45 @@ function AdminCreateFormBody({ onCreated }: AdminCreateFormProps) {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <UserPlus className="size-4" />
+      <DialogHeader icon={ShieldPlus} title={t("admins.create.title")} />
+
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
+        {/* small form, nothing scrolls: the buttons sit under the fields, no footer */}
+        <div className="flex flex-col gap-3 p-4">
+          <Card variant="form">
+            <Field
+              label={t("admins.create.loginLabel")}
+              htmlFor="admin-create-login"
+              required
+              error={isLoginInvalid ? t("auth.errors.loginInvalidChars") : undefined}
+            >
+              <TextInput
+                id="admin-create-login"
+                value={login}
+                onChange={(event) => setLogin(event.target.value)}
+                placeholder={t("admins.create.loginLabel")}
+                required
+                aria-invalid={isLoginInvalid}
+              />
+            </Field>
+            <Field label={t("admins.create.nameLabel")} htmlFor="admin-create-name" required>
+              <TextInput
+                id="admin-create-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={t("admins.create.nameLabel")}
+                required
+              />
+            </Field>
+          </Card>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" type="button" onClick={close}>
+              {t("admins.permissionsForm.cancel")}
+            </Button>
+            <Button variant="accent" type="submit" disabled={isSubmitting || isLoginInvalid}>
+              {t("admins.create.submit")}
+            </Button>
           </div>
-          {t("admins.create.title")}
-        </h2>
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("profile.edit.close")}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
-
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4 px-5 pb-5 pt-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="admin-create-login" className="text-sm font-medium text-foreground/80">
-            {t("admins.create.loginLabel")}
-          </label>
-          <input
-            id="admin-create-login"
-            value={login}
-            onChange={(event) => setLogin(event.target.value)}
-            placeholder={t("admins.create.loginLabel")}
-            required
-            pattern="[A-Za-z0-9._-]+"
-            title={t("auth.errors.loginInvalidChars")}
-            className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="admin-create-name" className="text-sm font-medium text-foreground/80">
-            {t("admins.create.nameLabel")}
-          </label>
-          <input
-            id="admin-create-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t("admins.create.nameLabel")}
-            required
-            className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={close}
-            className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
-          >
-            {t("admins.permissionsForm.cancel")}
-          </button>
-          <motion.button
-            type="submit"
-            disabled={isSubmitting}
-            {...bounceTap(bounceStrength)}
-            className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {t("admins.create.submit")}
-          </motion.button>
         </div>
       </form>
     </>

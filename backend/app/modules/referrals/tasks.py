@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import Final, Optional
 from uuid import UUID, uuid5
 
@@ -6,11 +6,24 @@ from dishka.integrations.taskiq import FromDishka, inject
 from loguru import logger
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, PurchaseType, ReferralAccrualStrategy, ReferralRewardType
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.enums import (
+    Currency,
+    PurchaseType,
+    ReferralAccrualStrategy,
+    ReferralRewardStrategy,
+    ReferralRewardType,
+)
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.ports import EventPublisher
+from app.modules.payments import PaymentOrderRepository
+from app.modules.pricing import PricingRepository, convert_for_report
+from app.modules.referrals.dto import ReferralSettingsDto
 from app.modules.referrals.events import ReferralRewardIssuedEvent
 from app.modules.referrals.repository import ReferralRepository
+from app.modules.referrals.usecases.attach_referral import (
+    AttachReferralDto,
+    AttachReferralUseCase,
+)
 from app.modules.subscriptions import (
     PurchaseSubscriptionDto,
     PurchaseSubscriptionUseCase,
@@ -20,6 +33,8 @@ from app.modules.users import UserRepository
 from app.worker.broker import broker
 
 _MAX_LEVEL: Final[int] = 3
+_HUNDRED: Final[Decimal] = Decimal(100)
+_MIN_PERCENT_REWARD: Final[Decimal] = Decimal(1)
 # Namespace for the per-hop renewal key; any fixed UUID works, it only has to
 # stay the same so a redispatch derives the key the first attempt used.
 _REWARD_KEY_NAMESPACE: Final[UUID] = UUID("2f9f0b7a-6b1e-4a3f-9a21-6c6f4a1c7f10")
@@ -85,9 +100,46 @@ async def _purchase_earns_a_reward(
     return True
 
 
+async def _percent_base(
+    *,
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
+    payment_key: str,
+    reward_type: ReferralRewardType,
+) -> Optional[Decimal]:
+    order = await payment_order_repository.get_by_idempotency_key(payment_key)
+    if order is None:
+        logger.warning(f"Percent referral reward skipped: no order for payment '{payment_key}'")
+        return None
+    if reward_type is ReferralRewardType.EXTRA_DAYS:
+        return Decimal(order.duration_days)
+    # points are anchor-currency units, whatever the buyer paid in
+    rates = await pricing_repository.get_rate_table()
+    return convert_for_report(order.final_price, order.currency, rates.anchor, rates)
+
+
+def _level_amounts(
+    settings: ReferralSettingsDto, percent_base: Optional[Decimal]
+) -> dict[int, Decimal]:
+    if settings.reward_strategy is ReferralRewardStrategy.AMOUNT:
+        return settings.reward_amounts
+    if percent_base is None:
+        return {}
+    return {
+        level: max(
+            _MIN_PERCENT_REWARD,
+            (percent_base * percent / _HUNDRED).to_integral_value(rounding=ROUND_DOWN),
+        )
+        for level, percent in settings.reward_amounts.items()
+        if percent > 0
+    }
+
+
 async def assign_referral_rewards(
     *,
     referral_repository: ReferralRepository,
+    payment_order_repository: PaymentOrderRepository,
+    pricing_repository: PricingRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
     purchase_subscription_use_case: PurchaseSubscriptionUseCase,
@@ -111,13 +163,27 @@ async def assign_referral_rewards(
         return
 
     chain = await _walk_chain(referral_repository, user_id, settings.max_level)
+    if not chain:
+        return
+
+    percent_base = (
+        await _percent_base(
+            payment_order_repository=payment_order_repository,
+            pricing_repository=pricing_repository,
+            payment_key=payment_key,
+            reward_type=settings.reward_type,
+        )
+        if settings.reward_strategy is ReferralRewardStrategy.PERCENT
+        else None
+    )
+    amounts = _level_amounts(settings, percent_base)
 
     # One failing hop must not cost the others their reward, but it must still
     # reach the task runner: swallowed here, retry_on_error never fires and the
     # hop is lost for good.
     first_failure: Optional[Exception] = None
     for level, referrer_id, referral_id in chain:
-        amount = settings.reward_amounts.get(level)
+        amount = amounts.get(level)
         if not amount or amount <= 0:
             continue
         try:
@@ -244,6 +310,8 @@ async def assign_referral_rewards_task(
     is_new_purchase: bool,
     payment_key: str,
     referral_repository: FromDishka[ReferralRepository],
+    payment_order_repository: FromDishka[PaymentOrderRepository],
+    pricing_repository: FromDishka[PricingRepository],
     user_repository: FromDishka[UserRepository],
     subscription_repository: FromDishka[SubscriptionRepository],
     purchase_subscription_use_case: FromDishka[PurchaseSubscriptionUseCase],
@@ -252,6 +320,8 @@ async def assign_referral_rewards_task(
 ) -> None:
     await assign_referral_rewards(
         referral_repository=referral_repository,
+        payment_order_repository=payment_order_repository,
+        pricing_repository=pricing_repository,
         user_repository=user_repository,
         subscription_repository=subscription_repository,
         purchase_subscription_use_case=purchase_subscription_use_case,
@@ -261,4 +331,37 @@ async def assign_referral_rewards_task(
         subscription_id=subscription_id,
         is_new_purchase=is_new_purchase,
         payment_key=payment_key,
+    )
+
+
+async def attach_referral_on_registration(
+    *,
+    user_id: int,
+    referral_code: str,
+    user_repository: UserRepository,
+    attach_referral_use_case: AttachReferralUseCase,
+) -> None:
+    user = await user_repository.get_by_id(user_id)
+    if user is None:
+        return
+    try:
+        await attach_referral_use_case(user, AttachReferralDto(code=referral_code))
+    except ValidationError as error:
+        # a stale or foreign link isn't a failure worth retrying
+        logger.info(f"Referral code '{referral_code}' not attached to user '{user_id}': {error}")
+
+
+@broker.task
+@inject(patch_module=True)
+async def attach_referral_on_registration_task(
+    user_id: int,
+    referral_code: str,
+    user_repository: FromDishka[UserRepository],
+    attach_referral_use_case: FromDishka[AttachReferralUseCase],
+) -> None:
+    await attach_referral_on_registration(
+        user_id=user_id,
+        referral_code=referral_code,
+        user_repository=user_repository,
+        attach_referral_use_case=attach_referral_use_case,
     )

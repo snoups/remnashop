@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Copy, Filter, Gift, Inbox, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
+import { AlertCircle, ChevronRight, Filter, Gift, Plus, Ticket } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,30 +6,50 @@ import { useSearchParams } from "react-router-dom";
 
 import { type AddOnListItem, listAddons } from "@entities/addons/api";
 import { type Plan, listPlans } from "@entities/plans/api";
-import { deletePromocode, listPromocodes, type Promocode, updatePromocode } from "@entities/promocodes/api";
+import {
+  deletePromocode,
+  getPromocodeSummary,
+  listPromocodes,
+  type Promocode,
+  type PromocodeSummary,
+} from "@entities/promocodes/api";
 import {
   describeReward,
   getPromocodeStatus,
-  PROMOCODE_STATUS_BADGE_CLASSNAME,
+  PROMOCODE_STATUS_BADGE_TONE,
   PROMOCODE_STATUSES,
   REWARD_TYPES,
 } from "@entities/promocodes/display";
+import { formatMoney } from "@entities/advertising/format";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { PromocodeCreateDialog } from "@features/promocode-create/PromocodeCreateDialog";
-import { PromocodeEditDialog } from "@features/promocode-edit/PromocodeEditDialog";
+import { PromocodeDetailsDialog } from "@features/promocode-details/PromocodeDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
-import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { EmptyState } from "@shared/ui/EmptyState";
+import { KpiTile } from "@shared/ui/KpiTile";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
+import { Button } from "@shared/ui/Button";
+import { Badge } from "@shared/ui/Badge";
+import { Card } from "@shared/ui/Card";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { formatDate } from "@shared/lib/relative-time";
 
 type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: Promocode[] };
 
-const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_110px_110px_100px_76px] items-center gap-3";
-const COPIED_RESET_MS = 1500;
+// active first, then newest
+function comparePromocodes(a: Promocode, b: Promocode): number {
+  return (
+    Number(getPromocodeStatus(b) === "ACTIVE") - Number(getPromocodeStatus(a) === "ACTIVE") ||
+    (b.created_at ?? "").localeCompare(a.created_at ?? "") ||
+    b.id - a.id
+  );
+}
+
+const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_120px_110px_100px_16px] items-center gap-3";
 
 export function PromocodesPage() {
   const { t, i18n } = useTranslation();
@@ -42,9 +62,12 @@ export function PromocodesPage() {
   // set by the header search's deep link; no local search box
   const [searchParams] = useSearchParams();
   const search = (searchParams.get("search") ?? "").trim().toLowerCase();
-  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingPromocode, setEditingPromocode] = useState<Promocode | null>(null);
+  const [summary, setSummary] = useState<PromocodeSummary | null>(null);
+  // bumped after create/edit/delete so the metrics catch up with the list
+  const [summaryVersion, setSummaryVersion] = useState(0);
+  // an id, not the row: the dialog then follows edits/toggles made from inside it
+  const [detailsId, setDetailsId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Promocode | null>(null);
 
   const currentUserState = useCurrentUser();
@@ -54,6 +77,8 @@ export function PromocodesPage() {
   const canUpdate = permissions.includes("PROMOCODES_UPDATE");
   const canDelete = permissions.includes("PROMOCODES_DELETE");
   const canGenerateCode = permissions.includes("PROMOCODES_GENERATE_CODE");
+  const canViewSummary = permissions.includes("PROMOCODES_SUMMARY_VIEW");
+  const canViewUsers = permissions.includes("PROMOCODES_USERS_VIEW");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,6 +106,19 @@ export function PromocodesPage() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (!canViewSummary) return;
+    const controller = new AbortController();
+    getPromocodeSummary(controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setSummary(result);
+      })
+      .catch(() => {
+        // metrics are secondary; the list stays usable with dashes in their place
+      });
+    return () => controller.abort();
+  }, [canViewSummary, summaryVersion]);
+
   const visibleItems = useMemo(
     () =>
       state.kind === "ready"
@@ -89,57 +127,73 @@ export function PromocodesPage() {
               (!status || getPromocodeStatus(promo) === status) &&
               (!rewardType || promo.reward_type === rewardType) &&
               (!search || promo.code.toLowerCase().includes(search)),
-          )
+          ).sort(comparePromocodes)
         : [],
     [state, status, rewardType, search],
   );
 
   const handleSaved = (promo: Promocode) => {
-    if (state.kind !== "ready") return;
-    const exists = state.items.some((item) => item.id === promo.id);
-    setState({
-      kind: "ready",
-      items: exists ? state.items.map((item) => (item.id === promo.id ? promo : item)) : [promo, ...state.items],
+    setSummaryVersion((version) => version + 1);
+    setState((prev) => {
+      if (prev.kind !== "ready") return prev;
+      const exists = prev.items.some((item) => item.id === promo.id);
+      return {
+        kind: "ready",
+        items: exists ? prev.items.map((item) => (item.id === promo.id ? promo : item)) : [promo, ...prev.items],
+      };
     });
-  };
-
-  const handleToggleActive = async (promo: Promocode) => {
-    if (state.kind !== "ready") return;
-    const previous = state.items;
-    setState({
-      kind: "ready",
-      items: state.items.map((item) => (item.id === promo.id ? { ...item, is_active: !item.is_active } : item)),
-    });
-    try {
-      await updatePromocode(promo.id, { is_active: !promo.is_active });
-    } catch (err) {
-      setState({ kind: "ready", items: previous });
-      toast.error(getErrorMessage(err, t("promocodes.edit.error")));
-    }
   };
 
   const handleDelete = async (promo: Promocode) => {
     try {
       await deletePromocode(promo.id);
-      if (state.kind === "ready") {
-        setState({ kind: "ready", items: state.items.filter((item) => item.id !== promo.id) });
-      }
+      setSummaryVersion((version) => version + 1);
+      setState((prev) =>
+        prev.kind === "ready" ? { kind: "ready", items: prev.items.filter((item) => item.id !== promo.id) } : prev,
+      );
     } catch (err) {
       toast.error(getErrorMessage(err, t("promocodes.delete.error")));
     }
   };
 
-  const handleCopy = (promo: Promocode) => {
-    navigator.clipboard?.writeText(promo.code).catch(() => {});
-    setCopiedId(promo.id);
-    setTimeout(() => setCopiedId((current) => (current === promo.id ? null : current)), COPIED_RESET_MS);
-  };
+  const none = t("promocodes.stats.none");
+  const usedCount = (promo: Promocode): number | undefined =>
+    summary ? (summary.activations_by_promocode[promo.id] ?? 0) : undefined;
+  const detailsPromocode = state.kind === "ready" ? state.items.find((item) => item.id === detailsId) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="w-48">
+      {canViewSummary && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <KpiTile
+            label={t("promocodes.stats.promocodes")}
+            value={summary ? String(summary.total_count) : none}
+            hint={summary ? t("promocodes.stats.active", { count: summary.active_count }) : undefined}
+          />
+          <KpiTile
+            label={t("promocodes.stats.activations")}
+            value={summary ? String(summary.activations_count) : none}
+            hint={summary ? t("promocodes.stats.users", { count: summary.activated_users_count }) : undefined}
+          />
+          <KpiTile
+            label={t("promocodes.stats.grantedDays")}
+            value={summary ? summary.granted_days.toLocaleString(i18n.language) : none}
+            hint={
+              summary ? t("promocodes.stats.subscriptions", { count: summary.granted_subscriptions_count }) : undefined
+            }
+          />
+          <KpiTile
+            label={t("promocodes.stats.discounts")}
+            value={summary ? formatMoney(summary.discount_amount, summary.report_currency, i18n.language) : none}
+            hint={summary ? t("promocodes.stats.discountedOrders", { count: summary.discounted_orders_count }) : undefined}
+          />
+        </div>
+      )}
+
+      <Card>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex min-w-40 flex-1 flex-col gap-1.5">
+            <label className={EYEBROW_CLASS}>{t("promocodes.filters.status")}</label>
             <SelectDropdown
               id="promocodes-status"
               value={status}
@@ -152,7 +206,8 @@ export function PromocodesPage() {
               ]}
             />
           </div>
-          <div className="w-56">
+          <div className="flex min-w-40 flex-1 flex-col gap-1.5">
+            <label className={EYEBROW_CLASS}>{t("promocodes.filters.reward")}</label>
             <SelectDropdown
               id="promocodes-reward-type"
               value={rewardType}
@@ -165,41 +220,17 @@ export function PromocodesPage() {
               ]}
             />
           </div>
+          {canCreate && (
+            <Button variant="solid" size="field" type="button" className="ml-auto" onClick={() => setIsCreateOpen(true)}>
+              <Plus className="size-3.5" />
+              {t("promocodes.create.button")}
+            </Button>
+          )}
         </div>
-        {canCreate && (
-          <motion.button
-            type="button"
-            onClick={() => setIsCreateOpen(true)}
-            {...bounceTap(bounceStrength)}
-            className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-          >
-            <Plus className="size-3.5" />
-            {t("promocodes.create.button")}
-          </motion.button>
-        )}
-      </div>
+      </Card>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Ticket className="size-4" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              {t("promocodes.title")}
-              {state.kind === "ready" && (
-                <span className="text-[11.5px] font-normal tabular-nums text-muted-foreground">
-                  {state.items.length}
-                </span>
-              )}
-            </h2>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("promocodes.description")}</p>
-          </div>
-        </div>
-
-        <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
-
-        {state.kind === "loading" && <Spinner className="py-12" />}
+      <Card>
+        {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <div className="flex flex-col items-center gap-2 py-12 text-error">
             <AlertCircle className="size-5" />
@@ -207,51 +238,33 @@ export function PromocodesPage() {
           </div>
         )}
         {state.kind === "ready" && visibleItems.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-            <Inbox className="size-5" />
-            <p className="text-sm">{t(state.items.length === 0 ? "promocodes.empty" : "promocodes.noMatches")}</p>
-          </div>
+          <EmptyState text={t(state.items.length === 0 ? "promocodes.empty" : "promocodes.noMatches")} size="page" />
         )}
         {state.kind === "ready" && visibleItems.length > 0 && (
-          <div className="mt-3">
-            <div
-              className={`${ROW_GRID_CLASSNAME} mb-1 border-b border-border px-3 pb-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground`}
-            >
+          <>
+            <div className={`${ROW_GRID_CLASSNAME} ${LIST_HEAD_CLASS}`}>
               <span className="col-span-2">{t("promocodes.columns.code")}</span>
-              <span>{t("promocodes.fields.activations")}</span>
-              <span>{t("promocodes.fields.expires")}</span>
+              <span>{t("promocodes.columns.used")}</span>
+              <span>{t("promocodes.details.expires")}</span>
               <span>{t("promocodes.columns.status")}</span>
               <span />
             </div>
-            <div className="flex flex-col divide-y divide-border/50">
+            <div className={LIST_BODY_CLASS}>
               {visibleItems.map((promo) => {
                 const promoStatus = getPromocodeStatus(promo);
-                const menuItems: ActionMenuItem[] = [];
-                if (canUpdate) {
-                  menuItems.push({
-                    label: t("promocodes.edit.button"),
-                    icon: Pencil,
-                    onClick: () => setEditingPromocode(promo),
-                  });
-                }
-                if (canDelete) {
-                  menuItems.push({
-                    label: t("promocodes.delete.button"),
-                    icon: Trash2,
-                    variant: "danger",
-                    onClick: () => setPendingDelete(promo),
-                  });
-                }
-
+                const used = usedCount(promo);
                 return (
-                  <div
+                  <motion.button
                     key={promo.id}
-                    className={`${ROW_GRID_CLASSNAME} rounded-full px-3 py-2.5 [transition-property:background-color] duration-150 hover:bg-white/[0.04]`}
+                    type="button"
+                    onClick={() => setDetailsId(promo.id)}
+                    {...bounceTap(bounceStrength, 0.03)}
+                    className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
                   >
                     <span
                       aria-hidden
                       className={`flex size-9 items-center justify-center rounded-full ${
-                        promoStatus === "ACTIVE" ? "bg-primary/10 text-primary" : "bg-white/[0.06] text-muted-foreground"
+                        promoStatus === "ACTIVE" ? "bg-success/10 text-success" : "bg-white/[0.06] text-muted-foreground"
                       }`}
                     >
                       <Ticket className="size-4" />
@@ -259,23 +272,7 @@ export function PromocodesPage() {
                     <span className="min-w-0">
                       <span className="flex min-w-0 items-center gap-1.5">
                         <span className="truncate font-mono text-[13.5px] font-bold text-foreground">{promo.code}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(promo)}
-                          aria-label={t("promocodes.copyAria", { code: promo.code })}
-                          className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
-                        >
-                          {copiedId === promo.id ? (
-                            <Check className="size-3 text-success" />
-                          ) : (
-                            <Copy className="size-3" />
-                          )}
-                        </button>
-                        {promo.is_reusable && (
-                          <span className="shrink-0 rounded-full border border-primary/40 bg-accent px-2 py-px text-[10.5px] font-semibold text-primary">
-                            &infin;
-                          </span>
-                        )}
+                        {promo.is_reusable && <Badge tone="accent">&infin;</Badge>}
                       </span>
                       <span className="block truncate text-[12px] text-muted-foreground">
                         <span className="font-medium text-foreground/80">{describeReward(promo, addons, plans, t)}</span>
@@ -284,43 +281,28 @@ export function PromocodesPage() {
                       </span>
                     </span>
                     <span className="text-[13px] tabular-nums text-foreground">
-                      {promo.max_activations !== null
-                        ? promo.max_activations
-                        : t("promocodes.unlimitedActivations")}
+                      {used ?? none}
+                      <span className="text-muted-foreground">
+                        {" / "}
+                        {promo.max_activations ?? "∞"}
+                      </span>
                     </span>
                     <span className="text-[13px] tabular-nums text-foreground">
                       {promo.expires_at
-                        ? new Date(promo.expires_at).toLocaleDateString(i18n.language, {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })
+                        ? formatDate(promo.expires_at, i18n.language)
                         : t("promocodes.noExpiry")}
                     </span>
                     <span>
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide ${PROMOCODE_STATUS_BADGE_CLASSNAME[promoStatus]}`}
-                      >
-                        {t(`promocodes.status.${promoStatus}`)}
-                      </span>
+                      <Badge tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
                     </span>
-                    <span className="flex items-center justify-end gap-1">
-                      {canUpdate && (
-                        <Switch
-                          checked={promo.is_active}
-                          onChange={() => void handleToggleActive(promo)}
-                          ariaLabel={t("promocodes.edit.activeLabel")}
-                        />
-                      )}
-                      {menuItems.length > 0 && <ActionMenu items={menuItems} />}
-                    </span>
-                  </div>
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                  </motion.button>
                 );
               })}
             </div>
-          </div>
+          </>
         )}
-      </div>
+      </Card>
 
       {isCreateOpen && (
         <PromocodeCreateDialog
@@ -332,27 +314,26 @@ export function PromocodesPage() {
         />
       )}
 
-      {editingPromocode && (
-        <PromocodeEditDialog
-          promocode={editingPromocode}
+      {detailsPromocode && (
+        <PromocodeDetailsDialog
+          promocode={detailsPromocode}
+          usedCount={usedCount(detailsPromocode)}
           addons={addons}
           plans={plans}
-          onDelete={
-            canDelete
-              ? () => {
-                  setPendingDelete(editingPromocode);
-                  setEditingPromocode(null);
-                }
-              : undefined
-          }
-          onClose={() => setEditingPromocode(null)}
+          canViewUsers={canViewUsers}
+          canUpdate={canUpdate}
+          canDelete={canDelete}
           onSaved={handleSaved}
+          onClose={(followUp) => {
+            if (followUp === "delete") setPendingDelete(detailsPromocode);
+            setDetailsId(null);
+          }}
         />
       )}
 
       {pendingDelete && (
         <ConfirmDialog
-          title={t("promocodes.delete.button")}
+          title={t("promocodes.delete.title")}
           message={t("promocodes.delete.confirm", { code: pendingDelete.code })}
           confirmLabel={t("promocodes.delete.confirmButton")}
           cancelLabel={t("promocodes.delete.cancelButton")}

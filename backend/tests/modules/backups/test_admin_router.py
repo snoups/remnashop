@@ -28,6 +28,7 @@ from app.modules.backups.usecases import (
     GetBackupSettingsUseCase,
     GetBackupStatsUseCase,
     ListBackupRunsUseCase,
+    ResetBackupSettingsUseCase,
     UpdateBackupSettingsUseCase,
 )
 from app.modules.backups.usecases.create_backup_run import RunBackupDispatch
@@ -65,6 +66,7 @@ class _BackupsProvider(Provider):
     get_backup_settings_use_case = provide(GetBackupSettingsUseCase)
     get_backup_stats_use_case = provide(GetBackupStatsUseCase)
     update_backup_settings_use_case = provide(UpdateBackupSettingsUseCase)
+    reset_backup_settings_use_case = provide(ResetBackupSettingsUseCase)
     create_backup_run_use_case = provide(CreateBackupRunUseCase)
     list_backup_runs_use_case = provide(ListBackupRunsUseCase)
     get_backup_run_use_case = provide(GetBackupRunUseCase)
@@ -177,6 +179,11 @@ async def test_owner_can_get_and_update_settings(
     assert response.status_code == 200
     assert response.json()["enabled"] is True
     assert response.json()["max_files"] == 3
+
+    response = await client.delete(f"{API_V1}/backups/settings", headers=owner_headers)
+    assert response.status_code == 200
+    assert response.json()["enabled"] is False
+    assert response.json()["max_files"] == 7
 
 
 async def test_update_settings_rejects_zero_max_files(

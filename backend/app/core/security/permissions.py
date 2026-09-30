@@ -60,7 +60,9 @@ class Permission(UpperStrEnum):
     ADMINS_MANAGE = auto()
     API_TOKENS_MANAGE = auto()
     EVENT_LOG_VIEW = auto()
+    NOTIFICATIONS_VIEW = auto()
     USERS_VIEW = auto()
+    USERS_STATS_VIEW = auto()
     USERS_DELETE = auto()
     USERS_DISCOUNT_MANAGE = auto()
     USER_SESSIONS_VIEW = auto()
@@ -109,17 +111,28 @@ class Permission(UpperStrEnum):
     PROMOCODES_UPDATE = auto()
     PROMOCODES_DELETE = auto()
     PROMOCODES_GENERATE_CODE = auto()
+    PROMOCODES_ACTIVATIONS_VIEW = auto()
+    PROMOCODES_SUMMARY_VIEW = auto()
+    PROMOCODES_USERS_VIEW = auto()
     PAYMENTS_VIEW = auto()
+    PAYMENTS_SUMMARY_VIEW = auto()
     PAYMENTS_ORDER_VIEW = auto()
     PAYMENTS_GATEWAYS_VIEW = auto()
     REFERRALS_VIEW = auto()
+    REFERRALS_LINKS_VIEW = auto()
+    REFERRALS_INVITED_VIEW = auto()
+    REFERRALS_REVENUE_VIEW = auto()
     REFERRALS_LIST = auto()
+    REFERRALS_SUMMARY_VIEW = auto()
     REFERRALS_SETTINGS_VIEW = auto()
     REFERRALS_SETTINGS_MANAGE = auto()
+    REFERRALS_SETTINGS_RESET = auto()
     REFERRALS_POINTS_MANAGE = auto()
+    REFERRALS_CODE_RESET = auto()
     BACKUPS_VIEW = auto()
     BACKUPS_SETTINGS_VIEW = auto()
     BACKUPS_SETTINGS_MANAGE = auto()
+    BACKUPS_SETTINGS_RESET = auto()
     BACKUPS_RUN_VIEW = auto()
     BACKUPS_RUN_CREATE = auto()
     BACKUPS_RUN_DOWNLOAD = auto()
@@ -141,7 +154,10 @@ class Permission(UpperStrEnum):
     USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
     AD_LINKS_VIEW = auto()
     AD_LINKS_STATS_VIEW = auto()
+    AD_LINKS_SUMMARY_VIEW = auto()
     AD_LINKS_USERS_VIEW = auto()
+    AD_LINKS_USER_ATTRIBUTION_VIEW = auto()
+    AD_LINKS_SHARE_VIEW = auto()
     AD_LINKS_CREATE = auto()
     AD_LINKS_GENERATE_CODE = auto()
     AD_LINKS_UPDATE = auto()
@@ -195,7 +211,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.DIALOGS_EXPORT: PermissionMeta(resource="dialogs", kind="read"),
     Permission.DIALOGS_IMPORT: PermissionMeta(resource="dialogs", kind="write"),
     Permission.EVENT_LOG_VIEW: PermissionMeta(resource="event_log", kind="read"),
+    Permission.NOTIFICATIONS_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
+    Permission.USERS_STATS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_DISCOUNT_MANAGE: PermissionMeta(resource="users", kind="write"),
     Permission.USER_SESSIONS_VIEW: PermissionMeta(resource="user_sessions", kind="read"),
@@ -238,21 +256,32 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ADDONS_PRICE_OVERRIDE_MANAGE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_REORDER: PermissionMeta(resource="addons", kind="write"),
     Permission.PROMOCODES_VIEW: PermissionMeta(resource="promocodes", kind="read"),
+    Permission.PROMOCODES_ACTIVATIONS_VIEW: PermissionMeta(resource="promocodes", kind="read"),
+    Permission.PROMOCODES_SUMMARY_VIEW: PermissionMeta(resource="promocodes", kind="read"),
+    Permission.PROMOCODES_USERS_VIEW: PermissionMeta(resource="promocodes", kind="read"),
     Permission.PROMOCODES_CREATE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_UPDATE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_DELETE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_GENERATE_CODE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PAYMENTS_VIEW: PermissionMeta(resource="payments", kind="read"),
+    Permission.PAYMENTS_SUMMARY_VIEW: PermissionMeta(resource="payments", kind="read"),
     Permission.PAYMENTS_ORDER_VIEW: PermissionMeta(resource="payments", kind="read"),
     Permission.PAYMENTS_GATEWAYS_VIEW: PermissionMeta(resource="payments", kind="read"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_LINKS_VIEW: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_INVITED_VIEW: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_REVENUE_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_LIST: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_SUMMARY_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_SETTINGS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_SETTINGS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
+    Permission.REFERRALS_SETTINGS_RESET: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_POINTS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
+    Permission.REFERRALS_CODE_RESET: PermissionMeta(resource="referrals", kind="write"),
     Permission.BACKUPS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_SETTINGS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_SETTINGS_MANAGE: PermissionMeta(resource="backups", kind="write"),
+    Permission.BACKUPS_SETTINGS_RESET: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_RUN_CREATE: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_DOWNLOAD: PermissionMeta(resource="backups", kind="read"),
@@ -272,7 +301,10 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.USERS_BULK_BLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.AD_LINKS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_STATS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_SUMMARY_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_USERS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_USER_ATTRIBUTION_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_SHARE_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_CREATE: PermissionMeta(resource="ad_links", kind="write"),
     Permission.AD_LINKS_GENERATE_CODE: PermissionMeta(resource="ad_links", kind="write"),
     Permission.AD_LINKS_UPDATE: PermissionMeta(resource="ad_links", kind="write"),
@@ -361,18 +393,31 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.PROMOCODES_UPDATE,
         Permission.PROMOCODES_DELETE,
         Permission.PROMOCODES_GENERATE_CODE,
+        Permission.PROMOCODES_ACTIVATIONS_VIEW,
+        Permission.PROMOCODES_SUMMARY_VIEW,
+        Permission.PROMOCODES_USERS_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,
         Permission.PAYMENTS_VIEW,
+        Permission.PAYMENTS_SUMMARY_VIEW,
         Permission.PAYMENTS_ORDER_VIEW,
         Permission.PAYMENTS_GATEWAYS_VIEW,
         Permission.REFERRALS_VIEW,
+        Permission.REFERRALS_LINKS_VIEW,
+        Permission.REFERRALS_INVITED_VIEW,
+        Permission.REFERRALS_REVENUE_VIEW,
         Permission.REFERRALS_LIST,
+        Permission.REFERRALS_SUMMARY_VIEW,
         Permission.REFERRALS_SETTINGS_VIEW,
         Permission.REFERRALS_SETTINGS_MANAGE,
+        Permission.REFERRALS_SETTINGS_RESET,
         Permission.REFERRALS_POINTS_MANAGE,
+        Permission.REFERRALS_CODE_RESET,
         Permission.AD_LINKS_VIEW,
         Permission.AD_LINKS_STATS_VIEW,
+        Permission.AD_LINKS_SUMMARY_VIEW,
         Permission.AD_LINKS_USERS_VIEW,
+        Permission.AD_LINKS_USER_ATTRIBUTION_VIEW,
+        Permission.AD_LINKS_SHARE_VIEW,
         Permission.AD_LINKS_CREATE,
         Permission.AD_LINKS_GENERATE_CODE,
         Permission.AD_LINKS_UPDATE,

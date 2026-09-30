@@ -21,11 +21,13 @@ import {
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
+import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { useBounceStrength } from "@shared/lib/bounceState";
 import { localeLabel } from "@shared/i18n/locale-label";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
+import { Card } from "@shared/ui/Card";
 
 /** Every other locale starts life as a copy of this one. */
 const SOURCE_LOCALE = "en";
@@ -66,8 +68,7 @@ export function TranslationsEditorForm() {
   const [entriesState, reloadEntries, setEntriesData] = useAsyncResource(listTranslations);
   const [pickedKey, setSelectedKey] = useState<string | null>(null);
   const [pickedLocale, setActiveLocale] = useState<string | null>(null);
-  // Same rule as the window tree: a group stays as clicked, otherwise it
-  // follows the selected key.
+  // same rule as the window tree: a group stays as clicked, otherwise expanded
   const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>({});
   const [pendingImport, setPendingImport] = useState<TranslationsExportPayload | null>(null);
   const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
@@ -127,8 +128,7 @@ export function TranslationsEditorForm() {
           .map((e) => (e.attribute_id ? `${e.message_id}.${e.attribute_id}` : e.message_id)),
   );
 
-  const isGroupCollapsed = (group: string) =>
-    toggledGroups[group] ?? (selectedKey === null || group !== groupOf(selectedKey));
+  const isGroupCollapsed = (group: string) => toggledGroups[group] ?? false;
 
   const toggleGroup = (group: string) =>
     setToggledGroups((current) => ({ ...current, [group]: !isGroupCollapsed(group) }));
@@ -202,7 +202,7 @@ export function TranslationsEditorForm() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+    <Card variant="bare" className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.07] p-4">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <Languages className="size-4" />
@@ -266,7 +266,7 @@ export function TranslationsEditorForm() {
                     onClick={() => toggleGroup(group)}
                     initial="rest"
                     whileTap="tap"
-                    className="group relative isolate flex w-full cursor-pointer items-center gap-1 rounded-full px-1.5 py-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
+                    className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
                   >
                     <motion.span
                       aria-hidden
@@ -287,46 +287,44 @@ export function TranslationsEditorForm() {
                       {keys.length}
                     </span>
                   </motion.button>
-                  {!isCollapsed && (
-                    <div className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
-                      {keys.map((key) => (
-                        <motion.button
-                          key={key}
-                          type="button"
-                          onClick={() => setSelectedKey(key)}
-                          initial="rest"
-                          whileTap="tap"
-                          className="group relative isolate flex min-w-0 cursor-pointer items-center rounded-full"
+                  <Collapse open={!isCollapsed} className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
+                    {keys.map((key) => (
+                      <motion.button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedKey(key)}
+                        initial="rest"
+                        whileTap="tap"
+                        className="group relative isolate flex min-w-0 cursor-pointer items-center rounded-full"
+                      >
+                        <motion.span
+                          aria-hidden
+                          variants={{
+                            rest: { scale: 1 },
+                            tap: { scale: 1 + 0.05 * bounceStrength },
+                          }}
+                          className={`absolute inset-0 rounded-full transition-colors ${
+                            key === selectedKey ? "bg-accent" : "group-hover:bg-white/[0.04]"
+                          }`}
+                        />
+                        <span
+                          className={`relative z-10 min-w-0 flex-1 truncate px-2.5 text-left font-mono text-[12px] leading-[30px] ${
+                            key === selectedKey
+                              ? "font-medium text-primary"
+                              : "text-foreground/80"
+                          }`}
                         >
-                          <motion.span
-                            aria-hidden
-                            variants={{
-                              rest: { scale: 1 },
-                              tap: { scale: 1 + 0.05 * bounceStrength },
-                            }}
-                            className={`absolute inset-0 rounded-full transition-colors ${
-                              key === selectedKey ? "bg-accent" : "group-hover:bg-white/[0.04]"
-                            }`}
+                          {key}
+                        </span>
+                        {untranslatedKeys.has(key) && (
+                          <CircleAlert
+                            aria-label={t("dialogs.texts.untranslated")}
+                            className="relative z-10 mr-2.5 size-3.5 shrink-0 text-warning"
                           />
-                          <span
-                            className={`relative z-10 min-w-0 flex-1 truncate px-2.5 py-1.5 text-left font-mono text-[12px] ${
-                              key === selectedKey
-                                ? "font-medium text-primary"
-                                : "text-foreground/80"
-                            }`}
-                          >
-                            {key}
-                          </span>
-                          {untranslatedKeys.has(key) && (
-                            <CircleAlert
-                              aria-label={t("dialogs.texts.untranslated")}
-                              className="relative z-10 mr-2.5 size-3.5 shrink-0 text-warning"
-                            />
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
+                        )}
+                      </motion.button>
+                    ))}
+                  </Collapse>
                 </div>
               );
             })}
@@ -334,7 +332,7 @@ export function TranslationsEditorForm() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-2 pb-4">
-          {entriesState.kind === "loading" && <Spinner />}
+          {entriesState.kind === "loading" && <Spinner size="card" />}
           {entriesState.kind === "error" && (
             <p className="text-sm text-error">{t("dialogs.texts.loadError")}</p>
           )}
@@ -351,7 +349,7 @@ export function TranslationsEditorForm() {
             </div>
           )}
           {selectedKey !== null && activeLocale !== null && (
-            <div className="w-full max-w-sm rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <Card className="w-full max-w-sm">
               <TextEditorPanel
                 // Remounts on key or locale change so the draft never carries
                 // one string's text over to another.
@@ -359,7 +357,7 @@ export function TranslationsEditorForm() {
                 textKey={selectedKey}
                 entries={entries}
                 activeLocale={activeLocale}
-                variableKeys={[]}
+                variables={[]}
                 multiline
                 emojiInsert
                 canUpdate
@@ -367,7 +365,7 @@ export function TranslationsEditorForm() {
                 save={updateTranslation}
                 onSaved={handleEntrySaved}
               />
-            </div>
+            </Card>
           )}
         </div>
 
@@ -384,20 +382,22 @@ export function TranslationsEditorForm() {
             </div>
           )}
           {localeStats.length > 0 && (
-            <ul className="flex flex-col divide-y divide-white/[0.06] rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-              {localeStats.map(({ locale, total, translated }) => (
-                <li key={locale} className="flex flex-wrap items-baseline gap-x-2 px-3.5 py-2.5">
-                  <span className="truncate text-[13px] font-medium text-foreground">
-                    {localeLabel(locale, i18n.language)}
-                  </span>
-                  <span className="ml-auto shrink-0 text-[12px] tabular-nums text-muted-foreground">
-                    {locale === SOURCE_LOCALE
-                      ? t("dialogs.texts.localeSource", { total })
-                      : t("dialogs.texts.localeTranslated", { translated, total })}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Card variant="bare">
+              <ul className="flex flex-col divide-y divide-white/[0.06]">
+                {localeStats.map(({ locale, total, translated }) => (
+                  <li key={locale} className="flex flex-wrap items-baseline gap-x-2 px-3.5 py-2.5">
+                    <span className="truncate text-[13px] font-medium text-foreground">
+                      {localeLabel(locale, i18n.language)}
+                    </span>
+                    <span className="ml-auto shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                      {locale === SOURCE_LOCALE
+                        ? t("dialogs.texts.localeSource", { total })
+                        : t("dialogs.texts.localeTranslated", { translated, total })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
           )}
         </aside>
       </div>
@@ -405,6 +405,7 @@ export function TranslationsEditorForm() {
       {pendingImport !== null && (
         <ConfirmDialog
           title={t("dialogs.toolbar.import")}
+          icon={Upload}
           message={t("dialogs.texts.importConfirm")}
           confirmLabel={t("dialogs.toolbar.importConfirmButton")}
           cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
@@ -414,7 +415,7 @@ export function TranslationsEditorForm() {
       )}
       {isResetAllConfirmOpen && (
         <ConfirmDialog
-          title={t("dialogs.inspector.resetAll")}
+          title={t("dialogs.inspector.resetAllTitle")}
           message={t("dialogs.texts.resetAllConfirm")}
           confirmLabel={t("dialogs.inspector.resetAllConfirmButton")}
           cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
@@ -423,6 +424,6 @@ export function TranslationsEditorForm() {
           onCancel={() => setIsResetAllConfirmOpen(false)}
         />
       )}
-    </div>
+    </Card>
   );
 }

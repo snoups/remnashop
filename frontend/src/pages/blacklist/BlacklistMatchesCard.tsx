@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Inbox, Search, Unlock, UserX } from "lucide-react";
+import { ChevronLeft, ChevronRight, SearchX, Unlock, UserX } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,8 +19,12 @@ import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { EmptyState } from "@shared/ui/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
 import { Spinner } from "@shared/ui/Spinner";
+import { SearchField } from "@shared/ui/SearchField";
+import { IconButton } from "@shared/ui/IconButton";
+import { Button } from "@shared/ui/Button";
 
 import { BlacklistCard, KindBadge } from "./BlacklistCard";
 
@@ -103,68 +107,54 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
         data !== null &&
         data.all_total > 0 && (
           <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full border border-transparent bg-error/10 px-4 py-2 text-[12.5px] leading-5 font-semibold text-error">
+            <span className="flex h-9 items-center rounded-full border border-transparent bg-error/10 px-4 text-[12.5px] font-semibold text-error">
               {t("blacklist.matches.count", { count: data.all_total })}
             </span>
             {canUnblockAll && (
-              <motion.button
-                type="button"
+              <Button
+                variant="secondary"
                 onClick={() => setIsUnblockConfirmOpen(true)}
-                {...bounceTap(bounceStrength)}
-                className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] leading-5 font-semibold text-foreground/90 transition-colors hover:bg-white/5"
               >
                 <Unlock className="size-3.5" />
                 {t("blacklist.matches.unblockAll.button")}
-              </motion.button>
+              </Button>
             )}
           </div>
         )
       }
     >
-      {state.kind === "loading" && <Spinner className="mt-4" />}
+      {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("blacklist.matches.loadError")}</p>}
       {data !== null && data.all_total === 0 && (
-        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-          <Inbox className="size-5" />
-          <p className="text-sm">{t("blacklist.matches.empty")}</p>
-        </div>
+        <EmptyState text={t("blacklist.matches.empty")} />
       )}
 
       {data !== null && data.all_total > 0 && (
         <>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-40 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(1);
-                }}
-                placeholder={t("blacklist.matches.searchPlaceholder")}
-                aria-label={t("blacklist.matches.searchPlaceholder")}
-                className="w-full rounded-xl border border-border bg-input/60 py-2 pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary"
-              />
-            </div>
+            <SearchField
+              id="blacklist-matches-search"
+              label={t("blacklist.matches.searchPlaceholder")}
+              hideLabel
+              placeholder={t("blacklist.matches.searchPlaceholder")}
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+            />
             <div className="w-full sm:w-64">
               <PillTabs
                 items={(
                   [
-                    ["ALL", t("blacklist.matches.allOrigins"), data.all_total],
-                    ["manual", t("blacklist.matches.manualOrigin"), data.manual_total],
-                    ["lists", t("blacklist.matches.listsOrigin"), data.lists_total],
+                    ["ALL", t("blacklist.matches.allOrigins")],
+                    ["manual", t("blacklist.matches.manualOrigin")],
+                    ["lists", t("blacklist.matches.listsOrigin")],
                   ] as const
-                ).map(([key, label, count]) => ({
-                  key,
-                  label: (
-                    <>
-                      {label} <span className="text-[11.5px] tabular-nums opacity-70">{count}</span>
-                    </>
-                  ),
-                }))}
+                ).map(([key, label]) => ({ key, label }))}
                 activeKey={origin ?? "ALL"}
                 onSelect={(key) => changeOrigin(key === "ALL" ? undefined : key)}
+                size="field"
               />
             </div>
           </div>
@@ -172,7 +162,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
           <div className="-mx-2 mt-2 -mb-1 overflow-x-auto px-2 py-1">
             <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13px]">
               <thead>
-                <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 [&>th]:border-b [&>th]:border-border">
+                <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&>th]:border-b [&>th]:border-border">
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnUser")}</th>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnHit")}</th>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnOrigin")}</th>
@@ -237,21 +227,19 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                       )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
+                      <IconButton size="8"
                         onClick={() => setDetailsUser(match.user)}
                         aria-label={t("blacklist.matches.openUser")}
-                        className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
                       >
                         <ChevronRight className="size-4" />
-                      </button>
+                      </IconButton>
                     </td>
                   </motion.tr>
                 ))}
               </tbody>
             </table>
             {data.total === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">{t("blacklist.matches.noResults")}</p>
+              <EmptyState icon={SearchX} text={t("blacklist.matches.noResults")} />
             )}
           </div>
 

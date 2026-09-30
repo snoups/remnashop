@@ -9,6 +9,7 @@ from app.modules.translations.serializer import (
     join_message_key,
     serialize_to_fluent,
     split_message_key,
+    strip_serializer_escapes,
 )
 from app.modules.translations.publish import publish_translation_change
 from app.modules.translations.di import get_translations_providers
@@ -41,4 +42,5 @@ __all__ = [
     "publish_translation_change",
     "serialize_to_fluent",
     "split_message_key",
+    "strip_serializer_escapes",
 ]

@@ -20,16 +20,17 @@
   --color-muted-foreground: #8b93b8;
   --color-primary: #22d3ee;
   --color-primary-hover: #67e8f9;
-  --color-primary-foreground: #01030f;
+  --color-primary-foreground: #052024;
   --color-accent: #22d3ee1f;
   --color-accent-foreground: #a8f2ff;
   --color-success: #00c758;
   --color-warning: #f99c00;
   --color-error: #fb2c36;
 
-  --radius-popover: 20px;
-  /* popover radius minus its p-1.5 (6px) padding, so item corners nest cleanly */
-  --radius-popover-item: 14px;
+  --radius-popover: 24px;
+  /* popover radius minus its p-1.5 (6px) padding, so item corners nest cleanly;
+     on a 36px (h-9) item that's exactly a pill */
+  --radius-popover-item: 18px;
   --radius-dialog: 24px;
 }
 
@@ -48,6 +49,17 @@ html {
   :focus-visible {
     outline: 1px solid var(--color-primary);
     outline-offset: 2px;
+  }
+
+  /* app, not document: an arrow over headings and labels, the caret only where
+     text can be typed. Text stays selectable. Base layer, so cursor-* utilities win. */
+  body {
+    cursor: default;
+  }
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"]),
+  textarea,
+  [contenteditable]:not([contenteditable="false"]) {
+    cursor: text;
   }
 }
 
@@ -87,21 +99,12 @@ html {
   height: 16px;
 }
 
-/* Native search-input "clear" (x) button — recolored via mask since the
-   browser default icon doesn't accept `color`. */
+/* Native search-input "clear" (x) button -- hidden: SearchClearButton draws
+   one in every browser (Firefox has no native one). */
 input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
-  height: 14px;
-  width: 14px;
-  cursor: pointer;
-  background-color: var(--color-muted-foreground);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E");
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
+  display: none;
 }
 
 /* Native textarea resize grip. `mask-image` isn't honored on this
@@ -137,6 +140,28 @@ textarea::-webkit-resizer {
 
 *::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-primary);
+}
+
+/* Dialog bodies reserve the scrollbar's width up front, so content doesn't shift when
+   the scrollbar appears, and give that width back out of their right padding (p-4/px-4),
+   keeping the content area as wide as without a gutter. Nested lists keep their own layout. */
+[role="dialog"] .min-h-0.flex-1.overflow-y-auto {
+  scrollbar-gutter: stable;
+  padding-right: calc(1rem - 10px);
+}
+
+/* Nested-dialog morph (shared/ui/Modal.tsx): the parent panel resizes as an empty frame
+   while the nested panel's content, chrome-less, is clipped to it. */
+[data-morph-ghost] > * {
+  visibility: hidden;
+}
+
+[data-morphing] {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Fades scrolled content into the top edge of a container instead of a hard
@@ -183,3 +208,27 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* Rows fade in when they mount: first load, a load-more page, a new row.
+   Kept rows don't replay. Only the first 12 stagger, a load-more page comes in
+   at once. `translate`, not `transform`, so motion's tap scale on rows is untouched. */
+@keyframes list-row-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.list-rows > * {
+  animation: list-row-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.list-rows > :nth-child(2) { animation-delay: 25ms; }
+.list-rows > :nth-child(3) { animation-delay: 50ms; }
+.list-rows > :nth-child(4) { animation-delay: 75ms; }
+.list-rows > :nth-child(5) { animation-delay: 100ms; }
+.list-rows > :nth-child(6) { animation-delay: 125ms; }
+.list-rows > :nth-child(7) { animation-delay: 150ms; }
+.list-rows > :nth-child(8) { animation-delay: 175ms; }
+.list-rows > :nth-child(9) { animation-delay: 200ms; }
+.list-rows > :nth-child(10) { animation-delay: 225ms; }
+.list-rows > :nth-child(11) { animation-delay: 250ms; }
+.list-rows > :nth-child(12) { animation-delay: 275ms; }

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { DialogButtonItem, DialogWindow } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 import { ButtonGrid } from "@features/dialog-canvas-editor/ButtonGrid";
+import { EmojiText } from "@features/dialog-canvas-editor/EmojiText";
 
 interface DialogCanvasProps {
   window: DialogWindow;
@@ -48,7 +49,7 @@ export function DialogCanvas({
           }`}
         >
           {window.text_keys[0] && textByKey[window.text_keys[0]] ? (
-            textByKey[window.text_keys[0]]
+            <EmojiText value={textByKey[window.text_keys[0]]} />
           ) : (
             <span className="text-muted-foreground">{t("dialogs.canvas.noText")}</span>
           )}

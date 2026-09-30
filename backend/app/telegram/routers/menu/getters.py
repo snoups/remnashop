@@ -108,8 +108,8 @@ async def devices_getter(
         "devices_header": render_window_text(
             runner,
             "msg-menu-devices",
-            current_count=len(formatted),
-            max_count=subscription.effective_device_limit,
+            devices_current=len(formatted),
+            devices_max=subscription.effective_device_limit,
             **resolve_variable_kwargs({}),
         ),
         "empty_text": runner.get("btn-devices.empty"),

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from dishka import FromDishka
@@ -9,6 +10,7 @@ from app.core.enums import Role
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.security.permissions import ROLE_PERMISSIONS, PermissionPolicy
 from app.core.utils.http import resolve_client_ip
+from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.blacklist import BlacklistOriginDto
 from app.modules.users.api.schemas import (
     AdminPromoteResponse,
@@ -29,10 +31,18 @@ from app.modules.users.api.schemas import (
     UpdateAdminRequest,
     UpdateOwnProfileRequest,
     UpdateSecurityRequest,
+    UserListItemResponse,
+    UserListStatsResponse,
     UserPageResponse,
     UserResponse,
 )
-from app.modules.users.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, UserDto
+from app.modules.users.dto import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    DeletedFilter,
+    UserDto,
+    UserSort,
+)
 from app.modules.users.usecases import (
     BlacklistMatchOrigin,
     BlockUserUseCase,
@@ -46,6 +56,8 @@ from app.modules.users.usecases import (
     DemoteAdminDto,
     DemoteAdminUseCase,
     GetCurrentUserUseCase,
+    GetUserListStatsInput,
+    GetUserListStatsUseCase,
     ListAdminsUseCase,
     ListBlacklistMatchesInput,
     ListBlacklistMatchesUseCase,
@@ -127,6 +139,7 @@ def _to_user_response(user: UserDto) -> UserResponse:
         points=user.points,
         is_trial_available=user.is_trial_available,
         created_at=user.created_at,
+        deleted_at=user.deleted_at,
     )
 
 
@@ -212,6 +225,15 @@ async def list_users(
     role: Optional[str] = None,
     is_blocked: Optional[bool] = None,
     include_staff: bool = False,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    has_discount: Optional[bool] = None,
+    has_subscription: Optional[bool] = None,
+    is_trial_available: Optional[bool] = None,
+    blocked_by: Optional[BlacklistMatchOrigin] = None,
+    deleted: DeletedFilter = "exclude",
+    sort: UserSort = "created_at",
+    descending: bool = True,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> UserPageResponse:
@@ -222,11 +244,44 @@ async def list_users(
             role=_parse_role(role),
             is_blocked=is_blocked,
             include_staff=include_staff,
+            created_from=range_start_utc(created_from),
+            created_to=range_end_utc(created_to),
+            has_discount=has_discount,
+            has_subscription=has_subscription,
+            is_trial_available=is_trial_available,
+            blocked_by=blocked_by,
+            deleted=deleted,
+            sort=sort,
+            descending=descending,
             page=page,
             page_size=page_size,
         ),
     )
-    return UserPageResponse(items=[_to_user_response(u) for u in users], total=total)
+    items = [
+        UserListItemResponse(
+            **_to_user_response(u).model_dump(), active_subscriptions=u.active_subscriptions
+        )
+        for u in users
+    ]
+    return UserPageResponse(items=items, total=total)
+
+
+@router.get("/stats", response_model=UserListStatsResponse)
+@inject
+async def get_user_list_stats(
+    use_case: FromDishka[GetUserListStatsUseCase],
+    actor: UserDto = Depends(require_admin),
+    include_staff: bool = False,
+) -> UserListStatsResponse:
+    stats = await use_case(actor, GetUserListStatsInput(include_staff=include_staff))
+    return UserListStatsResponse(
+        total=stats.total,
+        new=stats.new,
+        subscribed=stats.subscribed,
+        blocked=stats.blocked,
+        new_previous=stats.new_previous,
+        total_growth=stats.total_growth,
+    )
 
 
 def _to_origin_response(origin: BlacklistOriginDto) -> BlacklistOriginResponse:

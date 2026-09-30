@@ -1,4 +1,4 @@
-import { Dices, Package, Tag, Ticket, X } from "lucide-react";
+import { Dices, Loader2, Package, Tag, Ticket } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,8 @@ import {
   type CreatePromocodeRequest,
   createPromocode,
   generatePromocodeCode,
+  PROMOCODE_CODE_MAX_LENGTH,
+  PROMOCODE_CODE_PATTERN,
   type Promocode,
   type PromocodeRewardType,
 } from "@entities/promocodes/api";
@@ -22,19 +24,22 @@ import {
 } from "@entities/promocodes/display";
 import {
   PromocodeLimitsFields,
-  promocodeFieldClassName,
-  promocodeSectionClassName,
-  promocodeSectionTitleClassName,
 } from "@entities/promocodes/PromocodeLimitsFields";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
-import { parseRequiredInt } from "@shared/lib/number-input";
+import { blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
-import { Modal, useModalClose } from "@shared/ui/Modal";
+import { Modal } from "@shared/ui/Modal";
+import { useModalClose } from "@shared/ui/modal-hooks";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Button } from "@shared/ui/Button";
+import { DialogHeader } from "@shared/ui/DialogHeader";
+import { SuffixInput, TextInput } from "@shared/ui/TextInput";
+import { Card } from "@shared/ui/Card";
+import { Field } from "@shared/ui/Field";
+import { ChoiceChip } from "@shared/ui/ChoiceChip";
 
 const DAY_PRESETS = [7, 30, 90];
-const labelClassName = "text-sm font-medium text-foreground/80";
 
 interface PromocodeCreateDialogProps {
   canGenerateCode: boolean;
@@ -78,6 +83,10 @@ function PromocodeCreateDialogBody({
     isReusable: false,
   });
 
+  const trimmedCode = code.trim();
+  const isCodeInvalid = trimmedCode !== "" && !PROMOCODE_CODE_PATTERN.test(trimmedCode);
+  const canSubmit = trimmedCode !== "" && !isCodeInvalid;
+
   const matchingAddons = addons.filter((addon) => addon.type === rewardType);
   const isDiscount = rewardType === "PERSONAL_DISCOUNT" || rewardType === "PURCHASE_DISCOUNT";
 
@@ -89,11 +98,16 @@ function PromocodeCreateDialogBody({
     reward_duration_days: Number(rewardDurationDays) || 0,
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleGenerate = async () => {
+    setIsGenerating(true);
     try {
       setCode(await generatePromocodeCode());
     } catch (err) {
       toast.error(getErrorMessage(err, t("promocodes.create.error")));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -107,7 +121,7 @@ function PromocodeCreateDialogBody({
     }
 
     const payload: CreatePromocodeRequest = {
-      code: code.trim().toUpperCase(),
+      code: trimmedCode,
       reward_type: rewardType,
       ...limitsPayload,
     };
@@ -151,145 +165,126 @@ function PromocodeCreateDialogBody({
     }
   };
 
-  const daysSuffix = <span className="pr-3 text-[13px] text-muted-foreground">{t("promocodes.create.daysSuffix")}</span>;
+  const daysSuffix = t("promocodes.create.daysSuffix");
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Ticket className="size-4" />
-          </div>
-          {t("promocodes.create.title")}
-        </h2>
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("promocodes.create.close")}
-          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
+      <DialogHeader icon={Ticket} title={t("promocodes.create.title")} closeLabel={t("promocodes.create.close")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-          <section className={promocodeSectionClassName}>
-            <label htmlFor="promo-code" className={promocodeSectionTitleClassName}>
-              {t("promocodes.sections.code")}
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="promo-code"
-                value={code}
-                onChange={(event) => setCode(event.target.value.toUpperCase())}
-                placeholder={t("promocodes.create.codePlaceholder")}
-                autoComplete="off"
-                className={`${promocodeFieldClassName} min-w-0 flex-1 py-2.5 font-mono text-base font-bold tracking-wider`}
-              />
-              {canGenerateCode && (
-                <motion.button
-                  type="button"
-                  onClick={() => void handleGenerate()}
-                  {...bounceTap(bounceStrength)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3.5 text-[12.5px] font-medium text-foreground/90 transition-colors hover:bg-white/5"
-                >
-                  <Dices className="size-3.5" />
-                  {t("promocodes.create.generate")}
-                </motion.button>
-              )}
-            </div>
-          </section>
-
-          <section className={promocodeSectionClassName}>
-            <h3 className={promocodeSectionTitleClassName}>{t("promocodes.sections.reward")}</h3>
-            <div role="radiogroup" aria-label={t("promocodes.create.rewardTypeLabel")} className="grid grid-cols-3 gap-2">
-              {REWARD_TYPES.map((type) => {
-                const Icon = REWARD_TYPE_ICON[type];
-                const isSelected = rewardType === type;
-                return (
-                  <motion.button
-                    key={type}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => setRewardType(type)}
-                    {...bounceTap(bounceStrength, 0.03)}
-                    className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
-                      isSelected
-                        ? "border-primary/50 bg-accent text-primary"
-                        : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.05]"
-                    }`}
+          <Card variant="form">
+            <Field label={t("promocodes.sections.code")} htmlFor="promo-code" required>
+              <div className="flex gap-2">
+                <TextInput
+                  id="promo-code"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value.toUpperCase())}
+                  placeholder={t("promocodes.create.codePlaceholder")}
+                  autoComplete="off"
+                  maxLength={PROMOCODE_CODE_MAX_LENGTH}
+                  aria-invalid={isCodeInvalid}
+                  aria-describedby={isCodeInvalid ? "promo-code-hint" : undefined}
+                  className="min-w-0 flex-1 font-mono tracking-wider"
+                />
+                {canGenerateCode && (
+                  <Button
+                    variant="secondary"
+                    size="field"
+                    onClick={() => void handleGenerate()}
+                    disabled={isGenerating}
                   >
-                    <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
-                    <span className="text-[12.5px] font-semibold">{t(`promocodes.rewardTypeShort.${type}`)}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
+                    {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Dices className="size-3.5" />}
+                    {t("promocodes.create.generate")}
+                  </Button>
+                )}
+              </div>
+              {isCodeInvalid && (
+                <p id="promo-code-hint" className="text-[12px] text-error">
+                  {t("promocodes.create.codeInvalid")}
+                </p>
+              )}
+            </Field>
+          </Card>
 
-            {rewardType === "DURATION" && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="promo-reward-days" className={labelClassName}>
-                  {t("promocodes.create.rewardDaysLabel")}
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-1 items-center rounded-xl border border-border bg-input/60 focus-within:border-primary">
-                    <input
-                      id="promo-reward-days"
-                      type="number"
-                      min={1}
-                      step="1"
-                      value={rewardDays}
-                      onChange={(event) => setRewardDays(event.target.value)}
-                      className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-foreground outline-none"
-                    />
-                    {daysSuffix}
-                  </div>
-                  {DAY_PRESETS.map((days) => (
-                    <button
-                      key={days}
+          <Card variant="form">
+            <Field label={t("promocodes.sections.reward")}>
+              <div role="radiogroup" aria-label={t("promocodes.create.rewardTypeLabel")} className="grid grid-cols-3 gap-2">
+                {REWARD_TYPES.map((type) => {
+                  const Icon = REWARD_TYPE_ICON[type];
+                  const isSelected = rewardType === type;
+                  return (
+                    <motion.button
+                      key={type}
                       type="button"
-                      aria-pressed={rewardDays === String(days)}
-                      onClick={() => setRewardDays(String(days))}
-                      className={`rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
-                        rewardDays === String(days)
-                          ? "border-primary/40 bg-accent text-primary"
-                          : "border-border text-foreground hover:bg-white/5"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => setRewardType(type)}
+                      {...bounceTap(bounceStrength, 0.03)}
+                      className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
+                        isSelected
+                          ? "border-primary/50 bg-accent text-primary"
+                          : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.05]"
                       }`}
                     >
+                      <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
+                      <span className="text-[12.5px] font-semibold">{t(`promocodes.rewardTypeShort.${type}`)}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            {rewardType === "DURATION" && (
+              <Field label={t("promocodes.create.rewardDaysLabel")} htmlFor="promo-reward-days">
+                <div className="flex items-center gap-2">
+                  <SuffixInput
+                    id="promo-reward-days"
+                    type="number"
+                    onKeyDown={blockNonIntegerKeys}
+                    min={1}
+                    step="1"
+                    value={rewardDays}
+                    onChange={(event) => setRewardDays(event.target.value)}
+                    suffix={daysSuffix}
+                    className="flex-1"
+                  />
+                  {DAY_PRESETS.map((days) => (
+                    <ChoiceChip
+                      key={days}
+                      aria-pressed={rewardDays === String(days)}
+                      onClick={() => setRewardDays(String(days))}
+                      active={rewardDays === String(days)}
+                    >
                       {days}
-                    </button>
+                    </ChoiceChip>
                   ))}
                 </div>
-              </div>
+              </Field>
             )}
 
             {isDiscount && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="promo-reward-percent" className={labelClassName}>
-                  {t("promocodes.create.rewardPercentLabel")}
-                </label>
-                <input
+              <Field label={t("promocodes.create.rewardPercentLabel")} htmlFor="promo-reward-percent">
+                <TextInput
                   id="promo-reward-percent"
                   type="number"
+                  onKeyDown={blockNonIntegerKeys}
                   min={0}
                   max={100}
                   step="1"
                   value={rewardPercent}
                   onChange={(event) => setRewardPercent(event.target.value)}
-                  className={promocodeFieldClassName}
                 />
-              </div>
+              </Field>
             )}
 
             {(rewardType === "TRAFFIC" || rewardType === "DEVICES") && (
-              <div className="flex flex-col gap-1">
-                <span className={labelClassName}>{t("promocodes.create.rewardAddonLabel")}</span>
+              <Field label={t("promocodes.create.rewardAddonLabel")} htmlFor="promo-reward-addon">
                 {matchingAddons.length === 0 ? (
                   <p className="text-[12.5px] text-muted-foreground">{t("promocodes.create.rewardAddonEmpty")}</p>
                 ) : (
                   <SelectDropdown
+                    variant="form"
                     id="promo-reward-addon"
                     value={rewardAddonId}
                     onChange={setRewardAddonId}
@@ -301,17 +296,17 @@ function PromocodeCreateDialogBody({
                     }))}
                   />
                 )}
-              </div>
+              </Field>
             )}
 
             {rewardType === "SUBSCRIPTION" && (
               <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className={labelClassName}>{t("promocodes.create.rewardPlanLabel")}</span>
+                <Field label={t("promocodes.create.rewardPlanLabel")} htmlFor="promo-reward-plan">
                   {plans.length === 0 ? (
                     <p className="text-[12.5px] text-muted-foreground">{t("promocodes.create.rewardPlanEmpty")}</p>
                   ) : (
                     <SelectDropdown
+                      variant="form"
                       id="promo-reward-plan"
                       value={rewardPlanId}
                       onChange={setRewardPlanId}
@@ -320,54 +315,44 @@ function PromocodeCreateDialogBody({
                       options={plans.map((plan) => ({ value: String(plan.id), label: plan.name }))}
                     />
                   )}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="promo-reward-duration" className={labelClassName}>
-                    {t("promocodes.create.rewardDurationDaysLabel")}
-                  </label>
-                  <div className="flex items-center rounded-xl border border-border bg-input/60 focus-within:border-primary">
-                    <input
-                      id="promo-reward-duration"
-                      type="number"
-                      min={1}
-                      step="1"
-                      value={rewardDurationDays}
-                      onChange={(event) => setRewardDurationDays(event.target.value)}
-                      className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-foreground outline-none"
-                    />
-                    {daysSuffix}
-                  </div>
-                </div>
+                </Field>
+                <Field label={t("promocodes.create.rewardDurationDaysLabel")} htmlFor="promo-reward-duration">
+                  <SuffixInput
+                    id="promo-reward-duration"
+                    type="number"
+                    onKeyDown={blockNonIntegerKeys}
+                    min={1}
+                    step="1"
+                    value={rewardDurationDays}
+                    onChange={(event) => setRewardDurationDays(event.target.value)}
+                    suffix={daysSuffix}
+                  />
+                </Field>
               </div>
             )}
-          </section>
+          </Card>
 
           <PromocodeLimitsFields idPrefix="promo" value={limits} onChange={setLimits} />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-4">
           <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
-            <span className="font-mono font-bold text-foreground">{code.trim() || "—"}</span>
+            <span className="font-mono font-bold text-foreground">{trimmedCode || "—"}</span>
             {" · "}
             <span className="font-semibold text-primary">{describeReward(draftReward, addons, plans, t)}</span>
             {" · "}
             {t(`promocodes.availability.${limits.availability}`)}
           </p>
-          <button
+          <Button
+            variant="outline"
             type="button"
             onClick={close}
-            className="shrink-0 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
           >
             {t("promocodes.create.cancel")}
-          </button>
-          <motion.button
-            type="submit"
-            disabled={isSubmitting}
-            {...bounceTap(bounceStrength)}
-            className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="accent" type="submit" disabled={isSubmitting || !canSubmit}>
             {isSubmitting ? t("promocodes.create.saving") : t("promocodes.create.save")}
-          </motion.button>
+          </Button>
         </div>
       </form>
     </>

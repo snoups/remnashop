@@ -1,4 +1,5 @@
 import { ArrowRight, Eye, Link2, Palette } from "lucide-react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
@@ -9,6 +10,7 @@ import {
   splitTextKey,
   updateDialogText,
   urlProblem,
+  variableOptions,
 } from "@entities/dialogs/api";
 import type { DialogButtonItem, DialogCatalog } from "@entities/dialogs/api";
 import type { TranslationEntry } from "@entities/translations/api";
@@ -18,6 +20,10 @@ import { toast } from "@shared/lib/toast";
 import { EmojiPicker, type PickedEmoji } from "@shared/ui/EmojiPicker";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
+import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiText";
+import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
+import { Button } from "@shared/ui/Button";
 
 function describeUrlError(
   button: DialogButtonItem,
@@ -79,6 +85,7 @@ export function ButtonInspector({
   // Only one of the two is ever filled: a glyph rides in the label text, a
   // premium id goes to Telegram's own icon field.
   const iconGlyph = valueOf(iconTextKey(button.text_key));
+  const urlFieldRef = useRef<HTMLInputElement>(null);
   const iconId = valueOf(iconIdTextKey(button.text_key));
 
   const writeIcon = async (key: string, value: string) => {
@@ -107,6 +114,12 @@ export function ButtonInspector({
     }
   };
 
+  const insertIntoUrl = (token: string) => {
+    const current = button.url_value ?? "";
+    const at = urlFieldRef.current?.selectionStart ?? current.length;
+    onChange({ ...button, url_value: `${current.slice(0, at)}${token}${current.slice(at)}` });
+  };
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -131,20 +144,26 @@ export function ButtonInspector({
           />
         </div>
 
-        <label className="mb-3 block">
+        <div className="mb-3">
           <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonLabel")}</span>
           <TextEditorPanel
             textKey={button.text_key}
             entries={entries}
             activeLocale={activeLocale}
-            variableKeys={catalog.text_variable_keys}
+            variables={variableOptions(catalog, catalog.text_variable_keys)}
             canUpdate={isTextSeeded && canEditText}
             canReset={canResetText}
             onSaved={onEntrySaved}
             required
             fieldAction={
               <EmojiPicker
-                current={iconGlyph || null}
+                current={
+                  iconId ? (
+                    <EmojiThumbnail glyph={iconGlyph} customEmojiId={iconId} />
+                  ) : (
+                    iconGlyph || null
+                  )
+                }
                 disabled={!canEditText}
                 onPick={(picked) => void handleIconPick(picked)}
                 onClear={() => void handleIconPick({ glyph: "" })}
@@ -156,11 +175,12 @@ export function ButtonInspector({
               {t("dialogs.inspector.buttonLabelPending")}
             </p>
           )}
-        </label>
+        </div>
 
         <div className="mb-3">
           <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonStyle")}</span>
           <SelectDropdown
+            size="compact"
             icon={Palette}
             value={button.style ?? ""}
             disabled={!canEditButtons}
@@ -180,6 +200,7 @@ export function ButtonInspector({
         <div className="mb-3">
           <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonCondition")}</span>
           <SelectDropdown
+            size="compact"
             icon={Eye}
             value={button.visibility_condition ?? ""}
             disabled={!canEditButtons}
@@ -195,6 +216,7 @@ export function ButtonInspector({
         <div className="mb-3">
           <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonLinkType")}</span>
           <SelectDropdown
+            size="compact"
             icon={Link2}
             value={button.link_type}
             disabled={!canEditButtons || button.link_type === "action"}
@@ -214,6 +236,7 @@ export function ButtonInspector({
           <div className="mb-3">
             <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonTarget")}</span>
             <SelectDropdown
+              size="compact"
               icon={ArrowRight}
               value={button.target_window_key ?? ""}
               disabled={!canEditButtons}
@@ -225,43 +248,41 @@ export function ButtonInspector({
         )}
 
         {button.link_type === "url" && (
-          <label className="mb-3 block">
+          <div className="mb-3">
             <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonUrl")}</span>
-            <input
-              type="text"
-              value={button.url_value ?? ""}
-              disabled={!canEditButtons}
-              onChange={(event) => onChange({ ...button, url_value: event.target.value })}
-              className={`mb-1.5 w-full rounded-lg border bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-foreground disabled:opacity-50 ${
-                urlError === null ? "border-white/[0.12]" : "border-error/60"
-              }`}
-            />
-            {urlError !== null && <p className="mb-1.5 text-[11.5px] text-error">{urlError}</p>}
-            <div className="flex flex-wrap gap-1">
-              {catalog.variable_keys.map((name) => (
-                <button
-                  key={name}
-                  type="button"
+            <div className="relative mb-1.5">
+              <input
+                ref={urlFieldRef}
+                type="text"
+                value={button.url_value ?? ""}
+                disabled={!canEditButtons}
+                onChange={(event) => onChange({ ...button, url_value: event.target.value })}
+                className={`${EDITOR_FIELD_CLASSNAME} pr-10 ${
+                  urlError === null ? "border-glass-border" : "border-error/60"
+                }`}
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <VariablePicker
+                  variables={variableOptions(catalog, catalog.variable_keys)}
+                  format={(name) => `\${${name}}`}
+                  onPick={insertIntoUrl}
                   disabled={!canEditButtons}
-                  onClick={() => onChange({ ...button, url_value: `${button.url_value ?? ""}\${${name}}` })}
-                  className="rounded-full border border-white/[0.12] px-2 py-0.5 text-[11px] text-foreground/70 hover:bg-white/[0.06] disabled:opacity-30"
-                >
-                  {`\${${name}}`}
-                </button>
-              ))}
+                />
+              </div>
             </div>
-          </label>
+            {urlError !== null && <p className="mb-1.5 text-[11.5px] text-error">{urlError}</p>}
+          </div>
         )}
 
       </div>
       {canEditButtons && (
-        <button
+        <Button
+          variant="danger"
           type="button"
           onClick={onDelete}
-          className="rounded-full border border-white/[0.12] px-3 py-2 text-[12.5px] text-error hover:bg-white/[0.06]"
         >
           {t("dialogs.inspector.buttonDelete")}
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -24,6 +24,7 @@ class PriceQuote:
     discount_percent: int
     discount_source: DiscountSource
     final_price: Decimal
+    discount_promocode_id: Optional[int] = None
 
 
 class PaymentOrderDto(BaseDto, TimestampMixin):
@@ -41,6 +42,7 @@ class PaymentOrderDto(BaseDto, TimestampMixin):
     discount_percent: int = 0
     discount_source: DiscountSource = DiscountSource.NONE
     final_price: Decimal
+    discount_promocode_id: Optional[int] = None
     customer_email: Optional[str] = None
     idempotency_key: str
     expires_at: datetime
@@ -68,6 +70,7 @@ class CreatePaymentOrderDto:
     discount_source: DiscountSource
     final_price: Decimal
     customer_email: Optional[str]
+    discount_promocode_id: Optional[int] = None
     idempotency_key: str
     expires_at: datetime
     is_test: bool = False
@@ -94,3 +97,18 @@ class CheckoutResultDto(BaseDto):
 class TestPaymentDto:
     order_id: int
     confirmation_url: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class PaymentOrderSummaryDto:
+    report_currency: Currency
+    total_count: int
+    pending_count: int
+    paid_count: int
+    conversion_rate: Decimal
+    revenue: Decimal
+    average_check: Optional[Decimal]
+    average_discount: Optional[Decimal]
+    # paid orders' base price minus what was actually paid, in report_currency
+    discount_amount: Decimal
+    refunded_amount: Decimal

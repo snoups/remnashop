@@ -3,7 +3,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.enums import AppearanceResetScope, Locale
+from app.core.enums import Locale
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.settings.api.schemas import (
     ActiveLocalesResponse,
@@ -353,10 +353,9 @@ async def update_appearance_settings(
 @inject
 async def reset_appearance_settings(
     use_case: FromDishka[ResetAppearanceSettingsUseCase],
-    scope: AppearanceResetScope,
     actor: UserDto = Depends(require_admin),
 ) -> AppearanceResponse:
-    settings = await use_case(actor, scope)
+    settings = await use_case(actor)
     return _to_appearance_response(settings)
 
 

@@ -1,9 +1,10 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import PromocodeAvailability, PromocodeRewardType
+from app.core.enums import Currency, PromocodeAvailability, PromocodeRewardType
 
 
 class PromocodeResponse(BaseModel):
@@ -20,6 +21,7 @@ class PromocodeResponse(BaseModel):
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = None
     is_reusable: bool
+    created_at: Optional[datetime] = None
 
 
 class PublicPromocodeResponse(BaseModel):
@@ -64,3 +66,39 @@ class ActivatePromocodeRequest(BaseModel):
 
 class GeneratedPromocodeCodeResponse(BaseModel):
     code: str
+
+
+class UserPromocodeActivationResponse(BaseModel):
+    activation_id: int
+    promocode_id: int
+    code: str
+    reward_type: PromocodeRewardType
+    reward: Optional[int] = None
+    reward_duration_days: Optional[int] = None
+    activated_at: datetime
+
+
+class PromocodeSummaryResponse(BaseModel):
+    total_count: int
+    active_count: int
+    activations_count: int
+    activated_users_count: int
+    activations_by_promocode: dict[int, int]
+    granted_days: int
+    granted_subscriptions_count: int
+    report_currency: Currency
+    discount_amount: Decimal
+    discounted_orders_count: int
+
+
+class PromocodeActivatedUserResponse(BaseModel):
+    activation_id: int
+    user_id: int
+    name: str
+    subscription_id: Optional[int] = None
+    activated_at: datetime
+
+
+class PromocodeActivatedUserPageResponse(BaseModel):
+    items: list[PromocodeActivatedUserResponse]
+    total: int

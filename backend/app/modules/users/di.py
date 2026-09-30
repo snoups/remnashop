@@ -9,6 +9,7 @@ from app.modules.users.usecases import (
     DeleteUserUseCase,
     DemoteAdminUseCase,
     GetCurrentUserUseCase,
+    GetUserListStatsUseCase,
     ListAdminsUseCase,
     ListBlacklistMatchesUseCase,
     ListUsersUseCase,
@@ -31,6 +32,7 @@ class UsersProvider(Provider):
     get_current_user_use_case = provide(GetCurrentUserUseCase)
     list_admins_use_case = provide(ListAdminsUseCase)
     list_users_use_case = provide(ListUsersUseCase)
+    get_user_list_stats_use_case = provide(GetUserListStatsUseCase)
     list_blacklist_matches_use_case = provide(ListBlacklistMatchesUseCase)
     create_admin_use_case = provide(CreateAdminUseCase)
     promote_to_admin_use_case = provide(PromoteToAdminUseCase)

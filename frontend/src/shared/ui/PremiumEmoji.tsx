@@ -1,4 +1,5 @@
-import lottie from "lottie-web";
+// light canvas build: no expressions support, and no eval() -- Telegram emoji never use expressions
+import lottie from "lottie-web/build/player/lottie_light_canvas";
 import { useEffect, useRef, useState } from "react";
 
 import {

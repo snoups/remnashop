@@ -1,5 +1,4 @@
 import { Image as ImageIcon, RotateCcw, Trash2, Upload } from "lucide-react";
-import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,10 +8,11 @@ import { bannerMode, bannerNameForMode, resetWindow, updateWindow } from "@entit
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/Switch";
+import { Button } from "@shared/ui/Button";
+import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 
 const ACCEPTED_FILE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
 
@@ -38,7 +38,6 @@ export function WindowInspector({
   onBannerChanged,
 }: WindowInspectorProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const currentUserState = useCurrentUser();
   const permissions = currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
   const canUpdate = permissions.includes("DIALOGS_WINDOWS_UPDATE");
@@ -187,7 +186,7 @@ export function WindowInspector({
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
             }}
-            className="w-full rounded-lg border border-border bg-input/60 px-2.5 py-1.5 text-[13px] disabled:opacity-40"
+            className={`${EDITOR_FIELD_CLASSNAME} border-glass-border`}
           />
         </div>
       )}
@@ -218,7 +217,6 @@ export function WindowInspector({
           activeKey={mode}
           onSelect={(item) => void handleModeChange(item)}
           disabled={!canUpdate}
-          compact
         />
 
         {mode !== "none" && (
@@ -290,20 +288,15 @@ export function WindowInspector({
       </div>
 
       {canReset ? (
-        <motion.button
-          type="button"
-          onClick={() => setIsResetConfirmOpen(true)}
-          {...bounceTap(bounceStrength)}
-          className="mt-auto flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-[13px] text-foreground/80 transition-colors hover:bg-white/[0.06]"
-        >
+        <Button variant="outline" className="mt-auto" onClick={() => setIsResetConfirmOpen(true)}>
           <RotateCcw className="size-3.5" />
           {t("dialogs.inspector.resetWindow")}
-        </motion.button>
+        </Button>
       ) : null}
 
       {isResetConfirmOpen && (
         <ConfirmDialog
-          title={t("dialogs.inspector.resetWindow")}
+          title={t("dialogs.inspector.resetWindowTitle")}
           message={t("dialogs.inspector.resetWindowConfirm", { name: label })}
           confirmLabel={t("dialogs.inspector.resetWindowConfirmButton")}
           cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}

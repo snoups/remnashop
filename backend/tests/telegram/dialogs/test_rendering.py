@@ -55,7 +55,9 @@ class _FakeRunner:
 def _catalog():
     catalog._reset_for_tests()
     catalog.register_condition("trial_available", lambda data: bool(data.get("trial_available")))
-    catalog.register_variable("subscription.url", lambda data: data.get("subscription_url", ""))
+    catalog.register_variable(
+        "subscription.url", lambda data: data.get("subscription_url", ""), category="user"
+    )
     yield
     catalog._reset_for_tests()
 
@@ -156,14 +158,14 @@ async def test_unknown_variable_token_resolves_to_empty_string(
 
 
 def test_resolve_variable_kwargs_reflects_all_registered_variables() -> None:
-    catalog.register_variable("name", lambda data: data.get("name", ""))
+    catalog.register_variable("name", lambda data: data.get("name", ""), category="user")
     kwargs = resolve_variable_kwargs({"name": "Иван", "subscription_url": "https://x"})
     assert kwargs["name"] == "Иван"
     assert kwargs["subscription.url"] == "https://x"
 
 
 def test_resolve_variable_kwargs_uses_resolver_default_for_missing_data() -> None:
-    catalog.register_variable("name", lambda data: data.get("name", ""))
+    catalog.register_variable("name", lambda data: data.get("name", ""), category="user")
     kwargs = resolve_variable_kwargs({})
     assert kwargs["name"] == ""
 

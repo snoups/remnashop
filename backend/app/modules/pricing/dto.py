@@ -63,7 +63,8 @@ class PriceBookRow(BaseDto):
     kind: Literal["plan_duration", "addon"]
     ref_id: int
     plan_id: Optional[int] = None
-    label: str
+    # plain plan/add-on name; the client adds the duration from `days` in its own language
+    name: str
     days: Optional[int]
     base_price: Decimal
     cells: list[PriceBookCell]
@@ -98,7 +99,9 @@ class PricingChangePreviewDto:
 
 
 class PricingDiffRow(BaseDto):
-    label: str
+    # plain plan/add-on name; `days` is set for plan durations, None for add-ons
+    name: str
+    days: Optional[int] = None
     currency: Currency
     old: Decimal
     new: Decimal

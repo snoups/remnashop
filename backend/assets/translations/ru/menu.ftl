@@ -1,6 +1,7 @@
-msg-main-menu = Главное меню, { $name }!
+msg-main-menu = Главное меню, { $user_name }!
 msg-window-gone = Этот экран больше недоступен.
-msg-menu-devices = Ваши устройства ({ $current_count }/{ $max_count })
+msg-paysupport = Чтобы запросить возврат средств, напишите в поддержку.
+msg-menu-devices = Ваши устройства ({ $devices_current }/{ $devices_max })
 msg-menu-devices-confirm-delete = Удалить это устройство?
 msg-menu-devices-confirm-delete-all = Удалить все устройства? Каждое придётся подключать заново.
 msg-menu-devices-confirm-reissue = Перевыпустить ссылку подключения? Старая ссылка перестанет работать.

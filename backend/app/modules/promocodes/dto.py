@@ -1,11 +1,15 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from decimal import Decimal
+from typing import Final, Optional
 
 from pydantic import Field
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import PromocodeAvailability, PromocodeRewardType
+from app.core.enums import Currency, PromocodeAvailability, PromocodeRewardType
+
+DEFAULT_PAGE_SIZE: Final[int] = 50
+MAX_PAGE_SIZE: Final[int] = 200
 
 
 class PromocodeDto(BaseDto, TimestampMixin):
@@ -60,3 +64,51 @@ class UpdatePromocodeDto:
 class ActivatePromocodeDto:
     code: str
     target_subscription_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserPromocodeActivationDto:
+    activation_id: int
+    promocode_id: int
+    code: str
+    reward_type: PromocodeRewardType
+    reward: Optional[int]
+    reward_duration_days: Optional[int]
+    activated_at: datetime
+
+
+@dataclass(frozen=True, kw_only=True)
+class PromocodeSummaryDto:
+    total_count: int
+    active_count: int
+    activations_count: int
+    activated_users_count: int
+    activations_by_promocode: dict[int, int]
+    granted_days: int
+    granted_subscriptions_count: int
+    report_currency: Currency
+    discount_amount: Decimal
+    discounted_orders_count: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class PromocodeRewardTotalsDto:
+    count: int
+    reward_sum: int
+    duration_days_sum: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListPromocodeActivatedUsersDto:
+    promocode_id: int
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class PromocodeActivatedUserDto:
+    activation_id: int
+    user_id: int
+    name: str
+    subscription_id: Optional[int]
+    activated_at: datetime

@@ -84,6 +84,22 @@ async def test_list_filters_by_search_actor_id(
     assert items[0].actor_login == "owner"
 
 
+async def test_list_filters_by_search_live_user_fields(
+    event_log_repository: EventLogRepository, user_repository: UserRepository
+) -> None:
+    user = await user_repository.create(
+        CreateUserDto(name="Ivan", telegram_id=777000111, username="ivan_tg")
+    )
+    other = await user_repository.create(CreateUserDto(name="Other", login="other"))
+    await event_log_repository.create(_entry(actor_id=user.id, actor_name="Ivan"))
+    await event_log_repository.create(_entry(actor_id=other.id, actor_login="other"))
+
+    for search in ("777000111", "@ivan_tg"):
+        items, total = await event_log_repository.list(search=search)
+        assert total == 1
+        assert items[0].actor_id == user.id
+
+
 async def test_list_filters_by_date_range(event_log_repository: EventLogRepository) -> None:
     now = datetime.now(timezone.utc)
     await event_log_repository.create(_entry(occurred_at=now - timedelta(days=10)))
@@ -135,3 +151,17 @@ async def test_create_with_outbox_id_is_idempotent(
     assert second is None
     items, total = await event_log_repository.list()
     assert total == 1
+
+
+async def test_list_filters_by_actor_id(
+    event_log_repository: EventLogRepository, user_repository: UserRepository
+) -> None:
+    owner = await user_repository.create(CreateUserDto(name="Owner", login="owner"))
+    admin = await user_repository.create(CreateUserDto(name="Admin", login="admin"))
+    await event_log_repository.create(_entry(actor_id=owner.id, actor_login="owner"))
+    await event_log_repository.create(_entry(actor_id=admin.id, actor_login="admin"))
+
+    items, total = await event_log_repository.list(actor_id=admin.id)
+
+    assert total == 1
+    assert items[0].actor_login == "admin"

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final, Optional
 
@@ -6,6 +7,36 @@ from app.core.events import EventCategory
 
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
+
+# What the dashboard bell can show, by event_type (the event class name),
+# grouped so each admin picks which groups they want in their profile.
+NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
+    "security": frozenset(
+        {
+            "SessionTheftDetectedEvent",
+            "LoginFailedEvent",
+            "PasskeyLoginFailedEvent",
+            "OAuthLoginFailedEvent",
+        }
+    ),
+    "failures": frozenset({"BackupFailedEvent"}),
+    "requests": frozenset({"PointsWithdrawalRequestedEvent"}),
+    "money": frozenset(
+        {"SubscriptionPurchasedEvent", "SubscriptionRenewedEvent", "PaymentOrderRefundedEvent"}
+    ),
+    "admins": frozenset(
+        {
+            "AdminCreatedEvent",
+            "AdminDeletedEvent",
+            "AdminPromotedEvent",
+            "AdminDemotedEvent",
+            "AdminPermissionsUpdatedEvent",
+        }
+    ),
+}
+# only the critical groups until an admin chooses otherwise
+DEFAULT_NOTIFICATION_GROUPS: Final[frozenset[str]] = frozenset({"security", "failures"})
+NOTIFICATIONS_LIMIT: Final[int] = 20
 
 
 class EventLogEntryDto(BaseDto):
@@ -23,3 +54,14 @@ class EventLogEntryDto(BaseDto):
     payload: dict[str, Any] = {}
 
     outbox_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class NotificationsDto:
+    items: list[EventLogEntryDto]
+    unread_count: int
+
+
+def notification_event_types(groups: Optional[list[str]]) -> frozenset[str]:
+    chosen = DEFAULT_NOTIFICATION_GROUPS if groups is None else frozenset(groups)
+    return frozenset().union(*(NOTIFICATION_GROUPS[g] for g in chosen if g in NOTIFICATION_GROUPS))

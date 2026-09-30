@@ -5,9 +5,8 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.analytics.dto import LtvBucketDto, LtvDistributionDto
-from app.modules.analytics.window import convert_amount
 from app.modules.payments import PaymentOrderRepository
-from app.modules.pricing import PricingRepository
+from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.users import UserDto
 
 _QUANTILE_COUNT: Final[int] = 5
@@ -68,7 +67,7 @@ class GetLtvDistributionUseCase(UseCase[None, LtvDistributionDto]):
             totals = sorted(
                 sum(
                     (
-                        convert_amount(amount, currency, report_currency, rate_table)
+                        convert_for_report(amount, currency, report_currency, rate_table)
                         for currency, amount in by_currency.items()
                     ),
                     start=Decimal(0),

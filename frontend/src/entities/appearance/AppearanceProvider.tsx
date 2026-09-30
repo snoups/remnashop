@@ -8,6 +8,7 @@ import { AppearanceContext, AppearancePreviewContext, AppearanceReloadContext } 
 
 const THEME_CSS_PROPERTIES = [
   "--color-primary",
+  "--color-primary-foreground",
   "--color-primary-hover",
   "--color-accent",
   "--color-accent-foreground",
@@ -26,15 +27,22 @@ function applyTheme(primaryColor: string | null) {
 
   const theme = deriveTheme(primaryColor);
   root.setProperty("--color-primary", theme.primary);
+  root.setProperty("--color-primary-foreground", theme.primaryForeground);
   root.setProperty("--color-primary-hover", theme.primaryHover);
   root.setProperty("--color-accent", theme.accent);
   root.setProperty("--color-accent-foreground", theme.accentForeground);
 }
 
-function applyFavicon(hasFavicon: boolean) {
-  const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (!link) return;
-  link.href = hasFavicon ? appearanceImageUrl("favicon") : DEFAULT_FAVICON_HREF;
+// Fill baked into public/favicon.svg. A tab icon is its own document, so
+// --color-primary can't reach it -- recolor by rewriting the SVG instead.
+const DEFAULT_FAVICON_COLOR = "#22D3EE";
+let defaultFaviconSvg: Promise<string> | null = null;
+
+async function defaultFaviconHref(color: string | null): Promise<string> {
+  if (!color) return DEFAULT_FAVICON_HREF;
+  defaultFaviconSvg ??= fetch(DEFAULT_FAVICON_HREF).then((response) => response.text());
+  const svg = (await defaultFaviconSvg).replaceAll(DEFAULT_FAVICON_COLOR, color);
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
@@ -58,8 +66,25 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (state.kind !== "ready") return;
-    applyFavicon(state.data.has_favicon);
-  }, [state]);
+    const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) return;
+    if (state.data.has_favicon) {
+      link.href = appearanceImageUrl("favicon");
+      return;
+    }
+    // guards against a slower earlier color resolving after a newer one
+    let isStale = false;
+    defaultFaviconHref(effectiveColor)
+      .then((href) => {
+        if (!isStale) link.href = href;
+      })
+      .catch(() => {
+        defaultFaviconSvg = null;
+      });
+    return () => {
+      isStale = true;
+    };
+  }, [state, effectiveColor]);
 
   return (
     <AppearanceContext.Provider value={state}>

@@ -1,7 +1,8 @@
 from collections import defaultdict
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
+from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AdLinkChannel
 from app.core.security.permissions import Permission
@@ -12,16 +13,15 @@ from app.modules.advertising.dto import (
     GetAdvertisingSummaryDto,
 )
 from app.modules.advertising.repository import AdLinkRepository
-from app.modules.advertising.usecases.get_ad_link_stats import convert_for_report
 from app.modules.payments import PaymentOrderRepository
-from app.modules.pricing import PricingRepository
+from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.users import UserDto
 
 _ZERO: Final[Decimal] = Decimal(0)
 
 
 class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, AdvertisingSummaryDto]):
-    required_permission = Permission.AD_LINKS_STATS_VIEW
+    required_permission = Permission.AD_LINKS_SUMMARY_VIEW
 
     def __init__(
         self,
@@ -41,11 +41,15 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
         async with self._uow:
             ad_links = await self._ad_link_repository.list_all(is_active=data.is_active)
             attributions = await self._ad_link_repository.list_attributions(
-                [link.id for link in ad_links], created_from=data.created_from
+                [link.id for link in ad_links],
+                created_from=data.created_from,
+                created_to=data.created_to,
             )
             # aggregates every payer, not just attributed ones; filter by
             # user_ids in SQL if the paid-user count gets large.
-            paid_by_user = await self._payment_order_repository.sum_paid_final_price_per_user()
+            paid_by_user = await self._payment_order_repository.sum_paid_final_price_per_user(
+                created_before=data.created_to
+            )
             rate_table = await self._pricing_repository.get_rate_table()
 
         report_currency = data.report_currency or rate_table.anchor
@@ -97,7 +101,11 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
             ),
             revenue=revenue,
             cost=cost,
-            cpa=cost / attributions_count if attributions_count > 0 else None,
+            cpa=(
+                (cost / paid_count).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
+                if paid_count > 0
+                else None
+            ),
             roi=(revenue - cost) / cost if cost > 0 else None,
             links=links,
         )

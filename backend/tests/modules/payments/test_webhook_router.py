@@ -35,6 +35,7 @@ from app.modules.payments.gateways.registry import GATEWAY_REGISTRY
 from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.payments.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
 from app.modules.plans import get_plans_providers
+from app.modules.pricing import PricingRepository
 from app.modules.referrals import get_referrals_providers
 from app.modules.settings import get_settings_providers
 from app.modules.subscriptions import SubscriptionRepository, get_subscription_revoker_providers
@@ -109,6 +110,8 @@ class _PaymentsProvider(Provider):
 
     payment_order_repository = provide(PaymentOrderRepository)
     subscription_repository = provide(SubscriptionRepository)
+    # referral settings read the pricing anchor; the pricing usecase graph isn't needed
+    pricing_repository = provide(PricingRepository)
     handle_payment_webhook_use_case = provide(HandlePaymentWebhookUseCase)
     payment_gateway_factory = provide(PaymentGatewayFactory, scope=Scope.APP)
 

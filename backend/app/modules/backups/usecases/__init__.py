@@ -5,6 +5,7 @@ from app.modules.backups.usecases.get_backup_run import GetBackupRunUseCase
 from app.modules.backups.usecases.get_backup_settings import GetBackupSettingsUseCase
 from app.modules.backups.usecases.get_backup_stats import GetBackupStatsUseCase
 from app.modules.backups.usecases.list_backup_runs import ListBackupRunsInput, ListBackupRunsUseCase
+from app.modules.backups.usecases.reset_backup_settings import ResetBackupSettingsUseCase
 from app.modules.backups.usecases.update_backup_settings import UpdateBackupSettingsUseCase
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "GetBackupStatsUseCase",
     "ListBackupRunsInput",
     "ListBackupRunsUseCase",
+    "ResetBackupSettingsUseCase",
     "UpdateBackupSettingsUseCase",
 ]

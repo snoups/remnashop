@@ -1,7 +1,12 @@
 {
   "app": {
     "title": "Remnashop Dashboard",
-    "copied": "Copied"
+    "copied": "Copied",
+    "close": "Close",
+    "secretShownOnce": "Shown only once — copy it and store it somewhere safe now.",
+    "done": "Done",
+    "clearSearch": "Clear search",
+    "moreActions": "More actions"
   },
   "toast": {
     "close": "Dismiss"
@@ -15,7 +20,18 @@
     "serverErrorTitle": "Server error",
     "serverErrorDescription": "The server responded with an error. Check the backend logs.",
     "retry": "Retry",
-    "invalidNumber": "Enter a valid number"
+    "invalidNumber": "Enter a valid number.",
+    "validation": {
+      "required": "Fill in this field.",
+      "url": "Enter a valid URL, e.g. https://example.com.",
+      "email": "Enter a valid email.",
+      "min": "Must be at least {{min}}.",
+      "max": "Must be at most {{max}}.",
+      "step": "Invalid value, step {{step}}.",
+      "pattern": "Contains invalid characters.",
+      "tooShort": "At least {{count}} characters.",
+      "generic": "Invalid value."
+    }
   },
   "auth": {
     "loginPageTitle": "Sign in",
@@ -32,21 +48,21 @@
     "createOwnerAccount": "Create owner account",
     "signIn": "Sign in",
     "errors": {
-      "loginTooShort": "Login must be at least 3 characters long",
+      "loginTooShort": "Login must be at least 3 characters long.",
       "loginInvalidChars": "Login may only contain Latin letters, digits, dots, underscores, and hyphens",
-      "passwordRequirements": "Password must be at least 24 characters long and contain an uppercase letter, a lowercase letter, and a digit",
-      "passwordsDoNotMatch": "Passwords do not match",
-      "genericError": "Something went wrong",
-      "unsafeAuthorizationUrl": "The sign-in provider returned an unsafe address",
-      "logoutNotConfirmed": "Signed out locally, but the server did not confirm the session was revoked"
+      "passwordRequirements": "Password must be at least 24 characters long and contain an uppercase letter, a lowercase letter, and a digit.",
+      "passwordsDoNotMatch": "Passwords do not match.",
+      "genericError": "Something went wrong.",
+      "unsafeAuthorizationUrl": "The sign-in provider returned an unsafe address.",
+      "logoutNotConfirmed": "Signed out locally, but the server did not confirm the session was revoked."
     },
     "oauth": {
       "continueWith": "Continue with {{provider}}",
-      "invalidCallback": "Invalid OAuth callback",
+      "invalidCallback": "Invalid OAuth callback.",
       "completingSignIn": "Completing sign-in…",
       "passkeySignIn": "Sign in with a passkey",
-      "passkeyCancelled": "Passkey sign-in was cancelled",
-      "passkeyNotSupported": "Passkeys are not supported on this device or browser"
+      "passkeyCancelled": "Passkey sign-in was cancelled.",
+      "passkeyNotSupported": "Passkeys are not supported on this device or browser."
     },
     "welcome": {
       "title": "Welcome to Remnashop",
@@ -59,6 +75,7 @@
     "refresh": "Refresh data",
     "periodDays": "{{count}}d",
     "periodAll": "All time",
+    "periodLabel": "Period",
     "stats": {
       "totalUsers": "Total users"
     },
@@ -111,12 +128,15 @@
       "arpu": "ARPU",
       "arpuHint": "Average Revenue Per User — total revenue in the period divided by the number of paying users.",
       "activeSubscriptions": "Active subscriptions",
-      "paidOrders": "Paid orders",
+      "paidOrders": "Paid transactions",
       "conversionRate": "Registration → payment",
-      "conversionRateHint": "Share of users registered in the period who made at least one paid order."
+      "conversionRateHint": "Share of users registered in the period who made at least one paid transaction.",
+      "mrrCaption": "monthly revenue of active subscriptions",
+      "arpuCaption": "average revenue per paying user",
+      "conversionOf": "{{paid}} of {{total}}"
     },
     "churn": {
-      "title": "Churn",
+      "title": "Churn & retention",
       "titleHint": "How many subscribers who were active at the start of the period stayed active by the end of it.",
       "rate": "Churn rate",
       "rateHint": "Share of subscribers active at the start of the period who are no longer active by the end.",
@@ -142,7 +162,11 @@
         "repeat_paid": "Repeat paid purchase"
       },
       "ofStart": "of registered",
-      "ofPrevious": "of previous step"
+      "ofPrevious": "of previous step",
+      "description": "From sign-up to repeat payment",
+      "conversion": "Sign-up → first payment",
+      "biggestDrop": "Biggest drop-off",
+      "dropBadge": "−{{pct}} of users"
     },
     "cohorts": {
       "title": "Cohort retention",
@@ -157,8 +181,10 @@
       "titleHint": "How many paying users fall into each range of total amount paid to date.",
       "loadError": "Couldn't load LTV distribution. Try refreshing.",
       "empty": "No data yet.",
-      "usersAxis": "Users"
-    }
+      "usersAxis": "Users",
+      "rangeColumn": "Range"
+    },
+    "reportCurrency": "Report currency"
   },
   "eventLog": {
     "title": "Event log",
@@ -171,8 +197,14 @@
       "categoryAdminManagement": "Admin management",
       "categoryUser": "Users",
       "categorySettings": "Settings",
+      "categorySubscription": "Subscriptions",
+      "categoryPromocode": "Promocodes",
+      "categoryReferral": "Referrals",
+      "categoryPricing": "Pricing",
+      "categoryPlans": "Plans",
+      "categoryPayment": "Payments",
       "actor": "Initiator",
-      "actorPlaceholder": "Name, login, or ID",
+      "actorPlaceholder": "Name, @username, ID or email",
       "dateFrom": "From",
       "dateTo": "To",
       "clearDate": "Clear date"
@@ -187,6 +219,8 @@
       "telegram": "Telegram",
       "system": "System",
       "anonymous": "Anonymous",
+      "openInitiator": "Go to initiator",
+      "openTarget": "Go to target",
       "apiToken": "API token",
       "role": "Role",
       "target": "Target",
@@ -203,10 +237,6 @@
       "id": "ID",
       "eventCode": "Event code",
       "json": "JSON"
-    },
-    "pagination": {
-      "loadMore": "Show more",
-      "loadingMore": "Loading…"
     },
     "events": {
       "LoginSucceededEvent": "Login",
@@ -247,6 +277,7 @@
       "PromocodeActivatedEvent": "Promocode activated",
       "PromocodeChangedEvent": "Promocode changed",
       "ReferralAttachedEvent": "Referral attached",
+      "ReferralCodeResetEvent": "Referral code reset",
       "ReferralRewardIssuedEvent": "Referral reward",
       "SubscriptionAddOnGrantedEvent": "Add-on granted",
       "SubscriptionChangedEvent": "Subscription changed",
@@ -259,10 +290,13 @@
       "UserUnblockedEvent": "User unblocked",
       "UsersBulkBlockedEvent": "Bulk block",
       "UsersBulkUnblockedEvent": "Bulk unblock",
-      "PaymentOrderRefundedEvent": "Payment refunded"
+      "PaymentOrderRefundedEvent": "Payment refunded",
+      "BackupFailedEvent": "Backup failed"
     }
   },
   "sidebar": {
+    "collapse": "Collapse menu",
+    "expand": "Expand menu",
     "tagline": "Admin panel",
     "overview": "Overview",
     "settings": "Settings",
@@ -273,7 +307,7 @@
     "promocodes": "Promocodes",
     "referrals": "Referrals",
     "advertising": "Advertising",
-    "payments": "Payments",
+    "payments": "Transactions",
     "analytics": "Analytics",
     "admins": "Admins",
     "eventLog": "Event log"
@@ -283,7 +317,7 @@
     "loadError": "Failed to load admins.",
     "create": {
       "button": "Create admin",
-      "title": "Create a new admin",
+      "title": "Create administrator",
       "loginLabel": "Login",
       "nameLabel": "Name",
       "submit": "Create",
@@ -291,8 +325,7 @@
     },
     "passwordModal": {
       "title": "Save this password now",
-      "description": "This password is shown only once and cannot be retrieved later.",
-      "close": "I've copied it"
+      "copyAria": "Copy password"
     },
     "permissionsForm": {
       "cancel": "Cancel",
@@ -302,67 +335,72 @@
     },
     "demote": {
       "button": "Demote to user",
-      "title": "Demote admin",
+      "title": "Demote admin?",
       "confirm": "Demote this admin to a regular user? Their login and permissions will be cleared.",
       "cancel": "Cancel",
       "error": "Failed to demote admin."
     },
-    "you": "you",
     "details": {
       "tabs": {
         "profile": "Profile",
         "permissions": "Permissions",
-        "sessions": "Sessions"
+        "sessions": "Sessions",
+        "events": "Events"
       },
       "sections": {
         "account": "Account",
-        "purchases": "Purchases"
+        "telegram": "Telegram"
       },
-      "close": "Close",
-      "blocked": "Blocked"
+      "blocked": "Blocked",
+      "eventsEmpty": "No events yet."
     }
   },
   "users": {
+    "openUserNotFound": "User not found.",
+    "openUser": "Go to user",
     "title": "Users",
     "loadError": "Failed to load users.",
     "empty": "No users found.",
-    "blocked": "Blocked",
     "filters": {
       "search": "Search",
-      "searchPlaceholder": "Name, login, email, or Telegram ID",
-      "role": "Role",
-      "roleAll": "All roles",
-      "status": "Status",
-      "statusAll": "All",
-      "statusActive": "Active",
-      "statusBlocked": "Blocked"
-    },
-    "pagination": {
-      "loadMore": "Show more",
-      "loadingMore": "Loading…"
+      "searchPlaceholder": "Name, @username, ID or email",
+      "blockedBy": "Blocked",
+      "blockedByAll": "All",
+      "blockedByManual": "Manually",
+      "blockedByLists": "By lists",
+      "subscription": "Subscription",
+      "subscriptionAll": "All",
+      "subscriptionWith": "Has active",
+      "subscriptionWithout": "No active",
+      "trial": "Trial",
+      "trialAll": "All",
+      "trialAvailable": "Available",
+      "trialUsed": "Used"
     },
     "delete": {
       "button": "Delete user",
-      "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
+      "confirmTitle": "Delete user?",
+      "action": "Delete",
+      "confirm": "Delete “{{name}}”? Personal data and contacts are wiped and subscriptions are revoked in the panel. Payment and referral history is kept. This cannot be undone.",
       "error": "Failed to delete user.",
       "confirmButton": "Delete",
       "cancelButton": "Cancel"
     },
     "block": {
       "button": "Block user",
+      "action": "Block",
       "error": "Failed to block user."
+    },
+    "blockAdmin": {
+      "title": "Block administrator",
+      "confirm": "“{{name}}” is an administrator. Before blocking, they will be demoted: their login, password and passkeys are removed and all active sessions are revoked. The account is then blocked.",
+      "confirmButton": "Block",
+      "cancelButton": "Cancel"
     },
     "unblock": {
       "button": "Unblock user",
+      "action": "Unblock",
       "error": "Failed to unblock user."
-    },
-    "unblockAll": {
-      "button": "Unblock all",
-      "confirm": "Unblock every blocked user? This cannot be undone.",
-      "success": "Unblocked {{count}} user(s).",
-      "error": "Failed to unblock all users.",
-      "title": "Unblock all users",
-      "cancelButton": "Cancel"
     },
     "details": {
       "button": "Details",
@@ -372,16 +410,94 @@
       "telegramId": "Telegram ID",
       "email": "Email",
       "referralCode": "Referral code",
-      "points": "Points",
+      "points": "Points\nbalance",
       "personalDiscount": "Personal discount",
       "purchaseDiscount": "Next purchase discount",
-      "trialAvailable": "Trial available",
+      "trialAvailable": "Trial access",
+      "trialYes": "Available",
+      "trialNo": "Unavailable",
       "yes": "Yes",
       "no": "No",
       "language": "Language",
-      "status": "Status",
-      "active": "Active",
-      "createdAt": "Registration date"
+      "createdAt": "Registration date",
+      "tabs": {
+        "analytics": "Analytics",
+        "transactions": "Transactions",
+        "subscriptions": "Subscriptions",
+        "promocodes": "Promocodes",
+        "referrals": "Referrals"
+      },
+      "analytics": {
+        "purchases": "Purchases",
+        "total": "Purchases total",
+        "paid": "Paid",
+        "ofTotal": "of {{total}}",
+        "purchaseType": {
+          "NEW_one": "purchase",
+          "NEW_other": "purchases",
+          "RENEW_one": "renewal",
+          "RENEW_other": "renewals",
+          "CHANGE_one": "plan change",
+          "CHANGE_other": "plan changes"
+        },
+        "saved": "Saved",
+        "savedHint": "Discounted: {{count}} of {{total}}",
+        "gateway": "Payment method",
+        "gatewayHint": "Payments: {{count}} of {{total}}",
+        "timeline": {
+          "title": "Paid time",
+          "legend": {
+            "NEW": "Purchase",
+            "RENEW": "Renewal",
+            "CHANGE": "Plan change",
+            "gap": "Gap without a subscription",
+            "refund": "Refund",
+            "today": "Today"
+          },
+          "coverage": "Paid {{paid}} of {{total}} days since the first purchase",
+          "gaps_one": "{{count}} gap",
+          "gaps_other": "{{count}} gaps",
+          "gap": "gap {{count}}d",
+          "empty": "No purchases yet."
+        }
+      },
+      "empty": {
+        "transactions": "No transactions yet.",
+        "subscriptions": "No subscriptions.",
+        "promocodes": "No promocodes activated."
+      },
+      "adSource": "Ad link"
+    },
+    "kpi": {
+      "all": "Total",
+      "allHint": "All time",
+      "new": "New",
+      "newHint": "Last 7 days",
+      "subscribed": "Subscribed",
+      "shareHint": "Share {{percent}}",
+      "blocked": "Blocked",
+      "totalTrend": "last 30 days",
+      "newTrend": "vs. prior 7 days"
+    },
+    "columns": {
+      "user": "User",
+      "channels": "Channels",
+      "subscriptions": "Subscriptions",
+      "registered": "Registered"
+    },
+    "channels": {
+      "telegram": "TG",
+      "email": "Email",
+      "login": "Login"
+    },
+    "status": {
+      "blocked": "Blocked"
+    },
+    "sortBy": "Sort by: {{column}}",
+    "deleted": {
+      "name": "Deleted user",
+      "badge": "Deleted",
+      "at": "Deleted"
     }
   },
   "header": {
@@ -395,10 +511,15 @@
     "shaderOn": "Turn the background shader on",
     "shaderOff": "Turn the background shader off",
     "searchEvents": "Search event log",
-    "searchOrders": "Order",
+    "searchOrders": "Transaction",
     "searchSubscriptions": "Subscription",
     "searchPromocode": "Promocode",
-    "searchPlan": "Plan"
+    "searchPlan": "Plan",
+    "notificationsEmpty": "No notifications",
+    "openEventLog": "Open the event log",
+    "notificationsUnread": "Notifications: {{count}} unread",
+    "searching": "Searching…",
+    "notificationsLoadError": "Failed to load notifications."
   },
   "settings": {
     "title": "Settings",
@@ -410,15 +531,16 @@
       "gateways": "Gateways",
       "backups": "Backups",
       "blacklist": "Blacklist",
-      "pricing": "Pricing"
+      "pricing": "Pricing",
+      "referrals": "Referral program"
     },
     "bot": {
       "title": "Telegram Bot",
       "description": "Telegram bot configuration",
       "loadErrorBadge": "error",
-      "notConfigured": "not configured",
-      "running": "running",
-      "stopped": "not running",
+      "notConfigured": "Not configured",
+      "running": "Running",
+      "stopped": "Not running",
       "statusError": "Error: {{message}}",
       "pendingUpdates": "Pending updates: {{total}}",
       "tokenLabel": "Bot token",
@@ -431,8 +553,8 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Saved.",
-      "errorEmptyFields": "Enter at least one field to update",
-      "errorInvalidToken": "Invalid bot token format",
+      "errorEmptyFields": "Enter at least one field to update.",
+      "errorInvalidToken": "Invalid bot token format.",
       "dropPendingUpdatesLabel": "Drop pending updates when setting the webhook",
       "dropPendingUpdatesHint": "Discards any updates Telegram queued up before the webhook was set, instead of delivering that backlog once it goes live.",
       "applyChangesDescription": "Restarts the telegram process so it picks up the saved token/secret. Has no effect if the process isn't currently running.",
@@ -440,7 +562,7 @@
       "restarting": "Restarting…",
       "restartCooldown": "Restarting ({{seconds}}s)",
       "restartRequested": "Restart requested. The bot process will come back up with the saved settings shortly.",
-      "showLogs": "Logs",
+      "showLogs": "View logs",
       "logsTitle": "Telegram bot logs",
       "closeLogs": "Close",
       "refreshLogs": "Refresh",
@@ -496,8 +618,11 @@
       "saveError": "Failed to save appearance settings.",
       "uploadError": "Failed to upload image.",
       "deleteError": "Failed to delete image.",
-      "reset": "Reset to default",
+      "reset": "Reset",
       "resetColor": "Reset to default color",
+      "resetConfirmTitle": "Reset appearance?",
+      "resetConfirmMessage": "Brand name, accent color and background shader will return to their defaults. Uploaded logo and favicon will be deleted.",
+      "cancel": "Cancel",
       "resetSuccess": "Reset to defaults.",
       "resetError": "Failed to reset appearance settings."
     },
@@ -529,7 +654,7 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Saved.",
-      "errorEmptyFields": "Enter at least one field to update",
+      "errorEmptyFields": "Enter at least one field to update.",
       "guideAriaLabel": "Reference article",
       "copy": "Copy",
       "telegramGuide": {
@@ -595,7 +720,7 @@
     },
     "shop": {
       "title": "Shop",
-      "description": "Per-user subscription limits and device/link reset rules",
+      "description": "Limits and rules",
       "loadError": "Failed to load shop settings.",
       "maxActiveSubscriptionsLabel": "Max active subscriptions per user",
       "unlimitedPlaceholder": "Unlimited",
@@ -603,7 +728,7 @@
       "deviceAllResetLabel": "Reset all devices",
       "linkResetLabel": "Subscription link reset",
       "cooldownHoursLabel": "Cooldown, h",
-      "invalidInput": "Check the entered values",
+      "invalidInput": "Check the entered values.",
       "save": "Save",
       "saving": "Saving…",
       "saved": "Saved."
@@ -617,7 +742,7 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Saved.",
-      "errorEmptyFields": "Enter at least one field to update",
+      "errorEmptyFields": "Enter at least one field to update.",
       "docsAria": "{{gateway}} documentation",
       "webhookLabel": "Webhook URL",
       "copyWebhookAria": "Copy webhook URL",
@@ -797,22 +922,19 @@
     "expiresIn180Days": "180 days",
     "expiresIn365Days": "365 days",
     "neverExpires": "Never expires",
+    "expired": "Expired",
     "submit": "Create",
     "cancel": "Cancel",
     "createError": "Failed to create token.",
     "secretTitle": "Token created",
-    "secretWarning": "Copy this now — it won't be shown again.",
     "copy": "Copy",
-    "copied": "Copied",
-    "done": "Done",
     "columnToken": "Token",
     "columnLastUsed": "Last used",
     "columnExpiry": "Expires",
-    "ofDays": "of {{count}}",
     "collapse": "Show less",
     "neverUsed": "Never used",
     "revoke": "Revoke",
-    "revokeTitle": "Revoke API token",
+    "revokeTitle": "Revoke API token?",
     "revokeConfirm": "Any script or integration using this token will lose access immediately.",
     "revokeError": "Failed to revoke token."
   },
@@ -829,7 +951,7 @@
       "changePassword": "Change password",
       "currentPasswordLabel": "Current password",
       "currentPasswordPlaceholder": "Enter your current password",
-      "currentPasswordRequired": "Enter your current password to set a new one",
+      "currentPasswordRequired": "Enter your current password to set a new one.",
       "newPasswordLabel": "New password",
       "newPasswordPlaceholder": "Enter a new password",
       "cancel": "Cancel",
@@ -867,7 +989,11 @@
       "cancelled": "Passkey registration was cancelled.",
       "addError": "Failed to add passkey.",
       "deleteError": "Failed to delete passkey.",
-      "renameError": "Failed to rename passkey."
+      "renameError": "Failed to rename passkey.",
+      "renameTitle": "Rename passkey",
+      "deleteTitle": "Delete passkey?",
+      "cancel": "Cancel",
+      "save": "Save"
     },
     "accountSecurity": {
       "title": "IP allowlist",
@@ -876,6 +1002,34 @@
       "submit": "Save",
       "loadError": "Failed to load.",
       "saveError": "Failed to save."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Subscribe to notifications about events.",
+      "loadError": "Failed to load notification settings.",
+      "saveError": "Failed to save notification settings.",
+      "groups": {
+        "security": {
+          "title": "Security",
+          "description": "Failed sign-ins and suspected session theft"
+        },
+        "failures": {
+          "title": "Failures",
+          "description": "Failed backups"
+        },
+        "requests": {
+          "title": "Requests",
+          "description": "Referral points withdrawal requests"
+        },
+        "money": {
+          "title": "Payments",
+          "description": "Purchases, renewals and refunds"
+        },
+        "admins": {
+          "title": "Administrators",
+          "description": "Admins created, deleted or given different permissions"
+        }
+      }
     }
   },
   "sessions": {
@@ -884,12 +1038,11 @@
     "loadError": "Failed to load.",
     "empty": "No active sessions.",
     "revoke": "Revoke",
-    "revokeTitle": "Revoke session",
+    "revokeTitle": "Revoke session?",
     "revokeConfirm": "The device will be signed out.",
     "revokeConfirmCurrent": "This is your current device. You will be signed out.",
     "revokeError": "Failed to revoke session.",
     "cancel": "Cancel",
-    "back": "Back",
     "thisDevice": "This device",
     "lastUsed": "{{date}}"
   },
@@ -928,6 +1081,7 @@
     "API_TOKENS_MANAGE": "Manage API tokens",
     "EVENT_LOG_VIEW": "View event log",
     "USERS_VIEW": "View users",
+    "USERS_STATS_VIEW": "View user counters",
     "USERS_DELETE": "Delete users",
     "USERS_DISCOUNT_MANAGE": "Manage user discounts",
     "USER_SESSIONS_VIEW": "View user sessions",
@@ -976,17 +1130,28 @@
     "PROMOCODES_UPDATE": "Edit promocodes",
     "PROMOCODES_DELETE": "Delete promocodes",
     "PROMOCODES_GENERATE_CODE": "Generate promocode codes",
-    "PAYMENTS_VIEW": "View payments",
-    "PAYMENTS_ORDER_VIEW": "View payment order details",
-    "PAYMENTS_GATEWAYS_VIEW": "View gateways used in orders",
+    "PROMOCODES_ACTIVATIONS_VIEW": "View a user's promocode activations",
+    "PROMOCODES_SUMMARY_VIEW": "View promocodes summary",
+    "PROMOCODES_USERS_VIEW": "View users who activated a promocode",
+    "PAYMENTS_VIEW": "View transactions",
+    "PAYMENTS_SUMMARY_VIEW": "View transaction summary",
+    "PAYMENTS_ORDER_VIEW": "View transaction details",
+    "PAYMENTS_GATEWAYS_VIEW": "View gateways used in transactions",
     "REFERRALS_VIEW": "View referrals",
+    "REFERRALS_LINKS_VIEW": "View referral links",
+    "REFERRALS_INVITED_VIEW": "View a user's invited users",
+    "REFERRALS_REVENUE_VIEW": "View revenue from invited users",
     "REFERRALS_LIST": "View referral list",
+    "REFERRALS_SUMMARY_VIEW": "View referral summary",
     "REFERRALS_SETTINGS_VIEW": "View referral settings",
     "REFERRALS_SETTINGS_MANAGE": "Manage referral settings",
+    "REFERRALS_SETTINGS_RESET": "Reset referral settings",
     "REFERRALS_POINTS_MANAGE": "Adjust referral points",
+    "REFERRALS_CODE_RESET": "Reset referral codes",
     "BACKUPS_VIEW": "View backups",
     "BACKUPS_SETTINGS_VIEW": "View backup settings",
     "BACKUPS_SETTINGS_MANAGE": "Manage backup settings",
+    "BACKUPS_SETTINGS_RESET": "Reset backup settings",
     "BACKUPS_RUN_VIEW": "View backup runs",
     "BACKUPS_RUN_CREATE": "Run backups",
     "BACKUPS_RUN_DOWNLOAD": "Download backups",
@@ -1008,7 +1173,10 @@
     "USERS_UNBLOCK_BLACKLIST_MATCHES": "Unblock all blacklist matches",
     "AD_LINKS_VIEW": "View advertising links",
     "AD_LINKS_STATS_VIEW": "View advertising stats",
+    "AD_LINKS_SUMMARY_VIEW": "View advertising summary",
     "AD_LINKS_USERS_VIEW": "View attributed users",
+    "AD_LINKS_USER_ATTRIBUTION_VIEW": "View a user's ad source",
+    "AD_LINKS_SHARE_VIEW": "Get ad link URLs and QR codes",
     "AD_LINKS_CREATE": "Create advertising links",
     "AD_LINKS_GENERATE_CODE": "Generate advertising codes",
     "AD_LINKS_UPDATE": "Edit advertising links",
@@ -1036,7 +1204,8 @@
     "DIALOGS_WINDOWS_RESET_ALL": "Reset all windows",
     "DIALOGS_TEXT_UPDATE": "Edit window texts",
     "DIALOGS_EXPORT": "Export windows",
-    "DIALOGS_IMPORT": "Import windows"
+    "DIALOGS_IMPORT": "Import windows",
+    "NOTIFICATIONS_VIEW": "View notifications"
   },
   "permissionCategories": {
     "botSettings": "Telegram Bot",
@@ -1055,7 +1224,7 @@
     "subscriptions": "Subscriptions",
     "addons": "Add-ons",
     "promocodes": "Promocodes",
-    "payments": "Payments",
+    "payments": "Transactions",
     "referrals": "Referrals",
     "backups": "Backups",
     "blacklist": "Blacklist",
@@ -1081,11 +1250,22 @@
     "telegramButton": "Telegram"
   },
   "pricing": {
+    "currencyTo": {
+      "USD": "US dollars",
+      "RUB": "rubles",
+      "XTR": "Stars"
+    },
+    "currencyIn": {
+      "USD": "US dollars",
+      "RUB": "rubles",
+      "XTR": "Stars"
+    },
     "loadError": "Failed to load pricing data.",
     "rates": {
       "title": "Currency rates",
       "description": "Conversion rates, rounding and minimum amounts per currency",
       "rateLabel": "Rate",
+      "rateInvalid": "The rate must be greater than 0.",
       "roundingModeLabel": "Rounding",
       "charmEndingLabel": "Price ending",
       "charmEndingHint": "A calculated price is rounded up to the nearest value with this ending. For example, with ending 99 a price of 249 becomes 299. Pinned prices are not affected. Leave empty to disable.",
@@ -1128,6 +1308,7 @@
     },
     "matrix": {
       "title": "Price matrix",
+      "titleHint": "The base price is the number you set; every currency is calculated from it. The anchor currency column shows the final price a customer pays after the rounding and price ending from Currency rates. Other currencies follow their rate; to fix a price in a currency, type your own value or click the pin — a pinned price doesn't change when the rate does.",
       "description": "Base prices and per-currency overrides for plans and addons",
       "item": "Item",
       "basePrice": "Base price",
@@ -1136,12 +1317,12 @@
       "empty": "No plans or addons yet.",
       "pinned": "Pinned override",
       "clearPin": "Clear override",
+      "pin": "Pin the current price",
       "saved": "Price updated.",
       "saveError": "Failed to update the price.",
       "planNotFound": "Could not resolve the plan for this row.",
       "bulkAdjust": "Bulk adjust",
-      "bulkAdjustTitle": "Bulk adjust base prices",
-      "bulkAdjustDescription": "Multiply base prices by a factor across a whole scope.",
+      "bulkAdjustTitle": "Bulk price change",
       "scopeLabel": "Scope",
       "scope": {
         "ALL_PLANS": "All plan durations",
@@ -1149,6 +1330,8 @@
         "SELECTED": "Selected items"
       },
       "factorLabel": "Factor",
+      "factorHint": "Base prices are multiplied by this number: 1.10 is +10 %, 0.90 is −10 %.",
+      "factorPositive": "The factor must be greater than 0.",
       "factorPlaceholder": "e.g. 1.10 for +10%",
       "preview": "Preview",
       "previewing": "Loading preview…",
@@ -1181,9 +1364,9 @@
       "searchPlaceholder": "Search entries",
       "filterAll": "All",
       "noResults": "Nothing found.",
-      "showMore": "Show {{count}} more",
       "valueLabel": "Telegram ID or email",
-      "valuePlaceholder": "243323533 or name@example.com"
+      "valuePlaceholder": "243323533 or name@example.com",
+      "valueInvalid": "Enter a Telegram ID (a number) or an email."
     },
     "sources": {
       "title": "Sources",
@@ -1192,6 +1375,7 @@
       "namePlaceholder": "e.g. Remnashop",
       "add": "Add source",
       "remove": "Remove source",
+      "removeConfirmTitle": "Remove source?",
       "removeConfirm": "Remove the source “{{name}}”?\nThe entries it contributed leave the blacklist immediately. Users already blocked stay blocked.",
       "enabled": "Enabled",
       "entriesCount": "Entries: {{count}}",
@@ -1208,7 +1392,7 @@
       "removeConfirmButton": "Remove",
       "removeCancelButton": "Cancel",
       "urlLabel": "List URL",
-      "nameLabel": "Name (optional)"
+      "nameLabel": "Name"
     },
     "matches": {
       "title": "Matched users",
@@ -1234,7 +1418,7 @@
       "blocked": "blocked",
       "unblockAll": {
         "button": "Unblock all",
-        "title": "Unblock all matched users",
+        "title": "Unblock all matched users?",
         "confirm": "Every matched user will be unblocked and their entries removed from the manual list.\nUsers that are on external lists will be blocked again on the next sync.",
         "success": "Unblocked {{count}} user(s).",
         "error": "Failed to unblock users.",
@@ -1262,12 +1446,11 @@
     "schedule": {
       "title": "Scheduled backups",
       "description": "Database snapshots and rotation",
-      "badgeOn": "enabled",
-      "badgeOff": "disabled",
+      "badgeOn": "Enabled",
+      "badgeOff": "Disabled",
       "enabledLabel": "Back up on a schedule",
       "enabledHint": "Database only. Files are backed up manually.",
-      "intervalLabel": "Interval",
-      "intervalUnit": "h",
+      "intervalLabel": "Interval, h",
       "preset": "{{hours}}h",
       "maxFilesLabel": "Copies to keep",
       "maxFilesHint": "Older copies are deleted after every successful run, separately for each kind.",
@@ -1275,6 +1458,11 @@
       "lastBackup": "Last backup",
       "save": "Save",
       "saving": "Saving…",
+      "reset": "Reset",
+      "resetConfirmTitle": "Reset the schedule?",
+      "resetConfirmMessage": "Automatic backups will be turned off, and the interval and number of kept copies will return to their defaults (24 h and 7 copies).",
+      "resetSuccess": "Settings reset.",
+      "resetError": "Failed to reset settings.",
       "intervalHint": "The new interval counts from the last successful backup.",
       "saved": "Settings saved.",
       "error": "Failed to save settings."
@@ -1302,14 +1490,12 @@
       "durationUnderSecond": "under a second",
       "durationSeconds": "{{seconds}}s",
       "durationMinutes": "{{minutes}}m {{seconds}}s",
-      "shown": "Showing {{shown}} of {{total}}",
       "downloadButton": "Download",
       "downloadError": "Failed to download the backup.",
       "deleteButton": "Delete backup",
+      "deleteConfirmTitle": "Delete backup?",
       "deleteConfirm": "Permanently delete this backup? This cannot be undone.",
       "deleteError": "Failed to delete the backup.",
-      "loadMore": "Show more",
-      "loadingMore": "Loading…",
       "deleteConfirmButton": "Delete",
       "deleteCancelButton": "Cancel"
     },
@@ -1330,10 +1516,6 @@
       "statusActive": "Active",
       "statusInactive": "Inactive",
       "period": "Period"
-    },
-    "pagination": {
-      "loadMore": "Show more",
-      "loadingMore": "Loading…"
     },
     "channel": {
       "BOT": "Bot",
@@ -1359,70 +1541,107 @@
     },
     "edit": {
       "button": "Edit",
-      "title": "Edit advertising link",
       "nameLabel": "Name",
       "costLabel": "Cost",
       "currencyLabel": "Currency",
-      "activeLabel": "Active",
       "noteLabel": "Note",
-      "cancel": "Cancel",
-      "close": "Close",
       "save": "Save",
       "saving": "Saving…",
       "saved": "Advertising link updated.",
-      "error": "Failed to update the advertising link.",
-      "activeHint": "A paused link stops crediting new sign-ups."
+      "error": "Failed to update the advertising link."
     },
     "delete": {
-      "button": "Delete link",
+      "button": "Delete",
+      "title": "Delete advertising link?",
       "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
       "error": "Failed to delete the advertising link.",
+      "hasUsers": "Users have already signed up through this link, so it can't be deleted. Deactivate it instead — its stats stay intact.",
       "confirmButton": "Delete",
       "cancelButton": "Cancel"
     },
     "stats": {
       "close": "Close",
-      "attributions": "Attributions",
-      "paidCount": "Paid",
+      "attributions": "Sign-ups",
+      "paidCount": "Purchases",
       "conversionRate": "Conversion",
       "revenue": "Revenue",
       "cost": "Cost",
       "cpa": "CPA",
       "roi": "ROI",
       "none": "—",
-      "usersTitle": "Attributed users",
       "usersEmpty": "No attributed users yet.",
       "loadError": "Failed to load stats.",
-      "hasPaid": "Paid",
-      "notPaid": "Not paid",
-      "loadMore": "Show more",
-      "loadingMore": "Loading…",
+      "hasPaid": "Purchased",
+      "notPaid": "No purchase",
       "daily": "Sign-ups per day",
       "peak": "peak {{count}} · {{day}}",
-      "channels": "Channels",
       "economics": "Economics",
-      "channelSplit": "bot {{bot}} · web {{web}}"
+      "channelSplit": "Bot {{bot}} · Web {{web}}",
+      "totalTrend": "last 30 days",
+      "periodTrend": "vs. prior {{days}} days"
     },
-    "description": "Tagged deep links: every sign-up through one is credited to its source.",
-    "count_one": "{{count}} link",
-    "count_other": "{{count}} links",
     "columns": {
       "link": "Link",
-      "paid": "Paid",
+      "paid": "Purchases",
       "status": "Status"
     },
     "status": {
       "active": "Active",
-      "paused": "Paused"
+      "paused": "Inactive"
     },
-    "startParam": "Start parameter",
-    "startParamHint": "Append it to your bot link: t.me/<bot>?start=ad_…",
-    "copyStartParam": "Copy start parameter",
+    "currencies": {
+      "USD": "Dollars",
+      "RUB": "Rubles",
+      "XTR": "Stars"
+    },
     "pause": "Pause",
-    "resume": "Resume"
+    "resume": "Resume",
+    "details": {
+      "tabs": {
+        "overview": "Overview",
+        "users": "Users",
+        "settings": "Settings"
+      }
+    },
+    "channels": {
+      "label": "Channels",
+      "all": "All",
+      "web": "Web"
+    },
+    "share": {
+      "button": "Share",
+      "copy": {
+        "BOT": "Copy bot link",
+        "WEBCABINET": "Copy web cabinet link"
+      },
+      "qr": {
+        "BOT": "Download bot QR",
+        "WEBCABINET": "Download web cabinet QR"
+      },
+      "botUnavailable": "The bot is not configured",
+      "webUnavailable": "APP_WEB_CABINET_URL is not set",
+      "loadError": "Failed to load the links",
+      "copyError": "Failed to copy the link.",
+      "qrError": "Failed to download the QR code."
+    }
   },
   "dialogs": {
     "title": "Window editor",
+    "beta": "In development",
+    "betaHint": "The window editor is in development and may have rough edges. Keeping the default settings is the safest choice.",
+    "variables": {
+      "user_name": "User name",
+      "user_points": "User points",
+      "subscription_url": "Connection link",
+      "devices_current": "Devices connected",
+      "devices_max": "Device limit"
+    },
+    "variableCategories": {
+      "user": "User",
+      "subscription": "Subscription",
+      "window": "This window",
+      "other": "Other"
+    },
     "description": "Bot window content and navigation",
     "texts": {
       "title": "Locale editor",
@@ -1442,6 +1661,8 @@
       "title": "Emoji",
       "description": "Telegram premium emoji packs",
       "linkPlaceholder": "t.me/addemoji/...",
+      "linkLabel": "Emoji pack link",
+      "linkInvalid": "Paste a t.me/addemoji/name link or just the pack name.",
       "add": "Add",
       "adding": "Adding…",
       "imported": "Pack “{{title}}” added.",
@@ -1449,6 +1670,7 @@
       "loadError": "Could not load the packs.",
       "close": "Close",
       "delete": "Remove pack",
+      "deleteTitle": "Remove pack?",
       "deleteConfirm": "Remove “{{title}}”? Buttons already using its emoji will fall back to the plain glyph.",
       "deleteConfirmButton": "Remove"
     },
@@ -1457,8 +1679,12 @@
       "addWindow": "Add window",
       "addWindowConfirm": "Create",
       "addWindowCancel": "Cancel",
-      "addWindowTitlePlaceholder": "Window name",
+      "addWindowTitlePlaceholder": "e.g. Weekly deal",
+      "addWindowTitle": "New window",
+      "addWindowNameLabel": "Window name",
+      "addWindowNameHint": "Shown only in the editor, bot users never see it",
       "deleteWindow": "Delete window",
+      "deleteWindowTitle": "Delete window?",
       "deleteWindowConfirm": "Delete \"{{key}}\"? This cannot be undone.",
       "deleteWindowConfirmButton": "Delete",
       "deleteWindowCancelButton": "Cancel",
@@ -1495,22 +1721,25 @@
     },
     "inspector": {
       "copyKey": "Copy window internal name",
-      "keyCopied": "Window internal name copied",
+      "keyCopied": "Window internal name copied.",
       "bannerLabel": "Banner",
       "nameLabel": "Window name",
       "enabledLabel": "Show in the bot",
       "resetWindow": "Reset changes",
+      "resetWindowTitle": "Reset changes?",
       "resetWindowConfirm": "Reset \"{{key}}\" to its default banner and buttons? This cannot be undone.",
       "resetWindowConfirmButton": "Reset",
       "resetWindowCancelButton": "Cancel",
       "resetAll": "Reset all",
+      "resetAllTitle": "Reset all?",
       "resetAllConfirm": "Reset every dialog window to its shipped defaults? This cannot be undone.",
       "resetAllConfirmButton": "Reset all",
       "saved": "Saved.",
       "resetDone": "Reset to defaults.",
       "textTitle": "Message text",
-      "textSave": "Save",
-      "textReset": "Reset to default",
+      "textSave": "Save text",
+      "textSaveShort": "Save",
+      "textReset": "Reset",
       "buttonTitle": "Button",
       "buttonLabel": "Label",
       "buttonStyle": "Style",
@@ -1526,6 +1755,7 @@
       "buttonAdd": "Add button",
       "buttonsSave": "Save",
       "buttonsDiscard": "Discard changes",
+      "buttonsDiscardTitle": "Discard changes?",
       "buttonLabelPending": "Save the button grid first to unlock editing this label.",
       "discardSwitchConfirm": "Discard unsaved button changes and switch windows?",
       "discardSwitchConfirmButton": "Discard and switch",
@@ -1549,9 +1779,12 @@
       "bannerReplace": "Replace",
       "bannerDelete": "Delete the banner",
       "emojiPick": "Pick an emoji",
+      "variablePick": "Insert a variable",
+      "variableSearch": "Search variables",
+      "variableEmpty": "Nothing found",
+      "emojiClear": "Remove the emoji",
       "emojiStandard": "Standard",
       "emojiManage": "Manage packs",
-      "emojiClear": "Remove the emoji",
       "emojiGroup": {
         "smileys": "Smileys",
         "people": "People",
@@ -1578,74 +1811,124 @@
   "referrals": {
     "title": "Referrals",
     "subtitle": "Who invited whom and what they earned for it.",
-    "tabs": {
-      "list": "List",
-      "settings": "Settings"
-    },
     "loadError": "Failed to load referral settings.",
     "settings": {
-      "enabledLabel": "Referral program",
-      "maxLevelLabel": "Levels",
-      "accrualLabel": "Accrual strategy",
+      "enabledLabel": "Invites and rewards",
+      "maxLevelLabel": "Levels in the chain",
+      "accrualLabel": "When to reward",
       "accrual": {
-        "FIRST_PAYMENT": "First payment only",
+        "FIRST_PAYMENT": "First payment",
         "EVERY_PAYMENT": "Every payment"
       },
-      "rewardTypeLabel": "Reward type",
+      "rewardTypeLabel": "Reward",
       "rewardType": {
-        "EXTRA_DAYS": "Extra days",
+        "EXTRA_DAYS": "Subscription days",
         "POINTS": "Points"
       },
       "levelRewardLabel": "Level {{level}} reward",
+      "rewardStrategyLabel": "Reward size",
+      "rewardStrategy": {
+        "AMOUNT": "Fixed",
+        "PERCENT": "Percent of payment"
+      },
+      "percentUnit": "%",
       "save": "Save",
       "saving": "Saving…",
       "saved": "Settings saved.",
       "error": "Failed to save settings.",
       "programTitle": "Referral program",
-      "programDescription": "General reward rules.",
-      "enabledDescription": "Users get a referral link and earn rewards.",
-      "accrualDescription": "Which payments by the invited user earn a reward.",
+      "programDescription": "Conditions, type and size of the reward",
       "rewardTypeDescription": {
-        "EXTRA_DAYS": "Days are added to the referrer's active subscription.",
-        "POINTS": "Points accumulate on the user's balance."
+        "EXTRA_DAYS": "Extend the selected subscription",
+        "POINTS": "Collected on the user's account"
       },
       "levelsTitle": "Levels & rewards",
-      "levelsDescription": "Invitation chain depth and the reward at each level.",
-      "levelDescription": {
-        "1": "Invited the buyer directly",
-        "2": "Invited the level 1 referrer",
-        "3": "Next up the invitation chain"
-      },
-      "levelUnused": "Not used — increase the number of levels",
+      "levelsDescription": "Chain depth and the reward at each level",
       "status": {
         "enabled": "Enabled",
         "disabled": "Disabled"
       },
-      "disabledNote": "The program is off — no new rewards are granted, settings are kept.",
       "preview": {
-        "title": "How it works",
-        "description": "Preview of the current settings.",
         "trigger": "The invited user pays",
         "triggerText": {
-          "FIRST_PAYMENT": "for their first subscription only — a one-time reward",
-          "EVERY_PAYMENT": "for any subscription or renewal — a reward every time"
+          "FIRST_PAYMENT": {
+            "AMOUNT": "their first subscription — rewarded once",
+            "PERCENT_POINTS": "their first subscription — once, a percent of its amount",
+            "PERCENT_EXTRA_DAYS": "their first subscription — once, a percent of its term"
+          },
+          "EVERY_PAYMENT": {
+            "AMOUNT": "a subscription or renewal — a fixed reward for every payment",
+            "PERCENT_POINTS": "a subscription or renewal — a percent of every payment",
+            "PERCENT_EXTRA_DAYS": "a subscription or renewal — a percent of every term paid"
+          }
         },
         "who": {
           "1": "Their inviter",
           "2": "Inviter's inviter",
           "3": "Third up the chain"
-        },
-        "footnote": {
-          "EXTRA_DAYS": "Each level earns its own amount, independently of the others.",
-          "POINTS": "A user's points can be adjusted manually from their referral stats."
         }
-      }
+      },
+      "accrualDescription": {
+        "FIRST_PAYMENT": "Once — for the first paid subscription",
+        "EVERY_PAYMENT": "For every purchase and renewal"
+      },
+      "rewardStrategyDescription": {
+        "AMOUNT": "The same number for every payment",
+        "PERCENT": {
+          "EXTRA_DAYS": "A percent of the term paid for",
+          "POINTS": "A percent of the payment amount in the base currency"
+        }
+      },
+      "levelGets": "gets",
+      "exampleLabel": "Example",
+      "levelsUnusedNote_one": "Only the direct inviter is rewarded. Pick more levels to reward further up the chain",
+      "levelsUnusedNote_other": "Only the first {{count}} levels are rewarded. Pick more levels to reward further up the chain",
+      "enabledHint": "A disabled program attaches no new referrals and grants no rewards. Existing referrals and rewards already granted stay.",
+      "reset": "Reset",
+      "resetConfirmTitle": "Reset the program settings?",
+      "resetConfirmText": "All settings return to their defaults and the program turns off. Existing referrals and rewards already granted stay.",
+      "resetCancel": "Cancel",
+      "resetSuccess": "Settings reset.",
+      "resetError": "Failed to reset the settings."
+    },
+    "dialog": {
+      "tabs": {
+        "overview": "Overview",
+        "invited": "Invited",
+        "rewards": "Rewards"
+      },
+      "invited": "Invited",
+      "onBalance": "on balance",
+      "rewardsCount": "Rewards",
+      "searchPlaceholder": "Name, @username or ID",
+      "revenue": "Purchases total",
+      "payingCount": "Paid: {{paid}} of {{total}}",
+      "program": "Referral program",
+      "afterAdjust": "After applying:",
+      "invitedByCode_one": "{{count}} invited",
+      "invitedByCode_other": "{{count}} invited",
+      "resetHint": "Resetting issues a new code. Old bot and web cabinet links stop working; users already invited stay attached.",
+      "levelAll": "All",
+      "via": "via {{name}}",
+      "invitedEmpty": "Hasn't invited anyone yet.",
+      "invitedLoadError": "Failed to load invited users.",
+      "deletedUser": "Deleted user"
     },
     "stats": {
       "button": "Referral stats",
       "close": "Close",
       "referralCodeLabel": "Referral code",
+      "botLinkLabel": "Bot link",
+      "webLinkLabel": "Web cabinet link",
+      "resetCode": "Reset code",
+      "resetConfirmTitle": "Reset the referral code?",
+      "resetConfirmText": "Old links will stop working. Users already invited stay attached.",
+      "resetCancel": "Cancel",
+      "resetDone": "Referral code reset.",
+      "resetError": "Failed to reset the code.",
       "referrerLabel": "Referred by",
+      "toReferrer": "To referrer",
+      "toUser": "To user",
       "pointsLabel": "Points",
       "none": "—",
       "levelCountLabel": "Level {{level}}",
@@ -1664,6 +1947,14 @@
       "levelBadge": "Lvl {{level}}",
       "levelFilter": "Level",
       "periodFilter": "Period",
+      "search": "User",
+      "searchPlaceholder": "Name, @username, ID or email",
+      "rewardStatusFilter": "Rewards",
+      "rewardStatusAll": "Any",
+      "rewardStatusWith": "With rewards",
+      "rewardStatusWithout": "No rewards",
+      "rewardTypeFilter": "Reward type",
+      "rewardTypeAll": "All types",
       "columns": {
         "referred": "Invited",
         "referrer": "Invited by",
@@ -1679,6 +1970,17 @@
       "loadError": "Failed to load referrals.",
       "noPermission": "You don't have permission to view the referral list."
     },
+    "summary": {
+      "none": "—",
+      "invited": "Invited",
+      "referrers": "Referrers: {{count}}",
+      "rewarded": "Rewarded",
+      "conversionRate": "Conversion",
+      "days": "Days granted",
+      "points": "Points granted",
+      "totalTrend": "last 30 days",
+      "periodTrend": "vs. prior {{days}} days"
+    },
     "units": {
       "EXTRA_DAYS_one": "day",
       "EXTRA_DAYS_other": "days",
@@ -1691,7 +1993,6 @@
     "loadError": "Failed to load promocodes.",
     "empty": "No promocodes yet.",
     "noExpiry": "No expiry",
-    "unlimitedActivations": "Unlimited",
     "rewardType": {
       "DURATION": "Extra days",
       "TRAFFIC": "Extra traffic",
@@ -1706,10 +2007,6 @@
       "EXISTING": "Existing users",
       "INVITED": "Invited only",
       "ALLOWED": "Allow-listed only"
-    },
-    "fields": {
-      "activations": "Activations",
-      "expires": "Expires"
     },
     "create": {
       "button": "New promocode",
@@ -1733,28 +2030,23 @@
       "saving": "Creating…",
       "saved": "Promocode created.",
       "error": "Failed to create the promocode.",
-      "daysSuffix": "days"
+      "daysSuffix": "days",
+      "codeInvalid": "Only A–Z, 0–9, _ and - are allowed"
     },
     "edit": {
-      "button": "Edit",
-      "activeLabel": "Active",
-      "cancel": "Cancel",
-      "close": "Close",
       "save": "Save",
       "saving": "Saving…",
       "saved": "Promocode updated.",
-      "error": "Failed to update the promocode.",
-      "activeHint": "A disabled code can't be redeemed",
-      "rewardLocked": "Can't be changed"
+      "error": "Failed to update the promocode."
     },
     "delete": {
-      "button": "Delete promocode",
+      "button": "Delete",
       "confirm": "Permanently delete \"{{code}}\"? This cannot be undone.",
       "error": "Failed to delete the promocode.",
       "confirmButton": "Delete",
-      "cancelButton": "Cancel"
+      "cancelButton": "Cancel",
+      "title": "Delete promocode?"
     },
-    "description": "Codes customers redeem for days, traffic, devices, subscriptions or discounts.",
     "copyAria": "Copy code {{code}}",
     "noMatches": "No promocodes match the filters.",
     "status": {
@@ -1764,11 +2056,14 @@
     },
     "filters": {
       "statusAll": "All statuses",
-      "rewardAll": "All rewards"
+      "rewardAll": "All rewards",
+      "status": "Status",
+      "reward": "Reward"
     },
     "columns": {
       "code": "Promocode",
-      "status": "Status"
+      "status": "Status",
+      "used": "Used"
     },
     "sections": {
       "code": "Code",
@@ -1795,7 +2090,37 @@
       "maxActivationsHint": "Unlimited",
       "reusableLabel": "Reusable",
       "reusableHint": "One user can redeem it more than once"
-    }
+    },
+    "stats": {
+      "promocodes": "Promocodes",
+      "active": "{{count}} active",
+      "activations": "Activations",
+      "users": "{{count}} users",
+      "none": "—",
+      "grantedDays": "Days granted",
+      "subscriptions": "{{count}} subscriptions",
+      "discounts": "Discounts",
+      "discountedOrders": "{{count}} orders"
+    },
+    "details": {
+      "tabs": {
+        "overview": "Overview",
+        "users": "Users",
+        "settings": "Settings"
+      },
+      "close": "Close",
+      "availability": "Who can use it",
+      "expires": "Valid until",
+      "used": "Used",
+      "ofMax": "of {{max}}",
+      "reusable": "Reusable",
+      "yes": "Yes",
+      "no": "No",
+      "usersEmpty": "Nobody has redeemed this code yet.",
+      "usersLoadError": "Failed to load activations."
+    },
+    "pause": "Disable",
+    "resume": "Enable"
   },
   "plans": {
     "title": "Plans",
@@ -1803,6 +2128,22 @@
     "empty": "No plans yet.",
     "unlimited": "Unlimited",
     "reorderError": "Failed to reorder plans.",
+    "description": "Plans are shown to customers in this order. Drag a card by its handle to reorder.",
+    "activeCount": "{{count}} active",
+    "noMatches": "No plans match this filter.",
+    "filters": {
+      "label": "Filter plans",
+      "all": "All",
+      "active": "Active",
+      "inactive": "Hidden"
+    },
+    "priceFrom": "from",
+    "perDays_one": "/ {{count}} day",
+    "perDays_other": "/ {{count}} days",
+    "daysShort": "{{count}}d",
+    "devices_one": "{{count}} device",
+    "devices_other": "{{count}} devices",
+    "dragHandle": "Drag to reorder {{name}}",
     "create": {
       "button": "New plan"
     },
@@ -1847,7 +2188,24 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Plan saved.",
-      "error": "Failed to save the plan."
+      "error": "Failed to save the plan.",
+      "sections": {
+        "durations": "Durations"
+      },
+      "publicCodeHint": "Set on creation only",
+      "tagHint": "Shown as a badge on the plan card",
+      "trafficShortLabel": "Traffic",
+      "deviceShortLabel": "Devices",
+      "limitHint": "0 — unlimited",
+      "trafficSuffix": "GB",
+      "deviceSuffix": "pcs",
+      "daysSuffix": "d",
+      "addPresetLabel": "Add:",
+      "customDuration": "Custom",
+      "dragDuration": "Drag to reorder",
+      "isActiveHint": "Inactive plans are hidden from customers",
+      "isTrialHint": "Offered as a trial period",
+      "durationsAfterCreate": "Durations can be added once the plan is created."
     },
     "access": {
       "button": "Access",
@@ -1870,10 +2228,23 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Access updated.",
-      "error": "Failed to update access."
+      "error": "Failed to update access.",
+      "availabilitySection": "Who sees the plan",
+      "restricted": "Restricted",
+      "availabilityHint": {
+        "ALL": "Any user",
+        "NEW": "Never bought a paid subscription",
+        "EXISTING": "Bought a subscription before",
+        "INVITED": "Came via a referral link",
+        "ALLOWED": "Telegram IDs and emails from the list below",
+        "LINK": "Hidden from the catalog, bought via a direct link"
+      },
+      "recipients_one": "Access: {{count}} recipient",
+      "recipients_other": "Access: {{count}} recipients"
     },
     "delete": {
       "button": "Delete plan",
+      "confirmTitle": "Delete plan?",
       "confirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
       "error": "Failed to delete the plan.",
       "confirmButton": "Delete",
@@ -1881,14 +2252,31 @@
     }
   },
   "payments": {
-    "title": "Payments",
-    "loadError": "Failed to load payments.",
-    "empty": "No payments found.",
-    "orderLabel": "Order #{{id}}",
+    "title": "Transactions",
+    "stats": {
+      "none": "—",
+      "orders": "Transactions",
+      "pending": "Pending: {{count}}",
+      "paid": "Paid",
+      "conversionRate": "Paid share",
+      "averageCheck": "Average check",
+      "averageDiscount": "Average discount",
+      "revenue": "Revenue",
+      "refunded": "Refunded",
+      "totalTrend": "last 30 days",
+      "periodTrend": "vs. prior {{days}} days"
+    },
+    "loadError": "Failed to load transactions.",
+    "empty": "No transactions found.",
+    "orderLabel": "Transaction #{{id}}",
     "filters": {
+      "status": "Status",
+      "gateway": "Gateway",
+      "purchaseType": "Purchase type",
+      "period": "Period",
       "statusAll": "All statuses",
       "gatewayAll": "All gateways",
-      "purchaseTypeAll": "All purchase types"
+      "purchaseTypeAll": "All types"
     },
     "status": {
       "PENDING": "Pending",
@@ -1898,17 +2286,13 @@
       "REFUNDED": "Refunded"
     },
     "columns": {
-      "order": "Order",
+      "order": "Transaction",
       "amount": "Amount",
       "created": "Created",
       "status": "Status"
     },
     "today": "Today",
     "yesterday": "Yesterday",
-    "pagination": {
-      "loadMore": "Show more",
-      "loadingMore": "Loading…"
-    },
     "purchaseType": {
       "NEW": "New",
       "RENEW": "Renewal",
@@ -1922,6 +2306,9 @@
     "details": {
       "close": "Close",
       "total": "Total",
+      "noDiscount": "No discount",
+      "basePrice": "was {{price}}",
+      "period": "Period",
       "plan": "Plan",
       "purchaseType": "Purchase type",
       "targetSubscription": "Target subscription",
@@ -1932,7 +2319,6 @@
       "createdAt": "Created at",
       "none": "—",
       "id": "ID",
-      "status": "Status",
       "gateway": "Gateway",
       "sections": {
         "purchase": "Purchase",
@@ -1947,14 +2333,21 @@
     "title": "Subscriptions",
     "loadError": "Failed to load subscriptions.",
     "empty": "No subscriptions found.",
+    "description": "User subscriptions synced with Remnawave",
     "trial": "Trial",
     "unlimited": "Unlimited",
+    "trafficUnlimited": "Traffic ∞",
+    "devicesUnlimited": "Devices ∞",
+    "devicesCount_one": "{{count}} device",
+    "devicesCount_other": "{{count}} devices",
     "userLabel": "User #{{id}}",
+    "subscriptionLabel": "Subscription #{{id}}",
     "filters": {
       "search": "Search",
       "searchPlaceholder": "Subscription ID, user ID, tag, or plan",
       "status": "Status",
-      "statusAll": "All statuses"
+      "statusAll": "All statuses",
+      "all": "All"
     },
     "status": {
       "ACTIVE": "Active",
@@ -1969,13 +2362,9 @@
       "expires": "Expires",
       "squads": "Squads: {{count}}"
     },
-    "pagination": {
-      "loadMore": "Show more",
-      "loadingMore": "Loading…"
-    },
     "edit": {
+      "toUser": "To user",
       "button": "Edit",
-      "title": "Edit subscription",
       "tagLabel": "Tag",
       "tagPlaceholder": "e.g. vip",
       "trafficLabel": "Traffic limit (GB)",
@@ -1999,10 +2388,20 @@
     },
     "delete": {
       "button": "Delete subscription",
+      "confirmTitle": "Delete subscription?",
       "confirm": "Permanently delete subscription #{{id}}? This cannot be undone.",
       "error": "Failed to delete the subscription.",
       "confirmButton": "Delete",
       "cancelButton": "Cancel"
+    },
+    "columns": {
+      "subscription": "Subscription",
+      "status": "Status"
+    },
+    "groups": {
+      "soon": "Expiring within 7 days",
+      "active": "Active",
+      "inactive": "Expired and disabled"
     }
   },
   "donate": {
@@ -2016,12 +2415,15 @@
     "communityButton": "Subscribe"
   },
   "debugBar": {
+    "close": "Close debug bar",
+    "collapse": "Collapse bar",
+    "expand": "Expand debug bar",
     "testToast": "Send a test toast",
     "testToastMessage": "Test toast: {{variant}}",
     "burstToasts": "Send every toast variant at once",
     "testToastLong": "A deliberately long toast, so the stack, the wrapping and the width in the gutter can all be seen at once instead of one at a time.",
     "expireToken": "Expire the access token",
-    "tokenExpired": "Access token replaced with an invalid one",
+    "tokenExpired": "Access token replaced with an invalid one.",
     "missingKeys": "Report missing translation keys",
     "wipeStorage": "Wipe local storage and reload",
     "apiFailure": {
@@ -2036,7 +2438,235 @@
     "noPermissions": "Drop every permission (frontend only)",
     "fakeUpdate": "Pretend a newer release exists",
     "copySnapshot": "Copy an environment snapshot",
-    "snapshotCopied": "Snapshot copied to the clipboard",
-    "snapshotFailed": "Could not reach the clipboard"
+    "snapshotCopied": "Snapshot copied to the clipboard.",
+    "snapshotFailed": "Could not reach the clipboard.",
+    "openDebugPage": "Open the debug page"
+  },
+  "debugPage": {
+    "title": "Debug",
+    "kit": {
+      "intro": {
+        "title": "UI kit",
+        "caption": "Shared components from shared/ui — live. Under each: its name and where it is used.",
+        "meta": "shared/ui",
+        "nav": "Sections"
+      },
+      "u": {
+        "primary": "Main actions, dialog and form footers. 14px.",
+        "secondary": "Card headers and beside fields. 12.5px semibold, same height as pills.",
+        "sizes": "sm 32 — list rows, md 36, field 38 — beside a field.",
+        "disabled": "A disabled button — 50% opacity.",
+        "loadMore": "“Show more” under lists.",
+        "dashed": "One-off: “Add” in the dialog editor and the admin form.",
+        "copy": "In a 38px field, pr-1 — 4 inset, radius 19−1−4 = 14.",
+        "clear": "In the date field, right-2 — 8 inset, radius 19−1−8 = 10.",
+        "chip": "On a chip, pr-0.5 — 2 inset.",
+        "fieldRow": "Beside a 38px field — same height.",
+        "cardCorner": "In a p-4 card corner, −mr/−mt 1.5 — 10/10 inset.",
+        "toast": "In a p-3.5 toast, −my/−mr 1 — 10 inset all round.",
+        "dialogClose": "In a px-5 py-4 dialog header.",
+        "glass": "Glass controls in the page header, with a tap bounce.",
+        "tabBar": "Page route tabs: settings, referrals, analytics.",
+        "dialogTabs": "Dialog tabs: ad link, admin, event.",
+        "segmented": "Page filters: plans, users, subscriptions.",
+        "period": "Period picker: payments, ads, dashboard, analytics.",
+        "pillTabs": "Dialog editor, backups, translations; field — 38px beside a search.",
+        "packTab": "Emoji packs in the picker.",
+        "choice": "One of a small set; sm — dense grids.",
+        "badge": "Status: uppercase with a border, colored by tone.",
+        "tag": "Counts and metadata: grey pill, no uppercase.",
+        "badgeIcon": "Status with an icon.",
+        "field": "Label, a 38px field and text under it.",
+        "fieldInfo": "info — hint icon, aside — required star or a count.",
+        "fieldError": "error replaces hint; the button beside it — secondary field.",
+        "textarea": "Multi-line field with a count by the label.",
+        "textInput": "A disabled field and a field with a trailing button (pr-10).",
+        "search": "Glass field — filters and search only.",
+        "select": "Dropdown select; compact — 36px, in the editor.",
+        "switch": "Switch: on, off, disabled.",
+        "color": "Accent color picker.",
+        "labels": "Labels: forms — 14px, filters and columns — eyebrow.",
+        "cardPage": "Page and settings card, p-4.",
+        "cardForm": "Form section in a dialog, 11px title.",
+        "cardList": "InfoRow rows, title with an icon.",
+        "cardBare": "Container without padding: editor, tables.",
+        "kpi": "Number tiles; highlighted variant.",
+        "kpiIcon": "With an icon and a label hint.",
+        "list": "Reference row list: admins, event log, payments, ads, referrals.",
+        "table": "Page table: analytics cohorts.",
+        "compact": "Compact table in a dialog: price changes.",
+        "dialogHeader": "Every dialog's header: icon or glyph, badges, subtitle, actions, close.",
+        "modal": "Dialog shell: sm and lg.",
+        "confirm": "Confirmation: regular and destructive.",
+        "guide": "Guide in its own window, opened by the icon on the right.",
+        "fieldHint": "Hint icon by a label: up, down, at the right edge.",
+        "tooltip": "Label for a button or badge on hover, from any side.",
+        "actionMenu": "Row actions menu in a list.",
+        "popover": "Menu shells: glass (1.5 and 3 padding) and solid — emoji and toasts.",
+        "spinner": "Loading: shows after 150 ms, same heights as the empty state.",
+        "empty": "Empty states: page, card, search.",
+        "collapse": "Height expand in 0.2s.",
+        "brand": "Logo and sign-in provider icons.",
+        "suffixInput": "Number with a unit after the value: days, currency. The suffix takes its own width; error and disabled match TextInput. Plans, promocodes, currency rates.",
+        "groupToggle": "Collapsible group header: chevron, label, count; leading takes a status dot. Payments, event log, referrals, subscriptions, pricing matrix.",
+        "actionMenuTrigger": "Menu behind a labelled button, e.g. \"Share\" in a dialog footer. A disabled item explains why on hover.",
+        "segmentedStretch": "Full-width switch inside a form field, e.g. ad link channels.",
+        "kpiTrend": "Change next to the value: green up, red down, grey no change. The period is in the popup."
+      },
+      "s": {
+        "save": "Save",
+        "create": "Create",
+        "cancel": "Cancel",
+        "edit": "Edit",
+        "delete": "Delete",
+        "sync": "Sync",
+        "generate": "Generate",
+        "add": "Add",
+        "disabled": "Disabled",
+        "signOut": "Sign out everywhere",
+        "name": "Name",
+        "namePlaceholder": "For example, Month",
+        "nameHint": "Shown to users in the bot.",
+        "code": "Code",
+        "codeError": "Latin letters and digits only.",
+        "login": "Login",
+        "password": "Password",
+        "ids": "Telegram ID",
+        "idsHint": "One per line.",
+        "search": "Search",
+        "searchPlaceholder": "Name, login or ID",
+        "status": "Active",
+        "sectionTitle": "Section title",
+        "body": "Section content.",
+        "person": "Anna Ivanova",
+        "users": "Users",
+        "revenue": "Revenue",
+        "mrrInfo": "Monthly recurring revenue from active subscriptions.",
+        "toast": "Changes saved.",
+        "dialogTitle": "Ad link",
+        "editProfile": "Edit profile",
+        "subscription": "User subscription",
+        "botLogs": "Bot logs",
+        "refresh": "Refresh",
+        "noClose": "Without close",
+        "confirmTitle": "Delete this plan?",
+        "confirmText": "This can't be undone.",
+        "modalText": "Empty Modal: shell, backdrop and entrance animation.",
+        "close": "Close",
+        "show": "Show",
+        "hide": "Hide",
+        "collapseText": "Content expands by height.",
+        "emptyPage": "Nothing here yet",
+        "emptyCard": "No data for this period",
+        "emptySearch": "Nothing found",
+        "copy": "Copy",
+        "hintShort": "A short hint.",
+        "hintLong": "The new interval counts from the last successful backup. A shorter interval means more backups and more disk space.",
+        "hintTop": "Up (default)",
+        "hintBottom": "Down",
+        "hintHeading": "In a heading",
+        "hintEnd": "At the right edge",
+        "tooltipSide": "Label, side=\"{{side}}\"",
+        "tooltipLong": "Delete the backup. The file is removed from disk and can't be restored.",
+        "tooltipBadge": "Like the badge in the dialog editor.",
+        "guideRow": "A setting that has a guide",
+        "guideOpen": "Open the guide",
+        "guideTitle": "How to set up GitHub sign-in",
+        "guideStep": "1. Create an OAuth app",
+        "guideStepText": "Open GitHub developer settings and create a new app.",
+        "guideValue": "Callback URL",
+        "guideNote": "The URL must match exactly.",
+        "overview": "Overview",
+        "settings": "Settings",
+        "month": "Month",
+        "filterLabel": "Status",
+        "days": "d",
+        "today": "Today",
+        "active": "Active",
+        "share": "Share",
+        "copyBotLink": "Copy bot link",
+        "copyWebLink": "Copy web cabinet link",
+        "qrBot": "Download bot QR",
+        "qrWeb": "Download web cabinet QR",
+        "webUnavailable": "APP_WEB_CABINET_URL is not set",
+        "trendMonth": "last 30 days",
+        "trendWeek": "vs. prior 7 days"
+      },
+      "sections": {
+        "buttons": {
+          "nav": "Buttons",
+          "title": "Buttons",
+          "meta": "Button · 6 variants · 3 sizes"
+        },
+        "icons": {
+          "nav": "Icons",
+          "title": "Icon buttons",
+          "meta": "IconButton · sized by its container"
+        },
+        "tabs": {
+          "nav": "Tabs",
+          "title": "Tabs and choices",
+          "meta": "TabBar · DialogTabs · Pills · ChoiceChip"
+        },
+        "badges": {
+          "nav": "Badges",
+          "title": "Badges",
+          "meta": "Badge · Tag"
+        },
+        "fields": {
+          "nav": "Fields",
+          "title": "Fields",
+          "meta": "Field · TextInput · SearchField"
+        },
+        "cards": {
+          "nav": "Cards",
+          "title": "Cards",
+          "meta": "Card · KpiTile · InfoRow"
+        },
+        "tables": {
+          "nav": "Tables",
+          "title": "Tables",
+          "meta": "Row lists · table"
+        },
+        "dialogs": {
+          "nav": "Dialogs",
+          "title": "Dialogs",
+          "meta": "Modal · DialogHeader · ConfirmDialog"
+        },
+        "hints": {
+          "nav": "Hints",
+          "title": "Hints",
+          "meta": "FieldHint · Tooltip · GuideDialog"
+        },
+        "menus": {
+          "nav": "Menus",
+          "title": "Menus",
+          "meta": "ActionMenu · POPOVER_CLASS"
+        },
+        "states": {
+          "nav": "States",
+          "title": "States",
+          "meta": "Spinner · EmptyState · Collapse · brand"
+        }
+      },
+      "variants": {
+        "title": "Variants to pick from",
+        "caption": "Live copies of markup that has drifted apart across pages. The chosen one becomes the shared component.",
+        "empty": "No open comparisons right now."
+      }
+    },
+    "tabs": {
+      "kit": "UI kit",
+      "variants": "Variants"
+    }
+  },
+  "pagination": {
+    "loadMore": "Show more",
+    "loading": "Loading…",
+    "progress": "{{shown}} of {{total}}"
+  },
+  "datePicker": {
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
   }
 }

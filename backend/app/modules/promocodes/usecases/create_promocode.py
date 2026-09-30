@@ -70,3 +70,13 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
                     "for reward type 'SUBSCRIPTION'"
                 )
             await self._plan_repository.get_by_id(data.reward_plan_id)
+        elif data.reward_type in (
+            PromocodeRewardType.PERSONAL_DISCOUNT,
+            PromocodeRewardType.PURCHASE_DISCOUNT,
+        ):
+            # matches ck_users_*_discount_range; out of range fails only after
+            # the activation is already claimed
+            if data.reward is None or not 1 <= data.reward <= 100:
+                raise ValidationError(
+                    f"reward must be between 1 and 100 for reward type '{data.reward_type}'"
+                )

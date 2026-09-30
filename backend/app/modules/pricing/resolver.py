@@ -1,17 +1,17 @@
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Final, Optional
 
+from app.core.constants import ONE_CENT
 from app.core.enums import Currency, RoundingMode
 from app.modules.pricing.dto import CurrencyRateDto, CurrencyRateTable
 
 _HUNDRED: Final[Decimal] = Decimal("100")
-_ONE_CENT: Final[Decimal] = Decimal("0.01")
 
 
 def _apply_rounding(raw: Decimal, mode: RoundingMode) -> Decimal:
     if mode is RoundingMode.INTEGER:
         return raw.to_integral_value(rounding=ROUND_HALF_UP)
-    return raw.quantize(_ONE_CENT, rounding=ROUND_HALF_UP)
+    return raw.quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
 
 def _apply_charm(amount: Decimal, mode: RoundingMode, charm_ending: int) -> Decimal:
@@ -49,3 +49,16 @@ def resolve_price(
         return max(override, rate.min_amount)
 
     return round_amount(base_anchor * rate.rate, rate)
+
+
+def convert_for_report(
+    amount: Decimal, from_currency: Currency, to_currency: Currency, rates: CurrencyRateTable
+) -> Decimal:
+    # display-only: no rounding mode/charm-ending, unlike resolve_price -- only
+    # cut to cents, the raw quotient carries ~28 digits into the API
+    if from_currency == to_currency:
+        return amount
+    anchor_amount = amount / rates.for_currency(from_currency).rate
+    return (anchor_amount * rates.for_currency(to_currency).rate).quantize(
+        ONE_CENT, rounding=ROUND_HALF_UP
+    )

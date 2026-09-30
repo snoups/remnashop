@@ -1,4 +1,4 @@
-import { BookOpen, Check, ChevronDown, Copy } from "lucide-react";
+import { BookOpen, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,10 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { Switch } from "@shared/ui/Switch";
+import { Button } from "@shared/ui/Button";
+import { TextInput } from "@shared/ui/TextInput";
+import { Field } from "@shared/ui/Field";
+import { CopyableValue } from "@shared/ui/CopyableValue";
 
 import { GATEWAY_DOCS_URLS } from "./docs-links";
 import { inputModeFor, sanitizeFieldValue } from "./field-input";
@@ -48,7 +52,6 @@ export function GatewaySettingsCard({
   const [isTesting, setIsTesting] = useState(false);
   const [testOrderId, setTestOrderId] = useState<number | null>(null);
   const [testStatus, setTestStatus] = useState<TestPaymentStatus | null>(null);
-  const [isWebhookCopied, setIsWebhookCopied] = useState(false);
 
   const label = t(`settings.gateways.types.${gateway.type}`);
   const docsUrl = GATEWAY_DOCS_URLS[gateway.type];
@@ -78,13 +81,6 @@ export function GatewaySettingsCard({
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleCopyWebhook = () => {
-    if (webhookUrl === null) return;
-    navigator.clipboard?.writeText(webhookUrl).catch(() => {});
-    setIsWebhookCopied(true);
-    setTimeout(() => setIsWebhookCopied(false), 1500);
   };
 
   const handleToggle = async () => {
@@ -175,12 +171,12 @@ export function GatewaySettingsCard({
             rel="noopener noreferrer"
             onClick={(event) => event.stopPropagation()}
             aria-label={t("settings.gateways.docsAria", { gateway: label })}
-            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
           >
             <BookOpen className="size-4" />
           </a>
         )}
-        <div className="flex" onClick={(event) => event.stopPropagation()}>
+        <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
           <Switch
             checked={gateway.is_active}
             onChange={() => void handleToggle()}
@@ -204,68 +200,61 @@ export function GatewaySettingsCard({
               className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1"
             >
               {webhookUrl !== null && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium text-foreground/80">
-                    {t("settings.gateways.webhookLabel")}
-                  </span>
-                  <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-input/60 px-3 py-2">
-                    <span className="truncate font-mono text-[13px] text-foreground">{webhookUrl}</span>
-                    <button
-                      type="button"
-                      onClick={handleCopyWebhook}
-                      aria-label={t("settings.gateways.copyWebhookAria")}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
-                    >
-                      {isWebhookCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                    </button>
-                  </div>
-                </div>
+                <Field label={t("settings.gateways.webhookLabel")}>
+                  <CopyableValue value={webhookUrl} copyAria={t("settings.gateways.copyWebhookAria")} />
+                </Field>
               )}
-              {fields.map((field) => (
-                <div key={field.key} className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-foreground/80">
-                    {t(`settings.gateways.fields.${gateway.type}.${field.key}`)}
-                  </label>
-                  <input
-                    type={inputTypeFor(field.kind)}
-                    inputMode={inputModeFor(field)}
-                    value={values[field.key] ?? ""}
-                    onChange={(event) =>
-                      setValues((prev) => ({
-                        ...prev,
-                        [field.key]: sanitizeFieldValue(field, event.target.value),
-                      }))
-                    }
-                    placeholder={t("settings.gateways.placeholder")}
-                    autoComplete="off"
-                    className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                  />
-                </div>
-              ))}
+              {fields.map((field) => {
+                // once configured, a blank field keeps the stored value
+                const mustFill = field.required && !gateway.is_configured;
+                return (
+                  <Field
+                    key={field.key}
+                    label={t(`settings.gateways.fields.${gateway.type}.${field.key}`)}
+                    htmlFor={`gateway-${gateway.type}-${field.key}`}
+                    aside={mustFill ? <span className="text-error">*</span> : undefined}
+                  >
+                    <TextInput
+                      id={`gateway-${gateway.type}-${field.key}`}
+                      required={mustFill}
+                      type={inputTypeFor(field.kind)}
+                      inputMode={inputModeFor(field)}
+                      value={values[field.key] ?? ""}
+                      onChange={(event) =>
+                        setValues((prev) => ({
+                          ...prev,
+                          [field.key]: sanitizeFieldValue(field, event.target.value),
+                        }))
+                      }
+                      placeholder={t("settings.gateways.placeholder")}
+                      autoComplete="off"
+                    />
+                  </Field>
+                );
+              })}
               {(fields.length > 0 || canTest) && (
                 <div className="flex flex-wrap gap-2">
                   {fields.length > 0 && (
-                    <motion.button
+                    <Button
+                      variant="accent"
+                      className="w-fit"
                       type="submit"
                       disabled={isSubmitting}
-                      {...bounceTap(bounceStrength)}
-                      className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSubmitting ? t("settings.gateways.saving") : t("settings.gateways.save")}
-                    </motion.button>
+                    </Button>
                   )}
                   {canTest && (
-                    <motion.button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      className="w-fit"
                       onClick={() => void handleTestPayment()}
                       disabled={isTesting}
-                      {...bounceTap(bounceStrength)}
-                      className="w-fit rounded-full bg-white/[0.06] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isTesting
                         ? t("settings.gateways.testPaymentCreating")
                         : t("settings.gateways.testPayment")}
-                    </motion.button>
+                    </Button>
                   )}
                 </div>
               )}

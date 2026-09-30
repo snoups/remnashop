@@ -20,6 +20,9 @@ async def record_ad_link_attribution(
     if ad_link is None or not ad_link.is_active:
         logger.debug(f"Ad link code '{ad_link_code}' not found or inactive, skipping attribution")
         return
+    if not ad_link.allows(AdLinkChannel(channel)):
+        logger.debug(f"Ad link '{ad_link.code}' doesn't allow channel '{channel}', skipping")
+        return
 
     try:
         async with uow:

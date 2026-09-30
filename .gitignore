@@ -7,8 +7,12 @@ data/*
 traefik/
 backend/logs/*
 !backend/logs/.gitkeep
-docs/
+
+
+# AI
+docs
 notes.txt
+
 
 # Environment
 .venv/

@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from typing import Optional
 from uuid import uuid4
 
 import pytest
@@ -9,7 +10,10 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AddOnType,
     Currency,
+    DiscountSource,
     Locale,
+    PaymentGatewayType,
+    PaymentOrderStatus,
     PlanAvailability,
     PlanType,
     PromocodeAvailability,
@@ -20,6 +24,8 @@ from app.core.enums import (
 )
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
+from app.modules.payments.dto import CreatePaymentOrderDto
+from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     SetPlanDurationDto,
@@ -29,14 +35,22 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.pricing import convert_for_report
 from app.modules.pricing.repository import PricingRepository
-from app.modules.promocodes.dto import ActivatePromocodeDto, CreatePromocodeDto, UpdatePromocodeDto
+from app.modules.promocodes.dto import (
+    ActivatePromocodeDto,
+    CreatePromocodeDto,
+    ListPromocodeActivatedUsersDto,
+    UpdatePromocodeDto,
+)
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.usecases import (
     ActivatePromocodeUseCase,
     CreatePromocodeUseCase,
     DeletePromocodeUseCase,
     GeneratePromocodeCodeUseCase,
+    GetPromocodeSummaryUseCase,
+    ListPromocodeActivatedUsersUseCase,
     ListPromocodesUseCase,
     UpdatePromocodeUseCase,
 )
@@ -112,6 +126,31 @@ async def test_create_duration_promocode_requires_positive_reward(
         await use_case(
             OWNER,
             CreatePromocodeDto(code="ZERO", reward_type=PromocodeRewardType.DURATION, reward=0),
+        )
+
+
+@pytest.mark.parametrize(
+    "reward_type", [PromocodeRewardType.PERSONAL_DISCOUNT, PromocodeRewardType.PURCHASE_DISCOUNT]
+)
+@pytest.mark.parametrize("reward", [None, 0, 101])
+async def test_create_discount_promocode_requires_percent_in_range(
+    promocode_repository: PromocodeRepository,
+    uow,
+    event_publisher,
+    reward_type: PromocodeRewardType,
+    reward: Optional[int],
+) -> None:
+    use_case = CreatePromocodeUseCase(
+        promocode_repository,
+        AddOnRepository(promocode_repository.session),
+        PlanRepository(promocode_repository.session),
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER, CreatePromocodeDto(code="DISC", reward_type=reward_type, reward=reward)
         )
 
 
@@ -1030,3 +1069,180 @@ async def test_activate_promocode_applies_purchase_discount(
     updated = await user_repository.get_by_id(actor.id)
     assert updated is not None
     assert updated.purchase_discount == 20
+
+
+def _summary_use_case(
+    promocode_repository: PromocodeRepository, uow: UnitOfWork
+) -> GetPromocodeSummaryUseCase:
+    session = promocode_repository.session
+    return GetPromocodeSummaryUseCase(
+        promocode_repository, PaymentOrderRepository(session), PricingRepository(session), uow
+    )
+
+
+async def test_promocode_summary_counts_statuses_and_activations(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    capped = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="CAPPED", reward_type=PromocodeRewardType.DURATION, reward=5, max_activations=1
+        )
+    )
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code="OLD",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=5,
+            expires_at=datetime_now() - timedelta(days=1),
+        )
+    )
+    user = await user_repository.create(
+        CreateUserDto(name="buyer", telegram_id=uuid4().int % 10**9)
+    )
+    await promocode_repository.claim_activation(capped.id, user.id, None)
+
+    summary = await _summary_use_case(promocode_repository, uow)(OWNER)
+
+    assert summary.total_count == 2
+    assert summary.active_count == 1
+    assert summary.activations_count == 1
+    assert summary.activated_users_count == 1
+    assert summary.activations_by_promocode == {capped.id: 1}
+
+
+async def test_promocode_summary_requires_permission(
+    promocode_repository: PromocodeRepository, uow: UnitOfWork
+) -> None:
+    with pytest.raises(PermissionDeniedError):
+        await _summary_use_case(promocode_repository, uow)(REGULAR_USER)
+
+
+async def test_list_promocode_activated_users_returns_newest_first(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(code="MANY", reward_type=PromocodeRewardType.DURATION, reward=5)
+    )
+    first = await user_repository.create(
+        CreateUserDto(name="first", telegram_id=uuid4().int % 10**9)
+    )
+    second = await user_repository.create(
+        CreateUserDto(name="second", telegram_id=uuid4().int % 10**9)
+    )
+    await promocode_repository.claim_activation(promo.id, first.id, None)
+    await promocode_repository.claim_activation(promo.id, second.id, None)
+    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+
+    users, total = await use_case(
+        OWNER, ListPromocodeActivatedUsersDto(promocode_id=promo.id, page=1, page_size=1)
+    )
+
+    assert total == 2
+    assert [user.name for user in users] == ["second"]
+
+
+async def test_list_promocode_activated_users_unknown_promocode_raises(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+
+    with pytest.raises(NotFoundError):
+        await use_case(OWNER, ListPromocodeActivatedUsersDto(promocode_id=999_999))
+
+
+async def test_list_promocode_activated_users_requires_permission(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(REGULAR_USER, ListPromocodeActivatedUsersDto(promocode_id=1))
+
+
+async def test_promocode_summary_totals_granted_rewards(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    days = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="DAYS", reward_type=PromocodeRewardType.DURATION, reward=10, is_reusable=True
+        )
+    )
+    user = await user_repository.create(
+        CreateUserDto(name="buyer", telegram_id=uuid4().int % 10**9)
+    )
+    for promo_id in (days.id, days.id):
+        await promocode_repository.claim_activation(promo_id, user.id, None)
+
+    summary = await _summary_use_case(promocode_repository, uow)(OWNER)
+
+    assert summary.granted_days == 20
+    assert summary.granted_subscriptions_count == 0
+
+
+def _order(user_id: int, *, promocode_id: Optional[int], final_price: str) -> CreatePaymentOrderDto:
+    return CreatePaymentOrderDto(
+        user_id=user_id,
+        plan_id=None,
+        plan_snapshot=make_plan_snapshot(),
+        duration_days=30,
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+        target_subscription_id=None,
+        gateway_type=PaymentGatewayType.YOOKASSA,
+        base_price=Decimal("500"),
+        discount_percent=20,
+        discount_source=DiscountSource.PERSONAL,
+        final_price=Decimal(final_price),
+        discount_promocode_id=promocode_id,
+        customer_email=None,
+        idempotency_key=uuid4().hex,
+        expires_at=datetime_now() + timedelta(minutes=30),
+    )
+
+
+async def test_promocode_summary_sums_paid_promocode_discounts(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="OFF20", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=20
+        )
+    )
+    user = await user_repository.create(
+        CreateUserDto(name="buyer", telegram_id=uuid4().int % 10**9)
+    )
+    orders = PaymentOrderRepository(promocode_repository.session)
+    paid = await orders.create(_order(user.id, promocode_id=promo.id, final_price="400"))
+    await orders.mark_status(paid.id, PaymentOrderStatus.PAID)
+    await orders.create(_order(user.id, promocode_id=promo.id, final_price="400"))  # pending
+    admin_discount = await orders.create(_order(user.id, promocode_id=None, final_price="400"))
+    await orders.mark_status(admin_discount.id, PaymentOrderStatus.PAID)
+    rate_table = await PricingRepository(promocode_repository.session).get_rate_table()
+
+    summary = await _summary_use_case(promocode_repository, uow)(OWNER)
+
+    assert summary.discounted_orders_count == 1
+    assert summary.report_currency is rate_table.anchor
+    assert summary.discount_amount == convert_for_report(
+        Decimal("100"), Currency.RUB, rate_table.anchor, rate_table
+    )
+
+
+async def test_admin_discount_clears_promocode_source(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(code="SRC", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=15)
+    )
+    user = await user_repository.create(
+        CreateUserDto(name="buyer", telegram_id=uuid4().int % 10**9)
+    )
+    await user_repository.update_fields(
+        user.id, UpdateUserDto(personal_discount=15, personal_discount_promocode_id=promo.id)
+    )
+
+    updated = await user_repository.update_fields(user.id, UpdateUserDto(personal_discount=5))
+
+    assert updated is not None
+    assert updated.personal_discount == 5
+    assert updated.personal_discount_promocode_id is None

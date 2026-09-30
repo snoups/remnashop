@@ -1,4 +1,14 @@
-import { CornerDownLeft, CreditCard, Layers, ScrollText, Search, Tag, Ticket, User as UserIcon } from "lucide-react";
+import {
+  CornerDownLeft,
+  CreditCard,
+  Layers,
+  Loader2,
+  Package,
+  ScrollText,
+  Search,
+  Ticket,
+  User as UserIcon,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,11 +23,16 @@ import { useCurrentUser } from "@entities/user/use-current-user";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { BounceIcon } from "@shared/ui/BounceIcon";
 import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
+import { PortalPopover } from "@shared/ui/PortalPopover";
+import { SearchClearButton } from "@shared/ui/SearchField";
 
 const DEBOUNCE_MS = 250;
 const USER_LIMIT = 5;
 const RESULT_LIMIT = 3;
+// max-h-96 list plus the popover padding
+const POPOVER_MAX_HEIGHT = 400;
 const SETTINGS_TABS = [
   ["general", ""],
   ["bot", "/bot"],
@@ -59,9 +74,11 @@ export function HeaderSearch() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [promocodes, setPromocodes] = useState<Promocode[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
-  useClickOutside(rootRef, open, () => setOpen(false));
+  const popoverRef = useRef<HTMLDivElement>(null);
+  useClickOutside([rootRef, popoverRef], open, () => setOpen(false));
 
   const debounced = useDebouncedValue(query.trim(), DEBOUNCE_MS);
+  const [isFetching, setIsFetching] = useState(false);
 
   // Paginated lists are searched server-side per query; plans and promocodes
   // are small unpaginated lists, fetched once on first use and filtered here.
@@ -74,13 +91,26 @@ export function HeaderSearch() {
       setUsers([]);
       setOrders([]);
       setSubscriptions([]);
+      setIsFetching(false);
       return;
     }
-    if (canViewUsers) listUsers({ search, pageSize: USER_LIMIT }, signal).then((p) => setUsers(p.items)).catch(ignore);
+    const requests: Promise<unknown>[] = [];
+    if (canViewUsers)
+      requests.push(listUsers({ search, pageSize: USER_LIMIT }, signal).then((p) => setUsers(p.items)).catch(ignore));
     if (permissions.includes("PAYMENTS_VIEW"))
-      listPaymentOrders({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setOrders(p.items)).catch(ignore);
+      requests.push(
+        listPaymentOrders({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setOrders(p.items)).catch(ignore),
+      );
     if (permissions.includes("SUBSCRIPTIONS_VIEW"))
-      listSubscriptions({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setSubscriptions(p.items)).catch(ignore);
+      requests.push(
+        listSubscriptions({ search, pageSize: RESULT_LIMIT }, signal)
+          .then((p) => setSubscriptions(p.items))
+          .catch(ignore),
+      );
+    setIsFetching(requests.length > 0);
+    void Promise.all(requests).then(() => {
+      if (!signal.aborted) setIsFetching(false);
+    });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
   }, [debounced, userState]);
@@ -148,7 +178,7 @@ export function HeaderSearch() {
         label: plan.name,
         hint: t("header.searchPlan"),
         to: "/dashboard/plans",
-        icon: Tag,
+        icon: Package,
       }));
     const promocodeEntries = promocodes
       .filter((promocode) => matches(promocode.code, tokens))
@@ -204,7 +234,7 @@ export function HeaderSearch() {
     <div ref={rootRef} className="relative flex min-w-40 max-w-80 flex-1">
       <motion.label
         {...bounceTap(bounceStrength, 0.03)}
-        className="group flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] px-3.5 py-2 transition-colors not-focus-within:hover:bg-white/[0.08] focus-within:border-primary"
+        className="group flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] h-9 px-3.5 transition-colors not-focus-within:hover:bg-white/[0.08] focus-within:border-primary"
       >
         <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
         <input
@@ -219,36 +249,63 @@ export function HeaderSearch() {
           placeholder={t("header.searchPlaceholder")}
           className="w-full min-w-0 border-0 bg-transparent text-[13px] text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
         />
+        {query && (
+          // 26px in the 34px inner height: 4px inset (px-3.5 minus 10)
+          <SearchClearButton
+            size="26px"
+            className="-mr-2.5"
+            onClear={() => {
+              setQuery("");
+              setOpen(false);
+            }}
+          />
+        )}
       </motion.label>
 
-      {open && query.trim() && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-80 rounded-popover border border-white/[0.14] bg-popover/60 p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150">
-          {/* scroll lives inside the padding -- on the popover itself the
-              scrollbar column paints over the rounded corners */}
-          <div className="max-h-96 overflow-y-auto">
-          {entries.length === 0 ? (
-            <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("header.searchEmpty")}</p>
-          ) : (
-            entries.map((entry, index) => (
-              <button
-                key={entry.id}
-                type="button"
-                onMouseEnter={() => setActive(index)}
-                onClick={() => go(entry)}
-                className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] ${
-                  index === active ? "bg-accent text-primary" : "text-foreground"
-                }`}
-              >
-                <entry.icon className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-                {entry.hint && <span className="max-w-32 truncate text-[11px] text-muted-foreground">{entry.hint}</span>}
-                {index === active && <CornerDownLeft className="size-3.5 shrink-0" />}
-              </button>
-            ))
-          )}
-          </div>
+      <PortalPopover
+        open={open && query.trim() !== ""}
+        triggerRef={rootRef}
+        popoverRef={popoverRef}
+        align="left"
+        maxHeight={POPOVER_MAX_HEIGHT}
+        initial={{ opacity: 0, scale: 0.96, y: -4 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: -4 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className="w-80 p-1.5"
+      >
+        {/* scroll lives inside the padding -- on the popover itself the
+            scrollbar column paints over the rounded corners */}
+        <div className="max-h-96 overflow-y-auto">
+        {entries.length === 0 && (isFetching || query.trim() !== debounced) ? (
+          <p className="flex items-center gap-2 px-3 py-2 text-[12.5px] text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            {t("header.searching")}
+          </p>
+        ) : entries.length === 0 ? (
+          <p className="px-3 py-2 text-[12.5px] text-muted-foreground">{t("header.searchEmpty")}</p>
+        ) : (
+          entries.map((entry, index) => (
+            <motion.button
+              key={entry.id}
+              type="button"
+              onMouseEnter={() => setActive(index)}
+              onClick={() => go(entry)}
+              initial="rest"
+              animate={index === active ? "hover" : "rest"}
+              className={`flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] ${
+                index === active ? "bg-accent text-primary" : "text-foreground"
+              }`}
+            >
+              <BounceIcon icon={entry.icon} size={16} hoverSize={20} />
+              <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+              {entry.hint && <span className="max-w-32 truncate text-[11px] text-muted-foreground">{entry.hint}</span>}
+              {index === active && <CornerDownLeft className="size-3.5 shrink-0" />}
+            </motion.button>
+          ))
+        )}
         </div>
-      )}
+      </PortalPopover>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from redis.asyncio import Redis
 
@@ -173,23 +174,23 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    from aiogram import Bot  # noqa: PLC0415
-    from aiogram.methods.set_my_commands import SetMyCommands  # noqa: PLC0415
-
     await _seed(settings_repository, translations_repository)
     # the description the registry actually points at
     await translations_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
+    await translations_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
     await UpdateBotSettingsUseCase(settings_repository, uow)(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
-    pushed: list[SetMyCommands] = []
+    pushed: list[dict] = []
 
-    async def _capturing_call(self: Bot, method: SetMyCommands, request_timeout=None):  # type: ignore[no-untyped-def]
-        pushed.append(method)
-        return True
+    async def _capturing_post(self: httpx.AsyncClient, url: str, *, json: dict) -> httpx.Response:
+        pushed.append(json)
+        return httpx.Response(
+            200, json={"ok": True, "result": True}, request=httpx.Request("POST", url)
+        )
 
-    monkeypatch.setattr(Bot, "__call__", _capturing_call)
+    monkeypatch.setattr(httpx.AsyncClient, "post", _capturing_post)
 
     use_case = UpdateTranslationUseCase(
         translations_repository, settings_repository, uow, config, redis
@@ -202,7 +203,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     )
 
     assert pushed
-    assert pushed[0].commands[0].description == "New text"
+    assert pushed[0]["commands"][0]["description"] == "New text"
 
 
 async def test_owner_can_reset_translation_to_default(

@@ -1,8 +1,10 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import { IconButton } from "@shared/ui/IconButton";
 
 interface CopyableValueProps {
-  label: string;
+  /** omit when the surrounding Field/Card already names the value */
+  label?: string;
   value: string;
   copyAria: string;
 }
@@ -17,19 +19,22 @@ export function CopyableValue({ label, value, copyAria }: CopyableValueProps) {
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-input/60 px-3 py-2">
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
-        <p className="truncate font-mono text-[13px] text-foreground">{value}</p>
-      </div>
-      <button
-        type="button"
-        onClick={handleCopy}
-        aria-label={copyAria}
-        className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+    <div className="flex flex-col gap-1">
+      {label && <p className="text-[11px] font-medium text-muted-foreground">{label}</p>}
+      <div
+        onClick={() => {
+          // drag-selecting the text shouldn't also copy it
+          if (window.getSelection()?.isCollapsed !== false) handleCopy();
+        }}
+        className="group flex h-9.5 w-full cursor-pointer items-center justify-between gap-2 rounded-full border border-border bg-input/60 pl-3 pr-1"
       >
-        {isCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-      </button>
+        <span className="min-w-0 truncate font-mono text-[13px] text-foreground">{value}</span>
+        <IconButton size="7" tone="group"
+          aria-label={copyAria}
+        >
+          {isCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+        </IconButton>
+      </div>
     </div>
   );
 }

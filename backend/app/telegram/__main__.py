@@ -85,4 +85,6 @@ if __name__ == "__main__":
             app=_app,
             host=_config.bot.host,
             port=_config.bot.port,
+            # keep setup_logger's loguru intercept instead of uvicorn's default handlers
+            log_config=None,
         )

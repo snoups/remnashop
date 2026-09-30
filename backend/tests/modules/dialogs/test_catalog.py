@@ -71,21 +71,23 @@ def test_has_action_handler() -> None:
 
 
 def test_text_variable_keys_excludes_dotted_names() -> None:
-    catalog.register_variable("name", lambda data: data.get("name", ""))
-    catalog.register_variable("subscription.url", lambda data: data.get("connect_url", ""))
+    catalog.register_variable("name", lambda data: data.get("name", ""), category="user")
+    catalog.register_variable(
+        "subscription.url", lambda data: data.get("connect_url", ""), category="user"
+    )
     assert catalog.text_variable_keys() == frozenset({"name"})
 
 
 def test_text_variable_keys_accepts_hyphens_and_underscores() -> None:
-    catalog.register_variable("device-count", lambda data: 0)
-    catalog.register_variable("device_count", lambda data: 0)
+    catalog.register_variable("device-count", lambda data: 0, category="user")
+    catalog.register_variable("device_count", lambda data: 0, category="user")
     assert {"device-count", "device_count"} <= catalog.text_variable_keys()
 
 
 @pytest.mark.parametrize("reserved", ["key", "self"])
 def test_register_variable_rejects_reserved_names(reserved: str) -> None:
     with pytest.raises(ValueError):
-        catalog.register_variable(reserved, lambda data: "")
+        catalog.register_variable(reserved, lambda data: "", category="user")
 
 
 def _register_menu_window() -> None:

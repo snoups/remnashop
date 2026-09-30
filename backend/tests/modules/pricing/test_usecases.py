@@ -218,6 +218,12 @@ async def test_preview_pricing_change_writes_nothing(
 
     assert diff.affected_count > 0
     assert any(row.currency is Currency.RUB for row in diff.changes)
+    # plain names plus days: the client builds "30 дн." / "30d" in its own language
+    plan_rows = [row for row in diff.changes if row.days is not None]
+    addon_rows = [row for row in diff.changes if row.days is None]
+    assert {row.name for row in plan_rows} == {plan.name}
+    assert {row.days for row in plan_rows} == {d.days for d in plan.durations}
+    assert {row.name for row in addon_rows} == {addon.name}
 
     after_plan = await plan_repository.get_by_id(plan.id)
     after_addon = await addon_repository.get_by_id(addon.id)

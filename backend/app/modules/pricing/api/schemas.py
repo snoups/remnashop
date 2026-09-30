@@ -32,7 +32,7 @@ class PriceBookRowItem(BaseModel):
     kind: Literal["plan_duration", "addon"]
     ref_id: int
     plan_id: Optional[int] = None
-    label: str
+    name: str
     days: Optional[int] = None
     base_price: Decimal
     cells: list[PriceBookCellItem]
@@ -50,7 +50,7 @@ def _to_row_item(row: PriceBookRowDto) -> PriceBookRowItem:
         kind=row.kind,
         ref_id=row.ref_id,
         plan_id=row.plan_id,
-        label=row.label,
+        name=row.name,
         days=row.days,
         base_price=row.base_price,
         cells=[
@@ -120,7 +120,8 @@ class PreviewPricingChangeRequest(BaseModel):
 
 
 class PricingDiffRowItem(BaseModel):
-    label: str
+    name: str
+    days: Optional[int] = None
     currency: Currency
     old: Decimal
     new: Decimal
@@ -134,7 +135,9 @@ class PricingDiffResponse(BaseModel):
 def to_diff_response(diff: PricingDiffDto) -> PricingDiffResponse:
     return PricingDiffResponse(
         changes=[
-            PricingDiffRowItem(label=row.label, currency=row.currency, old=row.old, new=row.new)
+            PricingDiffRowItem(
+                name=row.name, days=row.days, currency=row.currency, old=row.old, new=row.new
+            )
             for row in diff.changes
         ],
         affected_count=diff.affected_count,

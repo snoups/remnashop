@@ -22,6 +22,46 @@ _MAX_IN_PARAMS: Final[int] = 20_000
 _NOT_TEST: Final[ColumnElement[bool]] = PaymentOrder.is_test.is_(False)
 
 
+def _order_filters(
+    *,
+    status: Optional[PaymentOrderStatus] = None,
+    gateway_type: Optional[PaymentGatewayType] = None,
+    purchase_type: Optional[PurchaseType] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    search: Optional[str] = None,
+    user_id: Optional[int] = None,
+) -> list[ColumnElement[bool]]:
+    filters: list[ColumnElement[bool]] = [_NOT_TEST]
+    if user_id is not None:
+        filters.append(PaymentOrder.user_id == user_id)
+    if status is not None:
+        filters.append(PaymentOrder.status == status)
+    if gateway_type is not None:
+        filters.append(PaymentOrder.gateway_type == gateway_type)
+    if purchase_type is not None:
+        filters.append(PaymentOrder.purchase_type == purchase_type)
+    if created_from is not None:
+        filters.append(PaymentOrder.created_at >= created_from)
+    if created_to is not None:
+        filters.append(PaymentOrder.created_at < created_to)
+    if search:
+        pattern = f"%{search}%"
+        search_filters: list[ColumnElement[bool]] = [
+            PaymentOrder.external_payment_id.ilike(pattern),
+            PaymentOrder.customer_email.ilike(pattern),
+            PaymentOrder.plan_snapshot["name"].astext.ilike(pattern),
+        ]
+        # id/user_id are Integer; a longer digit string would overflow asyncpg
+        if search.isdigit() and int(search) <= INT32_MAX:
+            search_filters += [
+                PaymentOrder.id == int(search),
+                PaymentOrder.user_id == int(search),
+            ]
+        filters.append(or_(*search_filters))
+    return filters
+
+
 class PaymentOrderRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -43,6 +83,7 @@ class PaymentOrderRepository:
             discount_percent=row.discount_percent,
             discount_source=row.discount_source,
             final_price=row.final_price,
+            discount_promocode_id=row.discount_promocode_id,
             customer_email=row.customer_email,
             idempotency_key=row.idempotency_key,
             expires_at=row.expires_at,
@@ -65,6 +106,7 @@ class PaymentOrderRepository:
             discount_percent=data.discount_percent,
             discount_source=data.discount_source,
             final_price=data.final_price,
+            discount_promocode_id=data.discount_promocode_id,
             customer_email=data.customer_email,
             idempotency_key=data.idempotency_key,
             expires_at=data.expires_at,
@@ -191,32 +233,18 @@ class PaymentOrderRepository:
         purchase_type: Optional[PurchaseType] = None,
         created_from: Optional[datetime] = None,
         search: Optional[str] = None,
+        user_id: Optional[int] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[PaymentOrderDto], int]:
-        filters: list[ColumnElement[bool]] = [_NOT_TEST]
-        if status is not None:
-            filters.append(PaymentOrder.status == status)
-        if gateway_type is not None:
-            filters.append(PaymentOrder.gateway_type == gateway_type)
-        if purchase_type is not None:
-            filters.append(PaymentOrder.purchase_type == purchase_type)
-        if created_from is not None:
-            filters.append(PaymentOrder.created_at >= created_from)
-        if search:
-            pattern = f"%{search}%"
-            search_filters: list[ColumnElement[bool]] = [
-                PaymentOrder.external_payment_id.ilike(pattern),
-                PaymentOrder.customer_email.ilike(pattern),
-                PaymentOrder.plan_snapshot["name"].astext.ilike(pattern),
-            ]
-            # id/user_id are Integer; a longer digit string would overflow asyncpg
-            if search.isdigit() and int(search) <= INT32_MAX:
-                search_filters += [
-                    PaymentOrder.id == int(search),
-                    PaymentOrder.user_id == int(search),
-                ]
-            filters.append(or_(*search_filters))
+        filters = _order_filters(
+            status=status,
+            gateway_type=gateway_type,
+            purchase_type=purchase_type,
+            created_from=created_from,
+            search=search,
+            user_id=user_id,
+        )
 
         count_stmt = select(func.count()).select_from(PaymentOrder).where(*filters)
         total = await self.session.scalar(count_stmt)
@@ -230,6 +258,40 @@ class PaymentOrderRepository:
         )
         rows = (await self.session.scalars(stmt)).all()
         return [self._to_dto(row) for row in rows], int(total or 0)
+
+    async def summarize(
+        self,
+        *,
+        status: Optional[PaymentOrderStatus] = None,
+        gateway_type: Optional[PaymentGatewayType] = None,
+        purchase_type: Optional[PurchaseType] = None,
+        created_from: Optional[datetime] = None,
+        created_to: Optional[datetime] = None,
+        search: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> list[tuple[PaymentOrderStatus, Currency, int, Decimal, Decimal]]:
+        filters = _order_filters(
+            status=status,
+            gateway_type=gateway_type,
+            purchase_type=purchase_type,
+            created_from=created_from,
+            created_to=created_to,
+            search=search,
+            user_id=user_id,
+        )
+        stmt = (
+            select(
+                PaymentOrder.status,
+                PaymentOrder.currency,
+                func.count(),
+                func.sum(PaymentOrder.final_price),
+                func.sum(PaymentOrder.base_price),
+            )
+            .where(*filters)
+            .group_by(PaymentOrder.status, PaymentOrder.currency)
+        )
+        rows = (await self.session.execute(stmt)).tuples()
+        return list(rows.all())
 
     async def list_gateway_types(self) -> list[PaymentGatewayType]:
         rows = await self.session.scalars(
@@ -261,6 +323,28 @@ class PaymentOrderRepository:
             for currency, amount in rows.all():
                 totals[currency] = totals.get(currency, Decimal(0)) + amount
         return totals
+
+    async def sum_paid_promocode_discounts(self) -> tuple[int, dict[Currency, Decimal]]:
+        # (paid orders, discount amount per currency)
+        stmt = (
+            select(
+                PaymentOrder.currency,
+                func.count(),
+                func.sum(PaymentOrder.base_price - PaymentOrder.final_price),
+            )
+            .where(
+                PaymentOrder.status == PaymentOrderStatus.PAID,
+                PaymentOrder.discount_promocode_id.is_not(None),
+                _NOT_TEST,
+            )
+            .group_by(PaymentOrder.currency)
+        )
+        count = 0
+        totals: dict[Currency, Decimal] = {}
+        for currency, orders, amount in (await self.session.execute(stmt)).tuples():
+            count += orders
+            totals[currency] = amount
+        return count, totals
 
     async def list_user_ids_with_paid_order(self, user_ids: list[int]) -> set[int]:
         if not user_ids:
@@ -322,12 +406,18 @@ class PaymentOrderRepository:
             pairs.extend(result.tuples().all())
         return pairs
 
-    async def sum_paid_final_price_per_user(self) -> dict[int, dict[Currency, Decimal]]:
+    async def sum_paid_final_price_per_user(
+        self, user_ids: Optional[list[int]] = None, *, created_before: Optional[datetime] = None
+    ) -> dict[int, dict[Currency, Decimal]]:
         stmt = (
             select(PaymentOrder.user_id, PaymentOrder.currency, func.sum(PaymentOrder.final_price))
             .where(PaymentOrder.status == PaymentOrderStatus.PAID, _NOT_TEST)
             .group_by(PaymentOrder.user_id, PaymentOrder.currency)
         )
+        if user_ids is not None:
+            stmt = stmt.where(PaymentOrder.user_id.in_(user_ids))
+        if created_before is not None:
+            stmt = stmt.where(PaymentOrder.created_at < created_before)
         rows = (await self.session.execute(stmt)).tuples()
         totals: dict[int, dict[Currency, Decimal]] = {}
         for user_id, currency, amount in rows.all():

@@ -17,4 +17,6 @@ class BotCommand:
 # command_translations.build_command_translator_hub -- never admin-editable.
 BOT_COMMANDS: Final[tuple[BotCommand, ...]] = (
     BotCommand(command="start", description_key="command.start"),
+    # Telegram Stars terms require bots taking payments to answer /paysupport
+    BotCommand(command="paysupport", description_key="command.paysupport"),
 )

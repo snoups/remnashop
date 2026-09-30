@@ -17,6 +17,8 @@ import {
   deleteCustomWindow,
   exportDialogs,
   getCatalog,
+  iconIdTextKey,
+  iconTextKey,
   importDialogs,
   MAX_CAPTION_LENGTH,
   MAX_TEXT_LENGTH,
@@ -26,6 +28,7 @@ import {
   replaceButtons,
   resetAll,
   toButtonInput,
+  variableOptions,
   windowTextKeys,
   type DialogButtonItem,
   type DialogCatalog,
@@ -51,6 +54,9 @@ import { localeLabel } from "@shared/i18n/locale-label";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Spinner } from "@shared/ui/Spinner";
+import { Tooltip } from "@shared/ui/Tooltip";
+import { Button } from "@shared/ui/Button";
+import { Badge } from "@shared/ui/Badge";
 
 export type Selection =
   { kind: "text" } | { kind: "button"; buttonKey: string };
@@ -87,8 +93,10 @@ export function ToolbarButton({
       type="button"
       onClick={onClick}
       {...bounceTap(bounceStrength)}
-      className={`flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.12] px-4 py-1.5 text-[13px] transition-colors hover:bg-white/[0.06] ${
-        danger ? "text-error" : "text-foreground/80"
+      className={`flex h-9 cursor-pointer items-center rounded-full border border-border transition-colors ${
+        danger
+          ? "gap-2 px-3 text-[12.5px] font-semibold text-error hover:bg-error/10"
+          : "gap-1.5 px-4 text-sm font-medium text-foreground/80 hover:bg-white/5"
       }`}
     >
       <Icon className="size-3.5" />
@@ -198,8 +206,12 @@ export function DialogCanvasEditor() {
         <MessagesSquare className="size-4" />
       </div>
       <div className="min-w-0">
-        <h2 className="text-sm font-bold text-foreground">
+        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
           {t("dialogs.title")}
+          <Badge tone="warning" tabIndex={0} aria-label={t("dialogs.betaHint")} className="group relative outline-none">
+            {t("dialogs.beta")}
+            <Tooltip text={t("dialogs.betaHint")} side="bottom" />
+          </Badge>
         </h2>
         <p className="mt-0.5 text-[12.5px] text-muted-foreground">
           {t("dialogs.description")}
@@ -234,7 +246,11 @@ export function DialogCanvasEditor() {
 
   const textByKey: Record<string, string> = {};
   if (selectedWindow) {
-    for (const key of windowTextKeys(selectedWindow)) {
+    const iconKeys = selectedWindow.buttons.flatMap((button) => [
+      iconTextKey(button.text_key),
+      iconIdTextKey(button.text_key),
+    ]);
+    for (const key of [...windowTextKeys(selectedWindow), ...iconKeys]) {
       if (key in localeText) textByKey[key] = localeText[key];
     }
   }
@@ -261,19 +277,20 @@ export function DialogCanvasEditor() {
           defaultValue: window.key,
         });
 
-  const handleEntrySaved = (updated: TranslationEntry) => {
-    if (entriesState.kind !== "ready") return;
-    const next = entriesState.data.filter(
-      (e) =>
-        !(
-          e.locale === updated.locale &&
-          e.message_id === updated.message_id &&
-          e.attribute_id === updated.attribute_id
-        ),
-    );
-    next.push(updated);
-    setEntriesData(next);
-  };
+  // An updater, not a copy of entriesState: an icon pick saves two keys back
+  // to back, and the second would otherwise drop the first.
+  const handleEntrySaved = (updated: TranslationEntry) =>
+    setEntriesData((entries) => [
+      ...entries.filter(
+        (e) =>
+          !(
+            e.locale === updated.locale &&
+            e.message_id === updated.message_id &&
+            e.attribute_id === updated.attribute_id
+          ),
+      ),
+      updated,
+    ]);
 
   const buttons = pendingButtons ?? selectedWindow?.buttons ?? [];
   const isDirty = pendingButtons !== null;
@@ -327,14 +344,16 @@ export function DialogCanvasEditor() {
   const canDeleteWindow = permissions.includes("DIALOGS_WINDOWS_DELETE");
   const canResetAll = permissions.includes("DIALOGS_WINDOWS_RESET_ALL");
 
-  const handleCreateWindow = async (name: string) => {
+  const handleCreateWindow = async (name: string): Promise<boolean> => {
     try {
       const created = await createCustomWindow(name);
       setWindowsData([...windows, created]);
       setSelectedKey(created.key);
       toast.success(t("dialogs.inspector.saved"));
+      return true;
     } catch (err) {
       toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      return false;
     }
   };
 
@@ -402,7 +421,11 @@ export function DialogCanvasEditor() {
             textKey={selectedWindow.text_keys[0] ?? ""}
             entries={entries}
             activeLocale={previewLocale}
-            variableKeys={catalog?.text_variable_keys ?? []}
+            variables={variableOptions(
+              catalog,
+              catalog?.text_variable_keys ?? [],
+              catalog?.window_text_variable_keys[selectedWindow.key],
+            )}
             multiline
             emojiInsert
             // Without a banner the window is a plain message, which cannot be
@@ -550,7 +573,7 @@ export function DialogCanvasEditor() {
               canDelete={canDeleteWindow}
               unreachableKeys={unreachableKeys}
               dirtyKey={isDirty ? selectedKey : null}
-              onCreate={(title) => void handleCreateWindow(title)}
+              onCreate={handleCreateWindow}
               onDelete={(key) => void handleDeleteWindow(key)}
             />
           </aside>
@@ -585,7 +608,7 @@ export function DialogCanvasEditor() {
                 type="button"
                 onClick={handleAddButton}
                 {...bounceTap(bounceStrength)}
-                className="flex w-full max-w-sm cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 py-1.5 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+                className="flex h-9 w-full max-w-sm cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
               >
                 <Plus className="size-3.5" />
                 {t("dialogs.inspector.buttonAdd")}
@@ -653,23 +676,23 @@ export function DialogCanvasEditor() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <motion.button
+                  <Button
+                    variant="outline"
+                    className="w-fit"
                     type="button"
                     onClick={handleDiscardButtons}
-                    {...bounceTap(bounceStrength)}
-                    className="w-fit cursor-pointer rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t("dialogs.inspector.buttonsDiscard")}
-                  </motion.button>
-                  <motion.button
+                  </Button>
+                  <Button
+                    variant="accent"
+                    className="w-fit"
                     type="button"
                     disabled={brokenUrlButton !== null || limitProblem !== null}
                     onClick={() => void handleSaveButtons()}
-                    {...bounceTap(bounceStrength)}
-                    className="w-fit cursor-pointer rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t("dialogs.inspector.buttonsSave")}
-                  </motion.button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -679,7 +702,7 @@ export function DialogCanvasEditor() {
 
       {pendingWindowSwitch && (
         <ConfirmDialog
-          title={t("dialogs.inspector.buttonsDiscard")}
+          title={t("dialogs.inspector.buttonsDiscardTitle")}
           message={t("dialogs.inspector.discardSwitchConfirm")}
           confirmLabel={t("dialogs.inspector.discardSwitchConfirmButton")}
           cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
@@ -704,7 +727,7 @@ export function DialogCanvasEditor() {
       )}
       {isResetAllConfirmOpen && (
         <ConfirmDialog
-          title={t("dialogs.inspector.resetAll")}
+          title={t("dialogs.inspector.resetAllTitle")}
           message={t("dialogs.inspector.resetAllConfirm")}
           confirmLabel={t("dialogs.inspector.resetAllConfirmButton")}
           cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}

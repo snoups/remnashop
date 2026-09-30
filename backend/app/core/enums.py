@@ -134,6 +134,11 @@ class ReferralAccrualStrategy(UpperStrEnum):
     EVERY_PAYMENT = auto()
 
 
+class ReferralRewardStrategy(UpperStrEnum):
+    AMOUNT = auto()
+    PERCENT = auto()
+
+
 class AdLinkChannel(UpperStrEnum):
     BOT = auto()
     WEBCABINET = auto()
@@ -276,11 +281,6 @@ class BannerFormat(StrEnum):
     PNG = auto()
     GIF = auto()
     WEBP = auto()
-
-
-class AppearanceResetScope(StrEnum):
-    BRANDING = auto()
-    COLORS = auto()
 
 
 class AppearanceImageKind(StrEnum):

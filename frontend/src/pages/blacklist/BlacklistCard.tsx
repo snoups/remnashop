@@ -1,6 +1,8 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { BlacklistKind } from "@entities/blacklist/api";
+import { Badge } from "@shared/ui/Badge";
+import { Card } from "@shared/ui/Card";
 
 export function BlacklistCard({
   icon: Icon,
@@ -16,7 +18,7 @@ export function BlacklistCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <Card>
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <Icon className="size-4" />
@@ -29,21 +31,15 @@ export function BlacklistCard({
       </div>
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
       {children}
-    </section>
+    </Card>
   );
 }
 
 export function KindBadge({ kind, label }: { kind: BlacklistKind; label: string }) {
   return (
-    <span
-      className={`w-[84px] shrink-0 rounded-full py-0.5 text-center text-[10.5px] font-semibold uppercase tracking-wide ${
-        kind === "TELEGRAM_ID" ? "bg-primary/10 text-accent-foreground" : "bg-white/[0.06] text-muted-foreground"
-      }`}
-    >
+    <Badge tone={kind === "TELEGRAM_ID" ? "accent" : "neutral"} className="w-[84px] justify-center">
       {label}
-    </span>
+    </Badge>
   );
 }
 
-export const inputClassName =
-  "min-w-0 rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary";

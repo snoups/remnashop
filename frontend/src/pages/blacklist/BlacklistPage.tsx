@@ -1,5 +1,4 @@
-import { AlertTriangle, Ban, Globe, Inbox, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
-import { motion } from "motion/react";
+import { AlertTriangle, Ban, Globe, Loader2, Plus, RefreshCw, SearchX, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,15 +18,24 @@ import {
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { EmptyState } from "@shared/ui/EmptyState";
+import { IconButton } from "@shared/ui/IconButton";
+import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
+import { Button } from "@shared/ui/Button";
+import { Tag } from "@shared/ui/Tag";
+import { TextInput } from "@shared/ui/TextInput";
+import { SearchField } from "@shared/ui/SearchField";
+import { Field } from "@shared/ui/Field";
+import { LIST_BODY_CLASS } from "@shared/ui/classes";
+import { formatDateTime } from "@shared/lib/relative-time";
 
-import { BlacklistCard, KindBadge, inputClassName } from "./BlacklistCard";
+import { BlacklistCard, KindBadge } from "./BlacklistCard";
 import { BlacklistMatchesCard } from "./BlacklistMatchesCard";
 
 // Sync is fire-and-forget on the backend -- give it a moment to finish before
@@ -48,15 +56,17 @@ function detectKind(value: string): BlacklistKind {
   return value.includes("@") ? "EMAIL" : "TELEGRAM_ID";
 }
 
-// same box as inputClassName (1px border + py-2 + 20px line) so it lines up with the field beside it
-const primaryButtonClassName =
-  "flex shrink-0 items-center gap-1.5 rounded-full border border-transparent bg-accent px-3.5 py-2 text-[12.5px] leading-5 font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50";
-const iconButtonClassName =
-  "flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-error/10 hover:text-error";
+const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+
+// mirrors backend blacklist/normalize.py's normalize_identity
+function isValidEntry(value: string): boolean {
+  if (detectKind(value) === "EMAIL") return EMAIL_RE.test(value);
+  return value.replace(/\D+/g, "").replace(/^0+/, "") !== "";
+}
 
 export function BlacklistPage() {
   const currentUserState = useCurrentUser();
-  if (currentUserState.kind !== "ready") return <Spinner />;
+  if (currentUserState.kind !== "ready") return <Spinner size="page" />;
   // mounted only once permissions are known -- the fetchers below are chosen by them once
   return <BlacklistContent permissions={currentUserState.data.effective_permissions} />;
 }
@@ -116,7 +126,6 @@ interface ManualEntriesCardProps {
 
 function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
 
   const [entryValue, setEntryValue] = useState("");
   const [isAddingEntry, setIsAddingEntry] = useState(false);
@@ -141,9 +150,12 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
   const visible = isExpanded ? filtered : filtered.slice(0, ENTRIES_PREVIEW_LIMIT);
   const hiddenCount = filtered.length - visible.length;
 
+  const trimmedEntry = entryValue.trim();
+  const isEntryInvalid = trimmedEntry !== "" && !isValidEntry(trimmedEntry);
+
   const handleAddEntry = async () => {
     const value = entryValue.trim();
-    if (!value) return;
+    if (!value || !isValidEntry(value)) return;
     setIsAddingEntry(true);
     try {
       onChanged(await addBlacklistEntry(detectKind(value), value));
@@ -155,11 +167,16 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
     }
   };
 
+  const [removingKey, setRemovingKey] = useState<string | null>(null);
+
   const handleRemoveEntry = async (row: BlacklistEntryRow) => {
+    setRemovingKey(`${row.kind}:${row.value}`);
     try {
       onChanged(await removeBlacklistEntry(row.kind, row.value));
     } catch (err) {
       toast.error(getErrorMessage(err, t("blacklist.manual.removeError")));
+    } finally {
+      setRemovingKey(null);
     }
   };
 
@@ -174,70 +191,65 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
           className="mt-4 flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"
         >
           <div className="flex gap-2">
-            <input
+            <TextInput
               type="text"
               value={entryValue}
               onChange={(event) => setEntryValue(event.target.value)}
               placeholder={t("blacklist.manual.valuePlaceholder")}
               aria-label={t("blacklist.manual.valueLabel")}
-              className={`${inputClassName} flex-1`}
+              aria-invalid={isEntryInvalid}
+              aria-describedby={isEntryInvalid ? "blacklist-entry-error" : undefined}
+              className="min-w-0 flex-1"
             />
-            <motion.button
+            <Button
+              variant="accent"
+              size="field"
               type="submit"
-              disabled={isAddingEntry || !entryValue.trim()}
-              {...bounceTap(bounceStrength)}
-              className={primaryButtonClassName}
+              disabled={isAddingEntry || !trimmedEntry || isEntryInvalid}
             >
               <Plus className="size-3.5" />
               {t("blacklist.manual.add")}
-            </motion.button>
+            </Button>
           </div>
+          {isEntryInvalid && (
+            <p id="blacklist-entry-error" className="-mt-1 text-[12px] text-error">
+              {t("blacklist.manual.valueInvalid")}
+            </p>
+          )}
         </form>
       )}
 
-      {state.kind === "loading" && <Spinner className="mt-4" />}
+      {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("blacklist.manual.loadError")}</p>}
       {state.kind === "ready" && rows.length === 0 && (
-        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-          <Inbox className="size-5" />
-          <p className="text-sm">{t("blacklist.manual.empty")}</p>
-        </div>
+        <EmptyState text={t("blacklist.manual.empty")} />
       )}
 
       {rows.length > 0 && (
         <>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-40 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t("blacklist.manual.searchPlaceholder")}
-                aria-label={t("blacklist.manual.searchPlaceholder")}
-                className="w-full rounded-xl border border-border bg-input/60 py-2 pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary"
-              />
-            </div>
+            <SearchField
+              id="blacklist-search"
+              label={t("blacklist.manual.searchPlaceholder")}
+              hideLabel
+              placeholder={t("blacklist.manual.searchPlaceholder")}
+              value={search}
+              onChange={setSearch}
+            />
             <div className="w-full sm:w-64">
               <PillTabs
                 items={(["ALL", "TELEGRAM_ID", "EMAIL"] as const).map((kind) => ({
                   key: kind,
-                  label: (
-                    <>
-                      {kind === "ALL" ? t("blacklist.manual.filterAll") : kindLabel(kind)}{" "}
-                      <span className="text-[11.5px] tabular-nums opacity-70">
-                        {kind === "ALL" ? rows.length : rows.filter((row) => row.kind === kind).length}
-                      </span>
-                    </>
-                  ),
+                  label: kind === "ALL" ? t("blacklist.manual.filterAll") : kindLabel(kind),
                 }))}
                 activeKey={filter}
                 onSelect={setFilter}
+                size="field"
               />
             </div>
           </div>
 
-          <ul className="mt-2 flex flex-col divide-y divide-border/50">
+          <ul className={`mt-2 ${LIST_BODY_CLASS}`}>
             {visible.map((row) => (
               <li
                 key={`${row.kind}:${row.value}`}
@@ -246,29 +258,33 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
                 <KindBadge kind={row.kind} label={kindLabel(row.kind)} />
                 <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">{row.value}</span>
                 {permissions.includes("BLACKLIST_ENTRY_REMOVE") && (
-                  <button
-                    type="button"
+                  <IconButton
+                    size="8"
+                    tone="danger"
                     onClick={() => void handleRemoveEntry(row)}
+                    disabled={removingKey !== null}
                     aria-label={t("blacklist.manual.remove")}
-                    className={iconButtonClassName}
                   >
-                    <X className="size-4" />
-                  </button>
+                    {removingKey === `${row.kind}:${row.value}` ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <X className="size-4" />
+                    )}
+                  </IconButton>
                 )}
               </li>
             ))}
           </ul>
           {filtered.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("blacklist.manual.noResults")}</p>
+            <EmptyState icon={SearchX} text={t("blacklist.manual.noResults")} />
           )}
           {hiddenCount > 0 && (
-            <button
-              type="button"
+            <LoadMoreButton
               onClick={() => setIsExpanded(true)}
-              className="mt-2 w-full rounded-full border border-dashed border-border py-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-            >
-              {t("blacklist.manual.showMore", { count: hiddenCount })}
-            </button>
+              shown={visible.length}
+              total={filtered.length}
+              className="mt-2"
+            />
           )}
         </>
       )}
@@ -284,8 +300,7 @@ interface BlacklistSourcesCardProps {
 }
 
 function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: BlacklistSourcesCardProps) {
-  const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
+  const { t, i18n } = useTranslation();
 
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourceName, setSourceName] = useState("");
@@ -351,16 +366,14 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
       description={t("blacklist.sources.description")}
       action={
         permissions.includes("BLACKLIST_SYNC") && (
-          <motion.button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={() => void handleSync()}
             disabled={isSyncing}
-            {...bounceTap(bounceStrength)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] font-semibold text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw className={`size-3.5 ${isSyncing ? "animate-spin" : ""}`} />
             {t("blacklist.sources.syncNow")}
-          </motion.button>
+          </Button>
         )
       }
     >
@@ -372,53 +385,44 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
           }}
           className="mt-4 flex flex-col gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"
         >
-          <div className="flex flex-col gap-1">
-            <label htmlFor="blacklist-source-url" className="text-sm font-medium text-foreground/80">
-              {t("blacklist.sources.urlLabel")}
-            </label>
-            <input
+          <Field label={t("blacklist.sources.urlLabel")} htmlFor="blacklist-source-url" aside={<span className="text-error">*</span>}>
+            <TextInput
               id="blacklist-source-url"
               type="url"
               value={sourceUrl}
               onChange={(event) => setSourceUrl(event.target.value)}
               placeholder={t("blacklist.sources.urlPlaceholder")}
-              className={inputClassName}
+              className="min-w-0"
             />
-          </div>
+          </Field>
           <div className="flex items-end gap-2">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="blacklist-source-name" className="text-sm font-medium text-foreground/80">
-                {t("blacklist.sources.nameLabel")}
-              </label>
-              <input
+            <Field label={t("blacklist.sources.nameLabel")} htmlFor="blacklist-source-name" className="min-w-0 flex-1">
+              <TextInput
                 id="blacklist-source-name"
                 type="text"
                 value={sourceName}
                 onChange={(event) => setSourceName(event.target.value)}
                 placeholder={t("blacklist.sources.namePlaceholder")}
-                className={inputClassName}
+                className="min-w-0"
               />
-            </div>
-            <motion.button
+            </Field>
+            <Button
+              variant="accent"
+              size="field"
               type="submit"
               disabled={isAddingSource || !sourceUrl.trim()}
-              {...bounceTap(bounceStrength)}
-              className={primaryButtonClassName}
             >
               <Plus className="size-3.5" />
               {t("blacklist.sources.add")}
-            </motion.button>
+            </Button>
           </div>
         </form>
       )}
 
-      {state.kind === "loading" && <Spinner className="mt-4" />}
+      {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("blacklist.sources.loadError")}</p>}
       {state.kind === "ready" && sources.length === 0 && (
-        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-          <Inbox className="size-5" />
-          <p className="text-sm">{t("blacklist.sources.empty")}</p>
-        </div>
+        <EmptyState text={t("blacklist.sources.empty")} />
       )}
 
       {sources.length > 0 && (
@@ -441,16 +445,16 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                     <p className="truncate font-mono text-[12px] text-muted-foreground">{source.url}</p>
                   )}
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11.5px] font-semibold tabular-nums text-foreground/80">
+                    <Tag>
                       {t("blacklist.sources.entriesCount", { count: source.entries_count })}
-                    </span>
-                    <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11.5px] text-muted-foreground">
+                    </Tag>
+                    <Tag>
                       {source.last_synced_at
                         ? t("blacklist.sources.lastSynced", {
-                            date: new Date(source.last_synced_at).toLocaleString(),
+                            date: formatDateTime(source.last_synced_at, i18n.language),
                           })
                         : t("blacklist.sources.neverSynced")}
-                    </span>
+                    </Tag>
                   </div>
                 </div>
                 {permissions.includes("BLACKLIST_SOURCE_TOGGLE") && (
@@ -461,14 +465,15 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                   />
                 )}
                 {permissions.includes("BLACKLIST_SOURCE_REMOVE") && (
-                  <button
-                    type="button"
+                  <IconButton
+                    size="8"
+                    tone="danger"
                     onClick={() => setPendingRemoveSource(source)}
                     aria-label={t("blacklist.sources.remove")}
-                    className={`${iconButtonClassName} -mt-1`}
+                    className="-mt-1"
                   >
                     <Trash2 className="size-4" />
-                  </button>
+                  </IconButton>
                 )}
               </div>
               {source.last_error && (
@@ -484,7 +489,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
 
       {pendingRemoveSource && (
         <ConfirmDialog
-          title={t("blacklist.sources.remove")}
+          title={t("blacklist.sources.removeConfirmTitle")}
           message={t("blacklist.sources.removeConfirm", {
             name: pendingRemoveSource.name ?? pendingRemoveSource.url,
           })}

@@ -1,19 +1,55 @@
+import { AnimatePresence, motion } from "motion/react";
 import { Suspense, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 import { logout } from "@shared/api/http";
 import { CurrentUserProvider } from "@entities/user/CurrentUserProvider";
+import type { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
+import { useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { RefreshSignalContext } from "@shared/lib/refresh-signal";
 import { useCurrentUser } from "@entities/user/use-current-user";
+import { BottomNav } from "@widgets/bottom-nav/BottomNav";
 import { Header } from "@widgets/header/Header";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 import { Sidebar } from "@widgets/sidebar/Sidebar";
 
-function DashboardShell({ onLogout }: { onLogout: () => void }) {
+// Keyed by the first segment under /dashboard, so switching tabs inside
+// settings doesn't fade the whole page. useOutlet() instead of <Outlet /> keeps
+// the exiting page rendering its own route while it fades out.
+function AnimatedOutlet() {
+  const location = useLocation();
+  const outlet = useOutlet();
+  const section = location.pathname.split("/")[2] ?? "";
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={section}
+        className="flex flex-1 flex-col"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.18, ease: "easeOut" } }}
+        exit={{ opacity: 0, transition: { duration: 0.15, ease: "easeIn" } }}
+      >
+        <Suspense fallback={null}>{outlet}</Suspense>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+interface DashboardShellProps {
+  onLogout: () => void;
+  isLeaving: boolean;
+  onLeft: () => void;
+}
+
+function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
   const userState = useCurrentUser();
+  const isSidebarCollapsed = useSidebarCollapsed();
+  const location = useLocation();
+  const isIntro = (location.state as typeof DASHBOARD_INTRO_STATE | null)?.intro === true;
   const [refreshToken, setRefreshToken] = useState(0);
   const refreshSignal = useMemo(
     () => ({ token: refreshToken, refresh: () => setRefreshToken((n) => n + 1) }),
@@ -26,14 +62,30 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
 
   return (
     <RefreshSignalContext.Provider value={refreshSignal}>
-      <div className="mx-auto flex h-screen max-w-[1280px] text-foreground">
+      <motion.div
+        // A collapsed sidebar gives its 176px (w-62 - 72px) back by narrowing the
+        // whole shell, not by widening the card -- same duration/easing as the
+        // sidebar's own width transition, so the card holds its width throughout
+        // (both ends written via min() so the interpolation stays linear on narrow screens).
+        className={`mx-auto flex h-dvh max-w-[min(1280px,100%)] flex-col text-foreground transition-[max-width] duration-200 ease-out md:h-screen md:flex-row ${
+          isSidebarCollapsed ? "xl:max-w-[calc(min(1280px,100%)-11rem)]" : ""
+        }`}
+        initial={isIntro ? { opacity: 0 } : false}
+        animate={{ opacity: isLeaving ? 0 : 1 }}
+        transition={isLeaving ? { duration: 0.3, ease: "easeIn" } : { duration: 0.35, ease: "easeOut" }}
+        onAnimationComplete={() => isLeaving && onLeft()}
+      >
         <Sidebar />
-        <div className="my-3 mr-3 flex flex-1 flex-col overflow-hidden rounded-3xl border border-glass-border bg-surface/50 shadow-2xl backdrop-blur-[28px] backdrop-saturate-150">
+        <motion.div
+          className="mx-2 mt-2 flex min-h-0 flex-1 md:mx-0 md:my-3 md:mr-3 flex-col overflow-hidden rounded-3xl border border-glass-border bg-surface/50 shadow-2xl backdrop-blur-[28px] backdrop-saturate-150"
+          initial={isIntro ? { opacity: 0, y: 14 } : false}
+          animate={isLeaving ? { opacity: 0, y: 14 } : { opacity: 1, y: 0 }}
+          transition={isLeaving ? { duration: 0.25, ease: "easeIn" } : { delay: 0.1, duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+        >
           <Header onLogout={onLogout} />
-          <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] px-8 pb-8 pt-4">
-            <Suspense fallback={null}>
-              <Outlet />
-            </Suspense>
+          {/* the stable gutter's 10px comes out of the right padding, like dialog bodies (app/styles.css) */}
+          <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] pb-6 pl-4 pr-[calc(1rem-10px)] pt-2 md:pb-8 md:pl-8 md:pr-[calc(2rem-10px)] md:pt-4">
+            <AnimatedOutlet />
           </main>
           {/* Dialogs portal here, not into `main` -- `main`'s `mask-image`
               (scroll-fade-top) makes it a containing block for `position:
@@ -43,8 +95,9 @@ function DashboardShell({ onLogout }: { onLogout: () => void }) {
               so dialogs keep the wrapper as their containing block instead --
               same look as before the scroll fade was added. */}
           <div id="dialog-root" />
-        </div>
-      </div>
+        </motion.div>
+        <BottomNav />
+      </motion.div>
     </RefreshSignalContext.Provider>
   );
 }
@@ -53,15 +106,22 @@ export function DashboardLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  const [isLeaving, setIsLeaving] = useState(false);
+
   const handleLogout = async () => {
     if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
+    setIsLeaving(true);
+  };
+
+  // token is cleared only once the fade-out ends, so nothing mid-animation hits a 401
+  const handleLeft = () => {
     clearAccessToken();
     navigate("/", { replace: true });
   };
 
   return (
     <CurrentUserProvider>
-      <DashboardShell onLogout={handleLogout} />
+      <DashboardShell onLogout={handleLogout} isLeaving={isLeaving} onLeft={handleLeft} />
     </CurrentUserProvider>
   );
 }

@@ -18,6 +18,7 @@ class ListPaymentOrdersInput:
     purchase_type: Optional[PurchaseType] = None
     created_from: Optional[datetime] = None
     search: Optional[str] = None
+    user_id: Optional[int] = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
 
@@ -47,6 +48,7 @@ class ListPaymentOrdersUseCase(
                 purchase_type=data.purchase_type,
                 created_from=data.created_from,
                 search=data.search,
+                user_id=data.user_id,
                 page=data.page,
                 page_size=data.page_size,
             )

@@ -59,6 +59,9 @@ class PaymentOrder(BaseSql, TimestampMixin):
         default=DiscountSource.NONE, server_default="NONE"
     )
     final_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    discount_promocode_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("promocodes.id", ondelete="SET NULL"), index=True
+    )
 
     customer_email: Mapped[Optional[str]] = mapped_column(String(255))
     idempotency_key: Mapped[str] = mapped_column(String(36), unique=True)

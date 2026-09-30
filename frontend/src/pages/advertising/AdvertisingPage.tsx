@@ -1,61 +1,55 @@
-import {
-  AlertCircle,
-  Check,
-  ChevronDown,
-  Copy,
-  Filter,
-  Inbox,
-  Link2,
-  Loader2,
-  Megaphone,
-  Pause,
-  Pencil,
-  Play,
-  Plus,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { AlertCircle, ChevronRight, Link2, Loader2, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   type AdLink,
-  AD_LINK_START_PREFIX,
   type AdvertisingSummary,
   DEFAULT_PAGE_SIZE,
   deleteAdLink,
   getAdvertisingSummary,
   listAdLinks,
-  updateAdLink,
 } from "@entities/advertising/api";
 import { formatMoney, formatPercent, roiClassName } from "@entities/advertising/format";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { AdLinkCreateDialog } from "@features/ad-link-create/AdLinkCreateDialog";
-import { AdLinkEditDialog } from "@features/ad-link-edit/AdLinkEditDialog";
-import { AdLinkStatsPanel } from "@features/ad-link-stats/AdLinkStatsPanel";
-import { AdLinkUsersDialog } from "@features/ad-link-stats/AdLinkUsersDialog";
-import { getErrorMessage } from "@shared/api/http";
+import { AdLinkDetailsDialog } from "@features/ad-link-details/AdLinkDetailsDialog";
+import { ApiError, getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { PeriodPills } from "@shared/ui/PeriodPills";
-import type { PeriodDays } from "@shared/ui/PeriodToggle";
-import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { EmptyState } from "@shared/ui/EmptyState";
+import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
+import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
+import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
+import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
+import { Button } from "@shared/ui/Button";
+import { Badge } from "@shared/ui/Badge";
+import { Card } from "@shared/ui/Card";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
 type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: AdLink[]; total: number };
 
 const FETCH_INDICATOR_DELAY_MS = 150;
-const COPIED_FEEDBACK_MS = 1500;
+const DAY_MS = 86_400_000;
+// "all time" has no previous window; show growth over the last month instead
+const ALL_TIME_TREND_DAYS = 30;
 
 const STATS_GRID_CLASSNAME =
-  "grid grid-cols-[36px_minmax(0,1fr)_84px_72px_88px_104px_76px_92px_16px] items-center gap-3";
-const PLAIN_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_104px_92px_16px] items-center gap-3";
+  "grid grid-cols-[36px_minmax(0,1fr)_88px_80px_104px_104px_80px_104px_16px] items-center gap-3";
+const PLAIN_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_104px_104px_16px] items-center gap-3";
 
-const cardClassName = "rounded-2xl border border-white/[0.08] bg-white/[0.03]";
-const columnLabelClassName = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+
+// mirrors AdLinkRepository.list_paginated: active first, then newest
+function compareAdLinks(a: AdLink, b: AdLink): number {
+  return (
+    Number(b.is_active) - Number(a.is_active) ||
+    (b.created_at ?? "").localeCompare(a.created_at ?? "") ||
+    b.id - a.id
+  );
+}
 
 export function AdvertisingPage() {
   const { t, i18n } = useTranslation();
@@ -63,7 +57,7 @@ export function AdvertisingPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
-  const [period, setPeriod] = useState<PeriodDays>(30);
+  const [period, setPeriod] = useState<PeriodDays>(0);
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -71,12 +65,12 @@ export function AdvertisingPage() {
   // discards its result instead of appending to an already-replaced list.
   const loadGenRef = useRef(0);
   const [summary, setSummary] = useState<AdvertisingSummary | null>(null);
+  // the same summary as it looked one period ago (30 days for "all time")
+  const [compareSummary, setCompareSummary] = useState<AdvertisingSummary | null>(null);
   // bumped after create/edit/delete so the metrics catch up with the list
   const [summaryVersion, setSummaryVersion] = useState(0);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [editingLink, setEditingLink] = useState<AdLink | null>(null);
-  const [usersLink, setUsersLink] = useState<AdLink | null>(null);
+  // an id, not the row: the dialog then follows edits/pause made from inside it
+  const [detailsId, setDetailsId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AdLink | null>(null);
 
   const currentUserState = useCurrentUser();
@@ -87,11 +81,13 @@ export function AdvertisingPage() {
   const canDelete = permissions.includes("AD_LINKS_DELETE");
   const canGenerateCode = permissions.includes("AD_LINKS_GENERATE_CODE");
   const canViewStats = permissions.includes("AD_LINKS_STATS_VIEW");
+  const canViewSummary = permissions.includes("AD_LINKS_SUMMARY_VIEW");
   const canViewUsers = permissions.includes("AD_LINKS_USERS_VIEW");
+  const canShare = permissions.includes("AD_LINKS_SHARE_VIEW");
 
   const isActive = statusFilter === "" ? undefined : statusFilter === "true";
   const createdFrom = useMemo(
-    () => (period ? new Date(Date.now() - period * 86_400_000).toISOString() : undefined),
+    () => (period ? new Date(Date.now() - period * DAY_MS).toISOString() : undefined),
     [period],
   );
 
@@ -120,7 +116,7 @@ export function AdvertisingPage() {
   }, [isActive]);
 
   useEffect(() => {
-    if (!canViewStats) return;
+    if (!canViewSummary) return;
     const controller = new AbortController();
     getAdvertisingSummary({ isActive, createdFrom }, controller.signal)
       .then((result) => {
@@ -130,7 +126,28 @@ export function AdvertisingPage() {
         // metrics are secondary; the list stays usable with dashes in their place
       });
     return () => controller.abort();
-  }, [canViewStats, isActive, createdFrom, summaryVersion]);
+  }, [canViewSummary, isActive, createdFrom, summaryVersion]);
+
+  useEffect(() => {
+    if (!canViewSummary) return;
+    const controller = new AbortController();
+    const now = Date.now();
+    const shift = (period || ALL_TIME_TREND_DAYS) * DAY_MS;
+    setCompareSummary(null);
+    getAdvertisingSummary(
+      {
+        isActive,
+        createdFrom: period ? new Date(now - 2 * shift).toISOString() : undefined,
+        createdTo: new Date(now - shift).toISOString(),
+      },
+      controller.signal,
+    )
+      .then((result) => {
+        if (!controller.signal.aborted) setCompareSummary(result);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [canViewSummary, isActive, period, summaryVersion]);
 
   const metricsById = useMemo(
     () => new Map(summary?.links.map((link) => [link.ad_link_id, link]) ?? []),
@@ -165,9 +182,10 @@ export function AdvertisingPage() {
     setState((prev) => {
       if (prev.kind !== "ready") return prev;
       const exists = prev.items.some((item) => item.id === link.id);
+      const items = exists ? prev.items.map((item) => (item.id === link.id ? link : item)) : [link, ...prev.items];
       return {
         kind: "ready",
-        items: exists ? prev.items.map((item) => (item.id === link.id ? link : item)) : [link, ...prev.items],
+        items: items.sort(compareAdLinks),
         total: exists ? prev.total : prev.total + 1,
       };
     });
@@ -183,73 +201,38 @@ export function AdvertisingPage() {
           : prev,
       );
     } catch (err) {
-      toast.error(getErrorMessage(err, t("advertising.delete.error")));
+      // 400 here only means the link already has attributed users
+      toast.error(
+        err instanceof ApiError && err.status === 400
+          ? t("advertising.delete.hasUsers")
+          : getErrorMessage(err, t("advertising.delete.error")),
+      );
     }
-  };
-
-  const handleToggleActive = async (link: AdLink) => {
-    try {
-      handleSaved(await updateAdLink(link.id, { is_active: !link.is_active }));
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("advertising.edit.error")));
-    }
-  };
-
-  const handleCopy = (link: AdLink) => {
-    navigator.clipboard
-      ?.writeText(`?start=${AD_LINK_START_PREFIX}${link.code}`)
-      .then(() => {
-        setCopiedId(link.id);
-        setTimeout(() => setCopiedId((id) => (id === link.id ? null : id)), COPIED_FEEDBACK_MS);
-      })
-      .catch(() => {});
   };
 
   const hasMore = state.kind === "ready" && state.items.length < state.total;
-  const gridClassName = canViewStats ? STATS_GRID_CLASSNAME : PLAIN_GRID_CLASSNAME;
+  const gridClassName = canViewSummary ? STATS_GRID_CLASSNAME : PLAIN_GRID_CLASSNAME;
   const none = t("advertising.stats.none");
   const money = (amount: string) => formatMoney(amount, summary?.report_currency ?? "", i18n.language);
+  const trendHint = period ? t("advertising.stats.periodTrend", { days: period }) : t("advertising.stats.totalTrend");
+  const countTrend = (pick: (s: AdvertisingSummary) => number): KpiTrend | undefined =>
+    summary && compareSummary ? { delta: pick(summary) - pick(compareSummary), hint: trendHint } : undefined;
+  const revenueTrend = ((): KpiTrend | undefined => {
+    const base = Number(compareSummary?.revenue);
+    if (!summary || !(base > 0)) return undefined;
+    const delta = Number(summary.revenue) / base - 1;
+    return { delta, text: formatPercent(String(Math.abs(delta)), i18n.language), hint: trendHint };
+  })();
+  const detailsLink = state.kind === "ready" ? state.items.find((item) => item.id === detailsId) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-48">
-          <SelectDropdown
-            id="advertising-status"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            icon={Filter}
-            placeholder={t("advertising.filters.statusAll")}
-            options={[
-              { value: "", label: t("advertising.filters.statusAll") },
-              { value: "true", label: t("advertising.filters.statusActive") },
-              { value: "false", label: t("advertising.filters.statusInactive") },
-            ]}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {canViewStats && (
-            <PeriodPills value={period} onChange={setPeriod} ariaLabel={t("advertising.filters.period")} />
-          )}
-          {canCreate && (
-            <motion.button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              {...bounceTap(bounceStrength)}
-              className="flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
-            >
-              <Plus className="size-3.5" />
-              {t("advertising.create.button")}
-            </motion.button>
-          )}
-        </div>
-      </div>
-
-      {canViewStats && (
+      {canViewSummary && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <KpiTile
             label={t("advertising.stats.attributions")}
             value={summary ? String(summary.attributions_count) : none}
+            trend={countTrend((s) => s.attributions_count)}
             hint={
               summary
                 ? t("advertising.stats.channelSplit", {
@@ -262,27 +245,30 @@ export function AdvertisingPage() {
           <KpiTile
             label={t("advertising.stats.paidCount")}
             value={summary ? String(summary.paid_count) : none}
+            trend={countTrend((s) => s.paid_count)}
             hint={
               summary
-                ? `${t("advertising.stats.conversionRate")} ${formatPercent(summary.conversion_rate, i18n.language)}`
+                ? `${t("advertising.stats.conversionRate")} ${
+                    summary.attributions_count > 0 ? formatPercent(summary.conversion_rate, i18n.language) : none
+                  }`
                 : undefined
             }
           />
           <KpiTile
             label={t("advertising.stats.cost")}
             value={summary ? money(summary.cost) : none}
-            hint={summary?.cpa != null ? `${t("advertising.stats.cpa")} ${money(summary.cpa)}` : undefined}
+            hint={summary ? `${t("advertising.stats.cpa")} ${summary.cpa != null ? money(summary.cpa) : none}` : undefined}
           />
           <KpiTile
-            highlighted
             label={t("advertising.stats.revenue")}
             value={summary ? money(summary.revenue) : none}
+            trend={revenueTrend}
             hint={
-              summary?.roi != null ? (
+              summary ? (
                 <>
                   {t("advertising.stats.roi")}{" "}
                   <span className={`font-semibold ${roiClassName(summary.roi)}`}>
-                    {formatPercent(summary.roi, i18n.language, true)}
+                    {summary.roi != null ? formatPercent(summary.roi, i18n.language, true) : none}
                   </span>
                 </>
               ) : undefined
@@ -291,29 +277,48 @@ export function AdvertisingPage() {
         </div>
       )}
 
-      <div className={`relative p-4 ${cardClassName}`}>
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Megaphone className="size-4" />
+      <Card>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1.5">
+            <span className={EYEBROW_CLASS}>{t("advertising.columns.status")}</span>
+            <SegmentedPills
+              value={statusFilter}
+              onChange={setStatusFilter}
+              ariaLabel={t("advertising.columns.status")}
+              options={[
+                { value: "", label: t("advertising.filters.statusAll") },
+                { value: "true", label: t("advertising.filters.statusActive") },
+                { value: "false", label: t("advertising.filters.statusInactive") },
+              ]}
+            />
           </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-bold text-foreground">{t("advertising.title")}</h2>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("advertising.description")}</p>
-          </div>
-          {state.kind === "ready" && isFetching ? (
-            <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-          ) : (
-            state.kind === "ready" && (
-              <span className="text-[12px] tabular-nums text-muted-foreground">
-                {t("advertising.count", { count: state.total })}
-              </span>
-            )
+          {canViewSummary && (
+            <div className="flex flex-col gap-1.5">
+              <span className={EYEBROW_CLASS}>{t("advertising.filters.period")}</span>
+              <PeriodPills value={period} onChange={setPeriod} ariaLabel={t("advertising.filters.period")} />
+            </div>
+          )}
+          {canCreate && (
+            <Button
+              variant="solid"
+              size="field"
+              type="button"
+              className="ml-auto"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <Plus className="size-3.5" />
+              {t("advertising.create.button")}
+            </Button>
           )}
         </div>
+      </Card>
 
-        <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <Card className="relative">
+        {state.kind === "ready" && isFetching && (
+          <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
+        )}
 
-        {state.kind === "loading" && <Spinner className="py-12" />}
+        {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <div className="flex flex-col items-center gap-2 py-12 text-error">
             <AlertCircle className="size-5" />
@@ -321,16 +326,13 @@ export function AdvertisingPage() {
           </div>
         )}
         {state.kind === "ready" && state.items.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-            <Inbox className="size-5" />
-            <p className="text-sm">{t("advertising.empty")}</p>
-          </div>
+          <EmptyState text={t("advertising.empty")} size="page" />
         )}
         {state.kind === "ready" && state.items.length > 0 && (
           <>
-            <div className={`${gridClassName} mb-1 border-b border-border px-3 pb-2.5 pt-3.5 ${columnLabelClassName}`}>
+            <div className={`${gridClassName} ${LIST_HEAD_CLASS}`}>
               <span className="col-span-2">{t("advertising.columns.link")}</span>
-              {canViewStats && (
+              {canViewSummary && (
                 <>
                   <span className="text-right">{t("advertising.stats.attributions")}</span>
                   <span className="text-right">{t("advertising.columns.paid")}</span>
@@ -338,174 +340,93 @@ export function AdvertisingPage() {
                 </>
               )}
               <span className="text-right">{t("advertising.stats.cost")}</span>
-              {canViewStats && <span className="text-right">{t("advertising.stats.roi")}</span>}
+              {canViewSummary && <span className="text-right">{t("advertising.stats.roi")}</span>}
               <span>{t("advertising.columns.status")}</span>
               <span />
             </div>
 
-            <div className="flex flex-col divide-y divide-border/50">
+            <div className={`${LIST_BODY_CLASS}`}>
               {state.items.map((link) => {
                 const metrics = metricsById.get(link.id);
-                const isExpanded = expandedId === link.id;
                 const conversion =
                   metrics && metrics.attributions_count > 0 ? metrics.paid_count / metrics.attributions_count : null;
 
                 return (
-                  <div key={link.id} className="flex flex-col">
-                    <motion.button
-                      type="button"
-                      aria-expanded={isExpanded}
-                      onClick={() => setExpandedId(isExpanded ? null : link.id)}
-                      {...bounceTap(bounceStrength, 0.03)}
-                      className={`${gridClassName} w-full rounded-full px-3 py-2.5 text-left [transition-property:background-color] duration-150 hover:bg-white/[0.04] ${
-                        isExpanded ? "bg-white/[0.04]" : ""
+                  <motion.button
+                    key={link.id}
+                    type="button"
+                    onClick={() => setDetailsId(link.id)}
+                    {...bounceTap(bounceStrength, 0.03)}
+                    className={`${gridClassName} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`flex size-9 items-center justify-center rounded-full ${
+                        link.is_active ? "bg-success/10 text-success" : "bg-white/[0.06] text-muted-foreground"
                       }`}
                     >
-                      <span
-                        aria-hidden
-                        className={`flex size-9 items-center justify-center rounded-full ${
-                          link.is_active ? "bg-accent text-primary" : "bg-white/[0.06] text-muted-foreground"
-                        }`}
-                      >
-                        <Link2 className="size-4" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-[13.5px] font-medium text-foreground">{link.name}</span>
-                        <span className="block truncate font-mono text-[12px] text-muted-foreground">{link.code}</span>
-                      </span>
-                      {canViewStats && (
-                        <>
-                          <span className="text-right text-[13.5px] font-semibold tabular-nums text-foreground">
-                            {metrics?.attributions_count ?? none}
-                          </span>
-                          <span className="text-right text-[13.5px] tabular-nums text-foreground">
-                            {metrics?.paid_count ?? none}
-                          </span>
-                          <span className="flex flex-col items-end gap-1">
-                            <span className="text-[13px] tabular-nums text-foreground">
-                              {conversion !== null ? formatPercent(String(conversion), i18n.language) : none}
-                            </span>
-                            <span className="h-[3px] w-14 overflow-hidden rounded-full bg-white/[0.07]">
-                              <span
-                                className="block h-full rounded-full bg-primary"
-                                style={{ width: `${(conversion ?? 0) * 100}%` }}
-                              />
-                            </span>
-                          </span>
-                        </>
-                      )}
-                      <span className="text-right text-[13px] tabular-nums text-foreground">
-                        {formatMoney(link.cost, link.cost_currency, i18n.language)}
-                      </span>
-                      {canViewStats && (
-                        <span
-                          className={`text-right text-[13.5px] font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
-                        >
-                          {metrics?.roi != null ? formatPercent(metrics.roi, i18n.language, true) : none}
+                      <Link2 className="size-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13.5px] font-medium text-foreground">{link.name}</span>
+                      <span className="block truncate font-mono text-[12px] text-muted-foreground">{link.code}</span>
+                    </span>
+                    {canViewSummary && (
+                      <>
+                        <span className="text-right text-[13.5px] font-semibold tabular-nums text-foreground">
+                          {metrics?.attributions_count ?? none}
                         </span>
-                      )}
-                      <span>
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide ${
-                            link.is_active
-                              ? "border-success/30 bg-success/10 text-success"
-                              : "border-border bg-white/[0.04] text-muted-foreground"
-                          }`}
-                        >
-                          {link.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
+                        <span className="text-right text-[13.5px] tabular-nums text-foreground">
+                          {metrics?.paid_count ?? none}
                         </span>
-                      </span>
-                      <ChevronDown
-                        className={`size-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                      />
-                    </motion.button>
-
-                    {isExpanded && (
-                      <div className="flex flex-col gap-3.5 pb-4 pl-3 pr-3 pt-2 md:pl-[60px]">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-sm font-medium text-foreground/80">{t("advertising.startParam")}</span>
-                          <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-input/60 py-1.5 pl-3 pr-1.5">
-                            <span className="truncate font-mono text-[13px] text-foreground">
-                              ?start={AD_LINK_START_PREFIX}
-                              {link.code}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(link)}
-                              aria-label={t("advertising.copyStartParam")}
-                              className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
-                            >
-                              {copiedId === link.id ? (
-                                <Check className="size-3.5 text-success" />
-                              ) : (
-                                <Copy className="size-3.5" />
-                              )}
-                            </button>
-                          </div>
-                          <span className="text-[12px] text-muted-foreground">{t("advertising.startParamHint")}</span>
-                        </div>
-
-                        {canViewStats && (
-                          <AdLinkStatsPanel
-                            key={`${link.id}-${period}`}
-                            adLink={link}
-                            periodDays={period}
-                            createdFrom={createdFrom}
-                          />
-                        )}
-
-                        {link.note && <p className="text-[12.5px] text-muted-foreground">{link.note}</p>}
-
-                        <div className="flex flex-wrap gap-2">
-                          {canViewUsers && (
-                            <PanelButton icon={Users} variant="accent" onClick={() => setUsersLink(link)}>
-                              {t("advertising.stats.usersTitle")}
-                            </PanelButton>
-                          )}
-                          {canUpdate && (
-                            <>
-                              <PanelButton icon={Pencil} onClick={() => setEditingLink(link)}>
-                                {t("advertising.edit.button")}
-                              </PanelButton>
-                              <PanelButton
-                                icon={link.is_active ? Pause : Play}
-                                onClick={() => void handleToggleActive(link)}
-                              >
-                                {link.is_active ? t("advertising.pause") : t("advertising.resume")}
-                              </PanelButton>
-                            </>
-                          )}
-                          {canDelete && (
-                            <PanelButton icon={Trash2} variant="danger" onClick={() => setPendingDelete(link)}>
-                              {t("advertising.delete.button")}
-                            </PanelButton>
-                          )}
-                        </div>
-                      </div>
+                        <span className="flex flex-col items-end gap-1">
+                          <span className="text-[13px] tabular-nums text-foreground">
+                            {conversion !== null ? formatPercent(String(conversion), i18n.language) : none}
+                          </span>
+                          <span className="h-[3px] w-14 overflow-hidden rounded-full bg-white/[0.07]">
+                            <span
+                              className="block h-full rounded-full bg-primary"
+                              style={{ width: `${(conversion ?? 0) * 100}%` }}
+                            />
+                          </span>
+                        </span>
+                      </>
                     )}
-                  </div>
+                    <span className="text-right text-[13px] tabular-nums text-foreground">
+                      {formatMoney(link.cost, link.cost_currency, i18n.language)}
+                    </span>
+                    {canViewSummary && (
+                      <span
+                        className={`text-right text-[13.5px] font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
+                      >
+                        {metrics?.roi != null ? formatPercent(metrics.roi, i18n.language, true) : none}
+                      </span>
+                    )}
+                    <span>
+                      <Badge tone={link.is_active ? "success" : "neutral"}>
+                        {link.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
+                      </Badge>
+                    </span>
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                  </motion.button>
+
                 );
               })}
             </div>
 
-            {hasMore && (
-              <div className="mt-4 flex justify-center">
-                <motion.button
-                  type="button"
+            {state.kind === "ready" && hasMore && (
+              <div className="mx-3 mt-4">
+                <LoadMoreButton
                   onClick={() => void handleLoadMore()}
-                  disabled={isLoadingMore}
-                  aria-label={isLoadingMore ? t("advertising.pagination.loadingMore") : undefined}
-                  {...bounceTap(bounceStrength)}
-                  className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm text-foreground/90 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isLoadingMore ? <Loader2 className="size-3.5 animate-spin" /> : <ChevronDown className="size-3.5" />}
-                  {!isLoadingMore && t("advertising.pagination.loadMore")}
-                </motion.button>
+                  isLoading={isLoadingMore}
+                  shown={state.items.length}
+                  total={state.total}
+                />
               </div>
             )}
           </>
         )}
-      </div>
+      </Card>
 
       {isCreateOpen && (
         <AdLinkCreateDialog
@@ -515,15 +436,27 @@ export function AdvertisingPage() {
         />
       )}
 
-      {editingLink && (
-        <AdLinkEditDialog adLink={editingLink} onClose={() => setEditingLink(null)} onSaved={handleSaved} />
+      {detailsLink && (
+        <AdLinkDetailsDialog
+          adLink={detailsLink}
+          periodDays={period}
+          createdFrom={createdFrom}
+          canViewStats={canViewStats}
+          canViewUsers={canViewUsers}
+          canShare={canShare}
+          canUpdate={canUpdate}
+          canDelete={canDelete}
+          onSaved={handleSaved}
+          onClose={(followUp) => {
+            if (followUp === "delete") setPendingDelete(detailsLink);
+            setDetailsId(null);
+          }}
+        />
       )}
-
-      {usersLink && <AdLinkUsersDialog adLink={usersLink} onClose={() => setUsersLink(null)} />}
 
       {pendingDelete && (
         <ConfirmDialog
-          title={t("advertising.delete.button")}
+          title={t("advertising.delete.title")}
           message={t("advertising.delete.confirm", { name: pendingDelete.name })}
           confirmLabel={t("advertising.delete.confirmButton")}
           cancelLabel={t("advertising.delete.cancelButton")}
@@ -536,66 +469,5 @@ export function AdvertisingPage() {
         />
       )}
     </div>
-  );
-}
-
-function KpiTile({
-  label,
-  value,
-  hint,
-  highlighted = false,
-}: {
-  label: string;
-  value: string;
-  hint?: ReactNode;
-  highlighted?: boolean;
-}) {
-  return (
-    <div
-      className={`flex flex-col gap-1.5 rounded-2xl border px-[18px] py-4 ${
-        highlighted ? "border-primary/25 bg-accent/60" : "border-white/[0.08] bg-white/[0.03]"
-      }`}
-    >
-      <span
-        className={`text-[11px] font-semibold uppercase tracking-wide ${
-          highlighted ? "text-accent-foreground" : "text-muted-foreground"
-        }`}
-      >
-        {label}
-      </span>
-      <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">{value}</span>
-      <span className="min-h-[18px] text-[12px] tabular-nums text-muted-foreground">{hint}</span>
-    </div>
-  );
-}
-
-function PanelButton({
-  icon: Icon,
-  variant = "default",
-  onClick,
-  children,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  variant?: "default" | "accent" | "danger";
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  const bounceStrength = useBounceStrength();
-  const variantClassName = {
-    default: "bg-white/[0.06] text-foreground hover:bg-white/[0.1]",
-    accent: "bg-accent text-primary hover:bg-primary/20",
-    danger: "text-error hover:bg-error/10 sm:ml-auto",
-  }[variant];
-
-  return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      {...bounceTap(bounceStrength)}
-      className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${variantClassName}`}
-    >
-      <Icon className="size-3.5" />
-      {children}
-    </motion.button>
   );
 }

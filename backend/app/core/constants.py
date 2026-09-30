@@ -1,5 +1,6 @@
 import re
 from datetime import timezone
+from decimal import Decimal
 from pathlib import Path
 from re import Pattern
 from typing import Final
@@ -10,6 +11,8 @@ BASE_DIR: Final[Path] = Path(__file__).resolve().parents[2]
 REPO_ROOT: Final[Path] = BASE_DIR.parent
 ASSETS_DIR: Final[Path] = BASE_DIR / "assets"
 MEDIA_DIR: Final[Path] = BASE_DIR / "media"
+
+ONE_CENT: Final[Decimal] = Decimal("0.01")
 BACKUP_DIR: Final[Path] = MEDIA_DIR / "backups"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
 

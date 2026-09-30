@@ -10,7 +10,8 @@ interface PillTabsProps<T extends string> {
   activeKey: T | null;
   onSelect: (key: T) => void;
   disabled?: boolean;
-  compact?: boolean;
+  /** field: 38px, lines up with a text input in the same row */
+  size?: "compact" | "field";
 }
 
 /** The settings TabBar's capsule, for tabs that switch state instead of routes:
@@ -20,7 +21,7 @@ export function PillTabs<T extends string>({
   activeKey,
   onSelect,
   disabled = false,
-  compact = false,
+  size = "compact",
 }: PillTabsProps<T>) {
   const scrollerRef = useHorizontalWheelScroll<HTMLDivElement>();
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -41,7 +42,7 @@ export function PillTabs<T extends string>({
   }, [activeKey]);
 
   return (
-    <div className="flex w-full rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
+    <div className="flex w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
       <div ref={scrollerRef} className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full">
         {items.map((item) => (
           <motion.button
@@ -64,9 +65,7 @@ export function PillTabs<T extends string>({
               }`}
             />
             <span
-              className={`relative z-10 block whitespace-nowrap ${
-                compact ? "px-2 py-1 text-[11.5px]" : "px-3 py-1.5 text-[12.5px]"
-              } ${activeKey === item.key ? "text-primary" : "text-foreground/70"}`}
+              className={`relative z-10 flex ${size === "field" ? "h-[28px]" : "h-[26px]"} items-center justify-center whitespace-nowrap px-3.5 text-[13px] font-medium ${activeKey === item.key ? "text-primary" : "text-foreground"}`}
             >
               {item.label}
             </span>

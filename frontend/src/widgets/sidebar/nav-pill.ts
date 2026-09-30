@@ -2,9 +2,14 @@
 // buttons (BuildInfoBadge, DonateButton) so they read as more nav rows,
 // not a visually distinct block. Split into its own module so those footer
 // widgets don't import Sidebar.tsx directly and create a cycle.
-export const SIDEBAR_PILL_CLASSNAME =
-  "flex items-center justify-center gap-2.5 rounded-full py-2.5 pl-3.5 pr-2.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground lg:justify-start";
+// Icon rail: a 40px circle, icon dead centre. Expanded: a full-width row whose
+// icon keeps the same 11.5px inset on every side (40px - 17px icon, halved).
+export const SIDEBAR_PILL_SHAPE_CLASSNAME =
+  "flex size-10 shrink-0 items-center justify-center gap-2.5 self-center rounded-full text-[13.5px] xl:group-data-expanded/sidebar:w-auto xl:group-data-expanded/sidebar:self-stretch xl:group-data-expanded/sidebar:justify-start xl:group-data-expanded/sidebar:pl-[11.5px] xl:group-data-expanded/sidebar:pr-2.5";
 
-// Below `lg` there's no room for text labels next to the icons — the sidebar
-// collapses to an icon rail instead (matches DESKTOP_BREAKPOINT elsewhere).
-export const LABEL_CLASSNAME = "hidden lg:inline";
+export const SIDEBAR_PILL_CLASSNAME = `${SIDEBAR_PILL_SHAPE_CLASSNAME} font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground`;
+
+// Below `xl` there's no room for text labels next to the icons — the sidebar
+// collapses to an icon rail instead; on `xl` and up only while the viewer
+// hasn't collapsed it (`data-expanded` on the Sidebar's aside).
+export const LABEL_CLASSNAME = "hidden whitespace-nowrap xl:group-data-expanded/sidebar:inline";

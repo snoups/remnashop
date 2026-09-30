@@ -1,4 +1,5 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, BASE_URL } from "@shared/api/http";
+import { getAccessToken } from "@shared/lib/token-storage";
 
 export type AdLinkChannel = "BOT" | "WEBCABINET";
 
@@ -9,6 +10,8 @@ export interface AdLink {
   cost: string;
   cost_currency: string;
   is_active: boolean;
+  allow_bot: boolean;
+  allow_webcabinet: boolean;
   note: string | null;
   created_by: number | null;
   created_at: string | null;
@@ -20,8 +23,6 @@ export const DEFAULT_PAGE_SIZE = 50;
 // mirror CreateAdLinkRequest.code in backend/app/modules/advertising/api/schemas.py
 export const AD_LINK_CODE_PATTERN = /^[A-Za-z0-9_-]+$/;
 export const AD_LINK_CODE_MAX_LENGTH = 48;
-// matches telegram/middlewares/_codes.py's _AD_LINK_PREFIX
-export const AD_LINK_START_PREFIX = "ad_";
 
 export interface AdLinkListPage {
   items: AdLink[];
@@ -51,6 +52,8 @@ export interface CreateAdLinkRequest {
   code: string;
   cost?: string;
   cost_currency?: string;
+  allow_bot?: boolean;
+  allow_webcabinet?: boolean;
   note?: string | null;
 }
 
@@ -63,6 +66,8 @@ export interface UpdateAdLinkRequest {
   cost?: string;
   cost_currency?: string;
   is_active?: boolean;
+  allow_bot?: boolean;
+  allow_webcabinet?: boolean;
   note?: string | null;
 }
 
@@ -91,7 +96,7 @@ export interface AdLinkStats {
   report_currency: string;
   cpa: string | null;
   roi: string | null;
-  daily_registrations: { day: string; count: number }[];
+  daily_registrations: { day: string; count: number; by_channel: Partial<Record<AdLinkChannel, number>> }[];
 }
 
 // createdFrom: ISO timestamp; counts only attributions made since then.
@@ -128,12 +133,14 @@ export interface AdvertisingSummary {
 }
 
 export function getAdvertisingSummary(
-  filters: { isActive?: boolean; createdFrom?: string },
+  /** createdTo: the summary as it looked at that moment (later attributions and payments left out) */
+  filters: { isActive?: boolean; createdFrom?: string; createdTo?: string },
   signal?: AbortSignal,
 ): Promise<AdvertisingSummary> {
   const params = new URLSearchParams();
   if (filters.isActive !== undefined) params.set("is_active", String(filters.isActive));
   if (filters.createdFrom) params.set("created_from", filters.createdFrom);
+  if (filters.createdTo) params.set("created_to", filters.createdTo);
   return apiGet<AdvertisingSummary>(`/advertising/summary?${params.toString()}`, signal);
 }
 
@@ -158,4 +165,39 @@ export function listAdLinkAttributedUsers(
 ): Promise<AttributedUserPage> {
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
   return apiGet<AttributedUserPage>(`/advertising/links/${adLinkId}/users?${params.toString()}`, signal);
+}
+
+export interface UserAdAttribution {
+  ad_link_id: number;
+  name: string;
+  code: string;
+  channel: AdLinkChannel;
+  attributed_at: string;
+}
+
+export function getUserAdAttribution(userId: number, signal?: AbortSignal): Promise<UserAdAttribution | null> {
+  return apiGet<UserAdAttribution | null>(`/advertising/users/${userId}/attribution`, signal);
+}
+
+// null = channel not allowed on the link, or its base URL isn't configured
+export interface AdLinkShareUrls {
+  bot_url: string | null;
+  webcabinet_url: string | null;
+}
+
+export function getAdLinkShareUrls(adLinkId: number, signal?: AbortSignal): Promise<AdLinkShareUrls> {
+  return apiGet<AdLinkShareUrls>(`/advertising/links/${adLinkId}/share`, signal);
+}
+
+// Not routed through apiGet: the response is a PNG, not JSON -- same as
+// entities/banners/api.ts's fetchBannerImageBlob.
+export async function fetchAdLinkQr(adLinkId: number, channel: AdLinkChannel): Promise<Blob> {
+  const token = getAccessToken();
+  const response = await fetch(`${BASE_URL}/advertising/links/${adLinkId}/qr?channel=${channel}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch QR code: ${response.status}`);
+  }
+  return response.blob();
 }

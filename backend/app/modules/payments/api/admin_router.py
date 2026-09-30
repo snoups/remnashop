@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from datetime import datetime
 from typing import Optional
 
@@ -11,10 +12,13 @@ from app.core.exceptions import NotFoundError
 from app.modules.payments.api.schemas import (
     PaymentOrderPageResponse,
     PaymentOrderResponse,
+    PaymentOrderSummaryResponse,
     PaymentOrderUserResponse,
 )
 from app.modules.payments.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaymentOrderWithUserDto
 from app.modules.payments.usecases import (
+    GetPaymentOrderSummaryInput,
+    GetPaymentOrderSummaryUseCase,
     GetPaymentOrderUseCase,
     ListPaymentOrderGatewaysUseCase,
     ListPaymentOrdersInput,
@@ -69,6 +73,7 @@ async def list_payment_orders(
     purchase_type: Optional[PurchaseType] = None,
     created_from: Optional[datetime] = None,
     search: Optional[str] = None,
+    user_id: Optional[int] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> PaymentOrderPageResponse:
@@ -80,6 +85,7 @@ async def list_payment_orders(
             purchase_type=purchase_type,
             created_from=created_from,
             search=search,
+            user_id=user_id,
             page=page,
             page_size=page_size,
         ),
@@ -87,7 +93,35 @@ async def list_payment_orders(
     return PaymentOrderPageResponse(items=[_to_response(item) for item in items], total=total)
 
 
-# declared before /{order_id} so "gateways" isn't parsed as an order id
+# declared before /{order_id} so "summary"/"gateways" aren't parsed as an order id
+@router.get("/summary", response_model=PaymentOrderSummaryResponse)
+@inject
+async def get_payment_order_summary(
+    use_case: FromDishka[GetPaymentOrderSummaryUseCase],
+    actor: UserDto = Depends(require_admin),
+    status_filter: Optional[PaymentOrderStatus] = Query(None, alias="status"),
+    gateway_type: Optional[PaymentGatewayType] = None,
+    purchase_type: Optional[PurchaseType] = None,
+    created_from: Optional[datetime] = None,
+    created_to: Optional[datetime] = None,
+    search: Optional[str] = None,
+    user_id: Optional[int] = None,
+) -> PaymentOrderSummaryResponse:
+    summary = await use_case(
+        actor,
+        GetPaymentOrderSummaryInput(
+            status=status_filter,
+            gateway_type=gateway_type,
+            purchase_type=purchase_type,
+            created_from=created_from,
+            created_to=created_to,
+            search=search,
+            user_id=user_id,
+        ),
+    )
+    return PaymentOrderSummaryResponse(**asdict(summary))
+
+
 @router.get("/gateways", response_model=list[PaymentGatewayType])
 @inject
 async def list_payment_order_gateways(

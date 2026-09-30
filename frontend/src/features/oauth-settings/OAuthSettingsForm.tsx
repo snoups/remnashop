@@ -16,6 +16,10 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
+import { Button } from "@shared/ui/Button";
+import { TextInput } from "@shared/ui/TextInput";
+import { Card } from "@shared/ui/Card";
+import { Field } from "@shared/ui/Field";
 
 import { GithubOAuthGuideDialog } from "./GithubOAuthGuideDialog";
 import { OidcOAuthGuideDialog } from "./OidcOAuthGuideDialog";
@@ -23,11 +27,11 @@ import { PasskeyGuideDialog } from "./PasskeyGuideDialog";
 import { PasswordLoginGuideDialog } from "./PasswordLoginGuideDialog";
 import { TelegramOAuthGuideDialog } from "./TelegramOAuthGuideDialog";
 
+
 type Provider = "github" | "telegram" | "oidc";
 
 export function OAuthSettingsForm() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, , setData] = useAsyncResource(getOAuthSettings);
   const [githubClientId, setGithubClientId] = useState("");
   const [githubClientSecret, setGithubClientSecret] = useState("");
@@ -94,7 +98,7 @@ export function OAuthSettingsForm() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <Card>
       <div className="flex items-center gap-2.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
           <KeyRound className="size-4" />
@@ -108,7 +112,7 @@ export function OAuthSettingsForm() {
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
       {state.kind === "loading" && (
-        <Spinner className="mt-4" />
+        <Spinner size="card" />
       )}
       {state.kind === "error" && (
         <p className="mt-4 text-sm text-error">{t("settings.oauth.loadError")}</p>
@@ -215,17 +219,17 @@ export function OAuthSettingsForm() {
             />
           </div>
 
-          <motion.button
+          <Button
+            variant="accent"
+            className="mt-4 w-fit"
             type="submit"
             disabled={isSubmitting}
-            {...bounceTap(bounceStrength)}
-            className="mt-4 w-fit rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? t("settings.oauth.saving") : t("settings.oauth.save")}
-          </motion.button>
+          </Button>
         </form>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -313,7 +317,7 @@ function ProviderPanel({
           />
         </span>
         {guide}
-        <div className="flex" onClick={(event) => event.stopPropagation()}>
+        <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
           <Switch
             checked={isEnabled}
             onChange={(value) => void handleToggle(value)}
@@ -334,17 +338,16 @@ function ProviderPanel({
           >
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
               {fields.map((field) => (
-                <div key={field.key} className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-foreground/80">{field.label}</label>
-                  <input
+                <Field key={field.key} label={field.label} htmlFor={`oauth-${field.key}`}>
+                  <TextInput
+                    id={`oauth-${field.key}`}
                     type="text"
                     value={field.value}
                     onChange={(event) => field.onChange(event.target.value)}
                     placeholder={t("settings.oauth.placeholder")}
                     autoComplete="off"
-                    className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
                   />
-                </div>
+                </Field>
               ))}
             </div>
           </motion.div>
@@ -425,7 +428,7 @@ function PasskeyPanel({
           />
         </span>
         <PasskeyGuideDialog />
-        <div className="flex" onClick={(event) => event.stopPropagation()}>
+        <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
           <Switch
             checked={isEnabled}
             onChange={(value) => void handleToggle(value)}
@@ -445,32 +448,24 @@ function PasskeyPanel({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground/80">
-                  {t("settings.oauth.passkeyRpIdLabel")}
-                </label>
-                <input
+              <Field label={t("settings.oauth.passkeyRpIdLabel")}>
+                <TextInput
                   type="text"
                   value={rpId}
                   onChange={(event) => onRpIdChange(event.target.value)}
                   placeholder={t("settings.oauth.placeholder")}
                   autoComplete="off"
-                  className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
                 />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground/80">
-                  {t("settings.oauth.passkeyOriginLabel")}
-                </label>
-                <input
+              </Field>
+              <Field label={t("settings.oauth.passkeyOriginLabel")}>
+                <TextInput
                   type="text"
                   value={origin}
                   onChange={(event) => onOriginChange(event.target.value)}
                   placeholder={t("settings.oauth.placeholder")}
                   autoComplete="off"
-                  className="rounded-xl border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
                 />
-              </div>
+              </Field>
             </div>
           </motion.div>
         )}
@@ -514,12 +509,14 @@ function PasswordLoginToggle({ isEnabled, onToggled }: PasswordLoginToggleProps)
         </p>
       </div>
       <PasswordLoginGuideDialog />
-      <Switch
-        checked={isEnabled}
-        onChange={(value) => void handleToggle(value)}
-        disabled={isToggling}
-        ariaLabel={t("settings.oauth.passwordLoginLabel")}
-      />
+      <div className="mr-1 flex">
+        <Switch
+          checked={isEnabled}
+          onChange={(value) => void handleToggle(value)}
+          disabled={isToggling}
+          ariaLabel={t("settings.oauth.passwordLoginLabel")}
+        />
+      </div>
     </div>
   );
 }

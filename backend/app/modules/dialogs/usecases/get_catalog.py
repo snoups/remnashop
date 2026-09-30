@@ -24,6 +24,10 @@ class GetDialogCatalogUseCase(UseCase[None, DialogCatalogDto]):
                 condition_keys=sorted(catalog.condition_keys()),
                 variable_keys=sorted(catalog.variable_keys()),
                 text_variable_keys=sorted(catalog.text_variable_keys()),
+                window_text_variable_keys={
+                    w.key: list(w.text_variables) for w in catalog.all_windows() if w.text_variables
+                },
+                variable_categories=catalog.variable_categories(),
                 seed_window_keys=sorted(w.key for w in catalog.all_windows()),
                 navigable_window_keys=navigable,
                 custom_window_limit=CUSTOM_DIALOG_WINDOW_SLOTS,

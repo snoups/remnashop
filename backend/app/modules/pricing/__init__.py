@@ -15,7 +15,7 @@ from app.modules.pricing.dto import (
     UpdatePricingSettingsDto,
 )
 from app.modules.pricing.repository import PricingRepository
-from app.modules.pricing.resolver import resolve_price, round_amount
+from app.modules.pricing.resolver import convert_for_report, resolve_price, round_amount
 from app.modules.pricing.usecases import (
     AdjustBasePricesUseCase,
     GetPriceBookUseCase,
@@ -46,6 +46,7 @@ __all__ = [
     "UpdateCurrencyRateUseCase",
     "UpdatePricingSettingsDto",
     "UpdatePricingSettingsUseCase",
+    "convert_for_report",
     "get_pricing_providers",
     "resolve_price",
     "round_amount",

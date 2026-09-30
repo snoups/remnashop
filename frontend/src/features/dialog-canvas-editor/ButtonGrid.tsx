@@ -16,7 +16,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { buttonKey, iconTextKey } from "@entities/dialogs/api";
+import { buttonKey, iconIdTextKey, iconTextKey } from "@entities/dialogs/api";
+import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiText";
 import type { DialogButtonItem } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 
@@ -30,7 +31,7 @@ interface ButtonGridProps {
   onReorder: (next: DialogButtonItem[]) => void;
 }
 
-export function buttonRows(buttons: DialogButtonItem[]): DialogButtonItem[][] {
+function buttonRows(buttons: DialogButtonItem[]): DialogButtonItem[][] {
   const byRow = new Map<number, DialogButtonItem[]>();
   for (const button of buttons) {
     const row = byRow.get(button.row) ?? [];
@@ -110,15 +111,21 @@ function ButtonFace({
 }) {
   const { label, isUnlabelled } = useButtonLabel(button, textByKey);
   const styleClassName = button.style ? STYLE_CLASSNAME[button.style] : "border-white/[0.12]";
-  // A premium emoji has no glyph to show here, so the plain one is all the
-  // preview can draw -- same as what a bot without Premium actually sends.
   const icon = textByKey[iconTextKey(button.text_key)];
+  // a premium icon keeps its plain glyph as the fallback -- drawn if the thumbnail fails
+  const iconId = textByKey[iconIdTextKey(button.text_key)];
 
   return (
     <span
       className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${styleClassName} ${className}`}
     >
-      {icon ? <span className="text-[13px]">{icon}</span> : null}
+      {iconId ? (
+        <span className="text-[13px]">
+          <EmojiThumbnail glyph={icon ?? ""} customEmojiId={iconId} />
+        </span>
+      ) : icon ? (
+        <span className="text-[13px]">{icon}</span>
+      ) : null}
       <span className={`truncate ${isUnlabelled ? "italic text-muted-foreground" : ""}`}>{label}</span>
       {button.visibility_condition ? (
         <span className="text-[9.5px] text-muted-foreground">({button.visibility_condition})</span>

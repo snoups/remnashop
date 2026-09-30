@@ -7,6 +7,7 @@ import { getPasskeyAuthenticationOptions, verifyPasskeyAuthentication } from "@e
 import { getErrorMessage } from "@shared/api/http";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { toast } from "@shared/lib/toast";
+import { Button } from "@shared/ui/Button";
 
 interface PasskeyLoginButtonProps {
   onSuccess: () => void;
@@ -38,14 +39,15 @@ export function PasskeyLoginButton({ onSuccess }: PasskeyLoginButtonProps) {
   };
 
   return (
-    <button
+    <Button
+      variant="outline"
+      className="w-full max-w-sm"
       type="button"
       onClick={() => void handleClick()}
       disabled={isLoading}
-      className="flex w-full max-w-sm items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
     >
       <Fingerprint size={16} />
       {t("auth.oauth.passkeySignIn")}
-    </button>
+    </Button>
   );
 }

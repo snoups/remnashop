@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.oauth_settings import OAuthSettings
-from app.core.enums import AppearanceImageKind, AppearanceResetScope, Locale
+from app.core.enums import AppearanceImageKind, Locale
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
     UpdateAppearanceSettingsDto,
@@ -364,7 +364,7 @@ async def test_update_appearance_settings_persists_partial_updates(
     assert settings.shader_enabled is False
 
 
-async def test_reset_appearance_settings_clears_only_its_scope(
+async def test_reset_appearance_settings_clears_all_fields(
     settings_repository: SettingsRepository,
 ) -> None:
     await settings_repository.update_appearance_settings(
@@ -375,14 +375,9 @@ async def test_reset_appearance_settings_clears_only_its_scope(
             shader_enabled=False,
         )
     )
-    settings = await settings_repository.reset_appearance_settings(AppearanceResetScope.BRANDING)
+    settings = await settings_repository.reset_appearance_settings()
 
     assert settings.brand_name is None
-    assert settings.primary_color == "#ff0000"
-    assert settings.shader_enabled is False
-
-    settings = await settings_repository.reset_appearance_settings(AppearanceResetScope.COLORS)
-
     assert settings.primary_color is None
     assert settings.shader_palette is None
     assert settings.shader_enabled is True

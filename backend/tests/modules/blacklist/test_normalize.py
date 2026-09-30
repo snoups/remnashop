@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.enums import BlacklistKind
-from app.modules.blacklist.normalize import derive_source_name, normalize_identity
+from app.modules.blacklist.normalize import derive_source_name, normalize_identity, removal_key
 
 TG = BlacklistKind.TELEGRAM_ID
 EMAIL = BlacklistKind.EMAIL
@@ -34,6 +34,10 @@ def test_normalize_telegram_id(raw: str, expected):
         ("plainstring", None),
         ("no@spaces here@x", None),
         ("@nodomain", None),
+        ("email@.", None),
+        ("email@example", None),
+        ("email@example.", None),
+        ("email@.com", None),
         ("", None),
     ],
 )
@@ -56,3 +60,8 @@ def test_normalize_email(raw: str, expected):
 )
 def test_derive_source_name(url: str, expected: str) -> None:
     assert derive_source_name(url) == expected
+
+
+def test_removal_key_keeps_emails_saved_under_a_looser_rule() -> None:
+    assert removal_key(EMAIL, "  Email@. ") == "email@."
+    assert removal_key(TG, "id 0123") == "123"

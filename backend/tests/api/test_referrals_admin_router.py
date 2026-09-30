@@ -22,6 +22,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.passkeys import get_passkey_revoker_providers
+from app.modules.pricing import PricingRepository
 from app.modules.referrals import get_referrals_providers
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings import get_settings_providers
@@ -44,6 +45,13 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
+def _pricing_repository_provider() -> Provider:
+    # just the repository: the settings usecases read the anchor currency from it
+    provider = Provider(scope=Scope.REQUEST)
+    provider.provide(PricingRepository)
+    return provider
+
+
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
@@ -56,6 +64,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
         *get_settings_providers(),
         *get_translations_providers(),
         *get_referrals_providers(),
+        _pricing_repository_provider(),
         *get_blacklist_providers(),
         _TestSessionProvider(session),
     ]
@@ -122,7 +131,7 @@ async def test_update_then_get_referral_settings_roundtrip(
 ) -> None:
     put_response = await client.put(
         f"{API_V1}/referrals/settings",
-        json={"enabled": True, "max_level": 2},
+        json={"enabled": True, "max_level": 2, "reward_amounts": {"1": "5", "2": "2"}},
         headers=admin_auth_headers,
     )
     assert put_response.status_code == 200

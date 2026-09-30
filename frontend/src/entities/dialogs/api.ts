@@ -45,6 +45,10 @@ export interface DialogCatalog {
   condition_keys: string[];
   variable_keys: string[];
   text_variable_keys: string[];
+  /** A window's own variables, on top of text_variable_keys. */
+  window_text_variable_keys: Record<string, string[]>;
+  /** variable -> its picker group: "user", "subscription", ... */
+  variable_categories: Record<string, string>;
   seed_window_keys: string[];
   navigable_window_keys: string[];
   custom_window_limit: number;
@@ -158,7 +162,40 @@ export const MAX_BUTTONS = 100;
 export const MAX_TEXT_LENGTH = 4096;
 export const MAX_CAPTION_LENGTH = 1024;
 
-const PREMIUM_EMOJI_RE = /\[([^[\]]{1,16})\]\(emoji:(\d{1,24})\)/g;
+/** `[glyph](emoji:id)`: premium emoji markup inside dialog text. */
+export const PREMIUM_EMOJI_RE = /\[([^[\]]{1,16})\]\(emoji:(\d{1,24})\)/g;
+
+export interface VariableOption {
+  name: string;
+  category: string;
+}
+
+/** Catalog variables for a picker; a window's own ones group as "window". */
+export function variableOptions(
+  catalog: DialogCatalog | null,
+  keys: string[],
+  windowKeys: string[] = [],
+): VariableOption[] {
+  return [
+    ...keys.map((name) => ({ name, category: catalog?.variable_categories[name] ?? "other" })),
+    ...windowKeys.map((name) => ({ name, category: "window" })),
+  ];
+}
+
+export type TextPart = string | { glyph: string; customEmojiId: string };
+
+/** Plain runs and premium emoji, in order -- for showing the emoji themselves. */
+export function splitPremiumEmoji(value: string): TextPart[] {
+  const parts: TextPart[] = [];
+  let last = 0;
+  for (const match of value.matchAll(PREMIUM_EMOJI_RE)) {
+    if (match.index > last) parts.push(value.slice(last, match.index));
+    parts.push({ glyph: match[1], customEmojiId: match[2] });
+    last = match.index + match[0].length;
+  }
+  if (last < value.length) parts.push(value.slice(last));
+  return parts;
+}
 
 /** What Telegram counts: UTF-16 units, with premium emoji markup as its glyph. */
 export function sentTextLength(value: string): number {

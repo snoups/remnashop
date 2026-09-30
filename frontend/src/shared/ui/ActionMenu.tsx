@@ -1,84 +1,116 @@
-import { MoreVertical } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useRef, useState, type ComponentType } from "react";
+import { ChevronDown, MoreVertical } from "lucide-react";
+import { motion } from "motion/react";
+import { Fragment, useRef, useState, type ComponentType } from "react";
+import { useTranslation } from "react-i18next";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { BounceIcon } from "@shared/ui/BounceIcon";
+import { Button } from "@shared/ui/Button";
+import { IconButton } from "@shared/ui/IconButton";
+import { PortalPopover } from "@shared/ui/PortalPopover";
+import { Tooltip } from "@shared/ui/Tooltip";
+
+// separators aside: 36px per item plus the popover padding
+const ITEM_HEIGHT = 36;
 
 export interface ActionMenuItem {
   label: string;
   icon: ComponentType<{ className?: string }>;
   onClick: () => void;
   variant?: "danger";
+  separatorBefore?: boolean;
+  disabled?: boolean;
+  /** why the item is disabled; shown on hover */
+  hint?: string;
 }
 
 interface ActionMenuProps {
   items: ActionMenuItem[];
+  /** a labelled button instead of the ⋮ icon, e.g. in a dialog footer */
+  trigger?: { label: string; icon: ComponentType<{ className?: string }> };
 }
 
-export function ActionMenu({ items }: ActionMenuProps) {
+export function ActionMenu({ items, trigger }: ActionMenuProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const bounceStrength = useBounceStrength();
+  const popoverRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside(ref, isOpen, () => setIsOpen(false));
-  useCloseOnScroll(isOpen, ref, () => setIsOpen(false));
+  useClickOutside([ref, popoverRef], isOpen, () => setIsOpen(false));
+  useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
 
   if (items.length === 0) return null;
 
   return (
     <div ref={ref} className="relative">
-      <motion.button
-        type="button"
-        onClick={() => setIsOpen((open) => !open)}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        {...bounceTap(bounceStrength, 0.12)}
-        propagate={{ tap: false }}
-        className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-      >
-        <MoreVertical className="size-4" />
-      </motion.button>
+      {trigger ? (
+        <Button variant="outline" onClick={() => setIsOpen((open) => !open)} aria-haspopup="menu" aria-expanded={isOpen}>
+          <trigger.icon className="size-3.5" />
+          {trigger.label}
+          <ChevronDown className={`size-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </Button>
+      ) : (
+        <IconButton
+          size="8"
+          bounce={0.12}
+          aria-label={t("app.moreActions")}
+          onClick={() => setIsOpen((open) => !open)}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          propagate={{ tap: false }}
+        >
+          <MoreVertical className="size-4" />
+        </IconButton>
+      )}
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            style={{ transformOrigin: "top right" }}
-            // claims the press so a bouncing parent row doesn't bounce along
-            whileTap={{}}
-            propagate={{ tap: false }}
-            tabIndex={-1}
-            role="menu"
-            className="absolute right-0 top-full z-30 mt-2 min-w-44 outline-none rounded-popover border border-white/[0.14] bg-popover/60 p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150"
-          >
-            {items.map((item) => (
+      <PortalPopover
+        open={isOpen}
+        triggerRef={ref}
+        popoverRef={popoverRef}
+        align="right"
+        maxHeight={items.length * ITEM_HEIGHT + 20}
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.85 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        // claims the press so a bouncing parent row doesn't bounce along
+        whileTap={{}}
+        propagate={{ tap: false }}
+        tabIndex={-1}
+        role="menu"
+        className="min-w-44 outline-none p-1.5"
+      >
+        {items.map((item, index) => (
+          <Fragment key={item.label}>
+            {item.separatorBefore && index > 0 && (
+              <div role="separator" className="my-1 h-px bg-white/[0.08]" />
+            )}
+            {/* the wrapper carries the hover: a disabled button doesn't reliably get one */}
+            <div className="group relative">
               <motion.button
-                key={item.label}
                 type="button"
                 role="menuitem"
+                disabled={item.disabled}
+                aria-label={item.hint ? `${item.label}. ${item.hint}` : undefined}
                 onClick={() => {
                   setIsOpen(false);
                   item.onClick();
                 }}
                 initial="rest"
-                whileHover="hover"
-                className={`flex w-full items-center gap-2.5 rounded-full px-2.5 py-2 text-left text-[13px] font-medium transition-colors hover:bg-white/[0.07] ${
+                whileHover={item.disabled ? undefined : "hover"}
+                className={`flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium transition-colors enabled:hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50 ${
                   item.variant === "danger" ? "text-error" : "text-foreground"
                 }`}
               >
                 <BounceIcon icon={item.icon} size={15} hoverSize={18.75} />
                 <span className="truncate">{item.label}</span>
               </motion.button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {item.hint && <Tooltip text={item.hint} side="top" />}
+            </div>
+          </Fragment>
+        ))}
+      </PortalPopover>
     </div>
   );
 }

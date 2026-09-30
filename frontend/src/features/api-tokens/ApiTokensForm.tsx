@@ -1,22 +1,23 @@
 import { Infinity as InfinityIcon, KeyRound, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { motion } from "motion/react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { type ApiToken, type CreatedApiToken, listApiTokens, revokeApiToken } from "@entities/api-tokens/api";
 import { CreateApiTokenDialog } from "@features/api-tokens/CreateApiTokenDialog";
-import { RevealSecretDialog } from "@features/api-tokens/RevealSecretDialog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Spinner } from "@shared/ui/Spinner";
+import { Button } from "@shared/ui/Button";
+import { Tag } from "@shared/ui/Tag";
+import { Card } from "@shared/ui/Card";
+import { IconButton } from "@shared/ui/IconButton";
+import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
 
 export function ApiTokensForm() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const catalogState = usePermissionCatalog();
   const [state, reload] = useAsyncResource(listApiTokens);
   const [isCreating, setIsCreating] = useState(false);
@@ -39,7 +40,7 @@ export function ApiTokensForm() {
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
@@ -51,15 +52,10 @@ export function ApiTokensForm() {
           </div>
         </div>
         {!(state.kind === "ready" && state.data.length === 0) && (
-          <motion.button
-            type="button"
-            onClick={() => setIsCreating(true)}
-            {...bounceTap(bounceStrength)}
-            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-transparent bg-accent px-4 py-1.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/20"
-          >
+          <Button variant="accent" className="ml-auto" onClick={() => setIsCreating(true)}>
             <Plus className="size-3.5" />
             {t("apiTokens.create")}
-          </motion.button>
+          </Button>
         )}
       </div>
 
@@ -67,7 +63,7 @@ export function ApiTokensForm() {
 
       {state.kind === "loading" && (
         <div className="mt-4">
-          <Spinner />
+          <Spinner size="card" />
         </div>
       )}
       {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("apiTokens.loadError")}</p>}
@@ -82,20 +78,20 @@ export function ApiTokensForm() {
           <code className="rounded-xl border border-white/[0.07] bg-black/35 px-3.5 py-2 font-mono text-xs text-muted-foreground">
             Authorization: Bearer &lt;token&gt;
           </code>
-          <motion.button
+          <Button
+            variant="accent"
+            className="mt-1"
             type="button"
             onClick={() => setIsCreating(true)}
-            {...bounceTap(bounceStrength)}
-            className="mt-1 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
           >
             <Plus className="size-3.5" />
             {t("apiTokens.createFirst")}
-          </motion.button>
+          </Button>
         </div>
       )}
       {state.kind === "ready" && state.data.length > 0 && (
         <div className="mt-4 flex flex-col divide-y divide-border/50">
-          <div className={`hidden mb-1.5 px-[12.5px] pb-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase md:grid ${ROW_GRID}`}>
+          <div className={`hidden mb-1.5 px-2.5 pb-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase md:grid ${ROW_GRID}`}>
             <span>{t("apiTokens.columnToken")}</span>
             <span>{t("apiTokens.columnLastUsed")}</span>
             <span>{t("apiTokens.columnExpiry")}</span>
@@ -116,7 +112,12 @@ export function ApiTokensForm() {
       )}
 
       {revealedSecret && (
-        <RevealSecretDialog secret={revealedSecret} onDone={() => setRevealedSecret(null)} />
+        <OneTimeSecretDialog
+          title={t("apiTokens.secretTitle")}
+          value={revealedSecret}
+          copyAria={t("apiTokens.copy")}
+          onDone={() => setRevealedSecret(null)}
+        />
       )}
 
       {pendingRevoke && (
@@ -133,7 +134,7 @@ export function ApiTokensForm() {
           onCancel={() => setPendingRevoke(null)}
         />
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -141,17 +142,8 @@ const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_170px_210px_36px] md:gap-5";
 const DAY_MS = 86_400_000;
 const EXPIRING_SOON_DAYS = 7;
 const CHIP_GAP = 4;
-const CHIP_CLASS = "rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-muted-foreground";
 const MORE_CLASS =
   "rounded-full border border-dashed border-white/[0.18] px-2 py-0.5 text-[11px] font-semibold text-muted-foreground";
-
-function formatAgo(date: Date, language: string): string {
-  const rtf = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
-  const seconds = (date.getTime() - Date.now()) / 1000;
-  if (seconds > -3600) return rtf.format(Math.round(seconds / 60), "minute");
-  if (seconds > -86_400) return rtf.format(Math.round(seconds / 3600), "hour");
-  return rtf.format(Math.round(seconds / 86_400), "day");
-}
 
 interface ApiTokenRowProps {
   token: ApiToken;
@@ -168,7 +160,8 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
   const totalDays = expiresAt
     ? Math.max(1, Math.round((expiresAt.getTime() - new Date(token.created_at).getTime()) / DAY_MS))
     : null;
-  const isExpiringSoon = daysLeft !== null && daysLeft <= EXPIRING_SOON_DAYS;
+  const isExpired = expiresAt !== null && expiresAt.getTime() <= Date.now();
+  const isExpiringSoon = !isExpired && daysLeft !== null && daysLeft <= EXPIRING_SOON_DAYS;
   const areaRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(token.permissions.length);
@@ -215,11 +208,11 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
           toggleExpanded();
         },
       })}
-      className={`grid grid-cols-[minmax(0,1fr)_36px] items-start gap-3 px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04] ${isExpanded ? "rounded-2xl" : "rounded-full"} ${canExpand ? "cursor-pointer" : ""} ${ROW_GRID}`}
+      className={`grid grid-cols-[minmax(0,1fr)_36px] items-start gap-3 px-2.5 py-2.5 transition-colors hover:bg-white/[0.04] ${isExpanded ? "rounded-2xl" : "rounded-full"} ${canExpand ? "cursor-pointer" : ""} ${ROW_GRID}`}
     >
       <div className="flex min-w-0 items-start gap-3">
         <div
-          className={`flex size-8 shrink-0 items-center justify-center rounded-full ${isExpiringSoon ? "bg-warning/10 text-warning" : "bg-success/10 text-success"}`}
+          className={`flex size-8 shrink-0 items-center justify-center rounded-full ${isExpired ? "bg-error/10 text-error" : isExpiringSoon ? "bg-warning/10 text-warning" : "bg-success/10 text-success"}`}
         >
           <KeyRound className="size-4" />
         </div>
@@ -237,16 +230,16 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
             >
               <div aria-hidden ref={measureRef} className="invisible absolute flex gap-1">
                 {token.permissions.map((permission) => (
-                  <span key={permission} className={`${CHIP_CLASS} whitespace-nowrap`}>
+                  <Tag key={permission}>
                     {t(`permissions.${permission}`)}
-                  </span>
+                  </Tag>
                 ))}
                 <span className={MORE_CLASS}>+{token.permissions.length}</span>
               </div>
               {(isExpanded ? token.permissions : token.permissions.slice(0, visibleCount)).map((permission) => (
-                <span key={permission} className={`${CHIP_CLASS} shrink-0 whitespace-nowrap`}>
+                <Tag key={permission}>
                   {t(`permissions.${permission}`)}
-                </span>
+                </Tag>
               ))}
               {hiddenCount > 0 && (
                 <span className={`${MORE_CLASS} shrink-0`}>
@@ -260,12 +253,9 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
 
       <div className="col-span-2 pl-11 md:col-span-1 md:pl-0">
         {token.last_used_at ? (
-          <>
-            <p className="text-sm text-foreground">{formatAgo(new Date(token.last_used_at), i18n.language)}</p>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-              {new Date(token.last_used_at).toLocaleString(i18n.language)}
-            </p>
-          </>
+          <p className="truncate text-sm leading-8 text-foreground">
+            {new Date(token.last_used_at).toLocaleString(i18n.language)}
+          </p>
         ) : (
           <p className="text-sm leading-8 text-muted-foreground italic">{t("apiTokens.neverUsed")}</p>
         )}
@@ -275,11 +265,13 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
         {daysLeft !== null && totalDays !== null ? (
           <>
             <div className="flex justify-between gap-2 text-sm">
-              <span className={isExpiringSoon ? "text-warning" : "text-foreground"}>
-                {new Intl.RelativeTimeFormat(i18n.language, { numeric: "auto" }).format(daysLeft, "day")}
+              <span className={`first-letter:uppercase ${isExpired ? "text-error" : isExpiringSoon ? "text-warning" : "text-foreground"}`}>
+                {isExpired
+                  ? t("apiTokens.expired")
+                  : new Intl.RelativeTimeFormat(i18n.language, { numeric: "always" }).format(daysLeft, "day")}
               </span>
               <span className="text-[12.5px] text-muted-foreground">
-                {t("apiTokens.ofDays", { count: totalDays })}
+                {totalDays}
               </span>
             </div>
             <div className="mt-2 h-1 rounded-full bg-white/[0.08]">
@@ -290,24 +282,22 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
             </div>
           </>
         ) : (
-          <p className="flex h-8 items-center gap-1.5 text-sm text-muted-foreground">
+          <p className="flex h-8 items-center gap-1.5 text-sm text-foreground">
             <InfinityIcon className="size-3.5" />
             {t("apiTokens.neverExpires")}
           </p>
         )}
       </div>
 
-      <button
-        type="button"
+      <IconButton size="8" tone="danger" className="col-start-2 row-start-1 justify-self-end md:col-start-4"
         onClick={(event) => {
           event.stopPropagation();
           onRevoke();
         }}
         aria-label={t("apiTokens.revoke")}
-        className="col-start-2 row-start-1 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-error/10 hover:text-error md:col-start-4"
       >
         <Trash2 className="size-4" />
-      </button>
+      </IconButton>
     </div>
   );
 }

@@ -8,7 +8,7 @@ from typing import Final, TypeVar
 from redis.asyncio import Redis
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, Role, SubscriptionStatus
+from app.core.enums import Role, SubscriptionStatus
 from app.core.remnawave_online import read_daily_online_peaks, read_latest_online
 from app.core.runtime_heartbeat import read_host_memory, read_runtime_heartbeats
 from app.core.security.permissions import Permission, PermissionPolicy
@@ -28,7 +28,7 @@ from app.modules.overview.dto import (
     RuntimeProcessDto,
 )
 from app.modules.payments import PaymentOrderRepository
-from app.modules.pricing import CurrencyRateTable, PricingRepository
+from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.users import UserDto, UserRepository
 
@@ -69,18 +69,6 @@ def _bucketize(
     for day, value in rows:
         acc[day] = op(acc[day], value)
     return sorted(acc.items())
-
-
-def _convert(
-    amount: Decimal, from_currency: Currency, to_currency: Currency, rates: CurrencyRateTable
-) -> Decimal:
-    # Display-only reporting conversion, same shape as advertising's own
-    # _convert() -- not app.modules.pricing.resolve_price, no rounding/charm-
-    # ending rules apply to a revenue chart.
-    if from_currency == to_currency:
-        return amount
-    anchor_amount = amount / rates.for_currency(from_currency).rate
-    return anchor_amount * rates.for_currency(to_currency).rate
 
 
 class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
@@ -172,7 +160,7 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
                         day,
                         sum(
                             (
-                                _convert(amount, currency, report_currency, rate_table)
+                                convert_for_report(amount, currency, report_currency, rate_table)
                                 for currency, amount in by_currency.items()
                             ),
                             start=Decimal(0),

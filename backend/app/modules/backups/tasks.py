@@ -12,10 +12,12 @@ from app.core.config import AppConfig
 from app.core.constants import DATETIME_FILE_FORMAT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind
+from app.core.ports import EventPublisher
 from app.core.utils.lock import cron_lock
 from app.core.utils.time import datetime_now
 from app.modules.backups.dto import CreateBackupRunDto
 from app.modules.backups.dump import create_assets_dump, create_database_dump
+from app.modules.backups.events import BackupFailedEvent
 from app.modules.backups.provenance import sign_backup_file
 from app.modules.backups.repository import BackupRepository
 from app.worker.broker import broker
@@ -34,6 +36,7 @@ async def run_backup(
     backup_repository: BackupRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    event_publisher: EventPublisher,
 ) -> None:
     if await backup_repository.has_active(kind, exclude_run_id=run_id):
         async with uow:
@@ -83,6 +86,9 @@ async def run_backup(
             dest.unlink(missing_ok=True)
         async with uow:
             await backup_repository.mark_failed(run_id, error=str(exc))
+            await event_publisher.publish(
+                BackupFailedEvent(run_id=run_id, kind=kind.value, error=str(exc))
+            )
         return
 
     try:
@@ -109,6 +115,7 @@ async def run_backup_task(
     backup_repository: FromDishka[BackupRepository],
     uow: FromDishka[UnitOfWork],
     config: FromDishka[AppConfig],
+    event_publisher: FromDishka[EventPublisher],
 ) -> None:
     await run_backup(
         kind=BackupKind(kind),
@@ -116,6 +123,7 @@ async def run_backup_task(
         backup_repository=backup_repository,
         uow=uow,
         config=config,
+        event_publisher=event_publisher,
     )
 
 
@@ -123,7 +131,11 @@ _AUTO_BACKUP_LOCK_TTL_S: Final[int] = 55 * 60  # under the hourly cron interval
 
 
 async def auto_backup(
-    *, backup_repository: BackupRepository, uow: UnitOfWork, config: AppConfig
+    *,
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
 ) -> None:
     settings = await backup_repository.get_settings()
     if not settings.enabled:
@@ -146,6 +158,7 @@ async def auto_backup(
         backup_repository=backup_repository,
         uow=uow,
         config=config,
+        event_publisher=event_publisher,
     )
 
 
@@ -156,9 +169,15 @@ async def auto_backup_task(
     uow: FromDishka[UnitOfWork],
     config: FromDishka[AppConfig],
     redis: FromDishka[Redis],
+    event_publisher: FromDishka[EventPublisher],
 ) -> None:
     async with cron_lock(redis, "auto_backup", ttl_seconds=_AUTO_BACKUP_LOCK_TTL_S) as acquired:
         if not acquired:
             logger.debug("auto_backup_task already running, skipping this tick")
             return
-        await auto_backup(backup_repository=backup_repository, uow=uow, config=config)
+        await auto_backup(
+            backup_repository=backup_repository,
+            uow=uow,
+            config=config,
+            event_publisher=event_publisher,
+        )

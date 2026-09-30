@@ -1,11 +1,12 @@
 import type { Admin } from "@entities/admin/api";
 import type { Role } from "@shared/types/rbac";
+import type { BadgeTone } from "@shared/ui/Badge";
 
-export const ROLE_BADGE_CLASSNAME: Record<Role, string> = {
-  USER: "border-border bg-white/[0.04] text-muted-foreground",
-  ADMIN: "border-border bg-white/[0.06] text-foreground/80",
-  OWNER: "border-primary/40 bg-accent text-primary",
-  SYSTEM: "border-warning/30 bg-warning/10 text-warning",
+export const ROLE_BADGE_TONE: Record<Role, BadgeTone> = {
+  USER: "neutral",
+  ADMIN: "neutral",
+  OWNER: "accent",
+  SYSTEM: "warning",
 };
 
 export function getAdminInitials(admin: Admin): string {

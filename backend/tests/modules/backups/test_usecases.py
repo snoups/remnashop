@@ -23,6 +23,7 @@ from app.modules.backups.usecases.get_backup_stats import (
     next_scheduled_run,
 )
 from app.modules.backups.usecases.list_backup_runs import ListBackupRunsInput, ListBackupRunsUseCase
+from app.modules.backups.usecases.reset_backup_settings import ResetBackupSettingsUseCase
 from app.modules.backups.usecases.update_backup_settings import UpdateBackupSettingsUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -68,6 +69,25 @@ async def test_owner_can_update_settings(
     result = await use_case(OWNER, UpdateBackupSettingsDto(enabled=True, interval_hours=6))
     assert result.enabled is True
     assert result.interval_hours == 6
+
+
+async def test_owner_can_reset_settings(
+    backup_repository: BackupRepository, uow: UnitOfWork
+) -> None:
+    await UpdateBackupSettingsUseCase(backup_repository, uow)(
+        OWNER, UpdateBackupSettingsDto(enabled=True, interval_hours=6)
+    )
+    result = await ResetBackupSettingsUseCase(backup_repository, uow)(OWNER)
+    assert result.enabled is False
+    assert result.interval_hours == 24
+
+
+async def test_admin_without_grant_cannot_reset_settings(
+    backup_repository: BackupRepository, uow: UnitOfWork
+) -> None:
+    use_case = ResetBackupSettingsUseCase(backup_repository, uow)
+    with pytest.raises(PermissionDeniedError):
+        await use_case(ADMIN_NO_GRANT)
 
 
 class _FakeTaskDispatch:

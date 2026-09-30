@@ -1,15 +1,14 @@
-import { motion } from "motion/react";
 import { useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Admin } from "@entities/admin/api";
 import { updateAdmin } from "@entities/admin/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { PermissionPicker } from "@entities/admin/PermissionPicker";
 import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import type { Permission } from "@shared/types/rbac";
+import { Button } from "@shared/ui/Button";
 
 interface AdminPermissionsEditorProps {
   admin: Admin;
@@ -20,7 +19,6 @@ interface AdminPermissionsEditorProps {
 
 export function AdminPermissionsEditor({ admin, onSaved, onCancel, className = "" }: AdminPermissionsEditorProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const catalogState = usePermissionCatalog();
   const roleDefaults = useMemo(() => new Set(admin.role_permissions), [admin.role_permissions]);
   const [selected, setSelected] = useState(() => new Set(admin.effective_permissions));
@@ -59,26 +57,29 @@ export function AdminPermissionsEditor({ admin, onSaved, onCancel, className = "
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className={`flex flex-col gap-4 ${className}`}>
-      <div className="-mx-2 max-h-[50vh] overflow-y-auto px-2">
+      {/* 85vh = Modal's cap; 311px = AdminDetailsDialog's header, tabs, footer and this card's own chrome.
+          -mt-2: the first h-11 row already insets its content 8px, so the card's top padding reads as its bottom one */}
+      <div className="-mx-2 -mt-2 max-h-[calc(85vh-311px)] overflow-y-auto px-2">
         <PermissionPicker selected={selected} onToggle={toggle} baseline={roleDefaults} />
       </div>
 
       <div className="flex gap-2">
-        <button
+        <Button
+          variant="outline"
+          className="flex-1"
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
         >
           {t("admins.permissionsForm.reset")}
-        </button>
-        <motion.button
+        </Button>
+        <Button
+          variant="accent"
+          className="flex-1"
           type="submit"
           disabled={isSubmitting}
-          {...bounceTap(bounceStrength)}
-          className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("admins.permissionsForm.submit")}
-        </motion.button>
+        </Button>
       </div>
     </form>
   );

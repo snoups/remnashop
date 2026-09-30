@@ -1,9 +1,10 @@
 import { motion } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { ComponentType, MouseEvent } from "react";
 import { NavLink } from "react-router-dom";
 
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
+import { ActivePill } from "@shared/ui/ActivePill";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 
 const MotionNavLink = motion.create(NavLink);
@@ -31,7 +32,7 @@ function preventNavigationWhenActive(isActive: boolean) {
 // not on the link itself -- scaling the text via `transform` blurs it (same
 // reasoning as BounceIcon avoiding transform for icons), so only the pill
 // grows on tap while the content stays crisp and fixed-size.
-function Tab({ to, end, icon, label, isActive, bounceStrength }: TabBarItem & { bounceStrength: number }) {
+function Tab({ to, end, icon, label, isActive, bounceStrength, pillId }: TabBarItem & { bounceStrength: number; pillId: string }) {
   return (
     <MotionNavLink
       to={to}
@@ -42,13 +43,15 @@ function Tab({ to, end, icon, label, isActive, bounceStrength }: TabBarItem & { 
       whileHover="hover"
       whileTap="tap"
     >
-      <motion.span
-        aria-hidden
-        variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
-        className={`absolute inset-0 rounded-full transition-colors ${
-          isActive ? "bg-accent" : "group-hover:bg-white/[0.06]"
-        }`}
-      />
+      {isActive ? (
+        <ActivePill layoutId={pillId} bounceStrength={bounceStrength} />
+      ) : (
+        <motion.span
+          aria-hidden
+          variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+          className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
+        />
+      )}
       <span
         className={`relative z-10 flex items-center gap-1.5 whitespace-nowrap px-4 py-2 ${
           isActive ? "text-primary" : "text-foreground"
@@ -65,6 +68,7 @@ export function TabBar({ items, bounceStrength }: { items: TabBarItem[]; bounceS
   const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
   const navRef = useRef<HTMLElement>(null);
   const activeKey = items.find((item) => item.isActive)?.key;
+  const pillId = useId();
 
   // Deep link to a tab past the visible edge: bring it into view. Scrolls the
   // tab strip only, scrollIntoView would also move the page.
@@ -87,11 +91,11 @@ export function TabBar({ items, bounceStrength }: { items: TabBarItem[]; bounceS
           (CSS can't have one axis `auto` and the other `visible`), which
           can clip a tiny sliver of the hover/tap bounce's overshoot -- a
           fair trade for corners that actually line up. */}
-      <div ref={tabsRef} className="no-scrollbar flex gap-1 overflow-x-auto rounded-full">
+      <motion.div ref={tabsRef} layoutScroll className="no-scrollbar flex gap-1 overflow-x-auto rounded-full">
         {items.map(({ key, ...item }) => (
-          <Tab key={key} {...item} bounceStrength={bounceStrength} />
+          <Tab key={key} {...item} bounceStrength={bounceStrength} pillId={pillId} />
         ))}
-      </div>
+      </motion.div>
     </nav>
   );
 }

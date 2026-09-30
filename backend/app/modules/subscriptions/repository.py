@@ -85,8 +85,9 @@ class SubscriptionRepository:
             is_trial=row.is_trial,
             traffic_limit=row.traffic_limit,
             device_limit=row.device_limit,
-            effective_traffic_limit=row.traffic_limit + traffic_bonus,
-            effective_device_limit=row.device_limit + device_bonus,
+            # 0 = unlimited; an add-on on top must not turn it into a finite cap
+            effective_traffic_limit=row.traffic_limit and row.traffic_limit + traffic_bonus,
+            effective_device_limit=row.device_limit and row.device_limit + device_bonus,
             traffic_limit_strategy=row.traffic_limit_strategy,
             tag=row.tag,
             internal_squads=list(row.internal_squads),
@@ -138,6 +139,7 @@ class SubscriptionRepository:
         *,
         status: Optional[SubscriptionStatus] = None,
         search: Optional[str] = None,
+        user_id: Optional[int] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[SubscriptionDto], int]:
@@ -150,6 +152,8 @@ class SubscriptionRepository:
             filters.append(Subscription.status != SubscriptionStatus.DELETED)
         else:
             filters.append(Subscription.status == status)
+        if user_id is not None:
+            filters.append(Subscription.user_id == user_id)
         if search:
             pattern = f"%{search}%"
             search_filters: list[ColumnElement[bool]] = [
@@ -261,6 +265,20 @@ class SubscriptionRepository:
         result = await self.session.execute(
             select(Subscription)
             .where(Subscription.user_id == user_id, Subscription.status.in_(_ACTIVE_STATUSES))
+            .order_by(Subscription.id)
+        )
+        rows = result.scalars().all()
+        entitlements_by_subscription = await self._load_entitlements([row.id for row in rows])
+        return [self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows]
+
+    async def get_live_by_user(self, user_id: int) -> list[SubscriptionDto]:
+        # every row that still has a panel identity behind it, EXPIRED included
+        result = await self.session.execute(
+            select(Subscription)
+            .where(
+                Subscription.user_id == user_id,
+                Subscription.status != SubscriptionStatus.DELETED,
+            )
             .order_by(Subscription.id)
         )
         rows = result.scalars().all()

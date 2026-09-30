@@ -35,7 +35,7 @@ def test_registers_actions_and_conditions() -> None:
     assert actions <= catalog.action_keys()
     conditions = {"trial_available", "has_device_limit", "connectable", "has_devices"}
     assert conditions <= catalog.condition_keys()
-    assert "subscription.url" in catalog.variable_keys()
+    assert "subscription_url" in catalog.variable_keys()
 
 
 def test_binds_action_handlers() -> None:

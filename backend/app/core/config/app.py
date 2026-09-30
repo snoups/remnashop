@@ -33,6 +33,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     origins: StringList = StringList("")
     swagger_enabled: bool = False
     secure_cookies: bool = True
+    web_cabinet_url: str = ""
 
     bot: BotConfig = Field(default_factory=BotConfig)
     remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)

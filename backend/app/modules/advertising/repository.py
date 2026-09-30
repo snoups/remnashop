@@ -14,12 +14,19 @@ from app.modules.advertising.dto import (
     AdLinkAttributionDto,
     AdLinkDto,
     CreateAdLinkDto,
+    DailyAttributionCountDto,
     UpdateAdLinkDto,
+    UserAdAttributionDto,
 )
 
 
 def _since(created_from: Optional[datetime]) -> list[ColumnElement[bool]]:
     return [AdLinkAttribution.created_at >= created_from] if created_from is not None else []
+
+
+def _ensure_some_channel(row: AdLink) -> None:
+    if not row.allow_bot and not row.allow_webcabinet:
+        raise ValidationError("AdLink must allow at least one channel")
 
 
 class AdLinkRepository:
@@ -34,6 +41,8 @@ class AdLinkRepository:
             cost=row.cost,
             cost_currency=row.cost_currency,
             is_active=row.is_active,
+            allow_bot=row.allow_bot,
+            allow_webcabinet=row.allow_webcabinet,
             note=row.note,
             created_by=row.created_by,
             created_at=row.created_at,
@@ -72,7 +81,7 @@ class AdLinkRepository:
         stmt = (
             select(AdLink)
             .where(*filters)
-            .order_by(AdLink.created_at.desc())
+            .order_by(AdLink.is_active.desc(), AdLink.created_at.desc(), AdLink.id.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -85,9 +94,12 @@ class AdLinkRepository:
             code=data.code,
             cost=data.cost,
             cost_currency=data.cost_currency,
+            allow_bot=data.allow_bot,
+            allow_webcabinet=data.allow_webcabinet,
             note=data.note,
             created_by=data.created_by,
         )
+        _ensure_some_channel(row)
         self.session.add(row)
         try:
             await self.session.flush()
@@ -99,6 +111,7 @@ class AdLinkRepository:
     async def update(self, data: UpdateAdLinkDto) -> AdLinkDto:
         row = await self._get_or_raise(data.ad_link_id)
         apply_partial_update(row, data, skip=frozenset({"ad_link_id"}))
+        _ensure_some_channel(row)
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_dto(row)
@@ -174,7 +187,11 @@ class AdLinkRepository:
         return list((await self.session.scalars(stmt)).all())
 
     async def list_attributions(
-        self, ad_link_ids: list[int], *, created_from: Optional[datetime] = None
+        self,
+        ad_link_ids: list[int],
+        *,
+        created_from: Optional[datetime] = None,
+        created_to: Optional[datetime] = None,
     ) -> list[tuple[int, int, AdLinkChannel]]:
         # (ad_link_id, user_id, channel) -- one row per attributed user.
         if not ad_link_ids:
@@ -182,20 +199,26 @@ class AdLinkRepository:
         stmt = select(
             AdLinkAttribution.ad_link_id, AdLinkAttribution.user_id, AdLinkAttribution.channel
         ).where(AdLinkAttribution.ad_link_id.in_(ad_link_ids), *_since(created_from))
+        if created_to is not None:
+            stmt = stmt.where(AdLinkAttribution.created_at < created_to)
         return list((await self.session.execute(stmt)).tuples().all())
 
     async def daily_attribution_counts(
         self, ad_link_id: int, *, created_from: Optional[datetime] = None
-    ) -> list[tuple[date, int]]:
+    ) -> list[DailyAttributionCountDto]:
         day_col = func.date(func.timezone("UTC", AdLinkAttribution.created_at))
         stmt = (
-            select(day_col, func.count())
+            select(day_col, AdLinkAttribution.channel, func.count())
             .where(AdLinkAttribution.ad_link_id == ad_link_id, *_since(created_from))
-            .group_by(day_col)
+            .group_by(day_col, AdLinkAttribution.channel)
             .order_by(day_col)
         )
-        rows = (await self.session.execute(stmt)).tuples()
-        return list(rows.all())
+        days: dict[date, DailyAttributionCountDto] = {}
+        for day, channel, count in (await self.session.execute(stmt)).tuples():
+            entry = days.setdefault(day, DailyAttributionCountDto(day=day, count=0))
+            entry.count += count
+            entry.by_channel[channel] = count
+        return list(days.values())
 
     async def list_attributions_paginated(
         self, ad_link_id: int, *, page: int = 1, page_size: int = 50
@@ -214,3 +237,22 @@ class AdLinkRepository:
         )
         rows = (await self.session.scalars(stmt)).all()
         return [self._attribution_to_dto(row) for row in rows], int(total or 0)
+
+    async def get_user_attribution(self, user_id: int) -> Optional[UserAdAttributionDto]:
+        row = (
+            await self.session.execute(
+                select(AdLinkAttribution, AdLink)
+                .join(AdLink, AdLink.id == AdLinkAttribution.ad_link_id)
+                .where(AdLinkAttribution.user_id == user_id)
+            )
+        ).first()
+        if row is None:
+            return None
+        attribution, ad_link = row._tuple()
+        return UserAdAttributionDto(
+            ad_link_id=ad_link.id,
+            name=ad_link.name,
+            code=ad_link.code,
+            channel=attribution.channel,
+            attributed_at=attribution.created_at,
+        )

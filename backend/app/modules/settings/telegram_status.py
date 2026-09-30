@@ -1,11 +1,13 @@
-from typing import Any, Final
+from typing import Any, Final, Optional
 
 import httpx
 
 from app.modules.settings.dto import BotStatusDto
 
-_TELEGRAM_API_URL: Final[str] = "https://api.telegram.org"
+TELEGRAM_API_URL: Final[str] = "https://api.telegram.org"
 _TIMEOUT_SECONDS: Final[float] = 5.0
+# token -> username; a bot's username can't change without a new token
+_USERNAME_CACHE: Final[dict[str, str]] = {}
 
 
 async def fetch_bot_status(token: str) -> BotStatusDto:
@@ -14,7 +16,7 @@ async def fetch_bot_status(token: str) -> BotStatusDto:
     # has started and registered the webhook.
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
-            response = await client.get(f"{_TELEGRAM_API_URL}/bot{token}/getWebhookInfo")
+            response = await client.get(f"{TELEGRAM_API_URL}/bot{token}/getWebhookInfo")
     except httpx.HTTPError as error:
         return BotStatusDto(is_configured=True, error=str(error) or type(error).__name__)
 
@@ -29,3 +31,19 @@ async def fetch_bot_status(token: str) -> BotStatusDto:
         pending_update_count=info.get("pending_update_count", 0),
         error=info.get("last_error_message"),
     )
+
+
+async def fetch_bot_username(token: str) -> Optional[str]:
+    if token in _USERNAME_CACHE:
+        return _USERNAME_CACHE[token]
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+            response = await client.get(f"{TELEGRAM_API_URL}/bot{token}/getMe")
+        payload: dict[str, Any] = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    if not payload.get("ok"):
+        return None
+    username: str = payload["result"]["username"]
+    _USERNAME_CACHE[token] = username
+    return username

@@ -72,8 +72,12 @@ async def test_get_catalog_usecase_sees_full_catalog_from_metadata_alone(
         "connectable",
         "has_devices",
     } <= set(result.condition_keys)
-    assert "subscription.url" in result.variable_keys
+    assert "subscription_url" in result.variable_keys
     assert "menu.main" in result.seed_window_keys
+    assert result.window_text_variable_keys["menu.devices"] == ["devices_current", "devices_max"]
+    assert result.variable_categories["user_name"] == "user"
+    assert result.variable_categories["user_points"] == "user"
+    assert result.variable_categories["subscription_url"] == "subscription"
 
 
 async def test_update_buttons_accepts_a_real_action_from_metadata_alone(

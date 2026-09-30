@@ -24,6 +24,11 @@ export function updateBackupSettings(payload: UpdateBackupSettingsRequest): Prom
   return apiPut<BackupSettings, UpdateBackupSettingsRequest>("/backups/settings", payload);
 }
 
+// Drops the stored row, so every field reads back as its default.
+export function resetBackupSettings(): Promise<BackupSettings> {
+  return apiDelete<BackupSettings>("/backups/settings");
+}
+
 export interface BackupRun {
   id: number;
   kind: BackupKind;

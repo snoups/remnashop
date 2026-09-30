@@ -28,6 +28,19 @@ async def test_update_settings_persists_partial_update(
     assert updated.interval_hours == 24  # untouched field keeps its default
 
 
+async def test_reset_settings_restores_defaults(
+    backup_repository: BackupRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        await backup_repository.update_settings(
+            UpdateBackupSettingsDto(enabled=True, interval_hours=6, max_files=3)
+        )
+        reset = await backup_repository.reset_settings()
+    assert (reset.enabled, reset.interval_hours, reset.max_files) == (False, 24, 7)
+    settings = await backup_repository.get_settings()
+    assert (settings.enabled, settings.interval_hours, settings.max_files) == (False, 24, 7)
+
+
 async def test_create_run_starts_pending(
     backup_repository: BackupRepository, uow: UnitOfWork
 ) -> None:

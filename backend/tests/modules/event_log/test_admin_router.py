@@ -228,3 +228,35 @@ async def test_get_event_log_rejects_oversized_page_size(
     )
 
     assert response.status_code == 422
+
+
+async def test_notifications_list_then_mark_read(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_log_repository: EventLogRepository,
+) -> None:
+    await event_log_repository.create(
+        EventLogEntryDto(
+            category=EventCategory.AUTH,
+            event_type="LoginFailedEvent",
+            occurred_at=datetime.datetime.now(datetime.timezone.utc)
+            - datetime.timedelta(minutes=1),
+            payload={},
+        )
+    )
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = await client.get("/api/v1/event-log/notifications", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["unread_count"] == 1
+    assert [item["event_type"] for item in response.json()["items"]] == ["LoginFailedEvent"]
+
+    response = await client.post("/api/v1/event-log/notifications/read", headers=headers)
+    assert response.status_code == 204
+
+    response = await client.get("/api/v1/event-log/notifications", headers=headers)
+    assert response.json()["unread_count"] == 0

@@ -71,6 +71,14 @@ class BackupRepository:
         await self.session.refresh(row)
         return self._to_settings_dto(row)
 
+    # no row reads back as the defaults, so dropping it is the reset
+    async def reset_settings(self) -> BackupSettingsDto:
+        row = await self.session.get(BackupSettings, _SINGLETON_ID)
+        if row is not None:
+            await self.session.delete(row)
+            await self.session.flush()
+        return self._to_settings_dto(None)
+
     async def _get_row(self, run_id: int) -> BackupRun:
         row = await self.session.get(BackupRun, run_id)
         if row is None:

@@ -1,11 +1,13 @@
-# translations' usecases import SettingsRepository/push_bot_commands_to_telegram from
+# translations' usecases import SettingsRepository/repush_bot_commands_if_configured from
 # this package, so those names must be bound before di pulls in usecases --
 # otherwise the settings<->translations cycle fails on a partially initialized module.
 from app.modules.settings.bootstrap import enable_password_login, read_bot_settings  # noqa: I001
 from app.modules.settings.bot_commands import BOT_COMMANDS, BotCommand
 from app.modules.settings.command_translations import (
     build_command_translator_hub,
+    delete_bot_commands_for_locale,
     push_bot_commands_to_telegram,
+    repush_bot_commands_if_configured,
 )
 from app.modules.settings.dto import (
     AppearanceSettingsDto,
@@ -19,6 +21,7 @@ from app.modules.settings.dto import (
     UpdateShopSettingsDto,
 )
 from app.modules.settings.repository import SettingsRepository
+from app.modules.settings.telegram_status import fetch_bot_username
 from app.modules.settings.di import get_settings_providers
 from app.modules.settings.usecases import (
     AddLocaleUseCase,
@@ -83,8 +86,11 @@ __all__ = [
     "UploadAppearanceImageInput",
     "UploadAppearanceLogoUseCase",
     "build_command_translator_hub",
+    "delete_bot_commands_for_locale",
     "enable_password_login",
+    "fetch_bot_username",
     "get_settings_providers",
     "push_bot_commands_to_telegram",
+    "repush_bot_commands_if_configured",
     "read_bot_settings",
 ]

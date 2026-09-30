@@ -402,7 +402,9 @@ async def test_update_buttons_rejects_unusable_url(
 async def test_update_buttons_accepts_url_built_from_a_catalog_variable(
     dialog_repository, translations_repository, settings_repository, uow, redis
 ) -> None:
-    catalog.register_variable("subscription.url", lambda data: data.get("connect_url", ""))
+    catalog.register_variable(
+        "subscription.url", lambda data: data.get("connect_url", ""), category="user"
+    )
     _register_button_window("btn-menu.connect")
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
@@ -589,7 +591,7 @@ async def test_update_dialog_text_allows_known_variable(
     uow,
     redis,
 ) -> None:
-    catalog.register_variable("name", lambda data: data.get("name", ""))
+    catalog.register_variable("name", lambda data: data.get("name", ""), category="user")
     _register_text_window("msg-window-greeting")
     if Locale.EN not in await settings_repository.list_active_locales():
         await settings_repository.add_active_locale(Locale.EN)
@@ -693,6 +695,76 @@ async def test_update_dialog_text_rejects_unknown_variable(
                 value="Hi, { $made_up }!",
             ),
         )
+
+
+async def test_update_dialog_text_allows_window_own_variable(
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="menu.counted_window",
+            flow=DialogFlow.MENU,
+            text_keys=("msg-window-counted",),
+            banner_name=None,
+            text_variables=("current_count",),
+        )
+    )
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "msg-window-counted", "", "Count")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
+    entry = await use_case(
+        OWNER,
+        UpdateDialogTextInput(
+            locale=Locale.EN,
+            message_id="msg-window-counted",
+            attribute_id="",
+            value="Devices ({ $current_count })",
+        ),
+    )
+    assert entry.value == "Devices ({ $current_count })"
+
+
+@pytest.mark.parametrize("attribute_id", ["connect-icon", "connect-icon-id"])
+async def test_update_dialog_text_sets_icon_never_seeded(
+    attribute_id: str,
+    dialog_repository: DialogRepository,
+    translations_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    # the assets seed a few glyph icons and no premium ids at all
+    _register_button_window("btn-menu.connect")
+    if Locale.EN not in await settings_repository.list_active_locales():
+        await settings_repository.add_active_locale(Locale.EN)
+    await translations_repository.seed_missing(Locale.EN, "btn-menu", "connect", "Connect")
+
+    use_case = UpdateDialogTextUseCase(translations_repository, dialog_repository, uow, redis)
+    entry = await use_case(
+        OWNER,
+        UpdateDialogTextInput(
+            locale=Locale.EN,
+            message_id="btn-menu",
+            attribute_id=attribute_id,
+            value="5415795288847707970",
+        ),
+    )
+    assert entry.value == "5415795288847707970"
+    assert entry.default_value == ""
+
+    cleared = await use_case(
+        OWNER,
+        UpdateDialogTextInput(
+            locale=Locale.EN, message_id="btn-menu", attribute_id=attribute_id, value=""
+        ),
+    )
+    assert cleared.value == ""
 
 
 async def test_update_dialog_text_keeps_multiline_value(

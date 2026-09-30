@@ -7,12 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.errors import constraint_name
 from app.core.db.models.promocode import Promocode, PromocodeActivation
 from app.core.db.partial_update import apply_partial_update
+from app.core.enums import PromocodeRewardType
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.promocodes.dto import (
     CreatePromocodeDto,
     PromocodeActivationDto,
     PromocodeDto,
+    PromocodeRewardTotalsDto,
     UpdatePromocodeDto,
+    UserPromocodeActivationDto,
 )
 
 
@@ -169,6 +172,55 @@ class PromocodeRepository:
         )
         return result.scalar_one()
 
+    async def count_activations_by_promocode(self) -> dict[int, int]:
+        stmt = select(PromocodeActivation.promocode_id, func.count()).group_by(
+            PromocodeActivation.promocode_id
+        )
+        return dict((await self.session.execute(stmt)).tuples().all())
+
+    async def count_activations(self) -> tuple[int, int]:
+        # (activations, distinct users)
+        stmt = select(func.count(), func.count(func.distinct(PromocodeActivation.user_id)))
+        activations, users = (await self.session.execute(stmt)).tuples().one()
+        return activations, users
+
+    async def reward_totals_by_type(self) -> dict[PromocodeRewardType, PromocodeRewardTotalsDto]:
+        stmt = (
+            select(
+                Promocode.reward_type,
+                func.count(),
+                func.sum(Promocode.reward),
+                func.sum(Promocode.reward_duration_days),
+            )
+            .select_from(PromocodeActivation)
+            .join(Promocode, Promocode.id == PromocodeActivation.promocode_id)
+            .group_by(Promocode.reward_type)
+        )
+        return {
+            reward_type: PromocodeRewardTotalsDto(
+                count=count, reward_sum=reward_sum or 0, duration_days_sum=duration_days_sum or 0
+            )
+            for reward_type, count, reward_sum, duration_days_sum in (
+                await self.session.execute(stmt)
+            ).tuples()
+        }
+
+    async def list_activations_paginated(
+        self, promocode_id: int, *, page: int = 1, page_size: int = 50
+    ) -> tuple[list[PromocodeActivationDto], int]:
+        condition = PromocodeActivation.promocode_id == promocode_id
+        total = await self.session.scalar(
+            select(func.count()).select_from(PromocodeActivation).where(condition)
+        )
+        rows = await self.session.scalars(
+            select(PromocodeActivation)
+            .where(condition)
+            .order_by(PromocodeActivation.activated_at.desc(), PromocodeActivation.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        return [self._activation_to_dto(row) for row in rows], total or 0
+
     async def get_activation_by_user(
         self, promocode_id: int, user_id: int
     ) -> Optional[PromocodeActivationDto]:
@@ -183,3 +235,23 @@ class PromocodeRepository:
         )
         row = result.scalar_one_or_none()
         return self._activation_to_dto(row) if row is not None else None
+
+    async def list_activations_by_user(self, user_id: int) -> list[UserPromocodeActivationDto]:
+        rows = await self.session.execute(
+            select(PromocodeActivation, Promocode)
+            .join(Promocode, Promocode.id == PromocodeActivation.promocode_id)
+            .where(PromocodeActivation.user_id == user_id)
+            .order_by(PromocodeActivation.activated_at.desc())
+        )
+        return [
+            UserPromocodeActivationDto(
+                activation_id=activation.id,
+                promocode_id=promo.id,
+                code=promo.code,
+                reward_type=promo.reward_type,
+                reward=promo.reward,
+                reward_duration_days=promo.reward_duration_days,
+                activated_at=activation.activated_at,
+            )
+            for activation, promo in rows.tuples()
+        ]
