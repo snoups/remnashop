@@ -15,7 +15,6 @@ from app.core.enums import (
     Locale,
     OAuthProvider,
     PaymentGatewayType,
-    PaymentOrderStatus,
     PlanAvailability,
     PlanType,
     PromocodeAvailability,
@@ -26,6 +25,7 @@ from app.core.enums import (
     ReferralRewardType,
     Role,
     SubscriptionStatus,
+    TransactionStatus,
 )
 from app.core.events import EventCategory
 
@@ -53,7 +53,7 @@ _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
     "locale": Locale,
     "oauth_provider": OAuthProvider,
     "payment_gateway_type": PaymentGatewayType,
-    "paymentorderstatus": PaymentOrderStatus,
+    "transactionstatus": TransactionStatus,
     "planavailability": PlanAvailability,
     "plantype": PlanType,
     "promocodeavailability": PromocodeAvailability,

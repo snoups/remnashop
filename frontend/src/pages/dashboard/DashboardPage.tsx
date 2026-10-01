@@ -219,29 +219,29 @@ function RevenueCard({ refreshKey }: { refreshKey: number }) {
   }, [days, refreshKey]);
 
   if (state.kind !== "ready") return <ChartCardMessage kind={state.kind} />;
-  const { payments } = state.data;
-  if (!payments) return null;
+  const { transactions } = state.data;
+  if (!transactions) return null;
 
   const revenueTotal =
-    Object.entries(payments.revenue_by_currency)
+    Object.entries(transactions.revenue_by_currency)
       .map(([currency, amount]) => `${amount} ${currency}`)
       .join(", ") || "—";
   const revenueSeries =
     days === 0
-      ? payments.daily_revenue
-      : fillDailySeries(payments.daily_revenue, days, (day) => ({ day, amount: "0" }));
+      ? transactions.daily_revenue
+      : fillDailySeries(transactions.daily_revenue, days, (day) => ({ day, amount: "0" }));
   const revenueChartData = revenueSeries.map((d) => ({ day: d.day, value: Number(d.amount) }));
 
   return (
     <TrendChart
       title={t("dashboard.charts.revenue")}
       total={revenueTotal}
-      badges={Object.keys(payments.revenue_by_currency)}
+      badges={Object.keys(transactions.revenue_by_currency)}
       days={days}
       onDaysChange={setDays}
       data={revenueChartData}
       color="var(--color-success)"
-      valueFormatter={(v) => `${v.toFixed(2)} ${payments.report_currency}`}
+      valueFormatter={(v) => `${v.toFixed(2)} ${transactions.report_currency}`}
       granularity={state.data.granularity}
     />
   );

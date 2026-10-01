@@ -25,7 +25,6 @@ from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.passkey_credential import PasskeyCredential
 from app.core.db.models.payment_gateway import PaymentGateway
-from app.core.db.models.payment_order import PaymentOrder
 from app.core.db.models.plan import Plan
 from app.core.db.models.plan_duration import PlanDuration
 from app.core.db.models.plan_price_override import PlanPriceOverride
@@ -37,6 +36,7 @@ from app.core.db.models.referral_settings import ReferralSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
+from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
 from app.core.db.models.user_session import UserSession
 
@@ -69,7 +69,7 @@ __all__ = [
     "OAuthSettings",
     "PasskeyCredential",
     "PaymentGateway",
-    "PaymentOrder",
+    "Transaction",
     "Plan",
     "PlanDuration",
     "PlanPriceOverride",

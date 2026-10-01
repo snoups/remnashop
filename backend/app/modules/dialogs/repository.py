@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.db.models import DialogButton, DialogWindow
 from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow, DialogWindowKind
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.dialogs.dto import (
     CreateCustomWindowDto,
@@ -55,7 +56,9 @@ class DialogRepository:
     async def _get_row_or_raise(self, key: str) -> DialogWindow:
         row = await self._get_row(key)
         if row is None:
-            raise NotFoundError(f"Dialog window '{key}' not found")
+            raise NotFoundError(
+                f"Dialog window '{key}' not found", code=ErrorCode.DIALOG_WINDOW_NOT_FOUND
+            )
         return row
 
     async def list_all(self) -> list[DialogWindowDto]:
@@ -139,7 +142,9 @@ class DialogRepository:
             row.is_enabled = data.is_enabled
         if data.name is not None:
             if row.kind != DialogWindowKind.CUSTOM:
-                raise ValidationError("Only custom windows can be renamed")
+                raise ValidationError(
+                    "Only custom windows can be renamed", code=ErrorCode.DIALOG_WINDOW_NOT_RENAMABLE
+                )
             row.name = data.name
         await self.session.flush()
         await self.session.refresh(row)
@@ -155,7 +160,9 @@ class DialogRepository:
             select(DialogWindow).where(DialogWindow.key == key).with_for_update()
         )
         if row is None:
-            raise NotFoundError(f"Dialog window '{key}' not found")
+            raise NotFoundError(
+                f"Dialog window '{key}' not found", code=ErrorCode.DIALOG_WINDOW_NOT_FOUND
+            )
         for existing in list(row.buttons):
             await self.session.delete(existing)
         await self.session.flush()
@@ -189,12 +196,15 @@ class DialogRepository:
             if slot not in taken:
                 return slot
         raise ValidationError(
-            f"No free dialog window slot left (limit is {CUSTOM_DIALOG_WINDOW_SLOTS})"
+            f"No free dialog window slot left (limit is {CUSTOM_DIALOG_WINDOW_SLOTS})",
+            code=ErrorCode.DIALOG_WINDOW_LIMIT_REACHED,
         )
 
     async def create_custom_window(self, key: str, data: CreateCustomWindowDto) -> DialogWindowDto:
         if await self._get_row(key) is not None:
-            raise ConflictError(f"Dialog window '{key}' already exists")
+            raise ConflictError(
+                f"Dialog window '{key}' already exists", code=ErrorCode.DIALOG_WINDOW_EXISTS
+            )
         window = DialogWindow(
             key=key,
             kind=DialogWindowKind.CUSTOM,
@@ -214,7 +224,9 @@ class DialogRepository:
     async def delete_custom_window(self, key: str) -> None:
         row = await self._get_row_or_raise(key)
         if row.kind != DialogWindowKind.CUSTOM:
-            raise ValidationError("Only custom windows can be deleted")
+            raise ValidationError(
+                "Only custom windows can be deleted", code=ErrorCode.DIALOG_WINDOW_NOT_DELETABLE
+            )
         await self.session.delete(row)
         await self.session.flush()
 
@@ -238,9 +250,14 @@ class DialogRepository:
             select(DialogWindow).where(DialogWindow.key == key).with_for_update()
         )
         if row is None:
-            raise NotFoundError(f"Dialog window '{key}' not found")
+            raise NotFoundError(
+                f"Dialog window '{key}' not found", code=ErrorCode.DIALOG_WINDOW_NOT_FOUND
+            )
         if row.kind == DialogWindowKind.CUSTOM:
-            raise ValidationError("Custom windows have no default to reset to; delete instead")
+            raise ValidationError(
+                "Custom windows have no default to reset to; delete instead",
+                code=ErrorCode.DIALOG_WINDOW_NOT_RESETTABLE,
+            )
         snapshot = row.default_snapshot
         raw_banner = snapshot.get("banner_name")
         row.banner_name = raw_banner or None

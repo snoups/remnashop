@@ -22,15 +22,18 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy import delete as sa_delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
+from app.core.db.errors import constraint_name
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.db.user_search import user_search_filter
 from app.core.enums import Locale, Role, SubscriptionStatus
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.users.dto import (
     DEFAULT_PAGE_SIZE,
@@ -48,10 +51,12 @@ _REFERRAL_CODE_ALPHABET: Final[str] = string.ascii_uppercase + string.digits
 _REFERRAL_CODE_LENGTH: Final[int] = 8
 _REFERRAL_CODE_MAX_ATTEMPTS: Final[int] = 5
 
+_UNIQUE_VIOLATIONS: Final[dict[str, tuple[str, ErrorCode]]] = {
+    "ux_users_single_owner": ("Owner already exists", ErrorCode.OWNER_ALREADY_EXISTS),
+    "ix_users_login": ("Login already taken", ErrorCode.LOGIN_TAKEN),
+    "ix_users_telegram_id": ("Telegram account already registered", ErrorCode.TELEGRAM_ID_TAKEN),
+}
 
-# asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
-# large bulk-block batch still fits after other predicates are added.
-_MAX_IN_PARAMS: Final[int] = 20_000
 
 _ACTIVE_SUBSCRIPTIONS: Final[ColumnElement[int]] = (
     select(func.count())
@@ -118,7 +123,7 @@ class UserRepository:
         )
 
         self.session.add(db_user)
-        await self.session.flush()
+        await self._flush_unique()
 
         dto = self._convert_to_dto(db_user)
         logger.debug(f"New user {dto.log} created in database")
@@ -136,6 +141,16 @@ class UserRepository:
                 return code
         raise RuntimeError("Could not generate a unique referral code")
 
+    async def _flush_unique(self) -> None:
+        try:
+            await self.session.flush()
+        except IntegrityError as error:
+            violation = _UNIQUE_VIOLATIONS.get(constraint_name(error) or "")
+            if violation is None:
+                raise
+            message, code = violation
+            raise ConflictError(message, code=code) from error
+
     async def get_by_id(self, user_id: int) -> Optional[UserDto]:
         stmt = select(User).where(User.id == user_id)
         db_user = await self.session.scalar(stmt)
@@ -148,16 +163,6 @@ class UserRepository:
         stmt = select(User).where(User.telegram_id == telegram_id)
         db_user = await self.session.scalar(stmt)
         return self._convert_to_dto(db_user) if db_user else None
-
-    async def list_by_telegram_ids(self, telegram_ids: list[int]) -> list[UserDto]:
-        if not telegram_ids:
-            return []
-        users: list[UserDto] = []
-        for start in range(0, len(telegram_ids), _MAX_IN_PARAMS):
-            chunk = telegram_ids[start : start + _MAX_IN_PARAMS]
-            stmt = select(User).where(User.telegram_id.in_(chunk))
-            users.extend(self._convert_to_dto(row) for row in (await self.session.scalars(stmt)))
-        return users
 
     async def get_by_email(self, email: str) -> Optional[UserDto]:
         stmt = select(User).where(User.email == email)
@@ -193,7 +198,10 @@ class UserRepository:
         result = await self.session.execute(stmt)
         await self.session.flush()
         if cast(CursorResult, result).rowcount == 0:
-            raise ValidationError(f"Adjustment would take user '{user_id}' points below zero")
+            raise ValidationError(
+                f"Adjustment would take user '{user_id}' points below zero",
+                code=ErrorCode.POINTS_BELOW_ZERO,
+            )
 
     async def spend_trial(self, user_id: int) -> bool:
         # Atomic claim: of two concurrent callers only one sees rowcount 1.
@@ -205,6 +213,29 @@ class UserRepository:
         result = await self.session.execute(stmt)
         await self.session.flush()
         return cast(CursorResult, result).rowcount == 1
+
+    async def spend_purchase_discount(self, user_id: int, percent: int) -> bool:
+        # Atomic claim, like spend_trial: of two checkouts quoted against the
+        # same one-shot discount only one sees rowcount 1.
+        stmt = (
+            update(User)
+            .where(User.id == user_id, User.purchase_discount == percent)
+            .values(purchase_discount=0, purchase_discount_promocode_id=None)
+        )
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+        return cast(CursorResult, result).rowcount == 1
+
+    async def restore_purchase_discount(
+        self, user_id: int, percent: int, promocode_id: Optional[int]
+    ) -> None:
+        # only into an empty slot -- never over a discount granted since
+        await self.session.execute(
+            update(User)
+            .where(User.id == user_id, User.purchase_discount == 0)
+            .values(purchase_discount=percent, purchase_discount_promocode_id=promocode_id)
+        )
+        await self.session.flush()
 
     async def exists_with_role(self, role: Role) -> bool:
         stmt = select(exists().where(User.role == role))
@@ -220,6 +251,19 @@ class UserRepository:
             return []
         result = await self.session.execute(select(User).where(User.id.in_(user_ids)))
         return self._convert_to_dto_list(list(result.scalars()))
+
+    async def get_list_item(self, user_id: int, roles: list[Role]) -> UserListItemDto:
+        row = (
+            await self.session.execute(
+                select(User, _ACTIVE_SUBSCRIPTIONS).where(User.id == user_id, User.role.in_(roles))
+            )
+        ).first()
+        if row is None:
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+        user, count = row
+        return UserListItemDto.model_validate(user, from_attributes=True).model_copy(
+            update={"active_subscriptions": count}
+        )
 
     async def list_filtered(
         self,
@@ -250,7 +294,7 @@ class UserRepository:
         if created_from is not None:
             filters.append(User.created_at >= created_from)
         if created_to is not None:
-            filters.append(User.created_at <= created_to)
+            filters.append(User.created_at < created_to)
         for condition, wanted in (
             (User.is_blocked.is_(True), is_blocked),
             (_discount_filter(), has_discount),
@@ -296,7 +340,7 @@ class UserRepository:
     ) -> UserDto:
         db_user = await self.session.get(User, user_id)
         if db_user is None:
-            raise NotFoundError(f"User '{user_id}' not found")
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
         db_user.name = name
         db_user.username = username
         db_user.language = language
@@ -347,7 +391,7 @@ class UserRepository:
         db_user.permission_grants = data.permission_grants
         db_user.permission_revokes = data.permission_revokes
 
-        await self.session.flush()
+        await self._flush_unique()
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)
 
@@ -399,18 +443,6 @@ class UserRepository:
             return
         db_user.notification_groups = groups
         await self.session.flush()
-
-    async def bulk_block_by_telegram_ids(self, telegram_ids: list[int]) -> list[int]:
-        if not telegram_ids:
-            return []
-        stmt = (
-            select(User).where(User.telegram_id.in_(telegram_ids)).where(User.is_blocked.is_(False))
-        )
-        rows = list((await self.session.execute(stmt)).scalars())
-        for row in rows:
-            row.is_blocked = True
-        await self.session.flush()
-        return [row.id for row in rows]
 
     async def unblock_all(self) -> int:
         stmt = update(User).where(User.is_blocked.is_(True)).values(is_blocked=False)
@@ -507,7 +539,7 @@ class UserRepository:
         )
 
     async def anonymize(self, user_id: int) -> Optional[UserDto]:
-        # Soft delete: payments, subscriptions and referrals keep pointing at
+        # Soft delete: transactions, subscriptions and referrals keep pointing at
         # this row, so revenue and referral history survive. What identifies
         # the person goes; the unique columns are freed for a new sign-up.
         db_user = await self.session.get(User, user_id)
@@ -535,16 +567,6 @@ class UserRepository:
         await self.session.flush()
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)
-
-    async def delete(self, user_id: int) -> bool:
-        db_user = await self.session.get(User, user_id)
-
-        if db_user is None:
-            return False
-
-        await self.session.delete(db_user)
-        await self.session.flush()
-        return True
 
     async def list_stats(
         self,

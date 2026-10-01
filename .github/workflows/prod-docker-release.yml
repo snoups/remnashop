@@ -4,27 +4,33 @@ on:
   release:
     types: [published]
 
-  workflow_dispatch:
-
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
 
     steps:
-      - name: 🧾 Checkout main branch
+      - name: 🧾 Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: 🔖 Get latest tag
+      - name: 🔖 Get previous tag
         id: latest-tag
-        uses: JinoArch/get-latest-tag@latest
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || echo "")
+          echo "previousTag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
+          echo "latestTag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
 
       - name: 🏷️ Define Build Args
         id: vars
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
+          BUILD_BRANCH=$(git branch -r --contains HEAD --format='%(refname:lstrip=3)' | grep -v '^HEAD$' | head -n1)
           BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY}"
           IMAGE_TAGS="${IMAGE_REPO}:latest,${IMAGE_REPO}:${GITHUB_REF_NAME}"
@@ -32,6 +38,7 @@ jobs:
           echo "image_tag=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          echo "build_branch=${BUILD_BRANCH:-${GITHUB_REF_NAME}}" >> $GITHUB_OUTPUT
           echo "✅ Tags: ${IMAGE_TAGS}"
           echo "✅ SHA: ${SHORT_SHA}"
 
@@ -55,7 +62,7 @@ jobs:
             ghcr.io/snoups/remnashop:${{ github.ref_name }}
           build-args: |
             BUILD_TIME=${{ steps.vars.outputs.build_time }}
-            BUILD_BRANCH=main
+            BUILD_BRANCH=${{ steps.vars.outputs.build_branch }}
             BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
             BUILD_TAG=${{ github.ref_name }}
 
@@ -70,7 +77,7 @@ jobs:
             ghcr.io/snoups/remnashop:${{ github.ref_name }}-telegram
           build-args: |
             BUILD_TIME=${{ steps.vars.outputs.build_time }}
-            BUILD_BRANCH=main
+            BUILD_BRANCH=${{ steps.vars.outputs.build_branch }}
             BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
             BUILD_TAG=${{ github.ref_name }}
             UV_EXTRA=telegram

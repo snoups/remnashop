@@ -1,10 +1,12 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import ReferralStatsDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 
 class GetUserReferralStatsUseCase(UseCase[int, ReferralStatsDto]):
@@ -20,11 +22,11 @@ class GetUserReferralStatsUseCase(UseCase[int, ReferralStatsDto]):
         self._user_repository = user_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: int) -> ReferralStatsDto:
+    async def _execute(self, actor: Actor, data: int) -> ReferralStatsDto:
         async with self._uow:
             target = await self._user_repository.get_by_id(data)
             if target is None:
-                raise NotFoundError(f"User '{data}' not found")
+                raise NotFoundError(f"User '{data}' not found", code=ErrorCode.USER_NOT_FOUND)
 
             edge = await self._referral_repository.get_by_referred_id(target.id)
             counts = await self._referral_repository.count_by_level(target.id)

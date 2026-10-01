@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import DEFAULT_PAGE_SIZE, SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -27,7 +27,7 @@ class ListSubscriptionsUseCase(UseCase[ListSubscriptionsInput, tuple[list[Subscr
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: ListSubscriptionsInput
+        self, actor: Actor, data: ListSubscriptionsInput
     ) -> tuple[list[SubscriptionDto], int]:
         async with self._uow:
             return await self._subscription_repository.list_paginated(

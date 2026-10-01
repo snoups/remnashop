@@ -8,8 +8,3 @@ class BannerMetaResponse(BaseModel):
     locale: Locale
     content_type: str
     size_bytes: int
-
-
-class BannerListResponse(BaseModel):
-    banners: list[BannerMetaResponse]
-    available_locales: list[Locale]

@@ -1,9 +1,9 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans.dto import PlanDto
 from app.modules.plans.repository import PlanRepository
-from app.modules.users import UserDto
 
 
 class ListPlansUseCase(UseCase[None, list[PlanDto]]):
@@ -13,6 +13,6 @@ class ListPlansUseCase(UseCase[None, list[PlanDto]]):
         self._plan_repository = plan_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> list[PlanDto]:
+    async def _execute(self, actor: Actor, data: None) -> list[PlanDto]:
         async with self._uow:
             return await self._plan_repository.list_all()

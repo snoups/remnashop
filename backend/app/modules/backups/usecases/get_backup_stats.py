@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind
 from app.core.security.permissions import Permission
@@ -8,7 +9,6 @@ from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.backups.dto import BackupRunDto, BackupSettingsDto, BackupStatsDto
 from app.modules.backups.repository import BackupRepository
-from app.modules.users import UserDto
 
 
 def next_scheduled_run(
@@ -32,7 +32,7 @@ class GetBackupStatsUseCase(UseCase[None, BackupStatsDto]):
         self._backup_repository = backup_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> BackupStatsDto:
+    async def _execute(self, actor: Actor, data: None) -> BackupStatsDto:
         async with self._uow:
             settings = await self._backup_repository.get_settings()
             latest = await self._backup_repository.get_latest_completed(BackupKind.DATABASE)

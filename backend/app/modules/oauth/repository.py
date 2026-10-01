@@ -75,6 +75,13 @@ class OAuthIdentityRepository:
         await self.session.flush()
         return cast(CursorResult, result).rowcount > 0
 
+    async def delete_all_by_user(self, user_id: int) -> int:
+        result = await self.session.execute(
+            delete(OAuthIdentity).where(OAuthIdentity.user_id == user_id)
+        )
+        await self.session.flush()
+        return cast(CursorResult, result).rowcount
+
     async def delete_all_by_provider(self, provider: OAuthProvider) -> int:
         stmt = delete(OAuthIdentity).where(OAuthIdentity.provider == provider)
         result = await self.session.execute(stmt)

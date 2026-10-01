@@ -2,9 +2,11 @@ from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -13,7 +15,6 @@ from app.modules.translations.dto import TranslationEntryDto
 from app.modules.translations.publish import publish_translation_change
 from app.modules.translations.repository import TranslationsRepository
 from app.modules.translations.serializer import contains_placeable, serialize_to_fluent
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -41,7 +42,7 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
         self._config = config
         self._redis = redis
 
-    async def _execute(self, actor: UserDto, data: UpdateTranslationInput) -> TranslationEntryDto:
+    async def _execute(self, actor: Actor, data: UpdateTranslationInput) -> TranslationEntryDto:
         # Lazy import -- fluent_compiler lives under the telegram extra.
         async with self._uow:
             from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
@@ -52,7 +53,10 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
                 # command descriptions repushed below, which Telegram rejects
                 # unless they are one line. Dialog window bodies get their
                 # newlines through modules/dialogs' own text endpoint instead.
-                raise ValidationError("Translation values cannot contain newlines")
+                raise ValidationError(
+                    "Translation values cannot contain newlines",
+                    code=ErrorCode.TRANSLATION_HAS_NEWLINES,
+                )
 
             existing = await self._translations_repository.list_by_locale(data.locale)
             candidate = [
@@ -77,7 +81,9 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
             )
             errors = bundle.check_messages()
             if errors:
-                raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
+                raise ValidationError(
+                    f"Invalid Fluent syntax: {errors[0][1]}", code=ErrorCode.FLUENT_SYNTAX_INVALID
+                )
             # Checked against just this one submitted value, not candidate_text
             # (the whole locale) -- scoping to the whole locale would reject an
             # edit to any OTHER key the moment one placeable-bearing value exists
@@ -86,7 +92,10 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
             # full "id = value" line to parse a Pattern at all, hence the
             # throwaway id.
             if contains_placeable(f"placeholder-id = {data.value}"):
-                raise ValidationError("Fluent placeables are not supported in translation values")
+                raise ValidationError(
+                    "Fluent placeables are not supported in translation values",
+                    code=ErrorCode.TRANSLATION_HAS_PLACEABLES,
+                )
 
         async with self._uow:
             updated = await self._translations_repository.update_value(

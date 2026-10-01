@@ -140,13 +140,6 @@ class SetUserPersonalDiscountDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class BulkBlockResultDto:
-    blocked: int
-    added_to_list: int
-    skipped: int
-
-
-@dataclass(frozen=True, kw_only=True)
 class UserListStatsDto:
     total: int
     new: int

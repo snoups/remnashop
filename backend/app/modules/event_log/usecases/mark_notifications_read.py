@@ -6,7 +6,7 @@ from app.modules.users import UserDto, UserRepository
 
 
 # Own read cursor only, hence the own-account permission rather than a new one.
-class MarkNotificationsReadUseCase(UseCase[None, None]):
+class MarkNotificationsReadUseCase(UseCase[None, None, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(self, user_repository: UserRepository, uow: UnitOfWork) -> None:

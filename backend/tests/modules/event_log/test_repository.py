@@ -105,7 +105,7 @@ async def test_list_filters_by_date_range(event_log_repository: EventLogReposito
     await event_log_repository.create(_entry(occurred_at=now - timedelta(days=10)))
     await event_log_repository.create(_entry(occurred_at=now))
 
-    items, total = await event_log_repository.list(date_from=now - timedelta(days=1))
+    items, total = await event_log_repository.list(occurred_from=now - timedelta(days=1))
 
     assert total == 1
 

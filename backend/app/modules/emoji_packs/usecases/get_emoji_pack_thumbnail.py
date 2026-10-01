@@ -1,6 +1,7 @@
 from typing import Final
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.emoji_packs.repository import EmojiPackRepository
 
@@ -16,5 +17,7 @@ class GetEmojiPackThumbnailUseCase:
         async with self._uow:
             data = await self._emoji_pack_repository.get_thumbnail(custom_emoji_id)
         if not data:
-            raise NotFoundError(f"No thumbnail for emoji {custom_emoji_id}")
+            raise NotFoundError(
+                f"No thumbnail for emoji {custom_emoji_id}", code=ErrorCode.EMOJI_MEDIA_NOT_FOUND
+            )
         return data, "image/webp" if data.startswith(_WEBP_MAGIC) else "image/jpeg"

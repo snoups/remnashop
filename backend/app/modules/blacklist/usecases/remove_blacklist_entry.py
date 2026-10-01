@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     # app.modules.users now imports BlacklistRepository (block/unblock usecases) --
     # an eager import here would cycle back into a partially-initialized
     # app.modules.users, same class of fix as core/usecase.py and core/events.py.
-    from app.modules.users import UserDto
+    pass
 
 
 class RemoveBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto]):
@@ -31,7 +32,7 @@ class RemoveBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto])
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: BlacklistEntryInputDto) -> BlacklistDto:
+    async def _execute(self, actor: Actor, data: BlacklistEntryInputDto) -> BlacklistDto:
         normalized = removal_key(data.kind, data.value)
         if normalized is not None:
             async with self._uow:

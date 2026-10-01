@@ -99,6 +99,16 @@ class PromocodeActivatedUserResponse(BaseModel):
     activated_at: datetime
 
 
+class PromocodePageResponse(BaseModel):
+    items: list[PromocodeResponse]
+    total: int
+
+
 class PromocodeActivatedUserPageResponse(BaseModel):
     items: list[PromocodeActivatedUserResponse]
+    total: int
+
+
+class UserPromocodeActivationListResponse(BaseModel):
+    items: list[UserPromocodeActivationResponse]
     total: int

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
@@ -11,7 +12,6 @@ from app.modules.settings import SettingsRepository, repush_bot_commands_if_conf
 from app.modules.translations.dto import TranslationEntryDto
 from app.modules.translations.publish import publish_translation_change
 from app.modules.translations.repository import TranslationsRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -38,7 +38,7 @@ class ResetTranslationUseCase(UseCase[ResetTranslationInput, TranslationEntryDto
         self._config = config
         self._redis = redis
 
-    async def _execute(self, actor: UserDto, data: ResetTranslationInput) -> TranslationEntryDto:
+    async def _execute(self, actor: Actor, data: ResetTranslationInput) -> TranslationEntryDto:
         async with self._uow:
             reset = await self._translations_repository.reset_value(
                 data.locale, data.message_id, data.attribute_id

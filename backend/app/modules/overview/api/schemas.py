@@ -31,7 +31,7 @@ class OverviewSubscriptionsResponse(BaseModel):
     expiring_soon: int
 
 
-class OverviewPaymentsResponse(BaseModel):
+class OverviewTransactionsResponse(BaseModel):
     paid_orders_count: int
     revenue_by_currency: dict[Currency, Decimal]
     report_currency: Currency
@@ -62,7 +62,7 @@ class OverviewResponse(BaseModel):
     granularity: Literal["day", "month"]
     users: Optional[OverviewUsersResponse] = None
     subscriptions: Optional[OverviewSubscriptionsResponse] = None
-    payments: Optional[OverviewPaymentsResponse] = None
+    transactions: Optional[OverviewTransactionsResponse] = None
     runtime: list[RuntimeProcessResponse]
     host_memory: Optional[HostMemoryResponse] = None
     online: OverviewOnlineResponse

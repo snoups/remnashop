@@ -1,14 +1,15 @@
 from dataclasses import dataclass
 
-from app.core.actor import SyntheticActor
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.auth.events import UserSessionRevokedByAdminEvent
 from app.modules.auth.repository import SessionRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -33,21 +34,19 @@ class RevokeUserSessionUseCase(UseCase[RevokeUserSessionDto, None]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: RevokeUserSessionDto) -> None:
+    async def _execute(self, actor: Actor, data: RevokeUserSessionDto) -> None:
         async with self._uow:
             session = await self._session_repository.get_active_by_id(data.session_id)
             if session is None or session.user_id != data.user_id:
-                raise NotFoundError("Session not found")
+                raise NotFoundError("Session not found", code=ErrorCode.SESSION_NOT_FOUND)
 
             target = await self._user_repository.get_by_id(data.user_id)
             if target is None:
-                raise NotFoundError("User not found")
-            # A SyntheticActor's authorization boundary is its permission grants
-            # (already checked above), not a role it doesn't meaningfully have --
-            # skip the hierarchy guard that protects real admins from each other.
-            if not isinstance(actor, SyntheticActor) and target.role >= actor.role:
+                raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
+            if not PermissionPolicy.can_manage(actor, target):
                 raise ConflictError(
-                    "Cannot manage sessions for an equally or more privileged account"
+                    "Cannot manage sessions for an equally or more privileged account",
+                    code=ErrorCode.SESSIONS_TARGET_TOO_PRIVILEGED,
                 )
 
         async with self._uow:

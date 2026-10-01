@@ -97,3 +97,8 @@ class SetAddOnPriceOverrideRequest(BaseModel):
 
 class ReorderAddOnsRequest(BaseModel):
     addon_ids: list[int]
+
+
+class AddOnListResponse(BaseModel):
+    items: list[AddOnResponse]
+    total: int

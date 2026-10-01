@@ -1,5 +1,6 @@
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import NotFoundError
@@ -12,7 +13,6 @@ from app.modules.dialogs.usecases._banners import drop_window_banners
 from app.modules.dialogs.usecases._publish import publish_dialog_change
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository, split_message_key
-from app.modules.users import UserDto
 
 
 class ResetAllDialogsUseCase(UseCase[None, None]):
@@ -36,7 +36,7 @@ class ResetAllDialogsUseCase(UseCase[None, None]):
         self._uow = uow
         self._redis = redis
 
-    async def _execute(self, actor: UserDto, data: None) -> None:
+    async def _execute(self, actor: Actor, data: None) -> None:
         async with self._uow:
             locales = await self._settings_repository.list_active_locales()
             text_keys: set[str] = set()

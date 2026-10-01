@@ -2,11 +2,11 @@ from pathlib import Path
 
 from loguru import logger
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.backups.repository import BackupRepository
-from app.modules.users import UserDto
 
 
 class DeleteBackupRunUseCase(UseCase[int, None]):
@@ -16,7 +16,7 @@ class DeleteBackupRunUseCase(UseCase[int, None]):
         self._backup_repository = backup_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: int) -> None:
+    async def _execute(self, actor: Actor, data: int) -> None:
         async with self._uow:
             run = await self._backup_repository.get_run(data)
         async with self._uow:

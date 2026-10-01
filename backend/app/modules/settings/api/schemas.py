@@ -63,9 +63,16 @@ class UpdateBotCommandsRequest(BaseModel):
         return self
 
 
-class UpdateBotCommandsResponse(BaseModel):
+class BotCommandsResponse(BaseModel):
     commands: list[BotCommandItem]
+
+
+class UpdateBotCommandsResponse(BotCommandsResponse):
     telegram_sync_failed: bool
+
+
+class BotLogsResponse(BaseModel):
+    lines: list[str]
 
 
 class OAuthSettingsResponse(BaseModel):
@@ -104,10 +111,6 @@ class UpdateOAuthSettingsRequest(BaseModel):
 class ActiveLocalesResponse(BaseModel):
     active: list[Locale]
     available: list[Locale]
-
-
-class AddLocaleRequest(BaseModel):
-    locale: Locale
 
 
 class AppearanceResponse(BaseModel):

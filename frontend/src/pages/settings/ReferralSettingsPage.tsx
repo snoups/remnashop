@@ -24,7 +24,7 @@ import {
   type ReferralSettings,
   updateReferralSettings,
 } from "@entities/referrals/api";
-import { CURRENCY_SYMBOL } from "@entities/payments/api";
+import { CURRENCY_SYMBOL } from "@entities/transactions/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";

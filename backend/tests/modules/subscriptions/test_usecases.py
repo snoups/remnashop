@@ -13,6 +13,7 @@ from app.modules.subscriptions.dto import (
     UpdateSubscriptionSquadsDto,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.usecases import (
     DeleteSubscriptionUseCase,
     ListSubscriptionsInput,
@@ -25,7 +26,7 @@ from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, _user_payload
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
-OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+OWNER = UserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 _EXPIRE_AT = datetime(2030, 1, 1, tzinfo=timezone.utc)
@@ -81,11 +82,14 @@ async def test_owner_can_update_subscription(
     uow: UnitOfWork,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    event_publisher,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=202))
     _seed_panel_user(remnawave_store, 6002)
     created = await subscription_repository.create(_create_dto(user.id, 6002))
-    use_case = UpdateSubscriptionUseCase(subscription_repository, remnawave_sdk, uow)
+    use_case = UpdateSubscriptionUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
 
     updated = await use_case(
         OWNER, UpdateSubscriptionDto(subscription_id=created.id, traffic_limit=500)
@@ -100,11 +104,14 @@ async def test_regular_user_cannot_update_subscription(
     uow: UnitOfWork,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    event_publisher,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=203))
     _seed_panel_user(remnawave_store, 6003)
     created = await subscription_repository.create(_create_dto(user.id, 6003))
-    use_case = UpdateSubscriptionUseCase(subscription_repository, remnawave_sdk, uow)
+    use_case = UpdateSubscriptionUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
@@ -118,11 +125,14 @@ async def test_owner_can_update_subscription_squads(
     uow: UnitOfWork,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    event_publisher,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=204))
     _seed_panel_user(remnawave_store, 6004)
     created = await subscription_repository.create(_create_dto(user.id, 6004))
-    use_case = UpdateSubscriptionSquadsUseCase(subscription_repository, remnawave_sdk, uow)
+    use_case = UpdateSubscriptionSquadsUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
     squad = uuid4()
 
     updated = await use_case(
@@ -141,11 +151,14 @@ async def test_regular_user_cannot_update_subscription_squads(
     uow: UnitOfWork,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    event_publisher,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=205))
     _seed_panel_user(remnawave_store, 6005)
     created = await subscription_repository.create(_create_dto(user.id, 6005))
-    use_case = UpdateSubscriptionSquadsUseCase(subscription_repository, remnawave_sdk, uow)
+    use_case = UpdateSubscriptionSquadsUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
@@ -162,16 +175,45 @@ async def test_owner_can_delete_subscription(
     uow: UnitOfWork,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    event_publisher,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=206))
     _seed_panel_user(remnawave_store, 6006)
     created = await subscription_repository.create(_create_dto(user.id, 6006))
-    use_case = DeleteSubscriptionUseCase(subscription_repository, remnawave_sdk, uow)
+    use_case = DeleteSubscriptionUseCase(
+        subscription_repository,
+        PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
+        event_publisher,
+        uow,
+    )
 
     await use_case(OWNER, created.id)
 
     subscriptions = await subscription_repository.list_all()
     assert subscriptions[0].status == SubscriptionStatus.DELETED
+
+
+async def test_delete_subscription_tolerates_user_already_removed_in_panel(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=208))
+    created = await subscription_repository.create(_create_dto(user.id, 6008))
+    use_case = DeleteSubscriptionUseCase(
+        subscription_repository,
+        PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
+        event_publisher,
+        uow,
+    )
+
+    await use_case(OWNER, created.id)
+
+    assert (await subscription_repository.get_by_id(created.id)).status == (
+        SubscriptionStatus.DELETED
+    )
 
 
 async def test_regular_user_cannot_delete_subscription(
@@ -180,11 +222,17 @@ async def test_regular_user_cannot_delete_subscription(
     uow: UnitOfWork,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    event_publisher,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=207))
     _seed_panel_user(remnawave_store, 6007)
     created = await subscription_repository.create(_create_dto(user.id, 6007))
-    use_case = DeleteSubscriptionUseCase(subscription_repository, remnawave_sdk, uow)
+    use_case = DeleteSubscriptionUseCase(
+        subscription_repository,
+        PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
+        event_publisher,
+        uow,
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, created.id)

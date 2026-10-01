@@ -4,6 +4,7 @@ from decimal import Decimal
 from loguru import logger
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -17,7 +18,7 @@ class RequestPointsWithdrawalDto:
     amount: Decimal
 
 
-class RequestPointsWithdrawalUseCase(UseCase[RequestPointsWithdrawalDto, None]):
+class RequestPointsWithdrawalUseCase(UseCase[RequestPointsWithdrawalDto, None, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(self, uow: UnitOfWork, event_publisher: EventPublisher) -> None:
@@ -26,9 +27,13 @@ class RequestPointsWithdrawalUseCase(UseCase[RequestPointsWithdrawalDto, None]):
 
     async def _execute(self, actor: UserDto, data: RequestPointsWithdrawalDto) -> None:
         if data.amount <= 0:
-            raise ValidationError("Withdrawal amount must be positive")
+            raise ValidationError(
+                "Withdrawal amount must be positive", code=ErrorCode.WITHDRAWAL_AMOUNT_INVALID
+            )
         if data.amount > actor.points:
-            raise ValidationError("Withdrawal amount exceeds current points")
+            raise ValidationError(
+                "Withdrawal amount exceeds current points", code=ErrorCode.WITHDRAWAL_EXCEEDS_POINTS
+            )
 
         async with self._uow:
             await self._event_publisher.publish(

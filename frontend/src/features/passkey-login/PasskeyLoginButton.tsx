@@ -11,9 +11,10 @@ import { Button } from "@shared/ui/Button";
 
 interface PasskeyLoginButtonProps {
   onSuccess: () => void;
+  compact?: boolean;
 }
 
-export function PasskeyLoginButton({ onSuccess }: PasskeyLoginButtonProps) {
+export function PasskeyLoginButton({ onSuccess, compact = false }: PasskeyLoginButtonProps) {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,13 +42,12 @@ export function PasskeyLoginButton({ onSuccess }: PasskeyLoginButtonProps) {
   return (
     <Button
       variant="outline"
-      className="w-full max-w-sm"
       type="button"
       onClick={() => void handleClick()}
       disabled={isLoading}
     >
       <Fingerprint size={16} />
-      {t("auth.oauth.passkeySignIn")}
+      {t(compact ? "auth.oauth.passkeyShort" : "auth.oauth.passkeySignIn")}
     </Button>
   );
 }

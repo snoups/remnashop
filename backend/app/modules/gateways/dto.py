@@ -9,6 +9,7 @@ class PaymentGatewayDto(BaseDto, TimestampMixin):
     order_index: int = 0
     is_active: bool = False
     is_configured: bool = False
+    flags: dict[str, bool] = {}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -20,3 +21,9 @@ class UpdateGatewaySettingsDto:
 @dataclass(frozen=True, kw_only=True)
 class ReorderGatewaysDto:
     ordered_types: list[PaymentGatewayType]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetGatewayActiveDto:
+    type: PaymentGatewayType
+    is_active: bool

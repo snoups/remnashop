@@ -104,10 +104,10 @@ function UserDetailsDialogBody({
   const hasAny = (...required: Permission[]) => required.some((permission) => permissions.includes(permission));
   const tabs: DialogTabItem<UserDetailsTab>[] = [
     { key: "profile", label: t("admins.details.tabs.profile"), icon: User },
-    ...(hasAny("PAYMENTS_VIEW", "PAYMENTS_SUMMARY_VIEW", "REFERRALS_VIEW")
+    ...(hasAny("TRANSACTIONS_VIEW", "TRANSACTIONS_SUMMARY_VIEW", "REFERRALS_VIEW")
       ? [{ key: "analytics" as const, label: t("users.details.tabs.analytics"), icon: BarChart3 }]
       : []),
-    ...(hasAny("PAYMENTS_VIEW")
+    ...(hasAny("TRANSACTIONS_VIEW")
       ? [{ key: "transactions" as const, label: t("users.details.tabs.transactions"), icon: Receipt }]
       : []),
     ...(hasAny("SUBSCRIPTIONS_VIEW")

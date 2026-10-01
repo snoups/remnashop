@@ -7,6 +7,7 @@ from app.modules.analytics.api import admin_router as analytics_admin_router
 from app.modules.api_tokens.api import admin_router as api_tokens_admin_router
 from app.modules.auth.api import router as auth_router
 from app.modules.auth.api import sessions_router as auth_sessions_router
+from app.modules.auth.api import user_sessions_router as auth_user_sessions_router
 from app.modules.backups.api import admin_router as backups_admin_router
 from app.modules.banners.api import admin_router as banners_admin_router
 from app.modules.blacklist.api import admin_router as blacklist_admin_router
@@ -20,9 +21,6 @@ from app.modules.oauth.api import router as oauth_router
 from app.modules.overview.api import admin_router as overview_admin_router
 from app.modules.passkeys.api import admin_router as passkeys_admin_router
 from app.modules.passkeys.api import router as passkeys_router
-from app.modules.payments.api import admin_router as payments_admin_router
-from app.modules.payments.api import public_router as payments_public_router
-from app.modules.payments.api import webhook_router as payments_webhook_router
 from app.modules.plans.api import admin_router as plans_admin_router
 from app.modules.plans.api import public_router as plans_public_router
 from app.modules.pricing.api import admin_router as pricing_admin_router
@@ -35,6 +33,9 @@ from app.modules.settings.api import router as settings_router
 from app.modules.subscriptions.api import addons_router as subscriptions_addons_router
 from app.modules.subscriptions.api import admin_router as subscriptions_admin_router
 from app.modules.subscriptions.api import router as subscriptions_webhook_router
+from app.modules.transactions.api import admin_router as transactions_admin_router
+from app.modules.transactions.api import public_router as transactions_public_router
+from app.modules.transactions.api import webhook_router as transactions_webhook_router
 from app.modules.translations.api import admin_router as translations_admin_router
 from app.modules.users.api import admin_router as users_admin_router
 from app.modules.users.api import admins_router as users_admins_router
@@ -43,6 +44,7 @@ from app.modules.users.api import admins_router as users_admins_router
 ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_router,
     auth_sessions_router,
+    auth_user_sessions_router,
     oauth_router,
     oauth_admin_router,
     passkeys_router,
@@ -68,11 +70,9 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     blacklist_admin_router,
     event_log_admin_router,
     gateways_admin_router,
-    payments_admin_router,
-    payments_public_router,
-    # must stay after payments_public_router -- POST /payments/{gateway_type} would
-    # otherwise swallow POST /payments/checkout
-    payments_webhook_router,
+    transactions_admin_router,
+    transactions_public_router,
+    transactions_webhook_router,
     api_tokens_admin_router,
     translations_admin_router,
     dialogs_admin_router,

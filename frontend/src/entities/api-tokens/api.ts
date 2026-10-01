@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiPost } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 import type { Permission } from "@shared/types/rbac";
 
 export interface ApiToken {
@@ -16,7 +17,7 @@ export interface CreatedApiToken {
 }
 
 export function listApiTokens(signal?: AbortSignal): Promise<ApiToken[]> {
-  return apiGet<ApiToken[]>("/api-tokens", signal);
+  return apiGet<ListResponse<ApiToken>>("/api-tokens", signal).then((response) => response.items);
 }
 
 export function createApiToken(

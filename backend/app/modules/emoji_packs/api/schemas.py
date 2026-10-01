@@ -18,3 +18,8 @@ class EmojiPackResponse(BaseModel):
 
 class ImportEmojiPackRequest(BaseModel):
     link: str = Field(min_length=1, max_length=256)
+
+
+class EmojiPackListResponse(BaseModel):
+    items: list[EmojiPackResponse]
+    total: int

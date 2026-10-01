@@ -1,8 +1,10 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.core.ports import EventPublisher
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import UserDto
@@ -25,22 +27,18 @@ class UnblockUserUseCase(UseCase[int, UserDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, user_id: int) -> UserDto:
+    async def _execute(self, actor: Actor, user_id: int) -> UserDto:
         async with self._uow:
             target = await self._user_repository.get_by_id(user_id)
             if target is None:
-                raise NotFoundError(f"User {user_id} not found")
-            # Not a role comparison: an API token authenticates as a synthetic
-            # actor with Role.USER, so `actor.role > target.role` refused it every
-            # target, including the plain users its own scopes cover. What has to
-            # hold is that staff are only ever acted on from above.
-            if target.is_privileged and not actor.role > target.role:
+                raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
+            if not PermissionPolicy.can_manage(actor, target):
                 raise PermissionDeniedError
 
         async with self._uow:
             updated = await self._user_repository.set_blocked(user_id, False)
             if updated is None:
-                raise NotFoundError(f"User {user_id} not found")
+                raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
             if target.telegram_id is not None:
                 await self._blacklist_repository.remove_entry(
                     BlacklistKind.TELEGRAM_ID, str(target.telegram_id)

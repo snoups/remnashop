@@ -13,7 +13,6 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
-    PaymentOrderStatus,
     PlanAvailability,
     PlanType,
     PromocodeAvailability,
@@ -21,11 +20,10 @@ from app.core.enums import (
     PurchaseType,
     Role,
     SubscriptionStatus,
+    TransactionStatus,
 )
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
-from app.modules.payments.dto import CreatePaymentOrderDto
-from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     SetPlanDurationDto,
@@ -41,6 +39,7 @@ from app.modules.promocodes.dto import (
     ActivatePromocodeDto,
     CreatePromocodeDto,
     ListPromocodeActivatedUsersDto,
+    ListPromocodesDto,
     UpdatePromocodeDto,
 )
 from app.modules.promocodes.repository import PromocodeRepository
@@ -65,6 +64,8 @@ from app.modules.subscriptions.dto import (
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
@@ -326,7 +327,7 @@ async def test_list_promocodes_requires_view_permission(
     use_case = ListPromocodesUseCase(promocode_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER)
+        await use_case(REGULAR_USER, ListPromocodesDto())
 
 
 async def test_generate_promocode_code_returns_unique_code(
@@ -1076,7 +1077,7 @@ def _summary_use_case(
 ) -> GetPromocodeSummaryUseCase:
     session = promocode_repository.session
     return GetPromocodeSummaryUseCase(
-        promocode_repository, PaymentOrderRepository(session), PricingRepository(session), uow
+        promocode_repository, TransactionRepository(session), PricingRepository(session), uow
     )
 
 
@@ -1179,8 +1180,8 @@ async def test_promocode_summary_totals_granted_rewards(
     assert summary.granted_subscriptions_count == 0
 
 
-def _order(user_id: int, *, promocode_id: Optional[int], final_price: str) -> CreatePaymentOrderDto:
-    return CreatePaymentOrderDto(
+def _order(user_id: int, *, promocode_id: Optional[int], final_price: str) -> CreateTransactionDto:
+    return CreateTransactionDto(
         user_id=user_id,
         plan_id=None,
         plan_snapshot=make_plan_snapshot(),
@@ -1211,12 +1212,12 @@ async def test_promocode_summary_sums_paid_promocode_discounts(
     user = await user_repository.create(
         CreateUserDto(name="buyer", telegram_id=uuid4().int % 10**9)
     )
-    orders = PaymentOrderRepository(promocode_repository.session)
+    orders = TransactionRepository(promocode_repository.session)
     paid = await orders.create(_order(user.id, promocode_id=promo.id, final_price="400"))
-    await orders.mark_status(paid.id, PaymentOrderStatus.PAID)
+    await orders.mark_status(paid.id, TransactionStatus.PAID)
     await orders.create(_order(user.id, promocode_id=promo.id, final_price="400"))  # pending
     admin_discount = await orders.create(_order(user.id, promocode_id=None, final_price="400"))
-    await orders.mark_status(admin_discount.id, PaymentOrderStatus.PAID)
+    await orders.mark_status(admin_discount.id, TransactionStatus.PAID)
     rate_table = await PricingRepository(promocode_repository.session).get_rate_table()
 
     summary = await _summary_use_case(promocode_repository, uow)(OWNER)

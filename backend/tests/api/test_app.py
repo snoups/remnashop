@@ -10,19 +10,10 @@ from redis.asyncio import Redis
 
 import app.api.probes_router as probes_router_module
 from app.api.app import get_app
+from app.api.middlewares import BodySizeLimitMiddleware
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.plans import get_plans_providers
-from app.modules.pricing import get_pricing_providers
-from app.modules.referrals import get_referrals_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscriptions_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.providers import get_module_providers
 
 
 @pytest.fixture
@@ -124,6 +115,29 @@ def test_assets_are_served_from_assets_mount(config: AppConfig, frontend_dist: P
     assert "bundle" in response.text
 
 
+def test_assets_are_gzipped_and_cached_forever(config: AppConfig, frontend_dist: Path) -> None:
+    (frontend_dist / "assets" / "big-def456.js").write_text("console.log('x');" * 200)
+    app = get_app(config, frontend_dist=frontend_dist)
+    client = TestClient(app)
+
+    response = client.get("/assets/big-def456.js", headers={"Accept-Encoding": "gzip"})
+
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+
+def test_index_html_is_always_revalidated(
+    config: AppConfig, frontend_dist: Path, readyz_container: AsyncContainer
+) -> None:
+    app = get_app(config, frontend_dist=frontend_dist)
+    setup_dishka(readyz_container, app)
+    client = TestClient(app)
+
+    response = client.get("/dashboard/settings")
+
+    assert response.headers["cache-control"] == "no-cache"
+
+
 @pytest.fixture
 async def readyz_container(config: AppConfig) -> AsyncIterator[AsyncContainer]:
     container = make_async_container(*get_core_providers(), context={AppConfig: config})
@@ -195,17 +209,7 @@ async def protected_route_container(config: AppConfig) -> AsyncIterator[AsyncCon
     # (even to fail with a 401) needs the fuller provider set below.
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_plans_providers(),
-        *get_pricing_providers(),
-        *get_referrals_providers(),
-        *get_settings_providers(),
-        *get_subscriptions_providers(),
-        *get_translations_providers(),
-        *get_blacklist_providers(),
+        *get_module_providers(),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
     yield container
@@ -269,3 +273,83 @@ async def test_remnawave_webhook_is_exempt_from_the_global_rate_limit(
     # that the webhook succeeds.
     assert all(r.status_code != 429 for r in responses)
     assert await redis.get(key) is None
+
+
+def test_spa_and_api_responses_carry_anti_framing_headers(
+    config: AppConfig, frontend_dist: Path, readyz_container: AsyncContainer
+) -> None:
+    app = get_app(config, frontend_dist=frontend_dist)
+    setup_dishka(readyz_container, app)
+    client = TestClient(app)
+
+    for path in ("/dashboard/users", "/health"):
+        response = client.get(path)
+        assert response.headers["content-security-policy"] == "frame-ancestors 'none'"
+        assert response.headers["x-frame-options"] == "DENY"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["referrer-policy"] == "same-origin"
+
+
+async def _multipart_chunks(total: int):
+    # a well-formed file part, so the form parser keeps spooling it
+    yield (
+        b'--b\r\nContent-Disposition: form-data; name="file"; filename="a.png"\r\n'
+        b"Content-Type: image/png\r\n\r\n"
+    )
+    chunk = b"x" * 65536
+    sent = 0
+    while sent < total:
+        yield chunk
+        sent += len(chunk)
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "too_big"),
+    [
+        ("POST", "/api/v1/auth/login", 2 * 1024 * 1024),
+        ("PUT", "/api/v1/banners/menu/ru", 7 * 1024 * 1024),
+    ],
+)
+async def test_oversized_body_is_rejected_before_authentication(
+    config: AppConfig, readyz_container: AsyncContainer, method: str, path: str, too_big: int
+) -> None:
+    app = get_app(config)
+    setup_dishka(readyz_container, app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        declared = await client.request(method, path, content=b"x" * too_big)
+        # chunked: no Content-Length, the stream itself has to be cut off
+        streamed = await client.request(
+            method,
+            path,
+            content=_multipart_chunks(too_big),
+            headers={"Content-Type": "multipart/form-data; boundary=b"},
+        )
+
+    for response in (declared, streamed):
+        assert response.status_code == 413
+        assert response.json()["code"] == "PAYLOAD_TOO_LARGE"
+
+
+async def test_upload_route_allows_bodies_above_the_default_limit() -> None:
+    received: list[int] = []
+
+    async def echo(scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        size = 0
+        more = True
+        while more:
+            message = await receive()
+            size += len(message.get("body", b""))
+            more = message.get("more_body", False)
+        received.append(size)
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    transport = httpx.ASGITransport(app=BodySizeLimitMiddleware(echo))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        upload = await client.put("/api/v1/banners/menu/ru", content=b"x" * (2 * 1024 * 1024))
+        other = await client.post("/api/v1/plans", content=b"x" * (2 * 1024 * 1024))
+
+    assert upload.status_code == 200
+    assert received == [2 * 1024 * 1024]
+    assert other.status_code == 413

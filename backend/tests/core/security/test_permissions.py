@@ -1,5 +1,6 @@
 import pytest
 
+from app.core.actor import SYSTEM_ACTOR, Actor, SyntheticActor
 from app.core.enums import Locale, Role
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import (
@@ -90,13 +91,8 @@ def test_owner_has_view_users_by_default() -> None:
     assert PermissionPolicy.has_permission(OWNER, Permission.USERS_VIEW)
 
 
-def test_admin_does_not_have_view_users_by_default() -> None:
-    assert not PermissionPolicy.has_permission(ADMIN, Permission.USERS_VIEW)
-
-
-def test_admin_gains_view_users_via_grant() -> None:
-    granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_VIEW"]})
-    assert PermissionPolicy.has_permission(granted_admin, Permission.USERS_VIEW)
+def test_admin_has_view_users_by_default() -> None:
+    assert PermissionPolicy.has_permission(ADMIN, Permission.USERS_VIEW)
 
 
 def test_delete_user_is_grantable() -> None:
@@ -149,6 +145,7 @@ def test_every_catalog_permission_has_metadata() -> None:
         Permission.PRICING_ANCHOR_MANAGE,
         Permission.USERS_UNBLOCK_ALL,
         Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
+        Permission.BACKUPS_RUN_DOWNLOAD,
     }
     assert set(Permission) - PERMISSION_METADATA.keys() == non_catalog
 
@@ -164,7 +161,6 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.BOT_RESTART,
         Permission.SHOP_SETTINGS_VIEW,
         Permission.SHOP_SETTINGS_MANAGE,
-        Permission.BANNERS_VIEW,
         Permission.BANNERS_IMAGE_VIEW,
         Permission.BANNERS_UPLOAD,
         Permission.BANNERS_DELETE,
@@ -196,6 +192,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.DIALOGS_TEXT_UPDATE,
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.PLANS_VIEW,
+        Permission.PLANS_DETAIL_VIEW,
         Permission.PLANS_CREATE,
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,
@@ -210,10 +207,12 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PRICING_SETTINGS_MANAGE,
         Permission.PRICING_BASE_ADJUST_MANAGE,
         Permission.SUBSCRIPTIONS_VIEW,
+        Permission.SUBSCRIPTIONS_DETAIL_VIEW,
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
         Permission.SUBSCRIPTIONS_DELETE,
         Permission.ADDONS_VIEW,
+        Permission.ADDONS_DETAIL_VIEW,
         Permission.ADDONS_CREATE,
         Permission.ADDONS_UPDATE,
         Permission.ADDONS_DELETE,
@@ -221,6 +220,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
         Permission.ADDONS_REORDER,
         Permission.PROMOCODES_VIEW,
+        Permission.PROMOCODES_DETAIL_VIEW,
         Permission.PROMOCODES_CREATE,
         Permission.PROMOCODES_UPDATE,
         Permission.PROMOCODES_DELETE,
@@ -228,11 +228,13 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PROMOCODES_ACTIVATIONS_VIEW,
         Permission.PROMOCODES_SUMMARY_VIEW,
         Permission.PROMOCODES_USERS_VIEW,
+        Permission.USERS_VIEW,
+        Permission.USERS_DETAIL_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,
-        Permission.PAYMENTS_VIEW,
-        Permission.PAYMENTS_SUMMARY_VIEW,
-        Permission.PAYMENTS_ORDER_VIEW,
-        Permission.PAYMENTS_GATEWAYS_VIEW,
+        Permission.TRANSACTIONS_VIEW,
+        Permission.TRANSACTIONS_SUMMARY_VIEW,
+        Permission.TRANSACTIONS_DETAIL_VIEW,
+        Permission.TRANSACTIONS_GATEWAYS_VIEW,
         Permission.REFERRALS_VIEW,
         Permission.REFERRALS_LINKS_VIEW,
         Permission.REFERRALS_INVITED_VIEW,
@@ -245,6 +247,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.REFERRALS_POINTS_MANAGE,
         Permission.REFERRALS_CODE_RESET,
         Permission.AD_LINKS_VIEW,
+        Permission.AD_LINKS_DETAIL_VIEW,
         Permission.AD_LINKS_STATS_VIEW,
         Permission.AD_LINKS_SUMMARY_VIEW,
         Permission.AD_LINKS_USERS_VIEW,
@@ -270,12 +273,11 @@ def test_user_sessions_revoke_is_distinct_from_view() -> None:
 
 
 def test_banner_permissions_are_independently_gateable() -> None:
-    # ADMIN's role default includes all four banner permissions -- revoke
-    # three to isolate BANNERS_UPLOAD as the only one true.
+    # ADMIN's role default includes every banner permission -- revoke two
+    # to check BANNERS_UPLOAD survives on its own.
     upload_only = ADMIN.model_copy(
         update={
             "permission_revokes": [
-                Permission.BANNERS_VIEW.value,
                 Permission.BANNERS_IMAGE_VIEW.value,
                 Permission.BANNERS_DELETE.value,
             ]
@@ -283,14 +285,13 @@ def test_banner_permissions_are_independently_gateable() -> None:
     )
     assert PermissionPolicy.has_permission(upload_only, Permission.BANNERS_UPLOAD)
     assert not PermissionPolicy.has_permission(upload_only, Permission.BANNERS_DELETE)
-    assert not PermissionPolicy.has_permission(upload_only, Permission.BANNERS_VIEW)
     assert not PermissionPolicy.has_permission(upload_only, Permission.BANNERS_IMAGE_VIEW)
 
 
 def test_gateways_permissions_are_grantable() -> None:
     assert Permission.GATEWAYS_VIEW in GRANTABLE_PERMISSIONS
     assert Permission.GATEWAYS_UPDATE in GRANTABLE_PERMISSIONS
-    assert Permission.GATEWAYS_TOGGLE in GRANTABLE_PERMISSIONS
+    assert Permission.GATEWAYS_ACTIVE_SET in GRANTABLE_PERMISSIONS
     assert Permission.GATEWAYS_REORDER in GRANTABLE_PERMISSIONS
 
 
@@ -302,7 +303,7 @@ def test_owner_has_gateways_permissions_by_default() -> None:
 def test_admin_does_not_have_gateways_permissions_by_default() -> None:
     assert not PermissionPolicy.has_permission(ADMIN, Permission.GATEWAYS_VIEW)
     assert not PermissionPolicy.has_permission(ADMIN, Permission.GATEWAYS_UPDATE)
-    assert not PermissionPolicy.has_permission(ADMIN, Permission.GATEWAYS_TOGGLE)
+    assert not PermissionPolicy.has_permission(ADMIN, Permission.GATEWAYS_ACTIVE_SET)
     assert not PermissionPolicy.has_permission(ADMIN, Permission.GATEWAYS_REORDER)
 
 
@@ -316,7 +317,7 @@ def test_gateways_permissions_are_independently_gateable() -> None:
         update={
             "permission_revokes": [
                 Permission.GATEWAYS_UPDATE.value,
-                Permission.GATEWAYS_TOGGLE.value,
+                Permission.GATEWAYS_ACTIVE_SET.value,
                 Permission.GATEWAYS_REORDER.value,
             ]
         }
@@ -329,6 +330,7 @@ def test_plans_permissions_granted_to_admin_by_default() -> None:
     admin_default = ROLE_PERMISSIONS[Role.ADMIN]
     for permission in (
         Permission.PLANS_VIEW,
+        Permission.PLANS_DETAIL_VIEW,
         Permission.PLANS_CREATE,
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,
@@ -347,10 +349,12 @@ def test_subscriptions_permissions_granted_to_admin_by_default() -> None:
     admin_default = ROLE_PERMISSIONS[Role.ADMIN]
     for permission in (
         Permission.SUBSCRIPTIONS_VIEW,
+        Permission.SUBSCRIPTIONS_DETAIL_VIEW,
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
         Permission.SUBSCRIPTIONS_DELETE,
         Permission.ADDONS_VIEW,
+        Permission.ADDONS_DETAIL_VIEW,
         Permission.ADDONS_CREATE,
         Permission.ADDONS_UPDATE,
         Permission.ADDONS_DELETE,
@@ -384,7 +388,6 @@ def test_backups_permissions_are_grantable_but_not_default_admin() -> None:
         Permission.BACKUPS_SETTINGS_MANAGE,
         Permission.BACKUPS_RUN_VIEW,
         Permission.BACKUPS_RUN_CREATE,
-        Permission.BACKUPS_RUN_DOWNLOAD,
         Permission.BACKUPS_RUN_DELETE,
         Permission.BACKUPS_STATS_VIEW,
     )
@@ -396,6 +399,15 @@ def test_backups_permissions_are_grantable_but_not_default_admin() -> None:
         assert permission in owner_default
 
 
+def test_backup_download_is_owner_only() -> None:
+    # a DATABASE dump holds every table, password hashes included -- holding it
+    # would subsume every other read permission, so it can't be delegated
+    assert Permission.BACKUPS_RUN_DOWNLOAD not in GRANTABLE_PERMISSIONS
+    assert Permission.BACKUPS_RUN_DOWNLOAD not in TOKEN_GRANTABLE_PERMISSIONS
+    assert Permission.BACKUPS_RUN_DOWNLOAD not in ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.BACKUPS_RUN_DOWNLOAD in ROLE_PERMISSIONS[Role.OWNER]
+
+
 def test_blacklist_permissions_are_owner_only_by_default() -> None:
     for perm in (
         Permission.BLACKLIST_VIEW,
@@ -404,12 +416,11 @@ def test_blacklist_permissions_are_owner_only_by_default() -> None:
         Permission.BLACKLIST_ENTRY_REMOVE,
         Permission.BLACKLIST_SOURCE_ADD,
         Permission.BLACKLIST_SOURCE_REMOVE,
-        Permission.BLACKLIST_SOURCE_TOGGLE,
+        Permission.BLACKLIST_SOURCE_UPDATE,
         Permission.BLACKLIST_SYNC,
         Permission.BLACKLIST_MATCHES_VIEW,
         Permission.USERS_BLOCK,
         Permission.USERS_UNBLOCK,
-        Permission.USERS_BULK_BLOCK,
         Permission.USERS_UNBLOCK_ALL,
         Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
     ):
@@ -432,3 +443,34 @@ def test_admin_role_has_ad_links_permissions() -> None:
 def test_ad_links_permissions_are_grantable() -> None:
     assert Permission.AD_LINKS_VIEW in GRANTABLE_PERMISSIONS
     assert Permission.AD_LINKS_CREATE in GRANTABLE_PERMISSIONS
+
+
+def test_admin_can_open_a_user_card_by_default() -> None:
+    assert PermissionPolicy.has_permission(ADMIN, Permission.USERS_DETAIL_VIEW)
+
+
+_TOKEN = SyntheticActor(
+    id=0, role=Role.USER, name="API Token: ci", is_privileged=True, log="[api_token:ci]"
+)
+
+
+@pytest.mark.parametrize(
+    ("actor", "target", "allowed"),
+    [
+        (ADMIN, REGULAR_USER, True),
+        (ADMIN, ADMIN, False),
+        (ADMIN, OWNER, False),
+        (OWNER, REGULAR_USER, True),
+        (OWNER, ADMIN, True),
+        (OWNER, OWNER, False),
+        (_TOKEN, REGULAR_USER, True),
+        (_TOKEN, ADMIN, False),
+        (_TOKEN, OWNER, False),
+        (SYSTEM_ACTOR, ADMIN, True),
+        (SYSTEM_ACTOR, OWNER, True),
+    ],
+)
+def test_can_manage_reaches_customers_and_only_lower_staff(
+    actor: Actor, target: UserDto, allowed: bool
+) -> None:
+    assert PermissionPolicy.can_manage(actor, target) is allowed

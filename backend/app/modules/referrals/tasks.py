@@ -15,7 +15,6 @@ from app.core.enums import (
 )
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.ports import EventPublisher
-from app.modules.payments import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import ReferralSettingsDto
 from app.modules.referrals.events import ReferralRewardIssuedEvent
@@ -29,6 +28,7 @@ from app.modules.subscriptions import (
     PurchaseSubscriptionUseCase,
     SubscriptionRepository,
 )
+from app.modules.transactions import TransactionRepository
 from app.modules.users import UserRepository
 from app.worker.broker import broker
 
@@ -102,12 +102,12 @@ async def _purchase_earns_a_reward(
 
 async def _percent_base(
     *,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     payment_key: str,
     reward_type: ReferralRewardType,
 ) -> Optional[Decimal]:
-    order = await payment_order_repository.get_by_idempotency_key(payment_key)
+    order = await transaction_repository.get_by_idempotency_key(payment_key)
     if order is None:
         logger.warning(f"Percent referral reward skipped: no order for payment '{payment_key}'")
         return None
@@ -138,7 +138,7 @@ def _level_amounts(
 async def assign_referral_rewards(
     *,
     referral_repository: ReferralRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
@@ -152,6 +152,11 @@ async def assign_referral_rewards(
 ) -> None:
     settings = await referral_repository.get_settings()
     if not settings.enabled:
+        return
+    order = await transaction_repository.get_by_idempotency_key(payment_key)
+    if order is not None and order.final_price <= 0:
+        # a 100%-discount checkout carries a payment_key too, but no money
+        logger.info(f"Referral reward skipped: order for payment '{payment_key}' was free")
         return
     if not await _purchase_earns_a_reward(
         subscription_repository=subscription_repository,
@@ -168,7 +173,7 @@ async def assign_referral_rewards(
 
     percent_base = (
         await _percent_base(
-            payment_order_repository=payment_order_repository,
+            transaction_repository=transaction_repository,
             pricing_repository=pricing_repository,
             payment_key=payment_key,
             reward_type=settings.reward_type,
@@ -310,7 +315,7 @@ async def assign_referral_rewards_task(
     is_new_purchase: bool,
     payment_key: str,
     referral_repository: FromDishka[ReferralRepository],
-    payment_order_repository: FromDishka[PaymentOrderRepository],
+    transaction_repository: FromDishka[TransactionRepository],
     pricing_repository: FromDishka[PricingRepository],
     user_repository: FromDishka[UserRepository],
     subscription_repository: FromDishka[SubscriptionRepository],
@@ -320,7 +325,7 @@ async def assign_referral_rewards_task(
 ) -> None:
     await assign_referral_rewards(
         referral_repository=referral_repository,
-        payment_order_repository=payment_order_repository,
+        transaction_repository=transaction_repository,
         pricing_repository=pricing_repository,
         user_repository=user_repository,
         subscription_repository=subscription_repository,

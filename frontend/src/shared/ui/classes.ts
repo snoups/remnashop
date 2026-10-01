@@ -7,7 +7,7 @@ export const POPOVER_CLASS =
 /** 11px uppercase label over a filter, column or stat. */
 export const EYEBROW_CLASS = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
-/** Row-list table (admins, payments, event log...): header row, body, row. Rows add their own hover (enabled: on disableable buttons). */
+/** Row-list table (admins, transactions, event log...): header row, body, row. Rows add their own hover (enabled: on disableable buttons). */
 export const LIST_HEAD_CLASS = `mb-1 border-b border-border px-3 pb-2.5 ${EYEBROW_CLASS}`;
 // The divider between rows is an inset shadow, not divide-y: a border would add 1px to every row
 // but the last, a shadow takes no height. For containers that aren't LIST_BODY_CLASS (the admins grid).

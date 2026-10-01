@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -16,7 +17,7 @@ class RevokeSessionDto:
     client_ip: str
 
 
-class RevokeSessionUseCase(UseCase[RevokeSessionDto, None]):
+class RevokeSessionUseCase(UseCase[RevokeSessionDto, None, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(
@@ -35,7 +36,7 @@ class RevokeSessionUseCase(UseCase[RevokeSessionDto, None]):
             if session is None or session.user_id != actor.id:
                 # Same message whether it doesn't exist or belongs to someone else --
                 # don't leak which case it was.
-                raise NotFoundError("Session not found")
+                raise NotFoundError("Session not found", code=ErrorCode.SESSION_NOT_FOUND)
 
         async with self._uow:
             await self._session_repository.revoke_by_id(data.session_id)

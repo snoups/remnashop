@@ -3,11 +3,14 @@ from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, OAuthProvider, Role
 from app.core.security import verify_password
 from app.core.utils.time import datetime_now
 from app.modules.auth import SessionRepository, reset_owner_access
 from app.modules.auth.dto import CreateSessionDto
+from app.modules.oauth import CreateOAuthIdentityDto, OAuthIdentityRepository
+from app.modules.passkeys import PasskeyRepository
+from app.modules.passkeys.dto import CreatePasskeyCredentialDto
 from app.modules.users import CreateUserDto, UpdateUserDto, UserRepository
 
 
@@ -50,3 +53,42 @@ async def test_reset_owner_access_resets_password_allowlist_and_sessions(
     assert updated.ip_allowlist == []
     assert updated.password_hash and await verify_password(password, updated.password_hash, pepper)
     assert await session_repository.list_active_by_user(owner.id) == []
+
+
+async def test_reset_owner_access_removes_planted_passkeys_and_oauth_identities(
+    session: AsyncSession, config: AppConfig, user_repository: UserRepository
+) -> None:
+    # a party that held the owner session could have enrolled its own
+    # passkey or linked its own OAuth account -- both log in without the password
+    owner = await user_repository.create(
+        CreateUserDto(
+            login="owner", password_hash="x:y", name="owner", role=Role.OWNER, language=Locale.EN
+        )
+    )
+    passkeys = PasskeyRepository(session)
+    identities = OAuthIdentityRepository(session)
+    await passkeys.create(
+        CreatePasskeyCredentialDto(
+            user_id=owner.id,
+            credential_id="planted",
+            public_key=b"k",
+            sign_count=0,
+            transports=None,
+            device_type="single_device",
+            backed_up=False,
+            name=None,
+        )
+    )
+    await identities.create(
+        CreateOAuthIdentityDto(
+            user_id=owner.id,
+            provider=OAuthProvider.GITHUB,
+            external_id="attacker",
+            external_login="attacker",
+        )
+    )
+
+    assert await reset_owner_access(session, config.crypt_key.get_secret_value()) is not None
+
+    assert await passkeys.get_by_credential_id("planted") is None
+    assert await identities.list_by_user(owner.id) == []

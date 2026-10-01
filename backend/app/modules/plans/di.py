@@ -4,6 +4,7 @@ from app.modules.plans.repository import PlanRepository
 from app.modules.plans.usecases import (
     CreatePlanUseCase,
     DeletePlanUseCase,
+    GetPlanUseCase,
     ListActivePlansUseCase,
     ListPlansUseCase,
     ReorderPlansUseCase,
@@ -21,6 +22,7 @@ class PlansProvider(Provider):
 
     plan_repository = provide(PlanRepository)
     list_plans_use_case = provide(ListPlansUseCase)
+    get_plan_use_case = provide(GetPlanUseCase)
     list_active_plans_use_case = provide(ListActivePlansUseCase)
     create_plan_use_case = provide(CreatePlanUseCase)
     update_plan_use_case = provide(UpdatePlanUseCase)

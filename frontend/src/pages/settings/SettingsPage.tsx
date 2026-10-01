@@ -32,7 +32,7 @@ export function SettingsPage() {
   const canManageGateways =
     permissions.includes("GATEWAYS_VIEW") ||
     permissions.includes("GATEWAYS_UPDATE") ||
-    permissions.includes("GATEWAYS_TOGGLE") ||
+    permissions.includes("GATEWAYS_ACTIVE_SET") ||
     permissions.includes("GATEWAYS_REORDER") ||
     permissions.includes("GATEWAYS_TEST");
   const canManageBackups = permissions.includes("BACKUPS_VIEW");

@@ -15,16 +15,10 @@ from app.core.enums import BlacklistKind, Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.password import PASSWORD_MIN_LENGTH
 from app.core.security.permissions import Permission
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import BlacklistRepository, get_blacklist_providers
-from app.modules.passkeys import get_passkey_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.blacklist import BlacklistRepository
+from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
@@ -54,14 +48,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
     # untouched.
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_subscription_revoker_providers(),
-        *get_auth_providers(),
-        *get_passkey_providers(),
-        *get_settings_providers(),
-        *get_api_tokens_providers(),
-        *get_translations_providers(),
-        *get_blacklist_providers(),
+        *get_module_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -172,7 +159,7 @@ async def test_promote_admin_endpoint_returns_null_password_when_already_set(
         await uow.commit()
 
     response = await client.post(
-        "/api/v1/admins/promote",
+        "/api/v1/admins/actions/promote",
         json={"email": "promotehttp@example.com", "login": "promotehttp-admin"},
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -195,9 +182,9 @@ async def test_list_admins_endpoint(
     response = await client.get("/api/v1/admins", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 200
-    logins = {a["login"] for a in response.json()}
+    logins = {a["login"] for a in response.json()["items"]}
     assert owner.login in logins
-    owner_row = next(a for a in response.json() if a["login"] == owner.login)
+    owner_row = next(a for a in response.json()["items"] if a["login"] == owner.login)
     assert "ADMINS_MANAGE" in owner_row["role_permissions"]
 
 
@@ -408,7 +395,8 @@ async def test_delete_admin_endpoint_removes_admin(
     )
 
     assert response.status_code == 204
-    assert await user_repository.get_by_id(admin_id) is None
+    deleted = await user_repository.get_by_id(admin_id)
+    assert deleted is not None and deleted.deleted_at is not None
 
 
 async def test_delete_admin_endpoint_rejects_owner_target(
@@ -521,13 +509,13 @@ async def test_block_and_unblock_user_endpoints(
         await uow.commit()
 
     response = await client.post(
-        f"/api/v1/users/{target.id}/block", headers={"Authorization": f"Bearer {token}"}
+        f"/api/v1/users/{target.id}/actions/block", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
     assert response.json()["is_blocked"] is True
 
     response = await client.post(
-        f"/api/v1/users/{target.id}/unblock", headers={"Authorization": f"Bearer {token}"}
+        f"/api/v1/users/{target.id}/actions/unblock", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
     assert response.json()["is_blocked"] is False
@@ -543,35 +531,10 @@ async def test_block_user_endpoint_returns_404_for_unknown_user(
     _, token = await _owner_token(user_repository, session_repository, uow, config)
 
     response = await client.post(
-        "/api/v1/users/999999999/block", headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/users/999999999/actions/block", headers={"Authorization": f"Bearer {token}"}
     )
 
     assert response.status_code == 404
-
-
-async def test_bulk_block_endpoint_reports_counts_for_mixed_ids(
-    client: httpx.AsyncClient,
-    user_repository: UserRepository,
-    session_repository: SessionRepository,
-    uow: UnitOfWork,
-    config: AppConfig,
-) -> None:
-    _, token = await _owner_token(user_repository, session_repository, uow, config)
-    async with uow:
-        known = await user_repository.create(
-            CreateUserDto(name="bulk-known", role=Role.USER, language=Locale.EN, telegram_id=555001)
-        )
-        await uow.commit()
-
-    response = await client.post(
-        "/api/v1/users/block-bulk",
-        json={"telegram_ids": [known.telegram_id, 555002]},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body == {"blocked": 1, "added_to_list": 1, "skipped": 0}
 
 
 async def test_unblock_all_endpoint_requires_unblock_all_permission(
@@ -596,7 +559,7 @@ async def test_unblock_all_endpoint_requires_unblock_all_permission(
     token = await _issue_token(admin.id, session_repository, config)
 
     response = await client.post(
-        "/api/v1/users/unblock-all", headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/users/bulk/all/unblock", headers={"Authorization": f"Bearer {token}"}
     )
 
     assert response.status_code == 403
@@ -687,10 +650,81 @@ async def test_unblock_blacklist_matches_endpoint(
         await user_repository.set_blocked(user.id, True)
         await uow.commit()
 
-    # must not be captured by POST /users/{user_id}/unblock
+    # must not be captured by POST /users/{user_id}/actions/unblock
     response = await client.post(
-        "/api/v1/users/blacklist-matches/unblock", headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/users/bulk/blacklist-matches/unblock",
+        headers={"Authorization": f"Bearer {token}"},
     )
 
     assert response.status_code == 200
     assert response.json() == {"unblocked": 1}
+
+
+async def _create(user_repository: UserRepository, uow: UnitOfWork, **fields: object) -> UserDto:
+    async with uow:
+        user = await user_repository.create(CreateUserDto(language=Locale.EN, **fields))  # type: ignore[arg-type]
+        await uow.commit()
+    return user
+
+
+async def test_get_user_returns_list_item_shape(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    customer = await _create(
+        user_repository, uow, telegram_id=777001, name="customer", role=Role.USER
+    )
+
+    response = await client.get(
+        f"/api/v1/users/{customer.id}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == customer.id
+    assert response.json()["active_subscriptions"] == 0
+
+
+async def test_get_user_hides_staff_without_admins_manage(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    owner = await _create(
+        user_repository, uow, login="hiddenowner", name="hiddenowner", role=Role.OWNER
+    )
+    admin = await _create(
+        user_repository,
+        uow,
+        login="detailviewer",
+        name="detailviewer",
+        role=Role.ADMIN,
+        permission_grants=["USERS_DETAIL_VIEW"],
+    )
+    token = await _issue_token(admin.id, session_repository, config)
+
+    response = await client.get(
+        f"/api/v1/users/{owner.id}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 404
+
+
+async def test_users_me_is_not_shadowed_by_user_id_route(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    owner, token = await _owner_token(user_repository, session_repository, uow, config)
+
+    response = await client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.json()["id"] == owner.id

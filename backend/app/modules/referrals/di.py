@@ -38,17 +38,12 @@ class ReferralsProvider(Provider):
 
 
 def get_referrals_providers() -> list[Provider]:
-    return [ReferralsProvider()]
-
-
-def get_referrals_revenue_providers() -> list[Provider]:
-    # separate: needs payments and pricing, which only the api container wires.
-    # Imported here, not at module level: payments -> subscriptions -> plans -> referrals
-    # would re-enter payments before it finishes loading.
+    # Imported here, not at module level: transactions -> subscriptions -> plans
+    # -> referrals would re-enter transactions before it finishes loading.
     from app.modules.referrals.usecases.get_user_referral_revenue import (  # noqa: PLC0415
         GetUserReferralRevenueUseCase,
     )
 
-    provider = Provider(scope=Scope.REQUEST)
-    provider.provide(GetUserReferralRevenueUseCase)
-    return [provider]
+    revenue_provider = Provider(scope=Scope.REQUEST)
+    revenue_provider.provide(GetUserReferralRevenueUseCase)
+    return [ReferralsProvider(), revenue_provider]

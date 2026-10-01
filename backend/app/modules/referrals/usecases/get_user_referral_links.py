@@ -1,14 +1,16 @@
 from typing import Final, Optional
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.constants import T_ME
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import ReferralLinksDto
 from app.modules.settings import SettingsRepository, fetch_bot_username
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 # matches telegram/middlewares/_codes.py's _REFERRAL_PREFIX
 _BOT_START_QUERY: Final[str] = "?start=ref_{code}"
@@ -30,11 +32,11 @@ class GetUserReferralLinksUseCase(UseCase[int, ReferralLinksDto]):
         self._config = config
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: int) -> ReferralLinksDto:
+    async def _execute(self, actor: Actor, data: int) -> ReferralLinksDto:
         async with self._uow:
             user = await self._user_repository.get_by_id(data)
             if user is None:
-                raise NotFoundError(f"User '{data}' not found")
+                raise NotFoundError(f"User '{data}' not found", code=ErrorCode.USER_NOT_FOUND)
             bot_settings = await self._settings_repository.get_bot_settings()
 
         code = user.referral_code

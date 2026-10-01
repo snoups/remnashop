@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatMoney } from "@entities/advertising/format";
-import type { PaymentOrderItem, PurchaseType } from "@entities/payments/api";
+import type { TransactionItem, PurchaseType } from "@entities/transactions/api";
 import { Card } from "@shared/ui/Card";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
@@ -17,7 +17,7 @@ const MAX_MONTH_TICKS = 8;
 const LEGEND_TYPES: readonly PurchaseType[] = ["NEW", "RENEW", "CHANGE"];
 
 interface Segment {
-  order: PaymentOrderItem;
+  order: TransactionItem;
   start: number;
   end: number;
 }
@@ -25,7 +25,7 @@ interface Segment {
 // A renewal extends the period it renews, so it starts where the previous paid period ends
 // if that is still ahead. chains onto the latest period of any subscription, a user
 // renewing one of two parallel subscriptions gets a slightly shifted bar.
-function buildSegments(paid: PaymentOrderItem[]): Segment[] {
+function buildSegments(paid: TransactionItem[]): Segment[] {
   let lastEnd = 0;
   return paid.map((order) => {
     const created = new Date(order.created_at).getTime();
@@ -52,7 +52,7 @@ function monthStart(time: number, offset = 0): number {
 }
 
 /** Paid periods on a time axis: one bar per paid order over the days it bought, gaps between them, refunds as dots. */
-export function PaidTimeline({ orders }: { orders: PaymentOrderItem[] }) {
+export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
   const { t, i18n } = useTranslation();
   const byDate = [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at));
   const segments = buildSegments(byDate.filter((order) => order.status === "PAID"));

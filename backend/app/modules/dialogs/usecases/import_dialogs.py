@@ -1,7 +1,9 @@
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import DialogWindowKind, Locale
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -23,7 +25,6 @@ from app.modules.translations import (
     join_message_key,
     serialize_to_fluent,
 )
-from app.modules.users import UserDto
 
 
 class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
@@ -47,10 +48,11 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
         self._uow = uow
         self._redis = redis
 
-    async def _execute(self, actor: UserDto, data: DialogExportDto) -> None:
+    async def _execute(self, actor: Actor, data: DialogExportDto) -> None:
         if data.version != EXPORT_VERSION:
             raise ValidationError(
-                f"Unsupported export version {data.version}, expected {EXPORT_VERSION}"
+                f"Unsupported export version {data.version}, expected {EXPORT_VERSION}",
+                code=ErrorCode.DIALOG_EXPORT_VERSION_UNSUPPORTED,
             )
 
         async with self._uow:
@@ -135,7 +137,8 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
             if "." in text.message_id:
                 raise ValidationError(
                     f"'{text.message_id}' is a message id plus an attribute -- "
-                    "pass the attribute as attribute_id"
+                    "pass the attribute as attribute_id",
+                    code=ErrorCode.DIALOG_TEXT_KEY_HAS_ATTRIBUTE,
                 )
             if join_message_key(text.message_id, text.attribute_id) not in text_keys:
                 # Import must not become a back door into translations that have
@@ -159,4 +162,7 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
             )
             errors = bundle.check_messages()
             if errors:
-                raise ValidationError(f"Invalid Fluent syntax in {locale.value}: {errors[0][1]}")
+                raise ValidationError(
+                    f"Invalid Fluent syntax in {locale.value}: {errors[0][1]}",
+                    code=ErrorCode.FLUENT_SYNTAX_INVALID,
+                )

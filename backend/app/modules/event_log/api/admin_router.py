@@ -5,7 +5,8 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.dependencies.admin import require_admin
+from app.api.dependencies.admin import require_admin, require_admin_user
+from app.core.actor import Actor
 from app.core.constants import INT32_MAX
 from app.core.events import EventCategory
 from app.core.utils.time import range_end_utc, range_start_utc
@@ -34,12 +35,12 @@ router = APIRouter(prefix="/event-log", tags=["event-log"])
 @inject
 async def list_event_log(
     use_case: FromDishka[ListEventLogUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     category: Optional[EventCategory] = None,
     actor_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
     search: Optional[str] = None,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
+    occurred_from: Optional[datetime] = None,
+    occurred_to: Optional[datetime] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> EventLogPageResponse:
@@ -49,8 +50,8 @@ async def list_event_log(
             category=category,
             actor_id=actor_id,
             search=search,
-            date_from=range_start_utc(date_from),
-            date_to=range_end_utc(date_to),
+            occurred_from=range_start_utc(occurred_from),
+            occurred_to=range_end_utc(occurred_to),
             page=page,
             page_size=page_size,
         ),
@@ -65,7 +66,7 @@ async def list_event_log(
 @inject
 async def get_notifications(
     use_case: FromDishka[GetNotificationsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> NotificationsResponse:
     notifications = await use_case(actor)
     return NotificationsResponse(
@@ -77,11 +78,11 @@ async def get_notifications(
     )
 
 
-@router.post("/notifications/read", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/notifications/actions/mark-read", status_code=status.HTTP_204_NO_CONTENT)
 @inject
 async def mark_notifications_read(
     use_case: FromDishka[MarkNotificationsReadUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> None:
     await use_case(actor)
 
@@ -90,7 +91,7 @@ async def mark_notifications_read(
 @inject
 async def get_notification_groups(
     use_case: FromDishka[GetNotificationGroupsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> NotificationGroupsResponse:
     groups = await use_case(actor)
     return NotificationGroupsResponse(groups=groups, available=list(NOTIFICATION_GROUPS))
@@ -101,7 +102,7 @@ async def get_notification_groups(
 async def update_notification_groups(
     body: UpdateNotificationGroupsRequest,
     use_case: FromDishka[UpdateNotificationGroupsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> NotificationGroupsResponse:
     groups = await use_case(actor, body.groups)
     return NotificationGroupsResponse(groups=groups, available=list(NOTIFICATION_GROUPS))

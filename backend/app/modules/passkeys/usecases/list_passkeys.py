@@ -6,7 +6,7 @@ from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.users import UserDto
 
 
-class ListPasskeysUseCase(UseCase[None, list[PasskeyCredentialDto]]):
+class ListPasskeysUseCase(UseCase[None, list[PasskeyCredentialDto], UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(self, passkey_repository: PasskeyRepository, uow: UnitOfWork) -> None:

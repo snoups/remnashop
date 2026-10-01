@@ -1,13 +1,16 @@
 import { apiGet, apiPost, apiPut } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 export interface Gateway {
   type: string;
   order_index: number;
   is_active: boolean;
   is_configured: boolean;
+  /** current state of the gateway's boolean settings -- the only readable ones */
+  flags: Record<string, boolean>;
 }
 
-export type GatewayFieldKind = "text" | "secret" | "number";
+export type GatewayFieldKind = "text" | "secret" | "number" | "boolean";
 
 export interface GatewayFieldSpec {
   key: string;
@@ -26,7 +29,7 @@ interface GatewayCatalogResponse {
 }
 
 export function listGateways(signal?: AbortSignal): Promise<Gateway[]> {
-  return apiGet<Gateway[]>("/gateways", signal);
+  return apiGet<ListResponse<Gateway>>("/gateways", signal).then((response) => response.items);
 }
 
 export function getGatewayCatalog(signal?: AbortSignal): Promise<GatewayCatalogEntry[]> {
@@ -44,8 +47,9 @@ export function updateGatewaySettings(
   });
 }
 
-export function toggleGatewayActive(type: string): Promise<Gateway> {
-  return apiPost<Gateway, Record<string, never>>(`/gateways/${type}/toggle`, {});
+export function setGatewayActive(type: string, active: boolean): Promise<Gateway> {
+  const action = active ? "enable" : "disable";
+  return apiPost<Gateway, Record<string, never>>(`/gateways/${type}/actions/${action}`, {});
 }
 
 export interface TestPayment {
@@ -56,7 +60,7 @@ export interface TestPayment {
 export type TestPaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELED" | "REFUNDED";
 
 export function createTestPayment(type: string): Promise<TestPayment> {
-  return apiPost<TestPayment, Record<string, never>>(`/gateways/${type}/test`, {});
+  return apiPost<TestPayment, Record<string, never>>(`/gateways/${type}/actions/test`, {});
 }
 
 export function getTestPaymentStatus(orderId: number): Promise<{ status: TestPaymentStatus }> {
@@ -64,5 +68,7 @@ export function getTestPaymentStatus(orderId: number): Promise<{ status: TestPay
 }
 
 export function reorderGateways(types: string[]): Promise<Gateway[]> {
-  return apiPut<Gateway[], { types: string[] }>("/gateways/order", { types });
+  return apiPost<ListResponse<Gateway>, { types: string[] }>("/gateways/actions/reorder", { types }).then(
+    (response) => response.items,
+  );
 }

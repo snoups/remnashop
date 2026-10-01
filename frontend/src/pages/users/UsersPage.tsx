@@ -25,6 +25,7 @@ import {
   blockUser,
   deleteUser,
   getUserListStats,
+  getUser,
   listUsers,
   unblockUser,
   type UserListFilters,
@@ -185,6 +186,17 @@ export function UsersPage() {
     if (detailsUser && location.state) navigate({ search: location.search }, { replace: true, state: null });
   }, [detailsUser, location.state, location.search, navigate]);
 
+  useEffect(() => {
+    const userId = openUserIdRef.current;
+    if (userId === undefined) return;
+    openUserIdRef.current = undefined;
+    const controller = new AbortController();
+    getUser(userId, controller.signal)
+      .then(setDetailsUser)
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
   const refreshStats = () => setStatsToken((token) => token + 1);
 
   useEffect(() => {
@@ -220,12 +232,6 @@ export function UsersPage() {
       .then((result) => {
         if (!controller.signal.aborted) {
           setState({ kind: "ready", items: result.items, total: result.total });
-          // only the first page is checked, a user past it opens no dialog
-          const openUser = result.items.find((user) => user.id === openUserIdRef.current);
-          if (openUser) {
-            openUserIdRef.current = undefined;
-            setDetailsUser(openUser);
-          }
         }
       })
       .catch(() => {

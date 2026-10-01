@@ -4,7 +4,7 @@ from typing import Any, Final, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.actor import Actor, SyntheticActor
+from app.core.actor import Actor
 from app.core.db.models import EventOutboxEntry
 from app.core.events import ActorEvent, BaseEvent, UserEvent
 
@@ -24,20 +24,12 @@ def _sanitize_user(user: Actor) -> dict[str, Any]:
 
 
 def _build_payload(event: BaseEvent) -> dict[str, Any]:
-    # Deferred import: modules.users imports app.core.events at module scope,
-    # so an eager import here would cycle -- same reasoning as UserEvent.user's
-    # TYPE_CHECKING-only import in core/events.py, except this needs the real
-    # class for isinstance(), not just a type hint.
-    from app.modules.users import UserDto  # noqa: PLC0415
-
     payload: dict[str, Any] = {}
     for f in dataclasses.fields(event):
         if f.name in _SKIPPED_PAYLOAD_FIELDS:
             continue
         value = getattr(event, f.name)
-        payload[f.name] = (
-            _sanitize_user(value) if isinstance(value, (UserDto, SyntheticActor)) else value
-        )
+        payload[f.name] = _sanitize_user(value) if isinstance(value, Actor) else value
     return payload
 
 

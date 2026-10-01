@@ -2,6 +2,7 @@ from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AdLinkChannel
@@ -13,9 +14,8 @@ from app.modules.advertising.dto import (
     GetAdvertisingSummaryDto,
 )
 from app.modules.advertising.repository import AdLinkRepository
-from app.modules.payments import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
-from app.modules.users import UserDto
+from app.modules.transactions import TransactionRepository
 
 _ZERO: Final[Decimal] = Decimal(0)
 
@@ -26,18 +26,16 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
     def __init__(
         self,
         ad_link_repository: AdLinkRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
     ) -> None:
         self._ad_link_repository = ad_link_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(
-        self, actor: UserDto, data: GetAdvertisingSummaryDto
-    ) -> AdvertisingSummaryDto:
+    async def _execute(self, actor: Actor, data: GetAdvertisingSummaryDto) -> AdvertisingSummaryDto:
         async with self._uow:
             ad_links = await self._ad_link_repository.list_all(is_active=data.is_active)
             attributions = await self._ad_link_repository.list_attributions(
@@ -47,7 +45,7 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
             )
             # aggregates every payer, not just attributed ones; filter by
             # user_ids in SQL if the paid-user count gets large.
-            paid_by_user = await self._payment_order_repository.sum_paid_final_price_per_user(
+            paid_by_user = await self._transaction_repository.sum_paid_final_price_per_user(
                 created_before=data.created_to
             )
             rate_table = await self._pricing_repository.get_rate_table()

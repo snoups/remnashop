@@ -9,7 +9,7 @@ from app.core.ports import EventPublisher
 from app.modules.blacklist.dto import (
     AddBlacklistSourceDto,
     BlacklistEntryInputDto,
-    ToggleBlacklistSourceDto,
+    UpdateBlacklistSourceDto,
 )
 from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.blacklist.tasks import reconcile_blacklist_task
@@ -18,7 +18,7 @@ from app.modules.blacklist.usecases import (
     AddBlacklistSourceUseCase,
     ListBlacklistUseCase,
     RemoveBlacklistEntryUseCase,
-    ToggleBlacklistSourceUseCase,
+    UpdateBlacklistSourceUseCase,
 )
 from app.modules.users.dto import UserDto
 
@@ -153,8 +153,8 @@ async def test_toggle_source(
     src = await AddBlacklistSourceUseCase(blacklist_repository, uow)(
         owner, AddBlacklistSourceDto(url="https://ok.example/list.txt")
     )
-    toggled = await ToggleBlacklistSourceUseCase(blacklist_repository, uow)(
-        owner, ToggleBlacklistSourceDto(source_id=src.id, enabled=False)
+    toggled = await UpdateBlacklistSourceUseCase(blacklist_repository, uow)(
+        owner, UpdateBlacklistSourceDto(source_id=src.id, enabled=False)
     )
     assert toggled.enabled is False
 

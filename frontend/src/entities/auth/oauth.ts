@@ -1,8 +1,11 @@
 import { apiDelete, apiGet, apiPost } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 import type { AuthResult } from "./api";
 
 export type OAuthProvider = "github" | "telegram" | "oidc";
+
+export const OAUTH_PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
 export interface OAuthAuthorizeResult {
   authorization_url: string;
@@ -30,7 +33,7 @@ export function oauthLoginCallback(
 }
 
 export function listConnectedAccounts(signal?: AbortSignal): Promise<OAuthIdentity[]> {
-  return apiGet<OAuthIdentity[]>("/auth/oauth", signal);
+  return apiGet<ListResponse<OAuthIdentity>>("/auth/oauth", signal).then((response) => response.items);
 }
 
 export function getOAuthConnectAuthorizeUrl(

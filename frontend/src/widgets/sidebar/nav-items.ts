@@ -26,7 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, permission: "PROMOCODES_VIEW" },
   { key: "referrals", to: "/dashboard/referrals", icon: Share2, permission: "REFERRALS_LIST" },
   { key: "advertising", to: "/dashboard/advertising", icon: Link2, permission: "AD_LINKS_VIEW" },
-  { key: "payments", to: "/dashboard/payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
+  { key: "transactions", to: "/dashboard/transactions", icon: CreditCard, permission: "TRANSACTIONS_VIEW" },
   { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, permission: "ADMINS_MANAGE" },
   { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, permission: "EVENT_LOG_VIEW" },
   { key: "settings", to: "/dashboard/settings", icon: Settings },

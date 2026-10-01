@@ -25,7 +25,6 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 # plans -> plans.usecases.list_active_plans -> back into this module) can
 # re-enter before it finishes -- those names must already be bound.
 from app.modules.subscriptions.di import (
-    get_subscription_revoker_providers,
     get_subscriptions_providers,
 )
 from app.modules.subscriptions.tasks import (
@@ -49,8 +48,10 @@ from app.modules.subscriptions.usecases import (
     GetAvailableTrialUseCase,
     GrantAddOnUseCase,
     ListAddOnsUseCase,
+    GetAddOnUseCase,
     ListDevicesUseCase,
     ListSubscriptionsUseCase,
+    GetSubscriptionUseCase,
     PurchaseSubscriptionUseCase,
     ReissueSubscriptionUseCase,
     ReorderAddOnsUseCase,
@@ -84,8 +85,10 @@ __all__ = [
     "GrantAddOnUseCase",
     "IDEMPOTENCY_KEY_RETENTION_DAYS",
     "ListAddOnsUseCase",
+    "GetAddOnUseCase",
     "ListDevicesUseCase",
     "ListSubscriptionsUseCase",
+    "GetSubscriptionUseCase",
     "PlanSnapshot",
     "PurchaseSubscriptionDto",
     "PurchaseSubscriptionUseCase",
@@ -106,7 +109,6 @@ __all__ = [
     "UpdateSubscriptionSquadsDto",
     "UpdateSubscriptionSquadsUseCase",
     "UpdateSubscriptionUseCase",
-    "get_subscription_revoker_providers",
     "get_subscriptions_providers",
     "grant_addon",
     "grant_addon_task",

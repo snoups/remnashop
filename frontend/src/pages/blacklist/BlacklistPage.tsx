@@ -10,7 +10,7 @@ import {
   removeBlacklistEntry,
   removeBlacklistSource,
   syncBlacklistSources,
-  toggleBlacklistSource,
+  updateBlacklistSource,
   type Blacklist,
   type BlacklistKind,
   type BlacklistSource,
@@ -338,7 +338,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
 
   const handleToggleSource = async (source: BlacklistSource, enabled: boolean) => {
     try {
-      const updated = await toggleBlacklistSource(source.id, enabled);
+      const updated = await updateBlacklistSource(source.id, enabled);
       setSources(sources.map((s) => (s.id === updated.id ? updated : s)));
       onSynced();
     } catch (err) {
@@ -457,7 +457,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                     </Tag>
                   </div>
                 </div>
-                {permissions.includes("BLACKLIST_SOURCE_TOGGLE") && (
+                {permissions.includes("BLACKLIST_SOURCE_UPDATE") && (
                   <Switch
                     checked={source.enabled}
                     onChange={(checked) => void handleToggleSource(source, checked)}

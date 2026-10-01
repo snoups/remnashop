@@ -1,10 +1,10 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
-from app.modules.users.dto import UserDto
 from app.modules.users.events import UsersBulkUnblockedEvent
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases.list_blacklist_matches import _ROLES, identities_of
@@ -25,7 +25,7 @@ class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: None) -> int:
+    async def _execute(self, actor: Actor, data: None) -> int:
         async with self._uow:
             origins = await self._blacklist_repository.identity_origins()
             # source-list entries can't be removed here -- the next reconcile re-blocks those users

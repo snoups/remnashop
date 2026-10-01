@@ -15,8 +15,6 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.backups.repository import BackupRepository
@@ -32,12 +30,7 @@ from app.modules.backups.usecases import (
     UpdateBackupSettingsUseCase,
 )
 from app.modules.backups.usecases.create_backup_run import RunBackupDispatch
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
@@ -82,14 +75,7 @@ class _BackupsProvider(Provider):
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_subscription_revoker_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_blacklist_providers(),
+        *get_module_providers(),
         _BackupsProvider(),
         _TestSessionProvider(session),
     ]
@@ -171,7 +157,7 @@ async def test_owner_can_get_and_update_settings(
     assert response.status_code == 200
     assert response.json()["enabled"] is False
 
-    response = await client.put(
+    response = await client.patch(
         f"{API_V1}/backups/settings",
         json={"enabled": True, "max_files": 3},
         headers=owner_headers,
@@ -180,7 +166,7 @@ async def test_owner_can_get_and_update_settings(
     assert response.json()["enabled"] is True
     assert response.json()["max_files"] == 3
 
-    response = await client.delete(f"{API_V1}/backups/settings", headers=owner_headers)
+    response = await client.post(f"{API_V1}/backups/settings/actions/reset", headers=owner_headers)
     assert response.status_code == 200
     assert response.json()["enabled"] is False
     assert response.json()["max_files"] == 7
@@ -189,7 +175,7 @@ async def test_owner_can_get_and_update_settings(
 async def test_update_settings_rejects_zero_max_files(
     client: httpx.AsyncClient, owner_headers: dict[str, str]
 ) -> None:
-    response = await client.put(
+    response = await client.patch(
         f"{API_V1}/backups/settings", json={"max_files": 0}, headers=owner_headers
     )
     assert response.status_code == 422
@@ -198,7 +184,7 @@ async def test_update_settings_rejects_zero_max_files(
 async def test_update_settings_rejects_zero_interval_hours(
     client: httpx.AsyncClient, owner_headers: dict[str, str]
 ) -> None:
-    response = await client.put(
+    response = await client.patch(
         f"{API_V1}/backups/settings", json={"interval_hours": 0}, headers=owner_headers
     )
     assert response.status_code == 422
@@ -303,7 +289,7 @@ async def test_owner_can_get_stats(
     client: httpx.AsyncClient, owner_headers: dict[str, str]
 ) -> None:
     await client.post(f"{API_V1}/backups/runs", json={"kind": "DATABASE"}, headers=owner_headers)
-    await client.put(f"{API_V1}/backups/settings", json={"enabled": True}, headers=owner_headers)
+    await client.patch(f"{API_V1}/backups/settings", json={"enabled": True}, headers=owner_headers)
 
     response = await client.get(f"{API_V1}/backups/stats", headers=owner_headers)
     assert response.status_code == 200

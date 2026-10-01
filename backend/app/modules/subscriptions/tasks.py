@@ -10,6 +10,7 @@ from remnapy.exceptions import NotFoundError as RemnawaveNotFoundError
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType, SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, RemnawavePanelUnavailableError
 from app.core.ports import EventPublisher
 from app.core.utils.lock import cron_lock
@@ -64,7 +65,7 @@ async def purchase_subscription(
 ) -> SubscriptionDto:
     actor = await user_repository.get_by_id(user_id)
     if actor is None:
-        raise NotFoundError(f"User '{user_id}' not found")
+        raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
 
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
@@ -88,7 +89,6 @@ async def purchase_subscription(
             purchase_type=PurchaseType(purchase_type),
             target_subscription_id=target_subscription_id,
             idempotency_key=idempotency_key,
-            consumes_purchase_discount=True,
             enforce_subscription_cap=False,
         ),
     )

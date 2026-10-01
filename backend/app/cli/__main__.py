@@ -27,8 +27,9 @@ async def _enable_password_login() -> None:
 
 async def _reset_owner_access() -> None:
     if not _confirm(
-        "This resets the owner's password, clears their IP allowlist and signs them "
-        "out everywhere. Continue?"
+        "This resets the owner's password, clears their IP allowlist, signs them out "
+        "everywhere and removes their passkeys and linked OAuth accounts (API tokens "
+        "are kept). Continue?"
     ):
         print("Aborted.")
         return

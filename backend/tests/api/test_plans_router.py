@@ -15,19 +15,9 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.plans import get_plans_providers
-from app.modules.pricing import get_pricing_providers
-from app.modules.referrals import get_referrals_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscriptions_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -48,17 +38,7 @@ class _TestSessionProvider(Provider):
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_plans_providers(),
-        *get_pricing_providers(),
-        *get_referrals_providers(),
-        *get_subscriptions_providers(),
-        *get_blacklist_providers(),
+        *get_module_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -152,7 +132,7 @@ async def test_owner_can_create_and_list_plan(
 
     list_response = await client.get(f"{API_V1}/plans", headers=headers)
     assert list_response.status_code == 200
-    assert len(list_response.json()) == 1
+    assert len(list_response.json()["items"]) == 1
 
 
 async def test_catalog_excludes_inactive_plan_for_regular_user(
@@ -181,7 +161,7 @@ async def test_catalog_excludes_inactive_plan_for_regular_user(
     )
 
     assert catalog_response.status_code == 200
-    assert catalog_response.json() == []
+    assert catalog_response.json()["items"] == []
 
 
 async def test_catalog_requires_authentication(client: httpx.AsyncClient) -> None:
@@ -221,7 +201,7 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
         headers=owner_headers,
         json={"internal_squads": ["11111111-1111-1111-1111-111111111111"], "external_squad": None},
     )
-    await client.put(
+    await client.patch(
         f"{API_V1}/plans/{plan_id}",
         headers=owner_headers,
         json={"is_active": True},
@@ -233,7 +213,7 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     )
 
     assert catalog_response.status_code == 200
-    plan = catalog_response.json()[0]
+    plan = catalog_response.json()["items"][0]
     assert "allowed_emails" not in plan
     assert "allowed_telegram_ids" not in plan
     assert "internal_squads" not in plan

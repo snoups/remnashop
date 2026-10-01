@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPut } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch } from "@shared/api/http";
 import type { BadgeTone } from "@shared/ui/Badge";
 
 export type SubscriptionStatus = "ACTIVE" | "LIMITED" | "EXPIRED" | "DISABLED" | "DELETED";
@@ -68,7 +68,7 @@ export function updateSubscription(
   subscriptionId: number,
   payload: UpdateSubscriptionRequest,
 ): Promise<SubscriptionListItem> {
-  return apiPut<SubscriptionListItem, UpdateSubscriptionRequest>(`/subscriptions/${subscriptionId}`, payload);
+  return apiPatch<SubscriptionListItem, UpdateSubscriptionRequest>(`/subscriptions/${subscriptionId}`, payload);
 }
 
 export function deleteSubscription(subscriptionId: number): Promise<void> {

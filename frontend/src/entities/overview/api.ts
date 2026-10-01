@@ -29,7 +29,7 @@ export interface OverviewSubscriptions {
   expiring_soon: number;
 }
 
-export interface OverviewPayments {
+export interface OverviewTransactions {
   paid_orders_count: number;
   revenue_by_currency: Record<string, string>;
   report_currency: string;
@@ -60,7 +60,7 @@ export interface Overview {
   granularity: OverviewGranularity;
   users: OverviewUsers | null;
   subscriptions: OverviewSubscriptions | null;
-  payments: OverviewPayments | null;
+  transactions: OverviewTransactions | null;
   runtime: RuntimeProcess[];
   host_memory: HostMemory | null;
   online: OverviewOnline;

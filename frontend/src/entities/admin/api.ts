@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 import type { Permission, Role } from "@shared/types/rbac";
 
 export interface Admin {
@@ -53,7 +54,7 @@ export interface UpdateAdminPayload {
 }
 
 export function listAdmins(signal?: AbortSignal): Promise<Admin[]> {
-  return apiGet<Admin[]>("/admins", signal);
+  return apiGet<ListResponse<Admin>>("/admins", signal).then((response) => response.items);
 }
 
 export function createAdmin(payload: CreateAdminPayload): Promise<AdminWithPassword> {
@@ -61,7 +62,7 @@ export function createAdmin(payload: CreateAdminPayload): Promise<AdminWithPassw
 }
 
 export function promoteAdmin(payload: PromoteAdminPayload): Promise<AdminPromoteResult> {
-  return apiPost<AdminPromoteResult, PromoteAdminPayload>("/admins/promote", payload);
+  return apiPost<AdminPromoteResult, PromoteAdminPayload>("/admins/actions/promote", payload);
 }
 
 export function updateAdmin(userId: number, payload: UpdateAdminPayload): Promise<Admin> {
@@ -69,7 +70,7 @@ export function updateAdmin(userId: number, payload: UpdateAdminPayload): Promis
 }
 
 export function demoteAdmin(userId: number): Promise<Admin> {
-  return apiPost<Admin, Record<string, never>>(`/admins/${userId}/demote`, {});
+  return apiPost<Admin, Record<string, never>>(`/admins/${userId}/actions/demote`, {});
 }
 
 export function deleteAdmin(userId: number): Promise<void> {

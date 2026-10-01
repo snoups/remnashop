@@ -1398,7 +1398,7 @@ def upgrade() -> None:
         op.f("ix_event_log_entries_occurred_at"), "event_log_entries", ["occurred_at"], unique=False
     )
     op.create_table(
-        "payment_orders",
+        "transactions",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("plan_id", sa.Integer(), nullable=True),
@@ -1442,7 +1442,7 @@ def upgrade() -> None:
         sa.Column("external_payment_id", sa.String(length=128), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED", name="paymentorderstatus"),
+            sa.Enum("PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED", name="transactionstatus"),
             server_default="PENDING",
             nullable=False,
         ),
@@ -1482,23 +1482,23 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
-            "gateway_type", "external_payment_id", name="ux_payment_orders_gateway_external_id"
+            "gateway_type", "external_payment_id", name="ux_transactions_gateway_external_id"
         ),
         sa.UniqueConstraint("idempotency_key"),
     )
     op.create_index(
-        "ix_payment_orders_status_expires_at",
-        "payment_orders",
+        "ix_transactions_status_expires_at",
+        "transactions",
         ["status", "expires_at"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_payment_orders_discount_promocode_id"),
-        "payment_orders",
+        op.f("ix_transactions_discount_promocode_id"),
+        "transactions",
         ["discount_promocode_id"],
         unique=False,
     )
-    op.create_index(op.f("ix_payment_orders_user_id"), "payment_orders", ["user_id"], unique=False)
+    op.create_index(op.f("ix_transactions_user_id"), "transactions", ["user_id"], unique=False)
     op.create_table(
         "plan_price_overrides",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -1647,10 +1647,10 @@ def downgrade() -> None:
         op.f("ix_plan_price_overrides_plan_duration_id"), table_name="plan_price_overrides"
     )
     op.drop_table("plan_price_overrides")
-    op.drop_index(op.f("ix_payment_orders_user_id"), table_name="payment_orders")
-    op.drop_index(op.f("ix_payment_orders_discount_promocode_id"), table_name="payment_orders")
-    op.drop_index("ix_payment_orders_status_expires_at", table_name="payment_orders")
-    op.drop_table("payment_orders")
+    op.drop_index(op.f("ix_transactions_user_id"), table_name="transactions")
+    op.drop_index(op.f("ix_transactions_discount_promocode_id"), table_name="transactions")
+    op.drop_index("ix_transactions_status_expires_at", table_name="transactions")
+    op.drop_table("transactions")
     op.drop_index(op.f("ix_event_log_entries_occurred_at"), table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_event_type"), table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_category"), table_name="event_log_entries")

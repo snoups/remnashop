@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher, SessionRevoker
 from app.core.security.permissions import Permission, assert_grantable
@@ -36,16 +38,18 @@ class UpdateAdminUseCase(UseCase[UpdateAdminDto, UserDto]):
         self._event_publisher = event_publisher
         self._session_revoker = session_revoker
 
-    async def _execute(self, actor: UserDto, data: UpdateAdminDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: UpdateAdminDto) -> UserDto:
         async with self._uow:
             if data.permission_grants is not None:
                 assert_grantable(data.permission_grants)
 
             target = await self._user_repository.get_by_id(data.user_id)
             if target is None:
-                raise NotFoundError("Admin not found")
+                raise NotFoundError("Admin not found", code=ErrorCode.ADMIN_NOT_FOUND)
             if target.role != Role.ADMIN:
-                raise ConflictError("Target is not a manageable admin")
+                raise ConflictError(
+                    "Target is not a manageable admin", code=ErrorCode.ADMIN_NOT_MANAGEABLE
+                )
 
             update_data = UpdateUserDto(
                 permission_grants=(

@@ -15,3 +15,8 @@ class OAuthCallbackRequest(BaseModel):
 class OAuthIdentityResponse(BaseModel):
     provider: str
     external_login: Optional[str] = None
+
+
+class OAuthIdentityListResponse(BaseModel):
+    items: list[OAuthIdentityResponse]
+    total: int

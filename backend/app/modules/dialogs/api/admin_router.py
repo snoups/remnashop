@@ -2,11 +2,12 @@ from typing import Any, Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.api.dependencies.admin import require_admin
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.core.enums import Locale
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.dialogs import catalog
 from app.modules.dialogs.api.schemas import (
     CreateCustomWindowRequest,
@@ -17,6 +18,7 @@ from app.modules.dialogs.api.schemas import (
     DialogTextExportItem,
     DialogTextResponse,
     DialogWindowExportItem,
+    DialogWindowListResponse,
     DialogWindowResponse,
     ReplaceButtonsRequest,
     UpdateDialogTextRequest,
@@ -48,7 +50,6 @@ from app.modules.dialogs.usecases import (
     UpdateDialogWindowInput,
     UpdateDialogWindowUseCase,
 )
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/dialogs", tags=["dialogs"])
 
@@ -117,161 +118,137 @@ def _to_button_input(button: DialogButtonInput) -> DialogButtonInputDto:
 
 @router.get("/catalog", response_model=DialogCatalogResponse)
 @inject
-async def get_catalog(
+async def get_dialog_catalog(
     use_case: FromDishka[GetDialogCatalogUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> DialogCatalogResponse:
     return _to_catalog_response(await use_case(actor))
 
 
-@router.get("/windows", response_model=list[DialogWindowResponse])
+@router.get("/windows", response_model=DialogWindowListResponse)
 @inject
-async def list_windows(
+async def list_dialog_windows(
     use_case: FromDishka[ListDialogWindowsUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[DialogWindowResponse]:
+    actor: Actor = Depends(require_admin),
+) -> DialogWindowListResponse:
     windows = await use_case(actor)
-    return [_to_window_response(window) for window in windows]
+    items = [_to_window_response(window) for window in windows]
+    return DialogWindowListResponse(items=items, total=len(items))
 
 
-@router.get("/windows/{key}", response_model=DialogWindowResponse)
+@router.patch(
+    "/windows/{key}", response_model=DialogWindowResponse, responses=error_responses(400, 404)
+)
 @inject
-async def get_window(
-    use_case: FromDishka[ListDialogWindowsUseCase],
-    actor: UserDto = Depends(require_admin),
-    key: str = _KEY_PATH,
-) -> DialogWindowResponse:
-    windows = await use_case(actor)
-    for window in windows:
-        if window.key == key:
-            return _to_window_response(window)
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail=f"Dialog window '{key}' not found"
-    )
-
-
-@router.put("/windows/{key}", response_model=DialogWindowResponse)
-@inject
-async def update_window(
+async def update_dialog_window(
     payload: UpdateDialogWindowRequest,
     use_case: FromDishka[UpdateDialogWindowUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     key: str = _KEY_PATH,
 ) -> DialogWindowResponse:
-    try:
-        window = await use_case(
-            actor,
-            UpdateDialogWindowInput(
-                key=key,
-                banner_name=payload.banner_name,
-                banner_name_provided="banner_name" in payload.model_fields_set,
-                is_enabled=payload.is_enabled,
-                name=payload.name,
-            ),
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    window = await use_case(
+        actor,
+        UpdateDialogWindowInput(
+            key=key,
+            banner_name=payload.banner_name,
+            banner_name_provided="banner_name" in payload.model_fields_set,
+            is_enabled=payload.is_enabled,
+            name=payload.name,
+        ),
+    )
     return _to_window_response(window)
 
 
-@router.put("/windows/{key}/buttons", response_model=DialogWindowResponse)
+@router.put(
+    "/windows/{key}/buttons",
+    response_model=DialogWindowResponse,
+    responses=error_responses(400, 404),
+)
 @inject
-async def replace_buttons(
+async def replace_dialog_window_buttons(
     payload: ReplaceButtonsRequest,
     use_case: FromDishka[UpdateDialogWindowButtonsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     key: str = _KEY_PATH,
 ) -> DialogWindowResponse:
-    try:
-        window = await use_case(
-            actor,
-            UpdateDialogWindowButtonsInput(
-                key=key, buttons=[_to_button_input(button) for button in payload.buttons]
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    window = await use_case(
+        actor,
+        UpdateDialogWindowButtonsInput(
+            key=key, buttons=[_to_button_input(button) for button in payload.buttons]
+        ),
+    )
     return _to_window_response(window)
 
 
-@router.post("/windows", response_model=DialogWindowResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/windows",
+    response_model=DialogWindowResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(400, 409),
+)
 @inject
-async def create_custom_window(
+async def create_custom_dialog_window(
     payload: CreateCustomWindowRequest,
     use_case: FromDishka[CreateCustomDialogWindowUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> DialogWindowResponse:
-    try:
-        window = await use_case(
-            actor,
-            CreateCustomDialogWindowInput(name=payload.name, banner_name=payload.banner_name),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    window = await use_case(
+        actor,
+        CreateCustomDialogWindowInput(name=payload.name, banner_name=payload.banner_name),
+    )
     return _to_window_response(window)
 
 
-@router.delete("/windows/{key}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/windows/{key}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(400, 404)
+)
 @inject
-async def delete_custom_window(
+async def delete_custom_dialog_window(
     use_case: FromDishka[DeleteCustomDialogWindowUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     key: str = _KEY_PATH,
 ) -> None:
-    try:
-        await use_case(actor, key)
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    await use_case(actor, key)
 
 
-@router.post("/windows/{key}/reset", response_model=DialogWindowResponse)
+@router.post(
+    "/windows/{key}/actions/reset",
+    response_model=DialogWindowResponse,
+    responses=error_responses(400, 404),
+)
 @inject
-async def reset_window(
+async def reset_dialog_window(
     use_case: FromDishka[ResetDialogWindowUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     key: str = _KEY_PATH,
 ) -> DialogWindowResponse:
-    try:
-        window = await use_case(actor, key)
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    window = await use_case(actor, key)
     return _to_window_response(window)
 
 
-@router.put("/text/{locale}/{message_id}", response_model=DialogTextResponse)
+@router.put(
+    "/text/{locale}/{message_id}",
+    response_model=DialogTextResponse,
+    responses=error_responses(400, 404),
+)
 @inject
 async def update_dialog_text(
     locale: Locale,
     message_id: str,
     payload: UpdateDialogTextRequest,
     use_case: FromDishka[UpdateDialogTextUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     attribute_id: str = Query(default=""),
 ) -> DialogTextResponse:
-    try:
-        entry = await use_case(
-            actor,
-            UpdateDialogTextInput(
-                locale=locale,
-                message_id=message_id,
-                attribute_id=attribute_id,
-                value=payload.value,
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    entry = await use_case(
+        actor,
+        UpdateDialogTextInput(
+            locale=locale,
+            message_id=message_id,
+            attribute_id=attribute_id,
+            value=payload.value,
+        ),
+    )
     return DialogTextResponse(
         locale=entry.locale,
         message_id=entry.message_id,
@@ -284,7 +261,7 @@ async def update_dialog_text(
 @inject
 async def export_dialogs(
     use_case: FromDishka[ExportDialogsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> DialogExportPayload:
     export = await use_case(actor)
     return DialogExportPayload(
@@ -326,51 +303,48 @@ async def export_dialogs(
     )
 
 
-@router.post("/import", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/actions/import", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(400, 404)
+)
 @inject
 async def import_dialogs(
     payload: DialogExportPayload,
     use_case: FromDishka[ImportDialogsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(
-            actor,
-            DialogExportDto(
-                version=payload.version,
-                windows=[
-                    DialogWindowExportDto(
-                        key=window.key,
-                        kind=window.kind,
-                        banner_name=window.banner_name,
-                        name=window.name,
-                        is_enabled=window.is_enabled,
-                        position=window.position,
-                        buttons=[_to_button_input(button) for button in window.buttons],
-                    )
-                    for window in payload.windows
-                ],
-                texts=[
-                    DialogTextExportDto(
-                        locale=text.locale,
-                        message_id=text.message_id,
-                        attribute_id=text.attribute_id,
-                        value=text.value,
-                    )
-                    for text in payload.texts
-                ],
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    await use_case(
+        actor,
+        DialogExportDto(
+            version=payload.version,
+            windows=[
+                DialogWindowExportDto(
+                    key=window.key,
+                    kind=window.kind,
+                    banner_name=window.banner_name,
+                    name=window.name,
+                    is_enabled=window.is_enabled,
+                    position=window.position,
+                    buttons=[_to_button_input(button) for button in window.buttons],
+                )
+                for window in payload.windows
+            ],
+            texts=[
+                DialogTextExportDto(
+                    locale=text.locale,
+                    message_id=text.message_id,
+                    attribute_id=text.attribute_id,
+                    value=text.value,
+                )
+                for text in payload.texts
+            ],
+        ),
+    )
 
 
-@router.post("/reset", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/actions/reset-all", status_code=status.HTTP_204_NO_CONTENT)
 @inject
-async def reset_all(
+async def reset_all_dialogs(
     use_case: FromDishka[ResetAllDialogsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor)

@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 import type { AuthResult } from "./api";
 
@@ -12,7 +13,7 @@ export interface Passkey {
 }
 
 export function getPasskeys(signal?: AbortSignal): Promise<Passkey[]> {
-  return apiGet<Passkey[]>("/auth/passkeys", signal);
+  return apiGet<ListResponse<Passkey>>("/auth/passkeys", signal).then((response) => response.items);
 }
 
 export function getPasskeyRegistrationOptions(

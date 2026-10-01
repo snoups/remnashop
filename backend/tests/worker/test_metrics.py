@@ -72,12 +72,15 @@ async def test_task_metrics_middleware_records_a_failed_run_under_its_own_outcom
     middleware = TaskMetricsMiddleware()
 
     await middleware.post_execute(
-        _make_message("app.modules.payments.tasks:reconcile_paid_orders_task"),
+        _make_message("app.modules.transactions.tasks:reconcile_paid_transactions_task"),
         _make_result(is_err=True, execution_time=0.1),
     )
 
     error_count = WORKER_METRICS_REGISTRY.get_sample_value(
         "remnashop_taskiq_task_duration_seconds_count",
-        {"task_name": "app.modules.payments.tasks:reconcile_paid_orders_task", "outcome": "error"},
+        {
+            "task_name": "app.modules.transactions.tasks:reconcile_paid_transactions_task",
+            "outcome": "error",
+        },
     )
     assert error_count is not None and error_count >= 1

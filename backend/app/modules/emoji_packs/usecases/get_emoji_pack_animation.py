@@ -1,6 +1,7 @@
 from typing import Final, Optional
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.emoji_packs.telegram_api import LOTTIE_KIND
@@ -22,7 +23,9 @@ class GetEmojiPackAnimationUseCase:
         async with self._uow:
             found = await self._emoji_pack_repository.get_animation(custom_emoji_id)
         if found is None:
-            raise NotFoundError(f"No animation for emoji {custom_emoji_id}")
+            raise NotFoundError(
+                f"No animation for emoji {custom_emoji_id}", code=ErrorCode.EMOJI_MEDIA_NOT_FOUND
+            )
 
         data, kind = found
         media_type, encoding = _MEDIA_TYPES.get(kind, _VIDEO_MEDIA_TYPE)

@@ -1,4 +1,5 @@
-import { BASE_URL, apiDelete, apiGet, apiPost } from "@shared/api/http";
+import { apiDelete, apiGet, apiPost, BASE_URL } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 export interface EmojiPackItem {
   custom_emoji_id: string;
@@ -15,7 +16,7 @@ export interface EmojiPack {
 }
 
 export function listEmojiPacks(signal?: AbortSignal): Promise<EmojiPack[]> {
-  return apiGet<EmojiPack[]>("/emoji-packs", signal);
+  return apiGet<ListResponse<EmojiPack>>("/emoji-packs", signal).then((response) => response.items);
 }
 
 export function importEmojiPack(link: string): Promise<EmojiPack> {

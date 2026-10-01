@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import * as THREE from "three";
 
 import { buildHueRotationMatrix, PALETTE, shaderDebugState, type ShaderUniforms } from "@app/shaderState";
 import { DEFAULT_ACCENT_COLOR, DEFAULT_SHADER_PALETTE_HEX, hexToHueDegrees, hexToRgbNormalized } from "@shared/lib/color";
@@ -9,24 +8,27 @@ import {
   useEffectiveShaderPalette,
 } from "@entities/appearance/use-appearance";
 
-// Intentionally NOT setting glslVersion: THREE.GLSL3 — three.js only injects the
-// `#define gl_FragColor pc_fragColor` GLSL ES 300 compatibility shim when
-// glslVersion is left at its default. `#version 300 es` itself is added for any
-// non-raw ShaderMaterial regardless of that flag, so leaving it default is what
-// makes this shader's `varying`/`gl_FragColor` syntax actually compile.
 const MIN_FRAME_INTERVAL_MS = 1000 / 30;
 const BUFFER_SCALE = 0.5;
+// No input for this long and the animation eases to a stop, freeing the GPU
+const IDLE_TIMEOUT_MS = 30_000;
+const EASE_DURATION_MS = 2_000;
+const ACTIVITY_EVENTS = ["pointermove", "pointerdown", "keydown", "wheel", "touchstart", "scroll"] as const;
 
-const VERTEX_SHADER = `
-varying vec2 vUv;
+// One oversized triangle covering the viewport, generated from gl_VertexID -- no vertex buffer.
+const VERTEX_SHADER = `#version 300 es
+out vec2 vUv;
 
 void main() {
-  vUv = position.xy * 0.5 + 0.5;
-  gl_Position = vec4(position.xy, 0.0, 1.0);
+  vec2 position = vec2(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0);
+  vUv = position * 0.5 + 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
 }
 `;
 
-const FRAGMENT_SHADER = `
+const FRAGMENT_SHADER = `#version 300 es
+precision highp float;
+
 uniform float uTime;
 uniform float uTimeSin;
 uniform float uScrollProgress;
@@ -37,7 +39,8 @@ uniform float uUvDistortionIterations;
 uniform float uUvDistortionIntensity;
 uniform mat3 uHueRotationMatrix;
 
-varying vec2 vUv;
+in vec2 vUv;
+out vec4 fragColor;
 
 vec3 mod289(vec3 x) {
   return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -132,9 +135,28 @@ void main() {
   float colourInput = snoise(vec3(uv, uTimeSin)) * 0.5 + 0.5;
   vec3 colour = cosineGradientColour(colourInput, uColourPalette[0], uColourPalette[1], uColourPalette[2], uColourPalette[3]);
   colour = uHueRotationMatrix * colour;
-  gl_FragColor = vec4(colour * 1.4 * uOpacity, uOpacity);
+  fragColor = vec4(colour * 1.4 * uOpacity, uOpacity);
 }
 `;
+
+function compileProgram(gl: WebGL2RenderingContext): WebGLProgram | null {
+  const program = gl.createProgram();
+  for (const [type, source] of [
+    [gl.VERTEX_SHADER, VERTEX_SHADER],
+    [gl.FRAGMENT_SHADER, FRAGMENT_SHADER],
+  ] as const) {
+    const shader = gl.createShader(type)!;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    gl.attachShader(program, shader);
+    gl.deleteShader(shader); // flagged only -- freed together with the program
+  }
+  gl.linkProgram(program);
+  if (gl.getProgramParameter(program, gl.LINK_STATUS)) return program;
+  console.error("ShaderBackground: shader link failed", gl.getProgramInfoLog(program));
+  gl.deleteProgram(program);
+  return null;
+}
 
 /**
  * App-wide animated background: a noise-based gradient rendered on a single
@@ -167,45 +189,63 @@ export function ShaderBackground() {
       gl = null;
     }
     if (!gl) return;
+    const program = compileProgram(gl);
+    if (!program) return;
+    // `gl` narrowing doesn't survive into the closures below
+    const context = gl;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, context: gl, antialias: false, alpha: false });
     // Half a CSS pixel per buffer pixel, upscaled by the browser: every fragment
     // costs 4 snoise() calls (~400 ALU ops), and a low-frequency gradient that
     // sits under a backdrop-blur has no detail to lose at quarter density.
-    // Scaled here, not via setPixelRatio(0.5): three.js floors the buffer but rounds the
-    // viewport, so an odd window width left the viewport a pixel wider than the buffer.
-    const resize = () =>
-      renderer.setSize(Math.ceil(window.innerWidth * BUFFER_SCALE), Math.ceil(window.innerHeight * BUFFER_SCALE), false);
+    const resize = () => {
+      canvas.width = Math.ceil(window.innerWidth * BUFFER_SCALE);
+      canvas.height = Math.ceil(window.innerHeight * BUFFER_SCALE);
+      context.viewport(0, 0, canvas.width, canvas.height);
+    };
     resize();
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.Camera();
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    const uniforms = {
+    const uniforms: ShaderUniforms = {
       uTime: { value: 0 },
       uTimeSin: { value: 0 },
       uScrollProgress: { value: 0 },
       uOpacity: { value: PALETTE.opacity },
-      uColourPalette: { value: PALETTE.colours as THREE.Vector3[] },
+      uColourPalette: { value: Float32Array.from(PALETTE.colours) },
       uUvScale: { value: 1 },
       uUvDistortionIterations: { value: 3 },
       uUvDistortionIntensity: { value: 0.15 },
-      uHueRotationMatrix: { value: new THREE.Matrix3() },
+      uHueRotationMatrix: { value: buildHueRotationMatrix(0) },
     };
-    const material = new THREE.ShaderMaterial({
-      vertexShader: VERTEX_SHADER,
-      fragmentShader: FRAGMENT_SHADER,
-      uniforms,
-    });
-    scene.add(new THREE.Mesh(geometry, material));
+    const location = (name: string) => context.getUniformLocation(program, name);
+    const locations = {
+      uTime: location("uTime"),
+      uTimeSin: location("uTimeSin"),
+      uScrollProgress: location("uScrollProgress"),
+      uOpacity: location("uOpacity"),
+      uColourPalette: location("uColourPalette"),
+      uUvScale: location("uUvScale"),
+      uUvDistortionIterations: location("uUvDistortionIterations"),
+      uUvDistortionIntensity: location("uUvDistortionIntensity"),
+      uHueRotationMatrix: location("uHueRotationMatrix"),
+    };
+    context.useProgram(program);
 
     uniformsRef.current = uniforms;
     shaderDebugState.uniforms = uniforms;
 
+    // Re-uploaded every frame so outside writes to `uniforms` (the effects below) apply on the next draw.
     function renderFrame() {
-      renderer.render(scene, camera);
+      context.uniform1f(locations.uTime, uniforms.uTime.value);
+      context.uniform1f(locations.uTimeSin, uniforms.uTimeSin.value);
+      context.uniform1f(locations.uScrollProgress, uniforms.uScrollProgress.value);
+      context.uniform1f(locations.uOpacity, uniforms.uOpacity.value);
+      context.uniform3fv(locations.uColourPalette, uniforms.uColourPalette.value);
+      context.uniform1f(locations.uUvScale, uniforms.uUvScale.value);
+      context.uniform1f(locations.uUvDistortionIterations, uniforms.uUvDistortionIterations.value);
+      context.uniform1f(locations.uUvDistortionIntensity, uniforms.uUvDistortionIntensity.value);
+      context.uniformMatrix3fv(locations.uHueRotationMatrix, true, uniforms.uHueRotationMatrix.value);
+      context.drawArrays(context.TRIANGLES, 0, 3);
     }
     renderFrame();
 
@@ -231,19 +271,26 @@ export function ShaderBackground() {
       // recovered. Omitting it makes the loss permanent and final -- Safari
       // stops retrying, and this background is decorative enough that a
       // one-time, permanent hide is a perfectly fine failure mode.
-      if (!reduceMotion) cancelAnimationFrame(frame);
+      stop();
       // `canvas` is a captured const guaranteed non-null by the early return above,
       // but TS doesn't retain that narrowing across a nested function's closure.
       canvas!.style.display = "none";
     }
     canvas.addEventListener("webglcontextlost", onContextLost, false);
 
-    let start = performance.now();
+    // Time is accumulated per frame rather than derived from a start timestamp,
+    // so pauses (blur, idle) and the idle ease both keep uTime continuous.
+    let elapsed = 0;
+    let lastTick = performance.now();
     let lastDraw = 0;
+    let lastActivity = lastTick;
+    // 0..1 multiplier on animation speed, eased toward 0 while idle
+    let motion = 1;
+    let running = false;
 
     function render() {
       const now = performance.now();
-      if (!reduceMotion) {
+      if (running) {
         frame = requestAnimationFrame(render);
       }
       // rAF runs at display refresh — 120Hz on ProMotion — while
@@ -251,59 +298,69 @@ export function ShaderBackground() {
       // indistinguishable from it.
       if (now - lastDraw < MIN_FRAME_INTERVAL_MS) return;
       lastDraw = now;
-      uniforms.uTime.value = ((now - start) / 1000) * shaderDebugState.speed;
+      const dt = now - lastTick;
+      lastTick = now;
+
+      const idle = now - lastActivity > IDLE_TIMEOUT_MS;
+      motion = Math.min(1, Math.max(0, motion + (idle ? -dt : dt) / EASE_DURATION_MS));
+      const eased = motion * motion * (3 - 2 * motion);
+      elapsed += (dt / 1000) * shaderDebugState.speed * eased;
+
+      uniforms.uTime.value = elapsed;
       // Same reason the hue matrix is precomputed in shaderState.ts: one value
       // per frame, not per fragment.
       uniforms.uTimeSin.value = Math.sin(uniforms.uTime.value);
       if (enabledRef.current) renderFrame();
-    }
-    render();
-
-    // rAF only stops on its own when the tab is hidden, not when the window
-    // merely loses focus -- a dashboard sitting on a second monitor keeps
-    // paying full GPU cost. `start` absorbs the paused span so uTime stays
-    // continuous and the pattern doesn't jump on return.
-    let pausedAt = 0;
-
-    function onBlur() {
-      if (pausedAt) return;
-      pausedAt = performance.now();
-      cancelAnimationFrame(frame);
+      if (idle && motion === 0) stop();
     }
 
-    function onFocus() {
-      if (!pausedAt) return;
-      start += performance.now() - pausedAt;
-      pausedAt = 0;
+    function start() {
+      if (running || context.isContextLost()) return;
+      running = true;
+      lastTick = performance.now();
       render();
     }
 
-    if (!reduceMotion) {
-      window.addEventListener("blur", onBlur);
-      window.addEventListener("focus", onFocus);
+    function stop() {
+      running = false;
+      cancelAnimationFrame(frame);
+    }
+
+    function onActivity() {
+      lastActivity = performance.now();
+      start();
+    }
+
+    if (reduceMotion) {
+      render();
+    } else {
+      start();
+      // rAF only stops on its own when the tab is hidden, not when the window
+      // merely loses focus -- a dashboard sitting on a second monitor keeps
+      // paying full GPU cost.
+      window.addEventListener("blur", stop);
+      window.addEventListener("focus", onActivity);
+      for (const event of ACTIVITY_EVENTS) window.addEventListener(event, onActivity, { passive: true });
     }
 
     return () => {
       uniformsRef.current = null;
       shaderDebugState.uniforms = null;
-      if (!reduceMotion) cancelAnimationFrame(frame);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
+      stop();
+      window.removeEventListener("blur", stop);
+      window.removeEventListener("focus", onActivity);
+      for (const event of ACTIVITY_EVENTS) window.removeEventListener(event, onActivity);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll);
       canvas.removeEventListener("webglcontextlost", onContextLost);
-      geometry.dispose();
-      material.dispose();
-      renderer.dispose();
+      context.deleteProgram(program);
       // Deliberately NOT calling gl.getExtension("WEBGL_lose_context")?.loseContext()
-      // here: it seemed like the correct cleanup (renderer.dispose() alone
-      // doesn't free a context supplied externally via `context:`), but this
+      // here: it seemed like the correct cleanup, but this
       // canvas element is reused across remounts -- both React StrictMode's
       // deliberate dev-only mount/cleanup/remount dance on first render, and
       // Vite HMR/Fast Refresh. Force-losing the context here poisoned the
-      // very next getContext("webgl2") call on the same canvas in Safari,
-      // crashing THREE.WebGLRenderer's constructor (getContextAttributes()
-      // returns null for a lost context). Letting the browser reclaim
+      // very next getContext("webgl2") call on the same canvas in Safari
+      // (getContextAttributes() returns null for a lost context). Letting the browser reclaim
       // abandoned contexts on its own is the safe tradeoff here.
     };
   }, []);
@@ -317,12 +374,8 @@ export function ShaderBackground() {
     const uniforms = uniformsRef.current;
     if (!uniforms) return;
 
-    if (accentColor) {
-      const hueDelta = hexToHueDegrees(accentColor) - hexToHueDegrees(DEFAULT_ACCENT_COLOR);
-      uniforms.uHueRotationMatrix.value.copy(buildHueRotationMatrix((hueDelta * Math.PI) / 180));
-    } else {
-      uniforms.uHueRotationMatrix.value.identity();
-    }
+    const hueDelta = accentColor ? hexToHueDegrees(accentColor) - hexToHueDegrees(DEFAULT_ACCENT_COLOR) : 0;
+    uniforms.uHueRotationMatrix.value.set(buildHueRotationMatrix((hueDelta * Math.PI) / 180));
   }, [accentColor]);
 
   // Overrides the gradient's 4 base cosine-gradient colours directly -- on
@@ -333,10 +386,7 @@ export function ShaderBackground() {
     if (!uniforms) return;
 
     const hexes = shaderPalette ?? DEFAULT_SHADER_PALETTE_HEX;
-    hexes.forEach((hex, i) => {
-      const [r, g, b] = hexToRgbNormalized(hex);
-      uniforms.uColourPalette.value[i]!.set(r, g, b);
-    });
+    hexes.forEach((hex, i) => uniforms.uColourPalette.value.set(hexToRgbNormalized(hex), i * 3));
   }, [shaderPalette]);
 
   useEffect(() => {

@@ -3,11 +3,12 @@ from typing import Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Request, Response, status
 from redis.asyncio import Redis
 from remnapy.controllers.webhooks import WebhookHeadersDto, WebhookUtility
 from remnapy.models.webhook import UserDto as WebhookUserDto
 
+from app.api.errors import ApiError, error_responses
 from app.core.config import AppConfig
 from app.core.constants import (
     MAX_WEBHOOK_BODY_BYTES,
@@ -17,6 +18,7 @@ from app.core.constants import (
     TTL_10M,
 )
 from app.core.enums import SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.utils.http import read_bounded_body
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import SyncSubscriptionStatusDto
@@ -41,7 +43,7 @@ def _is_stale(timestamp: datetime) -> bool:
     return drift > _WEBHOOK_FRESHNESS_WINDOW_S
 
 
-@router.post(REMNAWAVE_WEBHOOK_PATH)
+@router.post(REMNAWAVE_WEBHOOK_PATH, responses=error_responses(400, 401, 503))
 @inject
 async def receive_remnawave_webhook(
     request: Request,
@@ -50,9 +52,10 @@ async def receive_remnawave_webhook(
     redis: FromDishka[Redis],
 ) -> Response:
     if config.remnawave.webhook_secret is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Remnawave webhook secret is not configured",
+        raise ApiError(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Remnawave webhook secret is not configured",
+            code=ErrorCode.WEBHOOK_NOT_CONFIGURED,
         )
 
     # The signature header is still required (it keys the replay guard below),
@@ -61,8 +64,8 @@ async def receive_remnawave_webhook(
     try:
         headers = WebhookHeadersDto.from_headers(dict(request.headers))
     except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed webhook"
+        raise ApiError(
+            status.HTTP_400_BAD_REQUEST, "Malformed webhook", code=ErrorCode.WEBHOOK_MALFORMED
         ) from error
 
     body = await read_bounded_body(request, MAX_WEBHOOK_BODY_BYTES)
@@ -73,23 +76,27 @@ async def receive_remnawave_webhook(
             config.remnawave.webhook_secret.get_secret_value(),
         )
     except (UnicodeDecodeError, ValueError, KeyError) as error:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed webhook"
+        raise ApiError(
+            status.HTTP_400_BAD_REQUEST, "Malformed webhook", code=ErrorCode.WEBHOOK_MALFORMED
         ) from error
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Invalid webhook signature",
+            code=ErrorCode.WEBHOOK_SIGNATURE_INVALID,
         )
 
     if _is_stale(payload.timestamp):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Webhook timestamp is stale"
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED, "Webhook timestamp is stale", code=ErrorCode.WEBHOOK_STALE
         )
 
     replay_key = f"{REDIS_KEY_PREFIX}remnawave_webhook_seen:{headers.signature}"
     if not await redis.set(replay_key, "1", nx=True, ex=_WEBHOOK_REPLAY_TTL_S):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Webhook already processed"
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Webhook already processed",
+            code=ErrorCode.WEBHOOK_DUPLICATE,
         )
 
     if not isinstance(payload.data, WebhookUserDto):

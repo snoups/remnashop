@@ -1,10 +1,12 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.exceptions import NotFoundError, ValidationError
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.modules.api_tokens.api.schemas import (
+    ApiTokenListResponse,
     ApiTokenResponse,
     CreateApiTokenRequest,
     CreatedApiTokenResponse,
@@ -16,7 +18,6 @@ from app.modules.api_tokens.usecases import (
     ListApiTokensUseCase,
     RevokeApiTokenUseCase,
 )
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/api-tokens", tags=["api-tokens"])
 
@@ -32,45 +33,47 @@ def _to_response(token: ApiTokenDto) -> ApiTokenResponse:
     )
 
 
-@router.get("", response_model=list[ApiTokenResponse])
+@router.get("", response_model=ApiTokenListResponse)
 @inject
 async def list_api_tokens(
     use_case: FromDishka[ListApiTokensUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[ApiTokenResponse]:
+    actor: Actor = Depends(require_admin),
+) -> ApiTokenListResponse:
     tokens = await use_case(actor)
-    return [_to_response(token) for token in tokens]
+    items = [_to_response(token) for token in tokens]
+    return ApiTokenListResponse(items=items, total=len(items))
 
 
-@router.post("", response_model=CreatedApiTokenResponse)
+@router.post(
+    "",
+    response_model=CreatedApiTokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(400),
+)
 @inject
 async def create_api_token(
     payload: CreateApiTokenRequest,
     use_case: FromDishka[CreateApiTokenUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> CreatedApiTokenResponse:
-    try:
-        result = await use_case(
-            actor,
-            CreateApiTokenInput(
-                name=payload.name,
-                permissions=payload.permissions,
-                expires_in_days=payload.expires_in_days,
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    result = await use_case(
+        actor,
+        CreateApiTokenInput(
+            name=payload.name,
+            permissions=payload.permissions,
+            expires_in_days=payload.expires_in_days,
+        ),
+    )
     return CreatedApiTokenResponse(token=_to_response(result.token), secret=result.secret)
 
 
-@router.delete("/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{token_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+)
 @inject
 async def revoke_api_token(
     token_id: int,
     use_case: FromDishka[RevokeApiTokenUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(actor, token_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    await use_case(actor, token_id)

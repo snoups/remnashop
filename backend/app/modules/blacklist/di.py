@@ -9,7 +9,7 @@ from app.modules.blacklist.usecases import (
     RemoveBlacklistEntryUseCase,
     RemoveBlacklistSourceUseCase,
     SyncBlacklistSourcesUseCase,
-    ToggleBlacklistSourceUseCase,
+    UpdateBlacklistSourceUseCase,
 )
 
 
@@ -23,7 +23,7 @@ class BlacklistProvider(Provider):
     list_blacklist_sources_use_case = provide(ListBlacklistSourcesUseCase)
     add_blacklist_source_use_case = provide(AddBlacklistSourceUseCase)
     remove_blacklist_source_use_case = provide(RemoveBlacklistSourceUseCase)
-    toggle_blacklist_source_use_case = provide(ToggleBlacklistSourceUseCase)
+    update_blacklist_source_use_case = provide(UpdateBlacklistSourceUseCase)
     sync_blacklist_sources_use_case = provide(SyncBlacklistSourcesUseCase)
 
 

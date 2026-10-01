@@ -139,8 +139,8 @@ export function EventLogPage() {
     () => ({
       category: category || undefined,
       search: debouncedSearch || undefined,
-      dateFrom: debouncedDateFrom || undefined,
-      dateTo: debouncedDateTo || undefined,
+      occurredFrom: debouncedDateFrom || undefined,
+      occurredTo: debouncedDateTo || undefined,
     }),
     [category, debouncedSearch, debouncedDateFrom, debouncedDateTo],
   );
@@ -209,8 +209,8 @@ export function EventLogPage() {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    if (date.toDateString() === today.toDateString()) return t("payments.today");
-    if (date.toDateString() === yesterday.toDateString()) return t("payments.yesterday");
+    if (date.toDateString() === today.toDateString()) return t("transactions.today");
+    if (date.toDateString() === yesterday.toDateString()) return t("transactions.yesterday");
     return date.toLocaleDateString(i18n.language, {
       day: "numeric",
       month: "long",

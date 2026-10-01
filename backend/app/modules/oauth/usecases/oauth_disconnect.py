@@ -16,7 +16,7 @@ class OAuthDisconnectDto:
     client_ip: str
 
 
-class OAuthDisconnectUseCase(UseCase[OAuthDisconnectDto, None]):
+class OAuthDisconnectUseCase(UseCase[OAuthDisconnectDto, None, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(

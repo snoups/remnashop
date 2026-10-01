@@ -63,3 +63,8 @@ class SessionResponse(BaseModel):
     created_at: datetime
     last_used_at: datetime
     expires_at: datetime
+
+
+class SessionListResponse(BaseModel):
+    items: list[SessionResponse]
+    total: int

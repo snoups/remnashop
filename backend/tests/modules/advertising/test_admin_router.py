@@ -28,20 +28,13 @@ from app.modules.advertising.usecases import (
     ListAdLinksUseCase,
     UpdateAdLinkUseCase,
 )
-from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.api_tokens.dto import CreateApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.pricing.repository import PricingRepository
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.providers import get_module_providers
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -62,7 +55,7 @@ class _AdvertisingProvider(Provider):
     scope = Scope.REQUEST
 
     ad_link_repository = provide(AdLinkRepository)
-    payment_order_repository = provide(PaymentOrderRepository)
+    transaction_repository = provide(TransactionRepository)
     pricing_repository = provide(PricingRepository)
     create_ad_link_use_case = provide(CreateAdLinkUseCase)
     update_ad_link_use_case = provide(UpdateAdLinkUseCase)
@@ -79,14 +72,7 @@ class _AdvertisingProvider(Provider):
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_subscription_revoker_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_blacklist_providers(),
+        *get_module_providers(),
         _AdvertisingProvider(),
         _TestSessionProvider(session),
     ]

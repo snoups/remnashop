@@ -2,13 +2,15 @@ import hmac
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies.rate_limit import rate_limit
+from app.api.errors import ApiError, error_responses
 from app.core.config import AppConfig
 from app.core.constants import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, TIME_1M
-from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import AuthenticationError
 from app.core.security import derive_csrf_token
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import datetime_now
@@ -74,7 +76,7 @@ def _verify_csrf(refresh_token: str, request: Request, jwt_secret: str) -> None:
         or not hmac.compare_digest(cookie_value, expected)
         or not hmac.compare_digest(header_value, expected)
     ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF check failed")
+        raise ApiError(status.HTTP_403_FORBIDDEN, "CSRF check failed", code=ErrorCode.CSRF_FAILED)
 
 
 def _to_auth_response(user: UserDto, access_token: str) -> AuthResponse:
@@ -92,7 +94,7 @@ def _to_auth_response(user: UserDto, access_token: str) -> AuthResponse:
     dependencies=[Depends(rate_limit(key="status", limit=30, window_seconds=TIME_1M))],
 )
 @inject
-async def get_status(use_case: FromDishka[GetAuthStatusUseCase]) -> StatusResponse:
+async def get_auth_status(use_case: FromDishka[GetAuthStatusUseCase]) -> StatusResponse:
     result = await use_case.execute()
     return StatusResponse(
         is_login_allowed=result.owner_exists,
@@ -111,6 +113,7 @@ async def get_status(use_case: FromDishka[GetAuthStatusUseCase]) -> StatusRespon
     response_model=AuthResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(rate_limit(key="bootstrap", limit=5, window_seconds=TIME_1M))],
+    responses=error_responses(409),
 )
 @inject
 async def bootstrap(
@@ -120,15 +123,12 @@ async def bootstrap(
     use_case: FromDishka[BootstrapOwnerUseCase],
     config: FromDishka[AppConfig],
 ) -> AuthResponse:
-    try:
-        owner, issued = await use_case.execute(
-            login=payload.login,
-            password=payload.password,
-            client_ip=resolve_client_ip(request),
-            user_agent=request.headers.get("user-agent"),
-        )
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    owner, issued = await use_case.execute(
+        login=payload.login,
+        password=payload.password,
+        client_ip=resolve_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
     _set_session_cookies(response, issued, config.secure_cookies)
     return _to_auth_response(owner, issued.access_token)
@@ -138,6 +138,7 @@ async def bootstrap(
     "/login",
     response_model=AuthResponse,
     dependencies=[Depends(rate_limit(key="login", limit=10, window_seconds=TIME_1M))],
+    responses=error_responses(401),
 )
 @inject
 async def login(
@@ -147,15 +148,12 @@ async def login(
     use_case: FromDishka[LoginUseCase],
     config: FromDishka[AppConfig],
 ) -> AuthResponse:
-    try:
-        user, issued = await use_case.execute(
-            login=payload.login,
-            password=payload.password,
-            client_ip=resolve_client_ip(request),
-            user_agent=request.headers.get("user-agent"),
-        )
-    except AuthenticationError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+    user, issued = await use_case.execute(
+        login=payload.login,
+        password=payload.password,
+        client_ip=resolve_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
     _set_session_cookies(response, issued, config.secure_cookies)
     return _to_auth_response(user, issued.access_token)
@@ -165,9 +163,10 @@ async def login(
     "/refresh",
     response_model=RefreshResponse,
     dependencies=[Depends(rate_limit(key="refresh", limit=30, window_seconds=TIME_1M))],
+    responses=error_responses(401),
 )
 @inject
-async def refresh(
+async def refresh_session(
     request: Request,
     response: Response,
     use_case: FromDishka[RefreshSessionUseCase],
@@ -175,7 +174,9 @@ async def refresh(
 ) -> RefreshResponse | JSONResponse:
     refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
     if not refresh_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED, "No refresh token", code=ErrorCode.REFRESH_TOKEN_MISSING
+        )
     _verify_csrf(refresh_token, request, config.jwt_secret.get_secret_value())
 
     try:

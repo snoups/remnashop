@@ -1,9 +1,10 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.emoji_packs.repository import EmojiPackRepository
-from app.modules.users import UserDto
 
 
 class DeleteEmojiPackUseCase(UseCase[str, None]):
@@ -13,7 +14,9 @@ class DeleteEmojiPackUseCase(UseCase[str, None]):
         self._emoji_pack_repository = emoji_pack_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: str) -> None:
+    async def _execute(self, actor: Actor, data: str) -> None:
         async with self._uow:
             if not await self._emoji_pack_repository.delete(data):
-                raise NotFoundError(f"Emoji pack not found: {data}")
+                raise NotFoundError(
+                    f"Emoji pack not found: {data}", code=ErrorCode.EMOJI_PACK_NOT_FOUND
+                )

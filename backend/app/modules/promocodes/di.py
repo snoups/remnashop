@@ -7,6 +7,7 @@ from app.modules.promocodes.usecases import (
     DeletePromocodeUseCase,
     GeneratePromocodeCodeUseCase,
     GetPromocodeSummaryUseCase,
+    GetPromocodeUseCase,
     ListPromocodeActivatedUsersUseCase,
     ListPromocodesUseCase,
     ListUserPromocodeActivationsUseCase,
@@ -23,6 +24,7 @@ class PromocodesProvider(Provider):
     update_promocode_use_case = provide(UpdatePromocodeUseCase)
     delete_promocode_use_case = provide(DeletePromocodeUseCase)
     list_promocodes_use_case = provide(ListPromocodesUseCase)
+    get_promocode_use_case = provide(GetPromocodeUseCase)
     list_user_promocode_activations_use_case = provide(ListUserPromocodeActivationsUseCase)
     generate_promocode_code_use_case = provide(GeneratePromocodeCodeUseCase)
     get_promocode_summary_use_case = provide(GetPromocodeSummaryUseCase)

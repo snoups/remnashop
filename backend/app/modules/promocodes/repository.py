@@ -1,16 +1,19 @@
 from typing import Optional
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import ColumnElement, and_, case, exists, func, not_, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.errors import constraint_name
 from app.core.db.models.promocode import Promocode, PromocodeActivation
 from app.core.db.partial_update import apply_partial_update
-from app.core.enums import PromocodeRewardType
+from app.core.enums import PromocodeRewardType, PromocodeStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.utils.time import datetime_now
 from app.modules.promocodes.dto import (
     CreatePromocodeDto,
+    ListPromocodesDto,
     PromocodeActivationDto,
     PromocodeDto,
     PromocodeRewardTotalsDto,
@@ -54,7 +57,9 @@ class PromocodeRepository:
     async def _get_or_raise(self, promocode_id: int) -> Promocode:
         row = await self.session.get(Promocode, promocode_id)
         if row is None:
-            raise NotFoundError(f"Promocode '{promocode_id}' not found")
+            raise NotFoundError(
+                f"Promocode '{promocode_id}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND
+            )
         return row
 
     async def get_by_id(self, promocode_id: int) -> PromocodeDto:
@@ -67,6 +72,33 @@ class PromocodeRepository:
     async def list_all(self) -> list[PromocodeDto]:
         result = await self.session.execute(select(Promocode).order_by(Promocode.id))
         return [self._to_dto(row) for row in result.scalars()]
+
+    async def list_paginated(self, data: ListPromocodesDto) -> tuple[list[PromocodeDto], int]:
+        expired = and_(Promocode.expires_at.is_not(None), Promocode.expires_at < datetime_now())
+        live = and_(not_(expired), Promocode.is_active)
+        conditions: list[ColumnElement[bool]] = []
+        if data.status is PromocodeStatus.ACTIVE:
+            conditions.append(live)
+        elif data.status is PromocodeStatus.EXPIRED:
+            conditions.append(expired)
+        elif data.status is PromocodeStatus.INACTIVE:
+            conditions.append(and_(not_(expired), Promocode.is_active.is_(False)))
+        if data.reward_type is not None:
+            conditions.append(Promocode.reward_type == data.reward_type)
+        if data.search:
+            conditions.append(Promocode.code.icontains(data.search, autoescape=True))
+
+        total = await self.session.scalar(
+            select(func.count()).select_from(Promocode).where(*conditions)
+        )
+        rows = await self.session.scalars(
+            select(Promocode)
+            .where(*conditions)
+            .order_by(case((live, 0), else_=1), Promocode.created_at.desc(), Promocode.id.desc())
+            .offset((data.page - 1) * data.page_size)
+            .limit(data.page_size)
+        )
+        return [self._to_dto(row) for row in rows], total or 0
 
     async def create(self, data: CreatePromocodeDto) -> PromocodeDto:
         row = Promocode(
@@ -90,9 +122,13 @@ class PromocodeRepository:
         except IntegrityError as error:
             constraint = constraint_name(error)
             if constraint == "ix_promocodes_code":
-                raise ConflictError(f"Promocode with code '{data.code}' already exists") from error
+                raise ConflictError(
+                    f"Promocode with code '{data.code}' already exists",
+                    code=ErrorCode.PROMOCODE_CODE_TAKEN,
+                ) from error
             raise ConflictError(
-                "Promocode could not be created due to a conflicting value"
+                "Promocode could not be created due to a conflicting value",
+                code=ErrorCode.PROMOCODE_CONFLICT,
             ) from error
 
         await self.session.refresh(row)
@@ -128,7 +164,9 @@ class PromocodeRepository:
         try:
             promocode_row = locked.scalar_one()
         except NoResultFound as error:
-            raise NotFoundError(f"Promocode '{promocode_id}' not found") from error
+            raise NotFoundError(
+                f"Promocode '{promocode_id}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND
+            ) from error
 
         if promocode_row.max_activations is not None:
             count_result = await self.session.execute(
@@ -137,7 +175,10 @@ class PromocodeRepository:
                 .where(PromocodeActivation.promocode_id == promocode_id)
             )
             if count_result.scalar_one() >= promocode_row.max_activations:
-                raise ValidationError(f"Promocode '{promocode_row.code}' activation limit reached")
+                raise ValidationError(
+                    f"Promocode '{promocode_row.code}' activation limit reached",
+                    code=ErrorCode.PROMOCODE_LIMIT_REACHED,
+                )
 
         if not promocode_row.is_reusable:
             # exists(), not scalar_one_or_none(): a code toggled from reusable
@@ -153,7 +194,8 @@ class PromocodeRepository:
             )
             if already_activated:
                 raise ValidationError(
-                    f"Promocode '{promocode_row.code}' already activated by this user"
+                    f"Promocode '{promocode_row.code}' already activated by this user",
+                    code=ErrorCode.PROMOCODE_ALREADY_ACTIVATED,
                 )
 
         row = PromocodeActivation(

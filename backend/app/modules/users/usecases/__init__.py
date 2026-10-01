@@ -1,11 +1,11 @@
-from app.modules.users.dto import BulkBlockResultDto, SetUserPersonalDiscountDto
+from app.modules.users.dto import SetUserPersonalDiscountDto
 from app.modules.users.usecases.block_user import BlockUserUseCase
-from app.modules.users.usecases.bulk_block_users import BulkBlockUsersUseCase
 from app.modules.users.usecases.create_admin import CreateAdminDto, CreateAdminUseCase
 from app.modules.users.usecases.delete_admin import DeleteAdminDto, DeleteAdminUseCase
 from app.modules.users.usecases.delete_user import DeleteUserDto, DeleteUserUseCase
 from app.modules.users.usecases.demote_admin import DemoteAdminDto, DemoteAdminUseCase
 from app.modules.users.usecases.get_current_user import GetCurrentUserUseCase
+from app.modules.users.usecases.get_user import GetUserUseCase
 from app.modules.users.usecases.get_user_list_stats import (
     GetUserListStatsInput,
     GetUserListStatsUseCase,
@@ -45,8 +45,6 @@ __all__ = [
     "BlacklistMatchOrigin",
     "BlacklistMatchPageDto",
     "BlockUserUseCase",
-    "BulkBlockResultDto",
-    "BulkBlockUsersUseCase",
     "CreateAdminDto",
     "CreateAdminUseCase",
     "DeleteAdminDto",
@@ -63,6 +61,7 @@ __all__ = [
     "ListBlacklistMatchesUseCase",
     "ListUsersInput",
     "ListUsersUseCase",
+    "GetUserUseCase",
     "PromoteToAdminDto",
     "PromoteToAdminUseCase",
     "RegisterTelegramUserDto",

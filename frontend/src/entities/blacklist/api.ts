@@ -1,4 +1,5 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 import type { Role } from "@shared/types/rbac";
 
 export type BlacklistKind = "TELEGRAM_ID" | "EMAIL";
@@ -22,22 +23,20 @@ export function getBlacklist(signal?: AbortSignal): Promise<Blacklist> {
   return apiGet<Blacklist>("/blacklist", signal);
 }
 
+function entryPath(kind: BlacklistKind, value: string): string {
+  return `/blacklist/entries/${kind}/${encodeURIComponent(value)}`;
+}
+
 export function addBlacklistEntry(kind: BlacklistKind, value: string): Promise<Blacklist> {
-  return apiPost<Blacklist, { kind: BlacklistKind; value: string }>("/blacklist/entries", {
-    kind,
-    value,
-  });
+  return apiPut<Blacklist, Record<string, never>>(entryPath(kind, value), {});
 }
 
 export function removeBlacklistEntry(kind: BlacklistKind, value: string): Promise<Blacklist> {
-  return apiDelete<Blacklist, { kind: BlacklistKind; value: string }>("/blacklist/entries", {
-    kind,
-    value,
-  });
+  return apiDelete<Blacklist>(entryPath(kind, value));
 }
 
 export function listBlacklistSources(signal?: AbortSignal): Promise<BlacklistSource[]> {
-  return apiGet<BlacklistSource[]>("/blacklist/sources", signal);
+  return apiGet<ListResponse<BlacklistSource>>("/blacklist/sources", signal).then((response) => response.items);
 }
 
 export function addBlacklistSource(url: string, name?: string): Promise<BlacklistSource> {
@@ -51,12 +50,12 @@ export function removeBlacklistSource(id: number): Promise<void> {
   return apiDelete<void>(`/blacklist/sources/${id}`);
 }
 
-export function toggleBlacklistSource(id: number, enabled: boolean): Promise<BlacklistSource> {
+export function updateBlacklistSource(id: number, enabled: boolean): Promise<BlacklistSource> {
   return apiPatch<BlacklistSource, { enabled: boolean }>(`/blacklist/sources/${id}`, { enabled });
 }
 
 export function syncBlacklistSources(): Promise<void> {
-  return apiPost<void, Record<string, never>>("/blacklist/sources/sync", {});
+  return apiPost<void, Record<string, never>>("/blacklist/sources/actions/sync", {});
 }
 
 export interface BlacklistOrigin {
@@ -124,5 +123,5 @@ export function listBlacklistMatches(
 
 // Drops the matched users' manual entries too; source-list matches are re-blocked on the next reconcile.
 export function unblockBlacklistMatches(): Promise<{ unblocked: number }> {
-  return apiPost<{ unblocked: number }, Record<string, never>>("/users/blacklist-matches/unblock", {});
+  return apiPost<{ unblocked: number }, Record<string, never>>("/users/bulk/blacklist-matches/unblock", {});
 }

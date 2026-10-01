@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { getLtvDistribution } from "@entities/analytics/api";
 import type { LtvDistribution } from "@entities/analytics/api";
-import { CURRENCY_SYMBOL } from "@entities/payments/api";
+import { CURRENCY_SYMBOL } from "@entities/transactions/api";
 import { AnalyticsCardHeader } from "@pages/analytics/AnalyticsCardHeader";
 import { Card } from "@shared/ui/Card";
 import { LIST_HEAD_CLASS } from "@shared/ui/classes";

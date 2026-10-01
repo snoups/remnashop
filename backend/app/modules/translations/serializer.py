@@ -1,5 +1,8 @@
+import re
 from collections import defaultdict
 from typing import Final, Optional
+
+from loguru import logger
 
 from app.modules.translations.dto import TranslationEntryDto
 
@@ -55,9 +58,18 @@ def _block(value: str, indent: str) -> str:
     return f"\n{indent}".join([first, *map(_escape_line_start, rest)])
 
 
+# Ids are written unescaped -- one that isn't an identifier would start a new
+# top-level entry and shadow a real message, so such a row is dropped instead.
+_FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"[a-zA-Z][a-zA-Z0-9_-]*")
+
+
 def serialize_to_fluent(entries: list[TranslationEntryDto]) -> str:
     by_message: dict[str, list[TranslationEntryDto]] = defaultdict(list)
     for entry in entries:
+        ids = (entry.message_id, entry.attribute_id) if entry.attribute_id else (entry.message_id,)
+        if not all(_FLUENT_IDENTIFIER_RE.fullmatch(part) for part in ids):
+            logger.warning(f"Skipping translation row with an invalid Fluent id: {ids!r}")
+            continue
         by_message[entry.message_id].append(entry)
 
     lines: list[str] = []

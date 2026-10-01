@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar
 
 from app.core.enums import Currency, PriceAdjustScope
@@ -25,3 +25,9 @@ class BasePricesAdjustedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.PRICING
     scope: PriceAdjustScope
     factor: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class PricingSettingsChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.PRICING
+    changed_fields: list[str] = field(default_factory=list)

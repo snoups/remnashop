@@ -168,9 +168,9 @@ export function DebugBar() {
     },
   ];
   const toggleItems = toggles.map(({ key, ...toggle }) => ({ key, node: <DebugButton {...toggle} /> }));
-  const divider = { key: "divider", node: <span aria-hidden className="block h-6 w-px bg-glass-border md:h-px md:w-6" /> };
+  const divider = { key: "divider", node: <span aria-hidden className="block h-px w-6 bg-glass-border" /> };
 
-  const items: { key: string; node: ReactNode; className?: string }[] = barCollapsed
+  const items: { key: string; node: ReactNode }[] = barCollapsed
     ? [
         ...(toggles.some((toggle) => toggle.active) ? [divider] : []),
         ...toggleItems.filter((_, i) => toggles[i].active),
@@ -221,25 +221,23 @@ export function DebugBar() {
               onClick={() => setDebugState({ barCollapsed: true })}
             />
           ),
-          // top of the column on desktop, next to close on mobile
-          className: "order-first md:order-none",
         },
       ];
 
   return (
-    // mobile: a scrollable row above the bottom nav (BottomNav: ~46px pill + its bottom margin).
+    // desktop only -- no way to open it on mobile anyway.
     // borderRadius inline, not rounded-full -- motion only corrects layout distortion for style values.
     <motion.div
       layout
       transition={BAR_TRANSITION}
       style={{ borderRadius: 9999 }}
-      className="no-scrollbar fixed bottom-[calc(max(0.5rem,env(safe-area-inset-bottom))+3.5rem)] left-2 z-50 flex max-w-[calc(100vw-1rem)] items-center gap-2 overflow-x-auto border border-glass-border bg-popover/50 p-1.5 backdrop-blur-2xl backdrop-saturate-150 md:bottom-4 md:left-4 md:max-w-none md:flex-col-reverse md:overflow-visible"
+      className="fixed bottom-4 left-4 z-50 hidden flex-col-reverse items-center gap-2 border border-glass-border bg-popover/50 p-1.5 backdrop-blur-2xl backdrop-saturate-150 md:flex"
     >
       <motion.div layout="position" transition={BAR_TRANSITION}>
         <DebugButton icon={X} label={t("debugBar.close")} onClick={() => setDebugState({ barVisible: false })} />
       </motion.div>
       <AnimatePresence initial={false} mode="popLayout">
-        {items.map(({ key, node, className = "" }) => (
+        {items.map(({ key, node }) => (
           <motion.div
             key={key}
             layout="position"
@@ -248,7 +246,7 @@ export function DebugBar() {
             exit={{ opacity: 0, scale: 0.6 }}
             transition={BAR_TRANSITION}
             // ShaderToggle renders nothing when the shader is off dashboard-wide
-            className={`${className} shrink-0 empty:hidden`}
+            className="shrink-0 empty:hidden"
           >
             {node}
           </motion.div>

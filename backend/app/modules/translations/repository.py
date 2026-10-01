@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.bot_translation import BotTranslation
 from app.core.enums import Locale
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.translations.dto import TranslationEntryDto
 from app.modules.translations.serializer import serialize_to_fluent
@@ -112,7 +113,8 @@ class TranslationsRepository:
         row = result.scalar_one_or_none()
         if row is None:
             raise NotFoundError(
-                f"Translation {message_id}.{attribute_id} not found for locale {locale.value}"
+                f"Translation {message_id}.{attribute_id} not found for locale {locale.value}",
+                code=ErrorCode.TRANSLATION_NOT_FOUND,
             )
         row.value = value
         await self.session.flush()
@@ -132,7 +134,8 @@ class TranslationsRepository:
         row = result.scalar_one_or_none()
         if row is None:
             raise NotFoundError(
-                f"Translation {message_id}.{attribute_id} not found for locale {locale.value}"
+                f"Translation {message_id}.{attribute_id} not found for locale {locale.value}",
+                code=ErrorCode.TRANSLATION_NOT_FOUND,
             )
         row.value = row.default_value
         await self.session.flush()

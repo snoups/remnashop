@@ -12,6 +12,7 @@ from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
 from app.core.enums import AddOnType, Currency, SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import SubscriptionState
@@ -120,7 +121,9 @@ class SubscriptionRepository:
     async def _get_or_raise(self, subscription_id: int) -> Subscription:
         row = await self.session.get(Subscription, subscription_id)
         if row is None:
-            raise NotFoundError(f"Subscription '{subscription_id}' not found")
+            raise NotFoundError(
+                f"Subscription '{subscription_id}' not found", code=ErrorCode.SUBSCRIPTION_NOT_FOUND
+            )
         return row
 
     async def get_by_id(self, subscription_id: int) -> SubscriptionDto:
@@ -288,7 +291,10 @@ class SubscriptionRepository:
     async def get_single_active_subscription_or_raise(self, user_id: int) -> SubscriptionDto:
         active = await self.get_active_by_user(user_id)
         if not active:
-            raise NotFoundError(f"No active subscription for user '{user_id}'")
+            raise NotFoundError(
+                f"No active subscription for user '{user_id}'",
+                code=ErrorCode.SUBSCRIPTION_NOT_FOUND,
+            )
         return active[0]
 
     async def has_any_subscription(self, user_id: int, *, include_trial: bool = True) -> bool:
@@ -304,9 +310,11 @@ class SubscriptionRepository:
         return bool(count)
 
     async def has_paid_subscription_before(self, user_id: int, subscription_id: int) -> bool:
-        """Whether a non-trial subscription other than this one already exists
-        -- "is this the user's first paid subscription", where
-        has_any_subscription would also count the one just created."""
+        """Whether a paid subscription other than this one already exists --
+        "is this the user's first paid subscription", where has_any_subscription
+        would also count the one just created. A free one (100% discount,
+        promocode grant) doesn't count as paid."""
+        price_paid = Subscription.plan_snapshot["price_paid"].astext.cast(Numeric)
         stmt = (
             select(func.count())
             .select_from(Subscription)
@@ -314,6 +322,7 @@ class SubscriptionRepository:
                 Subscription.user_id == user_id,
                 Subscription.id != subscription_id,
                 Subscription.is_trial.is_(False),
+                price_paid > 0,
             )
         )
         return bool(await self.session.scalar(stmt))
@@ -350,7 +359,9 @@ class SubscriptionRepository:
         )
         row = result.scalar_one_or_none()
         if row is None:
-            raise NotFoundError(f"Subscription '{subscription_id}' not found")
+            raise NotFoundError(
+                f"Subscription '{subscription_id}' not found", code=ErrorCode.SUBSCRIPTION_NOT_FOUND
+            )
         entitlements_by_subscription = await self._load_entitlements([row.id])
         return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
 

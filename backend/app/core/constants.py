@@ -27,6 +27,7 @@ DOCS: Final[str] = "https://remnashop.dev"
 T_ME: Final[str] = "https://t.me/"
 API_V1: Final[str] = "/api/v1"
 BOT_WEBHOOK_PATH: Final[str] = "/telegram"
+# registered in every gateway's dashboard
 PAYMENTS_WEBHOOK_PATH: Final[str] = "/payments"
 REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
 

@@ -197,12 +197,6 @@ class PurchaseSubscriptionDto:
     purchase_type: PurchaseType
     target_subscription_id: Optional[int] = None
     idempotency_key: Optional[str] = None
-    # True only for a purchase that went through a priced quote, i.e. a real
-    # checkout -- that is what spends User.purchase_discount. A system grant
-    # (trial, promocode reward, referral EXTRA_DAYS) never quoted a price, so
-    # it must not burn a discount the customer never got to use. Not derivable
-    # from price_paid == 0: a 100%-off checkout is free AND spent the discount.
-    consumes_purchase_discount: bool = False
     # False for a paid checkout order: the cap was enforced at checkout, and
     # refusing after the charge leaves the customer paid with nothing.
     enforce_subscription_cap: bool = True

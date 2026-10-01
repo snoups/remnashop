@@ -1,6 +1,7 @@
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageKind
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.settings.appearance_storage import read_appearance_image
 from app.modules.settings.repository import SettingsRepository
@@ -21,12 +22,16 @@ class GetPublicAppearanceImageUseCase:
         async with self._uow:
             meta = await self._settings_repository.get_appearance_image_meta(kind)
             if meta is None:
-                raise NotFoundError(f"Appearance image not set: {kind}")
+                raise NotFoundError(
+                    f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET
+                )
 
             extension, content_type = meta
             try:
                 data = read_appearance_image(self._config.media_dir, kind, extension)
             except FileNotFoundError:
-                raise NotFoundError(f"Appearance image not set: {kind}") from None
+                raise NotFoundError(
+                    f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET
+                ) from None
 
             return data, content_type

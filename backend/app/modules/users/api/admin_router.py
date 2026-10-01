@@ -3,16 +3,20 @@ from typing import Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
-from app.api.dependencies.admin import require_admin
+from app.api.dependencies.admin import require_admin, require_admin_user
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.core.enums import Role
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.core.security.permissions import ROLE_PERMISSIONS, PermissionPolicy
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.blacklist import BlacklistOriginDto
 from app.modules.users.api.schemas import (
+    AdminListResponse,
     AdminPromoteResponse,
     AdminResponse,
     AdminWithPasswordResponse,
@@ -20,8 +24,6 @@ from app.modules.users.api.schemas import (
     BlacklistMatchPageResponse,
     BlacklistMatchResponse,
     BlacklistOriginResponse,
-    BulkBlockRequest,
-    BulkBlockResponse,
     CreateAdminRequest,
     CurrentUserResponse,
     PromoteAdminRequest,
@@ -46,7 +48,6 @@ from app.modules.users.dto import (
 from app.modules.users.usecases import (
     BlacklistMatchOrigin,
     BlockUserUseCase,
-    BulkBlockUsersUseCase,
     CreateAdminDto,
     CreateAdminUseCase,
     DeleteAdminDto,
@@ -58,6 +59,7 @@ from app.modules.users.usecases import (
     GetCurrentUserUseCase,
     GetUserListStatsInput,
     GetUserListStatsUseCase,
+    GetUserUseCase,
     ListAdminsUseCase,
     ListBlacklistMatchesInput,
     ListBlacklistMatchesUseCase,
@@ -82,21 +84,13 @@ router = APIRouter(prefix="/users", tags=["users"])
 admins_router = APIRouter(prefix="/admins", tags=["admins"])
 
 
-def _conflict_or_validation_status(error: ConflictError | ValidationError) -> int:
-    if isinstance(error, ConflictError):
-        return status.HTTP_409_CONFLICT
-    return status.HTTP_400_BAD_REQUEST
-
-
 def _parse_role(value: Optional[str]) -> Optional[Role]:
     if value is None:
         return None
     try:
         return Role[value]
     except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Invalid role: {value}"
-        ) from None
+        raise ValidationError(f"Invalid role: {value}", code=ErrorCode.ROLE_INVALID) from None
 
 
 def _to_admin_response(user: UserDto) -> AdminResponse:
@@ -147,7 +141,7 @@ def _to_user_response(user: UserDto) -> UserResponse:
 @inject
 async def get_me(
     use_case: FromDishka[GetCurrentUserUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> CurrentUserResponse:
     current_user = await use_case(actor)
     return CurrentUserResponse(
@@ -161,24 +155,21 @@ async def get_me(
     )
 
 
-@router.patch("/me", response_model=CurrentUserResponse)
+@router.patch("/me", response_model=CurrentUserResponse, responses=error_responses(400))
 @inject
 async def update_me(
     payload: UpdateOwnProfileRequest,
     use_case: FromDishka[UpdateOwnProfileUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> CurrentUserResponse:
-    try:
-        updated = await use_case(
-            actor,
-            UpdateOwnProfileDto(
-                name=payload.name,
-                current_password=payload.current_password,
-                new_password=payload.new_password,
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    updated = await use_case(
+        actor,
+        UpdateOwnProfileDto(
+            name=payload.name,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        ),
+    )
     return CurrentUserResponse(
         id=updated.id,
         login=updated.login,
@@ -191,28 +182,25 @@ async def update_me(
 
 
 @router.get("/me/security", response_model=SecurityResponse)
-async def get_own_security(actor: UserDto = Depends(require_admin)) -> SecurityResponse:
+async def get_own_security(actor: UserDto = Depends(require_admin_user)) -> SecurityResponse:
     return SecurityResponse(ip_allowlist=actor.ip_allowlist or [])
 
 
-@router.put("/me/security", response_model=SecurityResponse)
+@router.put("/me/security", response_model=SecurityResponse, responses=error_responses(400))
 @inject
 async def update_own_security(
     payload: UpdateSecurityRequest,
     request: Request,
     use_case: FromDishka[UpdateOwnSecuritySettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> SecurityResponse:
-    try:
-        updated = await use_case(
-            actor,
-            UpdateSecuritySettingsDto(
-                ip_allowlist=payload.ip_allowlist,
-                client_ip=resolve_client_ip(request),
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    updated = await use_case(
+        actor,
+        UpdateSecuritySettingsDto(
+            ip_allowlist=payload.ip_allowlist,
+            client_ip=resolve_client_ip(request),
+        ),
+    )
     return SecurityResponse(ip_allowlist=updated.ip_allowlist or [])
 
 
@@ -220,7 +208,7 @@ async def update_own_security(
 @inject
 async def list_users(
     use_case: FromDishka[ListUsersUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     search: Optional[str] = None,
     role: Optional[str] = None,
     is_blocked: Optional[bool] = None,
@@ -266,11 +254,24 @@ async def list_users(
     return UserPageResponse(items=items, total=total)
 
 
+@router.get("/{user_id:int}", response_model=UserListItemResponse, responses=error_responses(404))
+@inject
+async def get_user(
+    user_id: int,
+    use_case: FromDishka[GetUserUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UserListItemResponse:
+    user = await use_case(actor, user_id)
+    return UserListItemResponse(
+        **_to_user_response(user).model_dump(), active_subscriptions=user.active_subscriptions
+    )
+
+
 @router.get("/stats", response_model=UserListStatsResponse)
 @inject
 async def get_user_list_stats(
     use_case: FromDishka[GetUserListStatsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     include_staff: bool = False,
 ) -> UserListStatsResponse:
     stats = await use_case(actor, GetUserListStatsInput(include_staff=include_staff))
@@ -292,7 +293,7 @@ def _to_origin_response(origin: BlacklistOriginDto) -> BlacklistOriginResponse:
 @inject
 async def list_blacklist_matches(
     use_case: FromDishka[ListBlacklistMatchesUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     search: Optional[str] = None,
     origin: Optional[BlacklistMatchOrigin] = None,
     page: int = Query(1, ge=1),
@@ -329,224 +330,191 @@ async def list_blacklist_matches(
     )
 
 
-@router.post("/blacklist-matches/unblock", response_model=UnblockAllResponse)
+@router.post("/bulk/blacklist-matches/unblock", response_model=UnblockAllResponse)
 @inject
 async def unblock_blacklist_matches(
     use_case: FromDishka[UnblockBlacklistMatchesUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> UnblockAllResponse:
     count = await use_case(actor)
     return UnblockAllResponse(unblocked=count)
 
 
-@router.patch("/{user_id}/discount", response_model=UserResponse)
+@router.patch(
+    "/{user_id}/discount", response_model=UserResponse, responses=error_responses(400, 404)
+)
 @inject
 async def set_user_discount(
     user_id: int,
     payload: SetPersonalDiscountRequest,
     use_case: FromDishka[SetUserPersonalDiscountUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> UserResponse:
-    try:
-        updated = await use_case(
-            actor, SetUserPersonalDiscountDto(user_id=user_id, percent=payload.percent)
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    updated = await use_case(
+        actor, SetUserPersonalDiscountDto(user_id=user_id, percent=payload.percent)
+    )
     return _to_user_response(updated)
 
 
-@router.post("/{user_id}/block", response_model=UserResponse)
+@router.post(
+    "/{user_id}/actions/block", response_model=UserResponse, responses=error_responses(404)
+)
 @inject
 async def block_user(
     user_id: int,
     use_case: FromDishka[BlockUserUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> UserResponse:
-    try:
-        updated = await use_case(actor, user_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    updated = await use_case(actor, user_id)
     return _to_user_response(updated)
 
 
-@router.post("/{user_id}/unblock", response_model=UserResponse)
+@router.post(
+    "/{user_id}/actions/unblock", response_model=UserResponse, responses=error_responses(404)
+)
 @inject
 async def unblock_user(
     user_id: int,
     use_case: FromDishka[UnblockUserUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> UserResponse:
-    try:
-        updated = await use_case(actor, user_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    updated = await use_case(actor, user_id)
     return _to_user_response(updated)
 
 
-@router.post("/block-bulk", response_model=BulkBlockResponse)
-@inject
-async def bulk_block_users(
-    payload: BulkBlockRequest,
-    use_case: FromDishka[BulkBlockUsersUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> BulkBlockResponse:
-    result = await use_case(actor, payload.telegram_ids)
-    return BulkBlockResponse(
-        blocked=result.blocked, added_to_list=result.added_to_list, skipped=result.skipped
-    )
-
-
-@router.post("/unblock-all", response_model=UnblockAllResponse)
+@router.post("/bulk/all/unblock", response_model=UnblockAllResponse)
 @inject
 async def unblock_all_users(
     use_case: FromDishka[UnblockAllUsersUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> UnblockAllResponse:
     count = await use_case(actor)
     return UnblockAllResponse(unblocked=count)
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
+)
 @inject
 async def delete_user(
     user_id: int,
     request: Request,
     use_case: FromDishka[DeleteUserUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(actor, DeleteUserDto(user_id=user_id, client_ip=resolve_client_ip(request)))
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    await use_case(actor, DeleteUserDto(user_id=user_id, client_ip=resolve_client_ip(request)))
 
 
-@admins_router.get("", response_model=list[AdminResponse])
+@admins_router.get("", response_model=AdminListResponse)
 @inject
 async def list_admins(
     use_case: FromDishka[ListAdminsUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[AdminResponse]:
+    actor: Actor = Depends(require_admin),
+) -> AdminListResponse:
     admins = await use_case(actor)
-    return [_to_admin_response(a) for a in admins]
+    items = [_to_admin_response(a) for a in admins]
+    return AdminListResponse(items=items, total=len(items))
 
 
 @admins_router.post(
-    "", response_model=AdminWithPasswordResponse, status_code=status.HTTP_201_CREATED
+    "",
+    response_model=AdminWithPasswordResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(400, 409),
 )
 @inject
 async def create_admin(
     payload: CreateAdminRequest,
     request: Request,
     use_case: FromDishka[CreateAdminUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AdminWithPasswordResponse:
-    try:
-        admin, password = await use_case(
-            actor,
-            CreateAdminDto(
-                login=payload.login,
-                name=payload.name,
-                client_ip=resolve_client_ip(request),
-                permission_grants=payload.permission_grants,
-                permission_revokes=payload.permission_revokes,
-            ),
-        )
-    except (ConflictError, ValidationError) as error:
-        code = _conflict_or_validation_status(error)
-        raise HTTPException(status_code=code, detail=str(error)) from error
+    admin, password = await use_case(
+        actor,
+        CreateAdminDto(
+            login=payload.login,
+            name=payload.name,
+            client_ip=resolve_client_ip(request),
+            permission_grants=payload.permission_grants,
+            permission_revokes=payload.permission_revokes,
+        ),
+    )
     return AdminWithPasswordResponse(admin=_to_admin_response(admin), password=password)
 
 
-@admins_router.post("/promote", response_model=AdminPromoteResponse)
+@admins_router.post(
+    "/actions/promote",
+    response_model=AdminPromoteResponse,
+    responses=error_responses(400, 404, 409),
+)
 @inject
 async def promote_admin(
     payload: PromoteAdminRequest,
     request: Request,
     use_case: FromDishka[PromoteToAdminUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AdminPromoteResponse:
-    try:
-        admin, password = await use_case(
-            actor,
-            PromoteToAdminDto(
-                email=payload.email,
-                telegram_username=payload.telegram_username,
-                login=payload.login,
-                client_ip=resolve_client_ip(request),
-                permission_grants=payload.permission_grants,
-                permission_revokes=payload.permission_revokes,
-            ),
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except (ConflictError, ValidationError) as error:
-        code = _conflict_or_validation_status(error)
-        raise HTTPException(status_code=code, detail=str(error)) from error
+    admin, password = await use_case(
+        actor,
+        PromoteToAdminDto(
+            email=payload.email,
+            telegram_username=payload.telegram_username,
+            login=payload.login,
+            client_ip=resolve_client_ip(request),
+            permission_grants=payload.permission_grants,
+            permission_revokes=payload.permission_revokes,
+        ),
+    )
     return AdminPromoteResponse(admin=_to_admin_response(admin), password=password)
 
 
-@admins_router.patch("/{user_id}", response_model=AdminResponse)
+@admins_router.patch(
+    "/{user_id}", response_model=AdminResponse, responses=error_responses(400, 404, 409)
+)
 @inject
 async def update_admin(
     user_id: int,
     payload: UpdateAdminRequest,
     request: Request,
     use_case: FromDishka[UpdateAdminUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AdminResponse:
-    try:
-        updated = await use_case(
-            actor,
-            UpdateAdminDto(
-                user_id=user_id,
-                client_ip=resolve_client_ip(request),
-                permission_grants=payload.permission_grants,
-                permission_revokes=payload.permission_revokes,
-            ),
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except (ConflictError, ValidationError) as error:
-        code = _conflict_or_validation_status(error)
-        raise HTTPException(status_code=code, detail=str(error)) from error
+    updated = await use_case(
+        actor,
+        UpdateAdminDto(
+            user_id=user_id,
+            client_ip=resolve_client_ip(request),
+            permission_grants=payload.permission_grants,
+            permission_revokes=payload.permission_revokes,
+        ),
+    )
     return _to_admin_response(updated)
 
 
-@admins_router.post("/{user_id}/demote", response_model=AdminResponse)
+@admins_router.post(
+    "/{user_id}/actions/demote", response_model=AdminResponse, responses=error_responses(404, 409)
+)
 @inject
 async def demote_admin(
     user_id: int,
     request: Request,
     use_case: FromDishka[DemoteAdminUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AdminResponse:
-    try:
-        demoted = await use_case(
-            actor, DemoteAdminDto(user_id=user_id, client_ip=resolve_client_ip(request))
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    demoted = await use_case(
+        actor, DemoteAdminDto(user_id=user_id, client_ip=resolve_client_ip(request))
+    )
     return _to_admin_response(demoted)
 
 
-@admins_router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@admins_router.delete(
+    "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
+)
 @inject
 async def delete_admin(
     user_id: int,
     request: Request,
     use_case: FromDishka[DeleteAdminUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(actor, DeleteAdminDto(user_id=user_id, client_ip=resolve_client_ip(request)))
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    await use_case(actor, DeleteAdminDto(user_id=user_id, client_ip=resolve_client_ip(request)))

@@ -1,10 +1,10 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings.bot_commands import BOT_COMMANDS
 from app.modules.settings.dto import BotCommandDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.users import UserDto
 
 
 class GetBotCommandsUseCase(UseCase[bool, list[BotCommandDto]]):
@@ -16,7 +16,7 @@ class GetBotCommandsUseCase(UseCase[bool, list[BotCommandDto]]):
 
     # data is the reset-order flag: True hands back BOT_COMMANDS' own order
     # instead of the stored one, for the dashboard's "reset order" button.
-    async def _execute(self, actor: UserDto, data: bool) -> list[BotCommandDto]:
+    async def _execute(self, actor: Actor, data: bool) -> list[BotCommandDto]:
         async with self._uow:
             rows = await self._settings_repository.list_bot_commands()
             stored = {item.command: item for item in rows}

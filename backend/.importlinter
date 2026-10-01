@@ -1,5 +1,6 @@
 [importlinter]
 root_package = app
+include_external_packages = True
 
 [importlinter:contract:auth-encapsulation]
 name = auth module internals are private
@@ -20,7 +21,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -56,7 +57,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -92,7 +93,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -108,9 +109,6 @@ forbidden_modules =
     app.modules.users.dto
     app.modules.users.di
     app.modules.users.usecases
-ignore_imports =
-    app.core.security.permissions -> app.modules.users.dto
-    app.core.usecase -> app.modules.users.dto
 
 [importlinter:contract:event-log-encapsulation]
 name = event_log module internals are private
@@ -131,7 +129,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -170,7 +168,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -208,7 +206,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -245,7 +243,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -281,7 +279,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -319,7 +317,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -356,7 +354,7 @@ source_modules =
     app.modules.gateways
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -392,7 +390,7 @@ source_modules =
     app.modules.gateways
     app.modules.plans
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -432,7 +430,7 @@ source_modules =
     app.modules.gateways
     app.modules.plans
     app.modules.subscriptions
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -449,8 +447,8 @@ forbidden_modules =
     app.modules.promocodes.di
     app.modules.promocodes.usecases
 
-[importlinter:contract:payments-encapsulation]
-name = payments module internals are private
+[importlinter:contract:transactions-encapsulation]
+name = transactions module internals are private
 type = forbidden
 allow_indirect_imports = True
 source_modules =
@@ -480,10 +478,10 @@ source_modules =
     app.modules.overview
     app.modules.analytics
 forbidden_modules =
-    app.modules.payments.repository
-    app.modules.payments.dto
-    app.modules.payments.di
-    app.modules.payments.usecases
+    app.modules.transactions.repository
+    app.modules.transactions.dto
+    app.modules.transactions.di
+    app.modules.transactions.usecases
 
 [importlinter:contract:oauth-encapsulation]
 name = oauth module internals are private
@@ -506,7 +504,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -541,7 +539,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.backups
@@ -578,7 +576,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.referrals
     app.modules.oauth
     app.modules.passkeys
@@ -617,7 +615,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -654,7 +652,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -694,7 +692,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -734,7 +732,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -771,7 +769,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -807,7 +805,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.referrals
     app.modules.backups
     app.modules.pricing
@@ -843,7 +841,7 @@ source_modules =
     app.modules.plans
     app.modules.subscriptions
     app.modules.promocodes
-    app.modules.payments
+    app.modules.transactions
     app.modules.oauth
     app.modules.passkeys
     app.modules.referrals
@@ -857,3 +855,45 @@ forbidden_modules =
     app.modules.analytics.dto
     app.modules.analytics.di
     app.modules.analytics.usecases
+
+[importlinter:contract:core-layer]
+name = core does not depend on modules or processes
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+forbidden_modules =
+    app.modules
+    app.api
+    app.worker
+    app.telegram
+ignore_imports =
+    app.core.event_bus -> app.modules.advertising.events
+    app.core.event_bus -> app.modules.auth.events
+    app.core.event_bus -> app.modules.oauth.events
+    app.core.event_bus -> app.modules.referrals.events
+    app.core.outbox_event_publisher -> app.modules.event_log.tasks
+
+[importlinter:contract:modules-layer]
+name = only routers and tasks reach into their process
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.modules
+forbidden_modules =
+    app.api
+    app.worker
+    app.telegram
+ignore_imports =
+    app.modules.*.api.** -> app.api.**
+    app.modules.*.tasks -> app.worker.**
+
+[importlinter:contract:usecases-without-sqlalchemy]
+name = usecases do not touch sqlalchemy
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.modules.*.usecases
+forbidden_modules =
+    sqlalchemy
+

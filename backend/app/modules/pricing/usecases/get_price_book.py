@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency
 from app.core.security.permissions import Permission
@@ -9,7 +10,6 @@ from app.modules.pricing.dto import CurrencyRateTable, PriceBookCell, PriceBookD
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.resolver import resolve_price
 from app.modules.subscriptions import AddOnRepository
-from app.modules.users import UserDto
 
 
 def _build_cells(
@@ -92,7 +92,7 @@ class GetPriceBookUseCase(UseCase[None, PriceBookDto]):
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> PriceBookDto:
+    async def _execute(self, actor: Actor, data: None) -> PriceBookDto:
         async with self._uow:
             return await build_price_book(
                 self._plan_repository, self._addon_repository, self._pricing_repository

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from "@shared/api/http";
+import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 
 // Decimal fields are serialized as strings by the backend (pydantic v2's
 // JSON mode), not numbers -- keep them as strings end-to-end to avoid float
@@ -80,11 +80,11 @@ export interface UpdatePricingSettingsBody {
 }
 
 export function updatePricingSettings(body: UpdatePricingSettingsBody): Promise<PricingSettings> {
-  return apiPut<PricingSettings, UpdatePricingSettingsBody>("/pricing/settings", body);
+  return apiPatch<PricingSettings, UpdatePricingSettingsBody>("/pricing/settings", body);
 }
 
 export function switchAnchorCurrency(newAnchor: Currency): Promise<PriceBook> {
-  return apiPost<PriceBook, { new_anchor: Currency }>("/pricing/anchor", { new_anchor: newAnchor });
+  return apiPost<PriceBook, { new_anchor: Currency }>("/pricing/actions/switch-anchor", { new_anchor: newAnchor });
 }
 
 export interface AdjustBasePricesBody {
@@ -100,11 +100,11 @@ export type PreviewPricingChangeBody =
   | { adjust: AdjustBasePricesBody };
 
 export function previewPricingChange(body: PreviewPricingChangeBody): Promise<PricingDiff> {
-  return apiPost<PricingDiff, PreviewPricingChangeBody>("/pricing/preview", body);
+  return apiPost<PricingDiff, PreviewPricingChangeBody>("/pricing/actions/preview", body);
 }
 
 export function adjustBasePrices(body: AdjustBasePricesBody): Promise<PriceBook> {
-  return apiPost<PriceBook, AdjustBasePricesBody>("/pricing/base/adjust", body);
+  return apiPost<PriceBook, AdjustBasePricesBody>("/pricing/actions/adjust-base-prices", body);
 }
 
 export function setPlanDurationOverride(

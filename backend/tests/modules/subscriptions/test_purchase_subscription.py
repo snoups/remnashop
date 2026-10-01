@@ -1387,109 +1387,6 @@ async def test_idempotency_key_is_released_after_a_panel_call_failure(
     assert subscription.user_id == buyer.id
 
 
-async def test_purchase_new_clears_purchase_discount(
-    plan_repository: PlanRepository,
-    subscription_repository: SubscriptionRepository,
-    user_repository: UserRepository,
-    settings_repository: SettingsRepository,
-    remnawave_sdk: RemnawaveSDK,
-    uow: UnitOfWork,
-    event_publisher: EventPublisher,
-) -> None:
-    buyer = await _create_buyer(user_repository, 425)
-    plan = await _create_plan(plan_repository, "discount-new")
-    use_case = PurchaseSubscriptionUseCase(
-        subscription_repository,
-        user_repository,
-        settings_repository,
-        remnawave_sdk,
-        uow,
-        event_publisher,
-        SubscriptionLifecycleService(subscription_repository),
-        PricingRepository(subscription_repository.session),
-    )
-    async with uow:
-        await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
-
-    await use_case(
-        buyer,
-        PurchaseSubscriptionDto(
-            user_id=buyer.id,
-            plan_snapshot=snapshot_from_plan(
-                plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
-            ),
-            duration_days=30,
-            price_paid=Decimal("299.00"),
-            currency=Currency.RUB,
-            consumes_purchase_discount=True,
-            purchase_type=PurchaseType.NEW,
-        ),
-    )
-
-    updated = await user_repository.get_by_id(buyer.id)
-    assert updated is not None
-    assert updated.purchase_discount == 0
-
-
-async def test_renew_clears_purchase_discount(
-    plan_repository: PlanRepository,
-    subscription_repository: SubscriptionRepository,
-    user_repository: UserRepository,
-    settings_repository: SettingsRepository,
-    remnawave_sdk: RemnawaveSDK,
-    uow: UnitOfWork,
-    event_publisher: EventPublisher,
-) -> None:
-    buyer = await _create_buyer(user_repository, 426)
-    plan = await _create_plan(plan_repository, "discount-renew")
-    use_case = PurchaseSubscriptionUseCase(
-        subscription_repository,
-        user_repository,
-        settings_repository,
-        remnawave_sdk,
-        uow,
-        event_publisher,
-        SubscriptionLifecycleService(subscription_repository),
-        PricingRepository(subscription_repository.session),
-    )
-    original = await use_case(
-        buyer,
-        PurchaseSubscriptionDto(
-            user_id=buyer.id,
-            plan_snapshot=snapshot_from_plan(
-                plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
-            ),
-            duration_days=30,
-            price_paid=Decimal("299.00"),
-            currency=Currency.RUB,
-            consumes_purchase_discount=True,
-            purchase_type=PurchaseType.NEW,
-        ),
-    )
-    async with uow:
-        await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
-
-    await use_case(
-        buyer,
-        PurchaseSubscriptionDto(
-            user_id=buyer.id,
-            plan_snapshot=snapshot_from_plan(
-                plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
-            ),
-            duration_days=30,
-            price_paid=Decimal("299.00"),
-            currency=Currency.RUB,
-            consumes_purchase_discount=True,
-            purchase_type=PurchaseType.RENEW,
-            target_subscription_id=original.id,
-        ),
-    )
-
-    updated = await user_repository.get_by_id(buyer.id)
-    assert updated is not None
-    assert updated.purchase_discount == 0
-
-
 async def test_change_does_not_reparent_addon_entitlement_to_the_new_row(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
@@ -1764,79 +1661,6 @@ async def test_new_purchase_without_a_trial_still_mints_a_fresh_panel_user(
     assert subscription.remnawave_user_id > 0
     stored = await subscription_repository.list_all()
     assert len(stored) == 1
-
-
-async def test_change_clears_purchase_discount(
-    plan_repository: PlanRepository,
-    subscription_repository: SubscriptionRepository,
-    user_repository: UserRepository,
-    settings_repository: SettingsRepository,
-    remnawave_sdk: RemnawaveSDK,
-    uow: UnitOfWork,
-    event_publisher: EventPublisher,
-) -> None:
-    buyer = await _create_buyer(user_repository, 427)
-    old_plan = await _create_plan(plan_repository, "discount-change-old")
-    new_plan = await _create_plan(plan_repository, "discount-change-new")
-    use_case = PurchaseSubscriptionUseCase(
-        subscription_repository,
-        user_repository,
-        settings_repository,
-        remnawave_sdk,
-        uow,
-        event_publisher,
-        SubscriptionLifecycleService(subscription_repository),
-        PricingRepository(subscription_repository.session),
-    )
-    old_subscription = await use_case(
-        buyer,
-        PurchaseSubscriptionDto(
-            user_id=buyer.id,
-            plan_snapshot=snapshot_from_plan(
-                old_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
-            ),
-            duration_days=30,
-            price_paid=Decimal("300.00"),
-            currency=Currency.RUB,
-            consumes_purchase_discount=True,
-            purchase_type=PurchaseType.NEW,
-        ),
-    )
-    async with uow:
-        await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
-
-    changed = await use_case(
-        buyer,
-        PurchaseSubscriptionDto(
-            user_id=buyer.id,
-            plan_snapshot=snapshot_from_plan(
-                new_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
-            ),
-            duration_days=30,
-            price_paid=Decimal("300.00"),
-            currency=Currency.RUB,
-            consumes_purchase_discount=True,
-            purchase_type=PurchaseType.CHANGE,
-            target_subscription_id=old_subscription.id,
-        ),
-    )
-
-    # CHANGE now creates a new row sharing the old one's panel identity --
-    # the old row is kept as DELETED history, not mutated.
-    assert changed.id != old_subscription.id
-    assert changed.remnawave_user_id == old_subscription.remnawave_user_id
-    assert changed.status.value == "ACTIVE"
-    assert changed.plan_snapshot.plan_id == new_plan.id
-
-    stored = await subscription_repository.list_all()
-    assert len(stored) == 2
-
-    old_after = await subscription_repository.get_by_id(old_subscription.id)
-    assert old_after.status.value == "DELETED"
-
-    updated = await user_repository.get_by_id(buyer.id)
-    assert updated is not None
-    assert updated.purchase_discount == 0
 
 
 async def test_new_purchase_provisions_the_plans_traffic_limit_strategy_on_the_panel(
@@ -2132,3 +1956,73 @@ async def test_only_a_paid_purchase_event_carries_the_payment_key(
         )
     ).all()
     assert [row.payload["payment_key"] for row in rows] == ["paid-order-key", None]
+
+
+async def test_change_that_loses_the_race_does_not_revert_the_winners_panel_config(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buyer = await _create_buyer(user_repository, 431)
+    old_plan = await _create_plan(plan_repository, "racelostold")
+    new_plan = await _create_plan(plan_repository, "racelostnew")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+    )
+    old_subscription = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                old_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    update_calls: list[object] = []
+    original_update = remnawave_sdk.users.update_user
+
+    async def update_while_a_concurrent_change_commits(dto: object) -> object:
+        update_calls.append(dto)
+        if len(update_calls) == 1:
+            # the competing CHANGE commits between this panel call and the row lock
+            await subscription_repository.mark_deleted(old_subscription.id)
+        return await original_update(dto)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(
+        remnawave_sdk.users, "update_user", update_while_a_concurrent_change_commits
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            buyer,
+            PurchaseSubscriptionDto(
+                user_id=buyer.id,
+                plan_snapshot=snapshot_from_plan(
+                    new_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
+                ),
+                duration_days=30,
+                price_paid=Decimal("300.00"),
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.CHANGE,
+                target_subscription_id=old_subscription.id,
+            ),
+        )
+
+    assert len(update_calls) == 1  # no compensating revert onto the winner's identity

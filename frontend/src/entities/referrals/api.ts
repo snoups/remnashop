@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from "@shared/api/http";
+import { apiGet, apiPatch, apiPost } from "@shared/api/http";
 
 export type ReferralAccrualStrategy = "FIRST_PAYMENT" | "EVERY_PAYMENT";
 export type ReferralRewardType = "EXTRA_DAYS" | "POINTS";
@@ -31,11 +31,11 @@ export interface UpdateReferralSettingsRequest {
 }
 
 export function updateReferralSettings(payload: UpdateReferralSettingsRequest): Promise<ReferralSettings> {
-  return apiPut<ReferralSettings, UpdateReferralSettingsRequest>("/referrals/settings", payload);
+  return apiPatch<ReferralSettings, UpdateReferralSettingsRequest>("/referrals/settings", payload);
 }
 
 export function resetReferralSettings(): Promise<ReferralSettings> {
-  return apiPost<ReferralSettings, Record<string, never>>("/referrals/settings/reset", {});
+  return apiPost<ReferralSettings, Record<string, never>>("/referrals/settings/actions/reset", {});
 }
 
 export interface ReferralReward {
@@ -74,11 +74,11 @@ export function getUserReferralStats(userId: number, signal?: AbortSignal): Prom
 }
 
 export function adjustUserPoints(userId: number, delta: string): Promise<ReferralStats> {
-  return apiPost<ReferralStats, { delta: string }>(`/users/${userId}/points`, { delta });
+  return apiPost<ReferralStats, { delta: string }>(`/users/${userId}/actions/adjust-points`, { delta });
 }
 
 export function resetUserReferralCode(userId: number): Promise<ReferralStats> {
-  return apiPost<ReferralStats, Record<string, never>>(`/users/${userId}/referral-code/reset`, {});
+  return apiPost<ReferralStats, Record<string, never>>(`/users/${userId}/referral-code/actions/reset`, {});
 }
 
 export interface ReferralLinks {
@@ -97,6 +97,7 @@ export interface ReferralUser {
   name: string;
   username: string | null;
   telegram_id: number | null;
+  email: string | null;
 }
 
 export interface ReferralListItem {

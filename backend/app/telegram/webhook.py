@@ -6,8 +6,12 @@ from aiogram import Bot, Dispatcher
 from aiogram.methods import TelegramMethod
 from aiogram.types import Update
 from dishka.integrations.fastapi import FromDishka, inject
-from fastapi import Body, FastAPI, Header, HTTPException, Response, status
+from fastapi import FastAPI, Header, HTTPException, Request, Response, status
 from loguru import logger
+from pydantic import ValidationError
+
+from app.core.constants import MAX_WEBHOOK_BODY_BYTES
+from app.core.utils.http import read_bounded_body
 
 _MAX_CONCURRENT_UPDATES: Final[int] = 100
 
@@ -41,7 +45,8 @@ class TelegramWebhookEndpoint:
         )
 
     def _verify_secret(self, telegram_secret_token: str) -> bool:
-        return secrets.compare_digest(telegram_secret_token, self.secret_token)
+        # bytes: compare_digest raises TypeError on a non-ASCII str
+        return secrets.compare_digest(telegram_secret_token.encode(), self.secret_token.encode())
 
     async def _feed_update(self, bot: Bot, update: Update) -> None:
         # Bound concurrent update processing so a flood cannot exhaust resources
@@ -59,21 +64,31 @@ class TelegramWebhookEndpoint:
     @inject
     async def _handle_request(
         self,
-        update: Annotated[Update, Body()],
+        request: Request,
         bot: FromDishka[Bot],
         x_telegram_bot_api_secret_token: Annotated[str, Header()] = "",
     ) -> Response:
+        # The secret is checked before the body is read: an unauthenticated
+        # caller must not get the bot process to buffer and parse anything.
         if not x_telegram_bot_api_secret_token:
-            logger.warning(f"Missing secret token header for update '{update.update_id}'")
+            logger.warning("Missing secret token header on webhook request")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token header is missing"
             )
 
         if not self._verify_secret(x_telegram_bot_api_secret_token):
-            logger.warning(f"Invalid secret token provided for update '{update.update_id}'")
+            logger.warning("Invalid secret token provided on webhook request")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid secret token"
             )
+
+        body = await read_bounded_body(request, MAX_WEBHOOK_BODY_BYTES)
+        try:
+            update = Update.model_validate_json(body)
+        except ValidationError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Malformed update"
+            ) from error
 
         if len(self._feed_update_tasks) >= _MAX_CONCURRENT_UPDATES:
             # Caps pending task creation itself, not just processing inside

@@ -4,6 +4,7 @@ from typing import Final, Literal, Optional
 
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import Currency, PriceAdjustScope, RoundingMode
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 
 RATE_PRECISION: Final[Decimal] = Decimal("0.000001")
@@ -28,7 +29,9 @@ class CurrencyRateTable:
     def for_currency(self, c: Currency) -> CurrencyRateDto:
         row = self.rows.get(c)
         if row is None:
-            raise ValidationError(f"No currency rate row for {c}")
+            raise ValidationError(
+                f"No currency rate row for {c}", code=ErrorCode.CURRENCY_RATE_MISSING
+            )
         return row
 
 

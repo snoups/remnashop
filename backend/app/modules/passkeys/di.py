@@ -15,19 +15,11 @@ from app.modules.passkeys.usecases import (
 )
 
 
-class PasskeyRevokerProvider(Provider):
-    scope = Scope.REQUEST
-
-    # Separate from PasskeysDIProvider so a container wiring users'
-    # DemoteAdminUseCase doesn't need the whole passkeys graph -- same split
-    # as subscriptions' own revoker provider.
-    passkey_repository = provide(PasskeyRepository)
-    passkey_revoker = alias(source=PasskeyRepository, provides=PasskeyRevoker)
-
-
 class PasskeysDIProvider(Provider):
     scope = Scope.REQUEST
 
+    passkey_repository = provide(PasskeyRepository)
+    passkey_revoker = alias(source=PasskeyRepository, provides=PasskeyRevoker)
     list_passkeys_use_case = provide(ListPasskeysUseCase)
     get_registration_options_use_case = provide(GetPasskeyRegistrationOptionsUseCase)
     verify_registration_use_case = provide(VerifyPasskeyRegistrationUseCase)
@@ -41,9 +33,5 @@ class PasskeysDIProvider(Provider):
         return PasskeyChallengeStore(redis)
 
 
-def get_passkey_revoker_providers() -> list[Provider]:
-    return [PasskeyRevokerProvider()]
-
-
 def get_passkey_providers() -> list[Provider]:
-    return [PasskeysDIProvider(), *get_passkey_revoker_providers()]
+    return [PasskeysDIProvider()]

@@ -1,13 +1,13 @@
 from decimal import Decimal
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.analytics.dto import LtvBucketDto, LtvDistributionDto
-from app.modules.payments import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
-from app.modules.users import UserDto
+from app.modules.transactions import TransactionRepository
 
 _QUANTILE_COUNT: Final[int] = 5
 
@@ -48,21 +48,21 @@ class GetLtvDistributionUseCase(UseCase[None, LtvDistributionDto]):
 
     def __init__(
         self,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
     ) -> None:
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> LtvDistributionDto:
+    async def _execute(self, actor: Actor, data: None) -> LtvDistributionDto:
         async with self._uow:
             rate_table = await self._pricing_repository.get_rate_table()
             report_currency = rate_table.anchor
 
             per_user_by_currency = (
-                await self._payment_order_repository.sum_paid_final_price_per_user()
+                await self._transaction_repository.sum_paid_final_price_per_user()
             )
             totals = sorted(
                 sum(

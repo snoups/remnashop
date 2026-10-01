@@ -51,8 +51,8 @@ class EventLogRepository:
         category: Optional[EventCategory] = None,
         actor_id: Optional[int] = None,
         search: Optional[str] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
+        occurred_from: Optional[datetime] = None,
+        occurred_to: Optional[datetime] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[EventLogEntryDto], int]:
@@ -76,10 +76,10 @@ class EventLogRepository:
             if search.isdigit() and int(search) <= INT32_MAX:
                 search_filters.append(EventLogEntry.actor_id == int(search))
             filters.append(or_(*search_filters))
-        if date_from is not None:
-            filters.append(EventLogEntry.occurred_at >= date_from)
-        if date_to is not None:
-            filters.append(EventLogEntry.occurred_at <= date_to)
+        if occurred_from is not None:
+            filters.append(EventLogEntry.occurred_at >= occurred_from)
+        if occurred_to is not None:
+            filters.append(EventLogEntry.occurred_at < occurred_to)
 
         count_stmt = select(func.count()).select_from(EventLogEntry).where(*filters)
         total = await self.session.scalar(count_stmt)

@@ -38,6 +38,7 @@ class ReferralUserResponse(BaseModel):
     name: str
     username: Optional[str]
     telegram_id: Optional[int]
+    email: Optional[str]
 
 
 class ReferralRewardResponse(BaseModel):

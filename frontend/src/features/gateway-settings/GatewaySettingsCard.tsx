@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   createTestPayment,
   getTestPaymentStatus,
-  toggleGatewayActive,
+  setGatewayActive,
   updateGatewaySettings,
   type Gateway,
   type GatewayFieldSpec,
@@ -14,6 +14,7 @@ import {
 } from "@entities/gateways/api";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { isHttpsUrl } from "@shared/lib/external-links";
 import { toast } from "@shared/lib/toast";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
@@ -49,11 +50,14 @@ export function GatewaySettingsCard({
   const [values, setValues] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [savingFlag, setSavingFlag] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [testOrderId, setTestOrderId] = useState<number | null>(null);
   const [testStatus, setTestStatus] = useState<TestPaymentStatus | null>(null);
 
   const label = t(`settings.gateways.types.${gateway.type}`);
+  const flagFields = fields.filter((field) => field.kind === "boolean");
+  const valueFields = fields.filter((field) => field.kind !== "boolean");
   const docsUrl = GATEWAY_DOCS_URLS[gateway.type];
   const canExpand = fields.length > 0 || webhookUrl !== null;
   // Stars pays inside the bot, there is no provider page to open
@@ -83,10 +87,21 @@ export function GatewaySettingsCard({
     }
   };
 
+  const handleFlag = async (key: string, enabled: boolean) => {
+    setSavingFlag(key);
+    try {
+      onChanged(await updateGatewaySettings(gateway.type, { [key]: String(enabled) }));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    } finally {
+      setSavingFlag(null);
+    }
+  };
+
   const handleToggle = async () => {
     setIsToggling(true);
     try {
-      onChanged(await toggleGatewayActive(gateway.type));
+      onChanged(await setGatewayActive(gateway.type, !gateway.is_active));
     } catch (err) {
       toast.error(getErrorMessage(err, t("settings.gateways.toggleError")));
     } finally {
@@ -116,11 +131,12 @@ export function GatewaySettingsCard({
       const { order_id, confirmation_url } = await createTestPayment(gateway.type);
       setTestOrderId(order_id);
       setTestStatus("PENDING");
-      if (tab && confirmation_url) {
+      if (tab && confirmation_url && isHttpsUrl(confirmation_url)) {
         tab.opener = null;
         tab.location.href = confirmation_url;
       } else {
         tab?.close();
+        if (confirmation_url) toast.error(t("settings.gateways.testPaymentBadUrl"));
       }
     } catch (err) {
       tab?.close();
@@ -204,7 +220,27 @@ export function GatewaySettingsCard({
                   <CopyableValue value={webhookUrl} copyAria={t("settings.gateways.copyWebhookAria")} />
                 </Field>
               )}
-              {fields.map((field) => {
+              {flagFields.map((field) => (
+                <div key={field.key} className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-foreground">
+                      {t(`settings.gateways.fields.${gateway.type}.${field.key}`)}
+                    </p>
+                    <p className="text-[12px] text-muted-foreground">
+                      {t(`settings.gateways.flagHints.${field.key}`)}
+                    </p>
+                  </div>
+                  <div className="mr-1 flex">
+                    <Switch
+                      checked={gateway.flags[field.key] ?? false}
+                      onChange={(enabled) => void handleFlag(field.key, enabled)}
+                      disabled={savingFlag === field.key}
+                      ariaLabel={t(`settings.gateways.fields.${gateway.type}.${field.key}`)}
+                    />
+                  </div>
+                </div>
+              ))}
+              {valueFields.map((field) => {
                 // once configured, a blank field keeps the stored value
                 const mustFill = field.required && !gateway.is_configured;
                 return (
@@ -232,9 +268,9 @@ export function GatewaySettingsCard({
                   </Field>
                 );
               })}
-              {(fields.length > 0 || canTest) && (
+              {(valueFields.length > 0 || canTest) && (
                 <div className="flex flex-wrap gap-2">
-                  {fields.length > 0 && (
+                  {valueFields.length > 0 && (
                     <Button
                       variant="accent"
                       className="w-fit"

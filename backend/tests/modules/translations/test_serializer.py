@@ -21,6 +21,20 @@ def _entry(message_id: str, attribute_id: str, value: str) -> TranslationEntryDt
     )
 
 
+def test_skips_rows_whose_ids_are_not_fluent_identifiers() -> None:
+    text = serialize_to_fluent(
+        [
+            _entry("msg-dialog-custom-a=x\nmsg-main-menu=INJECTED\n z", "", "Button"),
+            _entry("msg-main-menu", "bad id", "x"),
+            _entry("msg-main-menu", "", "Real"),
+        ]
+    )
+
+    assert text == "msg-main-menu = Real\n"
+    bundle = FluentBundle.from_string("en", text=text)  # type: ignore[no-untyped-call]
+    assert bundle.format("msg-main-menu")[0] == "Real"
+
+
 def test_serializes_message_with_attribute_only() -> None:
     text = serialize_to_fluent([_entry("command", "menu", "Open the main menu")])
 

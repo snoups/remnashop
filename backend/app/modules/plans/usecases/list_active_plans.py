@@ -1,3 +1,4 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanAvailability
 from app.core.security.permissions import Permission
@@ -7,7 +8,6 @@ from app.modules.plans.dto import PlanDto
 from app.modules.plans.repository import PlanRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.subscriptions import SubscriptionRepository
-from app.modules.users import UserDto
 
 
 class ListActivePlansUseCase(UseCase[None, list[PlanDto]]):
@@ -25,7 +25,7 @@ class ListActivePlansUseCase(UseCase[None, list[PlanDto]]):
         self._referral_repository = referral_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> list[PlanDto]:
+    async def _execute(self, actor: Actor, data: None) -> list[PlanDto]:
         async with self._uow:
             plans = await self._plan_repository.list_active()
             # LINK plans are never listed in the catalog -- only reachable by

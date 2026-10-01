@@ -1,12 +1,13 @@
 from loguru import logger
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings.dto import ShopSettingsDto, UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.users import UserDto
 
 
 class UpdateShopSettingsUseCase(UseCase[UpdateShopSettingsDto, ShopSettingsDto]):
@@ -16,10 +17,11 @@ class UpdateShopSettingsUseCase(UseCase[UpdateShopSettingsDto, ShopSettingsDto])
         self._settings_repository = settings_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: UpdateShopSettingsDto) -> ShopSettingsDto:
+    async def _execute(self, actor: Actor, data: UpdateShopSettingsDto) -> ShopSettingsDto:
         if data.max_active_subscriptions is not None and data.max_active_subscriptions < 1:
             raise ValidationError(
-                "max_active_subscriptions must be positive, or null for unlimited"
+                "max_active_subscriptions must be positive, or null for unlimited",
+                code=ErrorCode.SHOP_SUBSCRIPTION_LIMIT_INVALID,
             )
 
         async with self._uow:

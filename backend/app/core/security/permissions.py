@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import auto
-from typing import TYPE_CHECKING, Final, Literal
+from typing import Final, Literal
 
+from app.core.actor import Actor
 from app.core.enums import Role, UpperStrEnum
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-
-if TYPE_CHECKING:
-    from app.modules.users.dto import UserDto
 
 
 class Permission(UpperStrEnum):
@@ -28,7 +27,6 @@ class Permission(UpperStrEnum):
     SHOP_SETTINGS_MANAGE = auto()
     OAUTH_SETTINGS_VIEW = auto()
     OAUTH_SETTINGS_MANAGE = auto()
-    BANNERS_VIEW = auto()
     BANNERS_IMAGE_VIEW = auto()
     BANNERS_UPLOAD = auto()
     BANNERS_DELETE = auto()
@@ -62,6 +60,7 @@ class Permission(UpperStrEnum):
     EVENT_LOG_VIEW = auto()
     NOTIFICATIONS_VIEW = auto()
     USERS_VIEW = auto()
+    USERS_DETAIL_VIEW = auto()
     USERS_STATS_VIEW = auto()
     USERS_DELETE = auto()
     USERS_DISCOUNT_MANAGE = auto()
@@ -75,11 +74,12 @@ class Permission(UpperStrEnum):
     APPEARANCE_FAVICON_DELETE = auto()
     GATEWAYS_VIEW = auto()
     GATEWAYS_UPDATE = auto()
-    GATEWAYS_TOGGLE = auto()
+    GATEWAYS_ACTIVE_SET = auto()
     GATEWAYS_REORDER = auto()
     GATEWAYS_TEST = auto()
     GATEWAYS_TEST_VIEW = auto()
     PLANS_VIEW = auto()
+    PLANS_DETAIL_VIEW = auto()
     PLANS_CREATE = auto()
     PLANS_UPDATE = auto()
     PLANS_DELETE = auto()
@@ -96,10 +96,12 @@ class Permission(UpperStrEnum):
     PRICING_SETTINGS_MANAGE = auto()
     PRICING_BASE_ADJUST_MANAGE = auto()
     SUBSCRIPTIONS_VIEW = auto()
+    SUBSCRIPTIONS_DETAIL_VIEW = auto()
     SUBSCRIPTIONS_UPDATE = auto()
     SUBSCRIPTIONS_SQUADS_MANAGE = auto()
     SUBSCRIPTIONS_DELETE = auto()
     ADDONS_VIEW = auto()
+    ADDONS_DETAIL_VIEW = auto()
     ADDONS_CREATE = auto()
     ADDONS_UPDATE = auto()
     ADDONS_DELETE = auto()
@@ -107,6 +109,7 @@ class Permission(UpperStrEnum):
     ADDONS_PRICE_OVERRIDE_MANAGE = auto()
     ADDONS_REORDER = auto()
     PROMOCODES_VIEW = auto()
+    PROMOCODES_DETAIL_VIEW = auto()
     PROMOCODES_CREATE = auto()
     PROMOCODES_UPDATE = auto()
     PROMOCODES_DELETE = auto()
@@ -114,10 +117,10 @@ class Permission(UpperStrEnum):
     PROMOCODES_ACTIVATIONS_VIEW = auto()
     PROMOCODES_SUMMARY_VIEW = auto()
     PROMOCODES_USERS_VIEW = auto()
-    PAYMENTS_VIEW = auto()
-    PAYMENTS_SUMMARY_VIEW = auto()
-    PAYMENTS_ORDER_VIEW = auto()
-    PAYMENTS_GATEWAYS_VIEW = auto()
+    TRANSACTIONS_VIEW = auto()
+    TRANSACTIONS_SUMMARY_VIEW = auto()
+    TRANSACTIONS_DETAIL_VIEW = auto()
+    TRANSACTIONS_GATEWAYS_VIEW = auto()
     REFERRALS_VIEW = auto()
     REFERRALS_LINKS_VIEW = auto()
     REFERRALS_INVITED_VIEW = auto()
@@ -144,15 +147,15 @@ class Permission(UpperStrEnum):
     BLACKLIST_ENTRY_REMOVE = auto()
     BLACKLIST_SOURCE_ADD = auto()
     BLACKLIST_SOURCE_REMOVE = auto()
-    BLACKLIST_SOURCE_TOGGLE = auto()
+    BLACKLIST_SOURCE_UPDATE = auto()
     BLACKLIST_SYNC = auto()
     BLACKLIST_MATCHES_VIEW = auto()
     USERS_BLOCK = auto()
     USERS_UNBLOCK = auto()
-    USERS_BULK_BLOCK = auto()
     USERS_UNBLOCK_ALL = auto()
     USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
     AD_LINKS_VIEW = auto()
+    AD_LINKS_DETAIL_VIEW = auto()
     AD_LINKS_STATS_VIEW = auto()
     AD_LINKS_SUMMARY_VIEW = auto()
     AD_LINKS_USERS_VIEW = auto()
@@ -182,7 +185,6 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.SHOP_SETTINGS_MANAGE: PermissionMeta(resource="shop_settings", kind="write"),
     Permission.OAUTH_SETTINGS_VIEW: PermissionMeta(resource="oauth_settings", kind="read"),
     Permission.OAUTH_SETTINGS_MANAGE: PermissionMeta(resource="oauth_settings", kind="write"),
-    Permission.BANNERS_VIEW: PermissionMeta(resource="banners", kind="read"),
     Permission.BANNERS_IMAGE_VIEW: PermissionMeta(resource="banners", kind="read"),
     Permission.BANNERS_UPLOAD: PermissionMeta(resource="banners", kind="write"),
     Permission.BANNERS_DELETE: PermissionMeta(resource="banners", kind="write"),
@@ -213,6 +215,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.EVENT_LOG_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.NOTIFICATIONS_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
+    Permission.USERS_DETAIL_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_STATS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_DISCOUNT_MANAGE: PermissionMeta(resource="users", kind="write"),
@@ -226,11 +229,12 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.APPEARANCE_FAVICON_DELETE: PermissionMeta(resource="appearance", kind="write"),
     Permission.GATEWAYS_VIEW: PermissionMeta(resource="gateways", kind="read"),
     Permission.GATEWAYS_UPDATE: PermissionMeta(resource="gateways", kind="write"),
-    Permission.GATEWAYS_TOGGLE: PermissionMeta(resource="gateways", kind="write"),
+    Permission.GATEWAYS_ACTIVE_SET: PermissionMeta(resource="gateways", kind="write"),
     Permission.GATEWAYS_REORDER: PermissionMeta(resource="gateways", kind="write"),
     Permission.GATEWAYS_TEST: PermissionMeta(resource="gateways", kind="write"),
     Permission.GATEWAYS_TEST_VIEW: PermissionMeta(resource="gateways", kind="read"),
     Permission.PLANS_VIEW: PermissionMeta(resource="plans", kind="read"),
+    Permission.PLANS_DETAIL_VIEW: PermissionMeta(resource="plans", kind="read"),
     Permission.PLANS_CREATE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_UPDATE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_DELETE: PermissionMeta(resource="plans", kind="write"),
@@ -245,10 +249,12 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PRICING_SETTINGS_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.PRICING_BASE_ADJUST_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.SUBSCRIPTIONS_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
+    Permission.SUBSCRIPTIONS_DETAIL_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
     Permission.SUBSCRIPTIONS_UPDATE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_SQUADS_MANAGE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_DELETE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.ADDONS_VIEW: PermissionMeta(resource="addons", kind="read"),
+    Permission.ADDONS_DETAIL_VIEW: PermissionMeta(resource="addons", kind="read"),
     Permission.ADDONS_CREATE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_UPDATE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_DELETE: PermissionMeta(resource="addons", kind="write"),
@@ -256,6 +262,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ADDONS_PRICE_OVERRIDE_MANAGE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_REORDER: PermissionMeta(resource="addons", kind="write"),
     Permission.PROMOCODES_VIEW: PermissionMeta(resource="promocodes", kind="read"),
+    Permission.PROMOCODES_DETAIL_VIEW: PermissionMeta(resource="promocodes", kind="read"),
     Permission.PROMOCODES_ACTIVATIONS_VIEW: PermissionMeta(resource="promocodes", kind="read"),
     Permission.PROMOCODES_SUMMARY_VIEW: PermissionMeta(resource="promocodes", kind="read"),
     Permission.PROMOCODES_USERS_VIEW: PermissionMeta(resource="promocodes", kind="read"),
@@ -263,10 +270,10 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PROMOCODES_UPDATE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_DELETE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_GENERATE_CODE: PermissionMeta(resource="promocodes", kind="write"),
-    Permission.PAYMENTS_VIEW: PermissionMeta(resource="payments", kind="read"),
-    Permission.PAYMENTS_SUMMARY_VIEW: PermissionMeta(resource="payments", kind="read"),
-    Permission.PAYMENTS_ORDER_VIEW: PermissionMeta(resource="payments", kind="read"),
-    Permission.PAYMENTS_GATEWAYS_VIEW: PermissionMeta(resource="payments", kind="read"),
+    Permission.TRANSACTIONS_VIEW: PermissionMeta(resource="transactions", kind="read"),
+    Permission.TRANSACTIONS_SUMMARY_VIEW: PermissionMeta(resource="transactions", kind="read"),
+    Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
+    Permission.TRANSACTIONS_GATEWAYS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_LINKS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_INVITED_VIEW: PermissionMeta(resource="referrals", kind="read"),
@@ -284,7 +291,6 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BACKUPS_SETTINGS_RESET: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_RUN_CREATE: PermissionMeta(resource="backups", kind="write"),
-    Permission.BACKUPS_RUN_DOWNLOAD: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_RUN_DELETE: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_STATS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BLACKLIST_VIEW: PermissionMeta(resource="blacklist", kind="read"),
@@ -293,13 +299,13 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BLACKLIST_ENTRY_REMOVE: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_SOURCE_ADD: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_SOURCE_REMOVE: PermissionMeta(resource="blacklist", kind="write"),
-    Permission.BLACKLIST_SOURCE_TOGGLE: PermissionMeta(resource="blacklist", kind="write"),
+    Permission.BLACKLIST_SOURCE_UPDATE: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_SYNC: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_MATCHES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.USERS_BLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_UNBLOCK: PermissionMeta(resource="users", kind="write"),
-    Permission.USERS_BULK_BLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.AD_LINKS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_DETAIL_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_STATS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_SUMMARY_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_USERS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
@@ -332,7 +338,6 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.BOT_RESTART,
         Permission.SHOP_SETTINGS_VIEW,
         Permission.SHOP_SETTINGS_MANAGE,
-        Permission.BANNERS_VIEW,
         Permission.BANNERS_IMAGE_VIEW,
         Permission.BANNERS_UPLOAD,
         Permission.BANNERS_DELETE,
@@ -364,6 +369,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.DIALOGS_IMPORT,
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.PLANS_VIEW,
+        Permission.PLANS_DETAIL_VIEW,
         Permission.PLANS_CREATE,
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,
@@ -378,10 +384,12 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.PRICING_SETTINGS_MANAGE,
         Permission.PRICING_BASE_ADJUST_MANAGE,
         Permission.SUBSCRIPTIONS_VIEW,
+        Permission.SUBSCRIPTIONS_DETAIL_VIEW,
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
         Permission.SUBSCRIPTIONS_DELETE,
         Permission.ADDONS_VIEW,
+        Permission.ADDONS_DETAIL_VIEW,
         Permission.ADDONS_CREATE,
         Permission.ADDONS_UPDATE,
         Permission.ADDONS_DELETE,
@@ -389,6 +397,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
         Permission.ADDONS_REORDER,
         Permission.PROMOCODES_VIEW,
+        Permission.PROMOCODES_DETAIL_VIEW,
         Permission.PROMOCODES_CREATE,
         Permission.PROMOCODES_UPDATE,
         Permission.PROMOCODES_DELETE,
@@ -396,11 +405,13 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.PROMOCODES_ACTIVATIONS_VIEW,
         Permission.PROMOCODES_SUMMARY_VIEW,
         Permission.PROMOCODES_USERS_VIEW,
+        Permission.USERS_VIEW,
+        Permission.USERS_DETAIL_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,
-        Permission.PAYMENTS_VIEW,
-        Permission.PAYMENTS_SUMMARY_VIEW,
-        Permission.PAYMENTS_ORDER_VIEW,
-        Permission.PAYMENTS_GATEWAYS_VIEW,
+        Permission.TRANSACTIONS_VIEW,
+        Permission.TRANSACTIONS_SUMMARY_VIEW,
+        Permission.TRANSACTIONS_DETAIL_VIEW,
+        Permission.TRANSACTIONS_GATEWAYS_VIEW,
         Permission.REFERRALS_VIEW,
         Permission.REFERRALS_LINKS_VIEW,
         Permission.REFERRALS_INVITED_VIEW,
@@ -413,6 +424,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.REFERRALS_POINTS_MANAGE,
         Permission.REFERRALS_CODE_RESET,
         Permission.AD_LINKS_VIEW,
+        Permission.AD_LINKS_DETAIL_VIEW,
         Permission.AD_LINKS_STATS_VIEW,
         Permission.AD_LINKS_SUMMARY_VIEW,
         Permission.AD_LINKS_USERS_VIEW,
@@ -437,12 +449,15 @@ def assert_grantable(
     non_grantable = set(permissions) - allowed
     if non_grantable:
         names = ", ".join(sorted(p.value for p in non_grantable))
-        raise ValidationError(f"Not grantable via permission overrides: {names}")
+        raise ValidationError(
+            f"Not grantable via permission overrides: {names}",
+            code=ErrorCode.PERMISSION_NOT_GRANTABLE,
+        )
 
 
 class PermissionPolicy:
     @staticmethod
-    def effective_permissions(actor: UserDto) -> set[Permission]:
+    def effective_permissions(actor: Actor) -> set[Permission]:
         if actor.role == Role.SYSTEM:
             return set(Permission)
 
@@ -452,7 +467,13 @@ class PermissionPolicy:
         return (base | grants) - revokes
 
     @staticmethod
-    def has_permission(actor: UserDto, permission: "Permission") -> bool:
+    def can_manage(actor: Actor, target: Actor) -> bool:
+        # customers are within anyone's reach, staff only from a strictly higher
+        # role; an API token carries Role.USER, so staff stay out of its reach
+        return not target.is_privileged or actor.role > target.role
+
+    @staticmethod
+    def has_permission(actor: Actor, permission: "Permission") -> bool:
         if permission is Permission.PUBLIC:
             return True
         return permission in PermissionPolicy.effective_permissions(actor)

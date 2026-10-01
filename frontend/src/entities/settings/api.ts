@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from "@shared/api/http";
+import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 
 export interface BotSettings {
   is_configured: boolean;
@@ -28,15 +28,15 @@ export function getBotStatus(signal?: AbortSignal): Promise<BotStatus> {
 }
 
 export function getBotLogs(signal?: AbortSignal): Promise<string[]> {
-  return apiGet<string[]>("/settings/bot/logs", signal);
+  return apiGet<{ lines: string[] }>("/settings/bot/logs", signal).then((response) => response.lines);
 }
 
 export function updateBotSettings(payload: UpdateBotSettingsPayload): Promise<BotSettings> {
-  return apiPut<BotSettings, UpdateBotSettingsPayload>("/settings/bot", payload);
+  return apiPatch<BotSettings, UpdateBotSettingsPayload>("/settings/bot", payload);
 }
 
 export function restartBot(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/settings/bot/restart", {});
+  return apiPost<null, Record<string, never>>("/settings/bot/actions/restart", {});
 }
 
 export interface BotCommandItem {
@@ -53,10 +53,10 @@ export function getBotCommands(
   signal?: AbortSignal,
   defaultOrder = false,
 ): Promise<BotCommandItem[]> {
-  return apiGet<BotCommandItem[]>(
+  return apiGet<{ commands: BotCommandItem[] }>(
     `/settings/bot/commands${defaultOrder ? "?default_order=true" : ""}`,
     signal,
-  );
+  ).then((response) => response.commands);
 }
 
 export function updateBotCommands(commands: BotCommandItem[]): Promise<UpdateBotCommandsResult> {
@@ -104,7 +104,7 @@ export function getOAuthSettings(signal?: AbortSignal): Promise<OAuthSettings> {
 }
 
 export function updateOAuthSettings(payload: UpdateOAuthSettingsPayload): Promise<OAuthSettings> {
-  return apiPut<OAuthSettings, UpdateOAuthSettingsPayload>("/settings/oauth", payload);
+  return apiPatch<OAuthSettings, UpdateOAuthSettingsPayload>("/settings/oauth", payload);
 }
 
 export interface ShopSettings {
@@ -124,5 +124,5 @@ export function getShopSettings(signal?: AbortSignal): Promise<ShopSettings> {
 }
 
 export function updateShopSettings(payload: UpdateShopSettingsPayload): Promise<ShopSettings> {
-  return apiPut<ShopSettings, UpdateShopSettingsPayload>("/settings/shop", payload);
+  return apiPatch<ShopSettings, UpdateShopSettingsPayload>("/settings/shop", payload);
 }

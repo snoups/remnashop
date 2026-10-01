@@ -1,9 +1,8 @@
 from app.modules.users.di import get_users_providers
-from app.modules.users.dto import BulkBlockResultDto, CreateUserDto, UpdateUserDto, UserDto
+from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
     BlockUserUseCase,
-    BulkBlockUsersUseCase,
     GetCurrentUserUseCase,
     RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
@@ -15,8 +14,6 @@ from app.modules.users.usecases import (
 
 __all__ = [
     "BlockUserUseCase",
-    "BulkBlockResultDto",
-    "BulkBlockUsersUseCase",
     "CreateUserDto",
     "GetCurrentUserUseCase",
     "RegisterTelegramUserDto",

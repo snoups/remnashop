@@ -1,7 +1,13 @@
+import i18n from "@shared/i18n";
 import { getDebugState } from "@shared/lib/debug-bar";
 import { clearAccessToken, getAccessToken, saveAccessToken } from "@shared/lib/token-storage";
 
 export const BASE_URL = "/api/v1";
+
+export interface ListResponse<T> {
+  items: T[];
+  total: number;
+}
 
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -66,10 +72,13 @@ export async function logout(): Promise<boolean> {
 
 export class ApiError extends Error {
   status: number;
+  // ErrorCode from the backend; translated under apiErrors.*
+  code: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code: string | null = null) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -82,7 +91,17 @@ export class NetworkError extends Error {}
 const GATEWAY_ERROR_STATUSES = new Set([502, 503, 504]);
 
 export function getErrorMessage(err: unknown, fallback: string): string {
-  return err instanceof ApiError ? err.message : fallback;
+  if (!(err instanceof ApiError)) return fallback;
+  const key = `apiErrors.${err.code}`;
+  return err.code && i18n.exists(key) ? i18n.t(key) : err.message;
+}
+
+function extractErrorCode(body: unknown): string | null {
+  if (body && typeof body === "object" && "code" in body) {
+    const code = (body as { code: unknown }).code;
+    if (typeof code === "string") return code;
+  }
+  return null;
 }
 
 function extractErrorMessage(body: unknown): string {
@@ -132,11 +151,13 @@ async function sendRequest(
     throw new NetworkError("Network request failed");
   }
 
-  if (GATEWAY_ERROR_STATUSES.has(response.status)) {
+  const data: unknown = await response.json().catch(() => null);
+  // a proxy answering for a dead upstream has no error code; the API's own 502/503 does
+  if (GATEWAY_ERROR_STATUSES.has(response.status) && extractErrorCode(data) === null) {
     throw new NetworkError("Backend unreachable");
   }
 
-  return { response, data: await response.json().catch(() => null) };
+  return { response, data };
 }
 
 async function request<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
@@ -154,7 +175,11 @@ async function request<TResponse>(path: string, init?: RequestInit): Promise<TRe
             clearAccessToken();
             window.location.href = "/";
           }
-          throw new ApiError(retry.response.status, extractErrorMessage(retry.data));
+          throw new ApiError(
+            retry.response.status,
+            extractErrorMessage(retry.data),
+            extractErrorCode(retry.data),
+          );
         }
         return retry.data as TResponse;
       }
@@ -162,7 +187,7 @@ async function request<TResponse>(path: string, init?: RequestInit): Promise<TRe
       clearAccessToken();
       window.location.href = "/";
     }
-    throw new ApiError(response.status, extractErrorMessage(data));
+    throw new ApiError(response.status, extractErrorMessage(data), extractErrorCode(data));
   }
 
   return data as TResponse;
@@ -226,5 +251,5 @@ export function apiDelete<TResponse, TBody = never>(
 }
 
 export function apiUpload<TResponse>(path: string, formData: FormData): Promise<TResponse> {
-  return request<TResponse>(path, { method: "POST", body: formData });
+  return request<TResponse>(path, { method: "PUT", body: formData });
 }

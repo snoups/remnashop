@@ -1,5 +1,6 @@
 from app.modules.plans.usecases.create_plan import CreatePlanUseCase
 from app.modules.plans.usecases.delete_plan import DeletePlanUseCase
+from app.modules.plans.usecases.get_plan import GetPlanUseCase
 from app.modules.plans.usecases.list_active_plans import ListActivePlansUseCase
 from app.modules.plans.usecases.list_plans import ListPlansUseCase
 from app.modules.plans.usecases.reorder_plans import ReorderPlansUseCase
@@ -15,6 +16,7 @@ __all__ = [
     "DeletePlanUseCase",
     "ListActivePlansUseCase",
     "ListPlansUseCase",
+    "GetPlanUseCase",
     "ReorderPlansUseCase",
     "SetPlanDurationBasePriceUseCase",
     "SetPlanDurationsUseCase",

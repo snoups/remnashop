@@ -1,22 +1,24 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies.admin import require_admin
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.api.errors import error_responses
+from app.core.actor import Actor
+from app.core.enums import BlacklistKind
 from app.modules.blacklist.api.schemas import (
     AddSourceRequest,
-    BlacklistEntryRequest,
     BlacklistResponse,
+    BlacklistSourceListResponse,
     BlacklistSourceResponse,
-    ToggleSourceRequest,
+    UpdateSourceRequest,
 )
 from app.modules.blacklist.dto import (
     AddBlacklistSourceDto,
     BlacklistDto,
     BlacklistEntryInputDto,
     BlacklistSourceDto,
-    ToggleBlacklistSourceDto,
+    UpdateBlacklistSourceDto,
 )
 from app.modules.blacklist.usecases import (
     AddBlacklistEntryUseCase,
@@ -26,9 +28,8 @@ from app.modules.blacklist.usecases import (
     RemoveBlacklistEntryUseCase,
     RemoveBlacklistSourceUseCase,
     SyncBlacklistSourcesUseCase,
-    ToggleBlacklistSourceUseCase,
+    UpdateBlacklistSourceUseCase,
 )
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/blacklist", tags=["blacklist"])
 
@@ -53,64 +54,62 @@ def _to_source_response(source: BlacklistSourceDto) -> BlacklistSourceResponse:
 @inject
 async def get_blacklist(
     use_case: FromDishka[ListBlacklistUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BlacklistResponse:
     blacklist = await use_case(actor)
     return _to_response(blacklist)
 
 
-@router.post("/entries", response_model=BlacklistResponse)
+@router.put(
+    "/entries/{kind}/{value}", response_model=BlacklistResponse, responses=error_responses(400)
+)
 @inject
 async def add_blacklist_entry(
-    payload: BlacklistEntryRequest,
+    kind: BlacklistKind,
+    value: str,
     use_case: FromDishka[AddBlacklistEntryUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BlacklistResponse:
-    try:
-        blacklist = await use_case(
-            actor, BlacklistEntryInputDto(kind=payload.kind, value=payload.value)
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    blacklist = await use_case(actor, BlacklistEntryInputDto(kind=kind, value=value))
     return _to_response(blacklist)
 
 
-@router.delete("/entries", response_model=BlacklistResponse)
+@router.delete("/entries/{kind}/{value}", response_model=BlacklistResponse)
 @inject
 async def remove_blacklist_entry(
-    payload: BlacklistEntryRequest,
+    kind: BlacklistKind,
+    value: str,
     use_case: FromDishka[RemoveBlacklistEntryUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BlacklistResponse:
-    blacklist = await use_case(
-        actor, BlacklistEntryInputDto(kind=payload.kind, value=payload.value)
-    )
+    blacklist = await use_case(actor, BlacklistEntryInputDto(kind=kind, value=value))
     return _to_response(blacklist)
 
 
-@router.get("/sources", response_model=list[BlacklistSourceResponse])
+@router.get("/sources", response_model=BlacklistSourceListResponse)
 @inject
 async def list_blacklist_sources(
     use_case: FromDishka[ListBlacklistSourcesUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[BlacklistSourceResponse]:
+    actor: Actor = Depends(require_admin),
+) -> BlacklistSourceListResponse:
     sources = await use_case(actor)
-    return [_to_source_response(source) for source in sources]
+    items = [_to_source_response(source) for source in sources]
+    return BlacklistSourceListResponse(items=items, total=len(items))
 
 
-@router.post("/sources", response_model=BlacklistSourceResponse)
+@router.post(
+    "/sources",
+    response_model=BlacklistSourceResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(400, 409),
+)
 @inject
 async def add_blacklist_source(
     payload: AddSourceRequest,
     use_case: FromDishka[AddBlacklistSourceUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BlacklistSourceResponse:
-    try:
-        source = await use_case(actor, AddBlacklistSourceDto(url=payload.url, name=payload.name))
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    source = await use_case(actor, AddBlacklistSourceDto(url=payload.url, name=payload.name))
     return _to_source_response(source)
 
 
@@ -119,32 +118,31 @@ async def add_blacklist_source(
 async def remove_blacklist_source(
     source_id: int,
     use_case: FromDishka[RemoveBlacklistSourceUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor, source_id)
 
 
-@router.patch("/sources/{source_id}", response_model=BlacklistSourceResponse)
+@router.patch(
+    "/sources/{source_id}", response_model=BlacklistSourceResponse, responses=error_responses(404)
+)
 @inject
-async def toggle_blacklist_source(
+async def update_blacklist_source(
     source_id: int,
-    payload: ToggleSourceRequest,
-    use_case: FromDishka[ToggleBlacklistSourceUseCase],
-    actor: UserDto = Depends(require_admin),
+    payload: UpdateSourceRequest,
+    use_case: FromDishka[UpdateBlacklistSourceUseCase],
+    actor: Actor = Depends(require_admin),
 ) -> BlacklistSourceResponse:
-    try:
-        source = await use_case(
-            actor, ToggleBlacklistSourceDto(source_id=source_id, enabled=payload.enabled)
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    source = await use_case(
+        actor, UpdateBlacklistSourceDto(source_id=source_id, enabled=payload.enabled)
+    )
     return _to_source_response(source)
 
 
-@router.post("/sources/sync", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/sources/actions/sync", status_code=status.HTTP_202_ACCEPTED)
 @inject
 async def sync_blacklist_sources(
     use_case: FromDishka[SyncBlacklistSourcesUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor)

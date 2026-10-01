@@ -1,9 +1,9 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings.dto import AppearanceSettingsDto, UpdateAppearanceSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.users import UserDto
 
 
 class UpdateAppearanceSettingsUseCase(UseCase[UpdateAppearanceSettingsDto, AppearanceSettingsDto]):
@@ -14,7 +14,7 @@ class UpdateAppearanceSettingsUseCase(UseCase[UpdateAppearanceSettingsDto, Appea
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: UpdateAppearanceSettingsDto
+        self, actor: Actor, data: UpdateAppearanceSettingsDto
     ) -> AppearanceSettingsDto:
         async with self._uow:
             return await self._settings_repository.update_appearance_settings(data)

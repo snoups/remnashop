@@ -1,6 +1,7 @@
 import atexit
 import inspect
 import logging
+import re
 import sys
 from collections import deque
 from typing import Final, Union
@@ -16,6 +17,9 @@ REDIS_LOG_CAPACITY: Final[int] = 500
 REDIS_LOG_TIMEOUT_S: Final[float] = 2.0
 LOG_FILENAME: Final[str] = "remnashop.log"
 LOG_ENCODING: Final[str] = "utf-8"
+# Bot API calls carry the token in the URL path, and httpx logs every request URL at INFO
+_BOT_TOKEN_IN_URL: Final[re.Pattern[str]] = re.compile(r"/bot\d+:[\w-]+")
+_BOT_TOKEN_MASK: Final[str] = "/bot<redacted>"
 LOG_FORMAT: Final[str] = (
     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
     "<level>{level: <8}</level> | "
@@ -55,7 +59,8 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        message = _BOT_TOKEN_IN_URL.sub(_BOT_TOKEN_MASK, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(level, message)
 
 
 def setup_logger(config: AppConfig) -> None:

@@ -9,6 +9,7 @@ from uuid import UUID
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.enums import SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.subscriptions.dto import PlanSnapshot
 
@@ -58,7 +59,10 @@ VALID_TRANSITIONS: Final[dict[SubscriptionStatus, frozenset[SubscriptionStatus]]
 
 def assert_transition(current: SubscriptionStatus, target: SubscriptionStatus) -> None:
     if target not in VALID_TRANSITIONS[current]:
-        raise ValidationError(f"Subscription status '{current}' -> '{target}' is not allowed")
+        raise ValidationError(
+            f"Subscription status '{current}' -> '{target}' is not allowed",
+            code=ErrorCode.SUBSCRIPTION_STATUS_TRANSITION_INVALID,
+        )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -105,7 +109,9 @@ class SubscriptionState:
         payment doesn't by itself resolve; the next sync/reconcile pass
         corrects them once the panel agrees."""
         if self.status is SubscriptionStatus.DELETED:
-            raise ValidationError("Cannot renew a deleted subscription")
+            raise ValidationError(
+                "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
+            )
         is_expired = self.status is SubscriptionStatus.EXPIRED
         target = SubscriptionStatus.ACTIVE if is_expired else self.status
         assert_transition(self.status, target)

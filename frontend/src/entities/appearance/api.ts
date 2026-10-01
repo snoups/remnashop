@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPut, apiUpload, BASE_URL } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiUpload, BASE_URL } from "@shared/api/http";
 
 export type AppearanceImageKind = "logo" | "favicon";
 
@@ -26,7 +26,7 @@ export function getAppearance(signal?: AbortSignal): Promise<AppearanceSettings>
 }
 
 export function updateAppearance(payload: UpdateAppearancePayload): Promise<AppearanceSettings> {
-  return apiPut<AppearanceSettings, UpdateAppearancePayload>("/settings/appearance", payload);
+  return apiPatch<AppearanceSettings, UpdateAppearancePayload>("/settings/appearance", payload);
 }
 
 // Clears every field back to unset -- unlike updateAppearance, which only
@@ -34,7 +34,7 @@ export function updateAppearance(payload: UpdateAppearancePayload): Promise<Appe
 // only way to explicitly revert them to the default. Images are separate:
 // deleteAppearanceImage.
 export function resetAppearanceSettings(): Promise<AppearanceSettings> {
-  return apiDelete<AppearanceSettings>("/settings/appearance");
+  return apiPost<AppearanceSettings, Record<string, never>>("/settings/appearance/actions/reset", {});
 }
 
 // Image URLs never change on their own, so a replaced logo/favicon would keep

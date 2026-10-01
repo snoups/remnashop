@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 
+from app.api.dependencies.admin import require_admin_user
 from app.api.dependencies.public import get_current_actor
 from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
@@ -17,7 +18,6 @@ from app.modules.api_tokens.dto import CreateApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.users.api.admin_router import get_own_security
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -240,7 +240,7 @@ async def test_rejects_unknown_bearer_credential(
     assert exc_info.value.status_code == 401
 
 
-async def test_get_own_security_handles_api_token_actor(
+async def test_require_admin_user_refuses_api_token(
     user_repository: UserRepository,
     session_repository: SessionRepository,
     api_token_repository: ApiTokenRepository,
@@ -270,6 +270,7 @@ async def test_get_own_security_handles_api_token_actor(
         _credentials(secret),
     )
 
-    response = await get_own_security(actor)
+    with pytest.raises(HTTPException) as exc_info:
+        await require_admin_user(actor)
 
-    assert response.ip_allowlist == []
+    assert exc_info.value.status_code == 403

@@ -3,6 +3,7 @@ from authlib.common.security import generate_token
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
 from app.modules.oauth.providers.registry import get_oauth_client
@@ -39,4 +40,6 @@ class OAuthLoginAuthorizeUseCase:
         try:
             return await client.authorization_url(redirect_uri, state, code_verifier)
         except OAUTH_EXCHANGE_ERRORS as error:
-            raise AuthenticationError("Failed to reach OAuth provider") from error
+            raise AuthenticationError(
+                "Failed to reach OAuth provider", code=ErrorCode.OAUTH_PROVIDER_UNREACHABLE
+            ) from error

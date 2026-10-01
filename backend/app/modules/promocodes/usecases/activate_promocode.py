@@ -10,6 +10,7 @@ from app.core.enums import (
     PurchaseType,
     SubscriptionStatus,
 )
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -47,7 +48,7 @@ def _addon_grant_key(activation_id: int) -> str:
     return f"promocode-activation:{activation_id}"
 
 
-class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
+class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -77,10 +78,14 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
             code = data.code.strip().upper()
             promo = await self._promocode_repository.get_by_code(code)
             if promo is None or not promo.is_active:
-                raise NotFoundError(f"Promocode '{code}' not found")
+                raise NotFoundError(
+                    f"Promocode '{code}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND
+                )
 
             if promo.expires_at is not None and datetime_now() > promo.expires_at:
-                raise ValidationError(f"Promocode '{code}' has expired")
+                raise ValidationError(
+                    f"Promocode '{code}' has expired", code=ErrorCode.PROMOCODE_EXPIRED
+                )
 
         await assert_available_to(promo, actor, self._subscription_repository)
 
@@ -88,7 +93,10 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
         reward_plan: Optional[PlanDto] = None
         if promo.reward_type in _TARGET_REQUIRED_REWARDS:
             if data.target_subscription_id is None:
-                raise ValidationError("target_subscription_id is required for this promocode")
+                raise ValidationError(
+                    "target_subscription_id is required for this promocode",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
+                )
             async with self._uow:
                 try:
                     target = await self._subscription_repository.get_by_id(
@@ -96,12 +104,19 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto]):
                     )
                 except NotFoundError as error:
                     raise ValidationError(
-                        "target_subscription_id does not belong to this user"
+                        "target_subscription_id does not belong to this user",
+                        code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
                     ) from error
             if target.user_id != actor.id:
-                raise ValidationError("target_subscription_id does not belong to this user")
+                raise ValidationError(
+                    "target_subscription_id does not belong to this user",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
+                )
             if target.status is not SubscriptionStatus.ACTIVE:
-                raise ValidationError("target_subscription_id must be an active subscription")
+                raise ValidationError(
+                    "target_subscription_id must be an active subscription",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_ACTIVE,
+                )
         elif promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
             reward_plan = await assert_subscription_reward_grantable(
                 promo,

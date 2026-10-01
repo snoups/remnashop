@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.actor import SyntheticActor
 from app.core.db.models import EventOutboxEntry, User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
@@ -13,17 +12,15 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
-    PaymentOrderStatus,
     PurchaseType,
     ReferralRewardStrategy,
     ReferralRewardType,
     Role,
     SubscriptionStatus,
+    TransactionStatus,
 )
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
-from app.modules.payments.dto import CreatePaymentOrderDto
-from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import UpdateReferralSettingsDto
 from app.modules.referrals.events import ReferralCodeResetEvent, UserPointsAdjustedEvent
@@ -52,6 +49,8 @@ from app.modules.referrals.usecases.update_referral_settings import UpdateReferr
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -331,10 +330,10 @@ async def test_get_referral_settings_requires_permission(
 
 
 async def test_update_referral_settings_persists_changes(
-    referral_repository: ReferralRepository, uow
+    referral_repository: ReferralRepository, uow, event_publisher
 ) -> None:
     use_case = UpdateReferralSettingsUseCase(
-        referral_repository, PricingRepository(referral_repository.session), uow
+        referral_repository, PricingRepository(referral_repository.session), event_publisher, uow
     )
 
     result = await use_case(
@@ -350,10 +349,10 @@ async def test_update_referral_settings_persists_changes(
 
 
 async def test_update_referral_settings_rejects_a_percent_over_100(
-    referral_repository: ReferralRepository, uow
+    referral_repository: ReferralRepository, uow, event_publisher
 ) -> None:
     use_case = UpdateReferralSettingsUseCase(
-        referral_repository, PricingRepository(referral_repository.session), uow
+        referral_repository, PricingRepository(referral_repository.session), event_publisher, uow
     )
     await use_case(OWNER, UpdateReferralSettingsDto(reward_amounts={1: Decimal("500")}))
 
@@ -419,31 +418,6 @@ async def test_get_own_referral_stats_includes_reward_history(
     assert stats.rewards[0].amount == Decimal("7")
 
 
-async def test_get_own_referral_stats_tolerates_synthetic_actor(
-    referral_repository: ReferralRepository,
-    uow: UnitOfWork,
-) -> None:
-    token_actor = SyntheticActor(
-        id=0, role=Role.USER, name="API Token: ci", is_privileged=True, log="[api_token:ci]"
-    )
-    use_case = GetOwnReferralStatsUseCase(referral_repository, uow)
-
-    stats = await use_case(token_actor)
-
-    assert stats.referral_code is None
-    assert stats.points == Decimal(0)
-
-
-async def test_request_withdrawal_tolerates_synthetic_actor(uow, event_publisher) -> None:
-    token_actor = SyntheticActor(
-        id=0, role=Role.USER, name="API Token: ci", is_privileged=True, log="[api_token:ci]"
-    )
-    use_case = RequestPointsWithdrawalUseCase(uow, event_publisher)
-
-    with pytest.raises(ValidationError):
-        await use_case(token_actor, RequestPointsWithdrawalDto(amount=Decimal("1")))
-
-
 async def test_get_user_referral_stats_requires_permission(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
@@ -488,7 +462,7 @@ async def test_get_user_referral_stats_includes_reward_history(
 async def test_get_user_referral_revenue_sums_downline_payments(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
     plan_id: int,
@@ -502,18 +476,18 @@ async def test_get_user_referral_revenue_sums_downline_payments(
         referrer_id=child.id, referred_id=grandchild.id, level=2
     )
     for user, key, status in (
-        (child, "rev-1", PaymentOrderStatus.PAID),
-        (grandchild, "rev-2", PaymentOrderStatus.PAID),
-        (grandchild, "rev-3", PaymentOrderStatus.REFUNDED),
-        (outsider, "rev-4", PaymentOrderStatus.PAID),
+        (child, "rev-1", TransactionStatus.PAID),
+        (grandchild, "rev-2", TransactionStatus.PAID),
+        (grandchild, "rev-3", TransactionStatus.REFUNDED),
+        (outsider, "rev-4", TransactionStatus.PAID),
     ):
         async with uow:
-            order = await payment_order_repository.create(
+            order = await transaction_repository.create(
                 _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key=key)
             )
-        await payment_order_repository.mark_status(order.id, status)
+        await transaction_repository.mark_status(order.id, status)
     use_case = GetUserReferralRevenueUseCase(
-        referral_repository, user_repository, payment_order_repository, pricing_repository, uow
+        referral_repository, user_repository, transaction_repository, pricing_repository, uow
     )
 
     revenue = await use_case(OWNER, root.id)
@@ -531,8 +505,8 @@ async def test_get_user_referral_revenue_sums_downline_payments(
         await use_case(revoked, root.id)
 
 
-def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreatePaymentOrderDto:
-    return CreatePaymentOrderDto(
+def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
+    return CreateTransactionDto(
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -627,10 +601,12 @@ async def test_get_user_referral_links_builds_the_webcabinet_url(
 
 
 async def test_reset_referral_settings_restores_defaults(
-    referral_repository: ReferralRepository, uow: UnitOfWork
+    referral_repository: ReferralRepository, uow: UnitOfWork, event_publisher
 ) -> None:
     pricing_repository = PricingRepository(referral_repository.session)
-    await UpdateReferralSettingsUseCase(referral_repository, pricing_repository, uow)(
+    await UpdateReferralSettingsUseCase(
+        referral_repository, pricing_repository, event_publisher, uow
+    )(
         OWNER,
         UpdateReferralSettingsDto(
             enabled=True,
@@ -640,7 +616,9 @@ async def test_reset_referral_settings_restores_defaults(
         ),
     )
 
-    result = await ResetReferralSettingsUseCase(referral_repository, pricing_repository, uow)(OWNER)
+    result = await ResetReferralSettingsUseCase(
+        referral_repository, pricing_repository, event_publisher, uow
+    )(OWNER)
 
     assert result.enabled is False
     assert result.max_level == 1
@@ -649,28 +627,30 @@ async def test_reset_referral_settings_restores_defaults(
 
 
 async def test_update_referral_settings_requires_a_reward_on_every_active_level(
-    referral_repository: ReferralRepository, uow: UnitOfWork
+    referral_repository: ReferralRepository, uow: UnitOfWork, event_publisher
 ) -> None:
+    # unsaved actor: a rejected update rolls the seeded owner row back with it
+    owner = OWNER.model_copy(update={"id": 0})
     use_case = UpdateReferralSettingsUseCase(
-        referral_repository, PricingRepository(referral_repository.session), uow
+        referral_repository, PricingRepository(referral_repository.session), event_publisher, uow
     )
 
     with pytest.raises(ValidationError):
         await use_case(
-            OWNER,
+            owner,
             UpdateReferralSettingsDto(
                 enabled=True, max_level=2, reward_amounts={1: Decimal("5"), 2: Decimal("0")}
             ),
         )
     with pytest.raises(ValidationError):
-        await use_case(OWNER, UpdateReferralSettingsDto(reward_amounts={1: Decimal("-1")}))
+        await use_case(owner, UpdateReferralSettingsDto(reward_amounts={1: Decimal("-1")}))
 
     # disabled: blanks are fine, levels past max_level are ignored
     await use_case(
-        OWNER, UpdateReferralSettingsDto(enabled=False, reward_amounts={1: Decimal("0")})
+        owner, UpdateReferralSettingsDto(enabled=False, reward_amounts={1: Decimal("0")})
     )
     result = await use_case(
-        OWNER,
+        owner,
         UpdateReferralSettingsDto(
             enabled=True, max_level=1, reward_amounts={1: Decimal("5"), 2: Decimal("0")}
         ),

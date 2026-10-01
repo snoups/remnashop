@@ -24,10 +24,6 @@ export default defineConfig({
     // dependencies" pass that stalls every in-flight request for 10-20s+.
     include: ["recharts"],
   },
-  build: {
-    // three.js alone is ~517 kB, already split out lazily (ShaderBackground) and off the critical path
-    chunkSizeWarningLimit: 600,
-  },
   server: {
     proxy: {
       "/api": {

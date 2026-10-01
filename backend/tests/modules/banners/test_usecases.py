@@ -10,7 +10,6 @@ from app.modules.banners.dto import BannerKeyDto
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.usecases.delete_banner import DeleteBannerUseCase
 from app.modules.banners.usecases.get_banner_image import GetBannerImageUseCase
-from app.modules.banners.usecases.list_banners import ListBannersUseCase
 from app.modules.banners.usecases.upload_banner import UploadBannerInput, UploadBannerUseCase
 from app.modules.settings.repository import SettingsRepository
 from app.modules.users.dto import UserDto
@@ -168,43 +167,6 @@ async def test_delete_missing_banner_raises_not_found(
 
     with pytest.raises(NotFoundError):
         await delete_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
-
-
-async def test_list_banners_returns_available_locales_from_config(
-    banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
-    uow: UnitOfWork,
-) -> None:
-    await _seed_locales(settings_repository)
-    use_case = ListBannersUseCase(banner_repository, settings_repository, uow)
-
-    result = await use_case(OWNER)
-
-    assert result.available_locales == [Locale.EN, Locale.RU]
-    assert result.banners == []
-
-
-async def test_list_banners_includes_uploaded_banners(
-    banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
-    config: AppConfig,
-    uow: UnitOfWork,
-    tmp_path: Path,
-) -> None:
-    await _seed_locales(settings_repository)
-    upload_use_case = UploadBannerUseCase(
-        banner_repository, settings_repository, _config(config, tmp_path), uow
-    )
-    list_use_case = ListBannersUseCase(banner_repository, settings_repository, uow)
-
-    await upload_use_case(
-        OWNER,
-        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
-    )
-
-    result = await list_use_case(OWNER)
-    assert len(result.banners) == 1
-    assert result.banners[0].name == "menu"
 
 
 async def test_get_banner_image_returns_bytes_and_content_type(

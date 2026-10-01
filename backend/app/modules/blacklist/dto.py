@@ -37,7 +37,7 @@ class AddBlacklistSourceDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class ToggleBlacklistSourceDto:
+class UpdateBlacklistSourceDto:
     source_id: int
     enabled: bool
 

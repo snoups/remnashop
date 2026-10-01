@@ -14,6 +14,7 @@ from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import AppearanceImageKind, Locale
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.modules.settings.dto import (
     AppearanceSettingsDto,
@@ -300,7 +301,9 @@ class SettingsRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            raise ConflictError(f"Locale already active: {locale}") from error
+            raise ConflictError(
+                f"Locale already active: {locale}", code=ErrorCode.LOCALE_ALREADY_ACTIVE
+            ) from error
 
     async def remove_active_locale(self, locale: Locale) -> None:
         await self.session.execute(delete(ActiveLocale).where(ActiveLocale.locale == locale))

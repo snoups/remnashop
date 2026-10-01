@@ -6,20 +6,20 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies.admin import require_admin
+from app.core.actor import Actor
 from app.modules.overview.api.schemas import (
     DailyAmountResponse,
     DailyCountResponse,
     HostMemoryResponse,
     OverviewOnlineResponse,
-    OverviewPaymentsResponse,
     OverviewResponse,
     OverviewSubscriptionsResponse,
+    OverviewTransactionsResponse,
     OverviewUsersResponse,
     RuntimeProcessResponse,
 )
 from app.modules.overview.dto import GetOverviewDto, OverviewDays
 from app.modules.overview.usecases import GetOverviewUseCase
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/overview", tags=["overview"])
 
@@ -45,7 +45,7 @@ class OverviewPeriodDays(IntEnum):
 @inject
 async def get_overview(
     use_case: FromDishka[GetOverviewUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     days: OverviewPeriodDays = OverviewPeriodDays.SEVEN,
 ) -> OverviewResponse:
     overview = await use_case(actor, GetOverviewDto(days=cast(OverviewDays, int(days))))
@@ -75,17 +75,17 @@ async def get_overview(
             if overview.subscriptions is not None
             else None
         ),
-        payments=(
-            OverviewPaymentsResponse(
-                paid_orders_count=overview.payments.paid_orders_count,
-                revenue_by_currency=overview.payments.revenue_by_currency,
-                report_currency=overview.payments.report_currency,
+        transactions=(
+            OverviewTransactionsResponse(
+                paid_orders_count=overview.transactions.paid_orders_count,
+                revenue_by_currency=overview.transactions.revenue_by_currency,
+                report_currency=overview.transactions.report_currency,
                 daily_revenue=[
                     DailyAmountResponse(day=d.day, amount=d.amount)
-                    for d in overview.payments.daily_revenue
+                    for d in overview.transactions.daily_revenue
                 ],
             )
-            if overview.payments is not None
+            if overview.transactions is not None
             else None
         ),
         runtime=[

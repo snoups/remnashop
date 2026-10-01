@@ -10,7 +10,7 @@ from app.modules.event_log.repository import EventLogRepository
 from app.modules.users import UserDto
 
 
-class GetNotificationsUseCase(UseCase[None, NotificationsDto]):
+class GetNotificationsUseCase(UseCase[None, NotificationsDto, UserDto]):
     required_permission = Permission.NOTIFICATIONS_VIEW
 
     def __init__(self, event_log_repository: EventLogRepository, uow: UnitOfWork) -> None:

@@ -1,4 +1,5 @@
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -8,7 +9,7 @@ from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.users import UserDto
 
 
-class DeletePasskeyUseCase(UseCase[int, None]):
+class DeletePasskeyUseCase(UseCase[int, None, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(
@@ -25,12 +26,12 @@ class DeletePasskeyUseCase(UseCase[int, None]):
         async with self._uow:
             credential = await self._passkey_repository.get_by_id_and_user(data, actor.id)
             if credential is None:
-                raise NotFoundError("Passkey not found")
+                raise NotFoundError("Passkey not found", code=ErrorCode.PASSKEY_NOT_FOUND)
 
         async with self._uow:
             deleted = await self._passkey_repository.delete_by_id_and_user(data, actor.id)
             if not deleted:
-                raise NotFoundError("Passkey not found")
+                raise NotFoundError("Passkey not found", code=ErrorCode.PASSKEY_NOT_FOUND)
             await self._event_publisher.publish(
                 PasskeyRemovedEvent(user=actor, credential_name=credential.name)
             )

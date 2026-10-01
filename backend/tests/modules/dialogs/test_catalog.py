@@ -121,6 +121,17 @@ def test_is_editable_text_key_accepts_catalog_and_custom_keys() -> None:
     assert catalog.is_editable_text_key(f"{catalog.CUSTOM_TEXT_KEY_PREFIX}anything")
 
 
+def test_is_editable_text_key_rejects_custom_keys_that_are_not_fluent_ids() -> None:
+    # the key is written into the locale as a message id verbatim; a newline
+    # would start a second top-level message that shadows a real one
+    prefix = catalog.CUSTOM_TEXT_KEY_PREFIX
+    assert not catalog.is_editable_text_key(f"{prefix}a=x\nmsg-main-menu=evil")
+    assert not catalog.is_editable_text_key(f"{prefix}a.b")
+    assert not catalog.is_editable_text_key(f"{prefix}A")
+    assert not catalog.is_editable_text_key(prefix)
+    assert catalog.is_editable_text_key(f"{prefix}0f8e1c2a-4b5d-4e6f-8a9b-0c1d2e3f4a5b-icon")
+
+
 def test_is_editable_text_key_rejects_rows_outside_the_dialogs_namespace() -> None:
     # command.start is a bot command description: documented as never
     # admin-editable, and reachable through import only while the allowlist is

@@ -61,12 +61,6 @@ class TelegramRegistrationBlockedEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class UsersBulkBlockedEvent(ActorEvent):
-    category: ClassVar[EventCategory] = EventCategory.USER
-    count: int
-
-
-@dataclass(frozen=True, kw_only=True)
 class UsersBulkUnblockedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
     count: int

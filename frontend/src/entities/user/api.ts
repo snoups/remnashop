@@ -117,6 +117,10 @@ export function listUsers(
   return apiGet<UserListPage>(`/users?${params.toString()}`, signal);
 }
 
+export function getUser(userId: number, signal?: AbortSignal): Promise<UserListItem> {
+  return apiGet<UserListItem>(`/users/${userId}`, signal);
+}
+
 export function getUserListStats(includeStaff: boolean, signal?: AbortSignal): Promise<UserListStats> {
   return apiGet<UserListStats>(`/users/stats${includeStaff ? "?include_staff=true" : ""}`, signal);
 }
@@ -126,9 +130,9 @@ export function deleteUser(userId: number): Promise<void> {
 }
 
 export function blockUser(userId: number): Promise<UserListItem> {
-  return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/block`, {});
+  return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/actions/block`, {});
 }
 
 export function unblockUser(userId: number): Promise<UserListItem> {
-  return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/unblock`, {});
+  return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/actions/unblock`, {});
 }

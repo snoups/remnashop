@@ -16,18 +16,11 @@ from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
 from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.blacklist.tasks import reconcile_blacklist
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -92,14 +85,7 @@ async def test_api_written_entry_is_visible_to_a_separate_session(config: AppCon
             )
             container = make_async_container(
                 *get_core_providers(),
-                *get_users_providers(),
-                *get_subscription_revoker_providers(),
-                *get_passkey_revoker_providers(),
-                *get_auth_providers(),
-                *get_api_tokens_providers(),
-                *get_settings_providers(),
-                *get_translations_providers(),
-                *get_blacklist_providers(),
+                *get_module_providers(),
                 _SessionProvider(write_session),
                 context={AppConfig: config},
             )
@@ -110,10 +96,9 @@ async def test_api_written_entry_is_visible_to_a_separate_session(config: AppCon
                 async with httpx.AsyncClient(
                     transport=transport, base_url="http://testserver"
                 ) as client:
-                    response = await client.post(
-                        f"{API_V1}/blacklist/entries",
+                    response = await client.put(
+                        f"{API_V1}/blacklist/entries/TELEGRAM_ID/{_TARGET_TELEGRAM_ID}",
                         headers={"Authorization": f"Bearer {token}"},
-                        json={"kind": "TELEGRAM_ID", "value": str(_TARGET_TELEGRAM_ID)},
                     )
                 assert response.status_code == 200
             finally:

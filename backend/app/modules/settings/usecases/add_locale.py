@@ -1,3 +1,4 @@
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
@@ -8,7 +9,6 @@ from app.modules.settings.command_translations import repush_bot_commands_if_con
 from app.modules.settings.events import LocaleActivatedEvent
 from app.modules.settings.repository import SettingsRepository
 from app.modules.translations import TranslationsRepository
-from app.modules.users import UserDto
 
 
 class AddLocaleUseCase(UseCase[Locale, list[Locale]]):
@@ -28,8 +28,12 @@ class AddLocaleUseCase(UseCase[Locale, list[Locale]]):
         self._event_publisher = event_publisher
         self._config = config
 
-    async def _execute(self, actor: UserDto, data: Locale) -> list[Locale]:
+    async def _execute(self, actor: Actor, data: Locale) -> list[Locale]:
         async with self._uow:
+            # PUT semantics: re-adding is a no-op, not a re-copy over edited translations
+            locales = await self._settings_repository.list_active_locales()
+            if data in locales:
+                return locales
             await self._settings_repository.add_active_locale(data)
             # In the same transaction, not a worker task: the dashboard
             # re-reads the translations right after this returns, and an

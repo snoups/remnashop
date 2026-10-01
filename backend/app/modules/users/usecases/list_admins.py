@@ -1,3 +1,4 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.security.permissions import Permission
@@ -13,6 +14,6 @@ class ListAdminsUseCase(UseCase[None, list[UserDto]]):
         self._user_repository = user_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> list[UserDto]:
+    async def _execute(self, actor: Actor, data: None) -> list[UserDto]:
         async with self._uow:
             return await self._user_repository.list_by_roles([Role.OWNER, Role.ADMIN])

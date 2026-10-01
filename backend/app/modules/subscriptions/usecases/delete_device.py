@@ -4,14 +4,15 @@ from datetime import timedelta
 from remnapy import RemnawaveSDK
 from remnapy.models import DeleteUserHwidDeviceRequestDto
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import CooldownError, ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -34,11 +35,13 @@ class DeleteDeviceUseCase(UseCase[DeleteDeviceDto, None]):
         self._settings_repository = settings_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: DeleteDeviceDto) -> None:
+    async def _execute(self, actor: Actor, data: DeleteDeviceDto) -> None:
         async with self._uow:
             shop_settings = await self._settings_repository.get_shop_settings()
             if not shop_settings.device_single_reset_enabled:
-                raise ValidationError("Single device reset is disabled")
+                raise ValidationError(
+                    "Single device reset is disabled", code=ErrorCode.DEVICE_RESET_DISABLED
+                )
 
             subscription = (
                 await self._subscription_repository.get_single_active_subscription_or_raise(

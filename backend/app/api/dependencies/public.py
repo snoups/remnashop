@@ -3,14 +3,16 @@ from typing import Optional
 import jwt
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi import Depends, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 
+from app.api.errors import ApiError
 from app.core.actor import Actor, SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
+from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token, hash_refresh_token
 from app.core.utils.http import is_ip_allowed, resolve_client_ip
 from app.modules.api_tokens import ApiTokenRepository
@@ -59,7 +61,9 @@ async def get_current_actor(
 
     if credentials is None:
         logger.warning(f"Unauthenticated request from IP '{client_ip}'")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED, "Not authenticated", code=ErrorCode.NOT_AUTHENTICATED
+        )
 
     try:
         payload = decode_access_token(credentials.credentials, config.jwt_secret.get_secret_value())
@@ -72,30 +76,32 @@ async def get_current_actor(
         if token_actor is not None:
             return token_actor
         logger.warning(f"Invalid or expired token from IP '{client_ip}'")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED, "Invalid or expired token", code=ErrorCode.TOKEN_INVALID
         ) from None
 
     session = await session_repository.get_active_by_id(session_id)
     if session is None or session.user_id != user_id:
         logger.warning(f"Token for revoked/expired session_id={session_id} from IP '{client_ip}'")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED, "Invalid or expired token", code=ErrorCode.TOKEN_INVALID
         )
 
     actor = await user_repository.get_by_id(user_id)
     if actor is None:
         logger.warning(f"Token for nonexistent user_id={user_id} from IP '{client_ip}'")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise ApiError(status.HTTP_401_UNAUTHORIZED, "User not found", code=ErrorCode.TOKEN_INVALID)
 
     if actor.is_blocked:
         logger.warning(f"Blocked actor {actor.log} attempted access from IP '{client_ip}'")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User is blocked")
+        raise ApiError(status.HTTP_401_UNAUTHORIZED, "User is blocked", code=ErrorCode.USER_BLOCKED)
 
     if actor.ip_allowlist and not is_ip_allowed(client_ip, actor.ip_allowlist):
         logger.warning(f"Actor {actor.log} denied access from disallowed IP '{client_ip}'")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Access denied from this IP address"
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Access denied from this IP address",
+            code=ErrorCode.IP_NOT_ALLOWED,
         )
 
     return actor
@@ -108,8 +114,9 @@ async def get_current_user(actor: Actor = Depends(get_current_actor)) -> UserDto
     foreign key instead of being refused."""
     if not isinstance(actor, UserDto):
         logger.warning(f"Non-user actor {actor.log} denied access to a customer endpoint")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This endpoint is available to user accounts only",
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "This endpoint is available to user accounts only",
+            code=ErrorCode.USER_ACCOUNT_REQUIRED,
         )
     return actor

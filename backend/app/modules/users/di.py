@@ -3,13 +3,13 @@ from dishka import Provider, Scope, provide
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
     BlockUserUseCase,
-    BulkBlockUsersUseCase,
     CreateAdminUseCase,
     DeleteAdminUseCase,
     DeleteUserUseCase,
     DemoteAdminUseCase,
     GetCurrentUserUseCase,
     GetUserListStatsUseCase,
+    GetUserUseCase,
     ListAdminsUseCase,
     ListBlacklistMatchesUseCase,
     ListUsersUseCase,
@@ -32,6 +32,7 @@ class UsersProvider(Provider):
     get_current_user_use_case = provide(GetCurrentUserUseCase)
     list_admins_use_case = provide(ListAdminsUseCase)
     list_users_use_case = provide(ListUsersUseCase)
+    get_user_use_case = provide(GetUserUseCase)
     get_user_list_stats_use_case = provide(GetUserListStatsUseCase)
     list_blacklist_matches_use_case = provide(ListBlacklistMatchesUseCase)
     create_admin_use_case = provide(CreateAdminUseCase)
@@ -46,7 +47,6 @@ class UsersProvider(Provider):
     set_user_personal_discount_use_case = provide(SetUserPersonalDiscountUseCase)
     block_user_use_case = provide(BlockUserUseCase)
     unblock_user_use_case = provide(UnblockUserUseCase)
-    bulk_block_users_use_case = provide(BulkBlockUsersUseCase)
     unblock_all_users_use_case = provide(UnblockAllUsersUseCase)
     unblock_blacklist_matches_use_case = provide(UnblockBlacklistMatchesUseCase)
 

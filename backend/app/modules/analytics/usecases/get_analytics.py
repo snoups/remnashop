@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role, SubscriptionStatus
@@ -15,10 +16,10 @@ from app.modules.analytics.dto import (
     GetAnalyticsDto,
 )
 from app.modules.analytics.window import resolve_since
-from app.modules.payments import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.subscriptions import SubscriptionRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.transactions import TransactionRepository
+from app.modules.users import UserRepository
 
 _ALL_TIME_CHURN_WINDOW_DAYS: Final[int] = 30
 
@@ -30,17 +31,17 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
         self,
         user_repository: UserRepository,
         subscription_repository: SubscriptionRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: GetAnalyticsDto) -> AnalyticsDto:
+    async def _execute(self, actor: Actor, data: GetAnalyticsDto) -> AnalyticsDto:
         since = await resolve_since(self._user_repository, data.days)
         async with self._uow:
             today_start = datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -53,7 +54,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
             )
 
             total_revenue_by_currency = (
-                await self._payment_order_repository.sum_paid_final_price_since(since)
+                await self._transaction_repository.sum_paid_final_price_since(since)
             )
             total_revenue = sum(
                 (
@@ -73,7 +74,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
             ).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
             registered_ids = await self._user_repository.list_ids_registered_since(since, Role.USER)
-            paid_ids = await self._payment_order_repository.list_user_ids_with_paid_order(
+            paid_ids = await self._transaction_repository.list_user_ids_with_paid_order(
                 registered_ids
             )
 
@@ -89,7 +90,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
                     else Decimal(0)
                 ),
                 active_subscriptions=active_subscriptions,
-                paid_orders_count=await self._payment_order_repository.count_paid_since(since),
+                paid_orders_count=await self._transaction_repository.count_paid_since(since),
                 registered_in_period=len(registered_ids),
                 paid_in_period=len(paid_ids),
                 conversion_rate=(len(paid_ids) / len(registered_ids)) if registered_ids else 0.0,

@@ -1,12 +1,13 @@
 import { AlertCircle, ChevronRight, Filter, Gift, Plus, Ticket } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
 import { type AddOnListItem, listAddons } from "@entities/addons/api";
 import { type Plan, listPlans } from "@entities/plans/api";
 import {
+  DEFAULT_PAGE_SIZE,
   deletePromocode,
   getPromocodeSummary,
   listPromocodes,
@@ -30,6 +31,7 @@ import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
+import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
@@ -38,16 +40,7 @@ import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
 
-type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: Promocode[] };
-
-// active first, then newest
-function comparePromocodes(a: Promocode, b: Promocode): number {
-  return (
-    Number(getPromocodeStatus(b) === "ACTIVE") - Number(getPromocodeStatus(a) === "ACTIVE") ||
-    (b.created_at ?? "").localeCompare(a.created_at ?? "") ||
-    b.id - a.id
-  );
-}
+type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: Promocode[]; total: number };
 
 const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_120px_110px_100px_16px] items-center gap-3";
 
@@ -61,7 +54,11 @@ export function PromocodesPage() {
   const [rewardType, setRewardType] = useState("");
   // set by the header search's deep link; no local search box
   const [searchParams] = useSearchParams();
-  const search = (searchParams.get("search") ?? "").trim().toLowerCase();
+  const search = (searchParams.get("search") ?? "").trim();
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // a load-more started before a filter change must not append to the new list
+  const loadGenRef = useRef(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [summary, setSummary] = useState<PromocodeSummary | null>(null);
   // bumped after create/edit/delete so the metrics catch up with the list
@@ -82,13 +79,6 @@ export function PromocodesPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    listPromocodes(controller.signal)
-      .then((items) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", items });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
     listAddons(controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) setAddons(items);
@@ -119,28 +109,50 @@ export function PromocodesPage() {
     return () => controller.abort();
   }, [canViewSummary, summaryVersion]);
 
-  const visibleItems = useMemo(
-    () =>
-      state.kind === "ready"
-        ? state.items.filter(
-            (promo) =>
-              (!status || getPromocodeStatus(promo) === status) &&
-              (!rewardType || promo.reward_type === rewardType) &&
-              (!search || promo.code.toLowerCase().includes(search)),
-          ).sort(comparePromocodes)
-        : [],
-    [state, status, rewardType, search],
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    loadGenRef.current += 1;
+    setPage(1);
+    listPromocodes({ status, rewardType, search, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setState({ kind: "ready", items: result.items, total: result.total });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
+      });
+    return () => controller.abort();
+  }, [status, rewardType, search]);
+
+  // offset drift on a page boundary after create/delete, switch to keyset if it bites.
+  const handleLoadMore = async () => {
+    const gen = loadGenRef.current;
+    const nextPage = page + 1;
+    setIsLoadingMore(true);
+    try {
+      const result = await listPromocodes({ status, rewardType, search, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
+      if (gen !== loadGenRef.current) return;
+      setState((prev) =>
+        prev.kind === "ready" ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total } : prev,
+      );
+      setPage(nextPage);
+    } catch {
+      // keep current items; the button stays available to retry
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  const visibleItems = state.kind === "ready" ? state.items : [];
+  const hasFilters = Boolean(status || rewardType || search);
 
   const handleSaved = (promo: Promocode) => {
     setSummaryVersion((version) => version + 1);
     setState((prev) => {
       if (prev.kind !== "ready") return prev;
       const exists = prev.items.some((item) => item.id === promo.id);
-      return {
-        kind: "ready",
-        items: exists ? prev.items.map((item) => (item.id === promo.id ? promo : item)) : [promo, ...prev.items],
-      };
+      return exists
+        ? { ...prev, items: prev.items.map((item) => (item.id === promo.id ? promo : item)) }
+        : { kind: "ready", items: [promo, ...prev.items], total: prev.total + 1 };
     });
   };
 
@@ -149,7 +161,9 @@ export function PromocodesPage() {
       await deletePromocode(promo.id);
       setSummaryVersion((version) => version + 1);
       setState((prev) =>
-        prev.kind === "ready" ? { kind: "ready", items: prev.items.filter((item) => item.id !== promo.id) } : prev,
+        prev.kind === "ready"
+          ? { kind: "ready", items: prev.items.filter((item) => item.id !== promo.id), total: prev.total - 1 }
+          : prev,
       );
     } catch (err) {
       toast.error(getErrorMessage(err, t("promocodes.delete.error")));
@@ -238,7 +252,7 @@ export function PromocodesPage() {
           </div>
         )}
         {state.kind === "ready" && visibleItems.length === 0 && (
-          <EmptyState text={t(state.items.length === 0 ? "promocodes.empty" : "promocodes.noMatches")} size="page" />
+          <EmptyState text={t(hasFilters ? "promocodes.noMatches" : "promocodes.empty")} size="page" />
         )}
         {state.kind === "ready" && visibleItems.length > 0 && (
           <>
@@ -300,6 +314,17 @@ export function PromocodesPage() {
                 );
               })}
             </div>
+
+            {state.kind === "ready" && state.items.length < state.total && (
+              <div className="mx-3 mt-4">
+                <LoadMoreButton
+                  onClick={() => void handleLoadMore()}
+                  isLoading={isLoadingMore}
+                  shown={state.items.length}
+                  total={state.total}
+                />
+              </div>
+            )}
           </>
         )}
       </Card>

@@ -16,21 +16,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role, SubscriptionStatus
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.plans import get_plans_providers
-from app.modules.pricing import get_pricing_providers
-from app.modules.referrals import get_referrals_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscriptions_providers
+from app.modules.providers import get_module_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, _user_payload, make_fake_remnawave_transport
@@ -76,17 +66,7 @@ async def test_container(
 ) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_plans_providers(),
-        *get_pricing_providers(),
-        *get_referrals_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_subscriptions_providers(),
-        *get_blacklist_providers(),
+        *get_module_providers(),
         _TestSessionProvider(session),
         _TestRemnawaveProvider(remnawave_store),
     ]
@@ -186,7 +166,7 @@ async def test_owner_can_update_and_delete_subscription(
         )
     )
 
-    update_response = await client.put(
+    update_response = await client.patch(
         f"{API_V1}/subscriptions/{created.id}", headers=headers, json={"traffic_limit": 500}
     )
     assert update_response.status_code == 200
@@ -232,4 +212,4 @@ async def test_owner_can_manage_addon_lifecycle(
     assert delete_response.status_code == 204
 
     list_response = await client.get(f"{API_V1}/addons", headers=headers)
-    assert list_response.json() == []
+    assert list_response.json()["items"] == []

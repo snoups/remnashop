@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from sqlalchemy.exc import IntegrityError
-
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security import generate_password, hash_password
@@ -42,7 +42,7 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
         self._event_publisher = event_publisher
 
     async def _execute(
-        self, actor: UserDto, data: PromoteToAdminDto
+        self, actor: Actor, data: PromoteToAdminDto
     ) -> tuple[UserDto, Optional[str]]:
         async with self._uow:
             assert_grantable(data.permission_grants)
@@ -54,13 +54,18 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
                 target = await self._user_repository.get_by_username(data.telegram_username)
 
             if target is None:
-                raise NotFoundError("User not found")
+                raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
             if target.role != Role.USER:
-                raise ConflictError("User is already privileged")
+                raise ConflictError(
+                    "User is already privileged", code=ErrorCode.USER_ALREADY_PRIVILEGED
+                )
 
             login = target.login or data.login
             if login is None:
-                raise ValidationError("login is required to promote a user without one")
+                raise ValidationError(
+                    "login is required to promote a user without one",
+                    code=ErrorCode.PROMOTE_LOGIN_REQUIRED,
+                )
 
             existing_password_hash = target.password_hash
             password: Optional[str] = None
@@ -70,22 +75,19 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
         else:
             password_hash = existing_password_hash
 
-        try:
-            async with self._uow:
-                updated = await self._user_repository.promote_to_admin(
-                    target.id,
-                    PromoteAdminDto(
-                        login=login,
-                        password_hash=password_hash,
-                        permission_grants=[p.value for p in data.permission_grants],
-                        permission_revokes=[p.value for p in data.permission_revokes],
-                    ),
-                )
-                assert updated is not None
-                await self._event_publisher.publish(
-                    AdminPromotedEvent(actor=actor, target=updated, ip_address=data.client_ip)
-                )
-        except IntegrityError as error:
-            raise ConflictError("Login already taken") from error
+        async with self._uow:
+            updated = await self._user_repository.promote_to_admin(
+                target.id,
+                PromoteAdminDto(
+                    login=login,
+                    password_hash=password_hash,
+                    permission_grants=[p.value for p in data.permission_grants],
+                    permission_revokes=[p.value for p in data.permission_revokes],
+                ),
+            )
+            assert updated is not None
+            await self._event_publisher.publish(
+                AdminPromotedEvent(actor=actor, target=updated, ip_address=data.client_ip)
+            )
 
         return updated, password

@@ -26,6 +26,9 @@ URL_SCHEMES: Final[tuple[str, ...]] = ("https://", "http://", "tg://")
 # stay dash-separated, not dot-separated -- see create_custom_window.py's key
 # generation for why a dot here fails Fluent's identifier grammar.
 CUSTOM_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-custom-"
+# The key becomes a Fluent message id verbatim, so anything outside this would
+# let one button's label define or shadow another message in the locale.
+_CUSTOM_TEXT_KEY_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(r"[a-z0-9-]+")
 
 # A button's icon is a translation of its own, so it can differ per locale and
 # never gets mixed into the label text. Exactly one of the two is ever filled:
@@ -204,7 +207,10 @@ def is_icon_text_key(key: str) -> bool:
 def is_editable_text_key(key: str) -> bool:
     # An icon key is editable exactly when the label it belongs to is.
     base = key.removesuffix(ICON_ID_KEY_SUFFIX).removesuffix(ICON_KEY_SUFFIX)
-    return base in text_keys() or base.startswith(CUSTOM_TEXT_KEY_PREFIX)
+    if base in text_keys():
+        return True
+    suffix = base.removeprefix(CUSTOM_TEXT_KEY_PREFIX)
+    return suffix != base and _CUSTOM_TEXT_KEY_SUFFIX_RE.fullmatch(suffix) is not None
 
 
 def get_action(key: str) -> Resolver:

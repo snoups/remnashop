@@ -1,5 +1,6 @@
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.ports import EventPublisher
@@ -9,7 +10,6 @@ from app.modules.subscriptions.dto import SubscriptionDto, SyncSubscriptionStatu
 from app.modules.subscriptions.events import SubscriptionStatusSyncedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto
 
 
 class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[SubscriptionDto]]):
@@ -28,7 +28,7 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
         self._lifecycle_service = lifecycle_service
 
     async def _execute(
-        self, actor: UserDto, data: SyncSubscriptionStatusDto
+        self, actor: Actor, data: SyncSubscriptionStatusDto
     ) -> Optional[SubscriptionDto]:
         async with self._uow:
             subscription = await self._subscription_repository.get_by_remnawave_user_id_for_update(

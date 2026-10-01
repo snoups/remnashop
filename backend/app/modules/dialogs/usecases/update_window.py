@@ -3,8 +3,10 @@ from typing import Optional
 
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import DialogWindowKind
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -14,7 +16,6 @@ from app.modules.dialogs.usecases._publish import publish_dialog_change
 from app.modules.dialogs.usecases._window_texts import validate_stored_window_texts
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -43,12 +44,15 @@ class UpdateDialogWindowUseCase(UseCase[UpdateDialogWindowInput, DialogWindowDto
         self._uow = uow
         self._redis = redis
 
-    async def _execute(self, actor: UserDto, data: UpdateDialogWindowInput) -> DialogWindowDto:
+    async def _execute(self, actor: Actor, data: UpdateDialogWindowInput) -> DialogWindowDto:
         async with self._uow:
             if data.is_enabled is False:
                 current = await self._dialog_repository.get_by_key_or_raise(data.key)
                 if current.kind == DialogWindowKind.SEED:
-                    raise ValidationError("Seed windows cannot be disabled")
+                    raise ValidationError(
+                        "Seed windows cannot be disabled",
+                        code=ErrorCode.DIALOG_WINDOW_NOT_DISABLEABLE,
+                    )
             if data.banner_name_provided:
                 # The same text can fit as a message and not as a photo caption,
                 # and an empty one is fine only under a banner.

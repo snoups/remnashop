@@ -1,10 +1,10 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.pricing import PricingRepository
 from app.modules.referrals.dto import ReferralSettingsDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserDto
 
 
 class GetReferralSettingsUseCase(UseCase[None, ReferralSettingsDto]):
@@ -20,7 +20,7 @@ class GetReferralSettingsUseCase(UseCase[None, ReferralSettingsDto]):
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> ReferralSettingsDto:
+    async def _execute(self, actor: Actor, data: None) -> ReferralSettingsDto:
         async with self._uow:
             settings = await self._referral_repository.get_settings()
             pricing = await self._pricing_repository.get_settings()

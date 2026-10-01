@@ -1,9 +1,9 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings.dto import BotSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.users import UserDto
 
 
 class GetBotSettingsUseCase(UseCase[None, BotSettingsDto]):
@@ -13,6 +13,6 @@ class GetBotSettingsUseCase(UseCase[None, BotSettingsDto]):
         self._settings_repository = settings_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> BotSettingsDto:
+    async def _execute(self, actor: Actor, data: None) -> BotSettingsDto:
         async with self._uow:
             return await self._settings_repository.get_bot_settings()

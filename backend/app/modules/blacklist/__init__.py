@@ -7,7 +7,7 @@ from app.modules.blacklist.dto import (
     BlacklistOriginsDto,
     BlacklistSourceDto,
     ParsedSourceList,
-    ToggleBlacklistSourceDto,
+    UpdateBlacklistSourceDto,
 )
 from app.modules.blacklist.normalize import normalize_identity
 from app.modules.blacklist.repository import BlacklistRepository
@@ -20,7 +20,7 @@ from app.modules.blacklist.usecases import (
     RemoveBlacklistEntryUseCase,
     RemoveBlacklistSourceUseCase,
     SyncBlacklistSourcesUseCase,
-    ToggleBlacklistSourceUseCase,
+    UpdateBlacklistSourceUseCase,
 )
 
 __all__ = [
@@ -39,8 +39,8 @@ __all__ = [
     "RemoveBlacklistEntryUseCase",
     "RemoveBlacklistSourceUseCase",
     "SyncBlacklistSourcesUseCase",
-    "ToggleBlacklistSourceDto",
-    "ToggleBlacklistSourceUseCase",
+    "UpdateBlacklistSourceDto",
+    "UpdateBlacklistSourceUseCase",
     "ensure_blacklist_sources_seeded",
     "get_blacklist_providers",
     "normalize_identity",

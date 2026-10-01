@@ -2,10 +2,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 from loguru import logger
-from sqlalchemy.exc import IntegrityError
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ConflictError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
@@ -48,7 +50,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: RegisterTelegramUserDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: RegisterTelegramUserDto) -> UserDto:
         async with self._uow:
             existing = await self._user_repository.get_by_telegram_id(data.telegram_id)
             if existing is not None:
@@ -79,7 +81,9 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                         referral_code=data.referral_code,
                     )
                 )
-        except IntegrityError:
+        except ConflictError as error:
+            if error.code is not ErrorCode.TELEGRAM_ID_TAKEN:
+                raise
             # Lost a concurrent registration race (two updates from the same
             # brand-new telegram_id in flight at once) -- the winner's row
             # already exists, fetch it instead of dropping this update.

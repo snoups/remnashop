@@ -11,7 +11,7 @@ from app.modules.referrals.repository import ReferralRepository
 # usecases import ReferralRepository back from this package, and di's own
 # chain (usecases -> events -> app.modules.subscriptions) re-enters this
 # module before it finishes -- ReferralRepository must already be bound.
-from app.modules.referrals.di import get_referrals_providers, get_referrals_revenue_providers
+from app.modules.referrals.di import get_referrals_providers
 from app.modules.referrals.usecases import (
     AdjustUserPointsDto,
     AdjustUserPointsUseCase,
@@ -47,5 +47,4 @@ __all__ = [
     "UpdateReferralSettingsDto",
     "UpdateReferralSettingsUseCase",
     "get_referrals_providers",
-    "get_referrals_revenue_providers",
 ]

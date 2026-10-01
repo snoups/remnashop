@@ -13,15 +13,10 @@ from app.core.constants import API_V1, REMNAWAVE_WEBHOOK_PATH
 from app.core.di.providers import get_core_providers
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
-from app.modules.plans import get_plans_providers
-from app.modules.pricing import get_pricing_providers
-from app.modules.referrals import get_referrals_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscriptions_providers
+from app.modules.providers import get_module_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import SyncSubscriptionStatusUseCase
-from app.modules.translations import get_translations_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave_webhook import sign_webhook, user_event_payload
@@ -55,12 +50,7 @@ async def webhook_container(
 
     providers = [
         *get_core_providers(),
-        *get_plans_providers(),
-        *get_pricing_providers(),
-        *get_referrals_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_subscriptions_providers(),
+        *get_module_providers(),
         _TestSessionProvider(session),
         user_repository_provider,
     ]
@@ -239,12 +229,7 @@ async def test_missing_webhook_secret_returns_503(config: AppConfig, session: As
     user_repository_provider.provide(UserRepository)
     providers = [
         *get_core_providers(),
-        *get_plans_providers(),
-        *get_pricing_providers(),
-        *get_referrals_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_subscriptions_providers(),
+        *get_module_providers(),
         _TestSessionProvider(session),
         user_repository_provider,
     ]

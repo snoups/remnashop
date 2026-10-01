@@ -9,13 +9,13 @@ import type { TabBarItem } from "@shared/ui/TabBar";
 export function AnalyticsPage() {
   const { t } = useTranslation();
   const bounceStrength = useBounceStrength();
-  const isOverviewActive = useMatch({ path: "/dashboard/analytics", end: true }) !== null;
+  const isMetricsActive = useMatch({ path: "/dashboard/analytics", end: true }) !== null;
   const isFunnelActive = useMatch("/dashboard/analytics/funnel") !== null;
   const isCohortsActive = useMatch("/dashboard/analytics/cohorts") !== null;
   const isLtvActive = useMatch("/dashboard/analytics/ltv") !== null;
 
   const items: TabBarItem[] = [
-    { key: "overview", to: "", end: true, icon: BarChart3, label: t("analytics.tabs.overview"), isActive: isOverviewActive },
+    { key: "metrics", to: "", end: true, icon: BarChart3, label: t("analytics.tabs.metrics"), isActive: isMetricsActive },
     { key: "funnel", to: "funnel", icon: ArrowRightLeft, label: t("analytics.tabs.funnel"), isActive: isFunnelActive },
     { key: "cohorts", to: "cohorts", icon: Layers, label: t("analytics.tabs.cohorts"), isActive: isCohortsActive },
     { key: "ltv", to: "ltv", icon: TrendingUp, label: t("analytics.tabs.ltv"), isActive: isLtvActive },

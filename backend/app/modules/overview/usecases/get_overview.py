@@ -7,6 +7,7 @@ from typing import Final, TypeVar
 
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role, SubscriptionStatus
 from app.core.remnawave_online import read_daily_online_peaks, read_latest_online
@@ -22,15 +23,15 @@ from app.modules.overview.dto import (
     HostMemoryDto,
     OverviewDto,
     OverviewOnlineDto,
-    OverviewPaymentsDto,
     OverviewSubscriptionsDto,
+    OverviewTransactionsDto,
     OverviewUsersDto,
     RuntimeProcessDto,
 )
-from app.modules.payments import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.subscriptions import SubscriptionRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.transactions import TransactionRepository
+from app.modules.users import UserRepository
 
 _T = TypeVar("_T", int, Decimal)
 
@@ -81,19 +82,19 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
         self,
         user_repository: UserRepository,
         subscription_repository: SubscriptionRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         redis: Redis,
         uow: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._redis = redis
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: GetOverviewDto) -> OverviewDto:
+    async def _execute(self, actor: Actor, data: GetOverviewDto) -> OverviewDto:
         async with self._uow:
             perms = PermissionPolicy.effective_permissions(actor)
             today_start = datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -145,15 +146,15 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
                     ),
                 )
 
-            payments = None
-            if Permission.PAYMENTS_VIEW in perms:
-                revenue_by_currency = (
-                    await self._payment_order_repository.sum_paid_final_price_since(since)
+            transactions = None
+            if Permission.TRANSACTIONS_VIEW in perms:
+                revenue_by_currency = await self._transaction_repository.sum_paid_final_price_since(
+                    since
                 )
                 rate_table = await self._pricing_repository.get_rate_table()
                 report_currency = rate_table.anchor
                 daily_by_currency = (
-                    await self._payment_order_repository.daily_paid_revenue_by_currency(since)
+                    await self._transaction_repository.daily_paid_revenue_by_currency(since)
                 )
                 daily_converted: list[tuple[date, Decimal]] = [
                     (
@@ -174,8 +175,8 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
                 daily_revenue = [
                     DailyAmountDto(day=day, amount=amount) for day, amount in revenue_series
                 ]
-                payments = OverviewPaymentsDto(
-                    paid_orders_count=await self._payment_order_repository.count_paid_since(since),
+                transactions = OverviewTransactionsDto(
+                    paid_orders_count=await self._transaction_repository.count_paid_since(since),
                     revenue_by_currency=revenue_by_currency,
                     report_currency=report_currency,
                     daily_revenue=daily_revenue,
@@ -217,7 +218,7 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
             granularity=granularity,
             users=users,
             subscriptions=subscriptions,
-            payments=payments,
+            transactions=transactions,
             runtime=runtime,
             host_memory=host_memory,
             online=online,

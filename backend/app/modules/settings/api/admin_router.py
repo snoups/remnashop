@@ -1,15 +1,17 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from app.api.dependencies.admin import require_admin
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.core.enums import Locale
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.settings.api.schemas import (
     ActiveLocalesResponse,
-    AddLocaleRequest,
     AppearanceResponse,
     BotCommandItem,
+    BotCommandsResponse,
+    BotLogsResponse,
     BotSettingsResponse,
     BotStatusResponse,
     OAuthSettingsResponse,
@@ -52,7 +54,6 @@ from app.modules.settings.usecases import (
     UploadAppearanceLogoUseCase,
 )
 from app.modules.settings.usecases.upload_appearance_image import MAX_APPEARANCE_IMAGE_SIZE_BYTES
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -67,7 +68,7 @@ def _to_locales_response(active: list[Locale]) -> ActiveLocalesResponse:
 @inject
 async def get_bot_settings(
     use_case: FromDishka[GetBotSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BotSettingsResponse:
     settings = await use_case(actor)
     return BotSettingsResponse(
@@ -80,7 +81,7 @@ async def get_bot_settings(
 @inject
 async def get_bot_status(
     use_case: FromDishka[GetBotStatusUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BotStatusResponse:
     status = await use_case(actor)
     return BotStatusResponse(
@@ -92,21 +93,21 @@ async def get_bot_status(
     )
 
 
-@router.get("/bot/logs", response_model=list[str])
+@router.get("/bot/logs", response_model=BotLogsResponse)
 @inject
 async def get_bot_logs(
     use_case: FromDishka[GetBotLogsUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[str]:
-    return await use_case(actor)
+    actor: Actor = Depends(require_admin),
+) -> BotLogsResponse:
+    return BotLogsResponse(lines=await use_case(actor))
 
 
-@router.put("/bot", response_model=BotSettingsResponse)
+@router.patch("/bot", response_model=BotSettingsResponse)
 @inject
 async def update_bot_settings(
     payload: UpdateBotSettingsRequest,
     use_case: FromDishka[UpdateBotSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BotSettingsResponse:
     settings = await use_case(
         actor,
@@ -126,7 +127,7 @@ async def update_bot_settings(
 @inject
 async def get_shop_settings(
     use_case: FromDishka[GetShopSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> ShopSettingsResponse:
     settings = await use_case(actor)
     return ShopSettingsResponse(
@@ -140,28 +141,25 @@ async def get_shop_settings(
     )
 
 
-@router.put("/shop", response_model=ShopSettingsResponse)
+@router.patch("/shop", response_model=ShopSettingsResponse, responses=error_responses(400))
 @inject
 async def update_shop_settings(
     payload: UpdateShopSettingsRequest,
     use_case: FromDishka[UpdateShopSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> ShopSettingsResponse:
-    try:
-        settings = await use_case(
-            actor,
-            UpdateShopSettingsDto(
-                max_active_subscriptions=payload.max_active_subscriptions,
-                device_single_reset_enabled=payload.device_single_reset_enabled,
-                device_single_reset_cooldown_hours=payload.device_single_reset_cooldown_hours,
-                device_all_reset_enabled=payload.device_all_reset_enabled,
-                device_all_reset_cooldown_hours=payload.device_all_reset_cooldown_hours,
-                link_reset_enabled=payload.link_reset_enabled,
-                link_reset_cooldown_hours=payload.link_reset_cooldown_hours,
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    settings = await use_case(
+        actor,
+        UpdateShopSettingsDto(
+            max_active_subscriptions=payload.max_active_subscriptions,
+            device_single_reset_enabled=payload.device_single_reset_enabled,
+            device_single_reset_cooldown_hours=payload.device_single_reset_cooldown_hours,
+            device_all_reset_enabled=payload.device_all_reset_enabled,
+            device_all_reset_cooldown_hours=payload.device_all_reset_cooldown_hours,
+            link_reset_enabled=payload.link_reset_enabled,
+            link_reset_cooldown_hours=payload.link_reset_cooldown_hours,
+        ),
+    )
     return ShopSettingsResponse(
         max_active_subscriptions=settings.max_active_subscriptions,
         device_single_reset_enabled=settings.device_single_reset_enabled,
@@ -173,40 +171,41 @@ async def update_shop_settings(
     )
 
 
-@router.post("/bot/restart", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/bot/actions/restart", status_code=status.HTTP_202_ACCEPTED)
 @inject
 async def restart_bot(
     use_case: FromDishka[RestartBotUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor)
 
 
-@router.get("/bot/commands", response_model=list[BotCommandItem])
+@router.get("/bot/commands", response_model=BotCommandsResponse)
 @inject
 async def get_bot_commands(
     use_case: FromDishka[GetBotCommandsUseCase],
     default_order: bool = False,
-    actor: UserDto = Depends(require_admin),
-) -> list[BotCommandItem]:
+    actor: Actor = Depends(require_admin),
+) -> BotCommandsResponse:
     commands = await use_case(actor, default_order)
-    return [BotCommandItem(command=item.command, enabled=item.enabled) for item in commands]
+    return BotCommandsResponse(
+        commands=[BotCommandItem(command=item.command, enabled=item.enabled) for item in commands]
+    )
 
 
-@router.put("/bot/commands", response_model=UpdateBotCommandsResponse)
+@router.put(
+    "/bot/commands", response_model=UpdateBotCommandsResponse, responses=error_responses(400)
+)
 @inject
 async def update_bot_commands(
     payload: UpdateBotCommandsRequest,
     use_case: FromDishka[UpdateBotCommandsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> UpdateBotCommandsResponse:
-    try:
-        result = await use_case(
-            actor,
-            [(item.command, item.enabled) for item in payload.commands],
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    result = await use_case(
+        actor,
+        [(item.command, item.enabled) for item in payload.commands],
+    )
     return UpdateBotCommandsResponse(
         commands=[
             BotCommandItem(command=item.command, enabled=item.enabled) for item in result.commands
@@ -219,7 +218,7 @@ async def update_bot_commands(
 @inject
 async def get_oauth_settings(
     use_case: FromDishka[GetOAuthSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> OAuthSettingsResponse:
     settings = await use_case(actor)
     return OAuthSettingsResponse(
@@ -238,12 +237,12 @@ async def get_oauth_settings(
     )
 
 
-@router.put("/oauth", response_model=OAuthSettingsResponse)
+@router.patch("/oauth", response_model=OAuthSettingsResponse)
 @inject
 async def update_oauth_settings(
     payload: UpdateOAuthSettingsRequest,
     use_case: FromDishka[UpdateOAuthSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> OAuthSettingsResponse:
     settings = await use_case(
         actor,
@@ -285,37 +284,33 @@ async def update_oauth_settings(
 @inject
 async def list_locales(
     use_case: FromDishka[ListActiveLocalesUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
     active = await use_case(actor)
     return _to_locales_response(active)
 
 
-@router.post("/locales", response_model=ActiveLocalesResponse)
+@router.put("/locales/{locale}", response_model=ActiveLocalesResponse)
 @inject
 async def add_locale(
-    payload: AddLocaleRequest,
+    locale: Locale,
     use_case: FromDishka[AddLocaleUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
-    try:
-        active = await use_case(actor, payload.locale)
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    active = await use_case(actor, locale)
     return _to_locales_response(active)
 
 
-@router.delete("/locales/{locale}", response_model=ActiveLocalesResponse)
+@router.delete(
+    "/locales/{locale}", response_model=ActiveLocalesResponse, responses=error_responses(400)
+)
 @inject
 async def remove_locale(
     locale: Locale,
     use_case: FromDishka[RemoveLocaleUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
-    try:
-        active = await use_case(actor, locale)
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    active = await use_case(actor, locale)
     return _to_locales_response(active)
 
 
@@ -330,12 +325,12 @@ def _to_appearance_response(settings: AppearanceSettingsDto) -> AppearanceRespon
     )
 
 
-@router.put("/appearance", response_model=AppearanceResponse)
+@router.patch("/appearance", response_model=AppearanceResponse)
 @inject
 async def update_appearance_settings(
     payload: UpdateAppearanceRequest,
     use_case: FromDishka[UpdateAppearanceSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
     settings = await use_case(
         actor,
@@ -349,71 +344,65 @@ async def update_appearance_settings(
     return _to_appearance_response(settings)
 
 
-@router.delete("/appearance", response_model=AppearanceResponse)
+@router.post("/appearance/actions/reset", response_model=AppearanceResponse)
 @inject
 async def reset_appearance_settings(
     use_case: FromDishka[ResetAppearanceSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
     settings = await use_case(actor)
     return _to_appearance_response(settings)
 
 
-@router.post("/appearance/logo", response_model=AppearanceResponse)
+@router.put("/appearance/logo", response_model=AppearanceResponse, responses=error_responses(400))
 @inject
 async def upload_appearance_logo(
     use_case: FromDishka[UploadAppearanceLogoUseCase],
     file: UploadFile = File(...),
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
     data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
-    try:
-        settings = await use_case(
-            actor,
-            UploadAppearanceImageInput(content_type=file.content_type or "", data=data),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    settings = await use_case(
+        actor,
+        UploadAppearanceImageInput(content_type=file.content_type or "", data=data),
+    )
     return _to_appearance_response(settings)
 
 
-@router.delete("/appearance/logo", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/appearance/logo", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+)
 @inject
 async def delete_appearance_logo(
     use_case: FromDishka[DeleteAppearanceLogoUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(actor)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    await use_case(actor)
 
 
-@router.post("/appearance/favicon", response_model=AppearanceResponse)
+@router.put(
+    "/appearance/favicon", response_model=AppearanceResponse, responses=error_responses(400)
+)
 @inject
 async def upload_appearance_favicon(
     use_case: FromDishka[UploadAppearanceFaviconUseCase],
     file: UploadFile = File(...),
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
     data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
-    try:
-        settings = await use_case(
-            actor,
-            UploadAppearanceImageInput(content_type=file.content_type or "", data=data),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    settings = await use_case(
+        actor,
+        UploadAppearanceImageInput(content_type=file.content_type or "", data=data),
+    )
     return _to_appearance_response(settings)
 
 
-@router.delete("/appearance/favicon", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/appearance/favicon", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+)
 @inject
 async def delete_appearance_favicon(
     use_case: FromDishka[DeleteAppearanceFaviconUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(actor)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    await use_case(actor)

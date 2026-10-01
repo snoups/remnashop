@@ -2,7 +2,9 @@ from decimal import Decimal
 
 from loguru import logger
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -21,7 +23,6 @@ from app.modules.pricing.events import AnchorSwitchedEvent
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.usecases.get_price_book import build_price_book
 from app.modules.subscriptions import AddOnRepository
-from app.modules.users import UserDto
 
 
 class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]):
@@ -41,15 +42,20 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: SwitchAnchorCurrencyDto) -> PriceBookDto:
+    async def _execute(self, actor: Actor, data: SwitchAnchorCurrencyDto) -> PriceBookDto:
         if data.new_anchor in NON_ANCHOR_CURRENCIES:
-            raise ValidationError(f"{data.new_anchor} cannot be the anchor currency")
+            raise ValidationError(
+                f"{data.new_anchor} cannot be the anchor currency",
+                code=ErrorCode.ANCHOR_CURRENCY_INVALID,
+            )
 
         async with self._uow:
             table = await self._pricing_repository.get_rate_table()
             old_anchor = table.anchor
             if data.new_anchor == old_anchor:
-                raise ValidationError("That currency is already the anchor")
+                raise ValidationError(
+                    "That currency is already the anchor", code=ErrorCode.ANCHOR_CURRENCY_UNCHANGED
+                )
 
             f = table.rows[data.new_anchor].rate
             new_rates = {

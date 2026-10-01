@@ -12,7 +12,7 @@ import { motion } from "motion/react";
 import { type ComponentType, type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CURRENCY_SYMBOL } from "@entities/payments/api";
+import { CURRENCY_SYMBOL } from "@entities/transactions/api";
 import {
   type CreatePlanRequest,
   createPlan,
@@ -33,6 +33,7 @@ import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { SuffixInput, TextInput, TextArea } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
+import { CopyableValue } from "@shared/ui/CopyableValue";
 import { Field } from "@shared/ui/Field";
 import { IconButton } from "@shared/ui/IconButton";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
@@ -81,7 +82,6 @@ function PlanEditDialogBody({
   const close = useModalClose();
   const isCreate = plan === null;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [publicCode, setPublicCode] = useState(plan?.public_code ?? "");
   const [name, setName] = useState(plan?.name ?? "");
   const [description, setDescription] = useState(plan?.description ?? "");
   const [tag, setTag] = useState(plan?.tag ?? "");
@@ -144,7 +144,6 @@ function PlanEditDialogBody({
     try {
       if (isCreate) {
         const payload: CreatePlanRequest = {
-          public_code: publicCode.trim(),
           name: name.trim(),
           description: description.trim() || null,
           tag: tag.trim() || null,
@@ -206,18 +205,11 @@ function PlanEditDialogBody({
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <Card variant="form">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label={t("plans.edit.publicCodeLabel")} htmlFor="plan-public-code" required>
-                <TextInput
-                  id="plan-public-code"
-                  value={publicCode}
-                  onChange={(event) => setPublicCode(event.target.value)}
-                  placeholder={t("plans.edit.publicCodePlaceholder")}
-                  disabled={!isCreate}
-                  autoComplete="off"
-                  className="font-mono"
-                />
-                {!isCreate && <span className={hintClassName}>{t("plans.edit.publicCodeHint")}</span>}
-              </Field>
+              {plan && (
+                <Field label={t("plans.edit.publicCodeLabel")} hint={t("plans.edit.publicCodeHint")}>
+                  <CopyableValue value={plan.public_code} copyAria={t("plans.edit.copyPublicCodeAria")} />
+                </Field>
+              )}
               <Field label={t("plans.edit.nameLabel")} htmlFor="plan-name" required>
                 <TextInput
                   id="plan-name"

@@ -3,6 +3,7 @@ from typing import Optional
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
 from app.modules.auth import IssuedSession, SessionIssuer
@@ -55,7 +56,9 @@ class OAuthLoginCallbackUseCase:
                 await self._event_publisher.publish(
                     OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
                 )
-            raise AuthenticationError("Invalid or expired OAuth state")
+            raise AuthenticationError(
+                "Invalid or expired OAuth state", code=ErrorCode.OAUTH_STATE_INVALID
+            )
 
         async with self._uow:
             settings = await self._settings_repository.get_oauth_settings()
@@ -70,7 +73,9 @@ class OAuthLoginCallbackUseCase:
                 await self._event_publisher.publish(
                     OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
                 )
-            raise AuthenticationError("Failed to exchange OAuth code") from error
+            raise AuthenticationError(
+                "Failed to exchange OAuth code", code=ErrorCode.OAUTH_CODE_EXCHANGE_FAILED
+            ) from error
 
         async with self._uow:
             identity = await self._oauth_identity_repository.get_by_provider_external_id(
@@ -81,7 +86,9 @@ class OAuthLoginCallbackUseCase:
                 await self._event_publisher.publish(
                     OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
                 )
-            raise AuthenticationError("This account is not linked to any user")
+            raise AuthenticationError(
+                "This account is not linked to any user", code=ErrorCode.OAUTH_ACCOUNT_NOT_LINKED
+            )
 
         async with self._uow:
             user = await self._user_repository.get_by_id(identity.user_id)
@@ -93,7 +100,9 @@ class OAuthLoginCallbackUseCase:
                 await self._event_publisher.publish(
                     OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
                 )
-            raise AuthenticationError("This account is not linked to any user")
+            raise AuthenticationError(
+                "This account is not linked to any user", code=ErrorCode.OAUTH_ACCOUNT_NOT_LINKED
+            )
 
         issued = await self._session_issuer.issue(user.id, client_ip, user_agent)
         # A failure here surfaces as a request failure by design -- durable

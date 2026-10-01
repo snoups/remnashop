@@ -13,10 +13,10 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
-    PaymentOrderStatus,
     PurchaseType,
     Role,
     RoundingMode,
+    TransactionStatus,
 )
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
@@ -39,10 +39,10 @@ from app.modules.advertising.usecases import (
     ListAdLinksUseCase,
     UpdateAdLinkUseCase,
 )
-from app.modules.payments.dto import CreatePaymentOrderDto
-from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.pricing.repository import PricingRepository
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -152,8 +152,8 @@ async def test_generate_ad_link_code_returns_unused_code(
     assert len(code) == 12
 
 
-def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreatePaymentOrderDto:
-    return CreatePaymentOrderDto(
+def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
+    return CreateTransactionDto(
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -175,13 +175,13 @@ def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> Crea
 async def test_get_ad_link_stats_zero_attributions_has_no_division_by_zero(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
 ) -> None:
     create = CreateAdLinkUseCase(ad_link_repository, uow)
     ad_link = await create(OWNER, CreateAdLinkDto(name="Empty", code="stats-empty"))
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
 
     stats = await use_case(OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id))
@@ -194,7 +194,7 @@ async def test_get_ad_link_stats_zero_attributions_has_no_division_by_zero(
 async def test_get_ad_link_stats_zero_cost_has_no_roi(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
 ) -> None:
@@ -205,7 +205,7 @@ async def test_get_ad_link_stats_zero_cost_has_no_roi(
         ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
     )
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
 
     stats = await use_case(OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id))
@@ -220,7 +220,7 @@ async def test_get_ad_link_stats_zero_cost_has_no_roi(
 async def test_get_ad_link_stats_computes_conversion_and_revenue(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
     plan_id: int,
@@ -238,13 +238,13 @@ async def test_get_ad_link_stats_computes_conversion_and_revenue(
         ad_link_id=ad_link.id, user_id=non_payer.id, channel=AdLinkChannel.BOT
     )
     async with uow:
-        order = await payment_order_repository.create(
+        order = await transaction_repository.create(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="stats-paid-1")
         )
-    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
     stats = await use_case(
         OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id, report_currency=Currency.RUB)
@@ -262,7 +262,7 @@ async def test_get_ad_link_stats_computes_conversion_and_revenue(
 async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
     plan_id: int,
@@ -289,8 +289,8 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
         ad_link_id=ad_link.id, user_id=usd_payer.id, channel=AdLinkChannel.BOT
     )
     async with uow:
-        rub_order = await payment_order_repository.create(
-            CreatePaymentOrderDto(
+        rub_order = await transaction_repository.create(
+            CreateTransactionDto(
                 **{
                     **_paid_order_dto(
                         user_id=rub_payer.id, plan_id=plan_id, idempotency_key="stats-fx-rub"
@@ -301,8 +301,8 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
                 }
             )
         )
-        usd_order = await payment_order_repository.create(
-            CreatePaymentOrderDto(
+        usd_order = await transaction_repository.create(
+            CreateTransactionDto(
                 **{
                     **_paid_order_dto(
                         user_id=usd_payer.id, plan_id=plan_id, idempotency_key="stats-fx-usd"
@@ -313,11 +313,11 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
                 }
             )
         )
-    await payment_order_repository.mark_status(rub_order.id, PaymentOrderStatus.PAID)
-    await payment_order_repository.mark_status(usd_order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(rub_order.id, TransactionStatus.PAID)
+    await transaction_repository.mark_status(usd_order.id, TransactionStatus.PAID)
 
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
     stats = await use_case(
         OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id, report_currency=Currency.USD)
@@ -334,12 +334,12 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
 
 async def test_get_ad_link_stats_unknown_id_raises_not_found(
     ad_link_repository: AdLinkRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
 ) -> None:
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
 
     with pytest.raises(NotFoundError):
@@ -349,7 +349,7 @@ async def test_get_ad_link_stats_unknown_id_raises_not_found(
 async def test_list_ad_link_attributed_users_reports_paid_flag(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     user_repository: UserRepository,
     plan_id: int,
 ) -> None:
@@ -364,13 +364,13 @@ async def test_list_ad_link_attributed_users_reports_paid_flag(
         ad_link_id=ad_link.id, user_id=non_payer.id, channel=AdLinkChannel.WEBCABINET
     )
     async with uow:
-        order = await payment_order_repository.create(
+        order = await transaction_repository.create(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="list-users-1")
         )
-    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
     use_case = ListAdLinkAttributedUsersUseCase(
-        ad_link_repository, user_repository, payment_order_repository, uow
+        ad_link_repository, user_repository, transaction_repository, uow
     )
     users, total = await use_case(OWNER, ListAdLinkAttributedUsersDto(ad_link_id=ad_link.id))
 
@@ -384,11 +384,11 @@ async def test_list_ad_link_attributed_users_reports_paid_flag(
 async def test_list_ad_link_attributed_users_unknown_id_raises_not_found(
     ad_link_repository: AdLinkRepository,
     user_repository: UserRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> None:
     use_case = ListAdLinkAttributedUsersUseCase(
-        ad_link_repository, user_repository, payment_order_repository, uow
+        ad_link_repository, user_repository, transaction_repository, uow
     )
 
     with pytest.raises(NotFoundError):
@@ -398,7 +398,7 @@ async def test_list_ad_link_attributed_users_unknown_id_raises_not_found(
 async def test_get_ad_link_stats_created_from_excludes_older_attributions(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
 ) -> None:
@@ -409,7 +409,7 @@ async def test_get_ad_link_stats_created_from_excludes_older_attributions(
         ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
     )
     use_case = GetAdLinkStatsUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
 
     future = await use_case(
@@ -429,7 +429,7 @@ async def test_get_ad_link_stats_created_from_excludes_older_attributions(
 async def test_get_advertising_summary_aggregates_links(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
     plan_id: int,
@@ -452,13 +452,13 @@ async def test_get_advertising_summary_aggregates_links(
         ad_link_id=free_link.id, user_id=web_user.id, channel=AdLinkChannel.WEBCABINET
     )
     async with uow:
-        order = await payment_order_repository.create(
+        order = await transaction_repository.create(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="summary-paid-1")
         )
-    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
     use_case = GetAdvertisingSummaryUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
     summary = await use_case(OWNER, GetAdvertisingSummaryDto(report_currency=Currency.RUB))
 
@@ -487,11 +487,11 @@ async def test_get_advertising_summary_aggregates_links(
 async def test_regular_user_cannot_get_advertising_summary(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
 ) -> None:
     use_case = GetAdvertisingSummaryUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, GetAdvertisingSummaryDto())
@@ -501,7 +501,7 @@ async def test_get_advertising_summary_created_to_is_a_snapshot(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     session: AsyncSession,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
     plan_id: int,
@@ -521,12 +521,12 @@ async def test_get_advertising_summary_created_to_is_a_snapshot(
     )
     # attributed before the snapshot, paid after it
     async with uow:
-        order = await payment_order_repository.create(
+        order = await transaction_repository.create(
             _paid_order_dto(user_id=old.id, plan_id=plan_id, idempotency_key="summary-snapshot-1")
         )
-    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
     use_case = GetAdvertisingSummaryUseCase(
-        ad_link_repository, payment_order_repository, pricing_repository, uow
+        ad_link_repository, transaction_repository, pricing_repository, uow
     )
 
     snapshot = await use_case(

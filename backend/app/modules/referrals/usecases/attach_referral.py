@@ -4,6 +4,7 @@ from loguru import logger
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ReferralLevel
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -18,7 +19,7 @@ class AttachReferralDto:
     code: str
 
 
-class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto]):
+class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -37,21 +38,32 @@ class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto]):
         async with self._uow:
             settings = await self._referral_repository.get_settings()
             if not settings.enabled:
-                raise ValidationError("Referral system is disabled")
+                raise ValidationError(
+                    "Referral system is disabled", code=ErrorCode.REFERRALS_DISABLED
+                )
 
             referrer = await self._user_repository.get_by_referral_code(data.code)
             if referrer is None:
-                raise ValidationError(f"Referral code '{data.code}' not found")
+                raise ValidationError(
+                    f"Referral code '{data.code}' not found", code=ErrorCode.REFERRAL_CODE_NOT_FOUND
+                )
             if referrer.id == actor.id:
-                raise ValidationError("Cannot use your own referral code")
+                raise ValidationError(
+                    "Cannot use your own referral code", code=ErrorCode.REFERRAL_CODE_OWN
+                )
 
             if await self._referral_repository.has_referrer(actor.id):
-                raise ValidationError(f"User '{actor.id}' already has a referrer")
+                raise ValidationError(
+                    f"User '{actor.id}' already has a referrer", code=ErrorCode.REFERRER_ALREADY_SET
+                )
 
         if await self._is_in_own_downline(
             referrer.id, actor_id=actor.id, max_level=settings.max_level
         ):
-            raise ValidationError("Cannot use the referral code of your own referral")
+            raise ValidationError(
+                "Cannot use the referral code of your own referral",
+                code=ErrorCode.REFERRAL_CODE_CYCLE,
+            )
 
         level = await self._compute_level(referrer.id, max_level=settings.max_level)
 

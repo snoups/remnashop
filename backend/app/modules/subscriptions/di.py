@@ -1,4 +1,4 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, alias, provide
 
 from app.core.ports import SubscriptionRevoker
 from app.modules.subscriptions.addon_repository import AddOnRepository
@@ -12,7 +12,9 @@ from app.modules.subscriptions.usecases import (
     DeleteAllDevicesUseCase,
     DeleteDeviceUseCase,
     DeleteSubscriptionUseCase,
+    GetAddOnUseCase,
     GetAvailableTrialUseCase,
+    GetSubscriptionUseCase,
     GrantAddOnUseCase,
     ListAddOnsUseCase,
     ListDevicesUseCase,
@@ -36,12 +38,14 @@ class SubscriptionsProvider(Provider):
     addon_repository = provide(AddOnRepository)
     lifecycle_service = provide(SubscriptionLifecycleService)
     list_subscriptions_use_case = provide(ListSubscriptionsUseCase)
+    get_subscription_use_case = provide(GetSubscriptionUseCase)
     update_subscription_use_case = provide(UpdateSubscriptionUseCase)
     update_subscription_squads_use_case = provide(UpdateSubscriptionSquadsUseCase)
     delete_subscription_use_case = provide(DeleteSubscriptionUseCase)
     get_available_trial_use_case = provide(GetAvailableTrialUseCase)
     activate_trial_subscription_use_case = provide(ActivateTrialSubscriptionUseCase)
     list_addons_use_case = provide(ListAddOnsUseCase)
+    get_add_on_use_case = provide(GetAddOnUseCase)
     list_devices_use_case = provide(ListDevicesUseCase)
     delete_device_use_case = provide(DeleteDeviceUseCase)
     delete_all_devices_use_case = provide(DeleteAllDevicesUseCase)
@@ -55,19 +59,9 @@ class SubscriptionsProvider(Provider):
     purchase_subscription_use_case = provide(PurchaseSubscriptionUseCase)
     reissue_subscription_use_case = provide(ReissueSubscriptionUseCase)
     sync_subscription_status_use_case = provide(SyncSubscriptionStatusUseCase)
-
-
-class SubscriptionRevokerProvider(Provider):
-    scope = Scope.REQUEST
-
-    subscription_revoker = provide(PanelSubscriptionRevoker, provides=SubscriptionRevoker)
-
-
-def get_subscription_revoker_providers() -> list[Provider]:
-    # Separate from SubscriptionsProvider so a container wiring users'
-    # DeleteUserUseCase doesn't need the whole subscriptions graph.
-    return [SubscriptionRevokerProvider()]
+    panel_subscription_revoker = provide(PanelSubscriptionRevoker)
+    subscription_revoker = alias(source=PanelSubscriptionRevoker, provides=SubscriptionRevoker)
 
 
 def get_subscriptions_providers() -> list[Provider]:
-    return [SubscriptionsProvider(), *get_subscription_revoker_providers()]
+    return [SubscriptionsProvider()]

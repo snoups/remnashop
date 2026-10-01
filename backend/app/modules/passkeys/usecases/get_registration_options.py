@@ -8,6 +8,7 @@ from webauthn.helpers.structs import (
 )
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -18,7 +19,7 @@ from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
 
 
-class GetPasskeyRegistrationOptionsUseCase(UseCase[None, str]):
+class GetPasskeyRegistrationOptionsUseCase(UseCase[None, str, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(
@@ -37,9 +38,13 @@ class GetPasskeyRegistrationOptionsUseCase(UseCase[None, str]):
         async with self._uow:
             settings = await self._settings_repository.get_oauth_settings()
             if not settings.passkey_enabled:
-                raise AuthenticationError("Passkeys are not enabled")
+                raise AuthenticationError(
+                    "Passkeys are not enabled", code=ErrorCode.PASSKEYS_DISABLED
+                )
             if settings.passkey_rp_id is None or settings.passkey_origin is None:
-                raise AuthenticationError("Passkeys are not configured")
+                raise AuthenticationError(
+                    "Passkeys are not configured", code=ErrorCode.PASSKEYS_NOT_CONFIGURED
+                )
 
             assert actor.login is not None
             existing = await self._passkey_repository.list_by_user(actor.id)

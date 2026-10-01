@@ -1,5 +1,6 @@
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -14,7 +15,6 @@ from app.modules.dialogs.dto import (
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository, join_message_key
-from app.modules.users import UserDto
 
 # Bumped when the payload's meaning changes: banner_name went from a fixed
 # category to a free name, and a button's icon moved out into translations.
@@ -45,7 +45,7 @@ class ExportDialogsUseCase(UseCase[None, DialogExportDto]):
         self._settings_repository = settings_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> DialogExportDto:
+    async def _execute(self, actor: Actor, data: None) -> DialogExportDto:
         async with self._uow:
             windows = await self._dialog_repository.list_all()
             locales = await self._settings_repository.list_active_locales()

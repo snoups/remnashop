@@ -1,3 +1,4 @@
+from app.core.actor import Actor
 from app.core.constants import CUSTOM_DIALOG_WINDOW_SLOTS
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
@@ -5,7 +6,6 @@ from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogCatalogDto
 from app.modules.dialogs.repository import DialogRepository
-from app.modules.users import UserDto
 
 
 class GetDialogCatalogUseCase(UseCase[None, DialogCatalogDto]):
@@ -15,7 +15,7 @@ class GetDialogCatalogUseCase(UseCase[None, DialogCatalogDto]):
         self._dialog_repository = dialog_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> DialogCatalogDto:
+    async def _execute(self, actor: Actor, data: None) -> DialogCatalogDto:
         async with self._uow:
             windows = await self._dialog_repository.list_all()
             navigable = sorted({w.key for w in windows} | {w.key for w in catalog.all_windows()})

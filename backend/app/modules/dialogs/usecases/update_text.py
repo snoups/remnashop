@@ -2,8 +2,10 @@ from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -17,7 +19,6 @@ from app.modules.translations import (
     publish_translation_change,
     serialize_to_fluent,
 )
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -43,7 +44,7 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
         self._uow = uow
         self._redis = redis
 
-    async def _execute(self, actor: UserDto, data: UpdateDialogTextInput) -> TranslationEntryDto:
+    async def _execute(self, actor: Actor, data: UpdateDialogTextInput) -> TranslationEntryDto:
         # Lazy import -- fluent_compiler lives under the telegram extra.
         async with self._uow:
             from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
@@ -53,7 +54,8 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
                 # write a second row that shadows the real one.
                 raise ValidationError(
                     f"'{data.message_id}' is a message id plus an attribute -- "
-                    "pass the attribute as attribute_id"
+                    "pass the attribute as attribute_id",
+                    code=ErrorCode.DIALOG_TEXT_KEY_HAS_ATTRIBUTE,
                 )
 
             full_key = data.message_id
@@ -64,13 +66,18 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
                 # not become a back door for editing arbitrary translations rows
                 # (bot commands, notifications) that the general editor guards more
                 # strictly and repushes on change.
-                raise ValidationError(f"'{full_key}' is not an editable dialog text key")
+                raise ValidationError(
+                    f"'{full_key}' is not an editable dialog text key",
+                    code=ErrorCode.DIALOG_TEXT_KEY_NOT_EDITABLE,
+                )
 
             if not data.value.strip() and await self._dialog_repository.is_button_text_key(
                 full_key
             ):
                 # Telegram rejects the whole keyboard over one button with no text.
-                raise ValidationError("A button label cannot be empty")
+                raise ValidationError(
+                    "A button label cannot be empty", code=ErrorCode.DIALOG_BUTTON_LABEL_EMPTY
+                )
 
             window_key = catalog.window_key_for_text_key(full_key)
             window = await self._dialog_repository.get_by_key(window_key) if window_key else None
@@ -87,7 +94,7 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
                 allowed_variables |= set(catalog.get_window(window_key).text_variables)
             disallowed = find_disallowed_placeable(data.value, allowed_variables)
             if disallowed is not None:
-                raise ValidationError(disallowed)
+                raise ValidationError(disallowed, code=ErrorCode.DIALOG_TEXT_VARIABLE_NOT_ALLOWED)
 
             existing = await self._translations_repository.list_by_locale(data.locale)
             candidate = [
@@ -112,7 +119,9 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
             )
             errors = bundle.check_messages()
             if errors:
-                raise ValidationError(f"Invalid Fluent syntax: {errors[0][1]}")
+                raise ValidationError(
+                    f"Invalid Fluent syntax: {errors[0][1]}", code=ErrorCode.FLUENT_SYNTAX_INVALID
+                )
 
         async with self._uow:
             if catalog.is_icon_text_key(full_key):

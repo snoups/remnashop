@@ -1,5 +1,3 @@
-import * as THREE from "three";
-
 import { DEFAULT_SHADER_PALETTE_HEX, hexToRgbNormalized, hueRotationCoefficients } from "@shared/lib/color";
 
 // The renderer is opaque (alpha: false) — the canvas IS the page background,
@@ -8,15 +6,11 @@ import { DEFAULT_SHADER_PALETTE_HEX, hexToRgbNormalized, hueRotationCoefficients
 //
 // colours is derived from shared/lib/color.ts's DEFAULT_SHADER_PALETTE_HEX
 // (the single source of truth, also used by the Appearance settings form's
-// default swatches) rather than hardcoding its own Vector3 numbers.
+// default swatches) rather than hardcoding its own numbers. Flat rgb triplets,
+// the layout gl.uniform3fv expects for a vec3[4].
 export const PALETTE = {
   opacity: 0.5,
-  colours: DEFAULT_SHADER_PALETTE_HEX.map((hex) => new THREE.Vector3(...hexToRgbNormalized(hex))) as [
-    THREE.Vector3,
-    THREE.Vector3,
-    THREE.Vector3,
-    THREE.Vector3,
-  ],
+  colours: DEFAULT_SHADER_PALETTE_HEX.flatMap((hex) => hexToRgbNormalized(hex)),
 };
 
 // uTime feeds the noise functions almost directly, so 1:1 with wall-clock
@@ -29,11 +23,11 @@ export type ShaderUniforms = {
   uTimeSin: { value: number };
   uScrollProgress: { value: number };
   uOpacity: { value: number };
-  uColourPalette: { value: THREE.Vector3[] };
+  uColourPalette: { value: Float32Array };
   uUvScale: { value: number };
   uUvDistortionIterations: { value: number };
   uUvDistortionIntensity: { value: number };
-  uHueRotationMatrix: { value: THREE.Matrix3 };
+  uHueRotationMatrix: { value: Float32Array };
 };
 
 // The dashboard's admin-configured accent color doesn't replace or mix into
@@ -47,9 +41,9 @@ export type ShaderUniforms = {
 // 9 values for every pixel in a frame, so computing it per-fragment (as an
 // earlier version of this did) redoes identical trig and arithmetic millions
 // of times a frame for no benefit; the shader just multiplies each pixel's
-// colour by this precomputed matrix.
-export function buildHueRotationMatrix(angleRadians: number): THREE.Matrix3 {
-  return new THREE.Matrix3().set(...hueRotationCoefficients(angleRadians));
+// colour by this precomputed matrix. Row-major -- uploaded with transpose=true.
+export function buildHueRotationMatrix(angleRadians: number): Float32Array {
+  return Float32Array.from(hueRotationCoefficients(angleRadians));
 }
 
 /**

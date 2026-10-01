@@ -3,12 +3,15 @@ from typing import Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import FileResponse
 
 from app.api.dependencies.admin import require_admin
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.core.enums import BackupKind, BackupRunStatus
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import NotFoundError
 from app.modules.backups.api.schemas import (
     BackupRunPageResponse,
     BackupRunResponse,
@@ -35,7 +38,6 @@ from app.modules.backups.usecases import (
     ResetBackupSettingsUseCase,
     UpdateBackupSettingsUseCase,
 )
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/backups", tags=["backups"])
 
@@ -64,30 +66,30 @@ def _to_run_response(run: BackupRunDto) -> BackupRunResponse:
 
 @router.get("/settings", response_model=BackupSettingsResponse)
 @inject
-async def get_settings(
+async def get_backup_settings(
     use_case: FromDishka[GetBackupSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BackupSettingsResponse:
     settings = await use_case(actor)
     return _to_settings_response(settings)
 
 
-@router.put("/settings", response_model=BackupSettingsResponse)
+@router.patch("/settings", response_model=BackupSettingsResponse)
 @inject
-async def update_settings(
+async def update_backup_settings(
     body: UpdateBackupSettingsRequest,
     use_case: FromDishka[UpdateBackupSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BackupSettingsResponse:
     settings = await use_case(actor, UpdateBackupSettingsDto(**body.model_dump()))
     return _to_settings_response(settings)
 
 
-@router.delete("/settings", response_model=BackupSettingsResponse)
+@router.post("/settings/actions/reset", response_model=BackupSettingsResponse)
 @inject
-async def reset_settings(
+async def reset_backup_settings(
     use_case: FromDishka[ResetBackupSettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BackupSettingsResponse:
     settings = await use_case(actor)
     return _to_settings_response(settings)
@@ -95,9 +97,9 @@ async def reset_settings(
 
 @router.get("/stats", response_model=BackupStatsResponse)
 @inject
-async def get_stats(
+async def get_backup_stats(
     use_case: FromDishka[GetBackupStatsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BackupStatsResponse:
     stats = await use_case(actor)
     latest = stats.last_database_backup
@@ -110,25 +112,27 @@ async def get_stats(
     )
 
 
-@router.post("/runs", response_model=BackupRunResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/runs",
+    response_model=BackupRunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(409),
+)
 @inject
-async def create_run(
+async def create_backup_run(
     body: CreateBackupRunRequest,
     use_case: FromDishka[CreateBackupRunUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BackupRunResponse:
-    try:
-        run = await use_case(actor, body.kind)
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+    run = await use_case(actor, body.kind)
     return _to_run_response(run)
 
 
 @router.get("/runs", response_model=BackupRunPageResponse)
 @inject
-async def list_runs(
+async def list_backup_runs(
     use_case: FromDishka[ListBackupRunsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     kind: Optional[BackupKind] = Query(default=None),
     status_filter: Optional[BackupRunStatus] = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
@@ -142,47 +146,40 @@ async def list_runs(
     )
 
 
-@router.get("/runs/{run_id}", response_model=BackupRunResponse)
+@router.get("/runs/{run_id}", response_model=BackupRunResponse, responses=error_responses(404))
 @inject
-async def get_run(
+async def get_backup_run(
     run_id: int,
     use_case: FromDishka[GetBackupRunUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> BackupRunResponse:
-    try:
-        run = await use_case(actor, run_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    run = await use_case(actor, run_id)
     return _to_run_response(run)
 
 
-@router.get("/runs/{run_id}/download")
+@router.get("/runs/{run_id}/download", responses=error_responses(404))
 @inject
-async def download_run(
+async def download_backup_run(
     run_id: int,
     use_case: FromDishka[DownloadBackupRunUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> FileResponse:
-    try:
-        run = await use_case(actor, run_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    run = await use_case(actor, run_id)
     if run.status != BackupRunStatus.COMPLETED or not run.file_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backup not ready")
+        raise NotFoundError("Backup not ready", code=ErrorCode.BACKUP_NOT_READY)
     path = Path(run.file_path)
     if not path.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backup file missing")
+        raise NotFoundError("Backup file missing", code=ErrorCode.BACKUP_FILE_MISSING)
     return FileResponse(path, filename=path.name, media_type="application/octet-stream")
 
 
-@router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+)
 @inject
-async def delete_run(
+async def delete_backup_run(
     run_id: int,
     use_case: FromDishka[DeleteBackupRunUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(actor, run_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    await use_case(actor, run_id)

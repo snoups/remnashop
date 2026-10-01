@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Literal, Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind, Role
 from app.core.security.permissions import Permission
@@ -97,7 +98,7 @@ class ListBlacklistMatchesUseCase(UseCase[ListBlacklistMatchesInput, BlacklistMa
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: ListBlacklistMatchesInput
+        self, actor: Actor, data: ListBlacklistMatchesInput
     ) -> BlacklistMatchPageDto:
         async with self._uow:
             origins = await self._blacklist_repository.identity_origins()

@@ -1,5 +1,7 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind, Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.core.ports import EventPublisher, PasskeyRevoker, SessionRevoker
 from app.core.security.permissions import Permission, PermissionPolicy
@@ -29,16 +31,12 @@ class BlockUserUseCase(UseCase[int, UserDto]):
         self._session_revoker = session_revoker
         self._passkey_revoker = passkey_revoker
 
-    async def _execute(self, actor: UserDto, user_id: int) -> UserDto:
+    async def _execute(self, actor: Actor, user_id: int) -> UserDto:
         async with self._uow:
             target = await self._user_repository.get_by_id(user_id)
             if target is None:
-                raise NotFoundError(f"User {user_id} not found")
-            # Not a role comparison: an API token authenticates as a synthetic
-            # actor with Role.USER, so `actor.role > target.role` refused it every
-            # target, including the plain users its own scopes cover. What has to
-            # hold is that staff are only ever acted on from above.
-            if target.is_privileged and not actor.role > target.role:
+                raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
+            if not PermissionPolicy.can_manage(actor, target):
                 raise PermissionDeniedError
             is_admin = target.role == Role.ADMIN
             # blocking an admin demotes them first -- same gate as demoting directly
@@ -55,7 +53,7 @@ class BlockUserUseCase(UseCase[int, UserDto]):
                 await self._event_publisher.publish(AdminDemotedEvent(actor=actor, target=target))
             updated = await self._user_repository.set_blocked(user_id, True)
             if updated is None:
-                raise NotFoundError(f"User {user_id} not found")
+                raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
             if target.telegram_id is not None:
                 await self._blacklist_repository.add_entry(
                     BlacklistKind.TELEGRAM_ID, str(target.telegram_id)

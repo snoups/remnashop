@@ -1,30 +1,20 @@
 from dataclasses import dataclass
-from datetime import datetime
-from decimal import Decimal
-from typing import Optional, Protocol
+from typing import Final, Optional, Protocol, runtime_checkable
 
 from app.core.enums import Role
 
 
+@runtime_checkable
 class Actor(Protocol):
     id: int
     role: Role
     name: str
     permission_grants: Optional[list[str]]
     permission_revokes: Optional[list[str]]
-    # Contact/balance fields a UserDto carries and a SyntheticActor (API token)
-    # structurally lacks -- declared here as the common shape so consumers read
-    # them as typed attributes instead of getattr(actor, ..., default).
-    telegram_id: Optional[int]
-    email: Optional[str]
+    # identity only, for the audit trail -- None for an API token
     login: Optional[str]
-    ip_allowlist: Optional[list[str]]
-    referral_code: Optional[str]
-    points: Decimal
-    password_hash: Optional[str]
-    is_trial_available: bool
-    notifications_seen_at: Optional[datetime]
-    notification_groups: Optional[list[str]]
+    email: Optional[str]
+    telegram_id: Optional[int]
 
     @property
     def is_privileged(self) -> bool: ...
@@ -42,13 +32,11 @@ class SyntheticActor:
     log: str
     permission_grants: Optional[list[str]] = None
     permission_revokes: Optional[list[str]] = None
-    telegram_id: Optional[int] = None
-    email: Optional[str] = None
     login: Optional[str] = None
-    ip_allowlist: Optional[list[str]] = None
-    referral_code: Optional[str] = None
-    points: Decimal = Decimal(0)
-    password_hash: Optional[str] = None
-    is_trial_available: bool = False
-    notifications_seen_at: Optional[datetime] = None
-    notification_groups: Optional[list[str]] = None
+    email: Optional[str] = None
+    telegram_id: Optional[int] = None
+
+
+SYSTEM_ACTOR: Final[SyntheticActor] = SyntheticActor(
+    id=-1, role=Role.SYSTEM, name=Role.SYSTEM.name, is_privileged=True, log="[SYSTEM]"
+)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar
 
 from app.core.event_bus import EventBus
@@ -40,6 +40,13 @@ class UserPointsAdjustedEvent(ActorTargetEvent):
 @dataclass(frozen=True, kw_only=True)
 class ReferralCodeResetEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReferralSettingsChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.REFERRAL
+    action: str
+    changed_fields: list[str] = field(default_factory=list)
 
 
 async def _kick_rewards(entry: StoredEvent, *, is_new_purchase: bool) -> None:

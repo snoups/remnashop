@@ -409,6 +409,24 @@ async def test_invited_plan_visible_only_to_referred_users(
     assert created.public_code not in {p.public_code for p in plans_for_unreferred}
 
 
+async def test_create_plan_generates_an_unguessable_public_code(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    use_case = CreatePlanUseCase(plan_repository, uow, event_publisher)
+
+    first = await use_case(
+        OWNER, CreatePlanDto(name="Gen A", type=PlanType.BOTH, traffic_limit=1, device_limit=1)
+    )
+    second = await use_case(
+        OWNER, CreatePlanDto(name="Gen B", type=PlanType.BOTH, traffic_limit=1, device_limit=1)
+    )
+
+    # a LINK plan is bought by this code alone
+    for code in (first.public_code, second.public_code):
+        assert len(code) == 8 and code.isalnum()
+    assert first.public_code != second.public_code
+
+
 async def test_owner_can_create_plan(
     plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:

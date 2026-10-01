@@ -17,7 +17,7 @@ class GetAvailableTrialResult:
     is_trial_available: bool
 
 
-class GetAvailableTrialUseCase(UseCase[None, GetAvailableTrialResult]):
+class GetAvailableTrialUseCase(UseCase[None, GetAvailableTrialResult, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(

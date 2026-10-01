@@ -140,7 +140,7 @@ async def test_create_token_with_expires_in_days_computes_expiry(
     result = await use_case(
         owner,
         CreateApiTokenInput(
-            name="ci-script", permissions=[Permission.BANNERS_VIEW], expires_in_days=30
+            name="ci-script", permissions=[Permission.BANNERS_IMAGE_VIEW], expires_in_days=30
         ),
     )
 
@@ -156,7 +156,7 @@ async def test_create_token_without_expires_in_days_never_expires(
     use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
 
     result = await use_case(
-        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_VIEW])
+        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_IMAGE_VIEW])
     )
 
     assert result.token.expires_at is None

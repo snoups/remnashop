@@ -2,9 +2,11 @@ import math
 from dataclasses import dataclass
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageFormat, AppearanceImageKind
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -12,7 +14,6 @@ from app.core.utils.image import matches_image_magic_bytes, read_image_size, rea
 from app.modules.settings.appearance_storage import delete_appearance_image, save_appearance_image
 from app.modules.settings.dto import AppearanceSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -51,26 +52,33 @@ def _validate_svg(data: bytes) -> None:
     svg_size = read_svg_size(data)
     if svg_size is None:
         raise ValidationError(
-            "SVG must be plain markup with a viewBox: no DOCTYPE, scripts or event handlers"
+            "SVG must be plain markup with a viewBox: no DOCTYPE, scripts or event handlers",
+            code=ErrorCode.SVG_UNSAFE,
         )
     if not math.isclose(*svg_size, rel_tol=1e-3):
-        raise ValidationError("Image must be square")
+        raise ValidationError("Image must be square", code=ErrorCode.IMAGE_NOT_SQUARE)
 
 
 def _validate_raster(
     data: bytes, image_format: AppearanceImageFormat, limits: _ImageLimits
 ) -> None:
     if not matches_image_magic_bytes(data, image_format.value):
-        raise ValidationError("File content does not match the declared image type")
+        raise ValidationError(
+            "File content does not match the declared image type",
+            code=ErrorCode.IMAGE_CONTENT_MISMATCH,
+        )
     size = read_image_size(data)
     if size is None:
-        raise ValidationError("Image file is corrupted or unreadable")
+        raise ValidationError(
+            "Image file is corrupted or unreadable", code=ErrorCode.IMAGE_UNREADABLE
+        )
     width, height = size
     if width != height:
-        raise ValidationError("Image must be square")
+        raise ValidationError("Image must be square", code=ErrorCode.IMAGE_NOT_SQUARE)
     if not limits.min_side <= width <= limits.max_side:
         raise ValidationError(
-            f"Image must be between {limits.min_side} and {limits.max_side} px per side"
+            f"Image must be between {limits.min_side} and {limits.max_side} px per side",
+            code=ErrorCode.IMAGE_SIZE_OUT_OF_RANGE,
         )
 
 
@@ -83,10 +91,16 @@ async def _upload_appearance_image(
 ) -> AppearanceSettingsDto:
     limits = _LIMITS_BY_KIND[kind]
     if len(data.data) > limits.max_bytes:
-        raise ValidationError(f"Image file is too large (max {limits.max_bytes // 1024} KB)")
+        raise ValidationError(
+            f"Image file is too large (max {limits.max_bytes // 1024} KB)",
+            code=ErrorCode.IMAGE_TOO_LARGE,
+        )
     image_format = _FORMAT_BY_CONTENT_TYPE.get(data.content_type)
     if image_format is None:
-        raise ValidationError(f"Unsupported image content type: {data.content_type}")
+        raise ValidationError(
+            f"Unsupported image content type: {data.content_type}",
+            code=ErrorCode.IMAGE_UNSUPPORTED_TYPE,
+        )
     if image_format == AppearanceImageFormat.SVG:
         _validate_svg(data.data)
     else:
@@ -120,7 +134,7 @@ class UploadAppearanceLogoUseCase(UseCase[UploadAppearanceImageInput, Appearance
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: UploadAppearanceImageInput
+        self, actor: Actor, data: UploadAppearanceImageInput
     ) -> AppearanceSettingsDto:
         return await _upload_appearance_image(
             self._settings_repository, self._config, self._uow, AppearanceImageKind.LOGO, data
@@ -138,7 +152,7 @@ class UploadAppearanceFaviconUseCase(UseCase[UploadAppearanceImageInput, Appeara
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: UploadAppearanceImageInput
+        self, actor: Actor, data: UploadAppearanceImageInput
     ) -> AppearanceSettingsDto:
         return await _upload_appearance_image(
             self._settings_repository, self._config, self._uow, AppearanceImageKind.FAVICON, data

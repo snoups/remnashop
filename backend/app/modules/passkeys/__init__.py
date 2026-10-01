@@ -1,4 +1,4 @@
-from app.modules.passkeys.di import get_passkey_providers, get_passkey_revoker_providers
+from app.modules.passkeys.di import get_passkey_providers
 from app.modules.passkeys.dto import (
     PasskeyCredentialDto,
     RenamePasskeyDto,
@@ -28,5 +28,4 @@ __all__ = [
     "VerifyPasskeyRegistrationDto",
     "VerifyPasskeyRegistrationUseCase",
     "get_passkey_providers",
-    "get_passkey_revoker_providers",
 ]

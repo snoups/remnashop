@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.models.backup_run import BackupRun
 from app.core.db.models.backup_settings import BackupSettings
 from app.core.enums import BackupKind, BackupRunStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.backups.dto import (
@@ -82,7 +83,9 @@ class BackupRepository:
     async def _get_row(self, run_id: int) -> BackupRun:
         row = await self.session.get(BackupRun, run_id)
         if row is None:
-            raise NotFoundError(f"Backup run '{run_id}' not found")
+            raise NotFoundError(
+                f"Backup run '{run_id}' not found", code=ErrorCode.BACKUP_RUN_NOT_FOUND
+            )
         return row
 
     async def get_run(self, run_id: int) -> BackupRunDto:

@@ -68,7 +68,7 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   subscriptions: Layers,
   addons: PackagePlus,
   promocodes: Ticket,
-  payments: Wallet,
+  transactions: Wallet,
   referrals: Share2,
   backups: Database,
   ad_links: Link2,

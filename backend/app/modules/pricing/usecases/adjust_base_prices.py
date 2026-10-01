@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from loguru import logger
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PriceAdjustScope
 from app.core.ports import EventPublisher
@@ -18,7 +19,6 @@ from app.modules.pricing.events import BasePricesAdjustedEvent
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.usecases.get_price_book import build_price_book
 from app.modules.subscriptions import AddOnRepository
-from app.modules.users import UserDto
 
 
 class AdjustBasePricesUseCase(UseCase[AdjustBasePricesDto, PriceBookDto]):
@@ -38,7 +38,7 @@ class AdjustBasePricesUseCase(UseCase[AdjustBasePricesDto, PriceBookDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: AdjustBasePricesDto) -> PriceBookDto:
+    async def _execute(self, actor: Actor, data: AdjustBasePricesDto) -> PriceBookDto:
         async with self._uow:
             if data.scope in (PriceAdjustScope.ALL_PLANS, PriceAdjustScope.SELECTED):
                 plan_updates = await self._resolve_plan_updates(data)

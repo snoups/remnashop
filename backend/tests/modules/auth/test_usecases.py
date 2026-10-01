@@ -2,14 +2,15 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import select, update
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.user_session import UserSession
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, OAuthProvider, Role
+from app.core.error_codes import ErrorCode
 from app.core.events import BaseEvent, EventCategory
 from app.core.exceptions import (
     AuthenticationError,
@@ -173,10 +174,11 @@ async def test_db_partial_index_blocks_second_owner_row(
         await create_owner("first")
         await uow.commit()
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(ConflictError) as exc_info:
         async with uow:
             await create_owner("second")
             await uow.commit()
+    assert exc_info.value.code is ErrorCode.OWNER_ALREADY_EXISTS
 
 
 async def test_login_succeeds_with_correct_password(
@@ -239,6 +241,30 @@ async def test_login_rejects_unknown_login(
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
+
+
+@pytest.mark.parametrize(
+    ("login", "password"),
+    [
+        ("x\n2026-01-01 00:00:00.000 | INFO | forged", "whatever"),
+        ("a" * 65, "whatever"),
+        ("nobody", "p" * 1025),
+    ],
+)
+async def test_login_rejects_malformed_input_with_the_generic_error(
+    login: str,
+    password: str,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    with pytest.raises(AuthenticationError, match="Invalid login or password"):
+        await _login_use_case(
+            user_repository, uow, config, event_publisher, session_repository, settings_repository
+        ).execute(login=login, password=password, client_ip=CLIENT_IP, user_agent=USER_AGENT)
 
 
 async def test_login_rejects_when_password_login_disabled(
@@ -812,3 +838,51 @@ async def test_logout_is_idempotent_for_unknown_token(
 ) -> None:
     use_case = LogoutUseCase(session_repository, uow)
     await use_case.execute(refresh_token="never-issued")  # must not raise
+
+
+async def test_api_token_reaches_customer_sessions_but_not_staff_sessions(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    owner = await _bootstrap_owner(
+        user_repository, uow, config, event_publisher, session_repository
+    )
+    async with uow:
+        customer = await user_repository.create(
+            CreateUserDto(
+                login="token-target", name="token-target", role=Role.USER, language=Locale.EN
+            )
+        )
+        await uow.commit()
+    issuer = SessionIssuer(session_repository, uow, config)
+    await issuer.issue(customer.id, CLIENT_IP, USER_AGENT)
+    owner_sessions = await session_repository.list_active_by_user(owner.id)
+    token = SyntheticActor(
+        id=0,
+        role=Role.USER,
+        name="API Token: sessions",
+        is_privileged=True,
+        log="[api_token:sessions]",
+        permission_grants=[
+            Permission.USER_SESSIONS_VIEW.value,
+            Permission.USER_SESSIONS_REVOKE.value,
+        ],
+    )
+    list_use_case = ListUserSessionsUseCase(session_repository, user_repository, uow)
+    revoke_use_case = RevokeUserSessionUseCase(
+        session_repository, user_repository, uow, event_publisher
+    )
+
+    assert len(await list_use_case(token, customer.id)) == 1  # type: ignore[arg-type]
+    with pytest.raises(ConflictError):
+        await list_use_case(token, owner.id)  # type: ignore[arg-type]
+    with pytest.raises(ConflictError):
+        await revoke_use_case(
+            token,  # type: ignore[arg-type]
+            RevokeUserSessionDto(
+                user_id=owner.id, session_id=owner_sessions[0].id, client_ip=CLIENT_IP
+            ),
+        )

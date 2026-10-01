@@ -11,7 +11,7 @@ const PAGE_TITLE_BY_PATH: { prefix: string; key: string }[] = [
   { prefix: "/dashboard/event-log", key: "eventLog.title" },
   { prefix: "/dashboard/users", key: "users.title" },
   { prefix: "/dashboard/subscriptions", key: "subscriptions.title" },
-  { prefix: "/dashboard/payments", key: "payments.title" },
+  { prefix: "/dashboard/transactions", key: "transactions.title" },
   { prefix: "/dashboard/plans", key: "plans.title" },
   { prefix: "/dashboard/promocodes", key: "promocodes.title" },
   { prefix: "/dashboard/referrals", key: "referrals.title" },

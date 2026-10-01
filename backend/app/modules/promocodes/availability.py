@@ -1,16 +1,17 @@
+from app.core.actor import Actor
 from app.core.enums import PromocodeAvailability, PromocodeRewardType
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.plans import PlanDto, PlanRepository, is_plan_purchasable_by
 from app.modules.promocodes.dto import PromocodeDto
 from app.modules.referrals import ReferralRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import SubscriptionRepository
-from app.modules.users import UserDto
 
 
 async def assert_subscription_reward_grantable(
     promo: PromocodeDto,
-    actor: UserDto,
+    actor: Actor,
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
@@ -28,7 +29,8 @@ async def assert_subscription_reward_grantable(
         active = await subscription_repository.get_active_by_user(actor.id)
         if len(active) >= max_active:
             raise ValidationError(
-                f"User '{actor.id}' is already at the concurrent-subscription cap"
+                f"User '{actor.id}' is already at the concurrent-subscription cap",
+                code=ErrorCode.SUBSCRIPTION_LIMIT_REACHED,
             )
 
     plan = await plan_repository.get_by_id(promo.reward_plan_id)
@@ -41,12 +43,14 @@ async def assert_subscription_reward_grantable(
     if not is_plan_purchasable_by(
         plan, actor, has_purchase_history=has_purchase_history, has_referrer=has_referrer
     ):
-        raise ValidationError(f"Plan '{plan.id}' is not available for purchase")
+        raise ValidationError(
+            f"Plan '{plan.id}' is not available for purchase", code=ErrorCode.PLAN_NOT_AVAILABLE
+        )
     return plan
 
 
 async def assert_available_to(
-    promo: PromocodeDto, actor: UserDto, subscription_repository: SubscriptionRepository
+    promo: PromocodeDto, actor: Actor, subscription_repository: SubscriptionRepository
 ) -> None:
     """Shared by ValidatePromocodeUseCase (the pre-activation preview) and
     ActivatePromocodeUseCase (the real thing) -- the two must agree, or the
@@ -58,16 +62,28 @@ async def assert_available_to(
         # active right now" -- matches main's UserDao.has_any_subscription.
         has_sub = await subscription_repository.has_any_subscription(actor.id, include_trial=False)
         if promo.availability is PromocodeAvailability.NEW and has_sub:
-            raise ValidationError(f"Promocode '{promo.code}' is for new users only")
+            raise ValidationError(
+                f"Promocode '{promo.code}' is for new users only",
+                code=ErrorCode.PROMOCODE_NEW_USERS_ONLY,
+            )
         if promo.availability is PromocodeAvailability.EXISTING and not has_sub:
-            raise ValidationError(f"Promocode '{promo.code}' is for existing users only")
+            raise ValidationError(
+                f"Promocode '{promo.code}' is for existing users only",
+                code=ErrorCode.PROMOCODE_EXISTING_USERS_ONLY,
+            )
         return
     if promo.availability is PromocodeAvailability.ALLOWED:
         if actor.id not in promo.allowed_user_ids:
-            raise ValidationError(f"Promocode '{promo.code}' is not available to this user")
+            raise ValidationError(
+                f"Promocode '{promo.code}' is not available to this user",
+                code=ErrorCode.PROMOCODE_NOT_AVAILABLE,
+            )
         return
     # PromocodeAvailability.INVITED (promocode redemption eligibility) is
     # intentionally out of scope for the referrals module -- see
     # docs/superpowers/specs/2026-08-31-referrals-design.md §10; always deny
     # for now.
-    raise ValidationError(f"Promocode '{promo.code}' is not available to this user")
+    raise ValidationError(
+        f"Promocode '{promo.code}' is not available to this user",
+        code=ErrorCode.PROMOCODE_NOT_AVAILABLE,
+    )

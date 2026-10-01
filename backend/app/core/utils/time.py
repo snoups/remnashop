@@ -25,15 +25,14 @@ def range_start_utc(value: Optional[datetime]) -> Optional[datetime]:
 
 
 def range_end_utc(value: Optional[datetime]) -> Optional[datetime]:
-    # Same UTC assumption as range_start_utc(), but a bare date is also the
-    # *whole* day being asked for -- push it to the day's last instant so an
-    # inclusive "<=" comparison doesn't exclude every event after midnight.
+    # Exclusive upper bound, compared with "<". Same UTC assumption as
+    # range_start_utc(), but a bare date is the *whole* day being asked for --
+    # so it becomes the next day's midnight.
     if value is None:
         return None
     if value.tzinfo is not None:
         return value
-    start_of_day = value.replace(tzinfo=TIMEZONE)
-    return start_of_day + timedelta(days=1) - timedelta(microseconds=1)
+    return value.replace(tzinfo=TIMEZONE) + timedelta(days=1)
 
 
 # Rolling reset (N days/weeks/months since subscription creation), not

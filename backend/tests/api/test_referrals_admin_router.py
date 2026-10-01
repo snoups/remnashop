@@ -16,19 +16,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.pricing import PricingRepository
-from app.modules.referrals import get_referrals_providers
+from app.modules.providers import get_module_providers
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -56,16 +48,8 @@ def _pricing_repository_provider() -> Provider:
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_subscription_revoker_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_referrals_providers(),
+        *get_module_providers(),
         _pricing_repository_provider(),
-        *get_blacklist_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -129,14 +113,14 @@ async def test_get_referral_settings_requires_admin(client: httpx.AsyncClient) -
 async def test_update_then_get_referral_settings_roundtrip(
     client: httpx.AsyncClient, admin_auth_headers: dict[str, str]
 ) -> None:
-    put_response = await client.put(
+    patch_response = await client.patch(
         f"{API_V1}/referrals/settings",
         json={"enabled": True, "max_level": 2, "reward_amounts": {"1": "5", "2": "2"}},
         headers=admin_auth_headers,
     )
-    assert put_response.status_code == 200
-    assert put_response.json()["enabled"] is True
-    assert put_response.json()["max_level"] == 2
+    assert patch_response.status_code == 200
+    assert patch_response.json()["enabled"] is True
+    assert patch_response.json()["max_level"] == 2
 
     get_response = await client.get(f"{API_V1}/referrals/settings", headers=admin_auth_headers)
     assert get_response.status_code == 200
@@ -164,7 +148,7 @@ async def test_adjust_user_points_updates_and_returns_the_new_points(
     client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
 ) -> None:
     response = await client.post(
-        f"{API_V1}/users/{user_id}/points",
+        f"{API_V1}/users/{user_id}/actions/adjust-points",
         json={"delta": "10"},
         headers=admin_auth_headers,
     )
@@ -176,7 +160,7 @@ async def test_adjust_user_points_rejects_a_fractional_delta(
     client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
 ) -> None:
     response = await client.post(
-        f"{API_V1}/users/{user_id}/points",
+        f"{API_V1}/users/{user_id}/actions/adjust-points",
         json={"delta": "10.5"},
         headers=admin_auth_headers,
     )

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ReferralRewardType
 from app.core.security.permissions import Permission
@@ -12,13 +13,14 @@ from app.modules.referrals.dto import (
     ReferralRewardTotalsDto,
 )
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 
 @dataclass(frozen=True, kw_only=True)
 class ListReferralsInput:
     level: Optional[int] = None
     created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
     search: Optional[str] = None
     has_rewards: Optional[bool] = None
     reward_type: Optional[ReferralRewardType] = None
@@ -40,12 +42,13 @@ class ListReferralsUseCase(UseCase[ListReferralsInput, tuple[list[ReferralListIt
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: ListReferralsInput
+        self, actor: Actor, data: ListReferralsInput
     ) -> tuple[list[ReferralListItemDto], int]:
         async with self._uow:
             referrals, total = await self._referral_repository.list_paginated(
                 level=data.level,
                 created_from=data.created_from,
+                created_to=data.created_to,
                 search=data.search,
                 has_rewards=data.has_rewards,
                 reward_type=data.reward_type,

@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BannerFormat, Locale
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -16,7 +18,6 @@ from app.modules.banners.storage import (
     validate_banner_name,
 )
 from app.modules.settings import SettingsRepository
-from app.modules.users import UserDto
 
 MAX_BANNER_SIZE_BYTES: Final[int] = 5 * 1024 * 1024
 
@@ -51,23 +52,31 @@ class UploadBannerUseCase(UseCase[UploadBannerInput, BannerDto]):
         self._config = config
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: UploadBannerInput) -> BannerDto:
+    async def _execute(self, actor: Actor, data: UploadBannerInput) -> BannerDto:
         try:
             validate_banner_name(data.name)
         except ValueError as err:
-            raise ValidationError(str(err)) from None
+            raise ValidationError(str(err), code=ErrorCode.BANNER_NAME_INVALID) from None
 
         async with self._uow:
             banner_format = _FORMAT_BY_CONTENT_TYPE.get(data.content_type)
             if banner_format is None:
-                raise ValidationError(f"Unsupported banner content type: {data.content_type}")
+                raise ValidationError(
+                    f"Unsupported banner content type: {data.content_type}",
+                    code=ErrorCode.BANNER_UNSUPPORTED_TYPE,
+                )
             if not matches_image_magic_bytes(data.data, banner_format.value):
-                raise ValidationError("File content does not match the declared image type")
+                raise ValidationError(
+                    "File content does not match the declared image type",
+                    code=ErrorCode.IMAGE_CONTENT_MISMATCH,
+                )
             if len(data.data) > MAX_BANNER_SIZE_BYTES:
-                raise ValidationError("Banner file is too large")
+                raise ValidationError("Banner file is too large", code=ErrorCode.BANNER_TOO_LARGE)
             active_locales = await self._settings_repository.list_active_locales()
             if data.locale not in active_locales:
-                raise ValidationError(f"Locale not enabled: {data.locale}")
+                raise ValidationError(
+                    f"Locale not enabled: {data.locale}", code=ErrorCode.LOCALE_NOT_ENABLED
+                )
 
             existing = await self._banner_repository.get(data.name, data.locale)
 

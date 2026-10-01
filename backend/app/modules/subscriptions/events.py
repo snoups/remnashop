@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 from app.core.events import EventCategory, SystemEvent, UserEvent
@@ -53,3 +53,20 @@ class SubscriptionStatusSyncedEvent(SystemEvent):
     old_status: str
     new_status: str
     source: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionEditedEvent(UserEvent):
+    """An admin's manual change to a subscription, outside any purchase."""
+
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    action: str
+    subscription_id: int
+    changed_fields: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class AddOnChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    action: str
+    addon_id: Optional[int] = None

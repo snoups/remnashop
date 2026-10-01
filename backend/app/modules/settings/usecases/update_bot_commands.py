@@ -2,8 +2,10 @@ from typing import Optional
 
 from loguru import logger
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -12,7 +14,6 @@ from app.modules.settings.command_translations import push_bot_commands_to_teleg
 from app.modules.settings.dto import BotCommandDto, UpdateBotCommandsResultDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.translations import TranslationsRepository
-from app.modules.users import UserDto
 
 
 class UpdateBotCommandsUseCase(UseCase[list[tuple[str, bool]], UpdateBotCommandsResultDto]):
@@ -31,14 +32,15 @@ class UpdateBotCommandsUseCase(UseCase[list[tuple[str, bool]], UpdateBotCommands
         self._config = config
 
     async def _execute(
-        self, actor: UserDto, data: list[tuple[str, bool]]
+        self, actor: Actor, data: list[tuple[str, bool]]
     ) -> UpdateBotCommandsResultDto:
         current_names = {item.command for item in BOT_COMMANDS}
         submitted_names = {command for command, _ in data}
         if submitted_names != current_names:
             raise ValidationError(
                 f"Commands must match the current set exactly: expected {sorted(current_names)}, "
-                f"got {sorted(submitted_names)}"
+                f"got {sorted(submitted_names)}",
+                code=ErrorCode.BOT_COMMANDS_MISMATCH,
             )
 
         async with self._uow:

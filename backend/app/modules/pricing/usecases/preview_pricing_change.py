@@ -1,8 +1,10 @@
 from decimal import Decimal
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PriceAdjustScope
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -20,7 +22,6 @@ from app.modules.pricing.dto import (
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.resolver import resolve_price
 from app.modules.subscriptions import AddOnDto, AddOnRepository
-from app.modules.users import UserDto
 
 
 class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDto]):
@@ -38,13 +39,19 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: PricingChangePreviewDto) -> PricingDiffDto:
+    async def _execute(self, actor: Actor, data: PricingChangePreviewDto) -> PricingDiffDto:
         async with self._uow:
             set_count = sum(x is not None for x in (data.rate, data.anchor, data.adjust))
             if set_count != 1:
-                raise ValidationError("Exactly one of rate/anchor/adjust must be set")
+                raise ValidationError(
+                    "Exactly one of rate/anchor/adjust must be set",
+                    code=ErrorCode.PRICING_PREVIEW_AMBIGUOUS,
+                )
             if data.anchor in NON_ANCHOR_CURRENCIES:
-                raise ValidationError(f"{data.anchor} cannot be the anchor currency")
+                raise ValidationError(
+                    f"{data.anchor} cannot be the anchor currency",
+                    code=ErrorCode.ANCHOR_CURRENCY_INVALID,
+                )
 
             table = await self._pricing_repository.get_rate_table()
             plans = await self._plan_repository.list_all()

@@ -45,7 +45,6 @@ class PlanDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class CreatePlanDto:
-    public_code: str
     name: str
     type: PlanType
     traffic_limit: int
@@ -54,6 +53,8 @@ class CreatePlanDto:
     tag: Optional[str] = None
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET
     is_trial: bool = False
+    # left unset by the API: CreatePlanUseCase generates it
+    public_code: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

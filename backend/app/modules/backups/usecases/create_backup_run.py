@@ -2,14 +2,15 @@ from typing import Protocol
 
 from loguru import logger
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.backups.dto import BackupRunDto, CreateBackupRunDto
 from app.modules.backups.repository import BackupRepository
-from app.modules.users import UserDto
 
 
 class RunBackupDispatch(Protocol):
@@ -29,10 +30,13 @@ class CreateBackupRunUseCase(UseCase[BackupKind, BackupRunDto]):
         self._uow = uow
         self._run_backup_dispatch = run_backup_dispatch
 
-    async def _execute(self, actor: UserDto, data: BackupKind) -> BackupRunDto:
+    async def _execute(self, actor: Actor, data: BackupKind) -> BackupRunDto:
         async with self._uow:
             if await self._backup_repository.has_active(data):
-                raise ConflictError(f"A '{data.value}' backup is already running")
+                raise ConflictError(
+                    f"A '{data.value}' backup is already running",
+                    code=ErrorCode.BACKUP_ALREADY_RUNNING,
+                )
 
         async with self._uow:
             run = await self._backup_repository.create_run(

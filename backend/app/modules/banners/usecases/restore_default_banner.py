@@ -1,10 +1,10 @@
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.seed import restore_default_banner
-from app.modules.users import UserDto
 
 
 class RestoreDefaultBannerUseCase(UseCase[None, None]):
@@ -20,6 +20,6 @@ class RestoreDefaultBannerUseCase(UseCase[None, None]):
         self._config = config
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> None:
+    async def _execute(self, actor: Actor, data: None) -> None:
         async with self._uow:
             await restore_default_banner(self._banner_repository, self._config)

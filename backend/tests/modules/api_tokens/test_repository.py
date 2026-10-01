@@ -112,7 +112,7 @@ async def test_get_active_by_hash_excludes_expired_token(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="expired",
-                permissions=[Permission.BANNERS_VIEW],
+                permissions=[Permission.BANNERS_IMAGE_VIEW],
                 token_hash="expired-hash",
                 created_by_user_id=None,
                 expires_at=datetime.now(timezone.utc) - timedelta(days=1),
@@ -131,7 +131,7 @@ async def test_get_active_by_hash_allows_token_with_no_expiry(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="forever",
-                permissions=[Permission.BANNERS_VIEW],
+                permissions=[Permission.BANNERS_IMAGE_VIEW],
                 token_hash="forever-hash",
                 created_by_user_id=None,
                 expires_at=None,

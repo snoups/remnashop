@@ -1,10 +1,10 @@
+from app.core.actor import Actor
 from app.core.enums import PlanAvailability
 from app.modules.plans.dto import PlanDto
-from app.modules.users import UserDto
 
 
 def is_plan_purchasable_by(
-    plan: PlanDto, actor: UserDto, *, has_purchase_history: bool, has_referrer: bool
+    plan: PlanDto, actor: Actor, *, has_purchase_history: bool, has_referrer: bool
 ) -> bool:
     """Whether `actor` may purchase `plan` right now, given a specific plan_id
     -- gates every provisioning entry point (checkout, promocode SUBSCRIPTION
@@ -13,11 +13,10 @@ def is_plan_purchasable_by(
     has ever purchased a non-trial subscription (any status, including
     DELETED/EXPIRED) -- matches main's UserDao.has_any_subscription.
 
-    LINK plans are unconditionally purchasable once you know the plan_id (a
-    link/code IS the access control), as in the earlier GetAvailablePlanByCode
-    -- but ListActivePlansUseCase excludes them from the catalog before this
-    is ever called for one, as in the earlier GetAvailablePlans having no case
-    for LINK."""
+    LINK plans pass here unconditionally: their access control is the random
+    public_code, which checkout requires on top of this check (as in the earlier
+    GetAvailablePlanByCode). ListActivePlansUseCase excludes them from the
+    catalog before this is ever called for one."""
     if not plan.is_active:
         return False
     if plan.availability == PlanAvailability.ALL:

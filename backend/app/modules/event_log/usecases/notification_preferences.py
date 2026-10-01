@@ -1,4 +1,5 @@
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -7,7 +8,7 @@ from app.modules.users import UserDto, UserRepository
 
 
 # Own settings only, hence the own-account permission.
-class GetNotificationGroupsUseCase(UseCase[None, list[str]]):
+class GetNotificationGroupsUseCase(UseCase[None, list[str], UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     async def _execute(self, actor: UserDto, data: None) -> list[str]:
@@ -16,7 +17,7 @@ class GetNotificationGroupsUseCase(UseCase[None, list[str]]):
         return [g for g in actor.notification_groups if g in NOTIFICATION_GROUPS]
 
 
-class UpdateNotificationGroupsUseCase(UseCase[list[str], list[str]]):
+class UpdateNotificationGroupsUseCase(UseCase[list[str], list[str], UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(self, user_repository: UserRepository, uow: UnitOfWork) -> None:
@@ -26,7 +27,10 @@ class UpdateNotificationGroupsUseCase(UseCase[list[str], list[str]]):
     async def _execute(self, actor: UserDto, data: list[str]) -> list[str]:
         unknown = set(data) - NOTIFICATION_GROUPS.keys()
         if unknown:
-            raise ValidationError(f"Unknown notification groups: {', '.join(sorted(unknown))}")
+            raise ValidationError(
+                f"Unknown notification groups: {', '.join(sorted(unknown))}",
+                code=ErrorCode.NOTIFICATION_GROUP_UNKNOWN,
+            )
         groups = sorted(set(data))
         async with self._uow:
             await self._user_repository.set_notification_groups(actor.id, groups)

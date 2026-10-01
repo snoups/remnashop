@@ -7,7 +7,7 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
-// 0..1 range, for feeding a hex color into a WebGL/three.js uniform.
+// 0..1 range, for feeding a hex color into a WebGL uniform.
 export function hexToRgbNormalized(hex: string): [number, number, number] {
   const [r, g, b] = hexToRgb(hex);
   return [r / 255, g / 255, b / 255];
@@ -91,7 +91,7 @@ export function hexToHueDegrees(hex: string): number {
 
 // Row-major coefficients of the hue-rotation matrix (same technique behind
 // CSS's filter: hue-rotate()) -- the one source of truth for both
-// app/shaderState.ts's buildHueRotationMatrix (a THREE.Matrix3 for the GLSL
+// app/shaderState.ts's buildHueRotationMatrix (a Float32Array for the GLSL
 // uniform) and hueRotateHex below (plain hex math, for previewing that same
 // rotation on a swatch outside the canvas).
 export function hueRotationCoefficients(

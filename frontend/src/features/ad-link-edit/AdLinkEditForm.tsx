@@ -2,7 +2,7 @@ import { Coins } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ChannelsPicker } from "@entities/advertising/ChannelsPicker";
-import { CURRENCY_ICON } from "@entities/payments/api";
+import { CURRENCY_ICON } from "@entities/transactions/api";
 import { AD_LINK_EDIT_FORM_ID, type AdLinkEditFormState } from "@features/ad-link-edit/use-ad-link-edit-form";
 import { blockNonDecimalKeys } from "@shared/lib/number-input";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";

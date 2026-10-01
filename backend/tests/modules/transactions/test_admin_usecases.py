@@ -1,0 +1,191 @@
+from dataclasses import replace
+from datetime import timedelta
+from decimal import Decimal
+
+import pytest
+
+from app.core.db.uow import UnitOfWork
+from app.core.enums import (
+    Currency,
+    DiscountSource,
+    PaymentGatewayType,
+    PurchaseType,
+    Role,
+    TransactionStatus,
+)
+from app.core.exceptions import NotFoundError, PermissionDeniedError
+from app.core.utils.time import datetime_now
+from app.modules.pricing import PricingRepository
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
+from app.modules.transactions.usecases.get_transaction_summary import (
+    GetTransactionSummaryInput,
+    GetTransactionSummaryUseCase,
+)
+from app.modules.transactions.usecases.list_transactions import (
+    ListTransactionsInput,
+    ListTransactionsUseCase,
+)
+from app.modules.users import UserRepository
+from app.modules.users.dto import CreateUserDto, UserDto
+from tests.modules.subscriptions.factories import make_plan_snapshot
+
+
+def _order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
+    return CreateTransactionDto(
+        user_id=user_id,
+        plan_id=plan_id,
+        plan_snapshot=make_plan_snapshot(plan_id=plan_id),
+        duration_days=30,
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+        target_subscription_id=None,
+        gateway_type=PaymentGatewayType.YOOKASSA,
+        base_price=Decimal("500"),
+        discount_percent=0,
+        discount_source=DiscountSource.NONE,
+        final_price=Decimal("500"),
+        customer_email=None,
+        idempotency_key=idempotency_key,
+        expires_at=datetime_now() + timedelta(minutes=30),
+    )
+
+
+@pytest.fixture
+async def admin_actor(user_repository: UserRepository) -> UserDto:
+    return await user_repository.create(
+        CreateUserDto(name="transactions-admin", role=Role.ADMIN, telegram_id=800_001)
+    )
+
+
+@pytest.fixture
+def list_transactions_use_case(
+    transaction_repository: TransactionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> ListTransactionsUseCase:
+    return ListTransactionsUseCase(transaction_repository, user_repository, uow)
+
+
+@pytest.fixture
+def get_transaction_use_case(
+    transaction_repository: TransactionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> GetTransactionUseCase:
+    return GetTransactionUseCase(transaction_repository, user_repository, uow)
+
+
+async def test_list_transactions_requires_the_transactions_view_permission(
+    list_transactions_use_case: ListTransactionsUseCase, user_id: int, plan_id: int
+) -> None:
+    regular_actor = UserDto(id=user_id, name="not-an-admin", role=Role.USER)
+    with pytest.raises(PermissionDeniedError):
+        await list_transactions_use_case(regular_actor, ListTransactionsInput())
+
+
+async def test_list_transactions_filters_by_status(
+    list_transactions_use_case: ListTransactionsUseCase,
+    transaction_repository: TransactionRepository,
+    admin_actor: UserDto,
+    uow,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        pending = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="list-pending")
+        )
+        paid = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="list-paid")
+        )
+        await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
+
+    items, total = await list_transactions_use_case(
+        admin_actor, ListTransactionsInput(status=TransactionStatus.PAID)
+    )
+    assert total == 1
+    assert [item.order.id for item in items] == [paid.id]
+    assert items[0].user is not None and items[0].user.name == "buyer"
+
+    items, total = await list_transactions_use_case(admin_actor, ListTransactionsInput())
+    ids = {item.order.id for item in items}
+    assert {pending.id, paid.id} <= ids
+
+
+async def test_get_transaction_requires_the_transactions_view_permission(
+    get_transaction_use_case: GetTransactionUseCase, user_id: int
+) -> None:
+    regular_actor = UserDto(id=user_id, name="not-an-admin", role=Role.USER)
+    with pytest.raises(PermissionDeniedError):
+        await get_transaction_use_case(regular_actor, 1)
+
+
+async def test_get_transaction_returns_the_order(
+    get_transaction_use_case: GetTransactionUseCase,
+    transaction_repository: TransactionRepository,
+    admin_actor: UserDto,
+    uow,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        created = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="get-one")
+        )
+
+    fetched = await get_transaction_use_case(admin_actor, created.id)
+    assert fetched.order.id == created.id
+    assert fetched.user is not None and fetched.user.telegram_id == 900_001
+
+
+async def test_get_transaction_raises_not_found_for_a_missing_id(
+    get_transaction_use_case: GetTransactionUseCase, admin_actor: UserDto
+) -> None:
+    with pytest.raises(NotFoundError):
+        await get_transaction_use_case(admin_actor, 999_999_999)
+
+
+async def test_get_transaction_summary_counts_and_converts_paid_revenue(
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    admin_actor: UserDto,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="summary-pending")
+        )
+        paid = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="summary-paid"),
+                base_price=Decimal("625"),
+                discount_percent=20,
+            )
+        )
+        await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
+        rates = await pricing_repository.get_rate_table()
+
+    use_case = GetTransactionSummaryUseCase(transaction_repository, pricing_repository, uow)
+    summary = await use_case(admin_actor, GetTransactionSummaryInput())
+
+    expected_revenue = (
+        Decimal("500")
+        / rates.for_currency(Currency.RUB).rate
+        * rates.for_currency(rates.anchor).rate
+    )
+    assert summary.report_currency == rates.anchor
+    assert (summary.total_count, summary.pending_count, summary.paid_count) == (2, 1, 1)
+    assert summary.conversion_rate == Decimal("0.5")
+    assert summary.revenue == expected_revenue
+    assert summary.average_check == expected_revenue
+    assert summary.average_discount == Decimal("0.2")
+    expected_base = (
+        Decimal("625")
+        / rates.for_currency(Currency.RUB).rate
+        * rates.for_currency(rates.anchor).rate
+    )
+    assert summary.discount_amount == expected_base - expected_revenue

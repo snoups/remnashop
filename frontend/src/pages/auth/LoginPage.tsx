@@ -9,6 +9,7 @@ import { LoginForm } from "@features/login/LoginForm";
 import { OAuthLoginButtons } from "@features/oauth-login/OAuthLoginButtons";
 import { PasskeyLoginButton } from "@features/passkey-login/PasskeyLoginButton";
 import { getAuthStatus } from "@entities/auth/api";
+import { OAUTH_PROVIDERS } from "@entities/auth/oauth";
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
@@ -32,6 +33,13 @@ export function LoginPage() {
   const [isLeaving, setIsLeaving] = useState(false);
 
   const isBootstrap = state.kind === "ready" && state.data.is_register_allowed;
+  const status = state.kind === "ready" && state.data.is_login_allowed ? state.data : null;
+  const altCount = status
+    ? OAUTH_PROVIDERS.filter((provider) => status.oauth_providers[provider]).length +
+      Number(status.is_passkey_login_enabled)
+    : 0;
+  // 1-3 one per row, 4 in a 2x2 grid
+  const isGrid = altCount === 4;
   useDocumentTitle(brandName, t(isBootstrap ? "auth.bootstrapPageTitle" : "auth.loginPageTitle"));
 
   const goToDashboard = () => setIsLeaving(true);
@@ -71,22 +79,32 @@ export function LoginPage() {
               <BootstrapOwnerForm onSuccess={() => setIsWelcome(true)} />
             )}
 
-            {state.kind === "ready" &&
-              state.data.is_login_allowed &&
-              state.data.is_password_login_enabled && <LoginForm onSuccess={goToDashboard} />}
+            {status?.is_password_login_enabled && <LoginForm onSuccess={goToDashboard} />}
 
-            {state.kind === "ready" && state.data.is_login_allowed && (
-              <OAuthLoginButtons
-                oauthProviders={state.data.oauth_providers}
-                oidcDisplayName={state.data.oidc_display_name}
-              />
+            {status && altCount > 0 && (
+              <div className="flex w-full flex-col gap-4">
+                {status.is_password_login_enabled && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {t("auth.oauth.or")}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                )}
+
+                <div className={isGrid ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2"}>
+                  <OAuthLoginButtons
+                    oauthProviders={status.oauth_providers}
+                    oidcDisplayName={status.oidc_display_name}
+                    compact={isGrid}
+                  />
+                  {status.is_passkey_login_enabled && (
+                    <PasskeyLoginButton onSuccess={goToDashboard} compact={isGrid} />
+                  )}
+                </div>
+              </div>
             )}
-
-            {state.kind === "ready" &&
-              state.data.is_login_allowed &&
-              state.data.is_passkey_login_enabled && (
-                <PasskeyLoginButton onSuccess={goToDashboard} />
-              )}
           </motion.div>
         )}
       </AnimatePresence>

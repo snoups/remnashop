@@ -4,7 +4,7 @@ from app.modules.gateways.repository import GatewaysRepository
 from app.modules.gateways.usecases import (
     ListGatewaysUseCase,
     ReorderGatewaysUseCase,
-    ToggleGatewayActiveUseCase,
+    SetGatewayActiveUseCase,
     UpdateGatewaySettingsUseCase,
 )
 
@@ -15,7 +15,7 @@ class GatewaysProvider(Provider):
     gateways_repository = provide(GatewaysRepository)
     list_gateways_use_case = provide(ListGatewaysUseCase)
     update_gateway_settings_use_case = provide(UpdateGatewaySettingsUseCase)
-    toggle_gateway_active_use_case = provide(ToggleGatewayActiveUseCase)
+    set_gateway_active_use_case = provide(SetGatewayActiveUseCase)
     reorder_gateways_use_case = provide(ReorderGatewaysUseCase)
 
 

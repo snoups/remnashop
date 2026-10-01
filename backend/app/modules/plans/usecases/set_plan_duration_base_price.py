@@ -1,5 +1,6 @@
 from loguru import logger
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -7,7 +8,6 @@ from app.core.usecase import UseCase
 from app.modules.plans.dto import PlanDto, SetPlanDurationBasePriceDto
 from app.modules.plans.events import PlanChangedEvent
 from app.modules.plans.repository import PlanRepository
-from app.modules.users import UserDto
 
 
 class SetPlanDurationBasePriceUseCase(UseCase[SetPlanDurationBasePriceDto, PlanDto]):
@@ -20,7 +20,7 @@ class SetPlanDurationBasePriceUseCase(UseCase[SetPlanDurationBasePriceDto, PlanD
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: SetPlanDurationBasePriceDto) -> PlanDto:
+    async def _execute(self, actor: Actor, data: SetPlanDurationBasePriceDto) -> PlanDto:
         async with self._uow:
             plan = await self._plan_repository.set_duration_base_price(data)
             await self._event_publisher.publish(

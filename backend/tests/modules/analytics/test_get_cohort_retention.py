@@ -10,15 +10,15 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
-    PaymentOrderStatus,
     PurchaseType,
     Role,
+    TransactionStatus,
 )
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.analytics.usecases import GetCohortRetentionUseCase
-from app.modules.payments.dto import CreatePaymentOrderDto
-from app.modules.payments.repository import PaymentOrderRepository
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -26,8 +26,8 @@ from tests.modules.subscriptions.factories import make_plan_snapshot
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 
 
-def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreatePaymentOrderDto:
-    return CreatePaymentOrderDto(
+def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
+    return CreateTransactionDto(
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -48,11 +48,11 @@ def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> Crea
 
 async def test_actor_without_analytics_view_is_denied(
     user_repository: UserRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository, uow)
+    use_case = GetCohortRetentionUseCase(user_repository, transaction_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor)
@@ -60,7 +60,7 @@ async def test_actor_without_analytics_view_is_denied(
 
 async def test_cohort_retention_month_zero_vs_month_one(
     user_repository: UserRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     session: AsyncSession,
     uow: UnitOfWork,
     plan_id: int,
@@ -70,14 +70,14 @@ async def test_cohort_retention_month_zero_vs_month_one(
     await user_repository.create(CreateUserDto(name="NonPayer", telegram_id=829_002))
 
     async with uow:
-        order = await payment_order_repository.create(
+        order = await transaction_repository.create(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="cohort-1")
         )
-    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
     # updated_at is a server default -- this order lands in the current
     # calendar month, proving month-0 retention without needing to backdate.
 
-    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository, uow)
+    use_case = GetCohortRetentionUseCase(user_repository, transaction_repository, uow)
     result = await use_case(OWNER)
 
     current_month_key = datetime_now().strftime("%Y-%m")
@@ -88,7 +88,7 @@ async def test_cohort_retention_month_zero_vs_month_one(
 
 async def test_cohort_retention_earliest_since_is_timezone_aware(
     user_repository: UserRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> None:
     captured: dict[str, datetime] = {}
@@ -100,7 +100,7 @@ async def test_cohort_retention_earliest_since_is_timezone_aware(
 
     user_repository.list_id_and_registration_date_since = _spy  # type: ignore[method-assign]
 
-    use_case = GetCohortRetentionUseCase(user_repository, payment_order_repository, uow)
+    use_case = GetCohortRetentionUseCase(user_repository, transaction_repository, uow)
     await use_case(OWNER)
 
     assert captured["since"].tzinfo is not None

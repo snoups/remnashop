@@ -41,7 +41,7 @@ class OverviewSubscriptionsDto(BaseDto):
     expiring_soon: int
 
 
-class OverviewPaymentsDto(BaseDto):
+class OverviewTransactionsDto(BaseDto):
     paid_orders_count: int
     revenue_by_currency: dict[Currency, Decimal]
     report_currency: Currency
@@ -72,7 +72,7 @@ class OverviewDto(BaseDto):
     granularity: Granularity
     users: Optional[OverviewUsersDto] = None
     subscriptions: Optional[OverviewSubscriptionsDto] = None
-    payments: Optional[OverviewPaymentsDto] = None
+    transactions: Optional[OverviewTransactionsDto] = None
     runtime: list[RuntimeProcessDto]
     host_memory: Optional[HostMemoryDto] = None
     online: OverviewOnlineDto

@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiUpload, BASE_URL } from "@shared/api/http";
+import { apiDelete, apiPost, apiUpload, BASE_URL } from "@shared/api/http";
 import { getAccessToken } from "@shared/lib/token-storage";
 
 export interface BannerMeta {
@@ -8,25 +8,14 @@ export interface BannerMeta {
   size_bytes: number;
 }
 
-export interface BannerListResult {
-  banners: BannerMeta[];
-  available_locales: string[];
-}
-
-export function listBanners(signal?: AbortSignal): Promise<BannerListResult> {
-  return apiGet<BannerListResult>("/banners", signal);
-}
-
 export function uploadBanner(name: string, locale: string, file: File): Promise<BannerMeta> {
   const formData = new FormData();
-  formData.append("name", name);
-  formData.append("locale", locale);
   formData.append("file", file);
-  return apiUpload<BannerMeta>("/banners", formData);
+  return apiUpload<BannerMeta>(`/banners/${name}/${locale}`, formData);
 }
 
 export function restoreDefaultBanner(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/banners/default/restore", {});
+  return apiPost<null, Record<string, never>>("/banners/actions/reset-default", {});
 }
 
 export function deleteBanner(name: string, locale: string): Promise<null> {

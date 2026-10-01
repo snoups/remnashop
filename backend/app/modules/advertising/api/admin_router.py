@@ -4,11 +4,14 @@ from typing import Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.dependencies.admin import require_admin
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.core.enums import AdLinkChannel, Currency
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import NotFoundError
 from app.modules.advertising.api.schemas import (
     AdLinkMetricsResponse,
     AdLinkPageResponse,
@@ -43,13 +46,13 @@ from app.modules.advertising.usecases import (
     GenerateAdLinkCodeUseCase,
     GetAdLinkShareUrlsUseCase,
     GetAdLinkStatsUseCase,
+    GetAdLinkUseCase,
     GetAdvertisingSummaryUseCase,
     GetUserAdAttributionUseCase,
     ListAdLinkAttributedUsersUseCase,
     ListAdLinksUseCase,
     UpdateAdLinkUseCase,
 )
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/advertising", tags=["advertising"])
 
@@ -85,7 +88,7 @@ def _to_attributed_user_response(user: AttributedUserDto) -> AttributedUserRespo
 @inject
 async def list_ad_links(
     use_case: FromDishka[ListAdLinksUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     is_active: Optional[bool] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
@@ -96,105 +99,104 @@ async def list_ad_links(
     return AdLinkPageResponse(items=[_to_response(link) for link in ad_links], total=total)
 
 
-@router.post("/links", response_model=AdLinkResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/links",
+    response_model=AdLinkResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(400, 409),
+)
 @inject
 async def create_ad_link(
     payload: CreateAdLinkRequest,
     use_case: FromDishka[CreateAdLinkUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AdLinkResponse:
-    try:
-        ad_link = await use_case(
-            actor,
-            CreateAdLinkDto(
-                name=payload.name,
-                code=payload.code,
-                cost=payload.cost,
-                cost_currency=payload.cost_currency,
-                allow_bot=payload.allow_bot,
-                allow_webcabinet=payload.allow_webcabinet,
-                note=payload.note,
-                created_by=actor.id if actor.id > 0 else None,
-            ),
-        )
-    except ConflictError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    ad_link = await use_case(
+        actor,
+        CreateAdLinkDto(
+            name=payload.name,
+            code=payload.code,
+            cost=payload.cost,
+            cost_currency=payload.cost_currency,
+            allow_bot=payload.allow_bot,
+            allow_webcabinet=payload.allow_webcabinet,
+            note=payload.note,
+            created_by=actor.id if actor.id > 0 else None,
+        ),
+    )
     return _to_response(ad_link)
 
 
-@router.patch("/links/{ad_link_id}", response_model=AdLinkResponse)
+@router.patch(
+    "/links/{ad_link_id}", response_model=AdLinkResponse, responses=error_responses(400, 404)
+)
 @inject
 async def update_ad_link(
     ad_link_id: int,
     payload: UpdateAdLinkRequest,
     use_case: FromDishka[UpdateAdLinkUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AdLinkResponse:
-    try:
-        ad_link = await use_case(
-            actor,
-            UpdateAdLinkDto(
-                ad_link_id=ad_link_id,
-                name=payload.name,
-                cost=payload.cost,
-                cost_currency=payload.cost_currency,
-                is_active=payload.is_active,
-                allow_bot=payload.allow_bot,
-                allow_webcabinet=payload.allow_webcabinet,
-                note=payload.note,
-            ),
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    ad_link = await use_case(
+        actor,
+        UpdateAdLinkDto(
+            ad_link_id=ad_link_id,
+            name=payload.name,
+            cost=payload.cost,
+            cost_currency=payload.cost_currency,
+            is_active=payload.is_active,
+            allow_bot=payload.allow_bot,
+            allow_webcabinet=payload.allow_webcabinet,
+            note=payload.note,
+        ),
+    )
     return _to_response(ad_link)
 
 
-@router.delete("/links/{ad_link_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/links/{ad_link_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(400, 404),
+)
 @inject
 async def delete_ad_link(
     ad_link_id: int,
     use_case: FromDishka[DeleteAdLinkUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
-    try:
-        await use_case(actor, ad_link_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    await use_case(actor, ad_link_id)
 
 
-@router.post("/links/generate-code", response_model=GeneratedAdLinkCodeResponse)
+@router.post("/links/actions/generate-code", response_model=GeneratedAdLinkCodeResponse)
 @inject
 async def generate_ad_link_code(
     use_case: FromDishka[GenerateAdLinkCodeUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> GeneratedAdLinkCodeResponse:
     return GeneratedAdLinkCodeResponse(code=await use_case(actor))
 
 
-@router.get("/links/{ad_link_id}/stats", response_model=AdLinkStatsResponse)
+@router.get(
+    "/links/{ad_link_id}/stats", response_model=AdLinkStatsResponse, responses=error_responses(404)
+)
 @inject
 async def get_ad_link_stats(
     ad_link_id: int,
     use_case: FromDishka[GetAdLinkStatsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     report_currency: Optional[Currency] = Query(None),
     created_from: Optional[datetime] = Query(None),
+    created_to: Optional[datetime] = Query(None),
 ) -> AdLinkStatsResponse:
-    try:
-        stats = await use_case(
-            actor,
-            GetAdLinkStatsDto(
-                ad_link_id=ad_link_id, report_currency=report_currency, created_from=created_from
-            ),
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    stats = await use_case(
+        actor,
+        GetAdLinkStatsDto(
+            ad_link_id=ad_link_id,
+            report_currency=report_currency,
+            created_from=created_from,
+            created_to=created_to,
+        ),
+    )
     return AdLinkStatsResponse(
         attributions_count=stats.attributions_count,
         attributions_by_channel=stats.attributions_by_channel,
@@ -213,35 +215,33 @@ async def get_ad_link_stats(
     )
 
 
-@router.get("/links/{ad_link_id}/share", response_model=AdLinkShareUrlsResponse)
+@router.get(
+    "/links/{ad_link_id}/share",
+    response_model=AdLinkShareUrlsResponse,
+    responses=error_responses(404),
+)
 @inject
 async def get_ad_link_share_urls(
     ad_link_id: int,
     use_case: FromDishka[GetAdLinkShareUrlsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> AdLinkShareUrlsResponse:
-    try:
-        urls = await use_case(actor, ad_link_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    urls = await use_case(actor, ad_link_id)
     return AdLinkShareUrlsResponse(bot_url=urls.bot_url, webcabinet_url=urls.webcabinet_url)
 
 
-@router.get("/links/{ad_link_id}/qr", response_class=Response)
+@router.get("/links/{ad_link_id}/qr", response_class=Response, responses=error_responses(404))
 @inject
 async def get_ad_link_qr(
     ad_link_id: int,
     use_case: FromDishka[GetAdLinkShareUrlsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     channel: AdLinkChannel = Query(AdLinkChannel.BOT),
 ) -> Response:
-    try:
-        urls = await use_case(actor, ad_link_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    urls = await use_case(actor, ad_link_id)
     url = urls.bot_url if channel == AdLinkChannel.BOT else urls.webcabinet_url
     if url is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Channel is unavailable")
+        raise NotFoundError("Channel is unavailable", code=ErrorCode.AD_LINK_CHANNEL_UNAVAILABLE)
     return Response(content=render_qr_png(url), media_type="image/png")
 
 
@@ -249,7 +249,7 @@ async def get_ad_link_qr(
 @inject
 async def get_advertising_summary(
     use_case: FromDishka[GetAdvertisingSummaryUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     is_active: Optional[bool] = Query(None),
     report_currency: Optional[Currency] = Query(None),
     created_from: Optional[datetime] = Query(None),
@@ -288,22 +288,23 @@ async def get_advertising_summary(
     )
 
 
-@router.get("/links/{ad_link_id}/users", response_model=AttributedUserPageResponse)
+@router.get(
+    "/links/{ad_link_id}/users",
+    response_model=AttributedUserPageResponse,
+    responses=error_responses(404),
+)
 @inject
 async def list_ad_link_attributed_users(
     ad_link_id: int,
     use_case: FromDishka[ListAdLinkAttributedUsersUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> AttributedUserPageResponse:
-    try:
-        users, total = await use_case(
-            actor,
-            ListAdLinkAttributedUsersDto(ad_link_id=ad_link_id, page=page, page_size=page_size),
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    users, total = await use_case(
+        actor,
+        ListAdLinkAttributedUsersDto(ad_link_id=ad_link_id, page=page, page_size=page_size),
+    )
     return AttributedUserPageResponse(
         items=[_to_attributed_user_response(user) for user in users], total=total
     )
@@ -314,9 +315,21 @@ async def list_ad_link_attributed_users(
 async def get_user_ad_attribution(
     user_id: int,
     use_case: FromDishka[GetUserAdAttributionUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> Optional[UserAdAttributionResponse]:
     attribution = await use_case(actor, user_id)
     if attribution is None:
         return None
     return UserAdAttributionResponse(**asdict(attribution))
+
+
+@router.get(
+    "/links/{ad_link_id:int}", response_model=AdLinkResponse, responses=error_responses(404)
+)
+@inject
+async def get_ad_link(
+    ad_link_id: int,
+    use_case: FromDishka[GetAdLinkUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AdLinkResponse:
+    return _to_response(await use_case(actor, ad_link_id))

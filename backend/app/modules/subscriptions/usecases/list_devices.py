@@ -4,11 +4,11 @@ from typing import Optional
 from pydantic import BaseModel
 from remnapy import RemnawaveSDK
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto
 
 
 class DeviceDto(BaseModel):
@@ -32,7 +32,7 @@ class ListDevicesUseCase(UseCase[None, list[DeviceDto]]):
         self._remnawave_sdk = remnawave_sdk
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> list[DeviceDto]:
+    async def _execute(self, actor: Actor, data: None) -> list[DeviceDto]:
         async with self._uow:
             subscription = (
                 await self._subscription_repository.get_single_active_subscription_or_raise(

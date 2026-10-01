@@ -1,15 +1,17 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
-from app.api.dependencies.admin import require_admin
+from app.api.dependencies.admin import require_admin, require_admin_user
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.enums import PaymentGatewayType
-from app.core.exceptions import NotFoundError, PaymentGatewayError, ValidationError
 from app.modules.gateways.api.schemas import (
     GatewayCatalogEntryResponse,
     GatewayCatalogResponse,
     GatewayFieldSpecResponse,
+    GatewayListResponse,
     GatewayResponse,
     GatewayTestPaymentResponse,
     GatewayTestPaymentStatusResponse,
@@ -19,16 +21,17 @@ from app.modules.gateways.api.schemas import (
 from app.modules.gateways.dto import (
     PaymentGatewayDto,
     ReorderGatewaysDto,
+    SetGatewayActiveDto,
     UpdateGatewaySettingsDto,
 )
 from app.modules.gateways.field_catalog import GATEWAY_FIELD_CATALOG
 from app.modules.gateways.usecases import (
     ListGatewaysUseCase,
     ReorderGatewaysUseCase,
-    ToggleGatewayActiveUseCase,
+    SetGatewayActiveUseCase,
     UpdateGatewaySettingsUseCase,
 )
-from app.modules.payments import CreateTestPaymentUseCase, GetTestPaymentStatusUseCase
+from app.modules.transactions import CreateTestPaymentUseCase, GetTestPaymentStatusUseCase
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/gateways", tags=["gateways"])
@@ -40,24 +43,26 @@ def _to_response(gateway: PaymentGatewayDto) -> GatewayResponse:
         order_index=gateway.order_index,
         is_active=gateway.is_active,
         is_configured=gateway.is_configured,
+        flags=gateway.flags,
     )
 
 
-@router.get("", response_model=list[GatewayResponse])
+@router.get("", response_model=GatewayListResponse)
 @inject
 async def list_gateways(
     use_case: FromDishka[ListGatewaysUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[GatewayResponse]:
+    actor: Actor = Depends(require_admin),
+) -> GatewayListResponse:
     gateways = await use_case(actor)
-    return [_to_response(gateway) for gateway in gateways]
+    items = [_to_response(gateway) for gateway in gateways]
+    return GatewayListResponse(items=items, total=len(items))
 
 
 @router.get("/catalog", response_model=GatewayCatalogResponse)
 @inject
 async def get_gateway_catalog(
     config: FromDishka[AppConfig],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> GatewayCatalogResponse:
     # Static schema metadata, no secrets -- no usecase/Permission layer,
     # same precedent as GET /permissions/catalog in app/api/app.py.
@@ -85,78 +90,85 @@ async def get_gateway_catalog(
     )
 
 
-@router.put("/{gateway_type}/settings", response_model=GatewayResponse)
+@router.put(
+    "/{gateway_type}/settings", response_model=GatewayResponse, responses=error_responses(400)
+)
 @inject
 async def update_gateway_settings(
     gateway_type: PaymentGatewayType,
     payload: UpdateGatewaySettingsRequest,
     use_case: FromDishka[UpdateGatewaySettingsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> GatewayResponse:
-    try:
-        gateway = await use_case(
-            actor, UpdateGatewaySettingsDto(type=gateway_type, values=payload.values)
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    gateway = await use_case(
+        actor, UpdateGatewaySettingsDto(type=gateway_type, values=payload.values)
+    )
     return _to_response(gateway)
 
 
-@router.post("/{gateway_type}/toggle", response_model=GatewayResponse)
+@router.post(
+    "/{gateway_type}/actions/enable", response_model=GatewayResponse, responses=error_responses(400)
+)
 @inject
-async def toggle_gateway_active(
+async def enable_gateway(
     gateway_type: PaymentGatewayType,
-    use_case: FromDishka[ToggleGatewayActiveUseCase],
-    actor: UserDto = Depends(require_admin),
+    use_case: FromDishka[SetGatewayActiveUseCase],
+    actor: Actor = Depends(require_admin),
 ) -> GatewayResponse:
-    try:
-        gateway = await use_case(actor, gateway_type)
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    gateway = await use_case(actor, SetGatewayActiveDto(type=gateway_type, is_active=True))
     return _to_response(gateway)
 
 
-@router.post("/{gateway_type}/test", response_model=GatewayTestPaymentResponse)
+@router.post("/{gateway_type}/actions/disable", response_model=GatewayResponse)
+@inject
+async def disable_gateway(
+    gateway_type: PaymentGatewayType,
+    use_case: FromDishka[SetGatewayActiveUseCase],
+    actor: Actor = Depends(require_admin),
+) -> GatewayResponse:
+    gateway = await use_case(actor, SetGatewayActiveDto(type=gateway_type, is_active=False))
+    return _to_response(gateway)
+
+
+@router.post(
+    "/{gateway_type}/actions/test",
+    response_model=GatewayTestPaymentResponse,
+    responses=error_responses(400, 502),
+)
 @inject
 async def create_test_payment(
     gateway_type: PaymentGatewayType,
     use_case: FromDishka[CreateTestPaymentUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: UserDto = Depends(require_admin_user),
 ) -> GatewayTestPaymentResponse:
-    try:
-        result = await use_case(actor, gateway_type)
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except PaymentGatewayError as error:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
+    result = await use_case(actor, gateway_type)
     return GatewayTestPaymentResponse(
         order_id=result.order_id, confirmation_url=result.confirmation_url
     )
 
 
-@router.get("/test-payments/{order_id}", response_model=GatewayTestPaymentStatusResponse)
+@router.get(
+    "/test-payments/{order_id}",
+    response_model=GatewayTestPaymentStatusResponse,
+    responses=error_responses(404),
+)
 @inject
 async def get_test_payment_status(
     order_id: int,
     use_case: FromDishka[GetTestPaymentStatusUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> GatewayTestPaymentStatusResponse:
-    try:
-        order_status = await use_case(actor, order_id)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    order_status = await use_case(actor, order_id)
     return GatewayTestPaymentStatusResponse(status=order_status)
 
 
-@router.put("/order", response_model=list[GatewayResponse])
+@router.post("/actions/reorder", response_model=GatewayListResponse, responses=error_responses(400))
 @inject
 async def reorder_gateways(
     payload: ReorderGatewaysRequest,
     use_case: FromDishka[ReorderGatewaysUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[GatewayResponse]:
-    try:
-        gateways = await use_case(actor, ReorderGatewaysDto(ordered_types=payload.types))
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    return [_to_response(gateway) for gateway in gateways]
+    actor: Actor = Depends(require_admin),
+) -> GatewayListResponse:
+    gateways = await use_case(actor, ReorderGatewaysDto(ordered_types=payload.types))
+    items = [_to_response(gateway) for gateway in gateways]
+    return GatewayListResponse(items=items, total=len(items))

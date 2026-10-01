@@ -13,19 +13,19 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
-    PaymentOrderStatus,
     PurchaseType,
     Role,
     SubscriptionStatus,
+    TransactionStatus,
 )
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.analytics.dto import GetAnalyticsDto
 from app.modules.analytics.usecases import GetAnalyticsUseCase
-from app.modules.payments.dto import CreatePaymentOrderDto
-from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.pricing.repository import PricingRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
@@ -35,8 +35,8 @@ OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Loc
 
 def _paid_order_dto(
     *, user_id: int, plan_id: int, idempotency_key: str, final_price: Decimal = Decimal("500")
-) -> CreatePaymentOrderDto:
-    return CreatePaymentOrderDto(
+) -> CreateTransactionDto:
+    return CreateTransactionDto(
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -58,25 +58,25 @@ def _paid_order_dto(
 def _use_case(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
 ) -> GetAnalyticsUseCase:
     return GetAnalyticsUseCase(
-        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+        user_repository, subscription_repository, transaction_repository, pricing_repository, uow
     )
 
 
 async def test_actor_without_analytics_view_is_denied(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
     use_case = _use_case(
-        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+        user_repository, subscription_repository, transaction_repository, pricing_repository, uow
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -86,17 +86,17 @@ async def test_actor_without_analytics_view_is_denied(
 async def test_kpi_against_seeded_fixtures(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
     plan_id: int,
 ) -> None:
     payer = await user_repository.create(CreateUserDto(name="Payer", telegram_id=840_001))
     async with uow:
-        order = await payment_order_repository.create(
+        order = await transaction_repository.create(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="analytics-kpi-1")
         )
-    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
     await create_subscription(
         subscription_repository,
@@ -111,7 +111,7 @@ async def test_kpi_against_seeded_fixtures(
     )
 
     use_case = _use_case(
-        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+        user_repository, subscription_repository, transaction_repository, pricing_repository, uow
     )
     analytics = await use_case(OWNER, GetAnalyticsDto(days=7))
 
@@ -125,7 +125,7 @@ async def test_kpi_against_seeded_fixtures(
 async def test_mrr_is_rounded_to_cents(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
 ) -> None:
@@ -142,7 +142,7 @@ async def test_mrr_is_rounded_to_cents(
     )
 
     use_case = _use_case(
-        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+        user_repository, subscription_repository, transaction_repository, pricing_repository, uow
     )
     analytics = await use_case(OWNER, GetAnalyticsDto(days=7))
 
@@ -153,7 +153,7 @@ async def test_mrr_is_rounded_to_cents(
 async def test_churn_snapshot_matches_the_repository_formula(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     session: AsyncSession,
     uow: UnitOfWork,
@@ -195,7 +195,7 @@ async def test_churn_snapshot_matches_the_repository_formula(
     )
 
     use_case = _use_case(
-        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+        user_repository, subscription_repository, transaction_repository, pricing_repository, uow
     )
     analytics = await use_case(OWNER, GetAnalyticsDto(days=7))
 
@@ -209,7 +209,7 @@ async def test_churn_snapshot_matches_the_repository_formula(
 async def test_all_time_period_clamps_churn_window_to_30_days(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
 ) -> None:
@@ -223,7 +223,7 @@ async def test_all_time_period_clamps_churn_window_to_30_days(
     )
 
     use_case = _use_case(
-        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+        user_repository, subscription_repository, transaction_repository, pricing_repository, uow
     )
     analytics = await use_case(OWNER, GetAnalyticsDto(days=0))
 
@@ -233,7 +233,7 @@ async def test_all_time_period_clamps_churn_window_to_30_days(
 async def test_conversion_rate_counts_only_in_window_registrations_with_a_paid_order(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
     session: AsyncSession,
     uow: UnitOfWork,
@@ -241,12 +241,12 @@ async def test_conversion_rate_counts_only_in_window_registrations_with_a_paid_o
 ) -> None:
     converted = await user_repository.create(CreateUserDto(name="Converted", telegram_id=840_201))
     async with uow:
-        order = await payment_order_repository.create(
+        order = await transaction_repository.create(
             _paid_order_dto(
                 user_id=converted.id, plan_id=plan_id, idempotency_key="analytics-conv-1"
             )
         )
-    await payment_order_repository.mark_status(order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
     await user_repository.create(CreateUserDto(name="NotConverted", telegram_id=840_202))
 
@@ -259,15 +259,15 @@ async def test_conversion_rate_counts_only_in_window_registrations_with_a_paid_o
         .values(created_at=datetime_now() - timedelta(days=30))
     )
     async with uow:
-        old_order = await payment_order_repository.create(
+        old_order = await transaction_repository.create(
             _paid_order_dto(
                 user_id=outside_window.id, plan_id=plan_id, idempotency_key="analytics-conv-2"
             )
         )
-    await payment_order_repository.mark_status(old_order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(old_order.id, TransactionStatus.PAID)
 
     use_case = _use_case(
-        user_repository, subscription_repository, payment_order_repository, pricing_repository, uow
+        user_repository, subscription_repository, transaction_repository, pricing_repository, uow
     )
     analytics = await use_case(OWNER, GetAnalyticsDto(days=7))
 

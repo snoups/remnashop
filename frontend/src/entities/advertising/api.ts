@@ -80,7 +80,7 @@ export function deleteAdLink(adLinkId: number): Promise<void> {
 }
 
 export function generateAdLinkCode(): Promise<string> {
-  return apiPost<{ code: string }, Record<string, never>>("/advertising/links/generate-code", {}).then(
+  return apiPost<{ code: string }, Record<string, never>>("/advertising/links/actions/generate-code", {}).then(
     (result) => result.code,
   );
 }

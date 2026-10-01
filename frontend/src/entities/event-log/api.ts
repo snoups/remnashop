@@ -28,8 +28,8 @@ export interface EventLogFilters {
   category?: string;
   actorId?: number;
   search?: string;
-  dateFrom?: string;
-  dateTo?: string;
+  occurredFrom?: string;
+  occurredTo?: string;
   page?: number;
   pageSize?: number;
 }
@@ -42,8 +42,8 @@ export function listEventLog(
   if (filters.category) params.set("category", filters.category);
   if (filters.actorId !== undefined) params.set("actor_id", String(filters.actorId));
   if (filters.search) params.set("search", filters.search);
-  if (filters.dateFrom) params.set("date_from", filters.dateFrom);
-  if (filters.dateTo) params.set("date_to", filters.dateTo);
+  if (filters.occurredFrom) params.set("occurred_from", filters.occurredFrom);
+  if (filters.occurredTo) params.set("occurred_to", filters.occurredTo);
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
@@ -60,7 +60,7 @@ export function getNotifications(signal?: AbortSignal): Promise<Notifications> {
 }
 
 export function markNotificationsRead(): Promise<void> {
-  return apiPost<void, Record<string, never>>("/event-log/notifications/read", {});
+  return apiPost<void, Record<string, never>>("/event-log/notifications/actions/mark-read", {});
 }
 
 export interface NotificationGroups {

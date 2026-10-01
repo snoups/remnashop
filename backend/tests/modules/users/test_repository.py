@@ -4,15 +4,18 @@ from typing import Any
 
 import pytest
 from remnapy.enums import TrafficLimitStrategy
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.events import EventCategory
-from app.core.exceptions import ValidationError
+from app.core.exceptions import ConflictError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.repository import EventLogRepository
@@ -60,6 +63,38 @@ async def test_create_and_get_by_id(user_repository: UserRepository, uow: UnitOf
     assert fetched is not None
     assert fetched.telegram_id == 111
     assert fetched.name == "Alice"
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "code"),
+    [
+        ({"login": "taken"}, {"login": "taken"}, ErrorCode.LOGIN_TAKEN),
+        ({"telegram_id": 4242}, {"telegram_id": 4242}, ErrorCode.TELEGRAM_ID_TAKEN),
+        ({"role": Role.OWNER}, {"role": Role.OWNER}, ErrorCode.OWNER_ALREADY_EXISTS),
+    ],
+)
+async def test_create_maps_unique_violation_to_conflict(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    first: dict[str, Any],
+    second: dict[str, Any],
+    code: ErrorCode,
+) -> None:
+    await _create_user(user_repository, uow, **first)
+
+    with pytest.raises(ConflictError) as exc_info:
+        await _create_user(user_repository, uow, **second)
+
+    assert exc_info.value.code is code
+
+
+async def test_create_leaves_unmapped_violation_unmasked(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    await _create_user(user_repository, uow, email="a@example.com")
+
+    with pytest.raises(IntegrityError):
+        await _create_user(user_repository, uow, email="a@example.com")
 
 
 async def test_get_by_id_missing_returns_none(user_repository: UserRepository) -> None:
@@ -131,27 +166,6 @@ async def test_update_fields_missing_user_returns_none(
         await uow.commit()
 
     assert result is None
-
-
-async def test_delete(user_repository: UserRepository, uow: UnitOfWork) -> None:
-    created = await _create_user(user_repository, uow)
-
-    async with uow:
-        deleted = await user_repository.delete(created.id)
-        await uow.commit()
-
-    assert deleted is True
-    assert await user_repository.get_by_id(created.id) is None
-
-
-async def test_delete_missing_user_returns_false(
-    user_repository: UserRepository, uow: UnitOfWork
-) -> None:
-    async with uow:
-        result = await user_repository.delete(999_999)
-        await uow.commit()
-
-    assert result is False
 
 
 async def test_create_and_update_permission_and_ip_fields(
@@ -229,11 +243,10 @@ async def test_delete_user_nulls_out_actor_id_on_their_own_event_log_entries(
         )
         await uow.commit()
 
+    # no code path hard-deletes a user any more; this pins the FK behaviour itself
     async with uow:
-        deleted = await user_repository.delete(actor.id)
+        await user_repository.session.execute(sa_delete(User).where(User.id == actor.id))
         await uow.commit()
-
-    assert deleted is True
 
     items, _ = await event_log_repository.list(page_size=200)
     persisted = next(i for i in items if i.id == entry.id)
@@ -581,3 +594,16 @@ async def test_list_filtered_search_matches_user_id(
 
     assert target.id in [item.id for item in items]
     assert all(item.id == target.id or item.telegram_id == target.id for item in items)
+
+
+async def test_list_filtered_search_treats_like_wildcards_literally(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    literal = await _create_user(user_repository, uow, telegram_id=710_101, name="a_c literal")
+    await _create_user(user_repository, uow, telegram_id=710_102, name="abc wildcard")
+
+    items, _ = await user_repository.list_filtered(roles=[Role.USER], search="a_c")
+    assert [item.id for item in items] == [literal.id]
+
+    items, _ = await user_repository.list_filtered(roles=[Role.USER], search="%")
+    assert items == []

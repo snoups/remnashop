@@ -3,6 +3,7 @@ from webauthn.helpers import bytes_to_base64url
 from webauthn.helpers.exceptions import WebAuthnException
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -19,7 +20,9 @@ from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
 
 
-class VerifyPasskeyRegistrationUseCase(UseCase[VerifyPasskeyRegistrationDto, PasskeyCredentialDto]):
+class VerifyPasskeyRegistrationUseCase(
+    UseCase[VerifyPasskeyRegistrationDto, PasskeyCredentialDto, UserDto]
+):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(
@@ -42,13 +45,20 @@ class VerifyPasskeyRegistrationUseCase(UseCase[VerifyPasskeyRegistrationDto, Pas
         async with self._uow:
             settings = await self._settings_repository.get_oauth_settings()
             if not settings.passkey_enabled:
-                raise AuthenticationError("Passkeys are not enabled")
+                raise AuthenticationError(
+                    "Passkeys are not enabled", code=ErrorCode.PASSKEYS_DISABLED
+                )
             if settings.passkey_rp_id is None or settings.passkey_origin is None:
-                raise AuthenticationError("Passkeys are not configured")
+                raise AuthenticationError(
+                    "Passkeys are not configured", code=ErrorCode.PASSKEYS_NOT_CONFIGURED
+                )
 
         challenge = await self._challenge_store.consume_registration_challenge(actor.id)
         if challenge is None:
-            raise AuthenticationError("Registration challenge not found or expired")
+            raise AuthenticationError(
+                "Registration challenge not found or expired",
+                code=ErrorCode.PASSKEY_CHALLENGE_EXPIRED,
+            )
 
         try:
             verification = verify_registration_response(
@@ -63,7 +73,10 @@ class VerifyPasskeyRegistrationUseCase(UseCase[VerifyPasskeyRegistrationDto, Pas
                 require_user_verification=True,
             )
         except WebAuthnException as error:
-            raise AuthenticationError("Passkey registration could not be verified") from error
+            raise AuthenticationError(
+                "Passkey registration could not be verified",
+                code=ErrorCode.PASSKEY_REGISTRATION_FAILED,
+            ) from error
 
         transports = data.credential.get("response", {}).get("transports")
 

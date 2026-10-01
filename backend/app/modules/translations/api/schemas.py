@@ -30,3 +30,8 @@ class TranslationsExportPayload(BaseModel):
 class TranslationsImportResult(BaseModel):
     applied: int
     skipped: int
+
+
+class TranslationEntryListResponse(BaseModel):
+    items: list[TranslationEntryItem]
+    total: int

@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request, status
 
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 
 _TRUSTED_PROXY_NETWORKS: Final[list[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]] = [
@@ -65,7 +66,7 @@ def resolve_client_ip(request: Request) -> str:
 
 async def read_bounded_body(request: Request, limit: int) -> bytes:
     # Streams rather than trusting Content-Length: a chunked request carries no
-    # such header, so a length check alone bounds nothing. Callers are the two
+    # such header, so a length check alone bounds nothing. Callers are the
     # unauthenticated webhook routes, which must not buffer an arbitrary body
     # before they get to verify a signature over it.
     declared = request.headers.get("content-length")
@@ -95,13 +96,17 @@ async def assert_public_https_host(url: str) -> None:
     # becomes untrusted-user-configurable rather than admin-only.
     parsed = urlsplit(url)
     if parsed.scheme != "https" or not parsed.hostname:
-        raise ValidationError("URL must be an https:// URL with a host")
+        raise ValidationError(
+            "URL must be an https:// URL with a host", code=ErrorCode.URL_NOT_HTTPS
+        )
 
     loop = asyncio.get_running_loop()
     try:
         addrinfo = await loop.getaddrinfo(parsed.hostname, None)
     except socket.gaierror as error:
-        raise ValidationError(f"Could not resolve host: {parsed.hostname}") from error
+        raise ValidationError(
+            f"Could not resolve host: {parsed.hostname}", code=ErrorCode.URL_HOST_UNRESOLVABLE
+        ) from error
 
     for *_rest, sockaddr in addrinfo:
         address = ipaddress.ip_address(sockaddr[0])
@@ -113,7 +118,10 @@ async def assert_public_https_host(url: str) -> None:
             or address.is_multicast
             or address.is_unspecified
         ):
-            raise ValidationError(f"URL host resolves to a non-public address: {parsed.hostname}")
+            raise ValidationError(
+                f"URL host resolves to a non-public address: {parsed.hostname}",
+                code=ErrorCode.URL_HOST_NOT_PUBLIC,
+            )
 
 
 def is_ip_allowed(client_ip: str, allowlist: list[str]) -> bool:

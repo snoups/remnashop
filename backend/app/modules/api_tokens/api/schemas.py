@@ -24,3 +24,8 @@ class CreateApiTokenRequest(BaseModel):
 class CreatedApiTokenResponse(BaseModel):
     token: ApiTokenResponse
     secret: str
+
+
+class ApiTokenListResponse(BaseModel):
+    items: list[ApiTokenResponse]
+    total: int

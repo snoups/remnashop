@@ -6,6 +6,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies.admin import require_admin
+from app.core.actor import Actor
 from app.modules.analytics.api.schemas import (
     AnalyticsKpiResponse,
     AnalyticsResponse,
@@ -24,7 +25,6 @@ from app.modules.analytics.usecases import (
     GetFunnelUseCase,
     GetLtvDistributionUseCase,
 )
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -43,7 +43,7 @@ class AnalyticsPeriodDays(IntEnum):
 @inject
 async def get_analytics_overview(
     use_case: FromDishka[GetAnalyticsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     days: AnalyticsPeriodDays = AnalyticsPeriodDays.SEVEN,
 ) -> AnalyticsResponse:
     analytics = await use_case(actor, GetAnalyticsDto(days=cast(AnalyticsDays, int(days))))
@@ -75,7 +75,7 @@ async def get_analytics_overview(
 @inject
 async def get_analytics_funnel(
     use_case: FromDishka[GetFunnelUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     days: AnalyticsPeriodDays = AnalyticsPeriodDays.SEVEN,
 ) -> FunnelResponse:
     funnel = await use_case(actor, GetFunnelDto(days=cast(AnalyticsDays, int(days))))
@@ -97,7 +97,7 @@ async def get_analytics_funnel(
 @inject
 async def get_analytics_cohorts(
     use_case: FromDishka[GetCohortRetentionUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> CohortsResponse:
     cohorts = await use_case(actor)
     return CohortsResponse(
@@ -116,7 +116,7 @@ async def get_analytics_cohorts(
 @inject
 async def get_analytics_ltv_distribution(
     use_case: FromDishka[GetLtvDistributionUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> LtvDistributionResponse:
     distribution = await use_case(actor)
     return LtvDistributionResponse(

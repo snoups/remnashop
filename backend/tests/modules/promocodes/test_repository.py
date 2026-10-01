@@ -1,13 +1,15 @@
 import asyncio
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.core.db.models.promocode import Promocode
-from app.core.enums import PromocodeAvailability, PromocodeRewardType
+from app.core.enums import PromocodeAvailability, PromocodeRewardType, PromocodeStatus
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
+from app.core.utils.time import datetime_now
+from app.modules.promocodes.dto import CreatePromocodeDto, ListPromocodesDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
@@ -72,6 +74,37 @@ async def test_list_all_returns_created_promocodes(
     codes = {promo.code for promo in await promocode_repository.list_all()}
 
     assert codes == {"A", "B"}
+
+
+async def test_list_paginated_filters_by_derived_status_and_puts_live_first(
+    promocode_repository: PromocodeRepository,
+) -> None:
+    off = await promocode_repository.create(_create_dto("PGX-OFF"))
+    await promocode_repository.update(UpdatePromocodeDto(promocode_id=off.id, is_active=False))
+    await promocode_repository.create(
+        _create_dto("PGX-OLD", expires_at=datetime_now() - timedelta(days=1))
+    )
+    await promocode_repository.create(
+        _create_dto("PGX-LIVE", reward_type=PromocodeRewardType.TRAFFIC)
+    )
+
+    async def codes(**filters: object) -> list[str]:
+        items, _ = await promocode_repository.list_paginated(
+            ListPromocodesDto(search="pgx-", **filters)  # type: ignore[arg-type]
+        )
+        return [item.code for item in items]
+
+    assert (await codes())[0] == "PGX-LIVE"
+    assert await codes(status=PromocodeStatus.ACTIVE) == ["PGX-LIVE"]
+    assert await codes(status=PromocodeStatus.INACTIVE) == ["PGX-OFF"]
+    assert await codes(status=PromocodeStatus.EXPIRED) == ["PGX-OLD"]
+    assert await codes(reward_type=PromocodeRewardType.TRAFFIC) == ["PGX-LIVE"]
+
+    page, total = await promocode_repository.list_paginated(
+        ListPromocodesDto(search="PGX-", page=2, page_size=2)
+    )
+    assert total == 3
+    assert len(page) == 1
 
 
 async def test_update_partial_leaves_other_fields_untouched(

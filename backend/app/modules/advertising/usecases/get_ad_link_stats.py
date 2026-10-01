@@ -1,15 +1,15 @@
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.advertising.dto import AdLinkStatsDto, GetAdLinkStatsDto
 from app.modules.advertising.repository import AdLinkRepository
-from app.modules.payments import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
-from app.modules.users import UserDto
+from app.modules.transactions import TransactionRepository
 
 _ZERO: Final[Decimal] = Decimal(0)
 
@@ -20,35 +20,34 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
     def __init__(
         self,
         ad_link_repository: AdLinkRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
     ) -> None:
         self._ad_link_repository = ad_link_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: GetAdLinkStatsDto) -> AdLinkStatsDto:
+    async def _execute(self, actor: Actor, data: GetAdLinkStatsDto) -> AdLinkStatsDto:
         async with self._uow:
             ad_link = await self._ad_link_repository.get_by_id(data.ad_link_id)
 
-            since = data.created_from
             attributions_count = await self._ad_link_repository.count_attributions(
-                data.ad_link_id, created_from=since
+                data.ad_link_id, created_from=data.created_from, created_to=data.created_to
             )
             attributions_by_channel = await self._ad_link_repository.count_attributions_by_channel(
-                data.ad_link_id, created_from=since
+                data.ad_link_id, created_from=data.created_from, created_to=data.created_to
             )
             user_ids = await self._ad_link_repository.list_attributed_user_ids(
-                data.ad_link_id, created_from=since
+                data.ad_link_id, created_from=data.created_from, created_to=data.created_to
             )
 
-            paid_user_ids = await self._payment_order_repository.list_user_ids_with_paid_order(
+            paid_user_ids = await self._transaction_repository.list_user_ids_with_paid_order(
                 user_ids
             )
             revenue_by_currency = (
-                await self._payment_order_repository.sum_paid_final_price_by_user_ids(user_ids)
+                await self._transaction_repository.sum_paid_final_price_by_user_ids(user_ids)
             )
 
             rate_table = await self._pricing_repository.get_rate_table()
@@ -78,7 +77,7 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
             )
 
             daily = await self._ad_link_repository.daily_attribution_counts(
-                data.ad_link_id, created_from=since
+                data.ad_link_id, created_from=data.created_from, created_to=data.created_to
             )
 
             return AdLinkStatsDto(

@@ -1,11 +1,12 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.api_tokens.events import ApiTokenRevokedEvent
 from app.modules.api_tokens.repository import ApiTokenRepository
-from app.modules.users import UserDto
 
 
 class RevokeApiTokenUseCase(UseCase[int, None]):
@@ -21,9 +22,9 @@ class RevokeApiTokenUseCase(UseCase[int, None]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: int) -> None:
+    async def _execute(self, actor: Actor, data: int) -> None:
         async with self._uow:
             revoked = await self._api_token_repository.revoke_by_id(data)
             if revoked is None:
-                raise NotFoundError("API token not found")
+                raise NotFoundError("API token not found", code=ErrorCode.API_TOKEN_NOT_FOUND)
             await self._event_publisher.publish(ApiTokenRevokedEvent(user=actor, token_id=data))

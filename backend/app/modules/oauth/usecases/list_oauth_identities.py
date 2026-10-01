@@ -6,7 +6,7 @@ from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.users import UserDto
 
 
-class ListOAuthIdentitiesUseCase(UseCase[None, list[OAuthIdentityDto]]):
+class ListOAuthIdentitiesUseCase(UseCase[None, list[OAuthIdentityDto], UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(

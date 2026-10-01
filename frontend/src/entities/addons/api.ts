@@ -1,4 +1,5 @@
 import { apiGet } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 // Read-only: add-on management itself has no dashboard page yet, this exists
 // only to power the promocode reward picker (TRAFFIC/DEVICES reward types
@@ -14,5 +15,5 @@ export interface AddOnListItem {
 }
 
 export function listAddons(signal?: AbortSignal): Promise<AddOnListItem[]> {
-  return apiGet<AddOnListItem[]>("/addons", signal);
+  return apiGet<ListResponse<AddOnListItem>>("/addons", signal).then((response) => response.items);
 }

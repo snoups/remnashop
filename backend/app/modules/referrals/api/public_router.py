@@ -1,11 +1,11 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies.public import get_current_user
-from app.api.dependencies.rate_limit import rate_limit
+from app.api.dependencies.rate_limit import user_rate_limit
+from app.api.errors import error_responses
 from app.core.constants import TIME_1H
-from app.core.exceptions import ValidationError
 from app.modules.referrals.api.schemas import (
     AttachReferralRequest,
     ReferralRewardResponse,
@@ -46,24 +46,24 @@ async def get_my_referral_stats(
     return _stats_to_response(await use_case(actor))
 
 
-@router.post("/attach", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/actions/attach", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(400)
+)
 @inject
 async def attach_referral(
     payload: AttachReferralRequest,
     use_case: FromDishka[AttachReferralUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> None:
-    try:
-        await use_case(actor, AttachReferralDto(code=payload.code))
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    await use_case(actor, AttachReferralDto(code=payload.code))
 
 
 @router.post(
-    "/withdraw",
+    "/actions/withdraw",
     status_code=status.HTTP_204_NO_CONTENT,
     # each request is an audit-log row an admin works through by hand
-    dependencies=[Depends(rate_limit(key="points_withdraw", limit=5, window_seconds=TIME_1H))],
+    dependencies=[Depends(user_rate_limit(key="points_withdraw", limit=5, window_seconds=TIME_1H))],
+    responses=error_responses(400),
 )
 @inject
 async def withdraw_points(
@@ -71,7 +71,4 @@ async def withdraw_points(
     use_case: FromDishka[RequestPointsWithdrawalUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> None:
-    try:
-        await use_case(actor, RequestPointsWithdrawalDto(amount=payload.amount))
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    await use_case(actor, RequestPointsWithdrawalDto(amount=payload.amount))

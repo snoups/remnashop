@@ -1,6 +1,7 @@
 from datetime import date, datetime, time
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.constants import TIMEZONE
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
@@ -8,8 +9,8 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.analytics.dto import CohortRowDto, CohortsDto
-from app.modules.payments import PaymentOrderRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.transactions import TransactionRepository
+from app.modules.users import UserRepository
 
 _COHORT_MONTHS: Final[int] = 12
 
@@ -35,14 +36,14 @@ class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
     def __init__(
         self,
         user_repository: UserRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         uow: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> CohortsDto:
+    async def _execute(self, actor: Actor, data: None) -> CohortsDto:
         async with self._uow:
             now = datetime_now()
             today = now.date()
@@ -60,7 +61,7 @@ class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
                 registered_month_by_user[user_id] = key
 
             all_user_ids = list(registered_month_by_user.keys())
-            paid_pairs = await self._payment_order_repository.list_paid_user_month_pairs(
+            paid_pairs = await self._transaction_repository.list_paid_user_month_pairs(
                 all_user_ids, earliest_since
             )
             activity: dict[str, dict[str, set[int]]] = {}

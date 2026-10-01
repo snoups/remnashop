@@ -9,6 +9,7 @@ from app.core.db.models.currency_rate import CurrencyRate
 from app.core.db.models.pricing_settings import PricingSettings
 from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import Currency, RoundingMode
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.pricing.dto import (
     RATE_PRECISION,
@@ -101,11 +102,15 @@ class PricingRepository:
     async def update_rate(self, data: UpdateCurrencyRateDto) -> CurrencyRateDto:
         settings = await self._get_or_create_settings()
         if data.currency == settings.anchor_currency and data.rate != 1:
-            raise ValidationError("The anchor currency's rate is fixed at 1.0")
+            raise ValidationError(
+                "The anchor currency's rate is fixed at 1.0", code=ErrorCode.ANCHOR_RATE_FIXED
+            )
 
         row = await self.session.get(CurrencyRate, data.currency)
         if row is None:
-            raise ValidationError(f"No currency rate row for {data.currency}")
+            raise ValidationError(
+                f"No currency rate row for {data.currency}", code=ErrorCode.CURRENCY_RATE_MISSING
+            )
 
         row.rate = data.rate.quantize(RATE_PRECISION)
         row.rounding_mode = data.rounding_mode
@@ -133,7 +138,9 @@ class PricingRepository:
         for currency, rate in new_rates.items():
             row = await self.session.get(CurrencyRate, currency)
             if row is None:
-                raise ValidationError(f"No currency rate row for {currency}")
+                raise ValidationError(
+                    f"No currency rate row for {currency}", code=ErrorCode.CURRENCY_RATE_MISSING
+                )
             row.rate = rate
 
         await self.session.flush()

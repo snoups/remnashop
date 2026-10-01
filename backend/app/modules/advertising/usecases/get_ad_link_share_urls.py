@@ -1,5 +1,6 @@
 from typing import Final, Optional
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.constants import T_ME
 from app.core.db.uow import UnitOfWork
@@ -8,7 +9,6 @@ from app.core.usecase import UseCase
 from app.modules.advertising.dto import AdLinkShareUrlsDto
 from app.modules.advertising.repository import AdLinkRepository
 from app.modules.settings import SettingsRepository, fetch_bot_username
-from app.modules.users import UserDto
 
 # matches telegram/middlewares/_codes.py's _AD_LINK_PREFIX
 _BOT_START_QUERY: Final[str] = "?start=ad_{code}"
@@ -30,7 +30,7 @@ class GetAdLinkShareUrlsUseCase(UseCase[int, AdLinkShareUrlsDto]):
         self._config = config
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: int) -> AdLinkShareUrlsDto:
+    async def _execute(self, actor: Actor, data: int) -> AdLinkShareUrlsDto:
         async with self._uow:
             ad_link = await self._ad_link_repository.get_by_id(data)
             bot_settings = await self._settings_repository.get_bot_settings()

@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import SessionRevoker
 from app.core.security import hash_password, verify_password
@@ -20,7 +21,7 @@ class UpdateOwnProfileDto:
     new_password: Optional[str] = None
 
 
-class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto]):
+class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(
@@ -40,7 +41,9 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto]):
         if data.name is not None:
             name = clean_display_name(data.name)
             if not name:
-                raise ValidationError("Name must contain letters or digits")
+                raise ValidationError(
+                    "Name must contain letters or digits", code=ErrorCode.NAME_INVALID
+                )
 
         password_hash = None
 
@@ -53,7 +56,9 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto]):
                 or data.current_password is None
                 or not await verify_password(data.current_password, stored_hash, pepper)
             ):
-                raise ValidationError("Current password is incorrect")
+                raise ValidationError(
+                    "Current password is incorrect", code=ErrorCode.CURRENT_PASSWORD_INCORRECT
+                )
 
             password_hash = await hash_password(data.new_password, pepper)
 

@@ -1,39 +1,24 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from functools import lru_cache
-from typing import TYPE_CHECKING, Generic, Optional, TypeVar, overload
+from typing import Generic, Optional, cast, overload
 
 from loguru import logger
+from typing_extensions import TypeVar
 
+from app.core.actor import SYSTEM_ACTOR, Actor
 from app.core.enums import Role
 from app.core.exceptions import PermissionDeniedError
 from app.core.security.permissions import Permission, PermissionPolicy
 
-if TYPE_CHECKING:
-    from app.modules.users.dto import UserDto
-
 InputDto = TypeVar("InputDto")
 OutputDto = TypeVar("OutputDto")
+# A usecase that acts on the caller's own account narrows this to UserDto; its
+# route then resolves the actor through get_current_user, so an API token never
+# reaches it.
+ActorT = TypeVar("ActorT", bound=Actor, default=Actor)
 
 
-@lru_cache(maxsize=1)
-def _system_actor() -> UserDto:
-    # local import: app.modules.users triggers a package __init__ chain that
-    # imports back into this module -- deferred here breaks that cycle,
-    # same class of circular import fixed in core/security/permissions.py.
-    from app.modules.users.dto import UserDto  # noqa: PLC0415
-
-    return UserDto(
-        id=-1,
-        telegram_id=-1,
-        name=Role.SYSTEM.name,
-        role=Role.SYSTEM,
-    )
-
-
-class BoundUseCase(Generic[InputDto, OutputDto]):
-    def __init__(self, use_case: "UseCase[InputDto, OutputDto]", actor: UserDto) -> None:
+class BoundUseCase(Generic[InputDto, OutputDto, ActorT]):
+    def __init__(self, use_case: "UseCase[InputDto, OutputDto, ActorT]", actor: ActorT) -> None:
         self._use_case = use_case
         self._actor = actor
 
@@ -47,23 +32,25 @@ class BoundUseCase(Generic[InputDto, OutputDto]):
         return await self._use_case._run(self._actor, data)
 
 
-class UseCase(ABC, Generic[InputDto, OutputDto]):
+class UseCase(ABC, Generic[InputDto, OutputDto, ActorT]):
     required_permission: Optional[Permission] = None
 
     @property
-    def system(self) -> "BoundUseCase[InputDto, OutputDto]":
-        return BoundUseCase(self, _system_actor())
+    def system(self) -> "BoundUseCase[InputDto, OutputDto, ActorT]":
+        # only ever reached with the default ActorT; a UserDto-narrowed usecase
+        # acts on a real account and has no system caller
+        return BoundUseCase(self, cast(ActorT, SYSTEM_ACTOR))
 
     @overload
-    async def __call__(self, actor: UserDto, data: InputDto) -> OutputDto: ...
+    async def __call__(self, actor: ActorT, data: InputDto) -> OutputDto: ...
 
     @overload
-    async def __call__(self, actor: UserDto) -> OutputDto: ...
+    async def __call__(self, actor: ActorT) -> OutputDto: ...
 
-    async def __call__(self, actor: UserDto, data: Optional[InputDto] = None) -> OutputDto:
+    async def __call__(self, actor: ActorT, data: Optional[InputDto] = None) -> OutputDto:
         return await self._run(actor, data)
 
-    async def _run(self, actor: UserDto, data: Optional[InputDto] = None) -> OutputDto:
+    async def _run(self, actor: ActorT, data: Optional[InputDto] = None) -> OutputDto:
         self._check_permissions(actor)
         # data-less usecases (InputDto=None) are called via the no-data
         # __call__ overload above and never read `data` in _execute(); mypy
@@ -71,7 +58,7 @@ class UseCase(ABC, Generic[InputDto, OutputDto]):
         # against `_execute`'s `InputDto` parameter.
         return await self._execute(actor, data)  # type: ignore[arg-type]
 
-    def _check_permissions(self, actor: UserDto) -> None:
+    def _check_permissions(self, actor: Actor) -> None:
         if actor.role == Role.SYSTEM:
             logger.debug(
                 f"Skipping permission check for system actor in '{self.__class__.__name__}'"
@@ -87,5 +74,5 @@ class UseCase(ABC, Generic[InputDto, OutputDto]):
             raise PermissionDeniedError
 
     @abstractmethod
-    async def _execute(self, actor: UserDto, data: InputDto) -> OutputDto:
+    async def _execute(self, actor: ActorT, data: InputDto) -> OutputDto:
         raise NotImplementedError

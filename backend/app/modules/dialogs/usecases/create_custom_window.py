@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.constants import DEFAULT_BANNER_NAME
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
@@ -13,7 +14,6 @@ from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases._publish import publish_dialog_change
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationsRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -41,9 +41,7 @@ class CreateCustomDialogWindowUseCase(UseCase[CreateCustomDialogWindowInput, Dia
         self._uow = uow
         self._redis = redis
 
-    async def _execute(
-        self, actor: UserDto, data: CreateCustomDialogWindowInput
-    ) -> DialogWindowDto:
+    async def _execute(self, actor: Actor, data: CreateCustomDialogWindowInput) -> DialogWindowDto:
         async with self._uow:
             key = f"custom-{uuid4().hex}"
             text_key = f"msg-dialog-{key}"

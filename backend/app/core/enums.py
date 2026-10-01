@@ -104,6 +104,13 @@ class PromocodeRewardType(UpperStrEnum):
     PURCHASE_DISCOUNT = auto()
 
 
+# derived from is_active + expires_at; never stored
+class PromocodeStatus(UpperStrEnum):
+    ACTIVE = auto()
+    EXPIRED = auto()
+    INACTIVE = auto()
+
+
 class PromocodeAvailability(UpperStrEnum):
     ALL = auto()
     NEW = auto()
@@ -144,7 +151,7 @@ class AdLinkChannel(UpperStrEnum):
     WEBCABINET = auto()
 
 
-class PaymentOrderStatus(UpperStrEnum):
+class TransactionStatus(UpperStrEnum):
     PENDING = auto()
     PAID = auto()
     FAILED = auto()

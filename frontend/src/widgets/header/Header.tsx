@@ -7,7 +7,6 @@ import { Link, useLocation } from "react-router-dom";
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
-import { toggleDebugBar } from "@shared/lib/debug-bar";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { usePageTitle } from "@shared/lib/use-page-title";
@@ -28,9 +27,6 @@ const POPOVER_MOTION = {
   exit: { opacity: 0, scale: 0.85 },
   transition: { duration: 0.15, ease: "easeOut" },
 } as const;
-
-// same as BuildInfoBadge's -- the title stands in for it where the sidebar is hidden
-const LONG_PRESS_MS = 600;
 
 // two 36px items plus the popover padding
 const USER_MENU_MAX_HEIGHT = 90;
@@ -67,31 +63,12 @@ export function Header({ onLogout }: HeaderProps) {
   );
   useCloseOnScroll(openPopover !== null, [menuPopoverRef, notifPopoverRef], () => setOpenPopover(null));
 
-  const longPressTimer = useRef<number | null>(null);
-  const cancelLongPress = () => {
-    if (longPressTimer.current !== null) clearTimeout(longPressTimer.current);
-    longPressTimer.current = null;
-  };
-  const startLongPress = () => {
-    cancelLongPress();
-    longPressTimer.current = window.setTimeout(toggleDebugBar, LONG_PRESS_MS);
-  };
-
   const initials = (login ?? "?").slice(0, 2).toUpperCase();
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:gap-5 md:px-8 md:py-5">
       <div className="flex items-center gap-2.5">
-        <span
-          onPointerDown={startLongPress}
-          onPointerUp={cancelLongPress}
-          onPointerLeave={cancelLongPress}
-          onPointerCancel={cancelLongPress}
-          onContextMenu={(event) => event.preventDefault()}
-          className="select-none text-[21px] font-bold tracking-tight text-foreground md:select-auto"
-        >
-          {pageTitle}
-        </span>
+        <span className="text-[21px] font-bold tracking-tight text-foreground">{pageTitle}</span>
         {isOverviewPage && (
           <IconButton
             size="8"

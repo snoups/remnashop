@@ -12,18 +12,18 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
-    PaymentOrderStatus,
     PurchaseType,
     Role,
     SubscriptionStatus,
+    TransactionStatus,
 )
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.analytics.dto import GetFunnelDto
 from app.modules.analytics.usecases import GetFunnelUseCase
-from app.modules.payments.dto import CreatePaymentOrderDto
-from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
@@ -31,8 +31,8 @@ from tests.modules.subscriptions.factories import create_subscription, make_plan
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 
 
-def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreatePaymentOrderDto:
-    return CreatePaymentOrderDto(
+def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
+    return CreateTransactionDto(
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -54,20 +54,20 @@ def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> Crea
 def _use_case(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> GetFunnelUseCase:
-    return GetFunnelUseCase(user_repository, subscription_repository, payment_order_repository, uow)
+    return GetFunnelUseCase(user_repository, subscription_repository, transaction_repository, uow)
 
 
 async def test_actor_without_analytics_view_is_denied(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = _use_case(user_repository, subscription_repository, payment_order_repository, uow)
+    use_case = _use_case(user_repository, subscription_repository, transaction_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor, GetFunnelDto(days=7))
@@ -76,7 +76,7 @@ async def test_actor_without_analytics_view_is_denied(
 async def test_funnel_counts_are_independent_within_the_registered_cohort(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     session: AsyncSession,
     uow: UnitOfWork,
     plan_id: int,
@@ -91,26 +91,26 @@ async def test_funnel_counts_are_independent_within_the_registered_cohort(
         is_trial=True,
     )
     async with uow:
-        first = await payment_order_repository.create(
+        first = await transaction_repository.create(
             _paid_order_dto(
                 user_id=trial_then_paid.user_id, plan_id=plan_id, idempotency_key="funnel-1"
             )
         )
-        second = await payment_order_repository.create(
+        second = await transaction_repository.create(
             _paid_order_dto(
                 user_id=trial_then_paid.user_id, plan_id=plan_id, idempotency_key="funnel-2"
             )
         )
-    await payment_order_repository.mark_status(first.id, PaymentOrderStatus.PAID)
-    await payment_order_repository.mark_status(second.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(first.id, TransactionStatus.PAID)
+    await transaction_repository.mark_status(second.id, TransactionStatus.PAID)
 
     # direct_payer: registered in window, no trial, paid once directly.
     direct_payer = await user_repository.create(CreateUserDto(name="Direct", telegram_id=828_002))
     async with uow:
-        direct_order = await payment_order_repository.create(
+        direct_order = await transaction_repository.create(
             _paid_order_dto(user_id=direct_payer.id, plan_id=plan_id, idempotency_key="funnel-3")
         )
-    await payment_order_repository.mark_status(direct_order.id, PaymentOrderStatus.PAID)
+    await transaction_repository.mark_status(direct_order.id, TransactionStatus.PAID)
 
     # registered_only: registered in window, no trial, never paid.
     await user_repository.create(CreateUserDto(name="RegisteredOnly", telegram_id=828_003))
@@ -123,7 +123,7 @@ async def test_funnel_counts_are_independent_within_the_registered_cohort(
         .values(created_at=datetime_now() - timedelta(days=30))
     )
 
-    use_case = _use_case(user_repository, subscription_repository, payment_order_repository, uow)
+    use_case = _use_case(user_repository, subscription_repository, transaction_repository, uow)
     funnel = await use_case(OWNER, GetFunnelDto(days=7))
 
     by_key = {step.key: step for step in funnel.steps}

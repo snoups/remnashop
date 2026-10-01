@@ -1,3 +1,4 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -6,7 +7,6 @@ from app.core.utils.http import assert_public_https_host
 from app.modules.settings.dto import OAuthSettingsDto, UpdateOAuthSettingsDto
 from app.modules.settings.events import OidcIssuerChangedEvent
 from app.modules.settings.repository import SettingsRepository
-from app.modules.users import UserDto
 
 
 class UpdateOAuthSettingsUseCase(UseCase[UpdateOAuthSettingsDto, OAuthSettingsDto]):
@@ -22,7 +22,7 @@ class UpdateOAuthSettingsUseCase(UseCase[UpdateOAuthSettingsDto, OAuthSettingsDt
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: UpdateOAuthSettingsDto) -> OAuthSettingsDto:
+    async def _execute(self, actor: Actor, data: UpdateOAuthSettingsDto) -> OAuthSettingsDto:
         if data.oidc_issuer_url is not None:
             await assert_public_https_host(data.oidc_issuer_url)
 

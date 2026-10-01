@@ -10,7 +10,7 @@ import {
   generateAdLinkCode,
 } from "@entities/advertising/api";
 import { type AdLinkChannels, ChannelsPicker } from "@entities/advertising/ChannelsPicker";
-import { CURRENCY_ICON } from "@entities/payments/api";
+import { CURRENCY_ICON } from "@entities/transactions/api";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { blockNonDecimalKeys } from "@shared/lib/number-input";

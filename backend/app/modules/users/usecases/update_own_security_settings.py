@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -15,7 +16,7 @@ class UpdateSecuritySettingsDto:
     client_ip: str
 
 
-class UpdateOwnSecuritySettingsUseCase(UseCase[UpdateSecuritySettingsDto, UserDto]):
+class UpdateOwnSecuritySettingsUseCase(UseCase[UpdateSecuritySettingsDto, UserDto, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(self, user_repository: UserRepository, uow: UnitOfWork) -> None:
@@ -25,7 +26,8 @@ class UpdateOwnSecuritySettingsUseCase(UseCase[UpdateSecuritySettingsDto, UserDt
     async def _execute(self, actor: UserDto, data: UpdateSecuritySettingsDto) -> UserDto:
         if data.ip_allowlist and not is_ip_allowed(data.client_ip, data.ip_allowlist):
             raise ValidationError(
-                "Your current IP is not in the submitted allowlist -- this would lock you out"
+                "Your current IP is not in the submitted allowlist -- this would lock you out",
+                code=ErrorCode.IP_ALLOWLIST_LOCKOUT,
             )
 
         async with self._uow:

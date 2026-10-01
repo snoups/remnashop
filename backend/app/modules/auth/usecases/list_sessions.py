@@ -6,7 +6,7 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.users import UserDto
 
 
-class ListSessionsUseCase(UseCase[None, list[SessionDto]]):
+class ListSessionsUseCase(UseCase[None, list[SessionDto], UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(self, session_repository: SessionRepository, uow: UnitOfWork) -> None:

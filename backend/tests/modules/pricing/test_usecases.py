@@ -282,9 +282,9 @@ async def test_adjust_base_prices_multiplies_scope_and_leaves_overrides_untouche
 
 
 async def test_update_pricing_settings_persists(
-    pricing_repository: PricingRepository, uow: UnitOfWork
+    pricing_repository: PricingRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    settings = await UpdatePricingSettingsUseCase(pricing_repository, uow)(
+    settings = await UpdatePricingSettingsUseCase(pricing_repository, event_publisher, uow)(
         OWNER, UpdatePricingSettingsDto(price_per_day=Decimal("0.50"), price_per_gb=Decimal("0.30"))
     )
     assert settings.price_per_day == Decimal("0.50")

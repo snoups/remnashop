@@ -26,7 +26,14 @@ def _discover_admin_routers() -> list[tuple[str, Any]]:
 
 
 def _requires_admin(route: APIRoute) -> bool:
-    return any(dep.call is require_admin for dep in route.dependant.dependencies)
+    # walks sub-dependencies too: require_admin_user reaches require_admin
+    pending = list(route.dependant.dependencies)
+    while pending:
+        dep = pending.pop()
+        if dep.call is require_admin:
+            return True
+        pending.extend(dep.dependencies)
+    return False
 
 
 def test_every_admin_router_route_requires_admin() -> None:
@@ -54,6 +61,7 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
         "analytics.router",
         "api_tokens.router",
         "auth.sessions_router",
+        "auth.user_sessions_router",
         "backups.router",
         "banners.router",
         "emoji_packs.router",
@@ -64,7 +72,6 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
         "oauth.router",
         "overview.router",
         "passkeys.router",
-        "payments.router",
         "plans.router",
         "pricing.router",
         "promocodes.router",
@@ -72,6 +79,7 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
         "settings.router",
         "subscriptions.router",
         "subscriptions.addons_router",
+        "transactions.router",
         "translations.router",
         "users.router",
         "users.admins_router",

@@ -104,7 +104,6 @@ class PublicPlanResponse(BaseModel):
 
 
 class CreatePlanRequest(BaseModel):
-    public_code: str = Field(min_length=1, max_length=64, pattern=r"^[a-z0-9_-]+$")
     name: str = Field(min_length=1, max_length=100)
     description: Optional[str] = Field(default=None, max_length=500)
     tag: Optional[str] = Field(default=None, max_length=32)
@@ -152,3 +151,13 @@ class UpdatePlanSquadsRequest(BaseModel):
 
 class ReorderPlansRequest(BaseModel):
     plan_ids: list[int]
+
+
+class PlanListResponse(BaseModel):
+    items: list[PlanResponse]
+    total: int
+
+
+class PublicPlanListResponse(BaseModel):
+    items: list[PublicPlanResponse]
+    total: int

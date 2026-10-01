@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
 from app.core.security import hash_refresh_token
@@ -72,4 +73,6 @@ class RefreshSessionUseCase:
                     )
                 )
 
-        raise AuthenticationError("Invalid or expired refresh token")
+        raise AuthenticationError(
+            "Invalid or expired refresh token", code=ErrorCode.REFRESH_TOKEN_INVALID
+        )

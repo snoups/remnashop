@@ -215,8 +215,8 @@ export function ReferralsListPage() {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    if (date.toDateString() === today.toDateString()) return t("payments.today");
-    if (date.toDateString() === yesterday.toDateString()) return t("payments.yesterday");
+    if (date.toDateString() === today.toDateString()) return t("transactions.today");
+    if (date.toDateString() === yesterday.toDateString()) return t("transactions.yesterday");
     return date.toLocaleDateString(i18n.language, {
       day: "numeric",
       month: "long",
@@ -234,7 +234,11 @@ export function ReferralsListPage() {
   };
 
   const userHandle = (user: ReferralUser): string =>
-    [user.username ? `@${user.username}` : null, user.telegram_id !== null ? `ID ${user.telegram_id}` : null]
+    [
+      user.username ? `@${user.username}` : null,
+      user.email,
+      user.telegram_id !== null ? `ID ${user.telegram_id}` : null,
+    ]
       .filter(Boolean)
       .join(" · ");
 

@@ -6,7 +6,7 @@ from app.modules.referrals.repository import ReferralRepository
 from app.modules.users import UserDto
 
 
-class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto]):
+class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(self, referral_repository: ReferralRepository, uow: UnitOfWork) -> None:

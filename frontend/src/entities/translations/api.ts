@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 export interface ActiveLocalesResult {
   active: string[];
@@ -18,7 +19,7 @@ export function listActiveLocales(signal?: AbortSignal): Promise<ActiveLocalesRe
 }
 
 export function addLocale(locale: string): Promise<ActiveLocalesResult> {
-  return apiPost<ActiveLocalesResult, { locale: string }>("/settings/locales", { locale });
+  return apiPut<ActiveLocalesResult, Record<string, never>>(`/settings/locales/${locale}`, {});
 }
 
 export function removeLocale(locale: string): Promise<ActiveLocalesResult> {
@@ -26,7 +27,7 @@ export function removeLocale(locale: string): Promise<ActiveLocalesResult> {
 }
 
 export function listTranslations(signal?: AbortSignal): Promise<TranslationEntry[]> {
-  return apiGet<TranslationEntry[]>("/translations", signal);
+  return apiGet<ListResponse<TranslationEntry>>("/translations", signal).then((response) => response.items);
 }
 
 export function updateTranslation(
@@ -49,7 +50,7 @@ export function resetTranslation(
 ): Promise<TranslationEntry> {
   const query = attributeId ? `?attribute_id=${encodeURIComponent(attributeId)}` : "";
   return apiPost<TranslationEntry, Record<string, never>>(
-    `/translations/${locale}/${messageId}/reset${query}`,
+    `/translations/${locale}/${messageId}/actions/reset${query}`,
     {},
   );
 }
@@ -72,11 +73,11 @@ export function importTranslations(
   payload: TranslationsExportPayload,
 ): Promise<TranslationsImportResult> {
   return apiPost<TranslationsImportResult, TranslationsExportPayload>(
-    "/translations/import",
+    "/translations/actions/import",
     payload,
   );
 }
 
 export function resetAllTranslations(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/translations/reset-all", {});
+  return apiPost<null, Record<string, never>>("/translations/actions/reset-all", {});
 }

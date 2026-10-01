@@ -39,9 +39,9 @@ async def test_revoke_all_by_user_deletes_the_users_live_panel_identities(
     # the panel identity behind a DELETED row is already gone
     await remnawave_sdk.users.delete_user(already_deleted.id)
 
-    await PanelSubscriptionRevoker(
-        subscription_repository.session, remnawave_sdk
-    ).revoke_all_by_user(owner.id)
+    await PanelSubscriptionRevoker(subscription_repository, remnawave_sdk).revoke_all_by_user(
+        owner.id
+    )
 
     assert live.id not in remnawave_store
     # an expired subscription still has a panel identity -- it goes too

@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import PaymentGatewayType, PaymentOrderStatus
+from app.core.enums import PaymentGatewayType, TransactionStatus
 
 
 class GatewayTestPaymentResponse(BaseModel):
@@ -11,7 +11,7 @@ class GatewayTestPaymentResponse(BaseModel):
 
 
 class GatewayTestPaymentStatusResponse(BaseModel):
-    status: PaymentOrderStatus
+    status: TransactionStatus
 
 
 class GatewayResponse(BaseModel):
@@ -19,6 +19,7 @@ class GatewayResponse(BaseModel):
     order_index: int
     is_active: bool
     is_configured: bool
+    flags: dict[str, bool]
 
 
 class UpdateGatewaySettingsRequest(BaseModel):
@@ -31,7 +32,7 @@ class ReorderGatewaysRequest(BaseModel):
 
 class GatewayFieldSpecResponse(BaseModel):
     key: str
-    kind: Literal["text", "secret", "number"]
+    kind: Literal["text", "secret", "number", "boolean"]
     required: bool
 
 
@@ -43,3 +44,8 @@ class GatewayCatalogEntryResponse(BaseModel):
 
 class GatewayCatalogResponse(BaseModel):
     entries: list[GatewayCatalogEntryResponse]
+
+
+class GatewayListResponse(BaseModel):
+    items: list[GatewayResponse]
+    total: int

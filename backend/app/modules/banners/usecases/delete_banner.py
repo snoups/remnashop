@@ -1,12 +1,13 @@
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.banners.dto import BannerKeyDto
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.storage import delete_banner_file
-from app.modules.users import UserDto
 
 
 class DeleteBannerUseCase(UseCase[BannerKeyDto, None]):
@@ -19,11 +20,13 @@ class DeleteBannerUseCase(UseCase[BannerKeyDto, None]):
         self._config = config
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: BannerKeyDto) -> None:
+    async def _execute(self, actor: Actor, data: BannerKeyDto) -> None:
         async with self._uow:
             banner = await self._banner_repository.get(data.name, data.locale)
             if banner is None:
-                raise NotFoundError(f"Banner not found: {data.name}/{data.locale}")
+                raise NotFoundError(
+                    f"Banner not found: {data.name}/{data.locale}", code=ErrorCode.BANNER_NOT_FOUND
+                )
 
         async with self._uow:
             await self._banner_repository.delete(data.name, data.locale)

@@ -10,17 +10,17 @@ import {
   CURRENCY_SYMBOL,
   PAYMENT_STATUS_BADGE_TONE,
   PURCHASE_TYPES,
-  getPaymentOrderSummary,
-  listPaymentOrders,
-  type PaymentOrderItem,
-} from "@entities/payments/api";
+  getTransactionSummary,
+  listTransactions,
+  type TransactionItem,
+} from "@entities/transactions/api";
 import { listUserPromocodeActivations, type UserPromocodeActivation } from "@entities/promocodes/api";
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { PaidTimeline } from "@features/user-details/PaidTimeline";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
-import { PaymentOrderDetailsDialog } from "@features/payment-order-details/PaymentOrderDetailsDialog";
+import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
 import { ReferralManagePanel } from "@features/user-referrals/ReferralManagePanel";
 import { ReferralKpis, ReferralProgramCard } from "@features/user-referrals/ReferralOverview";
 import { ResetReferralCodeButton } from "@features/user-referrals/ResetReferralCodeButton";
@@ -84,7 +84,7 @@ function SectionTitle({ children }: { children: ReactNode }) {
 }
 
 // `saved` comes from the summary, already in the report currency; undefined hides the tile
-function PurchaseKpis({ orders, total, saved }: { orders: PaymentOrderItem[]; total: number; saved?: string }) {
+function PurchaseKpis({ orders, total, saved }: { orders: TransactionItem[]; total: number; saved?: string }) {
   const { t } = useTranslation();
   const paid = orders.filter((order) => order.status === "PAID");
   const byType = PURCHASE_TYPES.map((type) => ({ type, count: paid.filter((o) => o.purchase_type === type).length })).filter(
@@ -141,14 +141,14 @@ function PurchaseKpis({ orders, total, saved }: { orders: PaymentOrderItem[]; to
 export function AnalyticsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
   const permissions = usePermissions();
-  const canViewSummary = permissions.includes("PAYMENTS_SUMMARY_VIEW");
-  const canViewOrders = permissions.includes("PAYMENTS_VIEW");
+  const canViewSummary = permissions.includes("TRANSACTIONS_SUMMARY_VIEW");
+  const canViewOrders = permissions.includes("TRANSACTIONS_VIEW");
   const [summary] = useAsyncResource((signal) =>
-    canViewSummary ? getPaymentOrderSummary({ userId }, signal) : Promise.resolve(null),
+    canViewSummary ? getTransactionSummary({ userId }, signal) : Promise.resolve(null),
   );
   // first ANALYTICS_ORDERS_LIMIT orders only; a per-user aggregate endpoint once someone has more
   const [orders] = useAsyncResource((signal) =>
-    canViewOrders ? listPaymentOrders({ userId, pageSize: ANALYTICS_ORDERS_LIMIT }, signal) : Promise.resolve(null),
+    canViewOrders ? listTransactions({ userId, pageSize: ANALYTICS_ORDERS_LIMIT }, signal) : Promise.resolve(null),
   );
   const [referrals] = useAsyncResource((signal) =>
     permissions.includes("REFERRALS_VIEW") ? getUserReferralStats(userId, signal) : Promise.resolve(null),
@@ -170,7 +170,7 @@ export function AnalyticsTab({ userId }: { userId: number }) {
                 value={kpiValue(summary, (s) => money(s.revenue))}
                 hint={
                   data && Number(data.refunded_amount) > 0
-                    ? `${t("payments.stats.refunded")} ${money(data.refunded_amount)}`
+                    ? `${t("transactions.stats.refunded")} ${money(data.refunded_amount)}`
                     : undefined
                 }
               />
@@ -183,7 +183,7 @@ export function AnalyticsTab({ userId }: { userId: number }) {
                   saved={canViewSummary ? kpiValue(summary, (s) => money(s.discount_amount)) : undefined}
                 />
               ) : orders.kind === "error" ? (
-                <LoadError text={t("payments.loadError")} />
+                <LoadError text={t("transactions.loadError")} />
               ) : (
                 <Spinner size="card" />
               ))}
@@ -204,19 +204,19 @@ export function AnalyticsTab({ userId }: { userId: number }) {
 export function TransactionsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
   const bounceStrength = useBounceStrength();
-  const canViewDetails = usePermissions().includes("PAYMENTS_ORDER_VIEW");
+  const canViewDetails = usePermissions().includes("TRANSACTIONS_DETAIL_VIEW");
   const [state, , setData] = useAsyncResource((signal) =>
-    listPaymentOrders({ userId, pageSize: TRANSACTIONS_PAGE_SIZE }, signal),
+    listTransactions({ userId, pageSize: TRANSACTIONS_PAGE_SIZE }, signal),
   );
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [openedOrder, setOpenedOrder] = useState<PaymentOrderItem | null>(null);
+  const [openedOrder, setOpenedOrder] = useState<TransactionItem | null>(null);
 
   const handleLoadMore = async () => {
     if (state.kind !== "ready") return;
     setIsLoadingMore(true);
     try {
-      const result = await listPaymentOrders({ userId, page: page + 1, pageSize: TRANSACTIONS_PAGE_SIZE });
+      const result = await listTransactions({ userId, page: page + 1, pageSize: TRANSACTIONS_PAGE_SIZE });
       setData({ items: [...state.data.items, ...result.items], total: result.total });
       setPage(page + 1);
     } catch {
@@ -229,7 +229,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <LoadError text={t("payments.loadError")} />}
+      {state.kind === "error" && <LoadError text={t("transactions.loadError")} />}
       {state.kind === "ready" && state.data.items.length === 0 && (
         <EmptyState icon={Receipt} text={t("users.details.empty.transactions")} />
       )}
@@ -257,14 +257,14 @@ export function TransactionsTab({ userId }: { userId: number }) {
                   </span>
                 </span>
                 <span className="block truncate text-[12px] text-muted-foreground">
-                  {t(`payments.purchaseType.${order.purchase_type}`)} · <span className="font-mono">#{order.id}</span> ·{" "}
+                  {t(`transactions.purchaseType.${order.purchase_type}`)} · <span className="font-mono">#{order.id}</span> ·{" "}
                   <span className="font-mono">{formatDate(order.created_at, i18n.language)}</span>
                 </span>
               </span>
               <span className="shrink-0 text-[13.5px] font-semibold tabular-nums text-foreground">
                 {formatMoney(order.final_price, order.currency, i18n.language, true)}
               </span>
-              <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`payments.status.${order.status}`)}</Badge>
+              <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
             </motion.button>
           );
         })}
@@ -278,7 +278,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
           />
         </div>
       )}
-      {openedOrder && <PaymentOrderDetailsDialog order={openedOrder} onClose={() => setOpenedOrder(null)} />}
+      {openedOrder && <TransactionDetailsDialog order={openedOrder} onClose={() => setOpenedOrder(null)} />}
     </Card>
   );
 }

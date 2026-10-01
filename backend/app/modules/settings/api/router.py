@@ -2,10 +2,10 @@ from typing import Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Response
 
+from app.api.errors import error_responses
 from app.core.enums import AppearanceImageKind
-from app.core.exceptions import NotFoundError
 from app.modules.settings.api.schemas import AppearanceResponse
 from app.modules.settings.dto import AppearanceSettingsDto
 from app.modules.settings.usecases import (
@@ -41,21 +41,15 @@ async def get_appearance(use_case: FromDishka[GetPublicAppearanceUseCase]) -> Ap
     return _to_appearance_response(settings)
 
 
-@router.get("/logo")
+@router.get("/logo", responses=error_responses(404))
 @inject
 async def get_appearance_logo(use_case: FromDishka[GetPublicAppearanceImageUseCase]) -> Response:
-    try:
-        data, content_type = await use_case.execute(AppearanceImageKind.LOGO)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    data, content_type = await use_case.execute(AppearanceImageKind.LOGO)
     return Response(content=data, media_type=content_type, headers=_IMAGE_HEADERS)
 
 
-@router.get("/favicon")
+@router.get("/favicon", responses=error_responses(404))
 @inject
 async def get_appearance_favicon(use_case: FromDishka[GetPublicAppearanceImageUseCase]) -> Response:
-    try:
-        data, content_type = await use_case.execute(AppearanceImageKind.FAVICON)
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    data, content_type = await use_case.execute(AppearanceImageKind.FAVICON)
     return Response(content=data, media_type=content_type, headers=_IMAGE_HEADERS)

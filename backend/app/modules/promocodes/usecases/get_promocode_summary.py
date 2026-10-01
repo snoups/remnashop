@@ -1,15 +1,15 @@
 from decimal import Decimal
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeRewardType
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.payments import PaymentOrderRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.promocodes.dto import PromocodeSummaryDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.users import UserDto
+from app.modules.transactions import TransactionRepository
 
 
 class GetPromocodeSummaryUseCase(UseCase[None, PromocodeSummaryDto]):
@@ -18,16 +18,16 @@ class GetPromocodeSummaryUseCase(UseCase[None, PromocodeSummaryDto]):
     def __init__(
         self,
         promocode_repository: PromocodeRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
     ) -> None:
         self._promocode_repository = promocode_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> PromocodeSummaryDto:
+    async def _execute(self, actor: Actor, data: None) -> PromocodeSummaryDto:
         async with self._uow:
             promocodes = await self._promocode_repository.list_all()
             by_promocode = await self._promocode_repository.count_activations_by_promocode()
@@ -37,7 +37,7 @@ class GetPromocodeSummaryUseCase(UseCase[None, PromocodeSummaryDto]):
             (
                 discounted_orders,
                 discounts,
-            ) = await self._payment_order_repository.sum_paid_promocode_discounts()
+            ) = await self._transaction_repository.sum_paid_promocode_discounts()
             rate_table = await self._pricing_repository.get_rate_table()
 
         now = datetime_now()

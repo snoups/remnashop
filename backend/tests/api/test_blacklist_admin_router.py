@@ -15,18 +15,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
 from app.modules.blacklist.tasks import sync_blacklist_sources_task
 from app.modules.blacklist.usecases import add_blacklist_source as add_blacklist_source_module
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -47,14 +40,7 @@ class _TestSessionProvider(Provider):
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_subscription_revoker_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_blacklist_providers(),
+        *get_module_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -122,10 +108,8 @@ async def test_add_and_list_entry(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    add_response = await client.post(
-        f"{API_V1}/blacklist/entries",
-        headers=headers,
-        json={"kind": "TELEGRAM_ID", "value": "id 42"},
+    add_response = await client.put(
+        f"{API_V1}/blacklist/entries/TELEGRAM_ID/id%2042", headers=headers
     )
     assert add_response.status_code == 200
     assert add_response.json()["telegram_ids"] == [42]
@@ -143,17 +127,10 @@ async def test_remove_entry(
     config: AppConfig,
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
-    await client.post(
-        f"{API_V1}/blacklist/entries",
-        headers=headers,
-        json={"kind": "EMAIL", "value": "blocked@example.com"},
-    )
+    await client.put(f"{API_V1}/blacklist/entries/EMAIL/blocked@example.com", headers=headers)
 
-    remove_response = await client.request(
-        "DELETE",
-        f"{API_V1}/blacklist/entries",
-        headers=headers,
-        json={"kind": "EMAIL", "value": "blocked@example.com"},
+    remove_response = await client.delete(
+        f"{API_V1}/blacklist/entries/EMAIL/blocked@example.com", headers=headers
     )
     assert remove_response.status_code == 200
     assert remove_response.json()["emails"] == []
@@ -168,11 +145,7 @@ async def test_add_entry_invalid_value_returns_400(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.post(
-        f"{API_V1}/blacklist/entries",
-        headers=headers,
-        json={"kind": "TELEGRAM_ID", "value": "xxx"},
-    )
+    response = await client.put(f"{API_V1}/blacklist/entries/TELEGRAM_ID/xxx", headers=headers)
     assert response.status_code == 400
 
 
@@ -193,7 +166,7 @@ async def test_add_source_rejects_http(
     assert response.status_code == 400
 
 
-async def test_toggle_source(
+async def test_update_source(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -214,17 +187,17 @@ async def test_toggle_source(
         headers=headers,
         json={"url": "https://x.example/list.txt", "name": "example"},
     )
-    assert add_response.status_code == 200
+    assert add_response.status_code == 201
     source_id = add_response.json()["id"]
     assert add_response.json()["enabled"] is True
 
-    toggle_response = await client.patch(
+    update_response = await client.patch(
         f"{API_V1}/blacklist/sources/{source_id}",
         headers=headers,
         json={"enabled": False},
     )
-    assert toggle_response.status_code == 200
-    assert toggle_response.json()["enabled"] is False
+    assert update_response.status_code == 200
+    assert update_response.json()["enabled"] is False
 
 
 async def test_add_duplicate_source_url_returns_409(
@@ -245,13 +218,13 @@ async def test_add_duplicate_source_url_returns_409(
     payload = {"url": "https://x.example/dupe.txt"}
 
     first = await client.post(f"{API_V1}/blacklist/sources", headers=headers, json=payload)
-    assert first.status_code == 200
+    assert first.status_code == 201
 
     duplicate = await client.post(f"{API_V1}/blacklist/sources", headers=headers, json=payload)
     assert duplicate.status_code == 409
 
 
-async def test_toggle_missing_source_returns_404(
+async def test_update_missing_source_returns_404(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -296,7 +269,7 @@ async def test_remove_source(
     assert delete_response.status_code == 204
 
     list_response = await client.get(f"{API_V1}/blacklist/sources", headers=headers)
-    assert list_response.json() == []
+    assert list_response.json()["items"] == []
 
 
 async def test_sync_sources_returns_202(
@@ -313,7 +286,7 @@ async def test_sync_sources_returns_202(
     monkeypatch.setattr(sync_blacklist_sources_task, "kiq", _fake_kiq)
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.post(f"{API_V1}/blacklist/sources/sync", headers=headers)
+    response = await client.post(f"{API_V1}/blacklist/sources/actions/sync", headers=headers)
     assert response.status_code == 202
 
 

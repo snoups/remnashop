@@ -1,9 +1,10 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.promocodes.dto import ListPromocodeActivatedUsersDto, PromocodeActivatedUserDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 
 class ListPromocodeActivatedUsersUseCase(
@@ -22,7 +23,7 @@ class ListPromocodeActivatedUsersUseCase(
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: ListPromocodeActivatedUsersDto
+        self, actor: Actor, data: ListPromocodeActivatedUsersDto
     ) -> tuple[list[PromocodeActivatedUserDto], int]:
         async with self._uow:
             # NotFoundError for an unknown id; the router maps it to 404

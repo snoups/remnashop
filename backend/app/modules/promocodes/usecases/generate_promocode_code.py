@@ -2,11 +2,11 @@ import secrets
 import string
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.users import UserDto
 
 _CODE_ALPHABET: Final[str] = string.ascii_uppercase + string.digits
 _CODE_LENGTH: Final[int] = 10
@@ -19,7 +19,7 @@ class GeneratePromocodeCodeUseCase(UseCase[None, str]):
         self._promocode_repository = promocode_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> str:
+    async def _execute(self, actor: Actor, data: None) -> str:
         async with self._uow:
             while True:
                 code = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LENGTH))

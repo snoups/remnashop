@@ -4,7 +4,8 @@ from sqlalchemy.exc import IntegrityError
 
 
 def constraint_name(error: IntegrityError) -> Optional[str]:
-    # asyncpg's exception carries .constraint_name but no stub declares
-    # it, and SQLAlchemy types .orig as a bare BaseException -- getattr is the
-    # ceiling until asyncpg ships types. Confined here so call sites stay clean.
-    return getattr(error.orig, "constraint_name", None)
+    # error.orig is SQLAlchemy's asyncpg adapter exception; the driver's own
+    # exception, the one carrying .constraint_name, is its __cause__.
+    # getattr because asyncpg ships no stubs for that attribute.
+    driver_error = error.orig.__cause__ if error.orig is not None else None
+    return getattr(driver_error, "constraint_name", None)

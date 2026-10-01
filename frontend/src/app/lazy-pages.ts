@@ -13,8 +13,8 @@ export const AnalyticsFunnelPage = lazy(() =>
 export const AnalyticsLtvPage = lazy(() =>
   import("@pages/analytics/AnalyticsLtvPage").then((m) => ({ default: m.AnalyticsLtvPage })),
 );
-export const AnalyticsOverviewPage = lazy(() =>
-  import("@pages/analytics/AnalyticsOverviewPage").then((m) => ({ default: m.AnalyticsOverviewPage })),
+export const AnalyticsMetricsPage = lazy(() =>
+  import("@pages/analytics/AnalyticsMetricsPage").then((m) => ({ default: m.AnalyticsMetricsPage })),
 );
 export const AnalyticsPage = lazy(() =>
   import("@pages/analytics/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),
@@ -53,8 +53,8 @@ export const NotFoundPage = lazy(() =>
 export const OAuthCallbackPage = lazy(() =>
   import("@pages/auth/OAuthCallbackPage").then((m) => ({ default: m.OAuthCallbackPage })),
 );
-export const PaymentsPage = lazy(() =>
-  import("@pages/payments/PaymentsPage").then((m) => ({ default: m.PaymentsPage })),
+export const TransactionsPage = lazy(() =>
+  import("@pages/transactions/TransactionsPage").then((m) => ({ default: m.TransactionsPage })),
 );
 export const PlansPage = lazy(() => import("@pages/plans/PlansPage").then((m) => ({ default: m.PlansPage })));
 export const PricingPage = lazy(() => import("@pages/pricing/PricingPage").then((m) => ({ default: m.PricingPage })));

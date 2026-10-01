@@ -1,12 +1,14 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies.admin import require_admin
+from app.api.errors import error_responses
+from app.core.actor import Actor
 from app.core.enums import Locale
-from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.translations.api.schemas import (
     TranslationEntryItem,
+    TranslationEntryListResponse,
     TranslationsExportPayload,
     TranslationsImportResult,
     TranslationTextExportItem,
@@ -24,7 +26,6 @@ from app.modules.translations.usecases import (
 )
 from app.modules.translations.usecases.reset_translation import ResetTranslationInput
 from app.modules.translations.usecases.update_translation import UpdateTranslationInput
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/translations", tags=["translations"])
 
@@ -39,21 +40,22 @@ def _to_item(entry: TranslationEntryDto) -> TranslationEntryItem:
     )
 
 
-@router.get("", response_model=list[TranslationEntryItem])
+@router.get("", response_model=TranslationEntryListResponse)
 @inject
 async def list_translations(
     use_case: FromDishka[ListTranslationsUseCase],
-    actor: UserDto = Depends(require_admin),
-) -> list[TranslationEntryItem]:
+    actor: Actor = Depends(require_admin),
+) -> TranslationEntryListResponse:
     entries = await use_case(actor)
-    return [_to_item(entry) for entry in entries]
+    items = [_to_item(entry) for entry in entries]
+    return TranslationEntryListResponse(items=items, total=len(items))
 
 
 @router.get("/export", response_model=TranslationsExportPayload)
 @inject
 async def export_translations(
     use_case: FromDishka[ExportTranslationsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> TranslationsExportPayload:
     export = await use_case(actor)
     return TranslationsExportPayload(
@@ -70,81 +72,80 @@ async def export_translations(
     )
 
 
-@router.post("/import", response_model=TranslationsImportResult)
+@router.post(
+    "/actions/import", response_model=TranslationsImportResult, responses=error_responses(400)
+)
 @inject
 async def import_translations(
     payload: TranslationsExportPayload,
     use_case: FromDishka[ImportTranslationsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> TranslationsImportResult:
-    try:
-        result = await use_case(
-            actor,
-            TranslationsImportInput(
-                version=payload.version,
-                texts=[
-                    TranslationTextExportDto(
-                        locale=text.locale,
-                        message_id=text.message_id,
-                        attribute_id=text.attribute_id,
-                        value=text.value,
-                    )
-                    for text in payload.texts
-                ],
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    result = await use_case(
+        actor,
+        TranslationsImportInput(
+            version=payload.version,
+            texts=[
+                TranslationTextExportDto(
+                    locale=text.locale,
+                    message_id=text.message_id,
+                    attribute_id=text.attribute_id,
+                    value=text.value,
+                )
+                for text in payload.texts
+            ],
+        ),
+    )
     return TranslationsImportResult(applied=result.applied, skipped=result.skipped)
 
 
-@router.post("/reset-all", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/actions/reset-all", status_code=status.HTTP_204_NO_CONTENT)
 @inject
 async def reset_all_translations(
     use_case: FromDishka[ResetAllTranslationsUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor)
 
 
-@router.put("/{locale}/{message_id}", response_model=TranslationEntryItem)
+@router.put(
+    "/{locale}/{message_id}",
+    response_model=TranslationEntryItem,
+    responses=error_responses(400, 404),
+)
 @inject
 async def update_translation(
     locale: Locale,
     message_id: str,
     payload: UpdateTranslationRequest,
     use_case: FromDishka[UpdateTranslationUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     attribute_id: str = Query(default=""),
 ) -> TranslationEntryItem:
-    try:
-        entry = await use_case(
-            actor,
-            UpdateTranslationInput(
-                locale=locale, message_id=message_id, attribute_id=attribute_id, value=payload.value
-            ),
-        )
-    except ValidationError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    entry = await use_case(
+        actor,
+        UpdateTranslationInput(
+            locale=locale, message_id=message_id, attribute_id=attribute_id, value=payload.value
+        ),
+    )
     return _to_item(entry)
 
 
-@router.post("/{locale}/{message_id}/reset", response_model=TranslationEntryItem)
+@router.post(
+    "/{locale}/{message_id}/actions/reset",
+    response_model=TranslationEntryItem,
+    responses=error_responses(404),
+)
 @inject
 async def reset_translation(
     locale: Locale,
     message_id: str,
     use_case: FromDishka[ResetTranslationUseCase],
-    actor: UserDto = Depends(require_admin),
+    actor: Actor = Depends(require_admin),
     attribute_id: str = Query(default=""),
 ) -> TranslationEntryItem:
-    try:
-        entry = await use_case(
-            actor,
-            ResetTranslationInput(locale=locale, message_id=message_id, attribute_id=attribute_id),
-        )
-    except NotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    entry = await use_case(
+        actor,
+        ResetTranslationInput(locale=locale, message_id=message_id, attribute_id=attribute_id),
+    )
     return _to_item(entry)

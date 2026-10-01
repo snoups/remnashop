@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { listPaymentOrders, type PaymentOrderItem } from "@entities/payments/api";
+import { listTransactions, type TransactionItem } from "@entities/transactions/api";
 import { listPlans, type Plan } from "@entities/plans/api";
 import { listPromocodes, type Promocode } from "@entities/promocodes/api";
 import { listSubscriptions, type SubscriptionListItem } from "@entities/subscriptions/api";
@@ -69,7 +69,7 @@ export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [users, setUsers] = useState<UserListItem[]>([]);
-  const [orders, setOrders] = useState<PaymentOrderItem[]>([]);
+  const [orders, setOrders] = useState<TransactionItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionListItem[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [promocodes, setPromocodes] = useState<Promocode[]>([]);
@@ -80,8 +80,8 @@ export function HeaderSearch() {
   const debounced = useDebouncedValue(query.trim(), DEBOUNCE_MS);
   const [isFetching, setIsFetching] = useState(false);
 
-  // Paginated lists are searched server-side per query; plans and promocodes
-  // are small unpaginated lists, fetched once on first use and filtered here.
+  // Paginated lists are searched server-side per query; plans are a small
+  // unpaginated list, fetched once on first use and filtered here.
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
@@ -91,21 +91,26 @@ export function HeaderSearch() {
       setUsers([]);
       setOrders([]);
       setSubscriptions([]);
+      setPromocodes([]);
       setIsFetching(false);
       return;
     }
     const requests: Promise<unknown>[] = [];
     if (canViewUsers)
       requests.push(listUsers({ search, pageSize: USER_LIMIT }, signal).then((p) => setUsers(p.items)).catch(ignore));
-    if (permissions.includes("PAYMENTS_VIEW"))
+    if (permissions.includes("TRANSACTIONS_VIEW"))
       requests.push(
-        listPaymentOrders({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setOrders(p.items)).catch(ignore),
+        listTransactions({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setOrders(p.items)).catch(ignore),
       );
     if (permissions.includes("SUBSCRIPTIONS_VIEW"))
       requests.push(
         listSubscriptions({ search, pageSize: RESULT_LIMIT }, signal)
           .then((p) => setSubscriptions(p.items))
           .catch(ignore),
+      );
+    if (permissions.includes("PROMOCODES_VIEW"))
+      requests.push(
+        listPromocodes({ search, pageSize: RESULT_LIMIT }, signal).then((p) => setPromocodes(p.items)).catch(ignore),
       );
     setIsFetching(requests.length > 0);
     void Promise.all(requests).then(() => {
@@ -119,8 +124,6 @@ export function HeaderSearch() {
   useEffect(() => {
     if (!wantsCatalog) return;
     if (permissions.includes("PLANS_VIEW") && plans.length === 0) listPlans().then(setPlans).catch(() => {});
-    if (permissions.includes("PROMOCODES_VIEW") && promocodes.length === 0)
-      listPromocodes().then(setPromocodes).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once per session on first query
   }, [wantsCatalog, userState]);
 
@@ -160,7 +163,7 @@ export function HeaderSearch() {
       id: `order:${order.id}`,
       label: `${t("header.searchOrders")} #${order.id}`,
       hint: [order.plan_snapshot.name, order.status].filter(Boolean).join(" · "),
-      to: link("/dashboard/payments"),
+      to: link("/dashboard/transactions"),
       icon: CreditCard,
     }));
     const subscriptionEntries = subscriptions.map((sub) => ({
@@ -180,16 +183,13 @@ export function HeaderSearch() {
         to: "/dashboard/plans",
         icon: Package,
       }));
-    const promocodeEntries = promocodes
-      .filter((promocode) => matches(promocode.code, tokens))
-      .slice(0, RESULT_LIMIT)
-      .map((promocode) => ({
-        id: `promocode:${promocode.id}`,
-        label: promocode.code,
-        hint: t("header.searchPromocode"),
-        to: `/dashboard/promocodes?search=${encodeURIComponent(promocode.code)}`,
-        icon: Ticket,
-      }));
+    const promocodeEntries = promocodes.map((promocode) => ({
+      id: `promocode:${promocode.id}`,
+      label: promocode.code,
+      hint: t("header.searchPromocode"),
+      to: `/dashboard/promocodes?search=${encodeURIComponent(promocode.code)}`,
+      icon: Ticket,
+    }));
     const eventEntries = permissions.includes("EVENT_LOG_VIEW")
       ? [
           {

@@ -15,19 +15,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import DialogFlow, Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.modules.api_tokens import get_api_tokens_providers
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.banners import get_banners_providers
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.dialogs import catalog, get_dialogs_providers
+from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
-from app.modules.passkeys import get_passkey_revoker_providers
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
+from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -48,16 +40,7 @@ class _TestSessionProvider(Provider):
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_subscription_revoker_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_banners_providers(),
-        *get_blacklist_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_dialogs_providers(),
+        *get_module_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -182,13 +165,9 @@ async def test_owner_lists_and_updates(
 
     list_response = await client.get(f"{API_V1}/dialogs/windows", headers=headers)
     assert list_response.status_code == 200
-    assert list_response.json()[0]["key"] == "menu.main"
+    assert list_response.json()["items"][0]["key"] == "menu.main"
 
-    get_response = await client.get(f"{API_V1}/dialogs/windows/menu.main", headers=headers)
-    assert get_response.status_code == 200
-    assert get_response.json()["key"] == "menu.main"
-
-    resp = await client.put(
+    resp = await client.patch(
         f"{API_V1}/dialogs/windows/menu.main",
         headers=headers,
         json={"banner_name": "default"},
@@ -196,34 +175,22 @@ async def test_owner_lists_and_updates(
     assert resp.status_code == 200
     assert resp.json()["banner_name"] == "default"
 
-    disabled = await client.put(
+    disabled = await client.patch(
         f"{API_V1}/dialogs/windows/menu.main", headers=headers, json={"is_enabled": False}
     )
     assert disabled.status_code == 400
 
     # Omitting banner_name leaves it alone; sending it as null clears it.
-    untouched = await client.put(
+    untouched = await client.patch(
         f"{API_V1}/dialogs/windows/menu.main", headers=headers, json={"is_enabled": True}
     )
     assert untouched.json()["banner_name"] == "default"
 
-    cleared = await client.put(
+    cleared = await client.patch(
         f"{API_V1}/dialogs/windows/menu.main", headers=headers, json={"banner_name": None}
     )
     assert cleared.status_code == 200
     assert cleared.json()["banner_name"] is None
-
-
-async def test_get_window_missing_is_404(
-    client: httpx.AsyncClient,
-    user_repository: UserRepository,
-    session_repository: SessionRepository,
-    uow: UnitOfWork,
-    config: AppConfig,
-) -> None:
-    headers = await _owner_headers(user_repository, session_repository, uow, config)
-    response = await client.get(f"{API_V1}/dialogs/windows/menu.ghost", headers=headers)
-    assert response.status_code == 404
 
 
 async def test_replace_buttons_bad_action_is_400(
@@ -311,8 +278,8 @@ async def test_create_update_delete_custom_window(
     delete_resp = await client.delete(f"{API_V1}/dialogs/windows/{key}", headers=headers)
     assert delete_resp.status_code == 204
 
-    missing_resp = await client.get(f"{API_V1}/dialogs/windows/{key}", headers=headers)
-    assert missing_resp.status_code == 404
+    list_resp = await client.get(f"{API_V1}/dialogs/windows", headers=headers)
+    assert key not in {item["key"] for item in list_resp.json()["items"]}
 
 
 async def test_delete_seed_window_is_400(
@@ -359,11 +326,13 @@ async def test_reset_window_and_reset_all(
     )
     await uow.commit()
 
-    reset_resp = await client.post(f"{API_V1}/dialogs/windows/menu.main/reset", headers=headers)
+    reset_resp = await client.post(
+        f"{API_V1}/dialogs/windows/menu.main/actions/reset", headers=headers
+    )
     assert reset_resp.status_code == 200
     assert reset_resp.json()["is_enabled"] is True
 
-    reset_all_resp = await client.post(f"{API_V1}/dialogs/reset", headers=headers)
+    reset_all_resp = await client.post(f"{API_V1}/dialogs/actions/reset-all", headers=headers)
     assert reset_all_resp.status_code == 204
 
 
@@ -389,9 +358,10 @@ async def test_window_response_includes_text_keys_for_seed_window(
     )
     await uow.commit()
 
-    response = await client.get(f"{API_V1}/dialogs/windows/menu.text_keys_test", headers=headers)
+    response = await client.get(f"{API_V1}/dialogs/windows", headers=headers)
     assert response.status_code == 200
-    assert response.json()["text_keys"] == ["msg-text-keys-test"]
+    window = next(w for w in response.json()["items"] if w["key"] == "menu.text_keys_test")
+    assert window["text_keys"] == ["msg-text-keys-test"]
 
 
 async def test_window_response_includes_text_keys_for_custom_window(

@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 // mirrors CreatePromocodeRequest.code on the backend
 export const PROMOCODE_CODE_MAX_LENGTH = 64;
@@ -30,8 +31,30 @@ export interface Promocode {
   created_at: string | null;
 }
 
-export function listPromocodes(signal?: AbortSignal): Promise<Promocode[]> {
-  return apiGet<Promocode[]>("/promocodes", signal);
+export const DEFAULT_PAGE_SIZE = 50;
+
+export interface PromocodeListFilters {
+  status?: string;
+  rewardType?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PromocodeListPage {
+  items: Promocode[];
+  total: number;
+}
+
+export function listPromocodes(filters: PromocodeListFilters = {}, signal?: AbortSignal): Promise<PromocodeListPage> {
+  const params = new URLSearchParams();
+  if (filters.status) params.set("status", filters.status);
+  if (filters.rewardType) params.set("reward_type", filters.rewardType);
+  if (filters.search) params.set("search", filters.search);
+  params.set("page", String(filters.page ?? 1));
+  params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
+
+  return apiGet<PromocodeListPage>(`/promocodes?${params.toString()}`, signal);
 }
 
 export interface UserPromocodeActivation {
@@ -45,7 +68,9 @@ export interface UserPromocodeActivation {
 }
 
 export function listUserPromocodeActivations(userId: number, signal?: AbortSignal): Promise<UserPromocodeActivation[]> {
-  return apiGet<UserPromocodeActivation[]>(`/promocodes/activations?user_id=${userId}`, signal);
+  return apiGet<ListResponse<UserPromocodeActivation>>(`/promocodes/activations?user_id=${userId}`, signal).then(
+    (response) => response.items,
+  );
 }
 
 export interface CreatePromocodeRequest {
@@ -84,7 +109,7 @@ export function deletePromocode(promocodeId: number): Promise<void> {
 }
 
 export function generatePromocodeCode(): Promise<string> {
-  return apiPost<{ code: string }, Record<string, never>>("/promocodes/generate-code", {}).then(
+  return apiPost<{ code: string }, Record<string, never>>("/promocodes/actions/generate-code", {}).then(
     (result) => result.code,
   );
 }

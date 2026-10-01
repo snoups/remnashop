@@ -28,7 +28,7 @@ class ReferralReward(BaseSql, TimestampMixin):
     subscription_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("subscriptions.id", ondelete="SET NULL")
     )
-    # PaymentOrder.idempotency_key of the payment that earned this reward
+    # Transaction.idempotency_key of the payment that earned this reward
     payment_key: Mapped[str] = mapped_column(String(36))
     type: Mapped[ReferralRewardType]
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 0))

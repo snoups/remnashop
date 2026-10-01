@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security import generate_refresh_token, hash_refresh_token
@@ -15,7 +16,6 @@ from app.core.utils.time import datetime_now
 from app.modules.api_tokens.dto import ApiTokenDto, CreateApiTokenDto
 from app.modules.api_tokens.events import ApiTokenCreatedEvent
 from app.modules.api_tokens.repository import ApiTokenRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -44,7 +44,7 @@ class CreateApiTokenUseCase(UseCase[CreateApiTokenInput, CreatedApiTokenDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: CreateApiTokenInput) -> CreatedApiTokenDto:
+    async def _execute(self, actor: Actor, data: CreateApiTokenInput) -> CreatedApiTokenDto:
         assert_grantable(data.permissions, allowed=TOKEN_GRANTABLE_PERMISSIONS)
 
         # Same primitive as refresh tokens/CSRF tokens -- 256 bits of random

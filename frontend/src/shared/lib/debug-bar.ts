@@ -15,8 +15,7 @@ export interface DebugState {
 }
 
 // Debug-bar switches, per browser -- nothing here reaches the backend. The bar
-// itself is hidden behind a long press on the sidebar version pill or, where
-// the sidebar is gone (mobile), on the header's page title.
+// itself is hidden behind a long press on the sidebar version pill (desktop only).
 const STORAGE_KEY = "remnashop_debug";
 
 const DEFAULT_STATE: DebugState = {

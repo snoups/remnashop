@@ -26,6 +26,7 @@ from app.core.db.models.user import User
 from app.core.db.singleton import get_or_create_singleton
 from app.core.db.user_search import user_search_filter
 from app.core.enums import ReferralLevel, ReferralRewardType
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.modules.referrals.dto import (
     DEFAULT_PAGE_SIZE,
@@ -107,7 +108,9 @@ class ReferralRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            raise ConflictError(f"User '{referred_id}' already has a referrer") from error
+            raise ConflictError(
+                f"User '{referred_id}' already has a referrer", code=ErrorCode.REFERRER_ALREADY_SET
+            ) from error
         return self._to_dto(row)
 
     def _downline(self, referrer_id: int) -> CTE:
@@ -156,7 +159,9 @@ class ReferralRepository:
             filters.append(downline.c.depth == depth)
         if search:
             filters.append(
-                downline.c.referred_id.in_(select(User.id).where(user_search_filter(search)))
+                downline.c.referred_id.in_(
+                    select(User.id).where(user_search_filter(search, include_login=False))
+                )
             )
 
         total = await self.session.scalar(
@@ -228,7 +233,7 @@ class ReferralRepository:
         if created_to is not None:
             filters.append(Referral.created_at < created_to)
         if search:
-            matching_users = select(User.id).where(user_search_filter(search))
+            matching_users = select(User.id).where(user_search_filter(search, include_login=False))
             filters.append(
                 or_(
                     Referral.referred_id.in_(matching_users),
@@ -249,6 +254,7 @@ class ReferralRepository:
         *,
         level: Optional[int] = None,
         created_from: Optional[datetime] = None,
+        created_to: Optional[datetime] = None,
         search: Optional[str] = None,
         has_rewards: Optional[bool] = None,
         reward_type: Optional[ReferralRewardType] = None,
@@ -258,6 +264,7 @@ class ReferralRepository:
         filters = self._list_filters(
             level=level,
             created_from=created_from,
+            created_to=created_to,
             search=search,
             has_rewards=has_rewards,
             reward_type=reward_type,
@@ -269,7 +276,7 @@ class ReferralRepository:
         order_by: list[ColumnElement[Any]] = []
         if search:
             # the searched user's own edge first, then the ones they invited
-            matching_users = select(User.id).where(user_search_filter(search))
+            matching_users = select(User.id).where(user_search_filter(search, include_login=False))
             order_by.append(case((Referral.referred_id.in_(matching_users), 0), else_=1))
         order_by += [Referral.created_at.desc(), Referral.id.desc()]
         stmt = (
@@ -378,7 +385,8 @@ class ReferralRepository:
             await self.session.flush()
         except IntegrityError as error:
             raise ConflictError(
-                f"Reward already granted for payment '{payment_key}' and referral '{referral_id}'"
+                f"Reward already granted for payment '{payment_key}' and referral '{referral_id}'",
+                code=ErrorCode.REFERRAL_REWARD_ALREADY_GRANTED,
             ) from error
         return self._reward_to_dto(row)
 

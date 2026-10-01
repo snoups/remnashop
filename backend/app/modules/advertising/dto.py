@@ -123,6 +123,7 @@ class GetAdLinkStatsDto:
     report_currency: Optional[Currency] = None
     # Counts only attributions made at or after this moment; None = all time.
     created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
 
 
 @dataclass(frozen=True, kw_only=True)

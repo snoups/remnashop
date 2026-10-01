@@ -3,17 +3,10 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.core.enums import BlacklistKind
-
 
 class BlacklistResponse(BaseModel):
     telegram_ids: list[int]
     emails: list[str]
-
-
-class BlacklistEntryRequest(BaseModel):
-    kind: BlacklistKind
-    value: str
 
 
 class BlacklistSourceResponse(BaseModel):
@@ -31,5 +24,10 @@ class AddSourceRequest(BaseModel):
     name: Optional[str] = None
 
 
-class ToggleSourceRequest(BaseModel):
+class UpdateSourceRequest(BaseModel):
     enabled: bool
+
+
+class BlacklistSourceListResponse(BaseModel):
+    items: list[BlacklistSourceResponse]
+    total: int

@@ -1,10 +1,10 @@
 from loguru import logger
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.constants import TELEGRAM_RESTART_CHANNEL
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.users import UserDto
 
 
 class RestartBotUseCase(UseCase[None, None]):
@@ -13,7 +13,7 @@ class RestartBotUseCase(UseCase[None, None]):
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
-    async def _execute(self, actor: UserDto, data: None) -> None:
+    async def _execute(self, actor: Actor, data: None) -> None:
         # Fire-and-forget: if no telegram process is currently subscribed, this
         # is silently dropped -- its next start reads bot_settings fresh anyway.
         # The process doesn't hot-swap Bot/Dispatcher in place; it exits (SIGTERM)

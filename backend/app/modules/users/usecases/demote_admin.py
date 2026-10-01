@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher, PasskeyRevoker, SessionRevoker
 from app.core.security.permissions import Permission
@@ -34,13 +36,15 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
         self._session_revoker = session_revoker
         self._passkey_revoker = passkey_revoker
 
-    async def _execute(self, actor: UserDto, data: DemoteAdminDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: DemoteAdminDto) -> UserDto:
         async with self._uow:
             target = await self._user_repository.get_by_id(data.user_id)
             if target is None:
-                raise NotFoundError("Admin not found")
+                raise NotFoundError("Admin not found", code=ErrorCode.ADMIN_NOT_FOUND)
             if target.role != Role.ADMIN:
-                raise ConflictError("Target is not a manageable admin")
+                raise ConflictError(
+                    "Target is not a manageable admin", code=ErrorCode.ADMIN_NOT_MANAGEABLE
+                )
 
         async with self._uow:
             # OAuth identities (modules/oauth) are left untouched -- they're

@@ -820,15 +820,16 @@ async def test_admin_with_view_users_grant_cannot_use_include_staff(
         await list_use_case(granted_admin, ListUsersInput(include_staff=True))
 
 
-async def test_admin_without_view_users_grant_cannot_list_users(
+async def test_admin_with_view_users_revoked_cannot_list_users(
     user_repository: UserRepository,
     uow: UnitOfWork,
     blacklist_repository: BlacklistRepository,
 ) -> None:
     list_use_case = ListUsersUseCase(user_repository, blacklist_repository, uow)
+    revoked_admin = ADMIN.model_copy(update={"permission_revokes": ["USERS_VIEW"]})
 
     with pytest.raises(PermissionDeniedError):
-        await list_use_case(ADMIN)
+        await list_use_case(revoked_admin)
 
 
 async def test_admin_with_view_users_grant_can_list_users(
@@ -1035,6 +1036,38 @@ async def test_register_telegram_user_returns_existing_user_without_duplicating(
     assert first.id == second.id
 
 
+async def test_register_telegram_user_returns_winner_of_registration_race(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with uow:
+        winner = await user_repository.create(
+            CreateUserDto(telegram_id=778, name="Winner", language=Locale.EN)
+        )
+    # the concurrent update's existence check ran before the winner committed
+    real_lookup = user_repository.get_by_telegram_id
+    calls = 0
+
+    async def lookup(telegram_id: int) -> Optional[UserDto]:
+        nonlocal calls
+        calls += 1
+        return None if calls == 1 else await real_lookup(telegram_id)
+
+    monkeypatch.setattr(user_repository, "get_by_telegram_id", lookup)
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
+
+    user = await use_case.system(
+        RegisterTelegramUserDto(telegram_id=778, name="Loser", language=Locale.EN)
+    )
+
+    assert user.id == winner.id
+
+
 async def test_register_telegram_user_syncs_changed_telegram_profile(
     user_repository: UserRepository,
     blacklist_repository: BlacklistRepository,
@@ -1200,37 +1233,78 @@ async def test_owner_can_delete_admin(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session_repository,
+    passkey_repository,
 ) -> None:
+    subscription_revoker = _NoopRevoker()
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="todelete1", name="X")
     )
 
-    delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteAdminUseCase(
+        user_repository,
+        uow,
+        event_publisher,
+        subscription_revoker,
+        session_repository,
+        passkey_repository,
+    )
     await delete_use_case(OWNER, DeleteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
 
-    assert await user_repository.get_by_id(admin.id) is None
+    # soft delete, like a customer's: panel access revoked, the row anonymized
+    # and demoted so payment history keeps pointing at it
+    deleted = await user_repository.get_by_id(admin.id)
+    assert deleted is not None
+    assert deleted.deleted_at is not None
+    assert deleted.role is Role.USER
+    assert deleted.login is None
+    assert subscription_revoker.revoked == [admin.id]
 
 
 async def test_delete_admin_unknown_id_raises_not_found(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session_repository,
+    passkey_repository,
 ) -> None:
-    delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
+    subscription_revoker = _NoopRevoker()
+    delete_use_case = DeleteAdminUseCase(
+        user_repository,
+        uow,
+        event_publisher,
+        subscription_revoker,
+        session_repository,
+        passkey_repository,
+    )
 
     with pytest.raises(NotFoundError):
         await delete_use_case(OWNER, DeleteAdminDto(user_id=999_999, client_ip="127.0.0.1"))
 
 
 async def test_delete_admin_rejects_non_admin_target(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session_repository,
+    passkey_repository,
 ) -> None:
+    subscription_revoker = _NoopRevoker()
     async with uow:
         target = await user_repository.create(
             CreateUserDto(name="Regular12", role=Role.USER, language=Locale.EN)
         )
         await uow.commit()
 
-    delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteAdminUseCase(
+        user_repository,
+        uow,
+        event_publisher,
+        subscription_revoker,
+        session_repository,
+        passkey_repository,
+    )
 
     with pytest.raises(ConflictError):
         await delete_use_case(OWNER, DeleteAdminDto(user_id=target.id, client_ip="127.0.0.1"))
@@ -1239,8 +1313,13 @@ async def test_delete_admin_rejects_non_admin_target(
 
 
 async def test_delete_admin_rejects_self_delete(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session_repository,
+    passkey_repository,
 ) -> None:
+    subscription_revoker = _NoopRevoker()
     async with uow:
         self_admin = await user_repository.create(
             CreateUserDto(
@@ -1254,7 +1333,14 @@ async def test_delete_admin_rejects_self_delete(
     # obtained.
     self_actor = self_admin.model_copy(update={"permission_grants": ["ADMINS_MANAGE"]})
 
-    delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteAdminUseCase(
+        user_repository,
+        uow,
+        event_publisher,
+        subscription_revoker,
+        session_repository,
+        passkey_repository,
+    )
 
     with pytest.raises(ConflictError):
         await delete_use_case(
@@ -1265,8 +1351,13 @@ async def test_delete_admin_rejects_self_delete(
 
 
 async def test_plain_admin_cannot_delete_admin(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session_repository,
+    passkey_repository,
 ) -> None:
+    subscription_revoker = _NoopRevoker()
     async with uow:
         target = await user_repository.create(
             CreateUserDto(
@@ -1275,7 +1366,14 @@ async def test_plain_admin_cannot_delete_admin(
         )
         await uow.commit()
 
-    delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteAdminUseCase(
+        user_repository,
+        uow,
+        event_publisher,
+        subscription_revoker,
+        session_repository,
+        passkey_repository,
+    )
 
     with pytest.raises(PermissionDeniedError):
         await delete_use_case(ADMIN, DeleteAdminDto(user_id=target.id, client_ip="127.0.0.1"))
@@ -1287,13 +1385,23 @@ async def test_delete_admin_publishes_admin_deleted_event(
     config: AppConfig,
     event_publisher: EventPublisher,
     session: AsyncSession,
+    session_repository,
+    passkey_repository,
 ) -> None:
+    subscription_revoker = _NoopRevoker()
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evtdel1", name="X")
     )
 
-    delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteAdminUseCase(
+        user_repository,
+        uow,
+        event_publisher,
+        subscription_revoker,
+        session_repository,
+        passkey_repository,
+    )
     await delete_use_case(OWNER, DeleteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
 
     rows = await _outbox_rows(session, AdminDeletedEvent.__name__)
@@ -1583,13 +1691,23 @@ async def test_delete_admin_twice_raises_not_found_on_second_call(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    session_repository,
+    passkey_repository,
 ) -> None:
+    subscription_revoker = _NoopRevoker()
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin, _ = await create_use_case(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="doubledel1", name="X")
     )
 
-    delete_use_case = DeleteAdminUseCase(user_repository, uow, event_publisher)
+    delete_use_case = DeleteAdminUseCase(
+        user_repository,
+        uow,
+        event_publisher,
+        subscription_revoker,
+        session_repository,
+        passkey_repository,
+    )
     await delete_use_case(OWNER, DeleteAdminDto(user_id=admin.id, client_ip="127.0.0.1"))
 
     with pytest.raises(NotFoundError):

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.addon import AddOn
 from app.core.db.models.addon_price_override import AddOnPriceOverride
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.subscriptions.dto import (
     AddOnDto,
@@ -55,7 +56,7 @@ class AddOnRepository:
     async def _get_or_raise(self, addon_id: int) -> AddOn:
         row = await self.session.get(AddOn, addon_id)
         if row is None:
-            raise NotFoundError(f"AddOn '{addon_id}' not found")
+            raise NotFoundError(f"AddOn '{addon_id}' not found", code=ErrorCode.ADDON_NOT_FOUND)
         return row
 
     async def get_by_id(self, addon_id: int) -> AddOnDto:
@@ -86,7 +87,9 @@ class AddOnRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            raise ConflictError(f"AddOn with name '{data.name}' already exists") from error
+            raise ConflictError(
+                f"AddOn with name '{data.name}' already exists", code=ErrorCode.ADDON_NAME_TAKEN
+            ) from error
 
         await self.session.refresh(row)
         return self._to_dto(row, [])
@@ -106,7 +109,9 @@ class AddOnRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            raise ConflictError(f"AddOn name '{data.name}' already exists") from error
+            raise ConflictError(
+                f"AddOn name '{data.name}' already exists", code=ErrorCode.ADDON_NAME_TAKEN
+            ) from error
 
         await self.session.refresh(row)
         overrides_by_addon = await self._load_overrides([row.id])
@@ -118,7 +123,10 @@ class AddOnRepository:
             await self.session.execute(delete(AddOn).where(AddOn.id == addon_id))
             await self.session.flush()
         except IntegrityError as error:
-            raise ConflictError(f"AddOn '{addon_id}' is still referenced by a promocode") from error
+            raise ConflictError(
+                f"AddOn '{addon_id}' is still referenced by a promocode",
+                code=ErrorCode.ADDON_USED_BY_PROMOCODE,
+            ) from error
 
     async def set_base_price(self, data: SetAddOnBasePriceDto) -> AddOnDto:
         row = await self._get_or_raise(data.addon_id)
@@ -131,7 +139,10 @@ class AddOnRepository:
 
     async def set_price_override(self, data: SetAddOnPriceOverrideDto) -> AddOnDto:
         if data.price is not None and data.currency == data.anchor:
-            raise ValidationError("Cannot override the anchor currency's price")
+            raise ValidationError(
+                "Cannot override the anchor currency's price",
+                code=ErrorCode.ANCHOR_PRICE_NOT_OVERRIDABLE,
+            )
 
         row = await self._get_or_raise(data.addon_id)
 
@@ -167,7 +178,7 @@ class AddOnRepository:
         for addon_id, base_price in values.items():
             row = await self.session.get(AddOn, addon_id)
             if row is None:
-                raise NotFoundError(f"AddOn '{addon_id}' not found")
+                raise NotFoundError(f"AddOn '{addon_id}' not found", code=ErrorCode.ADDON_NOT_FOUND)
             row.base_price = base_price
         await self.session.flush()
 
@@ -176,7 +187,10 @@ class AddOnRepository:
         rows = {row.id: row for row in result.scalars()}
 
         if set(data.addon_ids) != set(rows):
-            raise ValidationError("Reorder must include every existing addon id exactly once")
+            raise ValidationError(
+                "Reorder must include every existing addon id exactly once",
+                code=ErrorCode.ADDON_REORDER_INCOMPLETE,
+            )
 
         for index, addon_id in enumerate(data.addon_ids):
             rows[addon_id].order_index = index

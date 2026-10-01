@@ -1,4 +1,5 @@
-import { apiDelete, apiGet, apiPost, apiPut } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 export type PlanType = "TRAFFIC" | "DEVICES" | "BOTH" | "UNLIMITED";
 export type PlanAvailability = "ALL" | "NEW" | "EXISTING" | "INVITED" | "ALLOWED" | "LINK";
@@ -38,11 +39,10 @@ export interface Plan {
 }
 
 export function listPlans(signal?: AbortSignal): Promise<Plan[]> {
-  return apiGet<Plan[]>("/plans", signal);
+  return apiGet<ListResponse<Plan>>("/plans", signal).then((response) => response.items);
 }
 
 export interface CreatePlanRequest {
-  public_code: string;
   name: string;
   description?: string | null;
   tag?: string | null;
@@ -70,7 +70,7 @@ export interface UpdatePlanRequest {
 }
 
 export function updatePlan(planId: number, payload: UpdatePlanRequest): Promise<Plan> {
-  return apiPut<Plan, UpdatePlanRequest>(`/plans/${planId}`, payload);
+  return apiPatch<Plan, UpdatePlanRequest>(`/plans/${planId}`, payload);
 }
 
 export function deletePlan(planId: number): Promise<void> {
@@ -78,7 +78,9 @@ export function deletePlan(planId: number): Promise<void> {
 }
 
 export function reorderPlans(planIds: number[]): Promise<Plan[]> {
-  return apiPut<Plan[], { plan_ids: number[] }>("/plans/order", { plan_ids: planIds });
+  return apiPost<ListResponse<Plan>, { plan_ids: number[] }>("/plans/actions/reorder", { plan_ids: planIds }).then(
+    (response) => response.items,
+  );
 }
 
 export interface SetPlanDurationsItem {

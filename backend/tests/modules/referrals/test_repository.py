@@ -437,3 +437,21 @@ async def test_reward_totals_by_referral_sums_per_type(
         ReferralRewardType.EXTRA_DAYS: Decimal("10"),
         ReferralRewardType.POINTS: Decimal("50"),
     }
+
+
+async def test_list_paginated_search_does_not_match_login(
+    referral_repository: ReferralRepository, user_repository: UserRepository
+) -> None:
+    # the referral listing never shows a login, so searching by it would be an oracle
+    referrer = await user_repository.create(
+        CreateUserDto(name="r", telegram_id=2211, login="hiddenlogin")
+    )
+    referred = await _create_user(user_repository, 2212)
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=referred, level=1
+    )
+
+    _, total = await referral_repository.list_paginated(search="hiddenlogin")
+    assert total == 0
+    _, total = await referral_repository.list_paginated(search="2211")
+    assert total == 1

@@ -1,10 +1,11 @@
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.advertising.dto import AttributedUserDto, ListAdLinkAttributedUsersDto
 from app.modules.advertising.repository import AdLinkRepository
-from app.modules.payments import PaymentOrderRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.transactions import TransactionRepository
+from app.modules.users import UserRepository
 
 
 class ListAdLinkAttributedUsersUseCase(
@@ -16,16 +17,16 @@ class ListAdLinkAttributedUsersUseCase(
         self,
         ad_link_repository: AdLinkRepository,
         user_repository: UserRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         uow: UnitOfWork,
     ) -> None:
         self._ad_link_repository = ad_link_repository
         self._user_repository = user_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: ListAdLinkAttributedUsersDto
+        self, actor: Actor, data: ListAdLinkAttributedUsersDto
     ) -> tuple[list[AttributedUserDto], int]:
         # Raises NotFoundError for an unknown ad_link_id -- the router maps
         # that to 404, same as an unknown id would for get_ad_link_stats.
@@ -39,7 +40,7 @@ class ListAdLinkAttributedUsersUseCase(
             users_by_id = {
                 user.id: user for user in await self._user_repository.list_by_ids(user_ids)
             }
-            paid_user_ids = await self._payment_order_repository.list_user_ids_with_paid_order(
+            paid_user_ids = await self._transaction_repository.list_user_ids_with_paid_order(
                 user_ids
             )
 

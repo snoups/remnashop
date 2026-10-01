@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Final, Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.exceptions import PermissionDeniedError
@@ -11,7 +12,6 @@ from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import (
     DEFAULT_PAGE_SIZE,
     DeletedFilter,
-    UserDto,
     UserListItemDto,
     UserSort,
 )
@@ -28,7 +28,7 @@ ALLOWED_ROLES: Final[list[Role]] = [Role.USER]
 STAFF_ROLES: Final[list[Role]] = [Role.USER, Role.ADMIN, Role.OWNER]
 
 
-def resolve_list_roles(actor: UserDto, include_staff: bool) -> list[Role]:
+def resolve_list_roles(actor: Actor, include_staff: bool) -> list[Role]:
     if not include_staff:
         return ALLOWED_ROLES
     if not PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
@@ -70,7 +70,7 @@ class ListUsersUseCase(UseCase[ListUsersInput, tuple[list[UserListItemDto], int]
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: ListUsersInput
+        self, actor: Actor, data: ListUsersInput
     ) -> tuple[list[UserListItemDto], int]:
         async with self._uow:
             allowed_roles = resolve_list_roles(actor, data.include_staff)

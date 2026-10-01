@@ -1,3 +1,9 @@
+import asyncio
+
+import httpx
+import pytest
+
+from app.modules.blacklist import fetch
 from app.modules.blacklist.fetch import parse_source_text
 
 
@@ -38,3 +44,27 @@ def test_dedupes_and_sorts():
     text = "5\n3\n5\n"
     parsed = parse_source_text(text)
     assert parsed.telegram_ids == [3, 5]
+
+
+async def test_fetch_source_gives_up_on_a_source_that_trickles_bytes(monkeypatch) -> None:
+    class _Trickle(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            while True:  # each read is quick, the response never ends
+                await asyncio.sleep(0.01)
+                yield b"1"
+
+    real_client = httpx.AsyncClient
+
+    def _client(**kwargs):
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, stream=_Trickle()))
+        return real_client(transport=transport, **kwargs)
+
+    async def _public(url: str) -> None:
+        return None
+
+    monkeypatch.setattr(fetch, "assert_public_https_host", _public)
+    monkeypatch.setattr(fetch.httpx, "AsyncClient", _client)
+    monkeypatch.setattr(fetch, "_DEADLINE_S", 0.1)
+
+    with pytest.raises(ValueError, match="did not finish"):
+        await fetch.fetch_source("https://blacklist.example/list.txt")

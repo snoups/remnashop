@@ -114,3 +114,8 @@ class DialogTextResponse(BaseModel):
     message_id: str
     value: str
     default_value: str
+
+
+class DialogWindowListResponse(BaseModel):
+    items: list[DialogWindowResponse]
+    total: int

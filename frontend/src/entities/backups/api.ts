@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut, BASE_URL } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, BASE_URL } from "@shared/api/http";
 import { getAccessToken } from "@shared/lib/token-storage";
 
 export type BackupKind = "DATABASE" | "ASSETS";
@@ -21,12 +21,12 @@ export interface UpdateBackupSettingsRequest {
 }
 
 export function updateBackupSettings(payload: UpdateBackupSettingsRequest): Promise<BackupSettings> {
-  return apiPut<BackupSettings, UpdateBackupSettingsRequest>("/backups/settings", payload);
+  return apiPatch<BackupSettings, UpdateBackupSettingsRequest>("/backups/settings", payload);
 }
 
 // Drops the stored row, so every field reads back as its default.
 export function resetBackupSettings(): Promise<BackupSettings> {
-  return apiDelete<BackupSettings>("/backups/settings");
+  return apiPost<BackupSettings, Record<string, never>>("/backups/settings/actions/reset", {});
 }
 
 export interface BackupRun {

@@ -22,7 +22,7 @@ from app.modules.subscriptions.usecases import (
 )
 from app.modules.users.dto import UserDto
 
-OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+OWNER = UserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
@@ -52,8 +52,10 @@ async def test_regular_user_cannot_list_addons(
         await use_case(REGULAR_USER)
 
 
-async def test_owner_can_create_addon(addon_repository: AddOnRepository, uow: UnitOfWork) -> None:
-    use_case = CreateAddOnUseCase(addon_repository, uow)
+async def test_owner_can_create_addon(
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
+) -> None:
+    use_case = CreateAddOnUseCase(addon_repository, event_publisher, uow)
 
     addon = await use_case(OWNER, _create_dto())
 
@@ -62,17 +64,19 @@ async def test_owner_can_create_addon(addon_repository: AddOnRepository, uow: Un
 
 
 async def test_regular_user_cannot_create_addon(
-    addon_repository: AddOnRepository, uow: UnitOfWork
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = CreateAddOnUseCase(addon_repository, uow)
+    use_case = CreateAddOnUseCase(addon_repository, event_publisher, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, _create_dto())
 
 
-async def test_owner_can_update_addon(addon_repository: AddOnRepository, uow: UnitOfWork) -> None:
+async def test_owner_can_update_addon(
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
+) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = UpdateAddOnUseCase(addon_repository, uow)
+    use_case = UpdateAddOnUseCase(addon_repository, event_publisher, uow)
 
     updated = await use_case(OWNER, UpdateAddOnDto(addon_id=created.id, amount=20))
 
@@ -80,18 +84,20 @@ async def test_owner_can_update_addon(addon_repository: AddOnRepository, uow: Un
 
 
 async def test_regular_user_cannot_update_addon(
-    addon_repository: AddOnRepository, uow: UnitOfWork
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
 ) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = UpdateAddOnUseCase(addon_repository, uow)
+    use_case = UpdateAddOnUseCase(addon_repository, event_publisher, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, UpdateAddOnDto(addon_id=created.id, amount=20))
 
 
-async def test_owner_can_delete_addon(addon_repository: AddOnRepository, uow: UnitOfWork) -> None:
+async def test_owner_can_delete_addon(
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
+) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = DeleteAddOnUseCase(addon_repository, uow)
+    use_case = DeleteAddOnUseCase(addon_repository, event_publisher, uow)
 
     await use_case(OWNER, created.id)
 
@@ -99,20 +105,20 @@ async def test_owner_can_delete_addon(addon_repository: AddOnRepository, uow: Un
 
 
 async def test_regular_user_cannot_delete_addon(
-    addon_repository: AddOnRepository, uow: UnitOfWork
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
 ) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = DeleteAddOnUseCase(addon_repository, uow)
+    use_case = DeleteAddOnUseCase(addon_repository, event_publisher, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, created.id)
 
 
 async def test_owner_can_set_addon_base_price(
-    addon_repository: AddOnRepository, uow: UnitOfWork
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
 ) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = SetAddOnBasePriceUseCase(addon_repository, uow)
+    use_case = SetAddOnBasePriceUseCase(addon_repository, event_publisher, uow)
 
     updated = await use_case(
         OWNER, SetAddOnBasePriceDto(addon_id=created.id, base_price=Decimal("2.49"))
@@ -122,10 +128,10 @@ async def test_owner_can_set_addon_base_price(
 
 
 async def test_regular_user_cannot_set_addon_base_price(
-    addon_repository: AddOnRepository, uow: UnitOfWork
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
 ) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = SetAddOnBasePriceUseCase(addon_repository, uow)
+    use_case = SetAddOnBasePriceUseCase(addon_repository, event_publisher, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
@@ -133,10 +139,12 @@ async def test_regular_user_cannot_set_addon_base_price(
         )
 
 
-async def test_owner_can_reorder_addons(addon_repository: AddOnRepository, uow: UnitOfWork) -> None:
+async def test_owner_can_reorder_addons(
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
+) -> None:
     first = await addon_repository.create(_create_dto("a"))
     second = await addon_repository.create(_create_dto("b"))
-    use_case = ReorderAddOnsUseCase(addon_repository, uow)
+    use_case = ReorderAddOnsUseCase(addon_repository, event_publisher, uow)
 
     reordered = await use_case(OWNER, ReorderAddOnsDto(addon_ids=[second.id, first.id]))
 
@@ -144,10 +152,10 @@ async def test_owner_can_reorder_addons(addon_repository: AddOnRepository, uow: 
 
 
 async def test_regular_user_cannot_reorder_addons(
-    addon_repository: AddOnRepository, uow: UnitOfWork
+    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
 ) -> None:
     created = await addon_repository.create(_create_dto())
-    use_case = ReorderAddOnsUseCase(addon_repository, uow)
+    use_case = ReorderAddOnsUseCase(addon_repository, event_publisher, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, ReorderAddOnsDto(addon_ids=[created.id]))

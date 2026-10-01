@@ -1,14 +1,15 @@
 from typing import Final
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.analytics.dto import FunnelDto, FunnelStepDto, GetFunnelDto
 from app.modules.analytics.window import resolve_since
-from app.modules.payments import PaymentOrderRepository
 from app.modules.subscriptions import SubscriptionRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.transactions import TransactionRepository
+from app.modules.users import UserRepository
 
 _STEP_KEYS: Final[tuple[str, str, str, str]] = ("registered", "trial", "first_paid", "repeat_paid")
 
@@ -20,25 +21,25 @@ class GetFunnelUseCase(UseCase[GetFunnelDto, FunnelDto]):
         self,
         user_repository: UserRepository,
         subscription_repository: SubscriptionRepository,
-        payment_order_repository: PaymentOrderRepository,
+        transaction_repository: TransactionRepository,
         uow: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
-        self._payment_order_repository = payment_order_repository
+        self._transaction_repository = transaction_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: GetFunnelDto) -> FunnelDto:
+    async def _execute(self, actor: Actor, data: GetFunnelDto) -> FunnelDto:
         since = await resolve_since(self._user_repository, data.days)
         async with self._uow:
             registered_ids = await self._user_repository.list_ids_registered_since(since, Role.USER)
 
             trial_ids = await self._subscription_repository.list_user_ids_with_trial(registered_ids)
-            first_paid_ids = await self._payment_order_repository.list_user_ids_with_paid_order(
+            first_paid_ids = await self._transaction_repository.list_user_ids_with_paid_order(
                 registered_ids
             )
             repeat_paid_ids = (
-                await self._payment_order_repository.list_user_ids_with_multiple_paid_orders(
+                await self._transaction_repository.list_user_ids_with_multiple_paid_orders(
                     registered_ids
                 )
             )

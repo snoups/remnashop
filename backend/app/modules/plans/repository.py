@@ -11,6 +11,7 @@ from app.core.db.models.plan_duration import PlanDuration
 from app.core.db.models.plan_price_override import PlanPriceOverride
 from app.core.db.partial_update import apply_partial_update
 from app.core.enums import PlanAvailability, PlanType
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -133,7 +134,7 @@ class PlanRepository:
     async def _get_or_raise(self, plan_id: int) -> Plan:
         row = await self.session.get(Plan, plan_id)
         if row is None:
-            raise NotFoundError(f"Plan '{plan_id}' not found")
+            raise NotFoundError(f"Plan '{plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND)
         return row
 
     async def get_by_id(self, plan_id: int) -> PlanDto:
@@ -149,6 +150,7 @@ class PlanRepository:
         traffic_limit, device_limit = _zero_irrelevant_limits(
             data.type, data.traffic_limit, data.device_limit
         )
+        assert data.public_code is not None  # filled in by CreatePlanUseCase
         row = Plan(
             public_code=data.public_code,
             name=data.name,
@@ -175,11 +177,16 @@ class PlanRepository:
             constraint = constraint_name(error)
             if constraint == "ix_plans_public_code":
                 raise ConflictError(
-                    f"Plan with public_code '{data.public_code}' already exists"
+                    f"Plan with public_code '{data.public_code}' already exists",
+                    code=ErrorCode.PLAN_PUBLIC_CODE_TAKEN,
                 ) from error
             if constraint == "ix_plans_name":
-                raise ConflictError(f"Plan with name '{data.name}' already exists") from error
-            raise ConflictError("Plan could not be created due to a conflicting value") from error
+                raise ConflictError(
+                    f"Plan with name '{data.name}' already exists", code=ErrorCode.PLAN_NAME_TAKEN
+                ) from error
+            raise ConflictError(
+                "Plan could not be created due to a conflicting value", code=ErrorCode.PLAN_CONFLICT
+            ) from error
 
         await self.session.refresh(row)
         return self._to_dto(row, [])
@@ -195,20 +202,28 @@ class PlanRepository:
 
         if row.is_active:
             if not row.internal_squads:
-                raise ValidationError("Cannot activate a plan with no squads")
+                raise ValidationError(
+                    "Cannot activate a plan with no squads", code=ErrorCode.PLAN_NO_SQUADS
+                )
             duration_count = await self.session.scalar(
                 select(func.count()).select_from(PlanDuration).where(PlanDuration.plan_id == row.id)
             )
             if not duration_count:
-                raise ValidationError("Cannot activate a plan with no durations")
+                raise ValidationError(
+                    "Cannot activate a plan with no durations", code=ErrorCode.PLAN_NO_DURATIONS
+                )
 
         try:
             await self.session.flush()
         except IntegrityError as error:
             constraint = constraint_name(error)
             if constraint == "ix_plans_name":
-                raise ConflictError(f"Plan name '{data.name}' already exists") from error
-            raise ConflictError("Plan could not be updated due to a conflicting value") from error
+                raise ConflictError(
+                    f"Plan name '{data.name}' already exists", code=ErrorCode.PLAN_NAME_TAKEN
+                ) from error
+            raise ConflictError(
+                "Plan could not be updated due to a conflicting value", code=ErrorCode.PLAN_CONFLICT
+            ) from error
 
         await self.session.refresh(row)
         durations_by_plan = await self._load_durations([row.id])
@@ -223,23 +238,31 @@ class PlanRepository:
             constraint = constraint_name(error)
             if constraint == "promocodes_reward_plan_id_fkey":
                 raise ConflictError(
-                    f"Plan '{plan_id}' is still referenced by a promocode"
+                    f"Plan '{plan_id}' is still referenced by a promocode",
+                    code=ErrorCode.PLAN_USED_BY_PROMOCODE,
                 ) from error
-            # payment_orders.plan_id is ON DELETE SET NULL (purchase_subscription_task
+            # transactions.plan_id is ON DELETE SET NULL (purchase_subscription_task
             # provisions from plan_snapshot, never re-resolves it live) -- deleting a
             # plan with existing orders no longer raises here.
-            raise ConflictError(f"Plan '{plan_id}' is still referenced elsewhere") from error
+            raise ConflictError(
+                f"Plan '{plan_id}' is still referenced elsewhere", code=ErrorCode.PLAN_IN_USE
+            ) from error
 
     async def set_durations(self, data: SetPlanDurationsDto) -> PlanDto:
         row = await self._get_or_raise(data.plan_id)
 
         if row.is_active and not data.durations:
-            raise ValidationError("Cannot remove all durations from an active plan")
+            raise ValidationError(
+                "Cannot remove all durations from an active plan", code=ErrorCode.PLAN_NO_DURATIONS
+            )
 
         seen_days: set[int] = set()
         for duration in data.durations:
             if duration.days in seen_days:
-                raise ValidationError(f"Duplicate duration of {duration.days} days")
+                raise ValidationError(
+                    f"Duplicate duration of {duration.days} days",
+                    code=ErrorCode.PLAN_DURATION_DUPLICATE,
+                )
             seen_days.add(duration.days)
 
         await self.session.execute(select(func.pg_advisory_xact_lock(_PLAN_DURATIONS_LOCK_KEY)))
@@ -263,7 +286,10 @@ class PlanRepository:
 
     async def set_price_override(self, data: SetPlanPriceOverrideDto) -> PlanDto:
         if data.price is not None and data.currency == data.anchor:
-            raise ValidationError("Cannot override the anchor currency's price")
+            raise ValidationError(
+                "Cannot override the anchor currency's price",
+                code=ErrorCode.ANCHOR_PRICE_NOT_OVERRIDABLE,
+            )
 
         row = await self._get_or_raise(data.plan_id)
 
@@ -274,7 +300,10 @@ class PlanRepository:
         )
         duration_row = duration_result.scalar_one_or_none()
         if duration_row is None:
-            raise NotFoundError(f"Plan '{data.plan_id}' has no duration of '{data.days}' days")
+            raise NotFoundError(
+                f"Plan '{data.plan_id}' has no duration of '{data.days}' days",
+                code=ErrorCode.PLAN_DURATION_NOT_FOUND,
+            )
 
         if data.price is None:
             await self.session.execute(
@@ -314,7 +343,10 @@ class PlanRepository:
         )
         duration_row = duration_result.scalar_one_or_none()
         if duration_row is None:
-            raise NotFoundError(f"Plan '{data.plan_id}' has no duration of '{data.days}' days")
+            raise NotFoundError(
+                f"Plan '{data.plan_id}' has no duration of '{data.days}' days",
+                code=ErrorCode.PLAN_DURATION_NOT_FOUND,
+            )
 
         duration_row.base_price = data.base_price
         await self.session.flush()
@@ -326,7 +358,10 @@ class PlanRepository:
         for duration_id, base_price in values.items():
             row = await self.session.get(PlanDuration, duration_id)
             if row is None:
-                raise NotFoundError(f"Plan duration '{duration_id}' not found")
+                raise NotFoundError(
+                    f"Plan duration '{duration_id}' not found",
+                    code=ErrorCode.PLAN_DURATION_NOT_FOUND,
+                )
             row.base_price = base_price
         await self.session.flush()
 
@@ -337,7 +372,8 @@ class PlanRepository:
             and not data.allowed_emails
         ):
             raise ValidationError(
-                "availability=ALLOWED requires at least one allowed telegram id or email"
+                "availability=ALLOWED requires at least one allowed telegram id or email",
+                code=ErrorCode.ALLOWED_LIST_EMPTY,
             )
 
         row = await self._get_or_raise(data.plan_id)
@@ -366,7 +402,10 @@ class PlanRepository:
         rows = {row.id: row for row in result.scalars()}
 
         if set(data.plan_ids) != set(rows) or len(data.plan_ids) != len(rows):
-            raise ValidationError("Reorder must include every existing plan id exactly once")
+            raise ValidationError(
+                "Reorder must include every existing plan id exactly once",
+                code=ErrorCode.PLAN_REORDER_INCOMPLETE,
+            )
 
         for index, plan_id in enumerate(data.plan_ids):
             rows[plan_id].order_index = index

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     # app.modules.users now imports BlacklistRepository (block/unblock usecases) --
     # an eager import here would cycle back into a partially-initialized
     # app.modules.users, same class of fix as core/usecase.py and core/events.py.
-    from app.modules.users import UserDto
+    pass
 
 
 class AddBlacklistSourceUseCase(UseCase[AddBlacklistSourceDto, BlacklistSourceDto]):
@@ -25,7 +26,7 @@ class AddBlacklistSourceUseCase(UseCase[AddBlacklistSourceDto, BlacklistSourceDt
         self._blacklist_repository = blacklist_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: AddBlacklistSourceDto) -> BlacklistSourceDto:
+    async def _execute(self, actor: Actor, data: AddBlacklistSourceDto) -> BlacklistSourceDto:
         await assert_public_https_host(data.url)
         async with self._uow:
             name = (data.name or "").strip() or derive_source_name(data.url)

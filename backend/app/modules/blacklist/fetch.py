@@ -1,3 +1,4 @@
+import asyncio
 from typing import Final
 
 import httpx
@@ -8,6 +9,9 @@ from app.modules.blacklist.dto import ParsedSourceList
 from app.modules.blacklist.normalize import normalize_identity
 
 _TIMEOUT_S: Final[float] = 10.0
+# httpx's timeout is per read, so a source trickling bytes never trips it;
+# this bounds the whole download.
+_DEADLINE_S: Final[float] = 60.0
 _MAX_BYTES: Final[int] = 5 * 1024 * 1024
 
 
@@ -32,8 +36,7 @@ def parse_source_text(text: str) -> ParsedSourceList:
     return ParsedSourceList(telegram_ids=sorted(ids), emails=sorted(emails))
 
 
-async def fetch_source(url: str) -> ParsedSourceList:
-    await assert_public_https_host(url)
+async def _download(url: str) -> bytes:
     # follow_redirects=False: assert_public_https_host only vets the initial
     # host, a followed redirect would land anywhere. Raw blocklist URLs serve
     # directly.
@@ -49,4 +52,16 @@ async def fetch_source(url: str) -> ParsedSourceList:
                 if total > _MAX_BYTES:
                     raise ValueError(f"blacklist source body exceeds {_MAX_BYTES} bytes: {url}")
                 chunks.append(chunk)
-    return parse_source_text(b"".join(chunks).decode("utf-8", errors="replace"))
+    return b"".join(chunks)
+
+
+async def fetch_source(url: str) -> ParsedSourceList:
+    await assert_public_https_host(url)
+    try:
+        async with asyncio.timeout(_DEADLINE_S):
+            body = await _download(url)
+    except TimeoutError as error:
+        raise ValueError(
+            f"blacklist source did not finish within {_DEADLINE_S:.0f}s: {url}"
+        ) from error
+    return parse_source_text(body.decode("utf-8", errors="replace"))

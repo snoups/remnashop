@@ -3,6 +3,7 @@ from webauthn.helpers import bytes_to_base64url
 from webauthn.helpers.structs import UserVerificationRequirement
 
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.settings import SettingsRepository
@@ -23,9 +24,13 @@ class GetPasskeyAuthenticationOptionsUseCase:
         async with self._uow:
             settings = await self._settings_repository.get_oauth_settings()
             if not settings.passkey_enabled:
-                raise AuthenticationError("Passkeys are not enabled")
+                raise AuthenticationError(
+                    "Passkeys are not enabled", code=ErrorCode.PASSKEYS_DISABLED
+                )
             if settings.passkey_rp_id is None or settings.passkey_origin is None:
-                raise AuthenticationError("Passkeys are not configured")
+                raise AuthenticationError(
+                    "Passkeys are not configured", code=ErrorCode.PASSKEYS_NOT_CONFIGURED
+                )
 
             # No allow_credentials -- a discoverable/usernameless ceremony, so the
             # browser's own passkey picker resolves which credential (and

@@ -1,6 +1,7 @@
 import {
   Anchor,
   ArrowLeftRight,
+  CreditCard,
   Ban,
   CalendarClock,
   Coins,
@@ -21,8 +22,10 @@ import {
   LogOut,
   Package,
   PackagePlus,
+  PencilLine,
   RefreshCcw,
   Send,
+  Settings2,
   Server,
   ShieldAlert,
   ShieldBan,
@@ -95,10 +98,14 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   UserBlockedEvent: Lock,
   UserPointsAdjustedEvent: Star,
   UserUnblockedEvent: LockOpen,
-  UsersBulkBlockedEvent: Lock,
   UsersBulkUnblockedEvent: LockOpen,
-  PaymentOrderRefundedEvent: Undo2,
+  TransactionRefundedEvent: Undo2,
   BackupFailedEvent: DatabaseZap,
+  GatewayChangedEvent: CreditCard,
+  PricingSettingsChangedEvent: Settings2,
+  ReferralSettingsChangedEvent: Settings2,
+  SubscriptionEditedEvent: PencilLine,
+  AddOnChangedEvent: PackagePlus,
 };
 
 export function EventTypeIcon({ eventType, className }: { eventType: string; className?: string }) {

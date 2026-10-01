@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -25,7 +26,7 @@ class OAuthCallbackDto:
     client_ip: str
 
 
-class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto]):
+class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(
@@ -54,7 +55,9 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto]):
                 or state_data.provider != data.provider
                 or state_data.user_id != actor.id
             ):
-                raise AuthenticationError("Invalid or expired OAuth state")
+                raise AuthenticationError(
+                    "Invalid or expired OAuth state", code=ErrorCode.OAUTH_STATE_INVALID
+                )
 
             settings = await self._settings_repository.get_oauth_settings()
             client = get_oauth_client(data.provider, settings)
@@ -66,14 +69,19 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto]):
                 state_data.code_verifier,
             )
         except OAUTH_EXCHANGE_ERRORS as error:
-            raise AuthenticationError("Failed to exchange OAuth code") from error
+            raise AuthenticationError(
+                "Failed to exchange OAuth code", code=ErrorCode.OAUTH_CODE_EXCHANGE_FAILED
+            ) from error
 
         async with self._uow:
             existing = await self._oauth_identity_repository.get_by_provider_external_id(
                 data.provider, external_id
             )
             if existing is not None and existing.user_id != actor.id:
-                raise ConflictError("This account is already linked to another user")
+                raise ConflictError(
+                    "This account is already linked to another user",
+                    code=ErrorCode.OAUTH_ACCOUNT_LINKED_ELSEWHERE,
+                )
 
         async with self._uow:
             identity = await self._oauth_identity_repository.create(

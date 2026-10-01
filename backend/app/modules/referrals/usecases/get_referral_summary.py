@@ -2,13 +2,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ReferralRewardType
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import ReferralSummaryDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,7 +28,7 @@ class GetReferralSummaryUseCase(UseCase[GetReferralSummaryInput, ReferralSummary
         self._referral_repository = referral_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: GetReferralSummaryInput) -> ReferralSummaryDto:
+    async def _execute(self, actor: Actor, data: GetReferralSummaryInput) -> ReferralSummaryDto:
         async with self._uow:
             return await self._referral_repository.summarize(
                 level=data.level,

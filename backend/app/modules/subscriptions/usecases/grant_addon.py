@@ -2,6 +2,7 @@ from loguru import logger
 from remnapy import RemnawaveSDK
 from remnapy.models import UpdateUserRequestDto
 
+from app.core.actor import Actor
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType
@@ -11,7 +12,7 @@ from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import GrantAddOnDto, SubscriptionDto
 from app.modules.subscriptions.events import SubscriptionAddOnGrantedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 
 class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
@@ -36,7 +37,7 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: UserDto, data: GrantAddOnDto) -> SubscriptionDto:
+    async def _execute(self, actor: Actor, data: GrantAddOnDto) -> SubscriptionDto:
         async with self._uow:
             addon = await self._addon_repository.get_by_id(data.addon_id)
 

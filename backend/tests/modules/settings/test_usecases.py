@@ -14,7 +14,6 @@ from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageKind, Locale, Role
 from app.core.exceptions import (
-    ConflictError,
     NotFoundError,
     PermissionDeniedError,
     ValidationError,
@@ -800,7 +799,7 @@ async def test_add_locale_publishes_locale_activated_event(
     assert row.actor_login == OWNER.login
 
 
-async def test_add_locale_rejects_duplicate(
+async def test_add_locale_is_idempotent(
     settings_repository: SettingsRepository,
     translations_repository: TranslationsRepository,
     uow: UnitOfWork,
@@ -810,10 +809,9 @@ async def test_add_locale_rejects_duplicate(
     add_use_case = AddLocaleUseCase(
         settings_repository, translations_repository, uow, event_publisher, config
     )
-    await add_use_case(OWNER, Locale.RU)
+    first = await add_use_case(OWNER, Locale.RU)
 
-    with pytest.raises(ConflictError):
-        await add_use_case(OWNER, Locale.RU)
+    assert await add_use_case(OWNER, Locale.RU) == first
 
 
 async def test_remove_locale_publishes_locale_deactivated_event(

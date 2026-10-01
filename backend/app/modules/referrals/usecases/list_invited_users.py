@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import DEFAULT_PAGE_SIZE, InvitedUserDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserRepository
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -33,11 +35,13 @@ class ListInvitedUsersUseCase(UseCase[ListInvitedUsersInput, tuple[list[InvitedU
         self._uow = uow
 
     async def _execute(
-        self, actor: UserDto, data: ListInvitedUsersInput
+        self, actor: Actor, data: ListInvitedUsersInput
     ) -> tuple[list[InvitedUserDto], int]:
         async with self._uow:
             if await self._user_repository.get_by_id(data.user_id) is None:
-                raise NotFoundError(f"User '{data.user_id}' not found")
+                raise NotFoundError(
+                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
+                )
             entries, total = await self._referral_repository.list_downline(
                 data.user_id,
                 depth=data.level,

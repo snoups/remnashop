@@ -1,13 +1,14 @@
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageKind
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings.appearance_storage import delete_appearance_image
 from app.modules.settings.dto import AppearanceSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.users import UserDto
 
 
 async def _delete_appearance_image(
@@ -19,7 +20,9 @@ async def _delete_appearance_image(
     async with uow:
         meta = await settings_repository.get_appearance_image_meta(kind)
     if meta is None:
-        raise NotFoundError(f"Appearance image not set: {kind}")
+        raise NotFoundError(
+            f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET
+        )
 
     async with uow:
         settings = await settings_repository.clear_appearance_image(kind)
@@ -37,7 +40,7 @@ class DeleteAppearanceLogoUseCase(UseCase[None, AppearanceSettingsDto]):
         self._config = config
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> AppearanceSettingsDto:
+    async def _execute(self, actor: Actor, data: None) -> AppearanceSettingsDto:
         return await _delete_appearance_image(
             self._settings_repository, self._config, self._uow, AppearanceImageKind.LOGO
         )
@@ -53,7 +56,7 @@ class DeleteAppearanceFaviconUseCase(UseCase[None, AppearanceSettingsDto]):
         self._config = config
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> AppearanceSettingsDto:
+    async def _execute(self, actor: Actor, data: None) -> AppearanceSettingsDto:
         return await _delete_appearance_image(
             self._settings_repository, self._config, self._uow, AppearanceImageKind.FAVICON
         )

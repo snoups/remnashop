@@ -7,10 +7,12 @@ from app.modules.subscriptions.usecases.delete_addon import DeleteAddOnUseCase
 from app.modules.subscriptions.usecases.delete_all_devices import DeleteAllDevicesUseCase
 from app.modules.subscriptions.usecases.delete_device import DeleteDeviceDto, DeleteDeviceUseCase
 from app.modules.subscriptions.usecases.delete_subscription import DeleteSubscriptionUseCase
+from app.modules.subscriptions.usecases.get_addon import GetAddOnUseCase
 from app.modules.subscriptions.usecases.get_available_trial import (
     GetAvailableTrialResult,
     GetAvailableTrialUseCase,
 )
+from app.modules.subscriptions.usecases.get_subscription import GetSubscriptionUseCase
 from app.modules.subscriptions.usecases.grant_addon import GrantAddOnUseCase
 from app.modules.subscriptions.usecases.list_addons import ListAddOnsUseCase
 from app.modules.subscriptions.usecases.list_devices import DeviceDto, ListDevicesUseCase
@@ -48,9 +50,11 @@ __all__ = [
     "GetAvailableTrialUseCase",
     "GrantAddOnUseCase",
     "ListAddOnsUseCase",
+    "GetAddOnUseCase",
     "ListDevicesUseCase",
     "ListSubscriptionsInput",
     "ListSubscriptionsUseCase",
+    "GetSubscriptionUseCase",
     "PurchaseSubscriptionUseCase",
     "ReissueSubscriptionUseCase",
     "ReorderAddOnsUseCase",

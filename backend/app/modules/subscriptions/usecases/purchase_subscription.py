@@ -13,9 +13,11 @@ from remnapy.models import (
     UserResponseDto,
 )
 
+from app.core.actor import Actor
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PurchaseType, SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -36,13 +38,18 @@ from app.modules.subscriptions.events import (
 )
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UpdateUserDto, UserDto, UserRepository
+from app.modules.users import UserRepository
 
 _PANEL_USERNAME_PREFIX: Final[str] = "rs_"
 
 
 def _build_panel_username(user_id: int) -> str:
     return f"{_PANEL_USERNAME_PREFIX}{user_id}_{uuid4().hex[:8]}"
+
+
+class _SupersededError(ValidationError):
+    """A concurrent purchase committed first and now owns the panel identity
+    this one reconfigured -- reverting it would overwrite the winner's config."""
 
 
 class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionDto]):
@@ -68,7 +75,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         self._lifecycle_service = lifecycle_service
         self._pricing_repository = pricing_repository
 
-    async def _execute(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
+    async def _execute(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         if data.user_id != actor.id and not actor.is_privileged:
             raise PermissionDeniedError
 
@@ -120,18 +127,10 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 and await self._subscription_repository.get_pending_renew_expire_at(key) is not None
             ):
                 return None  # resume -- _renew re-applies the pinned expire_at
-            raise ValidationError(f"Purchase with idempotency_key '{key}' is already in progress")
-
-    async def _clear_purchase_discount(self, data: PurchaseSubscriptionDto) -> None:
-        # A discount is spent by being quoted against a price, so only a real
-        # checkout consumes it -- a trial, a promocode reward or a referral
-        # EXTRA_DAYS renewal all reach here too and would otherwise burn a
-        # discount the customer never got to use. Within a checkout it's
-        # cleared unconditionally: one no-op UPDATE is cheaper than a SELECT
-        # to check first, and it's always correct either way.
-        if not data.consumes_purchase_discount:
-            return
-        await self._user_repository.update_fields(data.user_id, UpdateUserDto(purchase_discount=0))
+            raise ValidationError(
+                f"Purchase with idempotency_key '{key}' is already in progress",
+                code=ErrorCode.PURCHASE_IN_PROGRESS,
+            )
 
     async def _release_idempotency_key_best_effort(self, key: Optional[str]) -> None:
         if key is None:
@@ -140,10 +139,13 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             async with self._uow:
                 await self._subscription_repository.release_idempotency_key(key)
 
-    async def _purchase_new(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
+    async def _purchase_new(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         async with self._uow:
             if data.target_subscription_id is not None:
-                raise ValidationError("target_subscription_id is forbidden for a NEW purchase")
+                raise ValidationError(
+                    "target_subscription_id is forbidden for a NEW purchase",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_FORBIDDEN,
+                )
 
             active_trial = next(
                 (
@@ -203,7 +205,6 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         payment_key=data.idempotency_key,
                     )
                 )
-                await self._clear_purchase_discount(data)
         except Exception:
             # disable, not delete: the DB write failed, not the panel user
             # itself -- disabling keeps a reversible, inspectable record on
@@ -229,10 +230,13 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         else:
             active = await self._subscription_repository.get_active_by_user(user_id)
         if len(active) >= max_active:
-            raise ValidationError(f"User '{user_id}' is already at the concurrent-subscription cap")
+            raise ValidationError(
+                f"User '{user_id}' is already at the concurrent-subscription cap",
+                code=ErrorCode.SUBSCRIPTION_LIMIT_REACHED,
+            )
 
     async def _upgrade_trial_in_place(
-        self, actor: UserDto, data: PurchaseSubscriptionDto, trial: SubscriptionDto
+        self, actor: Actor, data: PurchaseSubscriptionDto, trial: SubscriptionDto
     ) -> SubscriptionDto:
         # Same panel identity, reconfigured for the purchased plan -- never
         # create_user/delete_user here, the trial's own identity is reused.
@@ -255,9 +259,10 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             async with self._uow:
                 locked_trial = await self._subscription_repository.get_by_id_for_update(trial.id)
                 if locked_trial.status is SubscriptionStatus.DELETED:
-                    raise ValidationError(
+                    raise _SupersededError(
                         "Trial subscription was already converted or deleted while this "
-                        "purchase was in flight"
+                        "purchase was in flight",
+                        code=ErrorCode.PURCHASE_SUPERSEDED,
                     )
                 await self._subscription_repository.mark_deleted(trial.id)
                 subscription = await self._subscription_repository.create(
@@ -276,7 +281,8 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         payment_key=data.idempotency_key,
                     )
                 )
-                await self._clear_purchase_discount(data)
+        except _SupersededError:
+            raise
         except Exception:
             # Best-effort revert, never disable -- this panel identity still
             # belongs to the (reverted) trial row, not an orphan.
@@ -302,13 +308,16 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
 
     async def _renew(
         self,
-        actor: UserDto,
+        actor: Actor,
         data: PurchaseSubscriptionDto,
         keep_key: Callable[[], None],
     ) -> SubscriptionDto:
         async with self._uow:
             if data.target_subscription_id is None:
-                raise ValidationError("target_subscription_id is required for a RENEW")
+                raise ValidationError(
+                    "target_subscription_id is required for a RENEW",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
+                )
 
             # Validate unlocked, call the panel, THEN lock+re-validate+apply --
             # never hold a row lock across the SDK round-trip (core/db/uow.py's
@@ -317,11 +326,19 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             # _purchase_new/_change's shape below, not the one this replaces.
             target = await self._subscription_repository.get_by_id(data.target_subscription_id)
             if target.status is SubscriptionStatus.DELETED:
-                raise ValidationError("Cannot renew a deleted subscription")
+                raise ValidationError(
+                    "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
+                )
             if target.user_id != data.user_id:
-                raise ValidationError("target_subscription_id does not belong to this user")
+                raise ValidationError(
+                    "target_subscription_id does not belong to this user",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
+                )
             if target.plan_snapshot.plan_id != data.plan_snapshot.plan_id:
-                raise ValidationError("Renewing a different plan is a CHANGE, not a RENEW")
+                raise ValidationError(
+                    "Renewing a different plan is a CHANGE, not a RENEW",
+                    code=ErrorCode.RENEW_PLAN_MISMATCH,
+                )
 
         if data.idempotency_key is None:
             # No retry path re-runs a keyless grant, so the panel's own atomic
@@ -350,7 +367,10 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 # harmless (no orphan to compensate; the next sync/reconcile
                 # pass corrects the panel-vs-local mismatch), so no cleanup
                 # here, just refuse to reactivate.
-                raise ValidationError("Subscription was deleted while this renewal was in flight")
+                raise ValidationError(
+                    "Subscription was deleted while this renewal was in flight",
+                    code=ErrorCode.SUBSCRIPTION_DELETED,
+                )
             subscription = await self._lifecycle_service.renew(locked.id, expire_at)
             if data.idempotency_key is not None:
                 await self._subscription_repository.link_idempotency_key(
@@ -364,7 +384,6 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                     payment_key=data.idempotency_key,
                 )
             )
-            await self._clear_purchase_discount(data)
 
         logger.info(
             f"{actor.log} Renewed subscription '{subscription.id}' by {data.duration_days}d"
@@ -407,18 +426,28 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         )
         return pinned
 
-    async def _change(self, actor: UserDto, data: PurchaseSubscriptionDto) -> SubscriptionDto:
+    async def _change(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         async with self._uow:
             if data.target_subscription_id is None:
-                raise ValidationError("target_subscription_id is required for a CHANGE")
+                raise ValidationError(
+                    "target_subscription_id is required for a CHANGE",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
+                )
             if data.duration_days <= 0:
-                raise ValidationError("duration_days must be positive")
+                raise ValidationError(
+                    "duration_days must be positive", code=ErrorCode.DURATION_NOT_POSITIVE
+                )
 
             old = await self._subscription_repository.get_by_id(data.target_subscription_id)
             if old.user_id != data.user_id:
-                raise ValidationError("target_subscription_id does not belong to this user")
+                raise ValidationError(
+                    "target_subscription_id does not belong to this user",
+                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
+                )
             if old.status is SubscriptionStatus.DELETED:
-                raise ValidationError("Cannot change a deleted subscription")
+                raise ValidationError(
+                    "Cannot change a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
+                )
 
             plan = data.plan_snapshot
 
@@ -474,9 +503,10 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 # before committing.
                 locked_old = await self._subscription_repository.get_by_id_for_update(old.id)
                 if locked_old.status is SubscriptionStatus.DELETED:
-                    raise ValidationError(
+                    raise _SupersededError(
                         "Subscription was already changed or deleted while this request "
-                        "was in flight"
+                        "was in flight",
+                        code=ErrorCode.PURCHASE_SUPERSEDED,
                     )
                 await self._subscription_repository.mark_deleted(old.id)
                 updated = await self._subscription_repository.create(
@@ -495,7 +525,8 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                         payment_key=data.idempotency_key,
                     )
                 )
-                await self._clear_purchase_discount(data)
+        except _SupersededError:
+            raise
         except Exception:
             # There's no orphan to clean up -- update_user mutated old's own
             # panel identity in place, no new one was minted. Best-effort

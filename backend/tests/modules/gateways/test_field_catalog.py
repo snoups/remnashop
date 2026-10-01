@@ -4,6 +4,7 @@ from app.core.enums import PaymentGatewayType
 from app.core.exceptions import ValidationError
 from app.modules.gateways.field_catalog import (
     GATEWAY_FIELD_CATALOG,
+    gateway_flags,
     is_gateway_configured,
     validate_gateway_field_keys,
     validate_gateway_field_values,
@@ -103,3 +104,17 @@ def test_aurapay_and_lava_are_rub_only_and_have_no_currency_field() -> None:
     for gateway_type in (PaymentGatewayType.AURAPAY, PaymentGatewayType.LAVA):
         keys = {spec.key for spec in GATEWAY_FIELD_CATALOG[gateway_type]}
         assert "currency" not in keys
+
+
+def test_yookassa_verify_ip_defaults_on_and_reads_back() -> None:
+    assert gateway_flags(PaymentGatewayType.YOOKASSA, {}) == {"verify_ip": True}
+    assert gateway_flags(PaymentGatewayType.YOOKASSA, {"verify_ip": "false"}) == {
+        "verify_ip": False
+    }
+    assert gateway_flags(PaymentGatewayType.ROBOKASSA, {}) == {}
+
+
+def test_validate_gateway_field_values_rejects_a_non_boolean_flag() -> None:
+    validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"verify_ip": "false"})
+    with pytest.raises(ValidationError):
+        validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"verify_ip": "no"})

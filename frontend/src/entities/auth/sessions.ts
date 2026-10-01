@@ -1,4 +1,5 @@
 import { apiDelete, apiGet } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 export interface Session {
   id: number;
@@ -10,7 +11,7 @@ export interface Session {
 }
 
 export function listOwnSessions(signal?: AbortSignal): Promise<Session[]> {
-  return apiGet<Session[]>("/auth/sessions", signal);
+  return apiGet<ListResponse<Session>>("/auth/sessions", signal).then((response) => response.items);
 }
 
 export function revokeOwnSession(sessionId: number): Promise<void> {
@@ -18,9 +19,9 @@ export function revokeOwnSession(sessionId: number): Promise<void> {
 }
 
 export function listUserSessions(userId: number, signal?: AbortSignal): Promise<Session[]> {
-  return apiGet<Session[]>(`/auth/sessions/users/${userId}`, signal);
+  return apiGet<ListResponse<Session>>(`/users/${userId}/sessions`, signal).then((response) => response.items);
 }
 
 export function revokeUserSession(userId: number, sessionId: number): Promise<void> {
-  return apiDelete<void>(`/auth/sessions/users/${userId}/${sessionId}`);
+  return apiDelete<void>(`/users/${userId}/sessions/${sessionId}`);
 }

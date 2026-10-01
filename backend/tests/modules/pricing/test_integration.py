@@ -8,10 +8,6 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PaymentGatewayType, PlanType, PurchaseType, Role, RoundingMode
 from app.core.ports import EventPublisher
 from app.modules.gateways.repository import GatewaysRepository
-from app.modules.payments import PaymentGatewayFactory, PaymentIntent
-from app.modules.payments.dto import CreateCheckoutDto, PaymentOrderDto
-from app.modules.payments.repository import PaymentOrderRepository
-from app.modules.payments.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.plans.api.schemas import to_public_duration_items
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -30,6 +26,10 @@ from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
+from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
+from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
@@ -37,7 +37,7 @@ OWNER = UserDto(name="owner", role=Role.OWNER)
 
 
 class _FakeGateway:
-    async def create_payment(self, order: PaymentOrderDto) -> PaymentIntent:
+    async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         return PaymentIntent(
             confirmation_url="https://yookassa.ru/pay/fake", provider_payment_id="yk-fake-id"
         )
@@ -52,8 +52,8 @@ class _FakeFactory(PaymentGatewayFactory):
 
 
 @pytest.fixture
-def payment_order_repository(session: AsyncSession) -> PaymentOrderRepository:
-    return PaymentOrderRepository(session)
+def transaction_repository(session: AsyncSession) -> TransactionRepository:
+    return TransactionRepository(session)
 
 
 async def _create_active_plan(plan_repository: PlanRepository, public_code: str) -> PlanDto:
@@ -99,7 +99,7 @@ async def _rub_catalog_price(
 async def test_rate_change_moves_catalog_but_not_existing_order(
     plan_repository: PlanRepository,
     pricing_repository: PricingRepository,
-    payment_order_repository: PaymentOrderRepository,
+    transaction_repository: TransactionRepository,
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
     gateways_repository: GatewaysRepository,
@@ -134,7 +134,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         plan_repository,
         user_repository,
         gateways_repository,
-        payment_order_repository,
+        transaction_repository,
         subscription_repository,
         settings_repository,
         referral_repository,
@@ -154,7 +154,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         ),
     )
 
-    order = await payment_order_repository.get_by_id(result.order_id)
+    order = await transaction_repository.get_by_id(result.order_id)
     assert order.base_price == Decimal("180")  # 2.00 * 90
 
     await UpdateCurrencyRateUseCase(pricing_repository, uow, event_publisher)(
@@ -173,7 +173,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     )
     assert catalog_price == Decimal("200")  # 2.00 * 100
 
-    reloaded_order = await payment_order_repository.get_by_id(result.order_id)
+    reloaded_order = await transaction_repository.get_by_id(result.order_id)
     assert reloaded_order.base_price == Decimal("180")
 
 

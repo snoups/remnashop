@@ -24,3 +24,8 @@ class RenamePasskeyRequest(BaseModel):
 
 class VerifyPasskeyAuthenticationRequest(BaseModel):
     credential: dict[str, Any]
+
+
+class PasskeyListResponse(BaseModel):
+    items: list[PasskeyResponse]
+    total: int

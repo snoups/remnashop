@@ -1,4 +1,5 @@
-import { apiDelete, apiGet, apiPost, apiPut } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
+import type { ListResponse } from "@shared/api/http";
 
 export type DialogWindowKind = "seed" | "custom";
 export type DialogFlow =
@@ -235,11 +236,7 @@ export function splitTextKey(key: string): { messageId: string; attributeId: str
 }
 
 export function listWindows(signal?: AbortSignal): Promise<DialogWindow[]> {
-  return apiGet<DialogWindow[]>("/dialogs/windows", signal);
-}
-
-export function getWindow(key: string, signal?: AbortSignal): Promise<DialogWindow> {
-  return apiGet<DialogWindow>(`/dialogs/windows/${encodeURIComponent(key)}`, signal);
+  return apiGet<ListResponse<DialogWindow>>("/dialogs/windows", signal).then((response) => response.items);
 }
 
 export function getCatalog(signal?: AbortSignal): Promise<DialogCatalog> {
@@ -250,7 +247,7 @@ export function updateWindow(
   key: string,
   data: { banner_name?: string | null; is_enabled?: boolean; name?: string },
 ): Promise<DialogWindow> {
-  return apiPut<DialogWindow, typeof data>(`/dialogs/windows/${encodeURIComponent(key)}`, data);
+  return apiPatch<DialogWindow, typeof data>(`/dialogs/windows/${encodeURIComponent(key)}`, data);
 }
 
 export function replaceButtons(key: string, buttons: DialogButtonInput[]): Promise<DialogWindow> {
@@ -274,7 +271,7 @@ export function deleteCustomWindow(key: string): Promise<null> {
 
 export function resetWindow(key: string): Promise<DialogWindow> {
   return apiPost<DialogWindow, Record<string, never>>(
-    `/dialogs/windows/${encodeURIComponent(key)}/reset`,
+    `/dialogs/windows/${encodeURIComponent(key)}/actions/reset`,
     {},
   );
 }
@@ -290,11 +287,11 @@ export function exportDialogs(): Promise<DialogExportPayload> {
 }
 
 export function importDialogs(payload: DialogExportPayload): Promise<null> {
-  return apiPost<null, DialogExportPayload>("/dialogs/import", payload);
+  return apiPost<null, DialogExportPayload>("/dialogs/actions/import", payload);
 }
 
 export function resetAll(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/dialogs/reset", {});
+  return apiPost<null, Record<string, never>>("/dialogs/actions/reset-all", {});
 }
 
 export function updateDialogText(

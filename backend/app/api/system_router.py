@@ -41,7 +41,7 @@ class PermissionCatalogResponse(BaseModel):
 
 @router.get("/system/metadata", response_model=SystemMetadataResponse)
 @inject
-async def system_metadata(
+async def get_system_metadata(
     config: FromDishka[AppConfig],
     _: UserDto = Depends(get_current_actor),
 ) -> SystemMetadataResponse:
@@ -60,7 +60,7 @@ async def system_metadata(
 
 
 @router.get("/permissions/catalog", response_model=PermissionCatalogResponse)
-async def permissions_catalog(
+async def get_permissions_catalog(
     _: UserDto = Depends(get_current_actor),
 ) -> PermissionCatalogResponse:
     return PermissionCatalogResponse(

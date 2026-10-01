@@ -19,7 +19,7 @@ broker = ListQueueBroker(url=AppConfig.get().redis.dsn).with_serializer(
 # isolation, since only one loop ever exists then). Every test that needs to
 # assert a real dispatch happened should monkeypatch the specific task's
 # `.kiq()` instead of calling through to this broker -- see
-# tests/modules/payments/test_webhook_router.py's `_fake_kiq` pattern for the
+# tests/modules/transactions/test_webhook_router.py's `_fake_kiq` pattern for the
 # shape. Production is unaffected: one process, one loop, for the worker's
 # whole lifetime.
 

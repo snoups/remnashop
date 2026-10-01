@@ -3,9 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import PlanType
 from app.modules.advertising.repository import AdLinkRepository
-from app.modules.payments.repository import PaymentOrderRepository
 from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
+from app.modules.transactions.repository import TransactionRepository
 
 
 @pytest.fixture
@@ -14,8 +14,8 @@ def ad_link_repository(session: AsyncSession) -> AdLinkRepository:
 
 
 @pytest.fixture
-def payment_order_repository(session: AsyncSession) -> PaymentOrderRepository:
-    return PaymentOrderRepository(session)
+def transaction_repository(session: AsyncSession) -> TransactionRepository:
+    return TransactionRepository(session)
 
 
 @pytest.fixture

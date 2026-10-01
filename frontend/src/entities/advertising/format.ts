@@ -1,4 +1,4 @@
-import { CURRENCY_SYMBOL } from "@entities/payments/api";
+import { CURRENCY_SYMBOL } from "@entities/transactions/api";
 
 /** `exact` keeps kopecks/cents when there are any (a single order), otherwise whole units (totals). */
 export function formatMoney(amount: string, currency: string, language: string, exact = false): string {

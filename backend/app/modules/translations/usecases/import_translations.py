@@ -2,8 +2,10 @@ from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -12,7 +14,6 @@ from app.modules.translations.dto import TranslationsImportResultDto, Translatio
 from app.modules.translations.publish import publish_translation_change
 from app.modules.translations.repository import TranslationsRepository
 from app.modules.translations.usecases.export_translations import EXPORT_VERSION
-from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -39,11 +40,12 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportInput, TranslationsImp
         self._redis = redis
 
     async def _execute(
-        self, actor: UserDto, data: TranslationsImportInput
+        self, actor: Actor, data: TranslationsImportInput
     ) -> TranslationsImportResultDto:
         if data.version != EXPORT_VERSION:
             raise ValidationError(
-                f"Unsupported export version {data.version}, expected {EXPORT_VERSION}"
+                f"Unsupported export version {data.version}, expected {EXPORT_VERSION}",
+                code=ErrorCode.DIALOG_EXPORT_VERSION_UNSUPPORTED,
             )
 
         applied: list[TranslationTextExportDto] = []

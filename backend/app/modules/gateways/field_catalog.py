@@ -3,15 +3,20 @@ from enum import StrEnum, auto
 from typing import Final
 
 from app.core.enums import Currency, PaymentGatewayType
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 
 _CURRENCY_FIELD_KEY: Final[str] = "currency"
+# Webhook source-IP check for providers that don't sign their notifications
+VERIFY_IP_FIELD_KEY: Final[str] = "verify_ip"
+_BOOLEAN_VALUES: Final[frozenset[str]] = frozenset({"true", "false"})
 
 
 class GatewayFieldKind(StrEnum):
     TEXT = auto()
     SECRET = auto()
     NUMBER = auto()
+    BOOLEAN = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -19,6 +24,7 @@ class GatewayFieldSpec:
     key: str
     kind: GatewayFieldKind
     required: bool = True
+    default: str = ""
 
 
 GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ...]]] = {
@@ -34,6 +40,9 @@ GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ..
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
         GatewayFieldSpec(key="vat_code", kind=GatewayFieldKind.NUMBER, required=False),
+        GatewayFieldSpec(
+            key=VERIFY_IP_FIELD_KEY, kind=GatewayFieldKind.BOOLEAN, required=False, default="true"
+        ),
     ),
     PaymentGatewayType.YOOMONEY: (
         GatewayFieldSpec(key="wallet_id", kind=GatewayFieldKind.TEXT),
@@ -153,12 +162,23 @@ def is_gateway_configured(gateway_type: PaymentGatewayType, values: dict[str, st
     )
 
 
+def gateway_flags(gateway_type: PaymentGatewayType, values: dict[str, str]) -> dict[str, bool]:
+    # Unlike every other field these are not secrets, so their current state
+    # is readable -- the dashboard renders them as switches.
+    return {
+        field_spec.key: (values.get(field_spec.key) or field_spec.default) == "true"
+        for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]
+        if field_spec.kind is GatewayFieldKind.BOOLEAN
+    }
+
+
 def validate_gateway_field_keys(gateway_type: PaymentGatewayType, values: dict[str, str]) -> None:
     valid_keys = {field_spec.key for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]}
     unknown = set(values) - valid_keys
     if unknown:
         raise ValidationError(
-            f"Unknown settings field(s) for {gateway_type.value}: {', '.join(sorted(unknown))}"
+            f"Unknown settings field(s) for {gateway_type.value}: {', '.join(sorted(unknown))}",
+            code=ErrorCode.GATEWAY_FIELD_UNKNOWN,
         )
 
 
@@ -171,10 +191,19 @@ def validate_gateway_field_values(gateway_type: PaymentGatewayType, values: dict
             allowed = ", ".join(currency.value for currency in Currency)
             raise ValidationError(
                 f"Invalid currency '{raw_currency}' for {gateway_type.value}; "
-                f"must be one of {allowed}"
+                f"must be one of {allowed}",
+                code=ErrorCode.GATEWAY_CURRENCY_INVALID,
             ) from None
 
     for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]:
+        if field_spec.kind is GatewayFieldKind.BOOLEAN:
+            raw_flag = values.get(field_spec.key)
+            if raw_flag is not None and raw_flag not in _BOOLEAN_VALUES:
+                raise ValidationError(
+                    f"Field '{field_spec.key}' for {gateway_type.value} must be 'true' or 'false'",
+                    code=ErrorCode.GATEWAY_FIELD_NOT_BOOLEAN,
+                )
+            continue
         if field_spec.kind is not GatewayFieldKind.NUMBER:
             continue
         raw_value = values.get(field_spec.key, "").strip()
@@ -185,5 +214,6 @@ def validate_gateway_field_values(gateway_type: PaymentGatewayType, values: dict
         except ValueError:
             raise ValidationError(
                 f"Field '{field_spec.key}' for {gateway_type.value} must be a number, "
-                f"got '{raw_value}'"
+                f"got '{raw_value}'",
+                code=ErrorCode.GATEWAY_FIELD_NOT_NUMBER,
             ) from None

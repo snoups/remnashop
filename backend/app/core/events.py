@@ -1,19 +1,12 @@
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import auto
-from typing import TYPE_CHECKING, Any, ClassVar, Optional
+from typing import Any, ClassVar, Optional
 from uuid import UUID, uuid4
 
+from app.core.actor import Actor
 from app.core.enums import UpperStrEnum
 from app.core.utils.time import datetime_now
-
-if TYPE_CHECKING:
-    # modules.users itself imports app.core.events at module scope (directly, and
-    # transitively via app.core.ports) -- an eager import here would cycle back
-    # into a partially-initialized modules.users.
-    from app.modules.users import UserDto
 
 
 class EventCategory(UpperStrEnum):
@@ -47,17 +40,17 @@ class SystemEvent(BaseEvent): ...
 
 @dataclass(frozen=True, kw_only=True)
 class UserEvent(BaseEvent):
-    user: UserDto
+    user: Actor
 
 
 @dataclass(frozen=True, kw_only=True)
 class ActorEvent(BaseEvent):
-    actor: UserDto
+    actor: Actor
 
 
 @dataclass(frozen=True, kw_only=True)
 class ActorTargetEvent(ActorEvent):
-    target: UserDto
+    target: Actor
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -72,3 +65,11 @@ class StoredEvent:
     actor_name: Optional[str]
     actor_email: Optional[str]
     ip_address: Optional[str]
+
+
+def set_fields(dto: object, *, skip: frozenset[str] = frozenset()) -> list[str]:
+    """Names of a partial-update DTO's fields that carry a value -- what an
+    audit event records about a change, never the values themselves."""
+    return sorted(
+        name for name, value in vars(dto).items() if value is not None and name not in skip
+    )

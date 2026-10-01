@@ -6,7 +6,7 @@ from typing import Final, Optional
 from pydantic import Field
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import Currency, PromocodeAvailability, PromocodeRewardType
+from app.core.enums import Currency, PromocodeAvailability, PromocodeRewardType, PromocodeStatus
 
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
@@ -96,6 +96,15 @@ class PromocodeRewardTotalsDto:
     count: int
     reward_sum: int
     duration_days_sum: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListPromocodesDto:
+    status: Optional[PromocodeStatus] = None
+    reward_type: Optional[PromocodeRewardType] = None
+    search: Optional[str] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -16,22 +16,14 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.security import create_access_token, hash_refresh_token
 from app.core.security.permissions import Permission
-from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.api_tokens.dto import CreateApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
-from app.modules.auth import get_auth_providers
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.blacklist import get_blacklist_providers
-from app.modules.passkeys import get_passkey_revoker_providers
 from app.modules.pricing import PricingRepository
-from app.modules.referrals import get_referrals_providers
+from app.modules.providers import get_module_providers
 from app.modules.referrals.dto import UpdateReferralSettingsDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.settings import get_settings_providers
-from app.modules.subscriptions import get_subscription_revoker_providers
-from app.modules.translations import get_translations_providers
-from app.modules.users import get_users_providers
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
@@ -59,16 +51,8 @@ def _pricing_repository_provider() -> Provider:
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
-        *get_users_providers(),
-        *get_subscription_revoker_providers(),
-        *get_passkey_revoker_providers(),
-        *get_auth_providers(),
-        *get_api_tokens_providers(),
-        *get_settings_providers(),
-        *get_translations_providers(),
-        *get_referrals_providers(),
+        *get_module_providers(),
         _pricing_repository_provider(),
-        *get_blacklist_providers(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -165,7 +149,7 @@ async def test_attach_referral_rejects_own_code(
 ) -> None:
     user, headers = actor
     response = await client.post(
-        f"{API_V1}/referrals/attach",
+        f"{API_V1}/referrals/actions/attach",
         json={"code": user.referral_code},
         headers=headers,
     )
@@ -182,7 +166,7 @@ async def test_attach_referral_then_stats_reflect_the_referrer(
     referrer_user, _ = referrer
 
     attach_response = await client.post(
-        f"{API_V1}/referrals/attach",
+        f"{API_V1}/referrals/actions/attach",
         json={"code": referrer_user.referral_code},
         headers=actor_headers,
     )
@@ -198,35 +182,39 @@ async def test_withdraw_points_rejects_amount_above_points(
 ) -> None:
     _, headers = actor
     response = await client.post(
-        f"{API_V1}/referrals/withdraw",
+        f"{API_V1}/referrals/actions/withdraw",
         json={"amount": "10.00"},
         headers=headers,
     )
     assert response.status_code == 400
 
 
-async def test_withdraw_points_is_rate_limited_per_ip(
+async def test_withdraw_points_is_rate_limited_per_user(
     config: AppConfig,
     test_container: AsyncContainer,
     actor: tuple[UserDto, dict[str, str]],
     redis: Redis,
 ) -> None:
     # Each request is an audit-log row an admin reads to process payouts --
-    # an unthrottled endpoint lets one user bury real requests.
-    _, headers = actor
+    # an unthrottled endpoint lets one user bury real requests, and a new
+    # source address must not reset that budget.
+    user, headers = actor
     app = get_app(config)
     setup_dishka(test_container, app)
-    key = "remnashop:ratelimit:points_withdraw:203.0.113.30"
+    key = f"remnashop:ratelimit:points_withdraw:user:{user.id}"
     await redis.delete(key)
 
-    transport = httpx.ASGITransport(app=app, client=("203.0.113.30", 12345))
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        responses = [
-            await client.post(
-                f"{API_V1}/referrals/withdraw", json={"amount": "10.00"}, headers=headers
+    responses = []
+    for index in range(6):
+        transport = httpx.ASGITransport(app=app, client=(f"203.0.113.{30 + index}", 12345))
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            responses.append(
+                await client.post(
+                    f"{API_V1}/referrals/actions/withdraw",
+                    json={"amount": "10.00"},
+                    headers=headers,
+                )
             )
-            for _ in range(6)
-        ]
 
     await redis.delete(key)
 
@@ -257,7 +245,7 @@ async def test_api_token_cannot_use_customer_endpoints(
         )
 
     response = await client.post(
-        f"{API_V1}/referrals/attach",
+        f"{API_V1}/referrals/actions/attach",
         json={"code": referrer_user.referral_code},
         headers={"Authorization": f"Bearer {secret}"},
     )
