@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from decimal import Decimal
-
 from loguru import logger
 
 from app.core.db.uow import UnitOfWork
@@ -9,13 +6,9 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.referrals.dto import RequestPointsWithdrawalDto
 from app.modules.referrals.events import PointsWithdrawalRequestedEvent
 from app.modules.users import UserDto
-
-
-@dataclass(frozen=True, kw_only=True)
-class RequestPointsWithdrawalDto:
-    amount: Decimal
 
 
 class RequestPointsWithdrawalUseCase(UseCase[RequestPointsWithdrawalDto, None, UserDto]):

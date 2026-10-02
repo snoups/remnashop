@@ -6,7 +6,7 @@ from app.core.db.models.active_locale import ActiveLocale
 from app.core.db.models.bot_translation import BotTranslation
 from app.core.enums import Locale, Role
 from app.modules.settings.repository import SettingsRepository
-from app.modules.translations.repository import TranslationsRepository
+from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import UserDto
 from app.telegram.i18n import get_translator, read_translator_hub
 
@@ -24,10 +24,15 @@ async def test_read_translator_hub_builds_a_working_hub(config: AppConfig) -> No
     try:
         async with AsyncSession(engine, expire_on_commit=False) as seed_session:
             settings_repository = SettingsRepository(seed_session)
-            if locale not in await settings_repository.list_active_locales():
-                await settings_repository.add_active_locale(locale)
+            if (
+                locale
+                not in await TranslationRepository(
+                    settings_repository.session
+                ).list_active_locales()
+            ):
+                await TranslationRepository(settings_repository.session).add_active_locale(locale)
                 added_locale = True
-            await TranslationsRepository(seed_session).seed_missing(locale, _MESSAGE_ID, "", "ok")
+            await TranslationRepository(seed_session).seed_missing(locale, _MESSAGE_ID, "", "ok")
             await seed_session.commit()
 
         hub = await read_translator_hub(config)

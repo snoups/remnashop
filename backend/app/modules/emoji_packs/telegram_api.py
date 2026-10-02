@@ -28,10 +28,10 @@ def parse_set_name(link: str) -> str:
     return match.group(1)
 
 
-async def fetch_emoji_pack(token: str, set_name: str) -> FetchedEmojiPack:
+async def fetch_emoji_pack(token: str, proxy: Optional[str], set_name: str) -> FetchedEmojiPack:
     # Plain HTTP rather than aiogram: the api process does not install the
     # telegram extra, so importing Bot here would break it outright.
-    async with httpx.AsyncClient(timeout=_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=_TIMEOUT_S, proxy=proxy) as client:
         response = await client.post(
             _API_URL.format(token=token, method="getStickerSet"), json={"name": set_name}
         )

@@ -25,16 +25,17 @@ from app.modules.dialogs.api.schemas import (
     UpdateDialogWindowRequest,
 )
 from app.modules.dialogs.dto import (
-    DialogButtonDto,
+    ConfigureDialogWindowDto,
+    CreateCustomDialogWindowDto,
     DialogButtonInputDto,
-    DialogCatalogDto,
     DialogExportDto,
     DialogTextExportDto,
     DialogWindowDto,
     DialogWindowExportDto,
+    UpdateDialogTextDto,
+    UpdateDialogWindowButtonsDto,
 )
 from app.modules.dialogs.usecases import (
-    CreateCustomDialogWindowInput,
     CreateCustomDialogWindowUseCase,
     DeleteCustomDialogWindowUseCase,
     ExportDialogsUseCase,
@@ -43,34 +44,14 @@ from app.modules.dialogs.usecases import (
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
-    UpdateDialogTextInput,
     UpdateDialogTextUseCase,
-    UpdateDialogWindowButtonsInput,
     UpdateDialogWindowButtonsUseCase,
-    UpdateDialogWindowInput,
     UpdateDialogWindowUseCase,
 )
 
 router = APIRouter(prefix="/dialogs", tags=["dialogs"])
 
 _KEY_PATH: Final[Any] = Path(pattern=r"^[a-z0-9._-]+$", max_length=128)
-
-
-def _to_button_item(button: DialogButtonDto) -> DialogButtonItem:
-    return DialogButtonItem(
-        id=button.id,
-        row=button.row,
-        column=button.column,
-        text_key=button.text_key,
-        style=button.style,
-        visibility_condition=button.visibility_condition,
-        link_type=button.link_type,
-        action_key=button.action_key,
-        target_window_key=button.target_window_key,
-        url_value=button.url_value,
-        is_hidden=button.is_hidden,
-        is_system=button.is_system,
-    )
 
 
 def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
@@ -83,21 +64,10 @@ def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
         is_enabled=window.is_enabled,
         position=window.position,
         text_keys=list(catalog.window_text_keys(window.key)),
-        buttons=[_to_button_item(button) for button in window.buttons],
-    )
-
-
-def _to_catalog_response(catalog: DialogCatalogDto) -> DialogCatalogResponse:
-    return DialogCatalogResponse(
-        action_keys=catalog.action_keys,
-        condition_keys=catalog.condition_keys,
-        variable_keys=catalog.variable_keys,
-        text_variable_keys=catalog.text_variable_keys,
-        window_text_variable_keys=catalog.window_text_variable_keys,
-        variable_categories=catalog.variable_categories,
-        seed_window_keys=catalog.seed_window_keys,
-        navigable_window_keys=catalog.navigable_window_keys,
-        custom_window_limit=catalog.custom_window_limit,
+        buttons=[
+            DialogButtonItem.model_validate(button, from_attributes=True)
+            for button in window.buttons
+        ],
     )
 
 
@@ -122,7 +92,7 @@ async def get_dialog_catalog(
     use_case: FromDishka[GetDialogCatalogUseCase],
     actor: Actor = Depends(require_admin),
 ) -> DialogCatalogResponse:
-    return _to_catalog_response(await use_case(actor))
+    return DialogCatalogResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.get("/windows", response_model=DialogWindowListResponse)
@@ -148,7 +118,7 @@ async def update_dialog_window(
 ) -> DialogWindowResponse:
     window = await use_case(
         actor,
-        UpdateDialogWindowInput(
+        ConfigureDialogWindowDto(
             key=key,
             banner_name=payload.banner_name,
             banner_name_provided="banner_name" in payload.model_fields_set,
@@ -173,7 +143,7 @@ async def replace_dialog_window_buttons(
 ) -> DialogWindowResponse:
     window = await use_case(
         actor,
-        UpdateDialogWindowButtonsInput(
+        UpdateDialogWindowButtonsDto(
             key=key, buttons=[_to_button_input(button) for button in payload.buttons]
         ),
     )
@@ -194,7 +164,7 @@ async def create_custom_dialog_window(
 ) -> DialogWindowResponse:
     window = await use_case(
         actor,
-        CreateCustomDialogWindowInput(name=payload.name, banner_name=payload.banner_name),
+        CreateCustomDialogWindowDto(name=payload.name, banner_name=payload.banner_name),
     )
     return _to_window_response(window)
 
@@ -242,19 +212,14 @@ async def update_dialog_text(
 ) -> DialogTextResponse:
     entry = await use_case(
         actor,
-        UpdateDialogTextInput(
+        UpdateDialogTextDto(
             locale=locale,
             message_id=message_id,
             attribute_id=attribute_id,
             value=payload.value,
         ),
     )
-    return DialogTextResponse(
-        locale=entry.locale,
-        message_id=entry.message_id,
-        value=entry.value,
-        default_value=entry.default_value,
-    )
+    return DialogTextResponse.model_validate(entry, from_attributes=True)
 
 
 @router.get("/export", response_model=DialogExportPayload)
@@ -274,31 +239,14 @@ async def export_dialogs(
                 is_enabled=window.is_enabled,
                 position=window.position,
                 buttons=[
-                    DialogButtonInput(
-                        row=button.row,
-                        column=button.column,
-                        text_key=button.text_key,
-                        link_type=button.link_type,
-                        style=button.style,
-                        visibility_condition=button.visibility_condition,
-                        action_key=button.action_key,
-                        target_window_key=button.target_window_key,
-                        url_value=button.url_value,
-                        is_hidden=button.is_hidden,
-                    )
+                    DialogButtonInput.model_validate(button, from_attributes=True)
                     for button in window.buttons
                 ],
             )
             for window in export.windows
         ],
         texts=[
-            DialogTextExportItem(
-                locale=text.locale,
-                message_id=text.message_id,
-                attribute_id=text.attribute_id,
-                value=text.value,
-            )
-            for text in export.texts
+            DialogTextExportItem.model_validate(text, from_attributes=True) for text in export.texts
         ],
     )
 

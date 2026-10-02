@@ -10,7 +10,7 @@ from app.modules.gateways.dto import PaymentGatewayDto
 from app.modules.gateways.field_catalog import gateway_flags, is_gateway_configured
 
 
-class GatewaysRepository:
+class GatewayRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 

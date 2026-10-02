@@ -51,16 +51,25 @@ class ReferralRevenueDto:
     paying_count: int
 
 
-class ReferralStatsDto(BaseDto):
-    referral_code: Optional[str] = None
-    referrer_id: Optional[int] = None
-    points: Decimal = Decimal(0)
-    counts_by_level: dict[int, int] = field(default_factory=dict)
-    rewards: list[ReferralRewardDto] = field(default_factory=list)
-    # admin view only: the referrer and each reward's buyer, keyed by user id
-    users: dict[int, UserDto] = field(default_factory=dict)
-    # admin view only: each buyer's depth below this user
-    buyer_levels: dict[int, int] = field(default_factory=dict)
+@dataclass(frozen=True, kw_only=True)
+class ReferralStatsRewardDto:
+    type: ReferralRewardType
+    amount: Decimal
+    created_at: Optional[datetime]
+    # admin view only: who paid for it and how deep below this user they are
+    buyer: Optional[UserDto] = None
+    level: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReferralStatsDto:
+    referral_code: Optional[str]
+    referrer_id: Optional[int]
+    points: Decimal
+    counts_by_level: dict[int, int]
+    rewards: list[ReferralStatsRewardDto]
+    # admin view only
+    referrer: Optional[UserDto] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -96,6 +105,11 @@ class ReferralSummaryDto:
     rewarded_count: int
     reward_amounts: dict[ReferralRewardType, Decimal]
 
+    @property
+    def conversion_rate(self) -> Decimal:
+        # share of referrals that earned at least one reward
+        return Decimal(self.rewarded_count) / self.total_count if self.total_count else Decimal(0)
+
 
 @dataclass(frozen=True, kw_only=True)
 class ReferralLinksDto:
@@ -121,3 +135,64 @@ class InvitedUserDto:
     depth: int
     created_at: Optional[datetime]
     reward_amounts: dict[ReferralRewardType, Decimal]
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdjustUserPointsDto:
+    user_id: int
+    delta: Decimal
+
+
+@dataclass(frozen=True, kw_only=True)
+class AssignReferralRewardsDto:
+    user_id: int
+    subscription_id: int
+    is_new_purchase: bool
+    payment_key: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class AttachReferralDto:
+    code: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class AttachReferralOnRegistrationDto:
+    user_id: int
+    referral_code: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetReferralSummaryDto:
+    level: Optional[int] = None
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    search: Optional[str] = None
+    has_rewards: Optional[bool] = None
+    reward_type: Optional[ReferralRewardType] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListInvitedUsersDto:
+    user_id: int
+    level: Optional[int] = None
+    search: Optional[str] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListReferralsDto:
+    level: Optional[int] = None
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    search: Optional[str] = None
+    has_rewards: Optional[bool] = None
+    reward_type: Optional[ReferralRewardType] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class RequestPointsWithdrawalDto:
+    amount: Decimal

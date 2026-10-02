@@ -325,6 +325,23 @@ async def test_bot_settings_never_return_the_token(
         assert "critical-webhook-secret" not in response.text
 
 
+async def test_bot_proxy_never_comes_back_out(
+    client: httpx.AsyncClient, owner_headers: dict[str, str]
+) -> None:
+    proxy_url = "socks5://proxy-user:proxy-pass@proxy.example:1080"
+    put = await client.put(
+        f"{API_V1}/settings/bot/proxy", json={"proxy_url": proxy_url}, headers=owner_headers
+    )
+    read = await client.get(f"{API_V1}/settings/bot", headers=owner_headers)
+    delete = await client.delete(f"{API_V1}/settings/bot/proxy", headers=owner_headers)
+
+    assert put.status_code == read.status_code == delete.status_code == 200
+    assert read.json()["is_proxy_configured"] is True
+    assert delete.json()["is_proxy_configured"] is False
+    for response in (put, read):
+        assert "proxy-pass" not in response.text
+
+
 async def test_bot_settings_forbidden_for_customer(
     client: httpx.AsyncClient,
     user_repository: UserRepository,

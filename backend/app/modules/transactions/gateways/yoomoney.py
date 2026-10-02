@@ -13,7 +13,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -42,7 +41,7 @@ class YooMoneyGateway(PaymentGateway):
             "label": order.idempotency_key,
             "successURL": self._return_url,
         }
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/quickpay/confirm.xml", data=payload, follow_redirects=True
         )
         response.raise_for_status()
@@ -92,7 +91,7 @@ class YooMoneyGateway(PaymentGateway):
         if not signal.provider_payment_id:
             return NOT_PAID
 
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/api/operation-details",
             data={"operation_id": signal.provider_payment_id},
             headers={"Authorization": f"Bearer {token}"},

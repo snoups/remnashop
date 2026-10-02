@@ -1,12 +1,14 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Final, Literal, Optional
 
 from app.core.constants import REMNASHOP_PREFIX, WEB_PREFIX
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import Locale, Role
+from app.core.enums import BlacklistKind, Locale, Role
+from app.core.security.permissions import Permission
 from app.core.utils.time import datetime_now
+from app.modules.blacklist import BlacklistOriginDto
 
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
@@ -149,3 +151,136 @@ class UserListStatsDto:
     new_previous: int
     # registrations within TOTAL_GROWTH_WINDOW
     total_growth: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class CreateAdminDto:
+    login: str
+    name: str
+    client_ip: str
+    permission_grants: list[Permission] = field(default_factory=list)
+    permission_revokes: list[Permission] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class DeleteAdminDto:
+    user_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class DeleteUserDto:
+    user_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class DemoteAdminDto:
+    user_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetUserListStatsDto:
+    include_staff: bool = False
+
+
+BlacklistMatchOrigin = Literal["manual", "lists"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListBlacklistMatchesDto:
+    search: Optional[str] = None
+    # unset = every origin
+    origin: Optional[BlacklistMatchOrigin] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlacklistHitDto:
+    kind: BlacklistKind
+    value: str
+    origins: list[BlacklistOriginDto] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlacklistMatchDto:
+    user: UserDto
+    hits: list[BlacklistHitDto] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlacklistMatchPageDto:
+    items: list[BlacklistMatchDto]
+    total: int
+    all_total: int
+    manual_total: int
+    lists_total: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListUsersDto:
+    search: Optional[str] = None
+    role: Optional[Role] = None
+    is_blocked: Optional[bool] = None
+    include_staff: bool = False
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    has_discount: Optional[bool] = None
+    has_subscription: Optional[bool] = None
+    is_trial_available: Optional[bool] = None
+    # blocked users whose telegram id/email is on that blacklist origin
+    blocked_by: Optional[BlacklistMatchOrigin] = None
+    deleted: DeletedFilter = "exclude"
+    sort: UserSort = "created_at"
+    descending: bool = True
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class PromoteToAdminDto:
+    client_ip: str
+    email: Optional[str] = None
+    telegram_username: Optional[str] = None
+    login: Optional[str] = None
+    permission_grants: list[Permission] = field(default_factory=list)
+    permission_revokes: list[Permission] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class RegisterTelegramUserDto:
+    telegram_id: int
+    name: str
+    username: Optional[str] = None
+    language: Locale
+    # True when `language` is the user's own Telegram language (and active),
+    # not the deployment default -- only then may it overwrite a stored one.
+    sync_language: bool = False
+    # Raw deep-link payloads, opaque to `users` -- advertising and referrals
+    # resolve them.
+    ad_link_code: Optional[str] = None
+    referral_code: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateAdminDto:
+    user_id: int
+    client_ip: str
+    # None means "field omitted, leave unchanged"; an explicit [] clears the overrides.
+    permission_grants: Optional[list[Permission]] = None
+    permission_revokes: Optional[list[Permission]] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateOwnProfileDto:
+    name: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateSecuritySettingsDto:
+    ip_allowlist: list[str]
+    client_ip: str

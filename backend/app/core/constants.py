@@ -116,3 +116,7 @@ GB_TO_BYTES: Final[int] = 1024**3
 # in-repo traefik reference imposes none. Sized well above any real payload:
 # the largest is a Remnawave user event.
 MAX_WEBHOOK_BODY_BYTES: Final[int] = 1024 * 1024
+
+# asyncpg caps a statement at 32,767 bind parameters; an IN list chunked to this
+# still fits after the other predicates are added.
+MAX_SQL_IN_PARAMS: Final[int] = 20_000

@@ -5,9 +5,11 @@ from fluentogram.exceptions import KeyNotFoundError
 
 from app.core.constants import USER_KEY
 from app.core.enums import Locale
+from app.modules.banners.usecases import GetBannerForDisplayUseCase
 from app.modules.dialogs import catalog
 from app.modules.dialogs.flows.menu import register_menu_metadata
 from app.modules.subscriptions import GetAvailableTrialUseCase
+from app.modules.subscriptions.usecases import ListOwnActiveSubscriptionsUseCase
 from app.telegram.routers.menu.getters import device_confirm_delete_getter, menu_getter
 
 
@@ -36,7 +38,7 @@ def _menu_catalog():
 
 
 async def test_menu_getter_includes_rendered_buttons(
-    config, banner_repository, subscription_repository, monkeypatch
+    config, banner_repository, subscription_repository, uow, monkeypatch
 ) -> None:
     dialog_manager = MagicMock()
     dialog_manager.middleware_data = {USER_KEY: MagicMock(id=1, language=Locale.EN, name="Test")}
@@ -58,8 +60,10 @@ async def test_menu_getter_includes_rendered_buttons(
     data = await menu_getter.__dishka_orig_func__(
         dialog_manager=dialog_manager,
         config=config,
-        banner_repository=banner_repository,
-        subscription_repository=subscription_repository,
+        get_banner=GetBannerForDisplayUseCase(banner_repository, config, uow),
+        list_own_active_subscriptions=ListOwnActiveSubscriptionsUseCase(
+            subscription_repository, uow
+        ),
         get_available_trial=get_available_trial,
         i18n=i18n,
         dialog_config_cache=fake_cache,
@@ -73,7 +77,7 @@ async def test_menu_getter_includes_rendered_buttons(
 
 
 async def test_menu_getter_passes_name_variable_to_menu_text(
-    config, banner_repository, subscription_repository, monkeypatch
+    config, banner_repository, subscription_repository, uow, monkeypatch
 ) -> None:
     # `name` is a permanently registered catalog variable (menu.register_menu_metadata),
     # so this test relies on that registration rather than adding a scoped one.
@@ -109,8 +113,10 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
     await menu_getter.__dishka_orig_func__(
         dialog_manager=dialog_manager,
         config=config,
-        banner_repository=banner_repository,
-        subscription_repository=subscription_repository,
+        get_banner=GetBannerForDisplayUseCase(banner_repository, config, uow),
+        list_own_active_subscriptions=ListOwnActiveSubscriptionsUseCase(
+            subscription_repository, uow
+        ),
         get_available_trial=get_available_trial,
         i18n=i18n,
         dialog_config_cache=fake_cache,

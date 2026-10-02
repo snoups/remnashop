@@ -12,7 +12,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -45,7 +44,7 @@ class PayPearGateway(PaymentGateway):
             "expires_at": format_utc(order.expires_at),
         }
         # The docs spell the header both ways; send both.
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/payment/",
             json=payload,
             auth=self._auth(),
@@ -87,7 +86,7 @@ class PayPearGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
             return NOT_PAID
-        response = await http_client.get(
+        response = await self._http.get(
             f"{_API_BASE}/payment/{order.external_payment_id}/",
             auth=self._auth(),
             timeout=PROVIDER_API_TIMEOUT_S,

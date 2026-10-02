@@ -65,3 +65,14 @@ class NotificationsDto:
 def notification_event_types(groups: Optional[list[str]]) -> frozenset[str]:
     chosen = DEFAULT_NOTIFICATION_GROUPS if groups is None else frozenset(groups)
     return frozenset().union(*(NOTIFICATION_GROUPS[g] for g in chosen if g in NOTIFICATION_GROUPS))
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListEventLogDto:
+    category: Optional[EventCategory] = None
+    actor_id: Optional[int] = None
+    search: Optional[str] = None
+    occurred_from: Optional[datetime] = None
+    occurred_to: Optional[datetime] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE

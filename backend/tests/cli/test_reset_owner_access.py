@@ -2,11 +2,12 @@ from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cli.reset_owner_access import reset_owner_access
 from app.core.config import AppConfig
 from app.core.enums import Locale, OAuthProvider, Role
 from app.core.security import verify_password
 from app.core.utils.time import datetime_now
-from app.modules.auth import SessionRepository, reset_owner_access
+from app.modules.auth import SessionRepository
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.oauth import CreateOAuthIdentityDto, OAuthIdentityRepository
 from app.modules.passkeys import PasskeyRepository

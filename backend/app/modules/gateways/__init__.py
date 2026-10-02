@@ -11,7 +11,7 @@ from app.modules.gateways.field_catalog import (
     GatewayFieldSpec,
     gateway_flags,
 )
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 from app.modules.gateways.usecases import (
     ListGatewaysUseCase,
     ReorderGatewaysUseCase,
@@ -24,14 +24,14 @@ __all__ = [
     "VERIFY_IP_FIELD_KEY",
     "GatewayFieldKind",
     "GatewayFieldSpec",
-    "GatewaysRepository",
+    "GatewayRepository",
     "ListGatewaysUseCase",
     "PaymentGatewayDto",
     "ReorderGatewaysDto",
     "ReorderGatewaysUseCase",
     "SetGatewayActiveUseCase",
     "UpdateGatewaySettingsDto",
-    "gateway_flags",
     "UpdateGatewaySettingsUseCase",
+    "gateway_flags",
     "get_gateways_providers",
 ]

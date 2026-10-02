@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
+from app.core.bot_signals import RedisBotSignals
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ButtonLinkType, DialogWindowKind, Locale, Role
 from app.modules.dialogs import catalog
-from app.modules.dialogs.dto import DialogButtonInputDto
+from app.modules.dialogs.dto import DialogButtonInputDto, UpdateDialogWindowButtonsDto
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.seed import ensure_dialogs_seeded
 from app.modules.dialogs.usecases import GetDialogCatalogUseCase, UpdateDialogWindowButtonsUseCase
-from app.modules.dialogs.usecases.update_window_buttons import UpdateDialogWindowButtonsInput
 from app.modules.users.dto import UserDto
 
 # Same construction tests/modules/dialogs/test_usecases.py uses for its OWNER actor --
@@ -49,14 +49,14 @@ def test_flows_package_imports_without_aiogram() -> None:
 
 async def test_get_catalog_usecase_sees_full_catalog_from_metadata_alone(
     dialog_repository: DialogRepository,
-    translations_repository,
+    translation_repository,
     settings_repository,
     uow: UnitOfWork,
 ) -> None:
     from app.modules.dialogs import register_all_flow_metadata  # noqa: PLC0415
 
     register_all_flow_metadata()
-    await ensure_dialogs_seeded(dialog_repository, translations_repository, settings_repository)
+    await ensure_dialogs_seeded(dialog_repository, translation_repository)
 
     result = await GetDialogCatalogUseCase(dialog_repository, uow)(OWNER, None)
 
@@ -81,25 +81,25 @@ async def test_get_catalog_usecase_sees_full_catalog_from_metadata_alone(
 
 
 async def test_update_buttons_accepts_a_real_action_from_metadata_alone(
-    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+    dialog_repository: DialogRepository, translation_repository, settings_repository, uow, redis
 ) -> None:
     from app.modules.dialogs import register_all_flow_metadata  # noqa: PLC0415
 
     register_all_flow_metadata()
     # UpdateDialogWindowButtonsUseCase reads the window from the database, not the
     # in-process catalog -- it has to actually exist as a row first.
-    await ensure_dialogs_seeded(dialog_repository, translations_repository, settings_repository)
+    await ensure_dialogs_seeded(dialog_repository, translation_repository)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     assert window.kind == DialogWindowKind.SEED
 
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translations_repository, settings_repository, uow, redis
+        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
     )
     # This is the exact round trip the telegram-render-engine review found broken:
     # read a seed window's own action key back through the admin API's write path.
     updated = await use_case(
         OWNER,
-        UpdateDialogWindowButtonsInput(
+        UpdateDialogWindowButtonsDto(
             key="menu.main",
             buttons=[
                 DialogButtonInputDto(

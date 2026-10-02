@@ -1,10 +1,12 @@
 from typing import Final, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.backup_run import BackupRun
 from app.core.db.models.backup_settings import BackupSettings
+from app.core.db.partial_update import apply_partial_update
+from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import BackupKind, BackupRunStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
@@ -24,61 +26,27 @@ class BackupRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    def _to_settings_dto(self, row: Optional[BackupSettings]) -> BackupSettingsDto:
-        if row is None:
-            return BackupSettingsDto()
-        return BackupSettingsDto(
-            id=row.id,
-            enabled=row.enabled,
-            interval_hours=row.interval_hours,
-            max_files=row.max_files,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+    def _to_settings_dto(self, row: BackupSettings) -> BackupSettingsDto:
+        return BackupSettingsDto.model_validate(row, from_attributes=True)
 
     def _to_run_dto(self, row: BackupRun) -> BackupRunDto:
-        return BackupRunDto(
-            id=row.id,
-            kind=row.kind,
-            status=row.status,
-            file_path=row.file_path,
-            size_bytes=row.size_bytes,
-            checksum_sha256=row.checksum_sha256,
-            triggered_by=row.triggered_by,
-            error=row.error,
-            finished_at=row.finished_at,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return BackupRunDto.model_validate(row, from_attributes=True)
 
     async def get_settings(self) -> BackupSettingsDto:
-        row = await self.session.get(BackupSettings, _SINGLETON_ID)
+        row = await get_or_create_singleton(self.session, BackupSettings, _SINGLETON_ID)
         return self._to_settings_dto(row)
 
     async def update_settings(self, data: UpdateBackupSettingsDto) -> BackupSettingsDto:
-        row = await self.session.get(BackupSettings, _SINGLETON_ID)
-        if row is None:
-            row = BackupSettings(id=_SINGLETON_ID)
-            self.session.add(row)
-
-        if data.enabled is not None:
-            row.enabled = data.enabled
-        if data.interval_hours is not None:
-            row.interval_hours = data.interval_hours
-        if data.max_files is not None:
-            row.max_files = data.max_files
-
+        row = await get_or_create_singleton(self.session, BackupSettings, _SINGLETON_ID)
+        apply_partial_update(row, data)
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_settings_dto(row)
 
-    # no row reads back as the defaults, so dropping it is the reset
     async def reset_settings(self) -> BackupSettingsDto:
-        row = await self.session.get(BackupSettings, _SINGLETON_ID)
-        if row is not None:
-            await self.session.delete(row)
-            await self.session.flush()
-        return self._to_settings_dto(None)
+        # the row is recreated from the model's own defaults
+        await self.session.execute(delete(BackupSettings))
+        return await self.get_settings()
 
     async def _get_row(self, run_id: int) -> BackupRun:
         row = await self.session.get(BackupRun, run_id)

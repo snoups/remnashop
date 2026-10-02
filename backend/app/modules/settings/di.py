@@ -1,8 +1,9 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, provide, provide_all
 
+from app.core.ports import BotCommandsSync
+from app.modules.settings.bot_commands_sync import BotCommandsPusher
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import (
-    AddLocaleUseCase,
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
     GetBotCommandsUseCase,
@@ -13,10 +14,10 @@ from app.modules.settings.usecases import (
     GetPublicAppearanceImageUseCase,
     GetPublicAppearanceUseCase,
     GetShopSettingsUseCase,
-    ListActiveLocalesUseCase,
-    RemoveLocaleUseCase,
+    RemoveBotProxyUseCase,
     ResetAppearanceSettingsUseCase,
     RestartBotUseCase,
+    SetBotProxyUseCase,
     UpdateAppearanceSettingsUseCase,
     UpdateBotCommandsUseCase,
     UpdateBotSettingsUseCase,
@@ -31,28 +32,30 @@ class SettingsProvider(Provider):
     scope = Scope.REQUEST
 
     settings_repository = provide(SettingsRepository)
-    get_bot_settings_use_case = provide(GetBotSettingsUseCase)
-    get_bot_status_use_case = provide(GetBotStatusUseCase)
-    get_bot_logs_use_case = provide(GetBotLogsUseCase)
-    update_bot_settings_use_case = provide(UpdateBotSettingsUseCase)
-    restart_bot_use_case = provide(RestartBotUseCase)
-    get_shop_settings_use_case = provide(GetShopSettingsUseCase)
-    update_shop_settings_use_case = provide(UpdateShopSettingsUseCase)
-    get_oauth_settings_use_case = provide(GetOAuthSettingsUseCase)
-    update_oauth_settings_use_case = provide(UpdateOAuthSettingsUseCase)
-    get_bot_commands_use_case = provide(GetBotCommandsUseCase)
-    update_bot_commands_use_case = provide(UpdateBotCommandsUseCase)
-    list_active_locales_use_case = provide(ListActiveLocalesUseCase)
-    add_locale_use_case = provide(AddLocaleUseCase)
-    remove_locale_use_case = provide(RemoveLocaleUseCase)
-    get_public_appearance_use_case = provide(GetPublicAppearanceUseCase)
-    get_public_appearance_image_use_case = provide(GetPublicAppearanceImageUseCase)
-    update_appearance_settings_use_case = provide(UpdateAppearanceSettingsUseCase)
-    reset_appearance_settings_use_case = provide(ResetAppearanceSettingsUseCase)
-    upload_appearance_logo_use_case = provide(UploadAppearanceLogoUseCase)
-    upload_appearance_favicon_use_case = provide(UploadAppearanceFaviconUseCase)
-    delete_appearance_logo_use_case = provide(DeleteAppearanceLogoUseCase)
-    delete_appearance_favicon_use_case = provide(DeleteAppearanceFaviconUseCase)
+    use_cases = provide_all(
+        GetBotSettingsUseCase,
+        GetBotStatusUseCase,
+        GetBotLogsUseCase,
+        UpdateBotSettingsUseCase,
+        RestartBotUseCase,
+        SetBotProxyUseCase,
+        RemoveBotProxyUseCase,
+        GetShopSettingsUseCase,
+        UpdateShopSettingsUseCase,
+        GetOAuthSettingsUseCase,
+        UpdateOAuthSettingsUseCase,
+        GetBotCommandsUseCase,
+        UpdateBotCommandsUseCase,
+        GetPublicAppearanceUseCase,
+        GetPublicAppearanceImageUseCase,
+        UpdateAppearanceSettingsUseCase,
+        ResetAppearanceSettingsUseCase,
+        UploadAppearanceLogoUseCase,
+        UploadAppearanceFaviconUseCase,
+        DeleteAppearanceLogoUseCase,
+        DeleteAppearanceFaviconUseCase,
+    )
+    bot_commands_sync = provide(BotCommandsPusher, provides=BotCommandsSync)
 
 
 def get_settings_providers() -> list[Provider]:

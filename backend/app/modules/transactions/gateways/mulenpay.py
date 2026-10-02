@@ -13,7 +13,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import PROVIDER_API_TIMEOUT_S, parse_json, to_decimal
 
@@ -59,7 +58,7 @@ class MulenPayGateway(PaymentGateway):
         if order.customer_email:
             # Without it the receipt goes to the shop owner's email.
             payload["client"] = order.customer_email
-        response = await http_client.post(
+        response = await self._http.post(
             f"{self.API_BASE}/v2/payments", json=payload, headers=self._headers()
         )
         response.raise_for_status()
@@ -90,7 +89,7 @@ class MulenPayGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
             return NOT_PAID
-        response = await http_client.get(
+        response = await self._http.get(
             f"{self.API_BASE}/v2/payments/{order.external_payment_id}",
             headers=self._headers(),
             timeout=PROVIDER_API_TIMEOUT_S,

@@ -17,8 +17,7 @@ from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.modules.banners import BannerRepository, ensure_default_banner_seeded
 from app.modules.blacklist import BlacklistRepository, ensure_blacklist_sources_seeded
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
-from app.modules.settings import SettingsRepository
-from app.modules.translations import TranslationsRepository, ensure_translations_seeded
+from app.modules.translations import TranslationRepository, ensure_translations_seeded
 from app.modules.users import UserRepository
 from app.worker.broker import broker
 
@@ -34,12 +33,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     async with container(scope=Scope.REQUEST) as startup_container:
         config = await startup_container.get(AppConfig)
-        translations_repository = await startup_container.get(TranslationsRepository)
-        settings_repository = await startup_container.get(SettingsRepository)
+        translation_repository = await startup_container.get(TranslationRepository)
         uow = await startup_container.get(UnitOfWork)
         async with uow:
             register_all_flow_metadata()
-            await ensure_translations_seeded(config, translations_repository, settings_repository)
+            await ensure_translations_seeded(config, translation_repository)
 
             # Fresh install only -- once an owner exists the list is the
             # admin's to manage, and a source they removed must stay removed.
@@ -52,9 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await ensure_default_banner_seeded(banner_repository, config)
 
             dialog_repository = await startup_container.get(DialogRepository)
-            await ensure_dialogs_seeded(
-                dialog_repository, translations_repository, settings_repository
-            )
+            await ensure_dialogs_seeded(dialog_repository, translation_repository)
 
     yield
 

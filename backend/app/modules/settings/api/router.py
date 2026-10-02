@@ -7,7 +7,6 @@ from fastapi import APIRouter, Response
 from app.api.errors import error_responses
 from app.core.enums import AppearanceImageKind
 from app.modules.settings.api.schemas import AppearanceResponse
-from app.modules.settings.dto import AppearanceSettingsDto
 from app.modules.settings.usecases import (
     GetPublicAppearanceImageUseCase,
     GetPublicAppearanceUseCase,
@@ -23,22 +22,11 @@ _IMAGE_HEADERS: Final[dict[str, str]] = {
 }
 
 
-def _to_appearance_response(settings: AppearanceSettingsDto) -> AppearanceResponse:
-    return AppearanceResponse(
-        brand_name=settings.brand_name,
-        primary_color=settings.primary_color,
-        shader_palette=settings.shader_palette,
-        shader_enabled=settings.shader_enabled,
-        has_logo=settings.has_logo,
-        has_favicon=settings.has_favicon,
-    )
-
-
 @router.get("", response_model=AppearanceResponse)
 @inject
 async def get_appearance(use_case: FromDishka[GetPublicAppearanceUseCase]) -> AppearanceResponse:
     settings = await use_case.execute()
-    return _to_appearance_response(settings)
+    return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
 @router.get("/logo", responses=error_responses(404))

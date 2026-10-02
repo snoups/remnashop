@@ -17,6 +17,8 @@ class BotSettings(BaseSql, TimestampMixin):
     # Fernet-encrypted (APP_CRYPT_KEY) transparently by EncryptedString.
     token: Mapped[Optional[str]] = mapped_column(EncryptedString())
     secret_token: Mapped[Optional[str]] = mapped_column(EncryptedString())
+    # may carry proxy credentials, hence encrypted like the token
+    proxy_url: Mapped[Optional[str]] = mapped_column(EncryptedString())
 
     drop_pending_updates: Mapped[bool] = mapped_column(
         Boolean(), default=False, server_default="false"

@@ -9,11 +9,20 @@ from app.core.dto import BaseDto, TimestampMixin
 class BotSettingsDto(BaseDto, TimestampMixin):
     token: Optional[SecretStr] = None
     secret_token: Optional[SecretStr] = None
+    proxy_url: Optional[SecretStr] = None
     drop_pending_updates: bool = False
 
     @property
     def is_configured(self) -> bool:
         return self.token is not None and self.secret_token is not None
+
+    @property
+    def is_proxy_configured(self) -> bool:
+        return self.proxy_url is not None
+
+    @property
+    def proxy(self) -> Optional[str]:
+        return self.proxy_url.get_secret_value() if self.proxy_url is not None else None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -166,3 +175,9 @@ class UpdateAppearanceSettingsDto:
     primary_color: Optional[str] = None
     shader_palette: Optional[list[str]] = None
     shader_enabled: Optional[bool] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UploadAppearanceImageDto:
+    content_type: str
+    data: bytes

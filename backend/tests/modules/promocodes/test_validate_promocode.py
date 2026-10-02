@@ -5,17 +5,14 @@ from app.core.enums import PlanType, PromocodeRewardType
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
-from app.modules.promocodes.dto import CreatePromocodeDto
+from app.modules.promocodes.dto import CreatePromocodeDto, ValidatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.promocodes.usecases.validate_promocode import (
-    ValidatePromocodeDto,
-    ValidatePromocodeUseCase,
-)
+from app.modules.promocodes.usecases.validate_promocode import ValidatePromocodeUseCase
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.modules.subscriptions.factories import make_eligibility
 
 
 async def test_validates_a_fresh_code(
@@ -34,9 +31,8 @@ async def test_validates_a_fresh_code(
     use_case = ValidatePromocodeUseCase(
         promocode_repository,
         subscription_repository,
-        referral_repository,
         PlanRepository(promocode_repository.session),
-        SettingsRepository(promocode_repository.session),
+        make_eligibility(promocode_repository.session),
         uow,
     )
 
@@ -57,9 +53,8 @@ async def test_raises_not_found_for_an_unknown_code(
     use_case = ValidatePromocodeUseCase(
         promocode_repository,
         subscription_repository,
-        referral_repository,
         PlanRepository(promocode_repository.session),
-        SettingsRepository(promocode_repository.session),
+        make_eligibility(promocode_repository.session),
         uow,
     )
 
@@ -83,9 +78,8 @@ async def test_does_not_claim_an_activation(
     use_case = ValidatePromocodeUseCase(
         promocode_repository,
         subscription_repository,
-        referral_repository,
         PlanRepository(promocode_repository.session),
-        SettingsRepository(promocode_repository.session),
+        make_eligibility(promocode_repository.session),
         uow,
     )
 
@@ -123,9 +117,8 @@ async def test_preview_refuses_a_subscription_reward_whose_plan_is_unavailable(
     use_case = ValidatePromocodeUseCase(
         promocode_repository,
         subscription_repository,
-        referral_repository,
         plan_repository,
-        SettingsRepository(promocode_repository.session),
+        make_eligibility(promocode_repository.session),
         uow,
     )
 

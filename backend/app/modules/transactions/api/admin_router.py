@@ -4,28 +4,38 @@ from typing import Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 
-from app.api.dependencies.admin import require_admin
+from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from app.modules.transactions.api.schemas import (
+    CreateTestPaymentRequest,
+    TestPaymentResponse,
+    TestPaymentStatusResponse,
     TransactionGatewayListResponse,
     TransactionPageResponse,
     TransactionResponse,
     TransactionSummaryResponse,
     TransactionUserResponse,
 )
-from app.modules.transactions.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TransactionWithUserDto
+from app.modules.transactions.dto import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    GetTransactionSummaryDto,
+    ListTransactionsDto,
+    TransactionWithUserDto,
+)
 from app.modules.transactions.usecases import (
-    GetTransactionSummaryInput,
+    CreateTestPaymentUseCase,
+    GetTestPaymentStatusUseCase,
     GetTransactionSummaryUseCase,
     GetTransactionUseCase,
     ListTransactionGatewaysUseCase,
-    ListTransactionsInput,
     ListTransactionsUseCase,
 )
+from app.modules.users import UserDto
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -35,12 +45,7 @@ def _to_response(item: TransactionWithUserDto) -> TransactionResponse:
     return TransactionResponse(
         id=order.id,
         user_id=order.user_id,
-        user=TransactionUserResponse(
-            name=user.name,
-            username=user.username,
-            telegram_id=user.telegram_id,
-            email=user.email,
-        )
+        user=TransactionUserResponse.model_validate(user, from_attributes=True)
         if user is not None
         else None,
         plan_id=order.plan_id,
@@ -81,7 +86,7 @@ async def list_transactions(
 ) -> TransactionPageResponse:
     items, total = await use_case(
         actor,
-        ListTransactionsInput(
+        ListTransactionsDto(
             status=status_filter,
             gateway_type=gateway_type,
             purchase_type=purchase_type,
@@ -112,7 +117,7 @@ async def get_transaction_summary(
 ) -> TransactionSummaryResponse:
     summary = await use_case(
         actor,
-        GetTransactionSummaryInput(
+        GetTransactionSummaryDto(
             status=status_filter,
             gateway_type=gateway_type,
             purchase_type=purchase_type,
@@ -135,7 +140,39 @@ async def list_transaction_gateways(
     return TransactionGatewayListResponse(items=items, total=len(items))
 
 
-@router.get("/{transaction_id}", response_model=TransactionResponse, responses=error_responses(404))
+@router.post(
+    "/test-payments",
+    status_code=status.HTTP_201_CREATED,
+    response_model=TestPaymentResponse,
+    responses=error_responses(400, 502),
+)
+@inject
+async def create_test_payment(
+    payload: CreateTestPaymentRequest,
+    use_case: FromDishka[CreateTestPaymentUseCase],
+    actor: UserDto = Depends(require_admin_user),
+) -> TestPaymentResponse:
+    result = await use_case(actor, payload.gateway_type)
+    return TestPaymentResponse.model_validate(result, from_attributes=True)
+
+
+@router.get(
+    "/test-payments/{order_id:int}",
+    response_model=TestPaymentStatusResponse,
+    responses=error_responses(404),
+)
+@inject
+async def get_test_payment_status(
+    order_id: int,
+    use_case: FromDishka[GetTestPaymentStatusUseCase],
+    actor: Actor = Depends(require_admin),
+) -> TestPaymentStatusResponse:
+    return TestPaymentStatusResponse(status=await use_case(actor, order_id))
+
+
+@router.get(
+    "/{transaction_id:int}", response_model=TransactionResponse, responses=error_responses(404)
+)
 @inject
 async def get_transaction(
     transaction_id: int,

@@ -1,15 +1,16 @@
 import httpx
 import pytest
 
-import app.modules.transactions.gateways.yookassa as yookassa_module
 from app.core.enums import TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.yookassa import YooKassaGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -18,8 +19,10 @@ from tests.modules.transactions.gateways.support import (
 _SETTINGS = {"shop_id": "1000", "api_key": "test_key"}
 
 
-def _gateway() -> YooKassaGateway:
-    return YooKassaGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+def _gateway(*, http: PaymentHttpClient = NO_HTTP) -> YooKassaGateway:
+    return YooKassaGateway(
+        settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
+    )
 
 
 def _payment(**overrides: object) -> dict[str, object]:
@@ -34,16 +37,12 @@ def _payment(**overrides: object) -> dict[str, object]:
     return payment
 
 
-async def test_create_payment_sends_idempotence_key_and_order_ref(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(
-        monkeypatch,
-        yookassa_module,
+async def test_create_payment_sends_idempotence_key_and_order_ref() -> None:
+    http = HttpRecorder(
         json_response({"id": "yk-1", "confirmation": {"confirmation_url": "https://pay/1"}}),
     )
 
-    intent = await _gateway().create_payment(make_order())
+    intent = await _gateway(http=http.client).create_payment(make_order())
 
     assert intent.provider_payment_id == "yk-1"
     assert intent.confirmation_url == "https://pay/1"
@@ -78,17 +77,15 @@ async def test_parse_webhook_rejects_malformed_body() -> None:
         await _gateway().parse_webhook(webhook(b"not json"))
 
 
-async def test_fetch_payment_reads_the_payment_with_the_api_timeout(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(monkeypatch, yookassa_module, json_response(_payment()))
+async def test_fetch_payment_reads_the_payment_with_the_api_timeout() -> None:
+    http = HttpRecorder(json_response(_payment()))
     order = make_order(external_payment_id="yk-1")
-    signal = await _gateway().parse_webhook(
+    signal = await _gateway(http=http.client).parse_webhook(
         webhook({"event": "payment.succeeded", "object": _payment()})
     )
     assert signal is not None
 
-    confirmed = await _gateway().confirm(order, signal)
+    confirmed = await _gateway(http=http.client).confirm(order, signal)
 
     assert confirmed is not None
     assert confirmed.provider_payment_id == "yk-1"
@@ -96,18 +93,17 @@ async def test_fetch_payment_reads_the_payment_with_the_api_timeout(
     assert http.last.extensions["timeout"]["read"] == 8.0
 
 
-async def test_confirm_rejects_when_the_api_reports_pending(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    install_http(
-        monkeypatch, yookassa_module, json_response(_payment(status="pending", paid=False))
-    )
-    signal = await _gateway().parse_webhook(
+async def test_confirm_rejects_when_the_api_reports_pending() -> None:
+    http = HttpRecorder(json_response(_payment(status="pending", paid=False)))
+    signal = await _gateway(http=http.client).parse_webhook(
         webhook({"event": "payment.succeeded", "object": _payment()})
     )
     assert signal is not None
 
-    assert await _gateway().confirm(make_order(external_payment_id="yk-1"), signal) is None
+    assert (
+        await _gateway(http=http.client).confirm(make_order(external_payment_id="yk-1"), signal)
+        is None
+    )
 
 
 async def test_fetch_payment_without_a_stored_id_is_not_paid() -> None:
@@ -118,14 +114,14 @@ async def test_fetch_payment_without_a_stored_id_is_not_paid() -> None:
     assert await _gateway().confirm(make_order(), signal) is None
 
 
-async def test_fetch_payment_propagates_http_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, yookassa_module, lambda request: httpx.Response(500))
-    signal = await _gateway().parse_webhook(
+async def test_fetch_payment_propagates_http_errors() -> None:
+    http = HttpRecorder(lambda request: httpx.Response(500))
+    signal = await _gateway(http=http.client).parse_webhook(
         webhook({"event": "payment.succeeded", "object": _payment()})
     )
     assert signal is not None
     with pytest.raises(httpx.HTTPStatusError):
-        await _gateway().confirm(make_order(external_payment_id="yk-1"), signal)
+        await _gateway(http=http.client).confirm(make_order(external_payment_id="yk-1"), signal)
 
 
 async def test_parse_webhook_refund_reports_refunded_against_the_payment() -> None:

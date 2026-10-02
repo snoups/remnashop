@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
@@ -8,15 +6,9 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher, PasskeyRevoker, SessionRevoker
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.users.dto import UserDto
+from app.modules.users.dto import DemoteAdminDto, UserDto
 from app.modules.users.events import AdminDemotedEvent
 from app.modules.users.repository import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class DemoteAdminDto:
-    user_id: int
-    client_ip: str
 
 
 class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):

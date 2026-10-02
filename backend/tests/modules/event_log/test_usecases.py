@@ -6,9 +6,9 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.events import EventCategory
 from app.core.exceptions import PermissionDeniedError
-from app.modules.event_log.dto import EventLogEntryDto
+from app.modules.event_log.dto import EventLogEntryDto, ListEventLogDto
 from app.modules.event_log.repository import EventLogRepository
-from app.modules.event_log.usecases import ListEventLogInput, ListEventLogUseCase
+from app.modules.event_log.usecases import ListEventLogUseCase
 from app.modules.users.dto import UserDto
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -37,7 +37,7 @@ async def test_owner_can_list_event_log(
     )
 
     use_case = ListEventLogUseCase(event_log_repository, uow)
-    items, total = await use_case(OWNER, ListEventLogInput())
+    items, total = await use_case(OWNER, ListEventLogDto())
 
     assert total == 1
     assert len(items) == 1
@@ -50,7 +50,7 @@ async def test_regular_admin_without_grant_cannot_list_event_log(
     use_case = ListEventLogUseCase(event_log_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_ADMIN, ListEventLogInput())
+        await use_case(REGULAR_ADMIN, ListEventLogDto())
 
 
 async def test_admin_with_grant_can_list_event_log(
@@ -59,7 +59,7 @@ async def test_admin_with_grant_can_list_event_log(
 ) -> None:
     use_case = ListEventLogUseCase(event_log_repository, uow)
 
-    items, total = await use_case(GRANTED_ADMIN, ListEventLogInput())
+    items, total = await use_case(GRANTED_ADMIN, ListEventLogDto())
 
     assert total == 0
     assert items == []
@@ -87,7 +87,7 @@ async def test_list_event_log_passes_filters_through(
     )
 
     use_case = ListEventLogUseCase(event_log_repository, uow)
-    items, total = await use_case(OWNER, ListEventLogInput(category=EventCategory.ADMIN_MANAGEMENT))
+    items, total = await use_case(OWNER, ListEventLogDto(category=EventCategory.ADMIN_MANAGEMENT))
 
     assert total == 1
     assert items[0].event_type == "AdminCreatedEvent"

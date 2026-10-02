@@ -4,16 +4,17 @@ import json
 
 import pytest
 
-import app.modules.transactions.gateways.cryptopay as cryptopay_module
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.modules.transactions.dto import TransactionDto
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.cryptopay import CryptoPayGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -22,9 +23,9 @@ from tests.modules.transactions.gateways.support import (
 _TOKEN = "123:ABC"
 
 
-def _gateway() -> CryptoPayGateway:
+def _gateway(*, http: PaymentHttpClient = NO_HTTP) -> CryptoPayGateway:
     return CryptoPayGateway(
-        settings={"api_key": _TOKEN}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL
+        settings={"api_key": _TOKEN}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
     )
 
 
@@ -57,16 +58,12 @@ def _signed_update(update_type: str = "invoice_paid") -> tuple[bytes, dict[str, 
     return raw, {"crypto-pay-api-signature": signature}
 
 
-async def test_create_payment_sets_expiry_and_stores_the_invoice(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(
-        monkeypatch,
-        cryptopay_module,
+async def test_create_payment_sets_expiry_and_stores_the_invoice() -> None:
+    http = HttpRecorder(
         json_response({"ok": True, "result": {"invoice_id": 99, "bot_invoice_url": "https://t/1"}}),
     )
 
-    intent = await _gateway().create_payment(_order())
+    intent = await _gateway(http=http.client).create_payment(_order())
 
     body = http.last_json()
     assert 0 < body["expires_in"] <= 1800
@@ -92,18 +89,16 @@ async def test_parse_webhook_ignores_other_updates() -> None:
     assert await _gateway().parse_webhook(webhook(raw, headers)) is None
 
 
-async def test_confirm_reads_get_invoices(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(
-        monkeypatch,
-        cryptopay_module,
+async def test_confirm_reads_get_invoices() -> None:
+    http = HttpRecorder(
         json_response({"ok": True, "result": {"items": [_invoice()]}}),
     )
     raw, headers = _signed_update()
-    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, headers))
     assert signal is not None
 
     order = make_order(currency=Currency.USD, external_payment_id="99")
-    confirmed = await _gateway().confirm(order, signal)
+    confirmed = await _gateway(http=http.client).confirm(order, signal)
 
     assert confirmed is not None
     assert http.last.url.path == "/api/getInvoices"
@@ -111,24 +106,20 @@ async def test_confirm_reads_get_invoices(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 @pytest.mark.parametrize("items", [[], [_invoice("active")]])
-async def test_confirm_rejects_missing_or_unpaid_invoices(
-    monkeypatch: pytest.MonkeyPatch, items: list[dict[str, object]]
-) -> None:
-    install_http(
-        monkeypatch, cryptopay_module, json_response({"ok": True, "result": {"items": items}})
-    )
+async def test_confirm_rejects_missing_or_unpaid_invoices(items: list[dict[str, object]]) -> None:
+    http = HttpRecorder(json_response({"ok": True, "result": {"items": items}}))
     raw, headers = _signed_update()
-    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, headers))
     assert signal is not None
     order = make_order(currency=Currency.USD, external_payment_id="99")
-    assert await _gateway().confirm(order, signal) is None
+    assert await _gateway(http=http.client).confirm(order, signal) is None
 
 
-async def test_confirm_raises_when_the_api_says_not_ok(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, cryptopay_module, json_response({"ok": False, "error": "x"}))
+async def test_confirm_raises_when_the_api_says_not_ok() -> None:
+    http = HttpRecorder(json_response({"ok": False, "error": "x"}))
     raw, headers = _signed_update()
-    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, headers))
     assert signal is not None
     order = make_order(currency=Currency.USD, external_payment_id="99")
     with pytest.raises(PaymentGatewayError):
-        await _gateway().confirm(order, signal)
+        await _gateway(http=http.client).confirm(order, signal)

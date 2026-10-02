@@ -7,6 +7,7 @@ from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import Locale
 from app.modules.translations.api.schemas import (
+    ActiveLocalesResponse,
     TranslationEntryItem,
     TranslationEntryListResponse,
     TranslationsExportPayload,
@@ -14,30 +15,27 @@ from app.modules.translations.api.schemas import (
     TranslationTextExportItem,
     UpdateTranslationRequest,
 )
-from app.modules.translations.dto import TranslationEntryDto, TranslationTextExportDto
+from app.modules.translations.dto import (
+    ResetTranslationDto,
+    TranslationsImportDto,
+    TranslationTextExportDto,
+    UpdateTranslationDto,
+)
 from app.modules.translations.usecases import (
+    AddLocaleUseCase,
     ExportTranslationsUseCase,
     ImportTranslationsUseCase,
+    ListActiveLocalesUseCase,
     ListTranslationsUseCase,
+    RemoveLocaleUseCase,
     ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
-    TranslationsImportInput,
     UpdateTranslationUseCase,
 )
-from app.modules.translations.usecases.reset_translation import ResetTranslationInput
-from app.modules.translations.usecases.update_translation import UpdateTranslationInput
 
 router = APIRouter(prefix="/translations", tags=["translations"])
-
-
-def _to_item(entry: TranslationEntryDto) -> TranslationEntryItem:
-    return TranslationEntryItem(
-        locale=entry.locale,
-        message_id=entry.message_id,
-        attribute_id=entry.attribute_id,
-        value=entry.value,
-        default_value=entry.default_value,
-    )
+# the locale set is a shop setting in the dashboard, so it keeps the /settings URL
+locales_router = APIRouter(prefix="/settings/locales", tags=["settings"])
 
 
 @router.get("", response_model=TranslationEntryListResponse)
@@ -47,7 +45,7 @@ async def list_translations(
     actor: Actor = Depends(require_admin),
 ) -> TranslationEntryListResponse:
     entries = await use_case(actor)
-    items = [_to_item(entry) for entry in entries]
+    items = [TranslationEntryItem.model_validate(entry, from_attributes=True) for entry in entries]
     return TranslationEntryListResponse(items=items, total=len(items))
 
 
@@ -61,12 +59,7 @@ async def export_translations(
     return TranslationsExportPayload(
         version=export.version,
         texts=[
-            TranslationTextExportItem(
-                locale=text.locale,
-                message_id=text.message_id,
-                attribute_id=text.attribute_id,
-                value=text.value,
-            )
+            TranslationTextExportItem.model_validate(text, from_attributes=True)
             for text in export.texts
         ],
     )
@@ -83,7 +76,7 @@ async def import_translations(
 ) -> TranslationsImportResult:
     result = await use_case(
         actor,
-        TranslationsImportInput(
+        TranslationsImportDto(
             version=payload.version,
             texts=[
                 TranslationTextExportDto(
@@ -96,7 +89,7 @@ async def import_translations(
             ],
         ),
     )
-    return TranslationsImportResult(applied=result.applied, skipped=result.skipped)
+    return TranslationsImportResult.model_validate(result, from_attributes=True)
 
 
 @router.post("/actions/reset-all", status_code=status.HTTP_204_NO_CONTENT)
@@ -124,11 +117,11 @@ async def update_translation(
 ) -> TranslationEntryItem:
     entry = await use_case(
         actor,
-        UpdateTranslationInput(
+        UpdateTranslationDto(
             locale=locale, message_id=message_id, attribute_id=attribute_id, value=payload.value
         ),
     )
-    return _to_item(entry)
+    return TranslationEntryItem.model_validate(entry, from_attributes=True)
 
 
 @router.post(
@@ -146,6 +139,43 @@ async def reset_translation(
 ) -> TranslationEntryItem:
     entry = await use_case(
         actor,
-        ResetTranslationInput(locale=locale, message_id=message_id, attribute_id=attribute_id),
+        ResetTranslationDto(locale=locale, message_id=message_id, attribute_id=attribute_id),
     )
-    return _to_item(entry)
+    return TranslationEntryItem.model_validate(entry, from_attributes=True)
+
+
+def _to_response(active: list[Locale]) -> ActiveLocalesResponse:
+    return ActiveLocalesResponse(
+        active=active, available=[locale for locale in Locale if locale not in active]
+    )
+
+
+@locales_router.get("", response_model=ActiveLocalesResponse)
+@inject
+async def list_locales(
+    use_case: FromDishka[ListActiveLocalesUseCase],
+    actor: Actor = Depends(require_admin),
+) -> ActiveLocalesResponse:
+    return _to_response(await use_case(actor))
+
+
+@locales_router.put("/{locale}", response_model=ActiveLocalesResponse)
+@inject
+async def add_locale(
+    locale: Locale,
+    use_case: FromDishka[AddLocaleUseCase],
+    actor: Actor = Depends(require_admin),
+) -> ActiveLocalesResponse:
+    return _to_response(await use_case(actor, locale))
+
+
+@locales_router.delete(
+    "/{locale}", response_model=ActiveLocalesResponse, responses=error_responses(400)
+)
+@inject
+async def remove_locale(
+    locale: Locale,
+    use_case: FromDishka[RemoveLocaleUseCase],
+    actor: Actor = Depends(require_admin),
+) -> ActiveLocalesResponse:
+    return _to_response(await use_case(actor, locale))

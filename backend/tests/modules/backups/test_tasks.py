@@ -8,14 +8,15 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import select
 
+from app.core.actor import Actor
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus
 from app.core.utils.time import datetime_now
-from app.modules.backups.dto import CreateBackupRunDto, UpdateBackupSettingsDto
+from app.modules.backups.dto import CreateBackupRunDto, RunBackupDto, UpdateBackupSettingsDto
 from app.modules.backups.dump import create_assets_dump
 from app.modules.backups.repository import BackupRepository
-from app.modules.backups.tasks import auto_backup, run_backup
+from app.modules.backups.usecases import RunBackupUseCase, RunScheduledBackupUseCase
 
 
 async def test_run_backup_marks_failed_when_dump_raises(
@@ -31,16 +32,11 @@ async def test_run_backup_marks_failed_when_dump_raises(
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
     with patch(
-        "app.modules.backups.tasks.create_database_dump",
+        "app.modules.backups.usecases.run_backup.create_database_dump",
         AsyncMock(side_effect=RuntimeError("pg_dump failed: boom")),
     ):
-        await run_backup(
-            kind=BackupKind.DATABASE,
-            run_id=run.id,
-            backup_repository=backup_repository,
-            uow=uow,
-            config=config,
-            event_publisher=event_publisher,
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
     failed = await backup_repository.get_run(run.id)
@@ -67,13 +63,8 @@ async def test_run_backup_rejects_second_concurrent_run(
         await backup_repository.mark_running(first.id)
         second = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    await run_backup(
-        kind=BackupKind.DATABASE,
-        run_id=second.id,
-        backup_repository=backup_repository,
-        uow=uow,
-        config=config,
-        event_publisher=event_publisher,
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        RunBackupDto(kind=BackupKind.DATABASE, run_id=second.id)
     )
 
     failed = await backup_repository.get_run(second.id)
@@ -98,14 +89,9 @@ async def test_run_backup_completes_and_signs_database_dump(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    with patch("app.modules.backups.tasks.create_database_dump", _fake_dump):
-        await run_backup(
-            kind=BackupKind.DATABASE,
-            run_id=run.id,
-            backup_repository=backup_repository,
-            uow=uow,
-            config=config,
-            event_publisher=event_publisher,
+    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
     completed = await backup_repository.get_run(run.id)
@@ -130,13 +116,8 @@ async def test_run_backup_completes_assets_dump(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.ASSETS))
 
-    await run_backup(
-        kind=BackupKind.ASSETS,
-        run_id=run.id,
-        backup_repository=backup_repository,
-        uow=uow,
-        config=config,
-        event_publisher=event_publisher,
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        RunBackupDto(kind=BackupKind.ASSETS, run_id=run.id)
     )
 
     completed = await backup_repository.get_run(run.id)
@@ -163,14 +144,9 @@ async def test_run_backup_removes_partial_file_on_failure(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    with patch("app.modules.backups.tasks.create_database_dump", _fake_dump):
-        await run_backup(
-            kind=BackupKind.DATABASE,
-            run_id=run.id,
-            backup_repository=backup_repository,
-            uow=uow,
-            config=config,
-            event_publisher=event_publisher,
+    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
     assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.FAILED
@@ -192,19 +168,14 @@ async def test_run_backup_rotates_old_files_beyond_max_files(
     async def _fake_dump(cfg, dest: Path) -> None:
         dest.write_bytes(b"x")
 
-    with patch("app.modules.backups.tasks.create_database_dump", _fake_dump):
+    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
         for _ in range(2):
             async with uow:
                 run = await backup_repository.create_run(
                     CreateBackupRunDto(kind=BackupKind.DATABASE)
                 )
-            await run_backup(
-                kind=BackupKind.DATABASE,
-                run_id=run.id,
-                backup_repository=backup_repository,
-                uow=uow,
-                config=config,
-                event_publisher=event_publisher,
+            await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+                RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
             )
 
     remaining, total = await backup_repository.list_runs(
@@ -257,26 +228,25 @@ async def test_create_assets_dump_builds_temp_file_inside_backups_dir(
     assert result.parent == backups_dir
 
 
+class _RecordingRunBackup(RunBackupUseCase):
+    def __init__(self) -> None:
+        self.runs: list[RunBackupDto] = []
+
+    async def _execute(self, actor: Actor, data: RunBackupDto) -> None:
+        self.runs.append(data)
+
+
 async def test_auto_backup_noops_when_disabled(
     backup_repository: BackupRepository,
     uow: UnitOfWork,
     config,
     event_publisher,
 ) -> None:
-    dispatched = []
+    run_backup = _RecordingRunBackup()
 
-    async def _fake_run_backup(**kwargs) -> None:
-        dispatched.append(kwargs)
+    await RunScheduledBackupUseCase(backup_repository, uow, run_backup).system()
 
-    with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(
-            backup_repository=backup_repository,
-            uow=uow,
-            config=config,
-            event_publisher=event_publisher,
-        )
-
-    assert dispatched == []
+    assert run_backup.runs == []
 
 
 async def test_auto_backup_runs_when_no_prior_run(
@@ -290,21 +260,11 @@ async def test_auto_backup_runs_when_no_prior_run(
             UpdateBackupSettingsDto(enabled=True, interval_hours=24)
         )
 
-    ran = []
+    run_backup = _RecordingRunBackup()
 
-    async def _fake_run_backup(**kwargs) -> None:
-        ran.append(kwargs)
+    await RunScheduledBackupUseCase(backup_repository, uow, run_backup).system()
 
-    with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(
-            backup_repository=backup_repository,
-            uow=uow,
-            config=config,
-            event_publisher=event_publisher,
-        )
-
-    assert len(ran) == 1
-    assert ran[0]["kind"] == BackupKind.DATABASE
+    assert [run.kind for run in run_backup.runs] == [BackupKind.DATABASE]
 
 
 async def _complete_run_at(
@@ -332,20 +292,11 @@ async def test_auto_backup_runs_when_last_run_older_than_interval(
         )
     await _complete_run_at(backup_repository, uow, datetime_now() - timedelta(hours=7))
 
-    ran = []
+    run_backup = _RecordingRunBackup()
 
-    async def _fake_run_backup(**kwargs) -> None:
-        ran.append(kwargs)
+    await RunScheduledBackupUseCase(backup_repository, uow, run_backup).system()
 
-    with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(
-            backup_repository=backup_repository,
-            uow=uow,
-            config=config,
-            event_publisher=event_publisher,
-        )
-
-    assert len(ran) == 1
+    assert len(run_backup.runs) == 1
 
 
 async def test_auto_backup_noops_when_last_run_younger_than_interval(
@@ -360,17 +311,8 @@ async def test_auto_backup_noops_when_last_run_younger_than_interval(
         )
     await _complete_run_at(backup_repository, uow, datetime_now() - timedelta(hours=1))
 
-    ran = []
+    run_backup = _RecordingRunBackup()
 
-    async def _fake_run_backup(**kwargs) -> None:
-        ran.append(kwargs)
+    await RunScheduledBackupUseCase(backup_repository, uow, run_backup).system()
 
-    with patch("app.modules.backups.tasks.run_backup", _fake_run_backup):
-        await auto_backup(
-            backup_repository=backup_repository,
-            uow=uow,
-            config=config,
-            event_publisher=event_publisher,
-        )
-
-    assert ran == []
+    assert run_backup.runs == []

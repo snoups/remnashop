@@ -1,14 +1,20 @@
-from dishka import Provider, Scope, provide
+from collections.abc import AsyncIterator
 
+import httpx
+from dishka import Provider, Scope, provide, provide_all
+
+from app.modules.transactions.gateways.base import HTTP_TIMEOUT_S, PaymentHttpClient
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.usecases import (
+    PruneExpiredTransactionsUseCase,
+    ReconcilePaidTransactionsUseCase,
+)
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
 from app.modules.transactions.usecases.get_test_payment_status import GetTestPaymentStatusUseCase
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
-from app.modules.transactions.usecases.get_transaction_summary import (
-    GetTransactionSummaryUseCase,
-)
+from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
 from app.modules.transactions.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
 from app.modules.transactions.usecases.list_transaction_gateways import (
     ListTransactionGatewaysUseCase,
@@ -20,15 +26,24 @@ class TransactionsProvider(Provider):
     scope = Scope.REQUEST
 
     transaction_repository = provide(TransactionRepository)
-    create_checkout_use_case = provide(CreateCheckoutUseCase)
-    create_test_payment_use_case = provide(CreateTestPaymentUseCase)
-    get_test_payment_status_use_case = provide(GetTestPaymentStatusUseCase)
-    list_transactions_use_case = provide(ListTransactionsUseCase)
-    list_transaction_gateways_use_case = provide(ListTransactionGatewaysUseCase)
-    get_transaction_use_case = provide(GetTransactionUseCase)
-    get_transaction_summary_use_case = provide(GetTransactionSummaryUseCase)
-    handle_payment_webhook_use_case = provide(HandlePaymentWebhookUseCase)
+    use_cases = provide_all(
+        CreateCheckoutUseCase,
+        CreateTestPaymentUseCase,
+        GetTestPaymentStatusUseCase,
+        ListTransactionsUseCase,
+        ListTransactionGatewaysUseCase,
+        GetTransactionUseCase,
+        GetTransactionSummaryUseCase,
+        HandlePaymentWebhookUseCase,
+        PruneExpiredTransactionsUseCase,
+        ReconcilePaidTransactionsUseCase,
+    )
     payment_gateway_factory = provide(PaymentGatewayFactory, scope=Scope.APP)
+
+    @provide(scope=Scope.APP)
+    async def payment_http_client(self) -> AsyncIterator[PaymentHttpClient]:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_S) as client:
+            yield PaymentHttpClient(client)
 
 
 def get_transactions_providers() -> list[Provider]:

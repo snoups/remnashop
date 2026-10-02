@@ -15,12 +15,11 @@ from app.modules.oauth.api.schemas import (
     OAuthIdentityListResponse,
     OAuthIdentityResponse,
 )
+from app.modules.oauth.dto import OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.usecases import (
     ListOAuthIdentitiesUseCase,
-    OAuthCallbackDto,
     OAuthConnectAuthorizeUseCase,
     OAuthConnectCallbackUseCase,
-    OAuthDisconnectDto,
     OAuthDisconnectUseCase,
 )
 from app.modules.users import UserDto

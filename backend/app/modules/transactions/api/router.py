@@ -8,8 +8,9 @@ from app.core.enums import PaymentGatewayType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PaymentGatewayError, ValidationError
 from app.core.utils.http import read_bounded_body, resolve_client_ip
+from app.modules.transactions.dto import HandleWebhookDto
 from app.modules.transactions.gateways.base import WebhookRequest
-from app.modules.transactions.usecases import HandlePaymentWebhookUseCase, HandleWebhookInput
+from app.modules.transactions.usecases import HandlePaymentWebhookUseCase
 
 router = APIRouter(tags=["transactions"])
 
@@ -33,7 +34,7 @@ async def receive_payment_webhook(
     )
     try:
         ack = await use_case.system(
-            HandleWebhookInput(gateway_type=parsed_type, request=webhook_request)
+            HandleWebhookDto(gateway_type=parsed_type, request=webhook_request)
         )
     except ValidationError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from None

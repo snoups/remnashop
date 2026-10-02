@@ -1,4 +1,4 @@
-from typing import Protocol
+from functools import partial
 
 from loguru import logger
 
@@ -9,12 +9,9 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.backups.dispatch import RunBackupDispatch
 from app.modules.backups.dto import BackupRunDto, CreateBackupRunDto
 from app.modules.backups.repository import BackupRepository
-
-
-class RunBackupDispatch(Protocol):
-    async def kiq(self, *, kind: str, run_id: int) -> object: ...
 
 
 class CreateBackupRunUseCase(UseCase[BackupKind, BackupRunDto]):
@@ -42,7 +39,9 @@ class CreateBackupRunUseCase(UseCase[BackupKind, BackupRunDto]):
             run = await self._backup_repository.create_run(
                 CreateBackupRunDto(kind=data, triggered_by=actor.id)
             )
+            await self._uow.after_commit(
+                partial(self._run_backup_dispatch.kiq, kind=data.value, run_id=run.id)
+            )
 
-        await self._run_backup_dispatch.kiq(kind=data.value, run_id=run.id)
         logger.info(f"Backup run '{run.id}' ('{data.value}') enqueued by actor {actor.log}")
         return run

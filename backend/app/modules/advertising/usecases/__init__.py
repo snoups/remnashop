@@ -10,6 +10,9 @@ from app.modules.advertising.usecases.list_ad_link_attributed_users import (
     ListAdLinkAttributedUsersUseCase,
 )
 from app.modules.advertising.usecases.list_ad_links import ListAdLinksUseCase
+from app.modules.advertising.usecases.record_ad_link_attribution import (
+    RecordAdLinkAttributionUseCase,
+)
 from app.modules.advertising.usecases.update_ad_link import UpdateAdLinkUseCase
 
 __all__ = [
@@ -18,10 +21,11 @@ __all__ = [
     "GenerateAdLinkCodeUseCase",
     "GetAdLinkShareUrlsUseCase",
     "GetAdLinkStatsUseCase",
+    "GetAdLinkUseCase",
     "GetAdvertisingSummaryUseCase",
     "GetUserAdAttributionUseCase",
     "ListAdLinkAttributedUsersUseCase",
     "ListAdLinksUseCase",
-    "GetAdLinkUseCase",
+    "RecordAdLinkAttributionUseCase",
     "UpdateAdLinkUseCase",
 ]

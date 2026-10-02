@@ -1,10 +1,8 @@
-from dataclasses import dataclass
 from datetime import timedelta
 
 from remnapy import RemnawaveSDK
 from remnapy.models import DeleteUserHwidDeviceRequestDto
 
-from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import CooldownError, ValidationError
@@ -12,15 +10,12 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.settings import SettingsRepository
+from app.modules.subscriptions.dto import DeleteDeviceDto
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users import UserDto
 
 
-@dataclass(frozen=True, kw_only=True)
-class DeleteDeviceDto:
-    hwid: str
-
-
-class DeleteDeviceUseCase(UseCase[DeleteDeviceDto, None]):
+class DeleteDeviceUseCase(UseCase[DeleteDeviceDto, None, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -35,7 +30,7 @@ class DeleteDeviceUseCase(UseCase[DeleteDeviceDto, None]):
         self._settings_repository = settings_repository
         self._uow = uow
 
-    async def _execute(self, actor: Actor, data: DeleteDeviceDto) -> None:
+    async def _execute(self, actor: UserDto, data: DeleteDeviceDto) -> None:
         async with self._uow:
             shop_settings = await self._settings_repository.get_shop_settings()
             if not shop_settings.device_single_reset_enabled:

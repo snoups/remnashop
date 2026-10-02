@@ -5,15 +5,16 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 import httpx
 import pytest
 
-import app.modules.transactions.gateways.robokassa as robokassa_module
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.common import format_moscow
 from app.modules.transactions.gateways.robokassa import RobokassaGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     make_order,
     webhook,
 )
@@ -30,8 +31,10 @@ _XML = (
 )
 
 
-def _gateway() -> RobokassaGateway:
-    return RobokassaGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+def _gateway(*, http: PaymentHttpClient = NO_HTTP) -> RobokassaGateway:
+    return RobokassaGateway(
+        settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
+    )
 
 
 def _md5(message: str) -> str:
@@ -85,12 +88,12 @@ async def test_parse_webhook_rejects_a_password1_signature() -> None:
         await _gateway().parse_webhook(webhook(_result_url(password="p1")))
 
 
-async def test_confirm_reads_op_state_ext(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(monkeypatch, robokassa_module, lambda request: _xml_response())
-    signal = await _gateway().parse_webhook(webhook(_result_url()))
+async def test_confirm_reads_op_state_ext() -> None:
+    http = HttpRecorder(lambda request: _xml_response())
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_result_url()))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(), signal)
+    confirmed = await _gateway(http=http.client).confirm(make_order(), signal)
 
     assert confirmed is not None and confirmed.amount == Decimal("500")
     assert http.last.url.path.endswith("/OpStateExt")
@@ -99,25 +102,23 @@ async def test_confirm_reads_op_state_ext(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 @pytest.mark.parametrize(("result", "state"), [(0, 5), (0, 50), (3, 0)])
-async def test_confirm_rejects_unfinished_or_unknown_operations(
-    monkeypatch: pytest.MonkeyPatch, result: int, state: int
-) -> None:
-    install_http(monkeypatch, robokassa_module, lambda request: _xml_response(result, state))
-    signal = await _gateway().parse_webhook(webhook(_result_url()))
+async def test_confirm_rejects_unfinished_or_unknown_operations(result: int, state: int) -> None:
+    http = HttpRecorder(lambda request: _xml_response(result, state))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_result_url()))
     assert signal is not None
-    assert await _gateway().confirm(make_order(), signal) is None
+    assert await _gateway(http=http.client).confirm(make_order(), signal) is None
 
 
-async def test_confirm_raises_on_op_state_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, robokassa_module, lambda request: _xml_response(1, 0))
-    signal = await _gateway().parse_webhook(webhook(_result_url()))
+async def test_confirm_raises_on_op_state_errors() -> None:
+    http = HttpRecorder(lambda request: _xml_response(1, 0))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_result_url()))
     assert signal is not None
     with pytest.raises(PaymentGatewayError):
-        await _gateway().confirm(make_order(), signal)
+        await _gateway(http=http.client).confirm(make_order(), signal)
 
 
-async def test_confirm_rejects_an_invoice_of_another_order(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, robokassa_module, lambda request: _xml_response(order_ref="other"))
-    signal = await _gateway().parse_webhook(webhook(_result_url()))
+async def test_confirm_rejects_an_invoice_of_another_order() -> None:
+    http = HttpRecorder(lambda request: _xml_response(order_ref="other"))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_result_url()))
     assert signal is not None
-    assert await _gateway().confirm(make_order(), signal) is None
+    assert await _gateway(http=http.client).confirm(make_order(), signal) is None

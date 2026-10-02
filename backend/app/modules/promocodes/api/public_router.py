@@ -7,22 +7,11 @@ from app.api.dependencies.rate_limit import rate_limit
 from app.api.errors import error_responses
 from app.core.constants import TIME_1M
 from app.modules.promocodes.api.schemas import ActivatePromocodeRequest, PublicPromocodeResponse
-from app.modules.promocodes.dto import ActivatePromocodeDto, PromocodeDto
+from app.modules.promocodes.dto import ActivatePromocodeDto
 from app.modules.promocodes.usecases import ActivatePromocodeUseCase
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/promocodes", tags=["promocodes"])
-
-
-def _to_response(promo: PromocodeDto) -> PublicPromocodeResponse:
-    return PublicPromocodeResponse(
-        code=promo.code,
-        reward_type=promo.reward_type,
-        reward=promo.reward,
-        reward_addon_id=promo.reward_addon_id,
-        reward_plan_id=promo.reward_plan_id,
-        reward_duration_days=promo.reward_duration_days,
-    )
 
 
 @router.post(
@@ -44,4 +33,4 @@ async def activate_promocode(
             code=payload.code, target_subscription_id=payload.target_subscription_id
         ),
     )
-    return _to_response(promo)
+    return PublicPromocodeResponse.model_validate(promo, from_attributes=True)

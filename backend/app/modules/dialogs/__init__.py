@@ -3,6 +3,8 @@
 from app.modules.dialogs import catalog
 from app.modules.dialogs.di import DialogsProvider, get_dialogs_providers
 from app.modules.dialogs.dto import (
+    ConfigureDialogWindowDto,
+    CreateCustomDialogWindowDto,
     CreateCustomWindowDto,
     DialogButtonDto,
     DialogButtonInputDto,
@@ -11,13 +13,13 @@ from app.modules.dialogs.dto import (
     DialogTextExportDto,
     DialogWindowDto,
     DialogWindowExportDto,
+    UpdateDialogWindowButtonsDto,
     UpdateDialogWindowDto,
 )
 from app.modules.dialogs.flows import register_all_flow_metadata
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.seed import ensure_dialogs_seeded
 from app.modules.dialogs.usecases import (
-    CreateCustomDialogWindowInput,
     CreateCustomDialogWindowUseCase,
     DeleteCustomDialogWindowUseCase,
     ExportDialogsUseCase,
@@ -26,36 +28,34 @@ from app.modules.dialogs.usecases import (
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
-    UpdateDialogWindowButtonsInput,
     UpdateDialogWindowButtonsUseCase,
-    UpdateDialogWindowInput,
     UpdateDialogWindowUseCase,
 )
 
 __all__ = [
-    "CreateCustomDialogWindowInput",
+    "ConfigureDialogWindowDto",
+    "CreateCustomDialogWindowDto",
     "CreateCustomDialogWindowUseCase",
     "CreateCustomWindowDto",
     "DeleteCustomDialogWindowUseCase",
     "DialogButtonDto",
     "DialogButtonInputDto",
-    "DialogExportDto",
     "DialogCatalogDto",
+    "DialogExportDto",
     "DialogRepository",
     "DialogTextExportDto",
-    "DialogsProvider",
     "DialogWindowDto",
     "DialogWindowExportDto",
+    "DialogsProvider",
     "ExportDialogsUseCase",
     "GetDialogCatalogUseCase",
     "ImportDialogsUseCase",
     "ListDialogWindowsUseCase",
     "ResetAllDialogsUseCase",
     "ResetDialogWindowUseCase",
-    "UpdateDialogWindowButtonsInput",
+    "UpdateDialogWindowButtonsDto",
     "UpdateDialogWindowButtonsUseCase",
     "UpdateDialogWindowDto",
-    "UpdateDialogWindowInput",
     "UpdateDialogWindowUseCase",
     "catalog",
     "ensure_dialogs_seeded",

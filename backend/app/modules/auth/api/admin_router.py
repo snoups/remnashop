@@ -9,28 +9,15 @@ from app.core.utils.http import resolve_client_ip
 from app.modules.auth import (
     ListSessionsUseCase,
     ListUserSessionsUseCase,
-    RevokeSessionDto,
     RevokeSessionUseCase,
-    RevokeUserSessionDto,
     RevokeUserSessionUseCase,
 )
 from app.modules.auth.api.schemas import SessionListResponse, SessionResponse
-from app.modules.auth.dto import SessionDto
+from app.modules.auth.dto import RevokeSessionDto, RevokeUserSessionDto
 from app.modules.users import UserDto
 
 sessions_router = APIRouter(prefix="/auth/sessions", tags=["auth"])
 user_sessions_router = APIRouter(prefix="/users", tags=["auth"])
-
-
-def _to_session_response(session: SessionDto) -> SessionResponse:
-    return SessionResponse(
-        id=session.id,
-        ip_address=session.ip_address,
-        user_agent=session.user_agent,
-        created_at=session.created_at,
-        last_used_at=session.last_used_at,
-        expires_at=session.expires_at,
-    )
 
 
 @sessions_router.get("", response_model=SessionListResponse)
@@ -40,7 +27,7 @@ async def list_sessions(
     actor: UserDto = Depends(require_admin_user),
 ) -> SessionListResponse:
     sessions = await use_case(actor)
-    items = [_to_session_response(session) for session in sessions]
+    items = [SessionResponse.model_validate(session, from_attributes=True) for session in sessions]
     return SessionListResponse(items=items, total=len(items))
 
 
@@ -69,7 +56,7 @@ async def list_user_sessions(
     actor: Actor = Depends(require_admin),
 ) -> SessionListResponse:
     sessions = await use_case(actor, user_id)
-    items = [_to_session_response(session) for session in sessions]
+    items = [SessionResponse.model_validate(session, from_attributes=True) for session in sessions]
     return SessionListResponse(items=items, total=len(items))
 
 

@@ -1,4 +1,4 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, provide, provide_all
 
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.usecases import (
@@ -20,17 +20,19 @@ class PromocodesProvider(Provider):
     scope = Scope.REQUEST
 
     promocode_repository = provide(PromocodeRepository)
-    create_promocode_use_case = provide(CreatePromocodeUseCase)
-    update_promocode_use_case = provide(UpdatePromocodeUseCase)
-    delete_promocode_use_case = provide(DeletePromocodeUseCase)
-    list_promocodes_use_case = provide(ListPromocodesUseCase)
-    get_promocode_use_case = provide(GetPromocodeUseCase)
-    list_user_promocode_activations_use_case = provide(ListUserPromocodeActivationsUseCase)
-    generate_promocode_code_use_case = provide(GeneratePromocodeCodeUseCase)
-    get_promocode_summary_use_case = provide(GetPromocodeSummaryUseCase)
-    list_promocode_activated_users_use_case = provide(ListPromocodeActivatedUsersUseCase)
-    activate_promocode_use_case = provide(ActivatePromocodeUseCase)
-    validate_promocode_use_case = provide(ValidatePromocodeUseCase)
+    use_cases = provide_all(
+        CreatePromocodeUseCase,
+        UpdatePromocodeUseCase,
+        DeletePromocodeUseCase,
+        ListPromocodesUseCase,
+        GetPromocodeUseCase,
+        ListUserPromocodeActivationsUseCase,
+        GeneratePromocodeCodeUseCase,
+        GetPromocodeSummaryUseCase,
+        ListPromocodeActivatedUsersUseCase,
+        ActivatePromocodeUseCase,
+        ValidatePromocodeUseCase,
+    )
 
 
 def get_promocodes_providers() -> list[Provider]:

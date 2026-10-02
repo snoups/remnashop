@@ -9,6 +9,7 @@ from app.core.enums import Locale, Role, SubscriptionStatus
 from app.core.exceptions import PermissionDeniedError
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
+    ListSubscriptionsDto,
     UpdateSubscriptionDto,
     UpdateSubscriptionSquadsDto,
 )
@@ -16,7 +17,6 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.usecases import (
     DeleteSubscriptionUseCase,
-    ListSubscriptionsInput,
     ListSubscriptionsUseCase,
     UpdateSubscriptionSquadsUseCase,
     UpdateSubscriptionUseCase,
@@ -60,7 +60,7 @@ async def test_owner_can_list_subscriptions(
     await subscription_repository.create(_create_dto(user.id, 6001))
     use_case = ListSubscriptionsUseCase(subscription_repository, uow)
 
-    subscriptions, total = await use_case(OWNER, ListSubscriptionsInput())
+    subscriptions, total = await use_case(OWNER, ListSubscriptionsDto())
 
     assert len(subscriptions) == 1
     assert total == 1
@@ -73,7 +73,7 @@ async def test_regular_user_cannot_list_subscriptions(
     use_case = ListSubscriptionsUseCase(subscription_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER, ListSubscriptionsInput())
+        await use_case(REGULAR_USER, ListSubscriptionsDto())
 
 
 async def test_owner_can_update_subscription(

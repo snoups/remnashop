@@ -3,10 +3,11 @@ from decimal import Decimal
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from remnapy.enums import TrafficLimitStrategy
 
-from app.core.enums import AddOnType, Currency, SubscriptionStatus
+from app.core.enums import AddOnType, Currency, PlanType, SubscriptionStatus
+from app.modules.subscriptions.dto import PlanSnapshot
 
 
 class AddOnEntitlementItem(BaseModel):
@@ -39,6 +40,11 @@ class SubscriptionResponse(BaseModel):
     link_reset_at: Optional[datetime] = None
     addon_entitlements: list[AddOnEntitlementItem]
 
+    @field_validator("plan_snapshot", mode="before")
+    @classmethod
+    def _snapshot_as_json(cls, value: Any) -> Any:
+        return value.to_json() if isinstance(value, PlanSnapshot) else value
+
 
 class SubscriptionPageResponse(BaseModel):
     items: list[SubscriptionResponse]
@@ -57,48 +63,32 @@ class UpdateSubscriptionSquadsRequest(BaseModel):
     external_squad: Optional[UUID] = None
 
 
-class AddOnPriceItem(BaseModel):
+class PublicPlanPriceItem(BaseModel):
     currency: Currency
     price: Decimal = Field(gt=0)
 
 
-class AddOnResponse(BaseModel):
+class PublicPlanDurationItem(BaseModel):
+    days: int = Field(gt=0)
+    order_index: int = 0
+    prices: list[PublicPlanPriceItem]
+
+
+class PublicPlanResponse(BaseModel):
     id: int
+    public_code: str
     name: str
-    type: AddOnType
-    amount: int
+    description: Optional[str] = None
+    tag: Optional[str] = None
+    type: PlanType
+    traffic_limit_strategy: TrafficLimitStrategy
+    traffic_limit: int
+    device_limit: int
+    is_trial: bool
     order_index: int
-    is_active: bool
-    base_price: Decimal
-    overrides: list[AddOnPriceItem]
+    durations: list[PublicPlanDurationItem]
 
 
-class CreateAddOnRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    type: AddOnType
-    amount: int = Field(gt=0)
-    base_price: Decimal = Field(gt=0)
-
-
-class UpdateAddOnRequest(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    type: Optional[AddOnType] = None
-    amount: Optional[int] = Field(default=None, gt=0)
-    is_active: Optional[bool] = None
-
-
-class SetAddOnBasePriceRequest(BaseModel):
-    base_price: Decimal = Field(gt=0)
-
-
-class SetAddOnPriceOverrideRequest(BaseModel):
-    price: Optional[Decimal] = Field(default=None, gt=0)
-
-
-class ReorderAddOnsRequest(BaseModel):
-    addon_ids: list[int]
-
-
-class AddOnListResponse(BaseModel):
-    items: list[AddOnResponse]
+class PublicPlanListResponse(BaseModel):
+    items: list[PublicPlanResponse]
     total: int

@@ -18,11 +18,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.core.db.errors import constraint_name
 from app.core.db.models.referral import Referral
 from app.core.db.models.referral_reward import ReferralReward
 from app.core.db.models.referral_settings import ReferralSettings
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
+from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import get_or_create_singleton
 from app.core.db.user_search import user_search_filter
 from app.core.enums import ReferralLevel, ReferralRewardType
@@ -108,6 +110,8 @@ class ReferralRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
+            if constraint_name(error) != "uq_referrals_referred_id":
+                raise
             raise ConflictError(
                 f"User '{referred_id}' already has a referrer", code=ErrorCode.REFERRER_ALREADY_SET
             ) from error
@@ -384,6 +388,8 @@ class ReferralRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
+            if constraint_name(error) != "uq_referral_rewards_payment_referral":
+                raise
             raise ConflictError(
                 f"Reward already granted for payment '{payment_key}' and referral '{referral_id}'",
                 code=ErrorCode.REFERRAL_REWARD_ALREADY_GRANTED,
@@ -419,17 +425,8 @@ class ReferralRepository:
     async def update_settings(self, data: UpdateReferralSettingsDto) -> ReferralSettingsDto:
         row = await self._get_or_create_settings()
 
-        if data.enabled is not None:
-            row.enabled = data.enabled
-        if data.max_level is not None:
-            row.max_level = data.max_level
-        if data.accrual_strategy is not None:
-            row.accrual_strategy = data.accrual_strategy
-        if data.reward_type is not None:
-            row.reward_type = data.reward_type
-        if data.reward_strategy is not None:
-            row.reward_strategy = data.reward_strategy
-        if data.reward_amounts is not None:
+        apply_partial_update(row, data, skip=frozenset({"reward_amounts"}))
+        if data.reward_amounts is not None:  # JSONB keys and values are strings
             row.reward_amounts = {str(k): str(v) for k, v in data.reward_amounts.items()}
 
         await self.session.flush()

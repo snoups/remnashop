@@ -1,6 +1,7 @@
 from app.core.enums import BlacklistKind, Role
 from app.modules.blacklist import BlacklistRepository
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
+from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases.unblock_blacklist_matches import UnblockBlacklistMatchesUseCase
@@ -31,7 +32,7 @@ async def test_unblocks_matches_and_drops_their_manual_entries(
         await user_repository.set_blocked(user.id, True)
 
     use_case = UnblockBlacklistMatchesUseCase(
-        user_repository, blacklist_repository, uow, event_publisher
+        UserBlacklistRepository(user_repository.session), blacklist_repository, uow, event_publisher
     )
     assert await use_case(owner, None) == 2
 

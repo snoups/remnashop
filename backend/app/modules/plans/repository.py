@@ -241,9 +241,8 @@ class PlanRepository:
                     f"Plan '{plan_id}' is still referenced by a promocode",
                     code=ErrorCode.PLAN_USED_BY_PROMOCODE,
                 ) from error
-            # transactions.plan_id is ON DELETE SET NULL (purchase_subscription_task
-            # provisions from plan_snapshot, never re-resolves it live) -- deleting a
-            # plan with existing orders no longer raises here.
+            # not transactions: their plan_id is ON DELETE SET NULL, since an
+            # order is provisioned from its own plan_snapshot
             raise ConflictError(
                 f"Plan '{plan_id}' is still referenced elsewhere", code=ErrorCode.PLAN_IN_USE
             ) from error
@@ -285,12 +284,6 @@ class PlanRepository:
         return self._to_dto(row, durations_by_plan.get(row.id, []))
 
     async def set_price_override(self, data: SetPlanPriceOverrideDto) -> PlanDto:
-        if data.price is not None and data.currency == data.anchor:
-            raise ValidationError(
-                "Cannot override the anchor currency's price",
-                code=ErrorCode.ANCHOR_PRICE_NOT_OVERRIDABLE,
-            )
-
         row = await self._get_or_raise(data.plan_id)
 
         duration_result = await self.session.execute(

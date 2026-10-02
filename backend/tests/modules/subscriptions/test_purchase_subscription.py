@@ -25,7 +25,9 @@ from app.core.enums import (
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
+from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
+    CreateAddOnDto,
     CreatePlanDto,
     PlanDto,
     SetPlanDurationDto,
@@ -37,21 +39,24 @@ from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.dto import (
-    CreateAddOnDto,
     CreateSubscriptionDto,
     GrantAddOnDto,
     PurchaseSubscriptionDto,
     SubscriptionDto,
 )
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore
-from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
+from tests.modules.subscriptions.factories import (
+    make_eligibility,
+    make_plan_snapshot,
+    snapshot_from_plan,
+)
 
 
 async def _create_buyer(user_repository: UserRepository, telegram_id: int) -> UserDto:
@@ -88,18 +93,19 @@ async def test_new_purchase_creates_subscription_with_real_remnawave_identity(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 401)
     plan = await _create_plan(plan_repository)
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     subscription = await use_case(
@@ -137,19 +143,20 @@ async def test_new_purchase_forbidden_for_a_different_users_actor(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 402)
     other_actor = await _create_buyer(user_repository, 403)
     plan = await _create_plan(plan_repository, "basic2")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -176,6 +183,7 @@ async def test_owner_can_purchase_on_behalf_of_another_user(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 404)
     # A real row, not the module-level OWNER dto: event_outbox.actor_id is a
@@ -186,13 +194,13 @@ async def test_owner_can_purchase_on_behalf_of_another_user(
     plan = await _create_plan(plan_repository, "basic3")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     subscription = await use_case(
@@ -220,18 +228,19 @@ async def test_new_purchase_rejects_target_subscription_id(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 405)
     plan = await _create_plan(plan_repository, "basic4")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     with pytest.raises(ValidationError):
@@ -259,18 +268,19 @@ async def test_new_purchase_blocked_at_concurrent_subscription_cap(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 406)
     plan = await _create_plan(plan_repository, "basic5")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -299,18 +309,19 @@ async def test_new_purchase_at_the_cap_never_touches_the_panel(
     remnawave_store: FakeUserStore,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 408)
     plan = await _create_plan(plan_repository, "capnopanel")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -340,18 +351,19 @@ async def test_renew_extends_expire_at_and_calls_remnawave_extend(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 411)
     plan = await _create_plan(plan_repository, "renew1")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     original = await use_case(
         buyer,
@@ -394,18 +406,19 @@ async def test_renew_requires_target_subscription_id(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 412)
     plan = await _create_plan(plan_repository, "renew2")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     with pytest.raises(ValidationError):
@@ -432,19 +445,20 @@ async def test_renew_rejects_target_belonging_to_another_user(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 413)
     other_buyer = await _create_buyer(user_repository, 414)
     plan = await _create_plan(plan_repository, "renew3")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     other_subscription = await use_case(
         other_buyer,
@@ -485,19 +499,20 @@ async def test_renew_rejects_target_on_a_different_plan(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 415)
     plan_a = await _create_plan(plan_repository, "renew4a")
     plan_b = await _create_plan(plan_repository, "renew4b")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     original = await use_case(
         buyer,
@@ -538,18 +553,19 @@ async def test_renew_rejects_a_deleted_target(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 424)
     plan = await _create_plan(plan_repository, "renew5")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     original = await use_case(
         buyer,
@@ -591,19 +607,20 @@ async def test_change_applies_proration_credit_as_extra_days(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 421)
     old_plan = await _create_plan(plan_repository, "change1old")
     new_plan = await _create_plan(plan_repository, "change1new")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     old_subscription = await use_case(
         buyer,
@@ -672,6 +689,7 @@ async def test_change_converts_proration_credit_across_currencies(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     await pricing_repository.get_rate_table()  # seeds the rate rows
     await pricing_repository.update_rate(
@@ -688,13 +706,13 @@ async def test_change_converts_proration_credit_across_currencies(
     new_plan = await _create_plan(plan_repository, "changefxnew")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         pricing_repository,
+        idempotency_repository,
     )
     old_subscription = await use_case(
         buyer,
@@ -744,19 +762,20 @@ async def test_change_credit_converts_at_list_price_not_the_discounted_price(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 428)
     old_plan = await _create_plan(plan_repository, "change-discount-old")
     new_plan = await _create_plan(plan_repository, "change-discount-new")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     old_subscription = await use_case(
         buyer,
@@ -822,18 +841,19 @@ async def test_change_requires_target_subscription_id(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 422)
     plan = await _create_plan(plan_repository, "change2")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     with pytest.raises(ValidationError):
@@ -860,6 +880,7 @@ async def test_change_from_trial_gives_no_credit(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 423)
     trial_plan = await plan_repository.create(
@@ -885,13 +906,13 @@ async def test_change_from_trial_gives_no_credit(
     new_plan = await _create_plan(plan_repository, "change3new")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     trial_subscription = await use_case(
         buyer,
@@ -966,13 +987,13 @@ async def test_concurrent_new_purchases_never_exceed_the_cap(
         repo = SubscriptionRepository(session)
         use_case = PurchaseSubscriptionUseCase(
             repo,
-            UserRepository(session),
-            SettingsRepository(session),
+            make_eligibility(repo.session),
             remnawave_sdk,
             UnitOfWork(session),
             _NoopEventPublisher(),
             SubscriptionLifecycleService(repo),
             PricingRepository(session),
+            PurchaseIdempotencyRepository(session),
         )
         try:
             await use_case(
@@ -1083,18 +1104,19 @@ async def test_purchase_with_same_idempotency_key_returns_existing_subscription(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 403)
     plan = await _create_plan(plan_repository, "idem-test")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -1124,18 +1146,19 @@ async def test_purchase_failure_after_panel_call_disables_the_panel_user(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 404)
     plan = await _create_plan(plan_repository, "compensate-test")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     disabled_ids: list[int] = []
@@ -1178,18 +1201,19 @@ async def test_renew_reactivates_an_expired_subscription(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 405)
     plan = await _create_plan(plan_repository, "renew-test")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     purchased = await use_case(
         buyer,
@@ -1235,18 +1259,19 @@ async def test_renew_with_same_idempotency_key_returns_existing_subscription(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 407)
     plan = await _create_plan(plan_repository, "idem-renew-test")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     purchased = await use_case(
         buyer,
@@ -1290,18 +1315,19 @@ async def test_purchase_with_idempotency_key_can_retry_after_a_failed_attempt(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 408)
     plan = await _create_plan(plan_repository, "idem-retry-test")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -1343,18 +1369,19 @@ async def test_idempotency_key_is_released_after_a_panel_call_failure(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 409)
     plan = await _create_plan(plan_repository, "idem-panel-fail-test")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     dto = PurchaseSubscriptionDto(
         user_id=buyer.id,
@@ -1396,19 +1423,20 @@ async def test_change_does_not_reparent_addon_entitlement_to_the_new_row(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 440)
     old_plan = await _create_plan(plan_repository, "reparent-old")
     new_plan = await _create_plan(plan_repository, "reparent-new")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     old_subscription = await use_case(
         buyer,
@@ -1479,19 +1507,20 @@ async def test_trial_upgrade_does_not_reparent_addon_entitlement_to_the_new_row(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 441)
     trial_plan = await _create_plan(plan_repository, "reparent-trial-trial")
     paid_plan = await _create_plan(plan_repository, "reparent-trial-paid")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     trial = await use_case(
         buyer,
@@ -1560,19 +1589,20 @@ async def test_new_purchase_upgrades_an_active_trial_in_place(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 501)
     trial_plan = await _create_plan(plan_repository, "trial-upgrade-trial")
     paid_plan = await _create_plan(plan_repository, "trial-upgrade-paid")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     trial = await use_case(
@@ -1630,18 +1660,19 @@ async def test_new_purchase_without_a_trial_still_mints_a_fresh_panel_user(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 502)
     plan = await _create_plan(plan_repository, "no-trial-new")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     subscription = await use_case(
@@ -1671,6 +1702,7 @@ async def test_new_purchase_provisions_the_plans_traffic_limit_strategy_on_the_p
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     # create_user defaults trafficLimitStrategy to NO_RESET, so omitting it
     # silently provisions a never-resetting panel user for a MONTH plan while
@@ -1682,13 +1714,13 @@ async def test_new_purchase_provisions_the_plans_traffic_limit_strategy_on_the_p
     )
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
 
     subscription = await use_case(
@@ -1738,13 +1770,13 @@ async def _renew_fixture(
     lifecycle = SubscriptionLifecycleService(subscription_repository)
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         lifecycle,
         PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
     )
     snapshot = snapshot_from_plan(
         plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
@@ -1781,6 +1813,7 @@ async def test_a_renew_whose_db_write_failed_is_completed_by_the_retry_without_e
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     use_case, lifecycle, buyer, original, renewal = await _renew_fixture(
         plan_repository,
@@ -1813,10 +1846,8 @@ async def test_a_renew_whose_db_write_failed_is_completed_by_the_retry_without_e
     assert after_retry == after_first
     assert renewed.expire_at == after_first
     assert renewal.idempotency_key is not None
-    linked = await subscription_repository.get_subscription_by_idempotency_key(
-        renewal.idempotency_key
-    )
-    assert linked is not None and linked.id == original.id
+    linked = await idempotency_repository.get_subscription_id(renewal.idempotency_key)
+    assert linked == original.id
     # a third delivery is a plain replay of the finished purchase
     assert (await use_case(buyer, renewal)).id == original.id
 
@@ -1870,6 +1901,7 @@ async def test_a_system_grant_does_not_consume_the_purchase_discount(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     # A trial / promocode reward / referral EXTRA_DAYS grant never quoted a
     # price, so it must not burn a discount the customer never got to use.
@@ -1877,13 +1909,13 @@ async def test_a_system_grant_does_not_consume_the_purchase_discount(
     plan = await _create_plan(plan_repository, "granted-free")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     async with uow:
         await user_repository.update_fields(buyer.id, UpdateUserDto(purchase_discount=15))
@@ -1916,6 +1948,7 @@ async def test_only_a_paid_purchase_event_carries_the_payment_key(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     session: AsyncSession,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     # referrals rewards key off payment_key: a paid order has one, a
     # trial/promocode/referral grant does not
@@ -1923,13 +1956,13 @@ async def test_only_a_paid_purchase_event_carries_the_payment_key(
     plan = await _create_plan(plan_repository, "payment-key")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
     )
     snapshot = snapshot_from_plan(
         plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
@@ -1967,19 +2000,20 @@ async def test_change_that_loses_the_race_does_not_revert_the_winners_panel_conf
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     buyer = await _create_buyer(user_repository, 431)
     old_plan = await _create_plan(plan_repository, "racelostold")
     new_plan = await _create_plan(plan_repository, "racelostnew")
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        idempotency_repository,
     )
     old_subscription = await use_case(
         buyer,

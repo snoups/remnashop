@@ -12,7 +12,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -53,7 +52,7 @@ class RioPayGateway(PaymentGateway):
         if service_id:
             payload["serviceId"] = int(service_id)
 
-        response = await http_client.post(
+        response = await self._http.post(
             f"{self.API_BASE}/v1/orders", json=payload, headers={"X-Api-Token": self._token()}
         )
         if response.is_error:
@@ -91,7 +90,7 @@ class RioPayGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
             return NOT_PAID
-        response = await http_client.get(
+        response = await self._http.get(
             f"{self.API_BASE}/v1/orders/{order.external_payment_id}",
             headers={"X-Api-Token": self._token()},
             timeout=PROVIDER_API_TIMEOUT_S,

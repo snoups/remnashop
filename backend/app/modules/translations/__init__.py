@@ -1,45 +1,53 @@
-# settings' UpdateBotCommandsUseCase imports TranslationsRepository from this package,
-# so that name must be bound before di pulls in usecases -- otherwise the
-# settings<->translations cycle fails on a partially initialized module.
-from app.modules.translations.dto import TranslationEntryDto  # noqa: I001
-from app.modules.translations.repository import TranslationsRepository
+from app.modules.translations.di import get_translations_providers
+from app.modules.translations.dto import (
+    ResetTranslationDto,
+    TranslationEntryDto,
+    UpdateTranslationDto,
+)
+from app.modules.translations.events import LocaleActivatedEvent, LocaleDeactivatedEvent
+from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.seed import ensure_translations_seeded
 from app.modules.translations.serializer import (
+    assert_fluent_compiles,
     find_disallowed_placeable,
     join_message_key,
     serialize_to_fluent,
     split_message_key,
     strip_serializer_escapes,
 )
-from app.modules.translations.publish import publish_translation_change
-from app.modules.translations.di import get_translations_providers
 from app.modules.translations.usecases import (
+    AddLocaleUseCase,
     ExportTranslationsUseCase,
     ImportTranslationsUseCase,
+    ListActiveLocalesUseCase,
     ListTranslationsUseCase,
+    RemoveLocaleUseCase,
     ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
     UpdateTranslationUseCase,
 )
-from app.modules.translations.usecases.reset_translation import ResetTranslationInput
-from app.modules.translations.usecases.update_translation import UpdateTranslationInput
 
 __all__ = [
+    "AddLocaleUseCase",
     "ExportTranslationsUseCase",
     "ImportTranslationsUseCase",
+    "ListActiveLocalesUseCase",
     "ListTranslationsUseCase",
+    "LocaleActivatedEvent",
+    "LocaleDeactivatedEvent",
+    "RemoveLocaleUseCase",
     "ResetAllTranslationsUseCase",
-    "ResetTranslationInput",
+    "ResetTranslationDto",
     "ResetTranslationUseCase",
     "TranslationEntryDto",
-    "TranslationsRepository",
-    "UpdateTranslationInput",
+    "TranslationRepository",
+    "UpdateTranslationDto",
     "UpdateTranslationUseCase",
+    "assert_fluent_compiles",
     "ensure_translations_seeded",
     "find_disallowed_placeable",
     "get_translations_providers",
     "join_message_key",
-    "publish_translation_change",
     "serialize_to_fluent",
     "split_message_key",
     "strip_serializer_escapes",

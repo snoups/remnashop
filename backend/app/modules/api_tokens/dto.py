@@ -22,3 +22,16 @@ class CreateApiTokenDto:
     token_hash: str
     created_by_user_id: Optional[int]
     expires_at: Optional[datetime]
+
+
+@dataclass(frozen=True, kw_only=True)
+class IssueApiTokenDto:
+    name: str
+    permissions: list[Permission]
+    expires_in_days: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class CreatedApiTokenDto:
+    token: ApiTokenDto
+    secret: str

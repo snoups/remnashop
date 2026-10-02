@@ -1,7 +1,14 @@
-from dishka import Provider, Scope, provide
+from typing import cast
 
+from dishka import Provider, Scope, provide, provide_all
+
+from app.modules.blacklist import ReconcileBlacklistDispatch
+from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.repository import UserRepository
+from app.modules.users.stats_repository import UserStatsRepository
+from app.modules.users.tasks import reconcile_blacklist_task
 from app.modules.users.usecases import (
+    BlockBlacklistMatchesUseCase,
     BlockUserUseCase,
     CreateAdminUseCase,
     DeleteAdminUseCase,
@@ -28,27 +35,38 @@ from app.modules.users.usecases import (
 class UsersProvider(Provider):
     scope = Scope.REQUEST
 
-    user_repository = provide(UserRepository)
-    get_current_user_use_case = provide(GetCurrentUserUseCase)
-    list_admins_use_case = provide(ListAdminsUseCase)
-    list_users_use_case = provide(ListUsersUseCase)
-    get_user_use_case = provide(GetUserUseCase)
-    get_user_list_stats_use_case = provide(GetUserListStatsUseCase)
-    list_blacklist_matches_use_case = provide(ListBlacklistMatchesUseCase)
-    create_admin_use_case = provide(CreateAdminUseCase)
-    promote_to_admin_use_case = provide(PromoteToAdminUseCase)
-    update_admin_use_case = provide(UpdateAdminUseCase)
-    demote_admin_use_case = provide(DemoteAdminUseCase)
-    delete_admin_use_case = provide(DeleteAdminUseCase)
-    delete_user_use_case = provide(DeleteUserUseCase)
-    update_own_profile_use_case = provide(UpdateOwnProfileUseCase)
-    update_own_security_settings_use_case = provide(UpdateOwnSecuritySettingsUseCase)
-    register_telegram_user_use_case = provide(RegisterTelegramUserUseCase)
-    set_user_personal_discount_use_case = provide(SetUserPersonalDiscountUseCase)
-    block_user_use_case = provide(BlockUserUseCase)
-    unblock_user_use_case = provide(UnblockUserUseCase)
-    unblock_all_users_use_case = provide(UnblockAllUsersUseCase)
-    unblock_blacklist_matches_use_case = provide(UnblockBlacklistMatchesUseCase)
+    repositories = provide_all(
+        UserRepository,
+        UserStatsRepository,
+        UserBlacklistRepository,
+    )
+    use_cases = provide_all(
+        GetCurrentUserUseCase,
+        ListAdminsUseCase,
+        ListUsersUseCase,
+        GetUserUseCase,
+        GetUserListStatsUseCase,
+        ListBlacklistMatchesUseCase,
+        CreateAdminUseCase,
+        PromoteToAdminUseCase,
+        UpdateAdminUseCase,
+        DemoteAdminUseCase,
+        DeleteAdminUseCase,
+        DeleteUserUseCase,
+        UpdateOwnProfileUseCase,
+        UpdateOwnSecuritySettingsUseCase,
+        RegisterTelegramUserUseCase,
+        SetUserPersonalDiscountUseCase,
+        BlockUserUseCase,
+        UnblockUserUseCase,
+        UnblockAllUsersUseCase,
+        UnblockBlacklistMatchesUseCase,
+        BlockBlacklistMatchesUseCase,
+    )
+
+    @provide(scope=Scope.APP)
+    def reconcile_blacklist_dispatch(self) -> ReconcileBlacklistDispatch:
+        return cast(ReconcileBlacklistDispatch, reconcile_blacklist_task)
 
 
 def get_users_providers() -> list[Provider]:

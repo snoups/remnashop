@@ -13,7 +13,6 @@ from app.core.enums import AdLinkChannel, Currency
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.advertising.api.schemas import (
-    AdLinkMetricsResponse,
     AdLinkPageResponse,
     AdLinkResponse,
     AdLinkShareUrlsResponse,
@@ -22,7 +21,6 @@ from app.modules.advertising.api.schemas import (
     AttributedUserPageResponse,
     AttributedUserResponse,
     CreateAdLinkRequest,
-    DailyAttributionCountResponse,
     GeneratedAdLinkCodeResponse,
     UpdateAdLinkRequest,
     UserAdAttributionResponse,
@@ -30,8 +28,6 @@ from app.modules.advertising.api.schemas import (
 from app.modules.advertising.dto import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
-    AdLinkDto,
-    AttributedUserDto,
     CreateAdLinkDto,
     GetAdLinkStatsDto,
     GetAdvertisingSummaryDto,
@@ -57,33 +53,6 @@ from app.modules.advertising.usecases import (
 router = APIRouter(prefix="/advertising", tags=["advertising"])
 
 
-def _to_response(ad_link: AdLinkDto) -> AdLinkResponse:
-    return AdLinkResponse(
-        id=ad_link.id,
-        name=ad_link.name,
-        code=ad_link.code,
-        cost=ad_link.cost,
-        cost_currency=ad_link.cost_currency,
-        is_active=ad_link.is_active,
-        allow_bot=ad_link.allow_bot,
-        allow_webcabinet=ad_link.allow_webcabinet,
-        note=ad_link.note,
-        created_by=ad_link.created_by,
-        created_at=ad_link.created_at,
-        updated_at=ad_link.updated_at,
-    )
-
-
-def _to_attributed_user_response(user: AttributedUserDto) -> AttributedUserResponse:
-    return AttributedUserResponse(
-        user_id=user.user_id,
-        name=user.name,
-        channel=user.channel,
-        created_at=user.created_at,
-        has_paid=user.has_paid,
-    )
-
-
 @router.get("/links", response_model=AdLinkPageResponse)
 @inject
 async def list_ad_links(
@@ -96,7 +65,10 @@ async def list_ad_links(
     ad_links, total = await use_case(
         actor, ListAdLinksDto(is_active=is_active, page=page, page_size=page_size)
     )
-    return AdLinkPageResponse(items=[_to_response(link) for link in ad_links], total=total)
+    return AdLinkPageResponse(
+        items=[AdLinkResponse.model_validate(link, from_attributes=True) for link in ad_links],
+        total=total,
+    )
 
 
 @router.post(
@@ -124,7 +96,7 @@ async def create_ad_link(
             created_by=actor.id if actor.id > 0 else None,
         ),
     )
-    return _to_response(ad_link)
+    return AdLinkResponse.model_validate(ad_link, from_attributes=True)
 
 
 @router.patch(
@@ -150,7 +122,7 @@ async def update_ad_link(
             note=payload.note,
         ),
     )
-    return _to_response(ad_link)
+    return AdLinkResponse.model_validate(ad_link, from_attributes=True)
 
 
 @router.delete(
@@ -197,22 +169,7 @@ async def get_ad_link_stats(
             created_to=created_to,
         ),
     )
-    return AdLinkStatsResponse(
-        attributions_count=stats.attributions_count,
-        attributions_by_channel=stats.attributions_by_channel,
-        paid_count=stats.paid_count,
-        conversion_rate=stats.conversion_rate,
-        revenue=stats.revenue,
-        revenue_by_currency=stats.revenue_by_currency,
-        cost=stats.cost,
-        report_currency=stats.report_currency,
-        cpa=stats.cpa,
-        roi=stats.roi,
-        daily_registrations=[
-            DailyAttributionCountResponse(day=row.day, count=row.count, by_channel=row.by_channel)
-            for row in stats.daily_registrations
-        ],
-    )
+    return AdLinkStatsResponse.model_validate(stats, from_attributes=True)
 
 
 @router.get(
@@ -227,7 +184,7 @@ async def get_ad_link_share_urls(
     actor: Actor = Depends(require_admin),
 ) -> AdLinkShareUrlsResponse:
     urls = await use_case(actor, ad_link_id)
-    return AdLinkShareUrlsResponse(bot_url=urls.bot_url, webcabinet_url=urls.webcabinet_url)
+    return AdLinkShareUrlsResponse.model_validate(urls, from_attributes=True)
 
 
 @router.get("/links/{ad_link_id}/qr", response_class=Response, responses=error_responses(404))
@@ -264,28 +221,7 @@ async def get_advertising_summary(
             created_to=created_to,
         ),
     )
-    return AdvertisingSummaryResponse(
-        report_currency=summary.report_currency,
-        attributions_count=summary.attributions_count,
-        attributions_by_channel=summary.attributions_by_channel,
-        paid_count=summary.paid_count,
-        conversion_rate=summary.conversion_rate,
-        revenue=summary.revenue,
-        cost=summary.cost,
-        cpa=summary.cpa,
-        roi=summary.roi,
-        links=[
-            AdLinkMetricsResponse(
-                ad_link_id=link.ad_link_id,
-                attributions_count=link.attributions_count,
-                paid_count=link.paid_count,
-                revenue=link.revenue,
-                cost=link.cost,
-                roi=link.roi,
-            )
-            for link in summary.links
-        ],
-    )
+    return AdvertisingSummaryResponse.model_validate(summary, from_attributes=True)
 
 
 @router.get(
@@ -306,7 +242,8 @@ async def list_ad_link_attributed_users(
         ListAdLinkAttributedUsersDto(ad_link_id=ad_link_id, page=page, page_size=page_size),
     )
     return AttributedUserPageResponse(
-        items=[_to_attributed_user_response(user) for user in users], total=total
+        items=[AttributedUserResponse.model_validate(user, from_attributes=True) for user in users],
+        total=total,
     )
 
 
@@ -332,4 +269,4 @@ async def get_ad_link(
     use_case: FromDishka[GetAdLinkUseCase],
     actor: Actor = Depends(require_admin),
 ) -> AdLinkResponse:
-    return _to_response(await use_case(actor, ad_link_id))
+    return AdLinkResponse.model_validate(await use_case(actor, ad_link_id), from_attributes=True)

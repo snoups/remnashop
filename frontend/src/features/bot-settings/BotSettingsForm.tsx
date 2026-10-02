@@ -8,10 +8,12 @@ import {
   getBotLogs,
   getBotSettings,
   getBotStatus,
+  removeBotProxy,
   restartBot,
+  setBotProxy,
   updateBotSettings,
-  type BotStatus,
 } from "@entities/settings/api";
+import type { BotSettings, BotStatus } from "@entities/settings/api";
 import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
 import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
@@ -129,6 +131,8 @@ export function BotSettingsForm() {
   const bounceStrength = useBounceStrength();
   const [token, setToken] = useState("");
   const [secretToken, setSecretToken] = useState("");
+  const [proxyUrl, setProxyUrl] = useState("");
+  const [isRemovingProxy, setIsRemovingProxy] = useState(false);
   const [dropPendingUpdates, setDropPendingUpdates] = useState(false);
   const [initialDropPendingUpdates, setInitialDropPendingUpdates] = useState(false);
   const [state, , setData] = useAsyncResource(getBotSettings, (settings) => {
@@ -159,7 +163,11 @@ export function BotSettingsForm() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!token && !secretToken && dropPendingUpdates === initialDropPendingUpdates) {
+    const hasSettingsChanges =
+      Boolean(token || secretToken) || dropPendingUpdates !== initialDropPendingUpdates;
+    const proxy = proxyUrl.trim();
+
+    if (!hasSettingsChanges && !proxy) {
       toast.error(t("settings.bot.errorEmptyFields"));
       return;
     }
@@ -172,15 +180,22 @@ export function BotSettingsForm() {
     setIsSubmitting(true);
 
     try {
-      const settings = await updateBotSettings({
-        token: token || undefined,
-        secret_token: secretToken || undefined,
-        drop_pending_updates: dropPendingUpdates,
-      });
-      setData(settings);
-      setToken("");
-      setSecretToken("");
-      setInitialDropPendingUpdates(settings.drop_pending_updates);
+      let settings: BotSettings | null = null;
+      if (hasSettingsChanges) {
+        settings = await updateBotSettings({
+          token: token || undefined,
+          secret_token: secretToken || undefined,
+          drop_pending_updates: dropPendingUpdates,
+        });
+        setToken("");
+        setSecretToken("");
+        setInitialDropPendingUpdates(settings.drop_pending_updates);
+      }
+      if (proxy) {
+        settings = await setBotProxy(proxy);
+        setProxyUrl("");
+      }
+      if (settings !== null) setData(settings);
       reloadStatus();
       toast.success(t("settings.bot.saved"));
     } catch (err) {
@@ -189,6 +204,22 @@ export function BotSettingsForm() {
       setIsSubmitting(false);
     }
   };
+
+  const handleRemoveProxy = async () => {
+    setIsRemovingProxy(true);
+
+    try {
+      setData(await removeBotProxy());
+      setProxyUrl("");
+      toast.success(t("settings.bot.proxyRemoved"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+    } finally {
+      setIsRemovingProxy(false);
+    }
+  };
+
+  const isProxyConfigured = state.kind === "ready" && state.data.is_proxy_configured;
 
   const handleRestart = async () => {
     setIsRestarting(true);
@@ -277,6 +308,42 @@ export function BotSettingsForm() {
               >
                 {isSecretCopied ? t("settings.bot.secretTokenCopied") : t("settings.bot.generateSecretToken")}
               </motion.button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="bot-proxy-url"
+              className="flex items-center gap-1.5 text-sm font-medium text-foreground/80"
+            >
+              {t("settings.bot.proxyLabel")}
+              <FieldHint text={t("settings.bot.proxyHint")} />
+            </label>
+            <div className="relative">
+              <input
+                id="bot-proxy-url"
+                type="password"
+                value={proxyUrl}
+                onChange={(event) => setProxyUrl(event.target.value)}
+                placeholder={
+                  isProxyConfigured
+                    ? t("settings.bot.proxyConfiguredPlaceholder")
+                    : t("settings.bot.proxyPlaceholder")
+                }
+                autoComplete="off"
+                className={`min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary ${isProxyConfigured ? "pr-24" : ""}`}
+              />
+              {isProxyConfigured && (
+                <motion.button
+                  type="button"
+                  onClick={() => void handleRemoveProxy()}
+                  disabled={isRemovingProxy}
+                  {...bounceTap(bounceStrength)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.1] hover:text-foreground"
+                >
+                  {t("settings.bot.removeProxy")}
+                </motion.button>
+              )}
             </div>
           </div>
 

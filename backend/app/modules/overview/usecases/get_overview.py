@@ -10,7 +10,6 @@ from redis.asyncio import Redis
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role, SubscriptionStatus
-from app.core.remnawave_online import read_daily_online_peaks, read_latest_online
 from app.core.runtime_heartbeat import read_host_memory, read_runtime_heartbeats
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
@@ -28,10 +27,11 @@ from app.modules.overview.dto import (
     OverviewUsersDto,
     RuntimeProcessDto,
 )
+from app.modules.overview.online import read_daily_online_peaks, read_latest_online
 from app.modules.pricing import PricingRepository, convert_for_report
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserStatsRepository
 
 _T = TypeVar("_T", int, Decimal)
 
@@ -80,15 +80,15 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
 
     def __init__(
         self,
-        user_repository: UserRepository,
-        subscription_repository: SubscriptionRepository,
+        user_stats: UserStatsRepository,
+        subscription_stats: SubscriptionStatsRepository,
         transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         redis: Redis,
         uow: UnitOfWork,
     ) -> None:
-        self._user_repository = user_repository
-        self._subscription_repository = subscription_repository
+        self._user_stats = user_stats
+        self._subscription_stats = subscription_stats
         self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._redis = redis
@@ -101,7 +101,7 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
             today = today_start.date()
 
             if data.days == 0:
-                first_registration = await self._user_repository.earliest_registration(Role.USER)
+                first_registration = await self._user_stats.earliest_registration(Role.USER)
                 start_date = first_registration or today
             else:
                 start_date = today - timedelta(days=data.days - 1)
@@ -118,11 +118,11 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
 
             users = None
             if Permission.USERS_VIEW in perms:
-                daily = await self._user_repository.count_registrations_by_day(since, Role.USER)
+                daily = await self._user_stats.count_registrations_by_day(since, Role.USER)
                 reg_series = _bucketize(daily, start_date, today, granularity, 0, dense=dense)
                 users = OverviewUsersDto(
-                    total=await self._user_repository.count_by_role(Role.USER),
-                    new_today=await self._user_repository.count_new_since(today_start, Role.USER),
+                    total=await self._user_stats.count_by_role(Role.USER),
+                    new_today=await self._user_stats.count_new_since(today_start, Role.USER),
                     daily_registrations=[
                         DailyCountDto(day=day, count=count) for day, count in reg_series
                     ],
@@ -130,7 +130,7 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
 
             subscriptions = None
             if Permission.SUBSCRIPTIONS_VIEW in perms:
-                by_status = await self._subscription_repository.count_by_status()
+                by_status = await self._subscription_stats.count_by_status()
                 active = by_status.get(SubscriptionStatus.ACTIVE, 0)
                 limited = by_status.get(SubscriptionStatus.LIMITED, 0)
                 expired = by_status.get(SubscriptionStatus.EXPIRED, 0)
@@ -141,7 +141,7 @@ class GetOverviewUseCase(UseCase[GetOverviewDto, OverviewDto]):
                     limited=limited,
                     expired=expired,
                     disabled=disabled,
-                    expiring_soon=await self._subscription_repository.count_expiring_between(
+                    expiring_soon=await self._subscription_stats.count_expiring_between(
                         today_start, today_start + timedelta(days=7)
                     ),
                 )

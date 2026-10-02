@@ -36,13 +36,6 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class AuthResponse(BaseModel):
-    id: int
-    login: str
-    role: str
-    access_token: str
-
-
 class StatusResponse(BaseModel):
     is_login_allowed: bool
     is_register_allowed: bool

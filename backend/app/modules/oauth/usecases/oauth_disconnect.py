@@ -1,19 +1,11 @@
-from dataclasses import dataclass
-
 from app.core.db.uow import UnitOfWork
-from app.core.enums import OAuthProvider
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.oauth.dto import OAuthDisconnectDto
 from app.modules.oauth.events import OAuthIdentityDisconnectedEvent
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.users import UserDto
-
-
-@dataclass(frozen=True, kw_only=True)
-class OAuthDisconnectDto:
-    provider: OAuthProvider
-    client_ip: str
 
 
 class OAuthDisconnectUseCase(UseCase[OAuthDisconnectDto, None, UserDto]):

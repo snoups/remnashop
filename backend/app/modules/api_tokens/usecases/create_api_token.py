@@ -1,6 +1,4 @@
-from dataclasses import dataclass
 from datetime import timedelta
-from typing import Optional
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
@@ -13,25 +11,16 @@ from app.core.security.permissions import (
 )
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.api_tokens.dto import ApiTokenDto, CreateApiTokenDto
+from app.modules.api_tokens.dto import (
+    CreateApiTokenDto,
+    CreatedApiTokenDto,
+    IssueApiTokenDto,
+)
 from app.modules.api_tokens.events import ApiTokenCreatedEvent
 from app.modules.api_tokens.repository import ApiTokenRepository
 
 
-@dataclass(frozen=True, kw_only=True)
-class CreateApiTokenInput:
-    name: str
-    permissions: list[Permission]
-    expires_in_days: Optional[int] = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class CreatedApiTokenDto:
-    token: ApiTokenDto
-    secret: str
-
-
-class CreateApiTokenUseCase(UseCase[CreateApiTokenInput, CreatedApiTokenDto]):
+class CreateApiTokenUseCase(UseCase[IssueApiTokenDto, CreatedApiTokenDto]):
     required_permission = Permission.API_TOKENS_MANAGE
 
     def __init__(
@@ -44,7 +33,7 @@ class CreateApiTokenUseCase(UseCase[CreateApiTokenInput, CreatedApiTokenDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: CreateApiTokenInput) -> CreatedApiTokenDto:
+    async def _execute(self, actor: Actor, data: IssueApiTokenDto) -> CreatedApiTokenDto:
         assert_grantable(data.permissions, allowed=TOKEN_GRANTABLE_PERMISSIONS)
 
         # Same primitive as refresh tokens/CSRF tokens -- 256 bits of random

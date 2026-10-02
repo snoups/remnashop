@@ -11,26 +11,14 @@ from app.modules.api_tokens.api.schemas import (
     CreateApiTokenRequest,
     CreatedApiTokenResponse,
 )
-from app.modules.api_tokens.dto import ApiTokenDto
+from app.modules.api_tokens.dto import IssueApiTokenDto
 from app.modules.api_tokens.usecases import (
-    CreateApiTokenInput,
     CreateApiTokenUseCase,
     ListApiTokensUseCase,
     RevokeApiTokenUseCase,
 )
 
 router = APIRouter(prefix="/api-tokens", tags=["api-tokens"])
-
-
-def _to_response(token: ApiTokenDto) -> ApiTokenResponse:
-    return ApiTokenResponse(
-        id=token.id,
-        name=token.name,
-        permissions=token.permissions,
-        last_used_at=token.last_used_at,
-        created_at=token.created_at,
-        expires_at=token.expires_at,
-    )
 
 
 @router.get("", response_model=ApiTokenListResponse)
@@ -40,7 +28,7 @@ async def list_api_tokens(
     actor: Actor = Depends(require_admin),
 ) -> ApiTokenListResponse:
     tokens = await use_case(actor)
-    items = [_to_response(token) for token in tokens]
+    items = [ApiTokenResponse.model_validate(token, from_attributes=True) for token in tokens]
     return ApiTokenListResponse(items=items, total=len(items))
 
 
@@ -58,13 +46,16 @@ async def create_api_token(
 ) -> CreatedApiTokenResponse:
     result = await use_case(
         actor,
-        CreateApiTokenInput(
+        IssueApiTokenDto(
             name=payload.name,
             permissions=payload.permissions,
             expires_in_days=payload.expires_in_days,
         ),
     )
-    return CreatedApiTokenResponse(token=_to_response(result.token), secret=result.secret)
+    return CreatedApiTokenResponse(
+        token=ApiTokenResponse.model_validate(result.token, from_attributes=True),
+        secret=result.secret,
+    )
 
 
 @router.delete(

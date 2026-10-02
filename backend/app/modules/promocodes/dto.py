@@ -121,3 +121,8 @@ class PromocodeActivatedUserDto:
     name: str
     subscription_id: Optional[int]
     activated_at: datetime
+
+
+@dataclass(frozen=True, kw_only=True)
+class ValidatePromocodeDto:
+    code: str

@@ -5,7 +5,7 @@ from app.core.enums import Currency, DiscountSource
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.plans import PlanDto
-from app.modules.pricing import CurrencyRateTable, resolve_price, round_amount
+from app.modules.pricing import CurrencyRateTable, price_for, round_amount
 from app.modules.transactions.dto import PriceQuote
 from app.modules.users import UserDto
 
@@ -16,8 +16,7 @@ def _base_price(
     for duration in plan.durations:
         if duration.days != duration_days:
             continue
-        override = next((o.price for o in duration.overrides if o.currency is currency), None)
-        return resolve_price(duration.base_price, currency, override, rates)
+        return price_for(duration.base_price, duration.overrides, currency, rates)
     raise ValidationError(
         f"Plan has no duration of '{duration_days}' days",
         code=ErrorCode.PLAN_DURATION_NOT_FOUND,

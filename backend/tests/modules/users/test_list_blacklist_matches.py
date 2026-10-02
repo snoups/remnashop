@@ -4,12 +4,10 @@ from app.core.enums import BlacklistKind, Role
 from app.core.exceptions import PermissionDeniedError
 from app.modules.blacklist import BlacklistRepository
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
-from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.blacklist_repository import UserBlacklistRepository
+from app.modules.users.dto import CreateUserDto, ListBlacklistMatchesDto, UserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.list_blacklist_matches import (
-    ListBlacklistMatchesInput,
-    ListBlacklistMatchesUseCase,
-)
+from app.modules.users.usecases.list_blacklist_matches import ListBlacklistMatchesUseCase
 
 
 async def test_lists_users_with_their_origins(
@@ -42,8 +40,10 @@ async def test_lists_users_with_their_origins(
     )
 
     owner = UserDto(id=1, telegram_id=1, name="o", role=Role.OWNER)
-    use_case = ListBlacklistMatchesUseCase(user_repository, blacklist_repository, uow)
-    result = await use_case(owner, ListBlacklistMatchesInput())
+    use_case = ListBlacklistMatchesUseCase(
+        UserBlacklistRepository(user_repository.session), blacklist_repository, uow
+    )
+    result = await use_case(owner, ListBlacklistMatchesDto())
 
     assert result.total == result.all_total == 2
     assert (result.manual_total, result.lists_total) == (1, 2)
@@ -60,14 +60,14 @@ async def test_lists_users_with_their_origins(
     (hit,) = by_id[from_source.id].hits
     assert hit.origins[0].source_name == "Feed"
 
-    manual = await use_case(owner, ListBlacklistMatchesInput(origin="manual"))
+    manual = await use_case(owner, ListBlacklistMatchesDto(origin="manual"))
     assert [m.user.id for m in manual.items] == [both.id]
     assert manual.all_total == 2
 
-    lists = await use_case(owner, ListBlacklistMatchesInput(origin="lists", page_size=1))
+    lists = await use_case(owner, ListBlacklistMatchesDto(origin="lists", page_size=1))
     assert lists.total == 2 and len(lists.items) == 1
 
-    searched = await use_case(owner, ListBlacklistMatchesInput(search="src"))
+    searched = await use_case(owner, ListBlacklistMatchesDto(search="src"))
     assert [m.user.id for m in searched.items] == [from_source.id]
 
 
@@ -76,6 +76,6 @@ async def test_requires_matches_permission(
 ) -> None:
     admin = UserDto(id=2, telegram_id=2, name="a", role=Role.ADMIN)
     with pytest.raises(PermissionDeniedError):
-        await ListBlacklistMatchesUseCase(user_repository, blacklist_repository, uow)(
-            admin, ListBlacklistMatchesInput()
-        )
+        await ListBlacklistMatchesUseCase(
+            UserBlacklistRepository(user_repository.session), blacklist_repository, uow
+        )(admin, ListBlacklistMatchesDto())

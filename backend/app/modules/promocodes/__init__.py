@@ -5,6 +5,7 @@ from app.modules.promocodes.dto import (
     PromocodeActivationDto,
     PromocodeDto,
     UpdatePromocodeDto,
+    ValidatePromocodeDto,
 )
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.usecases import (
@@ -15,7 +16,6 @@ from app.modules.promocodes.usecases import (
     GetPromocodeUseCase,
     ListPromocodesUseCase,
     UpdatePromocodeUseCase,
-    ValidatePromocodeDto,
     ValidatePromocodeUseCase,
 )
 
@@ -26,8 +26,8 @@ __all__ = [
     "CreatePromocodeUseCase",
     "DeletePromocodeUseCase",
     "GeneratePromocodeCodeUseCase",
-    "ListPromocodesUseCase",
     "GetPromocodeUseCase",
+    "ListPromocodesUseCase",
     "PromocodeActivationDto",
     "PromocodeDto",
     "PromocodeRepository",

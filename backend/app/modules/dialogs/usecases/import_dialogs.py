@@ -1,10 +1,9 @@
-from redis.asyncio import Redis
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import DialogWindowKind, Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.ports import BotSignals
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
@@ -15,13 +14,12 @@ from app.modules.dialogs.dto import (
     UpdateDialogWindowDto,
 )
 from app.modules.dialogs.repository import DialogRepository
-from app.modules.dialogs.usecases._publish import publish_dialog_change
 from app.modules.dialogs.usecases._window_texts import validate_stored_window_texts
 from app.modules.dialogs.usecases.export_dialogs import EXPORT_VERSION, dialog_text_keys
 from app.modules.dialogs.validation import validate_buttons
-from app.modules.settings import SettingsRepository
 from app.modules.translations import (
-    TranslationsRepository,
+    TranslationRepository,
+    assert_fluent_compiles,
     join_message_key,
     serialize_to_fluent,
 )
@@ -37,16 +35,14 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
     def __init__(
         self,
         dialog_repository: DialogRepository,
-        translations_repository: TranslationsRepository,
-        settings_repository: SettingsRepository,
+        translation_repository: TranslationRepository,
         uow: UnitOfWork,
-        redis: Redis,
+        bot_signals: BotSignals,
     ) -> None:
         self._dialog_repository = dialog_repository
-        self._translations_repository = translations_repository
-        self._settings_repository = settings_repository
+        self._translation_repository = translation_repository
         self._uow = uow
-        self._redis = redis
+        self._bot_signals = bot_signals
 
     async def _execute(self, actor: Actor, data: DialogExportDto) -> None:
         if data.version != EXPORT_VERSION:
@@ -78,11 +74,10 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
                 await validate_stored_window_texts(
                     window.key,
                     window.banner_name,
-                    self._translations_repository,
-                    self._settings_repository,
+                    self._translation_repository,
                 )
 
-        await publish_dialog_change(self._redis)
+        await self._bot_signals.dialogs_changed()
 
     async def _apply_window(
         self,
@@ -128,7 +123,7 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
         await self._dialog_repository.replace_buttons(window.key, window.buttons)
 
     async def _apply_texts(self, data: DialogExportDto, text_keys: set[str]) -> None:
-        active = set(await self._settings_repository.list_active_locales())
+        active = set(await self._translation_repository.list_active_locales())
         touched: set[Locale] = set()
 
         for text in data.texts:
@@ -144,25 +139,14 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
                 # Import must not become a back door into translations that have
                 # nothing to do with dialogs, such as bot command descriptions.
                 continue
-            await self._translations_repository.seed_missing(
+            await self._translation_repository.seed_missing(
                 text.locale, text.message_id, text.attribute_id, text.value
             )
-            await self._translations_repository.update_value(
+            await self._translation_repository.update_value(
                 text.locale, text.message_id, text.attribute_id, text.value
             )
             touched.add(text.locale)
 
-        # Lazy import -- fluent_compiler lives under the telegram extra.
-        from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
-
         for locale in touched:
-            entries = await self._translations_repository.list_by_locale(locale)
-            bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
-                locale.value, text=serialize_to_fluent(entries)
-            )
-            errors = bundle.check_messages()
-            if errors:
-                raise ValidationError(
-                    f"Invalid Fluent syntax in {locale.value}: {errors[0][1]}",
-                    code=ErrorCode.FLUENT_SYNTAX_INVALID,
-                )
+            entries = await self._translation_repository.list_by_locale(locale)
+            assert_fluent_compiles(locale, serialize_to_fluent(entries))

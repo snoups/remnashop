@@ -18,6 +18,7 @@ from app.modules.transactions.gateways.base import (
 )
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
@@ -31,7 +32,7 @@ class _Gateway(PaymentGateway):
     currency = Currency.RUB
 
     def __init__(self, payment: Optional[ProviderPayment]) -> None:
-        super().__init__(settings={}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+        super().__init__(settings={}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=NO_HTTP)
         self._payment = payment
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
@@ -57,7 +58,7 @@ def test_amount_to_float_rounds_to_two_places() -> None:
 
 def test_payment_gateway_is_abstract() -> None:
     with pytest.raises(TypeError):
-        PaymentGateway(settings={}, webhook_url="x", return_url="y")  # type: ignore[abstract]
+        PaymentGateway(settings={}, webhook_url="x", return_url="y", http=NO_HTTP)  # type: ignore[abstract]
 
 
 @pytest.mark.parametrize("url", ["javascript:alert(1)", "http://pay.example", "data:text/html,x"])

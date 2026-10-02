@@ -16,6 +16,7 @@ from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.worker.broker import RETRY_SCHEDULE_PREFIX, broker
 from app.worker.container import create_worker_container
 from app.worker.metrics import WORKER_METRICS_REGISTRY, poll_worker_gauges
+from app.worker.subscribers import register_all_subscribers
 
 
 @broker.on_event(TaskiqEvents.WORKER_STARTUP)
@@ -28,8 +29,7 @@ async def _setup_worker_container(state: TaskiqState) -> None:
     container = create_worker_container(config)
     state.worker_container = container
     setup_dishka(container, broker)
-    event_bus = await container.get(EventBus)
-    event_bus.autodiscover()
+    register_all_subscribers(await container.get(EventBus))
     engine = await container.get(AsyncEngine)
     register_db_pool_metrics(engine, registry=WORKER_METRICS_REGISTRY)
     redis = await container.get(Redis)

@@ -26,10 +26,12 @@ from app.modules.overview.dto import GetOverviewDto
 from app.modules.overview.usecases import GetOverviewUseCase
 from app.modules.pricing.repository import PricingRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from app.modules.users.stats_repository import UserStatsRepository
 from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -63,6 +65,7 @@ async def test_owner_sees_all_sections_with_correct_counts(
     redis: Redis,
     uow: UnitOfWork,
     plan_id: int,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     payer = await user_repository.create(CreateUserDto(name="Payer", telegram_id=830_001))
     await create_subscription(
@@ -96,8 +99,8 @@ async def test_owner_sees_all_sections_with_correct_counts(
     await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
     use_case = GetOverviewUseCase(
-        user_repository,
-        subscription_repository,
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
         redis,
@@ -127,12 +130,13 @@ async def test_actor_missing_transactions_view_gets_transactions_none_but_keeps_
     pricing_repository: PricingRepository,
     redis: Redis,
     uow: UnitOfWork,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     actor = OWNER.model_copy(update={"permission_revokes": ["TRANSACTIONS_VIEW"]})
 
     use_case = GetOverviewUseCase(
-        user_repository,
-        subscription_repository,
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
         redis,
@@ -154,6 +158,7 @@ async def test_days_window_excludes_orders_paid_before_the_cutoff(
     session: AsyncSession,
     uow: UnitOfWork,
     plan_id: int,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     payer = await user_repository.create(CreateUserDto(name="OldPayer", telegram_id=830_101))
     async with uow:
@@ -171,8 +176,8 @@ async def test_days_window_excludes_orders_paid_before_the_cutoff(
     )
 
     use_case = GetOverviewUseCase(
-        user_repository,
-        subscription_repository,
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
         redis,
@@ -194,6 +199,7 @@ async def test_since_is_calendar_aligned_not_a_rolling_cutoff(
     session: AsyncSession,
     uow: UnitOfWork,
     plan_id: int,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     payer = await user_repository.create(CreateUserDto(name="TodayPayer", telegram_id=830_201))
     async with uow:
@@ -228,8 +234,8 @@ async def test_since_is_calendar_aligned_not_a_rolling_cutoff(
     )
 
     use_case = GetOverviewUseCase(
-        user_repository,
-        subscription_repository,
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
         redis,
@@ -249,6 +255,7 @@ async def test_all_time_period_starts_at_first_registration_and_buckets_by_month
     redis: Redis,
     session: AsyncSession,
     uow: UnitOfWork,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     oldest = await user_repository.create(CreateUserDto(name="Oldest", telegram_id=830_301))
     await session.execute(
@@ -258,8 +265,8 @@ async def test_all_time_period_starts_at_first_registration_and_buckets_by_month
     )
 
     use_case = GetOverviewUseCase(
-        user_repository,
-        subscription_repository,
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
         redis,
@@ -285,6 +292,7 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
     pricing_repository: PricingRepository,
     redis: Redis,
     uow: UnitOfWork,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     keys = (
         "remnashop:runtime:heartbeat:api",
@@ -303,8 +311,8 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
     )
 
     use_case = GetOverviewUseCase(
-        user_repository,
-        subscription_repository,
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
         redis,
@@ -331,10 +339,11 @@ async def test_overview_includes_host_memory_when_available(
     pricing_repository: PricingRepository,
     redis: Redis,
     uow: UnitOfWork,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     use_case = GetOverviewUseCase(
-        user_repository,
-        subscription_repository,
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
         redis,

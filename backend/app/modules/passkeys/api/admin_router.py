@@ -12,7 +12,6 @@ from app.modules.passkeys.api.schemas import (
     VerifyPasskeyRegistrationRequest,
 )
 from app.modules.passkeys.dto import (
-    PasskeyCredentialDto,
     RenamePasskeyDto,
     VerifyPasskeyRegistrationDto,
 )
@@ -28,17 +27,6 @@ from app.modules.users import UserDto
 router = APIRouter(prefix="/auth/passkeys", tags=["auth"])
 
 
-def _to_response(passkey: PasskeyCredentialDto) -> PasskeyResponse:
-    return PasskeyResponse(
-        id=passkey.id,
-        name=passkey.name or "Passkey",
-        device_type=passkey.device_type,
-        backed_up=passkey.backed_up,
-        created_at=passkey.created_at,
-        last_used_at=passkey.last_used_at,
-    )
-
-
 @router.get("", response_model=PasskeyListResponse)
 @inject
 async def list_passkeys(
@@ -46,7 +34,7 @@ async def list_passkeys(
     actor: UserDto = Depends(require_admin_user),
 ) -> PasskeyListResponse:
     passkeys = await use_case(actor)
-    items = [_to_response(passkey) for passkey in passkeys]
+    items = [PasskeyResponse.model_validate(passkey, from_attributes=True) for passkey in passkeys]
     return PasskeyListResponse(items=items, total=len(items))
 
 
@@ -77,7 +65,7 @@ async def verify_registration(
         )
     except AuthenticationError as error:
         raise ValidationError(str(error), code=error.code) from error
-    return _to_response(created)
+    return PasskeyResponse.model_validate(created, from_attributes=True)
 
 
 @router.patch("/{passkey_id}", response_model=PasskeyResponse, responses=error_responses(404))
@@ -89,7 +77,7 @@ async def rename_passkey(
     actor: UserDto = Depends(require_admin_user),
 ) -> PasskeyResponse:
     renamed = await use_case(actor, RenamePasskeyDto(id=passkey_id, name=payload.name))
-    return _to_response(renamed)
+    return PasskeyResponse.model_validate(renamed, from_attributes=True)
 
 
 @router.delete(

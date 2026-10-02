@@ -562,7 +562,7 @@
       "errorInvalidToken": "Invalid bot token format.",
       "dropPendingUpdatesLabel": "Drop pending updates when setting the webhook",
       "dropPendingUpdatesHint": "Discards any updates Telegram queued up before the webhook was set, instead of delivering that backlog once it goes live.",
-      "applyChangesDescription": "Restarts the telegram process so it picks up the saved token/secret. Has no effect if the process isn't currently running.",
+      "applyChangesDescription": "Restarts the telegram process so it picks up the saved token, secret and proxy. Has no effect if the process isn't currently running.",
       "restartBot": "Restart",
       "restarting": "Restarting…",
       "restartCooldown": "Restarting ({{seconds}}s)",
@@ -572,7 +572,13 @@
       "closeLogs": "Close",
       "refreshLogs": "Refresh",
       "logsEmpty": "No logs yet. They appear once the telegram process starts.",
-      "logsLoadError": "Failed to load logs."
+      "logsLoadError": "Failed to load logs.",
+      "proxyLabel": "Telegram proxy",
+      "proxyHint": "Every Telegram API request goes through it: the bot itself and the dashboard (status, commands, emoji packs). Supports socks5, socks5h and http as scheme://[user:password@]host:port. The bot picks it up after a restart.",
+      "proxyPlaceholder": "socks5://user:password@host:1080",
+      "proxyConfiguredPlaceholder": "Proxy is set — leave empty to keep it",
+      "removeProxy": "Remove",
+      "proxyRemoved": "Proxy removed."
     },
     "botCommands": {
       "title": "Commands",
@@ -1072,6 +1078,8 @@
     "BOT_SETTINGS_MANAGE": "Edit bot settings",
     "BOT_COMMANDS_MANAGE": "Edit bot commands",
     "BOT_RESTART": "Restart bot",
+    "BOT_PROXY_SET": "Set bot proxy",
+    "BOT_PROXY_REMOVE": "Remove bot proxy",
     "SHOP_SETTINGS_VIEW": "View shop settings",
     "SHOP_SETTINGS_MANAGE": "Edit shop settings",
     "OAUTH_SETTINGS_VIEW": "View OAuth settings",
@@ -1173,6 +1181,7 @@
     "BACKUPS_STATS_VIEW": "View backup statistics",
     "BLACKLIST_VIEW": "View blacklist",
     "BLACKLIST_SOURCES_VIEW": "View blacklist sources",
+    "BLACKLIST_SOURCE_DETAIL_VIEW": "View a blacklist source",
     "BLACKLIST_ENTRY_ADD": "Add blacklist entries",
     "BLACKLIST_ENTRY_REMOVE": "Remove blacklist entries",
     "BLACKLIST_SOURCE_ADD": "Add blacklist sources",
@@ -2895,6 +2904,7 @@
     "WEBHOOK_SOURCE_UNTRUSTED": "The webhook source isn't trusted",
     "WEBHOOK_STALE": "The webhook is outdated",
     "WITHDRAWAL_AMOUNT_INVALID": "The amount must be positive",
-    "WITHDRAWAL_EXCEEDS_POINTS": "Not enough points"
+    "WITHDRAWAL_EXCEEDS_POINTS": "Not enough points",
+    "BOT_PROXY_URL_INVALID": "Invalid proxy address: use socks5, socks5h or http with a host and a port"
   }
 }

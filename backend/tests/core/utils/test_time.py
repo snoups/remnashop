@@ -1,11 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-import pytest
-from remnapy.enums import TrafficLimitStrategy
-
 from app.core.utils.time import (
-    datetime_now,
-    get_traffic_reset_delta,
     range_end_utc,
     range_start_utc,
 )
@@ -51,38 +46,3 @@ def test_range_end_utc_leaves_aware_datetime_untouched() -> None:
 
 def test_range_end_utc_passes_through_none() -> None:
     assert range_end_utc(None) is None
-
-
-def test_get_traffic_reset_delta_no_reset() -> None:
-    result = get_traffic_reset_delta(TrafficLimitStrategy.NO_RESET, datetime_now())
-
-    assert result == timedelta(seconds=0)
-
-
-def test_get_traffic_reset_delta_day_within_range() -> None:
-    created_at = datetime_now() - timedelta(hours=5)
-
-    result = get_traffic_reset_delta(TrafficLimitStrategy.DAY, created_at)
-
-    assert timedelta(0) < result <= timedelta(days=1)
-
-
-def test_get_traffic_reset_delta_week_within_range() -> None:
-    created_at = datetime_now() - timedelta(days=2)
-
-    result = get_traffic_reset_delta(TrafficLimitStrategy.WEEK, created_at)
-
-    assert timedelta(0) < result <= timedelta(days=7)
-
-
-def test_get_traffic_reset_delta_month_within_range() -> None:
-    created_at = datetime_now() - timedelta(days=10)
-
-    result = get_traffic_reset_delta(TrafficLimitStrategy.MONTH, created_at)
-
-    assert timedelta(0) < result <= timedelta(days=30)
-
-
-def test_get_traffic_reset_delta_unhandled_strategy_raises() -> None:
-    with pytest.raises(ValueError, match="Unhandled TrafficLimitStrategy"):
-        get_traffic_reset_delta(TrafficLimitStrategy.MONTH_ROLLING, datetime_now())

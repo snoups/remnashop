@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from typing import Optional
 
 from app.core.actor import Actor
@@ -11,19 +10,9 @@ from app.core.ports import EventPublisher
 from app.core.security import generate_password, hash_password
 from app.core.security.permissions import Permission, assert_grantable
 from app.core.usecase import UseCase
-from app.modules.users.dto import PromoteAdminDto, UserDto
+from app.modules.users.dto import PromoteAdminDto, PromoteToAdminDto, UserDto
 from app.modules.users.events import AdminPromotedEvent
 from app.modules.users.repository import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class PromoteToAdminDto:
-    client_ip: str
-    email: Optional[str] = None
-    telegram_username: Optional[str] = None
-    login: Optional[str] = None
-    permission_grants: list[Permission] = field(default_factory=list)
-    permission_revokes: list[Permission] = field(default_factory=list)
 
 
 class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[str]]]):

@@ -17,7 +17,6 @@ from app.modules.transactions.gateways.base import (
     WebhookAck,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -86,7 +85,7 @@ class FreeKassaGateway(PaymentGateway):
                 "notification_url": self._webhook_url,
             }
         )
-        response = await http_client.post(f"{_API_BASE}/orders/create", json=data)
+        response = await self._http.post(f"{_API_BASE}/orders/create", json=data)
         response.raise_for_status()
         result = orjson.loads(response.content)
         if result.get("type") != "success":
@@ -128,7 +127,7 @@ class FreeKassaGateway(PaymentGateway):
                 "paymentId": order.idempotency_key,
             }
         )
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/orders", json=params, timeout=PROVIDER_API_TIMEOUT_S
         )
         response.raise_for_status()

@@ -13,7 +13,6 @@ from app.modules.transactions.gateways.base import (
     WebhookRequest,
     WebhookSignal,
     amount_to_float,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -62,7 +61,7 @@ class PlategaGateway(PaymentGateway):
         else:
             endpoint = _MULTI_METHOD_ENDPOINT
 
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/{endpoint}", json=payload, headers=self._headers()
         )
         response.raise_for_status()
@@ -101,7 +100,7 @@ class PlategaGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
             return NOT_PAID
-        response = await http_client.get(
+        response = await self._http.get(
             f"{_API_BASE}/transaction/{order.external_payment_id}",
             headers=self._headers(),
             timeout=PROVIDER_API_TIMEOUT_S,

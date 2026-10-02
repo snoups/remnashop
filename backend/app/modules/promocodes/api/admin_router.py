@@ -29,7 +29,6 @@ from app.modules.promocodes.dto import (
     CreatePromocodeDto,
     ListPromocodeActivatedUsersDto,
     ListPromocodesDto,
-    PromocodeDto,
     UpdatePromocodeDto,
 )
 from app.modules.promocodes.usecases import (
@@ -45,25 +44,6 @@ from app.modules.promocodes.usecases import (
 )
 
 router = APIRouter(prefix="/promocodes", tags=["promocodes"])
-
-
-def _to_response(promo: PromocodeDto) -> PromocodeResponse:
-    return PromocodeResponse(
-        id=promo.id,
-        code=promo.code,
-        is_active=promo.is_active,
-        reward_type=promo.reward_type,
-        reward=promo.reward,
-        reward_addon_id=promo.reward_addon_id,
-        reward_plan_id=promo.reward_plan_id,
-        reward_duration_days=promo.reward_duration_days,
-        availability=promo.availability,
-        allowed_user_ids=promo.allowed_user_ids,
-        expires_at=promo.expires_at,
-        max_activations=promo.max_activations,
-        is_reusable=promo.is_reusable,
-        created_at=promo.created_at,
-    )
 
 
 @router.get("", response_model=PromocodePageResponse)
@@ -87,7 +67,12 @@ async def list_promocodes(
             page_size=page_size,
         ),
     )
-    return PromocodePageResponse(items=[_to_response(promo) for promo in promocodes], total=total)
+    return PromocodePageResponse(
+        items=[
+            PromocodeResponse.model_validate(promo, from_attributes=True) for promo in promocodes
+        ],
+        total=total,
+    )
 
 
 @router.get("/activations", response_model=UserPromocodeActivationListResponse)
@@ -164,7 +149,7 @@ async def create_promocode(
         )
     except (NotFoundError, ValidationError) as error:
         raise ValidationError(str(error), code=error.code) from error
-    return _to_response(promo)
+    return PromocodeResponse.model_validate(promo, from_attributes=True)
 
 
 @router.patch(
@@ -189,7 +174,7 @@ async def update_promocode(
             is_reusable=payload.is_reusable,
         ),
     )
-    return _to_response(promo)
+    return PromocodeResponse.model_validate(promo, from_attributes=True)
 
 
 @router.delete(
@@ -220,4 +205,6 @@ async def get_promocode(
     use_case: FromDishka[GetPromocodeUseCase],
     actor: Actor = Depends(require_admin),
 ) -> PromocodeResponse:
-    return _to_response(await use_case(actor, promocode_id))
+    return PromocodeResponse.model_validate(
+        await use_case(actor, promocode_id), from_attributes=True
+    )

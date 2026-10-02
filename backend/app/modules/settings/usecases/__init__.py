@@ -1,4 +1,3 @@
-from app.modules.settings.usecases.add_locale import AddLocaleUseCase
 from app.modules.settings.usecases.delete_appearance_image import (
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
@@ -13,45 +12,40 @@ from app.modules.settings.usecases.get_public_appearance_image import (
     GetPublicAppearanceImageUseCase,
 )
 from app.modules.settings.usecases.get_shop_settings import GetShopSettingsUseCase
-from app.modules.settings.usecases.list_active_locales import ListActiveLocalesUseCase
-from app.modules.settings.usecases.remove_locale import RemoveLocaleUseCase
+from app.modules.settings.usecases.remove_bot_proxy import RemoveBotProxyUseCase
 from app.modules.settings.usecases.reset_appearance_settings import ResetAppearanceSettingsUseCase
 from app.modules.settings.usecases.restart_bot import RestartBotUseCase
-from app.modules.settings.usecases.update_appearance_settings import (
-    UpdateAppearanceSettingsUseCase,
-)
+from app.modules.settings.usecases.set_bot_proxy import SetBotProxyUseCase
+from app.modules.settings.usecases.update_appearance_settings import UpdateAppearanceSettingsUseCase
 from app.modules.settings.usecases.update_bot_commands import UpdateBotCommandsUseCase
 from app.modules.settings.usecases.update_bot_settings import UpdateBotSettingsUseCase
 from app.modules.settings.usecases.update_oauth_settings import UpdateOAuthSettingsUseCase
 from app.modules.settings.usecases.update_shop_settings import UpdateShopSettingsUseCase
 from app.modules.settings.usecases.upload_appearance_image import (
     UploadAppearanceFaviconUseCase,
-    UploadAppearanceImageInput,
     UploadAppearanceLogoUseCase,
 )
 
 __all__ = [
-    "AddLocaleUseCase",
     "DeleteAppearanceFaviconUseCase",
     "DeleteAppearanceLogoUseCase",
     "GetBotCommandsUseCase",
-    "GetBotSettingsUseCase",
     "GetBotLogsUseCase",
+    "GetBotSettingsUseCase",
     "GetBotStatusUseCase",
     "GetOAuthSettingsUseCase",
     "GetPublicAppearanceImageUseCase",
     "GetPublicAppearanceUseCase",
     "GetShopSettingsUseCase",
-    "ListActiveLocalesUseCase",
-    "RemoveLocaleUseCase",
+    "RemoveBotProxyUseCase",
     "ResetAppearanceSettingsUseCase",
     "RestartBotUseCase",
+    "SetBotProxyUseCase",
     "UpdateAppearanceSettingsUseCase",
     "UpdateBotCommandsUseCase",
     "UpdateBotSettingsUseCase",
     "UpdateOAuthSettingsUseCase",
     "UpdateShopSettingsUseCase",
     "UploadAppearanceFaviconUseCase",
-    "UploadAppearanceImageInput",
     "UploadAppearanceLogoUseCase",
 ]

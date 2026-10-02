@@ -4,15 +4,16 @@ import json
 
 import pytest
 
-import app.modules.transactions.gateways.lava as lava_module
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.lava import LavaGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -21,8 +22,10 @@ from tests.modules.transactions.gateways.support import (
 _SETTINGS = {"shop_id": "shop-1", "secret_key": "secret", "webhook_secret": "extra"}
 
 
-def _gateway() -> LavaGateway:
-    return LavaGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+def _gateway(*, http: PaymentHttpClient = NO_HTTP) -> LavaGateway:
+    return LavaGateway(
+        settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
+    )
 
 
 def _sign(key: str, body: bytes) -> str:
@@ -43,18 +46,14 @@ def _status(status: str = "success") -> dict[str, object]:
     }
 
 
-async def test_create_payment_signs_the_exact_body_and_sends_expire(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(
-        monkeypatch,
-        lava_module,
+async def test_create_payment_signs_the_exact_body_and_sends_expire() -> None:
+    http = HttpRecorder(
         json_response(
             {"data": {"id": "inv-1", "url": "https://lava/1"}, "status": 200, "status_check": True}
         ),
     )
 
-    intent = await _gateway().create_payment(make_order())
+    intent = await _gateway(http=http.client).create_payment(make_order())
 
     payload = json.loads(http.last.content)
     assert http.last.headers["Signature"] == _sign("secret", http.last.content)
@@ -87,13 +86,15 @@ async def test_parse_webhook_failed_invoice_does_not_claim_payment() -> None:
     assert signal is not None and signal.claims_paid is False
 
 
-async def test_confirm_posts_a_signed_status_request(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(monkeypatch, lava_module, json_response(_status()))
+async def test_confirm_posts_a_signed_status_request() -> None:
+    http = HttpRecorder(json_response(_status()))
     raw = _hook()
-    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+    signal = await _gateway(http=http.client).parse_webhook(
+        webhook(raw, {"Signature": _sign("extra", raw)})
+    )
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(), signal)
+    confirmed = await _gateway(http=http.client).confirm(make_order(), signal)
 
     assert confirmed is not None
     assert http.last.url.path == "/business/invoice/status"
@@ -101,19 +102,23 @@ async def test_confirm_posts_a_signed_status_request(monkeypatch: pytest.MonkeyP
     assert json.loads(http.last.content) == {"shopId": "shop-1", "orderId": ORDER_REF}
 
 
-async def test_confirm_rejects_an_unpaid_invoice(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, lava_module, json_response(_status("created")))
+async def test_confirm_rejects_an_unpaid_invoice() -> None:
+    http = HttpRecorder(json_response(_status("created")))
     raw = _hook()
-    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+    signal = await _gateway(http=http.client).parse_webhook(
+        webhook(raw, {"Signature": _sign("extra", raw)})
+    )
     assert signal is not None
-    assert await _gateway().confirm(make_order(), signal) is None
+    assert await _gateway(http=http.client).confirm(make_order(), signal) is None
 
 
-async def test_confirm_rejects_a_usd_order(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, lava_module, json_response(_status()))
+async def test_confirm_rejects_a_usd_order() -> None:
+    http = HttpRecorder(json_response(_status()))
     raw = _hook()
-    signal = await _gateway().parse_webhook(webhook(raw, {"Signature": _sign("extra", raw)}))
+    signal = await _gateway(http=http.client).parse_webhook(
+        webhook(raw, {"Signature": _sign("extra", raw)})
+    )
     assert signal is not None
 
     order = make_order(currency=Currency.USD)
-    assert await _gateway().confirm(order, signal) is None
+    assert await _gateway(http=http.client).confirm(order, signal) is None

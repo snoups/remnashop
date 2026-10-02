@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Final, Optional
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
@@ -7,45 +6,19 @@ from app.core.enums import BlacklistKind, Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistOriginDto, BlacklistOriginsDto, BlacklistRepository
-from app.modules.users.dto import DEFAULT_PAGE_SIZE, UserDto
-from app.modules.users.repository import UserRepository
+from app.modules.users.blacklist_repository import UserBlacklistRepository
+from app.modules.users.dto import (
+    BlacklistHitDto,
+    BlacklistMatchDto,
+    BlacklistMatchOrigin,
+    BlacklistMatchPageDto,
+    ListBlacklistMatchesDto,
+    UserDto,
+)
 
 # Role.USER only -- same staff-visibility rule as ListUsersUseCase, and
 # reconcile never blocks staff anyway.
-_ROLES: list[Role] = [Role.USER]
-
-BlacklistMatchOrigin = Literal["manual", "lists"]
-
-
-@dataclass(frozen=True, kw_only=True)
-class ListBlacklistMatchesInput:
-    search: Optional[str] = None
-    # unset = every origin
-    origin: Optional[BlacklistMatchOrigin] = None
-    page: int = 1
-    page_size: int = DEFAULT_PAGE_SIZE
-
-
-@dataclass(frozen=True, kw_only=True)
-class BlacklistHitDto:
-    kind: BlacklistKind
-    value: str
-    origins: list[BlacklistOriginDto] = field(default_factory=list)
-
-
-@dataclass(frozen=True, kw_only=True)
-class BlacklistMatchDto:
-    user: UserDto
-    hits: list[BlacklistHitDto] = field(default_factory=list)
-
-
-@dataclass(frozen=True, kw_only=True)
-class BlacklistMatchPageDto:
-    items: list[BlacklistMatchDto]
-    total: int
-    all_total: int
-    manual_total: int
-    lists_total: int
+_ROLES: Final[tuple[Role, ...]] = (Role.USER,)
 
 
 def identities_of(
@@ -84,34 +57,32 @@ def _hits_for(user: UserDto, origins: BlacklistOriginsDto) -> list[BlacklistHitD
     return hits
 
 
-class ListBlacklistMatchesUseCase(UseCase[ListBlacklistMatchesInput, BlacklistMatchPageDto]):
+class ListBlacklistMatchesUseCase(UseCase[ListBlacklistMatchesDto, BlacklistMatchPageDto]):
     required_permission = Permission.BLACKLIST_MATCHES_VIEW
 
     def __init__(
         self,
-        user_repository: UserRepository,
+        user_blacklist: UserBlacklistRepository,
         blacklist_repository: BlacklistRepository,
         uow: UnitOfWork,
     ) -> None:
-        self._user_repository = user_repository
+        self._user_blacklist = user_blacklist
         self._blacklist_repository = blacklist_repository
         self._uow = uow
 
-    async def _execute(
-        self, actor: Actor, data: ListBlacklistMatchesInput
-    ) -> BlacklistMatchPageDto:
+    async def _execute(self, actor: Actor, data: ListBlacklistMatchesDto) -> BlacklistMatchPageDto:
         async with self._uow:
             origins = await self._blacklist_repository.identity_origins()
-            all_total = await self._user_repository.count_matching(
+            all_total = await self._user_blacklist.count_matching(
                 *identities_of(origins), roles=_ROLES
             )
-            manual_total = await self._user_repository.count_matching(
+            manual_total = await self._user_blacklist.count_matching(
                 *identities_of(origins, "manual"), roles=_ROLES
             )
-            lists_total = await self._user_repository.count_matching(
+            lists_total = await self._user_blacklist.count_matching(
                 *identities_of(origins, "lists"), roles=_ROLES
             )
-            users, total = await self._user_repository.list_matching(
+            users, total = await self._user_blacklist.list_matching(
                 *identities_of(origins, data.origin),
                 roles=_ROLES,
                 search=data.search,

@@ -130,40 +130,6 @@ async def test_get_by_external_payment_id(
     assert found.id == created.id
 
 
-async def test_list_expired_pending(
-    transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
-) -> None:
-    async with uow:
-        expired_pending = await transaction_repository.create(
-            CreateTransactionDto(
-                **{
-                    **_order_dto(
-                        user_id=user_id, plan_id=plan_id, idempotency_key="key-expired-pending"
-                    ).__dict__,
-                    "expires_at": datetime_now() - timedelta(minutes=1),
-                }
-            )
-        )
-        await transaction_repository.create(
-            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-future-pending")
-        )
-        expired_paid = await transaction_repository.create(
-            CreateTransactionDto(
-                **{
-                    **_order_dto(
-                        user_id=user_id, plan_id=plan_id, idempotency_key="key-expired-paid"
-                    ).__dict__,
-                    "expires_at": datetime_now() - timedelta(minutes=1),
-                }
-            )
-        )
-        await transaction_repository.mark_status(expired_paid.id, TransactionStatus.PAID)
-
-    expired = await transaction_repository.list_expired_pending(datetime_now())
-    assert [order.id for order in expired] == [expired_pending.id]
-    assert expired[0].idempotency_key == "key-expired-pending"
-
-
 async def test_list_paid_awaiting_reconciliation_only_returns_paid_orders(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
@@ -506,7 +472,7 @@ async def test_user_id_queries_chunk_and_merge_beyond_the_in_param_cap(
     plan_id: int,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("app.modules.transactions.repository._MAX_IN_PARAMS", 2)
+    monkeypatch.setattr("app.modules.transactions.repository.MAX_SQL_IN_PARAMS", 2)
 
     rub_buyers = [
         await user_repository.create(CreateUserDto(name=f"rub{i}", telegram_id=900_200 + i))

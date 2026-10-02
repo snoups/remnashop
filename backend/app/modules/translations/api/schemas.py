@@ -35,3 +35,8 @@ class TranslationsImportResult(BaseModel):
 class TranslationEntryListResponse(BaseModel):
     items: list[TranslationEntryItem]
     total: int
+
+
+class ActiveLocalesResponse(BaseModel):
+    active: list[Locale]
+    available: list[Locale]

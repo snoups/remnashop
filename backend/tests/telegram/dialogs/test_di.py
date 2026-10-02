@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
+from app.modules.providers import get_module_providers
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.di import DialogConfigProvider
 
@@ -22,6 +23,7 @@ class _BoundSession(Provider):
 async def test_dialog_config_cache_resolves(config: AppConfig, session: AsyncSession) -> None:
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},

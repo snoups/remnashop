@@ -1,14 +1,15 @@
 import pytest
 
-import app.modules.transactions.gateways.platega as platega_module
 from app.core.enums import TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.platega import PlategaGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -18,8 +19,10 @@ _SETTINGS = {"merchant_id": "m-1", "api_key": "secret"}
 _HEADERS = {"X-MerchantId": "m-1", "X-Secret": "secret"}
 
 
-def _gateway() -> PlategaGateway:
-    return PlategaGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+def _gateway(*, http: PaymentHttpClient = NO_HTTP) -> PlategaGateway:
+    return PlategaGateway(
+        settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
+    )
 
 
 def _callback(status: str = "CONFIRMED") -> dict[str, object]:
@@ -35,26 +38,20 @@ def _transaction(status: str = "CONFIRMED") -> dict[str, object]:
     }
 
 
-async def test_create_payment_stores_the_transaction_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(
-        monkeypatch,
-        platega_module,
+async def test_create_payment_stores_the_transaction_id() -> None:
+    http = HttpRecorder(
         json_response({"transactionId": "tx-1", "redirect": "https://pay/1", "status": "PENDING"}),
     )
-    intent = await _gateway().create_payment(make_order())
+    intent = await _gateway(http=http.client).create_payment(make_order())
     assert intent.provider_payment_id == "tx-1"
     assert intent.confirmation_url == "https://pay/1"
 
 
-async def test_create_payment_sends_the_payer_id_as_metadata(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(
-        monkeypatch,
-        platega_module,
+async def test_create_payment_sends_the_payer_id_as_metadata() -> None:
+    http = HttpRecorder(
         json_response({"transactionId": "tx-1", "redirect": "https://pay/1"}),
     )
-    await _gateway().create_payment(make_order())
+    await _gateway(http=http.client).create_payment(make_order())
     assert http.last_json()["metadata"] == {"userId": "7"}
     assert http.last_json()["payload"] == ORDER_REF
 
@@ -77,23 +74,28 @@ async def test_parse_webhook_canceled_does_not_claim_payment() -> None:
     assert signal is not None and signal.claims_paid is False
 
 
-async def test_confirm_reads_the_transaction(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(monkeypatch, platega_module, json_response(_transaction()))
-    signal = await _gateway().parse_webhook(webhook(_callback(), _HEADERS))
+async def test_confirm_reads_the_transaction() -> None:
+    http = HttpRecorder(json_response(_transaction()))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_callback(), _HEADERS))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(external_payment_id="tx-1"), signal)
+    confirmed = await _gateway(http=http.client).confirm(
+        make_order(external_payment_id="tx-1"), signal
+    )
 
     assert confirmed is not None
     assert http.last.url.path == "/transaction/tx-1"
     assert http.last.headers["X-Secret"] == "secret"
 
 
-async def test_confirm_rejects_a_pending_transaction(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, platega_module, json_response(_transaction("PENDING")))
-    signal = await _gateway().parse_webhook(webhook(_callback(), _HEADERS))
+async def test_confirm_rejects_a_pending_transaction() -> None:
+    http = HttpRecorder(json_response(_transaction("PENDING")))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_callback(), _HEADERS))
     assert signal is not None
-    assert await _gateway().confirm(make_order(external_payment_id="tx-1"), signal) is None
+    assert (
+        await _gateway(http=http.client).confirm(make_order(external_payment_id="tx-1"), signal)
+        is None
+    )
 
 
 async def test_parse_webhook_canceled_reports_canceled() -> None:
@@ -108,10 +110,11 @@ async def test_parse_webhook_chargeback_reports_refunded() -> None:
     assert signal.reported_status is TransactionStatus.REFUNDED
 
 
-async def test_confirm_rejects_a_transaction_of_another_order(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    install_http(monkeypatch, platega_module, json_response({**_transaction(), "payload": "other"}))
-    signal = await _gateway().parse_webhook(webhook(_callback(), _HEADERS))
+async def test_confirm_rejects_a_transaction_of_another_order() -> None:
+    http = HttpRecorder(json_response({**_transaction(), "payload": "other"}))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_callback(), _HEADERS))
     assert signal is not None
-    assert await _gateway().confirm(make_order(external_payment_id="tx-1"), signal) is None
+    assert (
+        await _gateway(http=http.client).confirm(make_order(external_payment_id="tx-1"), signal)
+        is None
+    )

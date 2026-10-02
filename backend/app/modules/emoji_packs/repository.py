@@ -43,12 +43,6 @@ class EmojiPackRepository:
         result = await self.session.execute(select(EmojiPack).order_by(EmojiPack.title))
         return [self._to_dto(row, await self._items_of(row.id)) for row in result.scalars()]
 
-    async def get_by_set_name(self, set_name: str) -> Optional[EmojiPackDto]:
-        row = await self.session.scalar(select(EmojiPack).where(EmojiPack.set_name == set_name))
-        if row is None:
-            return None
-        return self._to_dto(row, await self._items_of(row.id))
-
     async def upsert(self, data: FetchedEmojiPack) -> EmojiPackDto:
         # Re-importing an existing pack replaces its contents: an owner can add
         # and remove emoji, and a stale entry would resolve to nothing.

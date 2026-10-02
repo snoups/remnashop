@@ -7,34 +7,31 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Currency, PlanType, PriceAdjustScope, Role, RoundingMode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
+from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
+    AddOnDto,
+    AdjustBasePricesDto,
+    CreateAddOnDto,
     CreatePlanDto,
     PlanDto,
+    PricingChangePreviewDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
     SetPlanPriceOverrideDto,
+    SwitchAnchorCurrencyDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
-from app.modules.pricing.dto import (
-    AdjustBasePricesDto,
-    PricingChangePreviewDto,
-    SwitchAnchorCurrencyDto,
-    UpdateCurrencyRateDto,
-    UpdatePricingSettingsDto,
-)
-from app.modules.pricing.repository import PricingRepository
-from app.modules.pricing.usecases import (
+from app.modules.plans.usecases import (
     AdjustBasePricesUseCase,
     GetPriceBookUseCase,
     PreviewPricingChangeUseCase,
     SwitchAnchorCurrencyUseCase,
-    UpdateCurrencyRateUseCase,
-    UpdatePricingSettingsUseCase,
 )
-from app.modules.subscriptions.addon_repository import AddOnRepository
-from app.modules.subscriptions.dto import AddOnDto, CreateAddOnDto
+from app.modules.pricing.dto import UpdateCurrencyRateDto, UpdatePricingSettingsDto
+from app.modules.pricing.repository import PricingRepository
+from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricingSettingsUseCase
 from app.modules.users.dto import UserDto
 
 OWNER = UserDto(name="owner", role=Role.OWNER)
@@ -91,7 +88,6 @@ async def test_price_book_lists_derived_and_pinned_cells(
             days=30,
             currency=Currency.RUB,
             price=Decimal("250"),
-            anchor=Currency.USD,
         )
     )
 
@@ -262,7 +258,6 @@ async def test_adjust_base_prices_multiplies_scope_and_leaves_overrides_untouche
             days=30,
             currency=Currency.RUB,
             price=Decimal("250"),
-            anchor=Currency.USD,
         )
     )
 

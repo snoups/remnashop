@@ -21,15 +21,11 @@ from app.modules.gateways.usecases.list_gateways import ListGatewaysUseCase
 from app.modules.gateways.usecases.reorder_gateways import ReorderGatewaysUseCase
 from app.modules.gateways.usecases.set_gateway_active import SetGatewayActiveUseCase
 from app.modules.gateways.usecases.update_gateway_settings import UpdateGatewaySettingsUseCase
+from app.modules.plans.usecases import GetAddOnUseCase
 from app.modules.plans.usecases.get_plan import GetPlanUseCase
-from app.modules.plans.usecases.set_plan_duration_base_price import (
-    SetPlanDurationBasePriceUseCase,
-)
+from app.modules.plans.usecases.set_plan_duration_base_price import SetPlanDurationBasePriceUseCase
 from app.modules.promocodes.usecases.get_promocode import GetPromocodeUseCase
-from app.modules.settings.usecases.add_locale import AddLocaleUseCase
 from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
-from app.modules.settings.usecases.remove_locale import RemoveLocaleUseCase
-from app.modules.subscriptions.usecases.get_addon import GetAddOnUseCase
 from app.modules.subscriptions.usecases.get_subscription import GetSubscriptionUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
 from app.modules.transactions.usecases.get_test_payment_status import GetTestPaymentStatusUseCase
@@ -38,12 +34,12 @@ from app.modules.transactions.usecases.list_transaction_gateways import (
     ListTransactionGatewaysUseCase,
 )
 from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
+from app.modules.translations.usecases.add_locale import AddLocaleUseCase
+from app.modules.translations.usecases.remove_locale import RemoveLocaleUseCase
 from app.modules.translations.usecases.reset_translation import ResetTranslationUseCase
 from app.modules.translations.usecases.update_translation import UpdateTranslationUseCase
 from app.modules.users.usecases.get_user import GetUserUseCase
-from app.modules.users.usecases.set_user_personal_discount import (
-    SetUserPersonalDiscountUseCase,
-)
+from app.modules.users.usecases.set_user_personal_discount import SetUserPersonalDiscountUseCase
 
 
 @pytest.mark.parametrize(

@@ -1,13 +1,14 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import Field
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import Currency, PlanAvailability, PlanType
+from app.core.enums import AddOnType, Currency, PlanAvailability, PlanType, PriceAdjustScope
+from app.modules.pricing import CurrencyRateDto, PricingSettingsDto, UpdateCurrencyRateDto
 
 
 class PlanPriceOverrideDto(BaseDto):
@@ -90,7 +91,6 @@ class SetPlanPriceOverrideDto:
     days: int
     currency: Currency
     price: Optional[Decimal]
-    anchor: Currency
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -118,3 +118,112 @@ class UpdatePlanSquadsDto:
 @dataclass(frozen=True, kw_only=True)
 class ReorderPlansDto:
     plan_ids: list[int]
+
+
+class AddOnPriceOverrideDto(BaseDto):
+    currency: Currency
+    price: Decimal
+
+
+class AddOnDto(BaseDto, TimestampMixin):
+    name: str
+    type: AddOnType
+    amount: int
+    order_index: int = 0
+    is_active: bool = False
+    base_price: Decimal
+    overrides: list[AddOnPriceOverrideDto] = Field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class CreateAddOnDto:
+    name: str
+    type: AddOnType
+    amount: int
+    base_price: Decimal
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateAddOnDto:
+    addon_id: int
+    name: Optional[str] = None
+    type: Optional[AddOnType] = None
+    amount: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetAddOnBasePriceDto:
+    addon_id: int
+    base_price: Decimal
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetAddOnPriceOverrideDto:
+    addon_id: int
+    currency: Currency
+    price: Optional[Decimal]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReorderAddOnsDto:
+    addon_ids: list[int]
+
+
+class PriceBookCell(BaseDto):
+    currency: Currency
+    amount: Decimal
+    is_pinned: bool
+
+
+class PriceBookRow(BaseDto):
+    kind: Literal["plan_duration", "addon"]
+    ref_id: int
+    plan_id: Optional[int] = None
+    # plain plan/add-on name; the client adds the duration from `days` in its own language
+    name: str
+    days: Optional[int]
+    base_price: Decimal
+    cells: list[PriceBookCell]
+
+
+class PriceBookDto(BaseDto):
+    rate_table: list[CurrencyRateDto]
+    settings: PricingSettingsDto
+    plans: list[PriceBookRow]
+    addons: list[PriceBookRow]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SwitchAnchorCurrencyDto:
+    new_anchor: Currency
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdjustBasePricesDto:
+    scope: PriceAdjustScope
+    factor: Decimal
+    plan_duration_ids: list[int] = field(default_factory=list)
+    addon_ids: list[int] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class PricingChangePreviewDto:
+    # Exactly one of these three is set by the caller -- the usecase validates that.
+    rate: Optional[UpdateCurrencyRateDto] = None
+    anchor: Optional[Currency] = None
+    adjust: Optional[AdjustBasePricesDto] = None
+
+
+class PricingDiffRow(BaseDto):
+    # plain plan/add-on name; `days` is set for plan durations, None for add-ons
+    name: str
+    days: Optional[int] = None
+    currency: Currency
+    old: Decimal
+    new: Decimal
+
+
+class PricingDiffDto(BaseDto):
+    changes: list[PricingDiffRow]
+    affected_count: int

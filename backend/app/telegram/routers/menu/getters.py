@@ -7,11 +7,11 @@ from fluentogram import TranslatorHub
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
-from app.modules.banners import BannerRepository
+from app.modules.banners import GetBannerForDisplayUseCase
 from app.modules.subscriptions import (
     GetAvailableTrialUseCase,
     ListDevicesUseCase,
-    SubscriptionRepository,
+    ListOwnActiveSubscriptionsUseCase,
 )
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
@@ -37,8 +37,8 @@ def _platform_icon_key(platform: Optional[str]) -> str:
 async def menu_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
-    banner_repository: FromDishka[BannerRepository],
-    subscription_repository: FromDishka[SubscriptionRepository],
+    get_banner: FromDishka[GetBannerForDisplayUseCase],
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
@@ -50,19 +50,13 @@ async def menu_getter(
     # No banner name means the admin turned the banner off for this window --
     # not "fall back to something".
     banner = (
-        await get_banner_media(
-            banner_repository,
-            config,
-            window.banner_name,
-            user.language,
-            config.default_locale,
-        )
+        await get_banner_media(get_banner, config, user, window.banner_name)
         if window.banner_name
         else None
     )
 
     data: dict[str, Any] = await build_condition_data(
-        user, subscription_repository, get_available_trial
+        user, list_own_active_subscriptions, get_available_trial
     )
     data["banner"] = banner
     data["menu_text"] = render_window_text(runner, "msg-main-menu", **resolve_variable_kwargs(data))
@@ -74,7 +68,7 @@ async def menu_getter(
 @inject
 async def devices_getter(
     dialog_manager: DialogManager,
-    subscription_repository: FromDishka[SubscriptionRepository],
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
     list_devices: FromDishka[ListDevicesUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
@@ -84,7 +78,7 @@ async def devices_getter(
     runner = get_translator(i18n, user)
 
     devices = await list_devices(user)
-    subscription = await subscription_repository.get_single_active_subscription_or_raise(user.id)
+    subscription = (await list_own_active_subscriptions(user))[0]
 
     formatted: list[dict[str, Any]] = [
         {

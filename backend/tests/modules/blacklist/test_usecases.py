@@ -12,15 +12,21 @@ from app.modules.blacklist.dto import (
     UpdateBlacklistSourceDto,
 )
 from app.modules.blacklist.repository import BlacklistRepository
-from app.modules.blacklist.tasks import reconcile_blacklist_task
 from app.modules.blacklist.usecases import (
     AddBlacklistEntryUseCase,
     AddBlacklistSourceUseCase,
+    GetBlacklistSourceUseCase,
     ListBlacklistUseCase,
     RemoveBlacklistEntryUseCase,
     UpdateBlacklistSourceUseCase,
 )
 from app.modules.users.dto import UserDto
+from tests.fakes.dispatch import RecordingDispatch
+
+
+@pytest.fixture
+def reconcile() -> RecordingDispatch:
+    return RecordingDispatch()
 
 
 @pytest.fixture
@@ -56,8 +62,9 @@ async def test_add_and_list_entry(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     owner: UserDto,
+    reconcile: RecordingDispatch,
 ) -> None:
-    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher)
+    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher, reconcile)
     result = await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="id 55"))
     assert result.telegram_ids == [55]
 
@@ -70,8 +77,9 @@ async def test_remove_entry(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     owner: UserDto,
+    reconcile: RecordingDispatch,
 ) -> None:
-    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher)
+    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher, reconcile)
     await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="55"))
 
     remove = RemoveBlacklistEntryUseCase(blacklist_repository, uow, event_publisher)
@@ -84,8 +92,9 @@ async def test_add_entry_rejects_plain_user(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     plain_user: UserDto,
+    reconcile: RecordingDispatch,
 ) -> None:
-    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher)
+    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher, reconcile)
     with pytest.raises(PermissionDeniedError):
         await add(plain_user, BlacklistEntryInputDto(kind=BlacklistKind.EMAIL, value="a@b.co"))
 
@@ -95,8 +104,9 @@ async def test_add_entry_rejects_invalid_value(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     owner: UserDto,
+    reconcile: RecordingDispatch,
 ) -> None:
-    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher)
+    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher, reconcile)
     with pytest.raises(ValidationError):
         await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="nope"))
 
@@ -106,26 +116,20 @@ async def test_add_entry_kicks_reconcile_only_for_a_real_new_entry(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     owner: UserDto,
-    monkeypatch: pytest.MonkeyPatch,
+    reconcile: RecordingDispatch,
 ) -> None:
-    calls: list[None] = []
-
-    async def _fake_kiq(**kwargs: object) -> None:
-        calls.append(None)
-
-    monkeypatch.setattr(reconcile_blacklist_task, "kiq", _fake_kiq)
-    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher)
+    add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher, reconcile)
 
     await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="77"))
-    assert len(calls) == 1
+    assert len(reconcile.messages) == 1
 
     # duplicate -> add_entry is a no-op, no reconcile
     await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="77"))
-    assert len(calls) == 1
+    assert len(reconcile.messages) == 1
 
     with pytest.raises(ValidationError):
         await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="nope"))
-    assert len(calls) == 1
+    assert len(reconcile.messages) == 1
 
 
 async def test_add_source_rejects_non_https(
@@ -181,3 +185,10 @@ async def test_add_source_derives_name_when_blank(
         owner, AddBlacklistSourceDto(url="https://feed.example/b.txt", name=" Mine ")
     )
     assert explicit.name == "Mine"
+
+
+async def test_get_source_requires_its_own_permission(
+    blacklist_repository: BlacklistRepository, uow: UnitOfWork, plain_user: UserDto
+) -> None:
+    with pytest.raises(PermissionDeniedError):
+        await GetBlacklistSourceUseCase(blacklist_repository, uow)(plain_user, 1)

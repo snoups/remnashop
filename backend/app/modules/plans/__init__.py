@@ -1,53 +1,78 @@
-from app.modules.plans.access import is_plan_purchasable_by  # noqa: I001
+from app.modules.plans.access import is_plan_purchasable_by
+from app.modules.plans.addon_repository import AddOnRepository
+from app.modules.plans.di import get_plans_providers
 from app.modules.plans.dto import (
+    AddOnDto,
+    AddOnPriceOverrideDto,
+    CreateAddOnDto,
     CreatePlanDto,
     PlanDto,
     PlanDurationDto,
     PlanPriceOverrideDto,
+    ReorderAddOnsDto,
     ReorderPlansDto,
+    SetAddOnBasePriceDto,
+    SetAddOnPriceOverrideDto,
     SetPlanDurationBasePriceDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
     SetPlanPriceOverrideDto,
+    UpdateAddOnDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
+from app.modules.plans.events import AddOnChangedEvent
 from app.modules.plans.repository import PlanRepository
-
-# di imported after dto/repository above: app.modules.subscriptions'
-# usecases import PlanDto/PlanRepository back from this package, and di's
-# own chain (usecases -> app.modules.subscriptions/referrals) re-enters
-# this module before it finishes -- those names must already be bound.
-from app.modules.plans.di import get_plans_providers
 from app.modules.plans.usecases import (
+    CreateAddOnUseCase,
     CreatePlanUseCase,
+    DeleteAddOnUseCase,
     DeletePlanUseCase,
-    ListActivePlansUseCase,
-    ListPlansUseCase,
+    GetAddOnUseCase,
     GetPlanUseCase,
+    ListAddOnsUseCase,
+    ListPlansUseCase,
+    ReorderAddOnsUseCase,
     ReorderPlansUseCase,
+    SetAddOnBasePriceUseCase,
+    SetAddOnPriceOverrideUseCase,
     SetPlanDurationBasePriceUseCase,
     SetPlanDurationsUseCase,
     SetPlanPriceOverrideUseCase,
+    UpdateAddOnUseCase,
     UpdatePlanAccessUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
 
 __all__ = [
+    "AddOnChangedEvent",
+    "AddOnDto",
+    "AddOnPriceOverrideDto",
+    "AddOnRepository",
+    "CreateAddOnDto",
+    "CreateAddOnUseCase",
     "CreatePlanDto",
     "CreatePlanUseCase",
+    "DeleteAddOnUseCase",
     "DeletePlanUseCase",
-    "ListActivePlansUseCase",
-    "ListPlansUseCase",
+    "GetAddOnUseCase",
     "GetPlanUseCase",
+    "ListAddOnsUseCase",
+    "ListPlansUseCase",
     "PlanDto",
     "PlanDurationDto",
     "PlanPriceOverrideDto",
     "PlanRepository",
+    "ReorderAddOnsDto",
+    "ReorderAddOnsUseCase",
     "ReorderPlansDto",
     "ReorderPlansUseCase",
+    "SetAddOnBasePriceDto",
+    "SetAddOnBasePriceUseCase",
+    "SetAddOnPriceOverrideDto",
+    "SetAddOnPriceOverrideUseCase",
     "SetPlanDurationBasePriceDto",
     "SetPlanDurationBasePriceUseCase",
     "SetPlanDurationDto",
@@ -55,6 +80,8 @@ __all__ = [
     "SetPlanDurationsUseCase",
     "SetPlanPriceOverrideDto",
     "SetPlanPriceOverrideUseCase",
+    "UpdateAddOnDto",
+    "UpdateAddOnUseCase",
     "UpdatePlanAccessDto",
     "UpdatePlanAccessUseCase",
     "UpdatePlanDto",

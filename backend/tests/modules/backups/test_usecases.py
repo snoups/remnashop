@@ -11,6 +11,7 @@ from app.modules.backups.dto import (
     BackupRunDto,
     BackupSettingsDto,
     CreateBackupRunDto,
+    ListBackupRunsDto,
     UpdateBackupSettingsDto,
 )
 from app.modules.backups.repository import BackupRepository
@@ -22,11 +23,12 @@ from app.modules.backups.usecases.get_backup_stats import (
     GetBackupStatsUseCase,
     next_scheduled_run,
 )
-from app.modules.backups.usecases.list_backup_runs import ListBackupRunsInput, ListBackupRunsUseCase
+from app.modules.backups.usecases.list_backup_runs import ListBackupRunsUseCase
 from app.modules.backups.usecases.reset_backup_settings import ResetBackupSettingsUseCase
 from app.modules.backups.usecases.update_backup_settings import UpdateBackupSettingsUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.dispatch import RecordingDispatch
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 ADMIN_NO_GRANT = UserDto(id=2, login="admin", name="admin", role=Role.ADMIN, language=Locale.EN)
@@ -90,28 +92,20 @@ async def test_admin_without_grant_cannot_reset_settings(
         await use_case(ADMIN_NO_GRANT)
 
 
-class _FakeTaskDispatch:
-    def __init__(self) -> None:
-        self.calls: list[dict] = []
-
-    async def kiq(self, **kwargs) -> None:
-        self.calls.append(kwargs)
-
-
 async def test_create_backup_run_enqueues_task(
     backup_repository: BackupRepository, uow: UnitOfWork, owner: UserDto
 ) -> None:
-    dispatch = _FakeTaskDispatch()
+    dispatch = RecordingDispatch()
     use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch)
     run = await use_case(owner, BackupKind.DATABASE)
     assert run.status.name == "PENDING"
-    assert dispatch.calls == [{"kind": "DATABASE", "run_id": run.id}]
+    assert dispatch.messages == [{"kind": "DATABASE", "run_id": run.id}]
 
 
 async def test_create_backup_run_rejects_when_already_running(
     backup_repository: BackupRepository, uow: UnitOfWork, owner: UserDto
 ) -> None:
-    dispatch = _FakeTaskDispatch()
+    dispatch = RecordingDispatch()
     use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch)
     await use_case(owner, BackupKind.DATABASE)
     async with uow:
@@ -127,7 +121,7 @@ async def test_list_backup_runs_returns_page(
     uow: UnitOfWork,
 ) -> None:
     use_case = ListBackupRunsUseCase(backup_repository, uow)
-    runs, total = await use_case(OWNER, ListBackupRunsInput())
+    runs, total = await use_case(OWNER, ListBackupRunsDto())
     assert total == 0
     assert runs == []
 
@@ -194,6 +188,10 @@ async def test_admin_without_grant_cannot_get_stats(
 _NOW = datetime(2026, 9, 25, 10, 48, tzinfo=timezone.utc)
 
 
+def _settings(*, enabled: bool, interval_hours: int = 24) -> BackupSettingsDto:
+    return BackupSettingsDto(enabled=enabled, interval_hours=interval_hours, max_files=7)
+
+
 def _finished(at: datetime) -> BackupRunDto:
     return BackupRunDto(
         id=1, kind=BackupKind.DATABASE, status=BackupRunStatus.COMPLETED, finished_at=at
@@ -203,20 +201,20 @@ def _finished(at: datetime) -> BackupRunDto:
 @pytest.mark.parametrize(
     ("settings", "latest", "expected"),
     [
-        (BackupSettingsDto(enabled=False), None, None),
-        (BackupSettingsDto(enabled=True), None, datetime(2026, 9, 25, 11, tzinfo=timezone.utc)),
+        (_settings(enabled=False), None, None),
+        (_settings(enabled=True), None, datetime(2026, 9, 25, 11, tzinfo=timezone.utc)),
         (
-            BackupSettingsDto(enabled=True, interval_hours=24),
+            _settings(enabled=True, interval_hours=24),
             _finished(datetime(2026, 9, 25, 3, 0, 12, tzinfo=timezone.utc)),
             datetime(2026, 9, 26, 4, tzinfo=timezone.utc),
         ),
         (
-            BackupSettingsDto(enabled=True, interval_hours=6),
+            _settings(enabled=True, interval_hours=6),
             _finished(_NOW - timedelta(hours=30)),
             datetime(2026, 9, 25, 11, tzinfo=timezone.utc),
         ),
         (
-            BackupSettingsDto(enabled=True, interval_hours=2),
+            _settings(enabled=True, interval_hours=2),
             _finished(datetime(2026, 9, 25, 10, tzinfo=timezone.utc)),
             datetime(2026, 9, 25, 12, tzinfo=timezone.utc),
         ),

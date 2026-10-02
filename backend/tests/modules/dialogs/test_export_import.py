@@ -1,5 +1,6 @@
 import pytest
 
+from app.core.bot_signals import RedisBotSignals
 from app.core.enums import ButtonLinkType, DialogFlow, DialogWindowKind, Locale, Role
 from app.core.exceptions import ValidationError
 from app.modules.dialogs import catalog
@@ -62,23 +63,21 @@ def _catalog():
     catalog._reset_for_tests()
 
 
-async def _export(dialog_repository, translations_repository, settings_repository, uow):
-    return await ExportDialogsUseCase(
-        dialog_repository, translations_repository, settings_repository, uow
-    )(OWNER)
+async def _export(dialog_repository, translation_repository, settings_repository, uow):
+    return await ExportDialogsUseCase(dialog_repository, translation_repository, uow)(OWNER)
 
 
 async def test_export_carries_windows_and_their_texts(
-    dialog_repository: DialogRepository, translations_repository, settings_repository, uow
+    dialog_repository: DialogRepository, translation_repository, settings_repository, uow
 ) -> None:
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
-    await translations_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try for free")
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
+    await translation_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try for free")
     # Not a dialog key: must stay out of the file, since import writes back what it finds.
-    await translations_repository.seed_missing(Locale.EN, "cmd-start", "", "Start")
+    await translation_repository.seed_missing(Locale.EN, "cmd-start", "", "Start")
 
-    export = await _export(dialog_repository, translations_repository, settings_repository, uow)
+    export = await _export(dialog_repository, translation_repository, settings_repository, uow)
 
     assert export.version == EXPORT_VERSION
     assert [w.key for w in export.windows] == ["menu.main"]
@@ -88,50 +87,50 @@ async def test_export_carries_windows_and_their_texts(
 
 
 async def test_import_restores_an_exported_configuration(
-    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+    dialog_repository: DialogRepository, translation_repository, settings_repository, uow, redis
 ) -> None:
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
-    await translations_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try for free")
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
+    await translation_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try for free")
 
-    export = await _export(dialog_repository, translations_repository, settings_repository, uow)
+    export = await _export(dialog_repository, translation_repository, settings_repository, uow)
 
     # Drift away from the exported state, then import it back.
     await dialog_repository.replace_buttons("menu.main", [])
-    await translations_repository.update_value(Locale.EN, "btn-menu", "trial", "Changed")
+    await translation_repository.update_value(Locale.EN, "btn-menu", "trial", "Changed")
 
     await ImportDialogsUseCase(
-        dialog_repository, translations_repository, settings_repository, uow, redis
+        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
     )(OWNER, export)
 
     restored = await dialog_repository.get_by_key_or_raise("menu.main")
     assert [b.text_key for b in restored.buttons] == ["btn-menu.trial"]
-    label = await translations_repository.get(Locale.EN, "btn-menu", "trial")
+    label = await translation_repository.get(Locale.EN, "btn-menu", "trial")
     assert label is not None
     assert label.value == "Try for free"
 
 
 async def test_import_deletes_custom_windows_missing_from_the_file(
-    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+    dialog_repository: DialogRepository, translation_repository, settings_repository, uow, redis
 ) -> None:
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
-    export = await _export(dialog_repository, translations_repository, settings_repository, uow)
+    export = await _export(dialog_repository, translation_repository, settings_repository, uow)
     await dialog_repository.create_custom_window("custom.later", CreateCustomWindowDto())
 
     await ImportDialogsUseCase(
-        dialog_repository, translations_repository, settings_repository, uow, redis
+        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
     )(OWNER, export)
 
     assert await dialog_repository.get_by_key("custom.later") is None
 
 
 async def test_import_creates_a_custom_window_from_the_file(
-    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+    dialog_repository: DialogRepository, translation_repository, settings_repository, uow, redis
 ) -> None:
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
 
     payload = DialogExportDto(
         version=EXPORT_VERSION,
@@ -161,20 +160,20 @@ async def test_import_creates_a_custom_window_from_the_file(
     )
 
     await ImportDialogsUseCase(
-        dialog_repository, translations_repository, settings_repository, uow, redis
+        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
     )(OWNER, payload)
 
     created = await dialog_repository.get_by_key("custom-faq")
     assert created is not None
     assert created.slot is not None
     assert [b.target_window_key for b in created.buttons] == ["menu.main"]
-    body = await translations_repository.get(Locale.EN, "msg-dialog-custom-faq", "")
+    body = await translation_repository.get(Locale.EN, "msg-dialog-custom-faq", "")
     assert body is not None
     assert body.value == "FAQ"
 
 
 async def test_import_rejects_a_button_pointing_nowhere(
-    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+    dialog_repository: DialogRepository, translation_repository, settings_repository, uow, redis
 ) -> None:
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     payload = DialogExportDto(
@@ -202,14 +201,14 @@ async def test_import_rejects_a_button_pointing_nowhere(
 
     with pytest.raises(ValidationError):
         await ImportDialogsUseCase(
-            dialog_repository, translations_repository, settings_repository, uow, redis
+            dialog_repository, translation_repository, uow, RedisBotSignals(redis)
         )(OWNER, payload)
 
 
 async def test_import_rejects_an_unknown_version(
-    dialog_repository: DialogRepository, translations_repository, settings_repository, uow, redis
+    dialog_repository: DialogRepository, translation_repository, settings_repository, uow, redis
 ) -> None:
     with pytest.raises(ValidationError):
         await ImportDialogsUseCase(
-            dialog_repository, translations_repository, settings_repository, uow, redis
+            dialog_repository, translation_repository, uow, RedisBotSignals(redis)
         )(OWNER, DialogExportDto(version=99, windows=[], texts=[]))

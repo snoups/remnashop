@@ -6,12 +6,14 @@ from sqlalchemy import func, select
 
 from app.core.actor import SyntheticActor
 from app.core.db.models import EventOutboxEntry, User
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.events import ActorTargetEvent, BaseEvent, EventCategory
 from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.modules.auth.events import LoginFailedEvent, LoginSucceededEvent
 from app.modules.users.dto import UserDto
 from app.modules.users.events import AdminCreatedEvent, AdminPermissionsUpdatedEvent
+from tests.fakes.dispatch import RecordingDispatch
 
 OWNER = UserDto(
     id=1,
@@ -51,7 +53,7 @@ async def _seed_owner_row(session) -> None:
 
 
 async def _published_row(session, event: BaseEvent) -> EventOutboxEntry:
-    publisher = OutboxEventPublisher(session)
+    publisher = OutboxEventPublisher(UnitOfWork(session), RecordingDispatch())
     await publisher.publish(event)
     row = (await session.scalars(select(EventOutboxEntry))).one()
     return row
@@ -178,7 +180,7 @@ async def test_publish_writes_inside_the_callers_transaction_not_committed_separ
     # Confirms the row is visible via the SAME session/transaction without
     # a separate commit -- proves publish() doesn't open or close its own
     # transaction boundary, which is the entire point of this class.
-    publisher = OutboxEventPublisher(session)
+    publisher = OutboxEventPublisher(UnitOfWork(session), RecordingDispatch())
     await publisher.publish(LoginSucceededEvent(user=OWNER))
     count = await session.scalar(select(func.count()).select_from(EventOutboxEntry))
     assert count == 1
@@ -186,3 +188,29 @@ async def test_publish_writes_inside_the_callers_transaction_not_committed_separ
     await session.rollback()
     count = await session.scalar(select(func.count()).select_from(EventOutboxEntry))
     assert count == 0
+
+
+async def test_publish_kicks_the_worker_only_once_the_transaction_commits(session) -> None:
+    uow = UnitOfWork(session)
+    dispatch = RecordingDispatch()
+    publisher = OutboxEventPublisher(uow, dispatch)
+
+    async with uow:
+        await publisher.publish(LoginSucceededEvent(user=OWNER))
+        assert dispatch.messages == []
+
+    row = (await session.scalars(select(EventOutboxEntry))).one()
+    assert dispatch.messages == [{"outbox_id": row.id}]
+
+
+async def test_publish_never_kicks_for_a_rolled_back_transaction(session) -> None:
+    uow = UnitOfWork(session)
+    dispatch = RecordingDispatch()
+    publisher = OutboxEventPublisher(uow, dispatch)
+
+    with pytest.raises(RuntimeError):
+        async with uow:
+            await publisher.publish(LoginSucceededEvent(user=OWNER))
+            raise RuntimeError("abort")
+
+    assert dispatch.messages == []

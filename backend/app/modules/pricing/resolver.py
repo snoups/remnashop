@@ -1,8 +1,11 @@
+from collections.abc import Iterable
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
-from typing import Final, Optional
+from typing import Final, Optional, Protocol
 
 from app.core.constants import ONE_CENT
 from app.core.enums import Currency, RoundingMode
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.modules.pricing.dto import CurrencyRateDto, CurrencyRateTable
 
 _HUNDRED: Final[Decimal] = Decimal("100")
@@ -51,6 +54,25 @@ def resolve_price(
     return round_amount(base_anchor * rate.rate, rate)
 
 
+class PriceOverride(Protocol):
+    @property
+    def currency(self) -> Currency: ...
+
+    @property
+    def price(self) -> Decimal: ...
+
+
+def price_for(
+    base_price: Decimal,
+    overrides: Iterable[PriceOverride],
+    currency: Currency,
+    rates: CurrencyRateTable,
+) -> Decimal:
+    # what a plan duration or add-on costs in `currency`: its pinned price, else the converted base
+    override = next((o.price for o in overrides if o.currency is currency), None)
+    return resolve_price(base_price, currency, override, rates)
+
+
 def convert_for_report(
     amount: Decimal, from_currency: Currency, to_currency: Currency, rates: CurrencyRateTable
 ) -> Decimal:
@@ -62,3 +84,12 @@ def convert_for_report(
     return (anchor_amount * rates.for_currency(to_currency).rate).quantize(
         ONE_CENT, rounding=ROUND_HALF_UP
     )
+
+
+def assert_overridable_currency(currency: Currency, anchor: Currency) -> None:
+    # the anchor price is the base every other currency converts from
+    if currency == anchor:
+        raise ValidationError(
+            "Cannot override the anchor currency's price",
+            code=ErrorCode.ANCHOR_PRICE_NOT_OVERRIDABLE,
+        )

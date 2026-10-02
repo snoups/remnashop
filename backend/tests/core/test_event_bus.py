@@ -30,6 +30,7 @@ from app.modules.subscriptions.events import (
     SubscriptionRenewedEvent,
 )
 from app.modules.users.dto import UserDto
+from app.worker.subscribers import register_all_subscribers
 
 _USER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 _TARGET = UserDto(id=2, login="target", name="target", role=Role.ADMIN, language=Locale.EN)
@@ -147,15 +148,15 @@ async def test_shutdown_clears_handlers() -> None:
     assert bus._handlers == {}
 
 
-def test_autodiscover_registers_auth_handlers() -> None:
+def test_register_all_subscribers_registers_auth_handlers() -> None:
     bus = EventBus()
-    bus.autodiscover()
+    register_all_subscribers(bus)
 
     assert "LoginFailedEvent" in bus._handlers
 
 
 @pytest.mark.parametrize("event_type", list(_REGISTERED_EVENTS), ids=list(_REGISTERED_EVENTS))
-async def test_autodiscovered_handler_reads_its_real_payload_shape(
+async def test_registered_handler_reads_its_real_payload_shape(
     event_type: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Every migrated handler reads entry.payload[...] instead of an event
@@ -171,7 +172,7 @@ async def test_autodiscovered_handler_reads_its_real_payload_shape(
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _noop_kiq)
 
     bus = EventBus()
-    bus.autodiscover()
+    register_all_subscribers(bus)
     event = _REGISTERED_EVENTS[event_type]
     stored = StoredEvent(
         outbox_id=1,
@@ -200,7 +201,7 @@ async def test_subscription_purchased_handler_kicks_referral_rewards_task(
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
 
     bus = EventBus()
-    bus.autodiscover()
+    register_all_subscribers(bus)
     event = SubscriptionPurchasedEvent(
         user=_USER, subscription_id=42, plan_id=1, purchase_type="NEW", payment_key="order-1"
     )
@@ -231,7 +232,7 @@ async def test_subscription_renewed_handler_kicks_referral_rewards_task(
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
 
     bus = EventBus()
-    bus.autodiscover()
+    register_all_subscribers(bus)
     event = SubscriptionRenewedEvent(
         user=_USER, subscription_id=42, duration_days=30, payment_key="order-2"
     )
@@ -262,7 +263,7 @@ async def test_subscription_changed_handler_kicks_referral_rewards_task(
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
 
     bus = EventBus()
-    bus.autodiscover()
+    register_all_subscribers(bus)
     event = SubscriptionChangedEvent(
         user=_USER,
         subscription_id=43,
@@ -298,7 +299,7 @@ async def test_unpaid_subscription_events_do_not_kick_referral_rewards_task(
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _capture_kiq)
 
     bus = EventBus()
-    bus.autodiscover()
+    register_all_subscribers(bus)
     for event in (
         SubscriptionPurchasedEvent(user=_USER, subscription_id=42, plan_id=1, purchase_type="NEW"),
         SubscriptionRenewedEvent(user=_USER, subscription_id=42, duration_days=30),

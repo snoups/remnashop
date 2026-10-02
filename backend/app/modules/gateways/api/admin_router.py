@@ -2,7 +2,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies.admin import require_admin, require_admin_user
+from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.config import AppConfig
@@ -13,13 +13,10 @@ from app.modules.gateways.api.schemas import (
     GatewayFieldSpecResponse,
     GatewayListResponse,
     GatewayResponse,
-    GatewayTestPaymentResponse,
-    GatewayTestPaymentStatusResponse,
     ReorderGatewaysRequest,
     UpdateGatewaySettingsRequest,
 )
 from app.modules.gateways.dto import (
-    PaymentGatewayDto,
     ReorderGatewaysDto,
     SetGatewayActiveDto,
     UpdateGatewaySettingsDto,
@@ -31,20 +28,8 @@ from app.modules.gateways.usecases import (
     SetGatewayActiveUseCase,
     UpdateGatewaySettingsUseCase,
 )
-from app.modules.transactions import CreateTestPaymentUseCase, GetTestPaymentStatusUseCase
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/gateways", tags=["gateways"])
-
-
-def _to_response(gateway: PaymentGatewayDto) -> GatewayResponse:
-    return GatewayResponse(
-        type=gateway.type,
-        order_index=gateway.order_index,
-        is_active=gateway.is_active,
-        is_configured=gateway.is_configured,
-        flags=gateway.flags,
-    )
 
 
 @router.get("", response_model=GatewayListResponse)
@@ -54,7 +39,7 @@ async def list_gateways(
     actor: Actor = Depends(require_admin),
 ) -> GatewayListResponse:
     gateways = await use_case(actor)
-    items = [_to_response(gateway) for gateway in gateways]
+    items = [GatewayResponse.model_validate(gateway, from_attributes=True) for gateway in gateways]
     return GatewayListResponse(items=items, total=len(items))
 
 
@@ -103,7 +88,7 @@ async def update_gateway_settings(
     gateway = await use_case(
         actor, UpdateGatewaySettingsDto(type=gateway_type, values=payload.values)
     )
-    return _to_response(gateway)
+    return GatewayResponse.model_validate(gateway, from_attributes=True)
 
 
 @router.post(
@@ -116,7 +101,7 @@ async def enable_gateway(
     actor: Actor = Depends(require_admin),
 ) -> GatewayResponse:
     gateway = await use_case(actor, SetGatewayActiveDto(type=gateway_type, is_active=True))
-    return _to_response(gateway)
+    return GatewayResponse.model_validate(gateway, from_attributes=True)
 
 
 @router.post("/{gateway_type}/actions/disable", response_model=GatewayResponse)
@@ -127,39 +112,7 @@ async def disable_gateway(
     actor: Actor = Depends(require_admin),
 ) -> GatewayResponse:
     gateway = await use_case(actor, SetGatewayActiveDto(type=gateway_type, is_active=False))
-    return _to_response(gateway)
-
-
-@router.post(
-    "/{gateway_type}/actions/test",
-    response_model=GatewayTestPaymentResponse,
-    responses=error_responses(400, 502),
-)
-@inject
-async def create_test_payment(
-    gateway_type: PaymentGatewayType,
-    use_case: FromDishka[CreateTestPaymentUseCase],
-    actor: UserDto = Depends(require_admin_user),
-) -> GatewayTestPaymentResponse:
-    result = await use_case(actor, gateway_type)
-    return GatewayTestPaymentResponse(
-        order_id=result.order_id, confirmation_url=result.confirmation_url
-    )
-
-
-@router.get(
-    "/test-payments/{order_id}",
-    response_model=GatewayTestPaymentStatusResponse,
-    responses=error_responses(404),
-)
-@inject
-async def get_test_payment_status(
-    order_id: int,
-    use_case: FromDishka[GetTestPaymentStatusUseCase],
-    actor: Actor = Depends(require_admin),
-) -> GatewayTestPaymentStatusResponse:
-    order_status = await use_case(actor, order_id)
-    return GatewayTestPaymentStatusResponse(status=order_status)
+    return GatewayResponse.model_validate(gateway, from_attributes=True)
 
 
 @router.post("/actions/reorder", response_model=GatewayListResponse, responses=error_responses(400))
@@ -170,5 +123,5 @@ async def reorder_gateways(
     actor: Actor = Depends(require_admin),
 ) -> GatewayListResponse:
     gateways = await use_case(actor, ReorderGatewaysDto(ordered_types=payload.types))
-    items = [_to_response(gateway) for gateway in gateways]
+    items = [GatewayResponse.model_validate(gateway, from_attributes=True) for gateway in gateways]
     return GatewayListResponse(items=items, total=len(items))

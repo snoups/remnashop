@@ -1,8 +1,7 @@
 from loguru import logger
-from redis.asyncio import Redis
 
 from app.core.actor import Actor
-from app.core.constants import TELEGRAM_RESTART_CHANNEL
+from app.core.ports import BotSignals
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 
@@ -10,8 +9,8 @@ from app.core.usecase import UseCase
 class RestartBotUseCase(UseCase[None, None]):
     required_permission = Permission.BOT_RESTART
 
-    def __init__(self, redis: Redis) -> None:
-        self._redis = redis
+    def __init__(self, bot_signals: BotSignals) -> None:
+        self._bot_signals = bot_signals
 
     async def _execute(self, actor: Actor, data: None) -> None:
         # Fire-and-forget: if no telegram process is currently subscribed, this
@@ -21,4 +20,4 @@ class RestartBotUseCase(UseCase[None, None]):
         # to bring it back up with the new settings, matching how Remnawave
         # restarts an Xray node on config change rather than hot-reloading it.
         logger.info(f"Bot restart requested by actor {actor.log}")
-        await self._redis.publish(TELEGRAM_RESTART_CHANNEL, "restart")
+        await self._bot_signals.restart()

@@ -3,7 +3,6 @@ from decimal import Decimal
 
 from sqlalchemy import update
 
-import app.modules.transactions.tasks as tasks_module
 from app.core.db.models.transaction import Transaction
 from app.core.enums import (
     Currency,
@@ -16,10 +15,15 @@ from app.core.enums import (
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions import IDEMPOTENCY_KEY_RETENTION_DAYS
 from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.dto import CreateTransactionDto, ReconcilePaidTransactionsDto
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.tasks import prune_expired_transactions, reconcile_paid_transactions
+from app.modules.transactions.usecases import (
+    PruneExpiredTransactionsUseCase,
+    ReconcilePaidTransactionsUseCase,
+)
+from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
@@ -47,11 +51,7 @@ async def test_prune_expired_transactions_marks_stale_pending_rows_expired(
             )
         )
 
-    await prune_expired_transactions(
-        transaction_repository=transaction_repository,
-        user_repository=user_repository,
-        uow=uow,
-    )
+    await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
 
     fetched = await transaction_repository.get_by_id(stale.id)
     assert fetched.status is TransactionStatus.CANCELED
@@ -81,11 +81,7 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
             )
         )
 
-    await prune_expired_transactions(
-        transaction_repository=transaction_repository,
-        user_repository=user_repository,
-        uow=uow,
-    )
+    await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
 
     assert (await user_repository.get_by_id(user_id)).purchase_discount == 20
 
@@ -116,7 +112,7 @@ async def test_reconcile_paid_transactions_redispatches_when_no_subscription_is_
     uow,
     user_id,
     plan_id,
-    monkeypatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
@@ -124,25 +120,17 @@ async def test_reconcile_paid_transactions_redispatches_when_no_subscription_is_
         )
         await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
-    dispatched: list[dict[str, object]] = []
+    dispatch = RecordingDispatch()
 
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
+    await ReconcilePaidTransactionsUseCase(
+        transaction_repository, idempotency_repository, uow, dispatch
+    ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
-    monkeypatch.setattr(tasks_module.purchase_subscription_task, "kiq", _fake_kiq)
-
-    await reconcile_paid_transactions(
-        transaction_repository=transaction_repository,
-        subscription_repository=subscription_repository,
-        uow=uow,
-        grace_period=timedelta(seconds=0),
-    )
-
-    assert len(dispatched) == 1
-    assert dispatched[0]["idempotency_key"] == "recon-unlinked"
-    assert dispatched[0]["user_id"] == user_id
-    assert dispatched[0]["plan_snapshot"]["plan_id"] == plan_id
-    assert dispatched[0]["base_price"] == "500.00"
+    assert len(dispatch.messages) == 1
+    assert dispatch.messages[0]["idempotency_key"] == "recon-unlinked"
+    assert dispatch.messages[0]["user_id"] == user_id
+    assert dispatch.messages[0]["plan_snapshot"]["plan_id"] == plan_id
+    assert dispatch.messages[0]["base_price"] == "500.00"
 
 
 async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_linked(
@@ -151,7 +139,7 @@ async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_
     uow,
     user_id,
     plan_id,
-    monkeypatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
@@ -170,24 +158,16 @@ async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_
                 plan_snapshot=make_plan_snapshot(),
             )
         )
-        await subscription_repository.claim_idempotency_key("recon-linked")
-        await subscription_repository.link_idempotency_key("recon-linked", subscription.id)
+        await idempotency_repository.claim("recon-linked")
+        await idempotency_repository.link("recon-linked", subscription.id)
 
-    dispatched: list[dict[str, object]] = []
+    dispatch = RecordingDispatch()
 
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
+    await ReconcilePaidTransactionsUseCase(
+        transaction_repository, idempotency_repository, uow, dispatch
+    ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
-    monkeypatch.setattr(tasks_module.purchase_subscription_task, "kiq", _fake_kiq)
-
-    await reconcile_paid_transactions(
-        transaction_repository=transaction_repository,
-        subscription_repository=subscription_repository,
-        uow=uow,
-        grace_period=timedelta(seconds=0),
-    )
-
-    assert dispatched == []
+    assert dispatch.messages == []
 
 
 async def test_reconcile_paid_transactions_ignores_orders_that_are_not_paid(
@@ -196,28 +176,20 @@ async def test_reconcile_paid_transactions_ignores_orders_that_are_not_paid(
     uow,
     user_id,
     plan_id,
-    monkeypatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     async with uow:
         await transaction_repository.create(
             _paid_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="recon-pending")
         )
 
-    dispatched: list[dict[str, object]] = []
+    dispatch = RecordingDispatch()
 
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
+    await ReconcilePaidTransactionsUseCase(
+        transaction_repository, idempotency_repository, uow, dispatch
+    ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
-    monkeypatch.setattr(tasks_module.purchase_subscription_task, "kiq", _fake_kiq)
-
-    await reconcile_paid_transactions(
-        transaction_repository=transaction_repository,
-        subscription_repository=subscription_repository,
-        uow=uow,
-        grace_period=timedelta(seconds=0),
-    )
-
-    assert dispatched == []
+    assert dispatch.messages == []
 
 
 async def _create_linked_paid_order(
@@ -247,8 +219,9 @@ async def _create_linked_paid_order(
                 plan_snapshot=make_plan_snapshot(),
             )
         )
-        await subscription_repository.claim_idempotency_key(idempotency_key)
-        await subscription_repository.link_idempotency_key(idempotency_key, subscription.id)
+        idempotency = PurchaseIdempotencyRepository(subscription_repository.session)
+        await idempotency.claim(idempotency_key)
+        await idempotency.link(idempotency_key, subscription.id)
     return order
 
 
@@ -258,7 +231,7 @@ async def test_reconcile_paid_transactions_does_not_redispatch_after_idempotency
     uow,
     user_id,
     plan_id,
-    monkeypatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     await _create_linked_paid_order(
         transaction_repository,
@@ -270,31 +243,20 @@ async def test_reconcile_paid_transactions_does_not_redispatch_after_idempotency
         remnawave_user_id=555002,
     )
 
-    dispatched: list[dict[str, object]] = []
+    dispatch = RecordingDispatch()
 
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
-
-    monkeypatch.setattr(tasks_module.purchase_subscription_task, "kiq", _fake_kiq)
-
-    await reconcile_paid_transactions(
-        transaction_repository=transaction_repository,
-        subscription_repository=subscription_repository,
-        uow=uow,
-        grace_period=timedelta(seconds=0),
-    )
+    await ReconcilePaidTransactionsUseCase(
+        transaction_repository, idempotency_repository, uow, dispatch
+    ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
     async with uow:
-        await subscription_repository.delete_stale_idempotency_keys(
+        await PurchaseIdempotencyRepository(subscription_repository.session).delete_stale(
             datetime_now() + timedelta(days=1)
         )
-    await reconcile_paid_transactions(
-        transaction_repository=transaction_repository,
-        subscription_repository=subscription_repository,
-        uow=uow,
-        grace_period=timedelta(seconds=0),
-    )
+    await ReconcilePaidTransactionsUseCase(
+        transaction_repository, idempotency_repository, uow, dispatch
+    ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
-    assert dispatched == []
+    assert dispatch.messages == []
 
 
 async def test_reconcile_paid_transactions_skips_orders_older_than_the_idempotency_retention(
@@ -304,7 +266,7 @@ async def test_reconcile_paid_transactions_skips_orders_older_than_the_idempoten
     uow,
     user_id,
     plan_id,
-    monkeypatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
@@ -317,18 +279,10 @@ async def test_reconcile_paid_transactions_skips_orders_older_than_the_idempoten
         .values(updated_at=datetime_now() - timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS))
     )
 
-    dispatched: list[dict[str, object]] = []
+    dispatch = RecordingDispatch()
 
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
+    await ReconcilePaidTransactionsUseCase(
+        transaction_repository, idempotency_repository, uow, dispatch
+    ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
-    monkeypatch.setattr(tasks_module.purchase_subscription_task, "kiq", _fake_kiq)
-
-    await reconcile_paid_transactions(
-        transaction_repository=transaction_repository,
-        subscription_repository=subscription_repository,
-        uow=uow,
-        grace_period=timedelta(seconds=0),
-    )
-
-    assert dispatched == []
+    assert dispatch.messages == []

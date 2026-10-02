@@ -5,17 +5,18 @@ from typing import Optional
 
 import pytest
 
-import app.modules.transactions.gateways.cryptomus as cryptomus_module
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.transactions.dto import TransactionDto
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.cryptomus import CryptomusGateway
 from app.modules.transactions.gateways.heleket import HeleketGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -25,8 +26,10 @@ _SETTINGS = {"merchant_id": "m-1", "api_key": "key"}
 _GATEWAYS = [(CryptomusGateway, "api.cryptomus.com"), (HeleketGateway, "api.heleket.com")]
 
 
-def _gateway(cls: type[CryptomusGateway] = CryptomusGateway) -> CryptomusGateway:
-    return cls(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+def _gateway(
+    cls: type[CryptomusGateway] = CryptomusGateway, *, http: PaymentHttpClient = NO_HTTP
+) -> CryptomusGateway:
+    return cls(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http)
 
 
 def _md5_sign(body: bytes) -> str:
@@ -55,15 +58,13 @@ def _order() -> TransactionDto:
 
 @pytest.mark.parametrize(("cls", "host"), _GATEWAYS)
 async def test_create_payment_signs_the_body_and_stores_the_uuid(
-    monkeypatch: pytest.MonkeyPatch, cls: type[CryptomusGateway], host: str
+    cls: type[CryptomusGateway], host: str
 ) -> None:
-    http = install_http(
-        monkeypatch,
-        cryptomus_module,
+    http = HttpRecorder(
         json_response({"state": 0, "result": {"uuid": "u-1", "url": "https://pay/1"}}),
     )
 
-    intent = await _gateway(cls).create_payment(_order())
+    intent = await _gateway(cls, http=http.client).create_payment(_order())
 
     assert http.last.url.host == host
     assert http.last.headers["sign"] == _md5_sign(http.last.content)
@@ -107,11 +108,9 @@ async def test_parse_webhook_status_mapping(
 
 @pytest.mark.parametrize(("cls", "host"), _GATEWAYS)
 async def test_confirm_queries_payment_info_by_order_id(
-    monkeypatch: pytest.MonkeyPatch, cls: type[CryptomusGateway], host: str
+    cls: type[CryptomusGateway], host: str
 ) -> None:
-    http = install_http(
-        monkeypatch,
-        cryptomus_module,
+    http = HttpRecorder(
         json_response(
             {
                 "state": 0,
@@ -125,10 +124,10 @@ async def test_confirm_queries_payment_info_by_order_id(
             }
         ),
     )
-    signal = await _gateway(cls).parse_webhook(webhook(_hook()))
+    signal = await _gateway(cls, http=http.client).parse_webhook(webhook(_hook()))
     assert signal is not None
 
-    confirmed = await _gateway(cls).confirm(_order(), signal)
+    confirmed = await _gateway(cls, http=http.client).confirm(_order(), signal)
 
     assert confirmed is not None
     assert http.last.url.host == host
@@ -137,12 +136,10 @@ async def test_confirm_queries_payment_info_by_order_id(
     assert http.last.headers["sign"] == _md5_sign(http.last.content)
 
 
-async def test_confirm_rejects_an_unpaid_invoice(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(
-        monkeypatch,
-        cryptomus_module,
+async def test_confirm_rejects_an_unpaid_invoice() -> None:
+    http = HttpRecorder(
         json_response({"state": 0, "result": {"order_id": ORDER_REF, "status": "check"}}),
     )
-    signal = await _gateway().parse_webhook(webhook(_hook()))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_hook()))
     assert signal is not None
-    assert await _gateway().confirm(_order(), signal) is None
+    assert await _gateway(http=http.client).confirm(_order(), signal) is None

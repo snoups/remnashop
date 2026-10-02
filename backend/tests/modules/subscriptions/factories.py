@@ -3,14 +3,24 @@ from decimal import Decimal
 from typing import Any, Optional
 
 from remnapy.enums import TrafficLimitStrategy
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import Currency, SubscriptionStatus
 from app.core.utils.time import datetime_now
 from app.modules.plans.dto import PlanDto
+from app.modules.referrals.repository import ReferralRepository
+from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto, PlanSnapshot, SubscriptionDto
+from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+
+
+def make_eligibility(session: AsyncSession) -> PurchaseEligibility:
+    return PurchaseEligibility(
+        SubscriptionRepository(session), ReferralRepository(session), SettingsRepository(session)
+    )
 
 
 def make_plan_snapshot(**overrides: Any) -> PlanSnapshot:

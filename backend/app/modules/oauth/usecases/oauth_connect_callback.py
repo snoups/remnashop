@@ -1,14 +1,11 @@
-from dataclasses import dataclass
-
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthIdentityDto
+from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthIdentityDto
 from app.modules.oauth.events import OAuthIdentityConnectedEvent
 from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
 from app.modules.oauth.providers.registry import get_oauth_client
@@ -16,14 +13,6 @@ from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthState
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
-
-
-@dataclass(frozen=True, kw_only=True)
-class OAuthCallbackDto:
-    provider: OAuthProvider
-    code: str
-    state: str
-    client_ip: str
 
 
 class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, UserDto]):

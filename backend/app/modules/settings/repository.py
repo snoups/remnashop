@@ -2,10 +2,8 @@ from typing import Final, Optional, TypeVar
 
 from pydantic import SecretStr
 from sqlalchemy import delete, func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db.models.active_locale import ActiveLocale
 from app.core.db.models.appearance_settings import AppearanceSettings
 from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_settings import BotSettings
@@ -13,9 +11,7 @@ from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import get_or_create_singleton
-from app.core.enums import AppearanceImageKind, Locale
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import ConflictError
+from app.core.enums import AppearanceImageKind
 from app.modules.settings.dto import (
     AppearanceSettingsDto,
     BotCommandDto,
@@ -56,6 +52,7 @@ class SettingsRepository:
             id=row.id,
             token=SecretStr(row.token) if row.token is not None else None,
             secret_token=SecretStr(row.secret_token) if row.secret_token is not None else None,
+            proxy_url=SecretStr(row.proxy_url) if row.proxy_url is not None else None,
             drop_pending_updates=row.drop_pending_updates,
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -66,19 +63,16 @@ class SettingsRepository:
         return self._to_dto(row)
 
     async def update_bot_settings(self, data: UpdateBotSettingsDto) -> BotSettingsDto:
-        # get-or-create on a fixed id=1, not a DB constraint like OWNER's
-        # partial unique index -- a concurrent first-ever write can race here,
-        # but id is still the primary key, so the loser gets an IntegrityError
-        # rather than a duplicate row. Deliberately left low-stakes/unhardened
-        # (see CLAUDE.md's Settings & Secrets section).
         row = await self._get_or_create_singleton(BotSettings)
+        apply_partial_update(row, data)
 
-        if data.token is not None:
-            row.token = data.token
-        if data.secret_token is not None:
-            row.secret_token = data.secret_token
-        if data.drop_pending_updates is not None:
-            row.drop_pending_updates = data.drop_pending_updates
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_dto(row)
+
+    async def set_bot_proxy_url(self, proxy_url: Optional[str]) -> BotSettingsDto:
+        row = await self._get_or_create_singleton(BotSettings)
+        row.proxy_url = proxy_url
 
         await self.session.flush()
         await self.session.refresh(row)
@@ -191,15 +185,7 @@ class SettingsRepository:
         self, data: UpdateAppearanceSettingsDto
     ) -> AppearanceSettingsDto:
         row = await self._get_or_create_singleton(AppearanceSettings)
-
-        if data.brand_name is not None:
-            row.brand_name = data.brand_name
-        if data.primary_color is not None:
-            row.primary_color = data.primary_color
-        if data.shader_palette is not None:
-            row.shader_palette = data.shader_palette
-        if data.shader_enabled is not None:
-            row.shader_enabled = data.shader_enabled
+        apply_partial_update(row, data)
 
         await self.session.flush()
         await self.session.refresh(row)
@@ -291,19 +277,3 @@ class SettingsRepository:
         await self.session.flush()
         result = await self.session.execute(select(BotCommand).order_by(BotCommand.sort_order))
         return [self._to_command_dto(row) for row in result.scalars()]
-
-    async def list_active_locales(self) -> list[Locale]:
-        result = await self.session.execute(select(ActiveLocale.locale))
-        return list(result.scalars())
-
-    async def add_active_locale(self, locale: Locale) -> None:
-        self.session.add(ActiveLocale(locale=locale))
-        try:
-            await self.session.flush()
-        except IntegrityError as error:
-            raise ConflictError(
-                f"Locale already active: {locale}", code=ErrorCode.LOCALE_ALREADY_ACTIVE
-            ) from error
-
-    async def remove_active_locale(self, locale: Locale) -> None:
-        await self.session.execute(delete(ActiveLocale).where(ActiveLocale.locale == locale))

@@ -15,14 +15,13 @@ from app.modules.blacklist.api.schemas import (
 )
 from app.modules.blacklist.dto import (
     AddBlacklistSourceDto,
-    BlacklistDto,
     BlacklistEntryInputDto,
-    BlacklistSourceDto,
     UpdateBlacklistSourceDto,
 )
 from app.modules.blacklist.usecases import (
     AddBlacklistEntryUseCase,
     AddBlacklistSourceUseCase,
+    GetBlacklistSourceUseCase,
     ListBlacklistSourcesUseCase,
     ListBlacklistUseCase,
     RemoveBlacklistEntryUseCase,
@@ -34,22 +33,6 @@ from app.modules.blacklist.usecases import (
 router = APIRouter(prefix="/blacklist", tags=["blacklist"])
 
 
-def _to_response(blacklist: BlacklistDto) -> BlacklistResponse:
-    return BlacklistResponse(telegram_ids=blacklist.telegram_ids, emails=blacklist.emails)
-
-
-def _to_source_response(source: BlacklistSourceDto) -> BlacklistSourceResponse:
-    return BlacklistSourceResponse(
-        id=source.id,
-        url=source.url,
-        name=source.name,
-        enabled=source.enabled,
-        entries_count=source.entries_count,
-        last_synced_at=source.last_synced_at,
-        last_error=source.last_error,
-    )
-
-
 @router.get("", response_model=BlacklistResponse)
 @inject
 async def get_blacklist(
@@ -57,7 +40,7 @@ async def get_blacklist(
     actor: Actor = Depends(require_admin),
 ) -> BlacklistResponse:
     blacklist = await use_case(actor)
-    return _to_response(blacklist)
+    return BlacklistResponse.model_validate(blacklist, from_attributes=True)
 
 
 @router.put(
@@ -71,7 +54,7 @@ async def add_blacklist_entry(
     actor: Actor = Depends(require_admin),
 ) -> BlacklistResponse:
     blacklist = await use_case(actor, BlacklistEntryInputDto(kind=kind, value=value))
-    return _to_response(blacklist)
+    return BlacklistResponse.model_validate(blacklist, from_attributes=True)
 
 
 @router.delete("/entries/{kind}/{value}", response_model=BlacklistResponse)
@@ -83,7 +66,7 @@ async def remove_blacklist_entry(
     actor: Actor = Depends(require_admin),
 ) -> BlacklistResponse:
     blacklist = await use_case(actor, BlacklistEntryInputDto(kind=kind, value=value))
-    return _to_response(blacklist)
+    return BlacklistResponse.model_validate(blacklist, from_attributes=True)
 
 
 @router.get("/sources", response_model=BlacklistSourceListResponse)
@@ -93,8 +76,25 @@ async def list_blacklist_sources(
     actor: Actor = Depends(require_admin),
 ) -> BlacklistSourceListResponse:
     sources = await use_case(actor)
-    items = [_to_source_response(source) for source in sources]
+    items = [
+        BlacklistSourceResponse.model_validate(source, from_attributes=True) for source in sources
+    ]
     return BlacklistSourceListResponse(items=items, total=len(items))
+
+
+@router.get(
+    "/sources/{source_id:int}",
+    response_model=BlacklistSourceResponse,
+    responses=error_responses(404),
+)
+@inject
+async def get_blacklist_source(
+    source_id: int,
+    use_case: FromDishka[GetBlacklistSourceUseCase],
+    actor: Actor = Depends(require_admin),
+) -> BlacklistSourceResponse:
+    source = await use_case(actor, source_id)
+    return BlacklistSourceResponse.model_validate(source, from_attributes=True)
 
 
 @router.post(
@@ -110,7 +110,7 @@ async def add_blacklist_source(
     actor: Actor = Depends(require_admin),
 ) -> BlacklistSourceResponse:
     source = await use_case(actor, AddBlacklistSourceDto(url=payload.url, name=payload.name))
-    return _to_source_response(source)
+    return BlacklistSourceResponse.model_validate(source, from_attributes=True)
 
 
 @router.delete("/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -136,7 +136,7 @@ async def update_blacklist_source(
     source = await use_case(
         actor, UpdateBlacklistSourceDto(source_id=source_id, enabled=payload.enabled)
     )
-    return _to_source_response(source)
+    return BlacklistSourceResponse.model_validate(source, from_attributes=True)
 
 
 @router.post("/sources/actions/sync", status_code=status.HTTP_202_ACCEPTED)

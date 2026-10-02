@@ -14,7 +14,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -48,7 +47,7 @@ class CryptoPayGateway(PaymentGateway):
             "paid_btn_url": self._return_url,
             "expires_in": link_lifetime(order, unit="seconds", maximum=_MAX_EXPIRES_IN_S),
         }
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/createInvoice", json=payload, headers=self._headers()
         )
         response.raise_for_status()
@@ -90,7 +89,7 @@ class CryptoPayGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
             return NOT_PAID
-        response = await http_client.get(
+        response = await self._http.get(
             f"{_API_BASE}/getInvoices",
             params={"invoice_ids": order.external_payment_id},
             headers=self._headers(),

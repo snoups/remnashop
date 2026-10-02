@@ -1,6 +1,6 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, provide, provide_all
 
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 from app.modules.gateways.usecases import (
     ListGatewaysUseCase,
     ReorderGatewaysUseCase,
@@ -12,11 +12,13 @@ from app.modules.gateways.usecases import (
 class GatewaysProvider(Provider):
     scope = Scope.REQUEST
 
-    gateways_repository = provide(GatewaysRepository)
-    list_gateways_use_case = provide(ListGatewaysUseCase)
-    update_gateway_settings_use_case = provide(UpdateGatewaySettingsUseCase)
-    set_gateway_active_use_case = provide(SetGatewayActiveUseCase)
-    reorder_gateways_use_case = provide(ReorderGatewaysUseCase)
+    gateway_repository = provide(GatewayRepository)
+    use_cases = provide_all(
+        ListGatewaysUseCase,
+        UpdateGatewaySettingsUseCase,
+        SetGatewayActiveUseCase,
+        ReorderGatewaysUseCase,
+    )
 
 
 def get_gateways_providers() -> list[Provider]:

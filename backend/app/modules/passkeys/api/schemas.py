@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class PasskeyResponse(BaseModel):
@@ -11,6 +11,11 @@ class PasskeyResponse(BaseModel):
     backed_up: bool
     created_at: datetime
     last_used_at: Optional[datetime] = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _unnamed_as_passkey(cls, value: Optional[str]) -> str:
+        return value or "Passkey"
 
 
 class VerifyPasskeyRegistrationRequest(BaseModel):

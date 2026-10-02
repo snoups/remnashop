@@ -570,7 +570,7 @@
       "errorInvalidToken": "Неверный формат токена бота.",
       "dropPendingUpdatesLabel": "Сбрасывать очередь обновлений при установке вебхука",
       "dropPendingUpdatesHint": "Накопленные до установки вебхука обновления Telegram будут отброшены, а не доставлены после активации.",
-      "applyChangesDescription": "Перезапускает telegram-процесс, чтобы он подхватил сохранённые токен и секрет. Не действует, если процесс сейчас не запущен.",
+      "applyChangesDescription": "Перезапускает telegram-процесс, чтобы он подхватил сохранённые токен, секрет и прокси. Не действует, если процесс сейчас не запущен.",
       "restartBot": "Перезапустить",
       "restarting": "Перезапуск…",
       "restartCooldown": "Перезапуск ({{seconds}}с)",
@@ -580,7 +580,13 @@
       "closeLogs": "Закрыть",
       "refreshLogs": "Обновить",
       "logsEmpty": "Логов пока нет. Они появятся после запуска процесса telegram.",
-      "logsLoadError": "Не удалось загрузить логи."
+      "logsLoadError": "Не удалось загрузить логи.",
+      "proxyLabel": "Прокси для Telegram",
+      "proxyHint": "Через него идут все запросы к Telegram API: сам бот и дашборд (статус, команды, эмодзи-паки). Поддерживаются socks5, socks5h и http в формате scheme://[user:password@]host:port. Бот подхватит прокси после перезапуска.",
+      "proxyPlaceholder": "socks5://user:password@host:1080",
+      "proxyConfiguredPlaceholder": "Прокси задан — оставьте пустым, чтобы сохранить текущий",
+      "removeProxy": "Удалить",
+      "proxyRemoved": "Прокси удалён."
     },
     "botCommands": {
       "title": "Команды",
@@ -1080,6 +1086,8 @@
     "BOT_SETTINGS_MANAGE": "Изменение настроек бота",
     "BOT_COMMANDS_MANAGE": "Изменение команд бота",
     "BOT_RESTART": "Перезапуск бота",
+    "BOT_PROXY_SET": "Настройка прокси бота",
+    "BOT_PROXY_REMOVE": "Удаление прокси бота",
     "SHOP_SETTINGS_VIEW": "Просмотр настроек магазина",
     "SHOP_SETTINGS_MANAGE": "Изменение настроек магазина",
     "OAUTH_SETTINGS_VIEW": "Просмотр настроек OAuth",
@@ -1181,6 +1189,7 @@
     "BACKUPS_STATS_VIEW": "Просмотр статистики резервного копирования",
     "BLACKLIST_VIEW": "Просмотр чёрного списка",
     "BLACKLIST_SOURCES_VIEW": "Просмотр источников чёрного списка",
+    "BLACKLIST_SOURCE_DETAIL_VIEW": "Просмотр источника чёрного списка",
     "BLACKLIST_ENTRY_ADD": "Добавление записей в чёрный список",
     "BLACKLIST_ENTRY_REMOVE": "Удаление записей из чёрного списка",
     "BLACKLIST_SOURCE_ADD": "Добавление источников чёрного списка",
@@ -2916,6 +2925,7 @@
     "WEBHOOK_SOURCE_UNTRUSTED": "Источник вебхука не доверенный",
     "WEBHOOK_STALE": "Вебхук устарел",
     "WITHDRAWAL_AMOUNT_INVALID": "Сумма должна быть больше нуля",
-    "WITHDRAWAL_EXCEEDS_POINTS": "Недостаточно баллов"
+    "WITHDRAWAL_EXCEEDS_POINTS": "Недостаточно баллов",
+    "BOT_PROXY_URL_INVALID": "Неверный адрес прокси: нужен socks5, socks5h или http с хостом и портом"
   }
 }

@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 from app.__version__ import __version__
 from app.core.config import AppConfig
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
-from app.telegram.restart_listener import listen_for_restart
+from app.telegram.bot_signals import listen_for_bot_signals, restart_handlers
 
 
 def get_idle_app(config: AppConfig) -> FastAPI:
@@ -17,7 +17,7 @@ def get_idle_app(config: AppConfig) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Standalone client, not a DI container -- the idle app has none.
         redis = Redis.from_url(config.redis.dsn, decode_responses=True)
-        restart_task = asyncio.create_task(listen_for_restart(config))
+        restart_task = asyncio.create_task(listen_for_bot_signals(redis, restart_handlers()))
         runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "telegram"))
         yield
         runtime_heartbeat_task.cancel()

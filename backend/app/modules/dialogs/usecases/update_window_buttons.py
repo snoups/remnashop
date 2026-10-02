@@ -1,52 +1,45 @@
-from dataclasses import dataclass
 from typing import Final
-
-from redis.asyncio import Redis
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import DialogWindowKind, Locale
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
+from app.core.ports import BotSignals
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
-from app.modules.dialogs.dto import DialogButtonInputDto, DialogWindowDto
+from app.modules.dialogs.dto import (
+    DialogWindowDto,
+    UpdateDialogWindowButtonsDto,
+)
 from app.modules.dialogs.repository import DialogRepository
-from app.modules.dialogs.usecases._publish import publish_dialog_change
 from app.modules.dialogs.validation import validate_buttons
-from app.modules.settings import SettingsRepository
-from app.modules.translations import TranslationsRepository, serialize_to_fluent
+from app.modules.translations import (
+    TranslationRepository,
+    assert_fluent_compiles,
+    serialize_to_fluent,
+)
 
 # Telegram rejects a button with no text, so a new one never starts empty.
 _NEW_BUTTON_LABELS: Final[dict[Locale, str]] = {Locale.RU: "Кнопка"}
 _NEW_BUTTON_LABEL_DEFAULT: Final[str] = "Button"
 
 
-@dataclass(frozen=True, kw_only=True)
-class UpdateDialogWindowButtonsInput:
-    key: str
-    buttons: list[DialogButtonInputDto]
-
-
-class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsInput, DialogWindowDto]):
+class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsDto, DialogWindowDto]):
     required_permission = Permission.DIALOGS_WINDOWS_BUTTONS_UPDATE
 
     def __init__(
         self,
         dialog_repository: DialogRepository,
-        translations_repository: TranslationsRepository,
-        settings_repository: SettingsRepository,
+        translation_repository: TranslationRepository,
         uow: UnitOfWork,
-        redis: Redis,
+        bot_signals: BotSignals,
     ) -> None:
         self._dialog_repository = dialog_repository
-        self._translations_repository = translations_repository
-        self._settings_repository = settings_repository
+        self._translation_repository = translation_repository
         self._uow = uow
-        self._redis = redis
+        self._bot_signals = bot_signals
 
-    async def _execute(self, actor: Actor, data: UpdateDialogWindowButtonsInput) -> DialogWindowDto:
+    async def _execute(self, actor: Actor, data: UpdateDialogWindowButtonsDto) -> DialogWindowDto:
         async with self._uow:
             window = await self._dialog_repository.get_by_key_or_raise(data.key)
             all_windows = await self._dialog_repository.list_all()
@@ -68,7 +61,7 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsInput, D
                 system_text_keys=system_text_keys,
             )
 
-            locales = await self._settings_repository.list_active_locales()
+            locales = await self._translation_repository.list_active_locales()
         async with self._uow:
             seeded = False
             for button in data.buttons:
@@ -76,27 +69,16 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsInput, D
                     seeded = True
                     for locale in locales:
                         label = _NEW_BUTTON_LABELS.get(locale, _NEW_BUTTON_LABEL_DEFAULT)
-                        await self._translations_repository.seed_missing(
+                        await self._translation_repository.seed_missing(
                             locale, button.text_key, "", label
                         )
             if seeded:
                 await self._check_locales_compile(locales)
             updated = await self._dialog_repository.replace_buttons(data.key, data.buttons)
-        await publish_dialog_change(self._redis)
+        await self._bot_signals.dialogs_changed()
         return updated
 
     async def _check_locales_compile(self, locales: list[Locale]) -> None:
-        # Lazy import -- fluent_compiler lives under the telegram extra.
-        from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
-
         for locale in locales:
-            entries = await self._translations_repository.list_by_locale(locale)
-            bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
-                locale.value, text=serialize_to_fluent(entries)
-            )
-            errors = bundle.check_messages()
-            if errors:
-                raise ValidationError(
-                    f"Invalid Fluent syntax in {locale.value}: {errors[0][1]}",
-                    code=ErrorCode.FLUENT_SYNTAX_INVALID,
-                )
+            entries = await self._translation_repository.list_by_locale(locale)
+            assert_fluent_compiles(locale, serialize_to_fluent(entries))

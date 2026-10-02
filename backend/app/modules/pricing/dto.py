@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Final, Literal, Optional
+from typing import Final, Optional
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import Currency, PriceAdjustScope, RoundingMode
+from app.core.enums import Currency, RoundingMode
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 
@@ -54,62 +54,3 @@ class UpdateCurrencyRateDto:
 class UpdatePricingSettingsDto:
     price_per_day: Optional[Decimal] = None
     price_per_gb: Optional[Decimal] = None
-
-
-class PriceBookCell(BaseDto):
-    currency: Currency
-    amount: Decimal
-    is_pinned: bool
-
-
-class PriceBookRow(BaseDto):
-    kind: Literal["plan_duration", "addon"]
-    ref_id: int
-    plan_id: Optional[int] = None
-    # plain plan/add-on name; the client adds the duration from `days` in its own language
-    name: str
-    days: Optional[int]
-    base_price: Decimal
-    cells: list[PriceBookCell]
-
-
-class PriceBookDto(BaseDto):
-    rate_table: list[CurrencyRateDto]
-    settings: PricingSettingsDto
-    plans: list[PriceBookRow]
-    addons: list[PriceBookRow]
-
-
-@dataclass(frozen=True, kw_only=True)
-class SwitchAnchorCurrencyDto:
-    new_anchor: Currency
-
-
-@dataclass(frozen=True, kw_only=True)
-class AdjustBasePricesDto:
-    scope: PriceAdjustScope
-    factor: Decimal
-    plan_duration_ids: list[int] = field(default_factory=list)
-    addon_ids: list[int] = field(default_factory=list)
-
-
-@dataclass(frozen=True, kw_only=True)
-class PricingChangePreviewDto:
-    # Exactly one of these three is set by the caller -- the usecase validates that.
-    rate: Optional[UpdateCurrencyRateDto] = None
-    anchor: Optional[Currency] = None
-    adjust: Optional[AdjustBasePricesDto] = None
-
-
-class PricingDiffRow(BaseDto):
-    # plain plan/add-on name; `days` is set for plan durations, None for add-ons
-    name: str
-    days: Optional[int] = None
-    currency: Currency
-    old: Decimal
-    new: Decimal
-
-
-class PricingDiffDto(BaseDto):
-    changes: list[PricingDiffRow]
-    affected_count: int

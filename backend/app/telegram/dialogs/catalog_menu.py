@@ -1,11 +1,10 @@
-from app.modules.dialogs import catalog
-from app.modules.dialogs.flows.menu import register_menu_metadata
+from app.modules.dialogs import catalog, register_all_flow_metadata
 from app.telegram.dialogs.state_pool import register_seed_state
 from app.telegram.states import MainMenu
 
 
 def register_menu_catalog() -> None:
-    register_menu_metadata()  # idempotent; safe to re-enter
+    register_all_flow_metadata()  # idempotent; safe to re-enter
 
     # Idempotent guard -- routers/menu/__init__.py eagerly imports both `dialog`
     # and `handlers` submodules together (`from app.telegram.routers.menu import

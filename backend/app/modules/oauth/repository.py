@@ -50,17 +50,6 @@ class OAuthIdentityRepository:
         row = await self.session.scalar(stmt)
         return self._to_dto(row) if row else None
 
-    async def get_by_user_and_provider(
-        self,
-        user_id: int,
-        provider: OAuthProvider,
-    ) -> Optional[OAuthIdentityDto]:
-        stmt = select(OAuthIdentity).where(
-            OAuthIdentity.user_id == user_id, OAuthIdentity.provider == provider
-        )
-        row = await self.session.scalar(stmt)
-        return self._to_dto(row) if row else None
-
     async def list_by_user(self, user_id: int) -> list[OAuthIdentityDto]:
         stmt = select(OAuthIdentity).where(OAuthIdentity.user_id == user_id)
         rows = await self.session.scalars(stmt)

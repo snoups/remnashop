@@ -16,17 +16,15 @@ from app.core.enums import (
 from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
-from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.dto import (
+    CreateTransactionDto,
+    GetTransactionSummaryDto,
+    ListTransactionsDto,
+)
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
-from app.modules.transactions.usecases.get_transaction_summary import (
-    GetTransactionSummaryInput,
-    GetTransactionSummaryUseCase,
-)
-from app.modules.transactions.usecases.list_transactions import (
-    ListTransactionsInput,
-    ListTransactionsUseCase,
-)
+from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
+from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -82,7 +80,7 @@ async def test_list_transactions_requires_the_transactions_view_permission(
 ) -> None:
     regular_actor = UserDto(id=user_id, name="not-an-admin", role=Role.USER)
     with pytest.raises(PermissionDeniedError):
-        await list_transactions_use_case(regular_actor, ListTransactionsInput())
+        await list_transactions_use_case(regular_actor, ListTransactionsDto())
 
 
 async def test_list_transactions_filters_by_status(
@@ -103,13 +101,13 @@ async def test_list_transactions_filters_by_status(
         await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
 
     items, total = await list_transactions_use_case(
-        admin_actor, ListTransactionsInput(status=TransactionStatus.PAID)
+        admin_actor, ListTransactionsDto(status=TransactionStatus.PAID)
     )
     assert total == 1
     assert [item.order.id for item in items] == [paid.id]
     assert items[0].user is not None and items[0].user.name == "buyer"
 
-    items, total = await list_transactions_use_case(admin_actor, ListTransactionsInput())
+    items, total = await list_transactions_use_case(admin_actor, ListTransactionsDto())
     ids = {item.order.id for item in items}
     assert {pending.id, paid.id} <= ids
 
@@ -170,7 +168,7 @@ async def test_get_transaction_summary_counts_and_converts_paid_revenue(
         rates = await pricing_repository.get_rate_table()
 
     use_case = GetTransactionSummaryUseCase(transaction_repository, pricing_repository, uow)
-    summary = await use_case(admin_actor, GetTransactionSummaryInput())
+    summary = await use_case(admin_actor, GetTransactionSummaryDto())
 
     expected_revenue = (
         Decimal("500")

@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.referral import Referral
@@ -455,3 +456,24 @@ async def test_list_paginated_search_does_not_match_login(
     assert total == 0
     _, total = await referral_repository.list_paginated(search="2211")
     assert total == 1
+
+
+async def test_create_reward_does_not_report_a_broken_reference_as_already_granted(
+    referral_repository: ReferralRepository, user_repository: UserRepository
+) -> None:
+    referrer_id = await _create_user(user_repository, 2090)
+    referred_id = await _create_user(user_repository, 2091)
+    edge = await referral_repository.create_referral(
+        referrer_id=referrer_id, referred_id=referred_id, level=1
+    )
+
+    # a missing subscription is not a duplicate -- the retry must see the real error
+    with pytest.raises(IntegrityError):
+        await referral_repository.create_reward(
+            referral_id=edge.id,
+            referrer_id=referrer_id,
+            subscription_id=999_999,
+            payment_key="order-x",
+            type=ReferralRewardType.POINTS,
+            amount=Decimal("1"),
+        )

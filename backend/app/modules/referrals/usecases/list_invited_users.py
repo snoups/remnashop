@@ -1,27 +1,15 @@
-from dataclasses import dataclass
-from typing import Optional
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.referrals.dto import DEFAULT_PAGE_SIZE, InvitedUserDto
+from app.modules.referrals.dto import InvitedUserDto, ListInvitedUsersDto
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.users import UserRepository
 
 
-@dataclass(frozen=True, kw_only=True)
-class ListInvitedUsersInput:
-    user_id: int
-    level: Optional[int] = None
-    search: Optional[str] = None
-    page: int = 1
-    page_size: int = DEFAULT_PAGE_SIZE
-
-
-class ListInvitedUsersUseCase(UseCase[ListInvitedUsersInput, tuple[list[InvitedUserDto], int]]):
+class ListInvitedUsersUseCase(UseCase[ListInvitedUsersDto, tuple[list[InvitedUserDto], int]]):
     required_permission = Permission.REFERRALS_INVITED_VIEW
 
     def __init__(
@@ -35,7 +23,7 @@ class ListInvitedUsersUseCase(UseCase[ListInvitedUsersInput, tuple[list[InvitedU
         self._uow = uow
 
     async def _execute(
-        self, actor: Actor, data: ListInvitedUsersInput
+        self, actor: Actor, data: ListInvitedUsersDto
     ) -> tuple[list[InvitedUserDto], int]:
         async with self._uow:
             if await self._user_repository.get_by_id(data.user_id) is None:

@@ -3,14 +3,17 @@ from typing import Annotated, Final, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.core.enums import Locale
-
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
 
 
 class BotSettingsResponse(BaseModel):
     is_configured: bool
+    is_proxy_configured: bool
     drop_pending_updates: bool
+
+
+class SetBotProxyRequest(BaseModel):
+    proxy_url: str = Field(min_length=1)
 
 
 class BotStatusResponse(BaseModel):
@@ -106,11 +109,6 @@ class UpdateOAuthSettingsRequest(BaseModel):
     passkey_enabled: Optional[bool] = None
     passkey_rp_id: Optional[str] = Field(default=None, min_length=1, max_length=255)
     passkey_origin: Optional[str] = Field(default=None, pattern=r"^https?://.+", max_length=512)
-
-
-class ActiveLocalesResponse(BaseModel):
-    active: list[Locale]
-    available: list[Locale]
 
 
 class AppearanceResponse(BaseModel):

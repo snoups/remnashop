@@ -13,14 +13,12 @@ from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.ports import BotCommandsSync
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded
-from app.modules.settings import SettingsRepository, repush_bot_commands_if_configured
-from app.modules.translations import TranslationsRepository
+from app.modules.translations import TranslationRepository
+from app.telegram.bot_signals import listen_for_bot_signals, live_update_handlers
 from app.telegram.dialogs.config_cache import DialogConfigCache
-from app.telegram.dialogs.config_listener import listen_for_dialog_config_changes
-from app.telegram.restart_listener import listen_for_restart
-from app.telegram.translation_listener import listen_for_translation_changes
 from app.telegram.webhook import TelegramWebhookEndpoint
 
 _BOT_STATE_LABELS: Final[dict[Optional[bool], str]] = {
@@ -39,16 +37,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with container(scope=Scope.REQUEST) as startup_container:
         config = await startup_container.get(AppConfig)
         dialog_repository = await startup_container.get(DialogRepository)
-        translations_repository = await startup_container.get(TranslationsRepository)
-        settings_repository = await startup_container.get(SettingsRepository)
+        translation_repository = await startup_container.get(TranslationRepository)
         uow = await startup_container.get(UnitOfWork)
         async with uow:
-            await ensure_dialogs_seeded(
-                dialog_repository, translations_repository, settings_repository
-            )
-        await repush_bot_commands_if_configured(
-            settings_repository, translations_repository, config, uow
-        )
+            await ensure_dialogs_seeded(dialog_repository, translation_repository)
+        await (await startup_container.get(BotCommandsSync)).push()
 
         webhook_url = config.bot.webhook_url(config.domain).get_secret_value()
         await bot(
@@ -73,15 +66,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 "Please enable Inline Mode in BotFather for correct work of some features"
             )
 
-    restart_task = asyncio.create_task(listen_for_restart(config))
-
-    dialog_cache = await container.get(DialogConfigCache)
-    dialog_config_task = asyncio.create_task(listen_for_dialog_config_changes(config, dialog_cache))
-
-    translator_hub = await container.get(TranslatorHub)
-    translation_task = asyncio.create_task(listen_for_translation_changes(config, translator_hub))
-
     redis = await container.get(Redis)
+    handlers = live_update_handlers(
+        await container.get(DialogConfigCache), await container.get(TranslatorHub)
+    )
+    bot_signals_task = asyncio.create_task(listen_for_bot_signals(redis, handlers))
     runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "telegram"))
 
     await endpoint.startup()
@@ -116,14 +105,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     runtime_heartbeat_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await runtime_heartbeat_task
-    dialog_config_task.cancel()
+    bot_signals_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
-        await dialog_config_task
-    translation_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await translation_task
-    restart_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await restart_task
+        await bot_signals_task
     await endpoint.shutdown()
     await container.close()

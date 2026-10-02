@@ -1,4 +1,4 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, provide_all
 
 from app.modules.analytics.usecases import (
     GetAnalyticsUseCase,
@@ -11,10 +11,12 @@ from app.modules.analytics.usecases import (
 class AnalyticsProvider(Provider):
     scope = Scope.REQUEST
 
-    get_analytics_use_case = provide(GetAnalyticsUseCase)
-    get_funnel_use_case = provide(GetFunnelUseCase)
-    get_cohort_retention_use_case = provide(GetCohortRetentionUseCase)
-    get_ltv_distribution_use_case = provide(GetLtvDistributionUseCase)
+    use_cases = provide_all(
+        GetAnalyticsUseCase,
+        GetFunnelUseCase,
+        GetCohortRetentionUseCase,
+        GetLtvDistributionUseCase,
+    )
 
 
 def get_analytics_providers() -> list[Provider]:

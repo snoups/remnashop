@@ -12,7 +12,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.image import matches_image_magic_bytes, read_image_size, read_svg_size
 from app.modules.settings.appearance_storage import delete_appearance_image, save_appearance_image
-from app.modules.settings.dto import AppearanceSettingsDto
+from app.modules.settings.dto import AppearanceSettingsDto, UploadAppearanceImageDto
 from app.modules.settings.repository import SettingsRepository
 
 
@@ -39,12 +39,6 @@ _FORMAT_BY_CONTENT_TYPE: Final[dict[str, AppearanceImageFormat]] = {
     "image/webp": AppearanceImageFormat.WEBP,
     "image/svg+xml": AppearanceImageFormat.SVG,
 }
-
-
-@dataclass(frozen=True, kw_only=True)
-class UploadAppearanceImageInput:
-    content_type: str
-    data: bytes
 
 
 # Vector: no pixel size to range-check, only the aspect ratio.
@@ -87,7 +81,7 @@ async def _upload_appearance_image(
     config: AppConfig,
     uow: UnitOfWork,
     kind: AppearanceImageKind,
-    data: UploadAppearanceImageInput,
+    data: UploadAppearanceImageDto,
 ) -> AppearanceSettingsDto:
     limits = _LIMITS_BY_KIND[kind]
     if len(data.data) > limits.max_bytes:
@@ -123,7 +117,7 @@ async def _upload_appearance_image(
     return result
 
 
-class UploadAppearanceLogoUseCase(UseCase[UploadAppearanceImageInput, AppearanceSettingsDto]):
+class UploadAppearanceLogoUseCase(UseCase[UploadAppearanceImageDto, AppearanceSettingsDto]):
     required_permission = Permission.APPEARANCE_LOGO_UPLOAD
 
     def __init__(
@@ -133,15 +127,13 @@ class UploadAppearanceLogoUseCase(UseCase[UploadAppearanceImageInput, Appearance
         self._config = config
         self._uow = uow
 
-    async def _execute(
-        self, actor: Actor, data: UploadAppearanceImageInput
-    ) -> AppearanceSettingsDto:
+    async def _execute(self, actor: Actor, data: UploadAppearanceImageDto) -> AppearanceSettingsDto:
         return await _upload_appearance_image(
             self._settings_repository, self._config, self._uow, AppearanceImageKind.LOGO, data
         )
 
 
-class UploadAppearanceFaviconUseCase(UseCase[UploadAppearanceImageInput, AppearanceSettingsDto]):
+class UploadAppearanceFaviconUseCase(UseCase[UploadAppearanceImageDto, AppearanceSettingsDto]):
     required_permission = Permission.APPEARANCE_FAVICON_UPLOAD
 
     def __init__(
@@ -151,9 +143,7 @@ class UploadAppearanceFaviconUseCase(UseCase[UploadAppearanceImageInput, Appeara
         self._config = config
         self._uow = uow
 
-    async def _execute(
-        self, actor: Actor, data: UploadAppearanceImageInput
-    ) -> AppearanceSettingsDto:
+    async def _execute(self, actor: Actor, data: UploadAppearanceImageDto) -> AppearanceSettingsDto:
         return await _upload_appearance_image(
             self._settings_repository, self._config, self._uow, AppearanceImageKind.FAVICON, data
         )

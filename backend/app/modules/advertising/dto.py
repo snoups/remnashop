@@ -156,3 +156,10 @@ class AdLinkShareUrlsDto:
     # None = channel not allowed on this link, or its base URL isn't known
     bot_url: Optional[str] = None
     webcabinet_url: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RecordAdLinkAttributionDto:
+    user_id: int
+    ad_link_code: str
+    channel: AdLinkChannel

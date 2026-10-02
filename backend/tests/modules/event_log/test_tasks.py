@@ -13,43 +13,15 @@ from app.modules.event_log.repository import EventLogRepository
 from app.modules.event_log.tasks import (
     OUTBOX_OLDEST_AGE,
     OUTBOX_UNPROCESSED,
-    _process_outbox_entry,
     _record_outbox_lag_metrics,
-    persist_event_entry,
     prune_outbox_task,
 )
-from app.modules.users.dto import CreateUserDto
-from app.modules.users.repository import UserRepository
+from app.modules.event_log.usecases import ProcessOutboxEntryUseCase
 
 
 @pytest.fixture
 def outbox_repository(session) -> EventOutboxRepository:
     return EventOutboxRepository(session)
-
-
-async def test_persist_event_entry_writes_to_the_repository(
-    event_log_repository: EventLogRepository,
-    user_repository: UserRepository,
-) -> None:
-    owner = await user_repository.create(CreateUserDto(name="Owner", login="owner"))
-
-    await persist_event_entry(
-        event_log_repository,
-        category=EventCategory.ADMIN_MANAGEMENT,
-        event_type="AdminCreatedEvent",
-        occurred_at=datetime.now(timezone.utc),
-        actor_id=owner.id,
-        actor_login="owner",
-        actor_name="owner",
-        ip_address="127.0.0.1",
-        payload={"target": {"id": 2}},
-    )
-
-    items, total = await event_log_repository.list()
-
-    assert total == 1
-    assert items[0].event_type == "AdminCreatedEvent"
-    assert items[0].payload == {"target": {"id": 2}}
 
 
 async def test_process_outbox_entry_persists_and_marks_processed(
@@ -69,7 +41,9 @@ async def test_process_outbox_entry_persists_and_marks_processed(
     await session.flush()
     bus = EventBus()
 
-    await _process_outbox_entry(uow, outbox_repository, event_log_repository, bus, entry.id)
+    await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
+        entry.id
+    )
 
     items, total = await event_log_repository.list()
     assert total == 1
@@ -100,7 +74,9 @@ async def test_process_outbox_entry_records_failure_when_a_handler_raises(
 
     bus.subscribe(LoginFailedEvent, failing_handler)
 
-    await _process_outbox_entry(uow, outbox_repository, event_log_repository, bus, entry.id)
+    await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
+        entry.id
+    )
 
     row = await outbox_repository.get_unprocessed_by_id(entry.id)
     assert row is not None  # NOT marked processed
@@ -132,7 +108,9 @@ async def test_process_outbox_entry_is_a_noop_when_already_processed(
     await outbox_repository.mark_processed(entry.id)
     bus = EventBus()
 
-    await _process_outbox_entry(uow, outbox_repository, event_log_repository, bus, entry.id)
+    await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
+        entry.id
+    )
 
     items, _ = await event_log_repository.list()
     assert items == []  # never persisted -- get_unprocessed_by_id returned None up front
@@ -171,7 +149,9 @@ async def test_sweep_processes_good_rows_even_when_a_sibling_row_fails(
     bus.subscribe(LoginFailedEvent, failing_handler)
 
     for entry_id in (good_id, bad_id):
-        await _process_outbox_entry(uow, outbox_repository, event_log_repository, bus, entry_id)
+        await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
+            entry_id
+        )
 
     good_row = await session.get(EventOutboxEntry, good_id)
     bad_row = await session.get(EventOutboxEntry, bad_id)
@@ -210,7 +190,9 @@ async def test_process_outbox_entry_records_failure_when_persist_raises_a_db_err
     monkeypatch.setattr(event_log_repository, "create", boom)
     bus = EventBus()
 
-    await _process_outbox_entry(uow, outbox_repository, event_log_repository, bus, entry_id)
+    await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
+        entry_id
+    )
 
     row = await session.get(EventOutboxEntry, entry_id)
     await session.refresh(row)
@@ -245,12 +227,16 @@ async def test_process_outbox_entry_retry_succeeds_without_doubling_the_audit_ro
 
     bus.subscribe(LoginFailedEvent, flaky_handler)
 
-    await _process_outbox_entry(uow, outbox_repository, event_log_repository, bus, entry.id)
+    await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
+        entry.id
+    )
     row = await outbox_repository.get_unprocessed_by_id(entry.id)
     assert row is not None
     assert row.attempts == 1
 
-    await _process_outbox_entry(uow, outbox_repository, event_log_repository, bus, entry.id)
+    await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
+        entry.id
+    )
 
     items, total = await event_log_repository.list()
     assert total == 1  # idempotent on outbox_id -- not doubled by the retry

@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from typing import Optional
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
@@ -9,18 +6,9 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher, SessionRevoker
 from app.core.security.permissions import Permission, assert_grantable
 from app.core.usecase import UseCase
-from app.modules.users.dto import UpdateUserDto, UserDto
+from app.modules.users.dto import UpdateAdminDto, UpdateUserDto, UserDto
 from app.modules.users.events import AdminPermissionsUpdatedEvent
 from app.modules.users.repository import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class UpdateAdminDto:
-    user_id: int
-    client_ip: str
-    # None means "field omitted, leave unchanged"; an explicit [] clears the overrides.
-    permission_grants: Optional[list[Permission]] = None
-    permission_revokes: Optional[list[Permission]] = None
 
 
 class UpdateAdminUseCase(UseCase[UpdateAdminDto, UserDto]):

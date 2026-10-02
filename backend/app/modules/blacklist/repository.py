@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.errors import constraint_name
 from app.core.db.models.blacklist import Blacklist
 from app.core.db.models.blacklist_source import BlacklistSource
 from app.core.db.singleton import get_or_create_singleton
@@ -108,6 +109,8 @@ class BlacklistRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
+            if constraint_name(error) != "blacklist_sources_url_key":
+                raise
             raise ConflictError(
                 f"Blacklist source '{data.url}' already exists",
                 code=ErrorCode.BLACKLIST_SOURCE_EXISTS,

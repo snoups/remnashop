@@ -1,12 +1,15 @@
 from app.modules.oauth.di import get_oauth_providers
-from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthIdentityDto
+from app.modules.oauth.dto import (
+    CreateOAuthIdentityDto,
+    OAuthCallbackDto,
+    OAuthDisconnectDto,
+    OAuthIdentityDto,
+)
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
     ListOAuthIdentitiesUseCase,
-    OAuthCallbackDto,
     OAuthConnectAuthorizeUseCase,
     OAuthConnectCallbackUseCase,
-    OAuthDisconnectDto,
     OAuthDisconnectUseCase,
     OAuthLoginAuthorizeUseCase,
     OAuthLoginCallbackUseCase,

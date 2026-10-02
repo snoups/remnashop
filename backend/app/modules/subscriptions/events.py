@@ -63,10 +63,3 @@ class SubscriptionEditedEvent(UserEvent):
     action: str
     subscription_id: int
     changed_fields: list[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True, kw_only=True)
-class AddOnChangedEvent(UserEvent):
-    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
-    action: str
-    addon_id: Optional[int] = None

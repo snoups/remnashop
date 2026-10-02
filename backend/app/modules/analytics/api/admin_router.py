@@ -8,9 +8,7 @@ from fastapi import APIRouter, Depends
 from app.api.dependencies.admin import require_admin
 from app.core.actor import Actor
 from app.modules.analytics.api.schemas import (
-    AnalyticsKpiResponse,
     AnalyticsResponse,
-    ChurnSnapshotResponse,
     CohortRowResponse,
     CohortsResponse,
     FunnelResponse,
@@ -47,28 +45,7 @@ async def get_analytics_overview(
     days: AnalyticsPeriodDays = AnalyticsPeriodDays.SEVEN,
 ) -> AnalyticsResponse:
     analytics = await use_case(actor, GetAnalyticsDto(days=cast(AnalyticsDays, int(days))))
-    return AnalyticsResponse(
-        days=analytics.days,
-        kpi=AnalyticsKpiResponse(
-            total_revenue_by_currency=analytics.kpi.total_revenue_by_currency,
-            report_currency=analytics.kpi.report_currency,
-            mrr=analytics.kpi.mrr,
-            arpu=analytics.kpi.arpu,
-            active_subscriptions=analytics.kpi.active_subscriptions,
-            paid_orders_count=analytics.kpi.paid_orders_count,
-            registered_in_period=analytics.kpi.registered_in_period,
-            paid_in_period=analytics.kpi.paid_in_period,
-            conversion_rate=analytics.kpi.conversion_rate,
-        ),
-        churn=ChurnSnapshotResponse(
-            window_days=analytics.churn.window_days,
-            prev_active=analytics.churn.prev_active,
-            still_active=analytics.churn.still_active,
-            churned=analytics.churn.churned,
-            churn_rate=analytics.churn.churn_rate,
-            retention_rate=analytics.churn.retention_rate,
-        ),
-    )
+    return AnalyticsResponse.model_validate(analytics, from_attributes=True)
 
 
 @router.get("/funnel", response_model=FunnelResponse)
@@ -82,13 +59,7 @@ async def get_analytics_funnel(
     return FunnelResponse(
         days=funnel.days,
         steps=[
-            FunnelStepResponse(
-                key=step.key,
-                count=step.count,
-                pct_of_start=step.pct_of_start,
-                pct_of_prev=step.pct_of_prev,
-            )
-            for step in funnel.steps
+            FunnelStepResponse.model_validate(step, from_attributes=True) for step in funnel.steps
         ],
     )
 
@@ -102,12 +73,7 @@ async def get_analytics_cohorts(
     cohorts = await use_case(actor)
     return CohortsResponse(
         cohorts=[
-            CohortRowResponse(
-                cohort=row.cohort,
-                cohort_size=row.cohort_size,
-                retention_by_month=row.retention_by_month,
-            )
-            for row in cohorts.cohorts
+            CohortRowResponse.model_validate(row, from_attributes=True) for row in cohorts.cohorts
         ]
     )
 
@@ -122,12 +88,7 @@ async def get_analytics_ltv_distribution(
     return LtvDistributionResponse(
         report_currency=distribution.report_currency,
         buckets=[
-            LtvBucketResponse(
-                label=bucket.label,
-                lower_bound=bucket.lower_bound,
-                upper_bound=bucket.upper_bound,
-                users=bucket.users,
-            )
+            LtvBucketResponse.model_validate(bucket, from_attributes=True)
             for bucket in distribution.buckets
         ],
     )

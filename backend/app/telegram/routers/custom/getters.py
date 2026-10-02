@@ -7,8 +7,8 @@ from fluentogram import TranslatorHub
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
-from app.modules.banners import BannerRepository
-from app.modules.subscriptions import GetAvailableTrialUseCase, SubscriptionRepository
+from app.modules.banners import GetBannerForDisplayUseCase
+from app.modules.subscriptions import GetAvailableTrialUseCase, ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
@@ -26,8 +26,8 @@ from app.telegram.i18n import get_translator
 async def custom_window_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
-    banner_repository: FromDishka[BannerRepository],
-    subscription_repository: FromDishka[SubscriptionRepository],
+    get_banner: FromDishka[GetBannerForDisplayUseCase],
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
@@ -48,19 +48,13 @@ async def custom_window_getter(
 
     window = await dialog_config_cache.get_window(key)
     banner = (
-        await get_banner_media(
-            banner_repository,
-            config,
-            window.banner_name,
-            user.language,
-            config.default_locale,
-        )
+        await get_banner_media(get_banner, config, user, window.banner_name)
         if window.banner_name is not None
         else None
     )
 
     data: dict[str, Any] = await build_condition_data(
-        user, subscription_repository, get_available_trial
+        user, list_own_active_subscriptions, get_available_trial
     )
     data["banner"] = banner
     data["window_text"] = render_window_text(

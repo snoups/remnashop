@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from loguru import logger
 
 from app.core.db.uow import UnitOfWork
@@ -9,14 +7,10 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.referrals.dto import AttachReferralDto
 from app.modules.referrals.events import ReferralAttachedEvent
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.users import UserDto, UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class AttachReferralDto:
-    code: str
 
 
 class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto, UserDto]):

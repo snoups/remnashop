@@ -1,5 +1,6 @@
 import hmac
 from datetime import timedelta
+from functools import partial
 from typing import Final, Optional
 from uuid import uuid4
 
@@ -17,15 +18,14 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError, Validation
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.gateways import GatewaysRepository
-from app.modules.plans import PlanDto, PlanRepository, is_plan_purchasable_by
+from app.modules.gateways import GatewayRepository
+from app.modules.plans import PlanDto, PlanRepository
 from app.modules.pricing import PricingRepository
-from app.modules.referrals import ReferralRepository
-from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
     PlanSnapshot,
+    PurchaseEligibility,
+    PurchaseSubscriptionDispatch,
     SubscriptionRepository,
-    purchase_subscription_task,
 )
 from app.modules.transactions.dto import (
     CheckoutResultDto,
@@ -33,6 +33,7 @@ from app.modules.transactions.dto import (
     CreateTransactionDto,
     PriceQuote,
 )
+from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.transactions.pricing import quote_price
@@ -55,25 +56,25 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self,
         plan_repository: PlanRepository,
         user_repository: UserRepository,
-        gateways_repository: GatewaysRepository,
+        gateway_repository: GatewayRepository,
         transaction_repository: TransactionRepository,
         subscription_repository: SubscriptionRepository,
-        settings_repository: SettingsRepository,
-        referral_repository: ReferralRepository,
+        eligibility: PurchaseEligibility,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
         gateway_factory: PaymentGatewayFactory,
+        purchase_dispatch: PurchaseSubscriptionDispatch,
     ) -> None:
         self._plan_repository = plan_repository
         self._user_repository = user_repository
-        self._gateways_repository = gateways_repository
+        self._gateway_repository = gateway_repository
         self._transaction_repository = transaction_repository
         self._subscription_repository = subscription_repository
-        self._settings_repository = settings_repository
-        self._referral_repository = referral_repository
+        self._eligibility = eligibility
         self._pricing_repository = pricing_repository
         self._uow = uow
         self._gateway_factory = gateway_factory
+        self._purchase_dispatch = purchase_dispatch
 
     @staticmethod
     def _resolve_customer_email(
@@ -103,7 +104,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     f"Gateway '{data.gateway_type.value}' is not yet supported",
                     code=ErrorCode.GATEWAY_NOT_SUPPORTED,
                 )
-            gateway_settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
+            gateway_settings = await self._gateway_repository.get_raw_settings(data.gateway_type)
             if data.currency is not gateway_currency(data.gateway_type, gateway_settings):
                 raise ValidationError(
                     f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'",
@@ -119,13 +120,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
 
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
-            has_purchase_history = await self._subscription_repository.has_any_subscription(
-                user.id, include_trial=False
-            )
-            has_referrer = await self._referral_repository.has_referrer(user.id)
-            if not is_plan_purchasable_by(
-                plan, user, has_purchase_history=has_purchase_history, has_referrer=has_referrer
-            ) or not _link_code_matches(plan, data.plan_code):
+            if not await self._eligibility.is_purchasable(plan, user) or not _link_code_matches(
+                plan, data.plan_code
+            ):
                 # Same answer as a missing plan: a distinct one would let anyone
                 # walk plan ids and learn which hidden plans exist.
                 raise NotFoundError(
@@ -186,26 +183,10 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 order = await self._transaction_repository.mark_status(
                     order.id, TransactionStatus.PAID
                 )
-
-        if is_free:
-            # Dispatched after the `async with` block above has exited (commit
-            # already durable) -- `.kiq()` is a real external side effect
-            # (a message sent to Redis), not a same-transaction outbox write
-            # like EventPublisher.publish(). Firing it before the commit is
-            # guaranteed durable risks dispatching a task for an order that
-            # then fails to persist.
-            await purchase_subscription_task.kiq(  # type: ignore[call-overload]
-                user_id=order.user_id,
-                plan_snapshot=order.plan_snapshot.to_json(),
-                duration_days=order.duration_days,
-                price_paid=str(order.final_price),
-                base_price=str(order.base_price),
-                currency=order.currency.value,
-                purchase_type=order.purchase_type.value,
-                target_subscription_id=order.target_subscription_id,
-                idempotency_key=order.idempotency_key,
-            )
-            return CheckoutResultDto(order_id=order.id, confirmation_url=None)
+                await self._uow.after_commit(
+                    partial(dispatch_fulfillment, self._purchase_dispatch, order)
+                )
+                return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
         gateway = self._gateway_factory.build(data.gateway_type, gateway_settings)
         intent = await gateway.create_payment(order)
@@ -230,7 +211,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
 
     async def _validate_gateway_availability(self, gateway_type: PaymentGatewayType) -> None:
         async with self._uow:
-            gateway_config = await self._gateways_repository.get_by_type(gateway_type)
+            gateway_config = await self._gateway_repository.get_by_type(gateway_type)
             if not gateway_config.is_active or not gateway_config.is_configured:
                 raise ValidationError(
                     f"Gateway '{gateway_type.value}' is not available",
@@ -249,15 +230,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                         "target_subscription_id is forbidden for a NEW purchase",
                         code=ErrorCode.TARGET_SUBSCRIPTION_FORBIDDEN,
                     )
-                shop_settings = await self._settings_repository.get_shop_settings()
-                max_active = shop_settings.max_active_subscriptions
-                if max_active is not None:
-                    active = await self._subscription_repository.get_active_by_user(data.user_id)
-                    if len(active) >= max_active:
-                        raise ValidationError(
-                            f"User '{data.user_id}' is already at the concurrent-subscription cap",
-                            code=ErrorCode.SUBSCRIPTION_LIMIT_REACHED,
-                        )
+                await self._eligibility.assert_below_cap(data.user_id)
                 return
 
         await self._validate_target_subscription(data)

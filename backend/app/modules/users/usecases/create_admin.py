@@ -1,5 +1,3 @@
-from dataclasses import dataclass, field
-
 from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
@@ -8,18 +6,9 @@ from app.core.ports import EventPublisher
 from app.core.security import generate_password, hash_password
 from app.core.security.permissions import Permission, assert_grantable
 from app.core.usecase import UseCase
-from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.dto import CreateAdminDto, CreateUserDto, UserDto
 from app.modules.users.events import AdminCreatedEvent
 from app.modules.users.repository import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class CreateAdminDto:
-    login: str
-    name: str
-    client_ip: str
-    permission_grants: list[Permission] = field(default_factory=list)
-    permission_revokes: list[Permission] = field(default_factory=list)
 
 
 class CreateAdminUseCase(UseCase[CreateAdminDto, tuple[UserDto, str]]):

@@ -1,32 +1,19 @@
-from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Final
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
+from app.core.enums import TransactionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.pricing import PricingRepository, convert_for_report
-from app.modules.transactions.dto import TransactionSummaryDto
+from app.modules.transactions.dto import GetTransactionSummaryDto, TransactionSummaryDto
 from app.modules.transactions.repository import TransactionRepository
 
 _ZERO: Final[Decimal] = Decimal(0)
 
 
-@dataclass(frozen=True, kw_only=True)
-class GetTransactionSummaryInput:
-    status: Optional[TransactionStatus] = None
-    gateway_type: Optional[PaymentGatewayType] = None
-    purchase_type: Optional[PurchaseType] = None
-    created_from: Optional[datetime] = None
-    created_to: Optional[datetime] = None
-    search: Optional[str] = None
-    user_id: Optional[int] = None
-
-
-class GetTransactionSummaryUseCase(UseCase[GetTransactionSummaryInput, TransactionSummaryDto]):
+class GetTransactionSummaryUseCase(UseCase[GetTransactionSummaryDto, TransactionSummaryDto]):
     required_permission = Permission.TRANSACTIONS_SUMMARY_VIEW
 
     def __init__(
@@ -39,9 +26,7 @@ class GetTransactionSummaryUseCase(UseCase[GetTransactionSummaryInput, Transacti
         self._pricing_repository = pricing_repository
         self._uow = uow
 
-    async def _execute(
-        self, actor: Actor, data: GetTransactionSummaryInput
-    ) -> TransactionSummaryDto:
+    async def _execute(self, actor: Actor, data: GetTransactionSummaryDto) -> TransactionSummaryDto:
         async with self._uow:
             rows = await self._transaction_repository.summarize(
                 status=data.status,

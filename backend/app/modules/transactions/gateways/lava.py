@@ -12,7 +12,6 @@ from app.modules.transactions.gateways.base import (
     WebhookRequest,
     WebhookSignal,
     amount_to_float,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -54,7 +53,7 @@ class LavaGateway(PaymentGateway):
                 "expire": link_lifetime(order, unit="minutes", maximum=_MAX_EXPIRE_MINUTES),
             }
         )
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/business/invoice/create", content=body, headers=headers
         )
         response.raise_for_status()
@@ -90,7 +89,7 @@ class LavaGateway(PaymentGateway):
         body, headers = self._signed(
             {"shopId": self._require("shop_id"), "orderId": order.idempotency_key}
         )
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/business/invoice/status",
             content=body,
             headers=headers,

@@ -5,6 +5,7 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.errors import constraint_name
 from app.core.db.models.ad_link import AdLink
 from app.core.db.models.ad_link_attribution import AdLinkAttribution
 from app.core.db.partial_update import apply_partial_update
@@ -116,6 +117,8 @@ class AdLinkRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
+            if constraint_name(error) != "ix_ad_links_code":
+                raise
             raise ConflictError(
                 f"AdLink with code '{data.code}' already exists", code=ErrorCode.AD_LINK_CODE_TAKEN
             ) from error
@@ -165,6 +168,8 @@ class AdLinkRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
+            if constraint_name(error) != "ad_link_attributions_user_id_key":
+                raise
             raise ConflictError(
                 f"User '{user_id}' is already attributed to an ad link",
                 code=ErrorCode.USER_ALREADY_ATTRIBUTED,

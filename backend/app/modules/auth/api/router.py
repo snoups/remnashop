@@ -13,7 +13,6 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.security import derive_csrf_token
 from app.core.utils.http import resolve_client_ip
-from app.core.utils.time import datetime_now
 from app.modules.auth import (
     BootstrapOwnerUseCase,
     GetAuthStatusUseCase,
@@ -22,37 +21,14 @@ from app.modules.auth import (
     RefreshSessionUseCase,
 )
 from app.modules.auth.api.schemas import (
-    AuthResponse,
     BootstrapRequest,
     LoginRequest,
     RefreshResponse,
     StatusResponse,
 )
-from app.modules.auth.session_issuer import IssuedSession
-from app.modules.users import UserDto
+from app.modules.auth.session_response import AuthResponse, set_session_cookies, to_auth_response
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _set_session_cookies(response: Response, issued: "IssuedSession", secure: bool) -> None:
-    response.set_cookie(
-        REFRESH_COOKIE_NAME,
-        issued.refresh_token,
-        httponly=True,
-        secure=secure,
-        samesite="lax",
-        path=REFRESH_COOKIE_PATH,
-        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
-    )
-    response.set_cookie(
-        CSRF_COOKIE_NAME,
-        issued.csrf_token,
-        httponly=False,
-        secure=secure,
-        samesite="lax",
-        path="/",
-        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
-    )
 
 
 def _clear_session_cookies(response: Response) -> None:
@@ -77,15 +53,6 @@ def _verify_csrf(refresh_token: str, request: Request, jwt_secret: str) -> None:
         or not hmac.compare_digest(header_value, expected)
     ):
         raise ApiError(status.HTTP_403_FORBIDDEN, "CSRF check failed", code=ErrorCode.CSRF_FAILED)
-
-
-def _to_auth_response(user: UserDto, access_token: str) -> AuthResponse:
-    # All three auth flows below only ever reach here with a user that has a login
-    # (bootstrap always sets it; login/OAuth-login only succeed for users that have one).
-    assert user.login is not None
-    return AuthResponse(
-        id=user.id, login=user.login, role=str(user.role), access_token=access_token
-    )
 
 
 @router.get(
@@ -130,8 +97,8 @@ async def bootstrap(
         user_agent=request.headers.get("user-agent"),
     )
 
-    _set_session_cookies(response, issued, config.secure_cookies)
-    return _to_auth_response(owner, issued.access_token)
+    set_session_cookies(response, issued, config.secure_cookies)
+    return to_auth_response(owner, issued.access_token)
 
 
 @router.post(
@@ -155,8 +122,8 @@ async def login(
         user_agent=request.headers.get("user-agent"),
     )
 
-    _set_session_cookies(response, issued, config.secure_cookies)
-    return _to_auth_response(user, issued.access_token)
+    set_session_cookies(response, issued, config.secure_cookies)
+    return to_auth_response(user, issued.access_token)
 
 
 @router.post(
@@ -192,7 +159,7 @@ async def refresh_session(
         _clear_session_cookies(error_response)
         return error_response
 
-    _set_session_cookies(response, issued, config.secure_cookies)
+    set_session_cookies(response, issued, config.secure_cookies)
     return RefreshResponse(access_token=issued.access_token)
 
 

@@ -1,28 +1,19 @@
-from __future__ import annotations
-
 from pathlib import Path
 from textwrap import dedent
-from typing import TYPE_CHECKING, Final
+from typing import Final
+
+from fluent.syntax import FluentParser
+from fluent.syntax.ast import Message, Pattern
 
 from app.core.config import AppConfig
 from app.core.enums import Locale
 from app.core.exceptions import ConflictError
-from app.modules.translations.repository import TranslationsRepository
-
-if TYPE_CHECKING:
-    from app.modules.settings import SettingsRepository
+from app.modules.translations.repository import TranslationRepository
 
 _SEED_DOMAINS: Final[tuple[str, ...]] = ("commands.ftl", "menu.ftl")
 
 
 def _parse_seed_file(path: Path) -> list[tuple[str, str, str]]:
-    # Lazy import -- fluent.syntax ships with fluent_compiler, which lives
-    # under the `telegram` extra, same reason command_translations.py lazily
-    # imports fluent_compiler/fluentogram: don't load it on every api-process
-    # import, only when seeding actually runs.
-    from fluent.syntax import FluentParser  # noqa: PLC0415
-    from fluent.syntax.ast import Message, Pattern  # noqa: PLC0415
-
     def pattern_text(source: str, pattern: object) -> str:
         assert isinstance(pattern, Pattern)
         assert pattern.span is not None
@@ -52,10 +43,9 @@ def _parse_seed_file(path: Path) -> list[tuple[str, str, str]]:
 
 async def ensure_translations_seeded(
     config: AppConfig,
-    translations_repository: TranslationsRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
 ) -> None:
-    active_locales = set(await settings_repository.list_active_locales())
+    active_locales = set(await translation_repository.list_active_locales())
     first_boot = not active_locales
 
     for locale in Locale:
@@ -66,7 +56,7 @@ async def ensure_translations_seeded(
 
         if first_boot:
             try:
-                await settings_repository.add_active_locale(locale)
+                await translation_repository.add_active_locale(locale)
             except ConflictError:
                 pass
             active_locales.add(locale)
@@ -76,4 +66,4 @@ async def ensure_translations_seeded(
 
         for seed_file in seed_files:
             for message_id, attribute_id, value in _parse_seed_file(seed_file):
-                await translations_repository.seed_missing(locale, message_id, attribute_id, value)
+                await translation_repository.seed_missing(locale, message_id, attribute_id, value)

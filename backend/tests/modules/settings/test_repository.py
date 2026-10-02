@@ -1,12 +1,10 @@
 from dataclasses import fields as dataclass_fields
 
-import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.oauth_settings import OAuthSettings
-from app.core.enums import AppearanceImageKind, Locale
-from app.core.exceptions import ConflictError
+from app.core.enums import AppearanceImageKind
 from app.modules.settings.dto import (
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
@@ -304,31 +302,6 @@ async def test_replace_bot_commands_persists_enabled_flag(
     by_command = {item.command: item for item in commands}
     assert by_command["menu"].enabled is True
     assert by_command["help"].enabled is False
-
-
-async def test_add_and_list_active_locales(settings_repository: SettingsRepository) -> None:
-    await settings_repository.add_active_locale(Locale.EN)
-    await settings_repository.add_active_locale(Locale.RU)
-
-    locales = await settings_repository.list_active_locales()
-
-    assert set(locales) == {Locale.EN, Locale.RU}
-
-
-async def test_add_active_locale_rejects_duplicate(settings_repository: SettingsRepository) -> None:
-    await settings_repository.add_active_locale(Locale.EN)
-
-    with pytest.raises(ConflictError):
-        await settings_repository.add_active_locale(Locale.EN)
-
-
-async def test_remove_active_locale(settings_repository: SettingsRepository) -> None:
-    await settings_repository.add_active_locale(Locale.EN)
-    await settings_repository.add_active_locale(Locale.RU)
-
-    await settings_repository.remove_active_locale(Locale.RU)
-
-    assert await settings_repository.list_active_locales() == [Locale.EN]
 
 
 async def test_get_appearance_settings_returns_defaults_when_missing(

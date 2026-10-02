@@ -17,11 +17,15 @@ from app.modules.event_log.api.schemas import (
     NotificationsResponse,
     UpdateNotificationGroupsRequest,
 )
-from app.modules.event_log.dto import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, NOTIFICATION_GROUPS
+from app.modules.event_log.dto import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    NOTIFICATION_GROUPS,
+    ListEventLogDto,
+)
 from app.modules.event_log.usecases import (
     GetNotificationGroupsUseCase,
     GetNotificationsUseCase,
-    ListEventLogInput,
     ListEventLogUseCase,
     MarkNotificationsReadUseCase,
     UpdateNotificationGroupsUseCase,
@@ -46,7 +50,7 @@ async def list_event_log(
 ) -> EventLogPageResponse:
     items, total = await use_case(
         actor,
-        ListEventLogInput(
+        ListEventLogDto(
             category=category,
             actor_id=actor_id,
             search=search,

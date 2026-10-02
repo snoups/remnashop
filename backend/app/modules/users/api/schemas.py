@@ -76,6 +76,12 @@ class UserResponse(BaseModel):
     created_at: Optional[datetime]
     deleted_at: Optional[datetime] = None
 
+    @field_validator("role", "language", mode="before")
+    @classmethod
+    def _enum_as_name(cls, value: object) -> str:
+        # Role's value is its rank; the API speaks its name
+        return str(value)
+
 
 class BlacklistOriginResponse(BaseModel):
     source_id: Optional[int]

@@ -10,7 +10,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.gateways.dto import PaymentGatewayDto, ReorderGatewaysDto
 from app.modules.gateways.events import GatewayChangedEvent
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 
 
 class ReorderGatewaysUseCase(UseCase[ReorderGatewaysDto, list[PaymentGatewayDto]]):
@@ -18,11 +18,11 @@ class ReorderGatewaysUseCase(UseCase[ReorderGatewaysDto, list[PaymentGatewayDto]
 
     def __init__(
         self,
-        gateways_repository: GatewaysRepository,
+        gateway_repository: GatewayRepository,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
-        self._gateways_repository = gateways_repository
+        self._gateway_repository = gateway_repository
         self._event_publisher = event_publisher
         self._uow = uow
 
@@ -35,7 +35,7 @@ class ReorderGatewaysUseCase(UseCase[ReorderGatewaysDto, list[PaymentGatewayDto]
             )
 
         async with self._uow:
-            gateways = await self._gateways_repository.reorder(data.ordered_types)
+            gateways = await self._gateway_repository.reorder(data.ordered_types)
             await self._event_publisher.publish(GatewayChangedEvent(user=actor, action="reorder"))
         logger.info(f"Gateways reordered by actor {actor.log}")
         return gateways

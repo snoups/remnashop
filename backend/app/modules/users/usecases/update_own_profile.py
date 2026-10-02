@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from typing import Optional
-
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
@@ -10,15 +7,8 @@ from app.core.security import hash_password, verify_password
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.users.display_name import clean_display_name
-from app.modules.users.dto import UpdateUserDto, UserDto
+from app.modules.users.dto import UpdateOwnProfileDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class UpdateOwnProfileDto:
-    name: Optional[str] = None
-    current_password: Optional[str] = None
-    new_password: Optional[str] = None
 
 
 class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto, UserDto]):

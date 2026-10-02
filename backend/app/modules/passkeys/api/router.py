@@ -5,48 +5,17 @@ from fastapi import APIRouter, Depends, Request, Response
 from app.api.dependencies.rate_limit import rate_limit
 from app.api.errors import error_responses
 from app.core.config import AppConfig
-from app.core.constants import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, TIME_1M
+from app.core.constants import TIME_1M
 from app.core.exceptions import AuthenticationError, ValidationError
 from app.core.utils.http import resolve_client_ip
-from app.core.utils.time import datetime_now
-from app.modules.auth.api.schemas import AuthResponse
-from app.modules.auth.session_issuer import IssuedSession
+from app.modules.auth import AuthResponse, set_session_cookies, to_auth_response
 from app.modules.passkeys.api.schemas import VerifyPasskeyAuthenticationRequest
 from app.modules.passkeys.usecases import (
     GetPasskeyAuthenticationOptionsUseCase,
     VerifyPasskeyAuthenticationUseCase,
 )
-from app.modules.users import UserDto
 
 router = APIRouter(prefix="/auth/passkeys", tags=["auth"])
-
-
-def _set_session_cookies(response: Response, issued: IssuedSession, secure: bool) -> None:
-    response.set_cookie(
-        REFRESH_COOKIE_NAME,
-        issued.refresh_token,
-        httponly=True,
-        secure=secure,
-        samesite="lax",
-        path=REFRESH_COOKIE_PATH,
-        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
-    )
-    response.set_cookie(
-        CSRF_COOKIE_NAME,
-        issued.csrf_token,
-        httponly=False,
-        secure=secure,
-        samesite="lax",
-        path="/",
-        max_age=int((issued.expires_at - datetime_now()).total_seconds()),
-    )
-
-
-def _to_auth_response(user: UserDto, access_token: str) -> AuthResponse:
-    assert user.login is not None
-    return AuthResponse(
-        id=user.id, login=user.login, role=str(user.role), access_token=access_token
-    )
 
 
 @router.get(
@@ -89,5 +58,5 @@ async def verify_authentication(
         user_agent=request.headers.get("user-agent"),
     )
 
-    _set_session_cookies(response, issued, config.secure_cookies)
-    return _to_auth_response(user, issued.access_token)
+    set_session_cookies(response, issued, config.secure_cookies)
+    return to_auth_response(user, issued.access_token)

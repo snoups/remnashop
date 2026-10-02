@@ -18,7 +18,7 @@ def _clean():
 
 
 async def test_ensure_dialogs_seeded_seeds_real_menu_windows(
-    dialog_repository: DialogRepository, translations_repository, settings_repository
+    dialog_repository: DialogRepository, translation_repository, settings_repository
 ) -> None:
     register_menu_catalog()
     # This test runs against a real, shared dev database (not necessarily empty --
@@ -27,10 +27,10 @@ async def test_ensure_dialogs_seeded_seeds_real_menu_windows(
     # resulting ConflictError (which leaves the session needing an explicit
     # rollback before it can be used again -- avoiding the conflict in the
     # first place is simpler than recovering from it).
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
 
-    await ensure_dialogs_seeded(dialog_repository, translations_repository, settings_repository)
+    await ensure_dialogs_seeded(dialog_repository, translation_repository)
 
     # Superset check, not exact-set: this runs against a real, shared dev database
     # that may already carry other windows seeded by other test runs or services.

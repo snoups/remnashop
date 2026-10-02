@@ -6,12 +6,12 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
-from app.modules.banners.dto import BannerKeyDto
+from app.modules.banners.dto import BannerKeyDto, UploadBannerFileDto
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.usecases.delete_banner import DeleteBannerUseCase
 from app.modules.banners.usecases.get_banner_image import GetBannerImageUseCase
-from app.modules.banners.usecases.upload_banner import UploadBannerInput, UploadBannerUseCase
-from app.modules.settings.repository import SettingsRepository
+from app.modules.banners.usecases.upload_banner import UploadBannerUseCase
+from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import UserDto
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
@@ -27,26 +27,31 @@ def _config(config: AppConfig, tmp_path: Path) -> AppConfig:
     return config.model_copy(update={"media_dir": tmp_path})
 
 
-async def _seed_locales(settings_repository: SettingsRepository) -> None:
-    await settings_repository.add_active_locale(Locale.EN)
-    await settings_repository.add_active_locale(Locale.RU)
+async def _seed_locales(translation_repository: TranslationRepository) -> None:
+    await translation_repository.add_active_locale(Locale.EN)
+    await translation_repository.add_active_locale(Locale.RU)
 
 
 async def test_owner_can_upload_banner(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     use_case = UploadBannerUseCase(
-        banner_repository, settings_repository, _config(config, tmp_path), uow
+        banner_repository,
+        translation_repository,
+        _config(config, tmp_path),
+        uow,
     )
 
     banner = await use_case(
         OWNER,
-        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
+        UploadBannerFileDto(
+            name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
+        ),
     )
 
     assert banner.name == "menu"
@@ -57,39 +62,47 @@ async def test_owner_can_upload_banner(
 
 async def test_regular_user_cannot_upload_banner(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     use_case = UploadBannerUseCase(
-        banner_repository, settings_repository, _config(config, tmp_path), uow
+        banner_repository,
+        translation_repository,
+        _config(config, tmp_path),
+        uow,
     )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
             REGULAR_USER,
-            UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=b"x"),
+            UploadBannerFileDto(
+                name="menu", locale=Locale.RU, content_type="image/jpeg", data=b"x"
+            ),
         )
 
 
 async def test_upload_rejects_unsupported_content_type(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     use_case = UploadBannerUseCase(
-        banner_repository, settings_repository, _config(config, tmp_path), uow
+        banner_repository,
+        translation_repository,
+        _config(config, tmp_path),
+        uow,
     )
 
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
-            UploadBannerInput(
+            UploadBannerFileDto(
                 name="menu", locale=Locale.RU, content_type="application/pdf", data=b"x"
             ),
         )
@@ -97,20 +110,23 @@ async def test_upload_rejects_unsupported_content_type(
 
 async def test_upload_rejects_locale_not_in_config(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     use_case = UploadBannerUseCase(
-        banner_repository, settings_repository, _config(config, tmp_path), uow
+        banner_repository,
+        translation_repository,
+        _config(config, tmp_path),
+        uow,
     )
 
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
-            UploadBannerInput(
+            UploadBannerFileDto(
                 name="menu", locale=Locale.DE, content_type="image/jpeg", data=FAKE_JPEG
             ),
         )
@@ -118,21 +134,24 @@ async def test_upload_rejects_locale_not_in_config(
 
 async def test_upload_rejects_oversized_file(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     use_case = UploadBannerUseCase(
-        banner_repository, settings_repository, _config(config, tmp_path), uow
+        banner_repository,
+        translation_repository,
+        _config(config, tmp_path),
+        uow,
     )
     oversized = FAKE_JPEG + b"x" * (5 * 1024 * 1024 + 1)
 
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
-            UploadBannerInput(
+            UploadBannerFileDto(
                 name="menu", locale=Locale.RU, content_type="image/jpeg", data=oversized
             ),
         )
@@ -140,19 +159,21 @@ async def test_upload_rejects_oversized_file(
 
 async def test_owner_can_delete_banner(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    upload_use_case = UploadBannerUseCase(banner_repository, settings_repository, cfg, uow)
+    upload_use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
     delete_use_case = DeleteBannerUseCase(banner_repository, cfg, uow)
 
     await upload_use_case(
         OWNER,
-        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
+        UploadBannerFileDto(
+            name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
+        ),
     )
     await delete_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
 
@@ -171,19 +192,21 @@ async def test_delete_missing_banner_raises_not_found(
 
 async def test_get_banner_image_returns_bytes_and_content_type(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    upload_use_case = UploadBannerUseCase(banner_repository, settings_repository, cfg, uow)
+    upload_use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
     get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
 
     await upload_use_case(
         OWNER,
-        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
+        UploadBannerFileDto(
+            name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
+        ),
     )
 
     data, content_type = await get_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
@@ -205,19 +228,21 @@ async def test_get_banner_image_missing_raises_not_found(
 
 async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    upload_use_case = UploadBannerUseCase(banner_repository, settings_repository, cfg, uow)
+    upload_use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
     get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
 
     await upload_use_case(
         OWNER,
-        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
+        UploadBannerFileDto(
+            name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
+        ),
     )
     (tmp_path / "banners" / "menu_ru.jpg").unlink()
 
@@ -227,20 +252,23 @@ async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
 
 async def test_upload_rejects_content_not_matching_declared_type(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     use_case = UploadBannerUseCase(
-        banner_repository, settings_repository, _config(config, tmp_path), uow
+        banner_repository,
+        translation_repository,
+        _config(config, tmp_path),
+        uow,
     )
 
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
-            UploadBannerInput(
+            UploadBannerFileDto(
                 name="menu",
                 locale=Locale.RU,
                 content_type="image/jpeg",
@@ -251,24 +279,26 @@ async def test_upload_rejects_content_not_matching_declared_type(
 
 async def test_upload_replaces_file_when_format_changes(
     banner_repository: BannerRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     uow: UnitOfWork,
     tmp_path: Path,
 ) -> None:
-    await _seed_locales(settings_repository)
+    await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    use_case = UploadBannerUseCase(banner_repository, settings_repository, cfg, uow)
+    use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
 
     await use_case(
         OWNER,
-        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG),
+        UploadBannerFileDto(
+            name="menu", locale=Locale.RU, content_type="image/jpeg", data=FAKE_JPEG
+        ),
     )
     assert (tmp_path / "banners" / "menu_ru.jpg").exists()
 
     banner = await use_case(
         OWNER,
-        UploadBannerInput(name="menu", locale=Locale.RU, content_type="image/png", data=FAKE_PNG),
+        UploadBannerFileDto(name="menu", locale=Locale.RU, content_type="image/png", data=FAKE_PNG),
     )
 
     assert banner.extension == "png"

@@ -18,15 +18,17 @@ from app.modules.plans.dto import (
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
+from app.modules.subscriptions.dto import ActivateTrialSubscriptionDto
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.subscriptions.usecases.activate_trial_subscription import (
-    ActivateTrialSubscriptionDto,
     ActivateTrialSubscriptionUseCase,
 )
 from app.modules.users.dto import CreateUserDto, UpdateUserDto
 from app.modules.users.repository import UserRepository
+from tests.modules.subscriptions.factories import make_eligibility
 
 
 async def _create_trial_plan(plan_repository: PlanRepository):
@@ -65,13 +67,13 @@ async def test_activates_a_trial_and_spends_the_flag(
     actor = await user_repository.create(CreateUserDto(name="trial-activator"))
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
     )
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
 
@@ -99,13 +101,13 @@ async def test_rejects_when_the_flag_is_already_spent(
     actor = await user_repository.get_by_id(actor.id)
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
     )
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
 
@@ -128,13 +130,13 @@ async def test_a_second_activation_with_a_stale_actor_is_rejected(
     actor = await user_repository.create(CreateUserDto(name="trial-double-tap"))
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
     )
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
     first = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
@@ -160,13 +162,13 @@ async def test_a_failed_activation_gives_the_trial_back(
     actor = await user_repository.create(CreateUserDto(name="trial-panel-down"))
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
     )
 
     async def _panel_down(*_args: object, **_kwargs: object) -> None:

@@ -2,860 +2,6 @@
 root_package = app
 include_external_packages = True
 
-[importlinter:contract:auth-encapsulation]
-name = auth module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.settings
-    app.modules.users
-    app.modules.gateways
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.auth.repository
-    app.modules.auth.dto
-    app.modules.auth.di
-    app.modules.auth.usecases
-
-[importlinter:contract:settings-encapsulation]
-name = settings module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.users
-    app.modules.gateways
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.settings.repository
-    app.modules.settings.dto
-    app.modules.settings.di
-    app.modules.settings.usecases
-
-[importlinter:contract:users-encapsulation]
-name = users module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.gateways
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.users.repository
-    app.modules.users.dto
-    app.modules.users.di
-    app.modules.users.usecases
-
-[importlinter:contract:event-log-encapsulation]
-name = event_log module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.gateways
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.event_log.repository
-    app.modules.event_log.dto
-    app.modules.event_log.di
-    app.modules.event_log.usecases
-    app.modules.event_log.tasks
-ignore_imports =
-    app.core.outbox_event_publisher -> app.modules.event_log.tasks
-
-[importlinter:contract:banners-encapsulation]
-name = banners module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.gateways
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.banners.repository
-    app.modules.banners.dto
-    app.modules.banners.di
-    app.modules.banners.usecases
-    app.modules.banners.storage
-
-[importlinter:contract:emoji-packs-encapsulation]
-name = emoji_packs module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.banners
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.gateways
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.emoji_packs.repository
-    app.modules.emoji_packs.dto
-    app.modules.emoji_packs.di
-    app.modules.emoji_packs.usecases
-    app.modules.emoji_packs.telegram_api
-
-[importlinter:contract:api-tokens-encapsulation]
-name = api_tokens module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.gateways
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.api_tokens.repository
-    app.modules.api_tokens.dto
-    app.modules.api_tokens.di
-    app.modules.api_tokens.usecases
-
-[importlinter:contract:translations-encapsulation]
-name = translations module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.translations.repository
-    app.modules.translations.dto
-    app.modules.translations.di
-    app.modules.translations.usecases
-    app.modules.translations.seed
-    app.modules.translations.serializer
-
-[importlinter:contract:gateways-encapsulation]
-name = gateways module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.gateways.repository
-    app.modules.gateways.dto
-    app.modules.gateways.di
-    app.modules.gateways.usecases
-    app.modules.gateways.field_catalog
-
-[importlinter:contract:plans-encapsulation]
-name = plans module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.plans.repository
-    app.modules.plans.dto
-    app.modules.plans.di
-    app.modules.plans.usecases
-
-[importlinter:contract:subscriptions-encapsulation]
-name = subscriptions module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.subscriptions.repository
-    app.modules.subscriptions.addon_repository
-    app.modules.subscriptions.dto
-    app.modules.subscriptions.di
-    app.modules.subscriptions.domain
-    app.modules.subscriptions.lifecycle
-    app.modules.subscriptions.tasks
-    app.modules.subscriptions.usecases
-
-[importlinter:contract:promocodes-encapsulation]
-name = promocodes module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.promocodes.repository
-    app.modules.promocodes.dto
-    app.modules.promocodes.di
-    app.modules.promocodes.usecases
-
-[importlinter:contract:transactions-encapsulation]
-name = transactions module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.transactions.repository
-    app.modules.transactions.dto
-    app.modules.transactions.di
-    app.modules.transactions.usecases
-
-[importlinter:contract:oauth-encapsulation]
-name = oauth module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.passkeys
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.oauth.repository
-    app.modules.oauth.dto
-    app.modules.oauth.di
-    app.modules.oauth.usecases
-
-[importlinter:contract:referrals-encapsulation]
-name = referrals module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.referrals.repository
-    app.modules.referrals.dto
-    app.modules.referrals.di
-    app.modules.referrals.usecases
-
-[importlinter:contract:backups-encapsulation]
-name = backups module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.cli
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.referrals
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.backups.repository
-    app.modules.backups.dto
-    app.modules.backups.di
-    app.modules.backups.usecases
-    app.modules.backups.tasks
-    app.modules.backups.dump
-    app.modules.backups.provenance
-
-[importlinter:contract:pricing-encapsulation]
-name = pricing module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.pricing.repository
-    app.modules.pricing.dto
-    app.modules.pricing.di
-    app.modules.pricing.usecases
-    app.modules.pricing.resolver
-
-[importlinter:contract:blacklist-encapsulation]
-name = blacklist module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.blacklist.repository
-    app.modules.blacklist.dto
-    app.modules.blacklist.di
-    app.modules.blacklist.usecases
-    app.modules.blacklist.normalize
-    app.modules.blacklist.fetch
-    app.modules.blacklist.events
-    app.modules.blacklist.tasks
-
-[importlinter:contract:advertising-encapsulation]
-name = advertising module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.advertising.repository
-    app.modules.advertising.dto
-    app.modules.advertising.di
-    app.modules.advertising.usecases
-    app.modules.advertising.tasks
-    app.modules.advertising.events
-ignore_imports =
-    app.core.event_bus -> app.modules.advertising.events
-
-[importlinter:contract:dialogs-encapsulation]
-name = dialogs module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.dialogs.repository
-    app.modules.dialogs.dto
-    app.modules.dialogs.di
-    app.modules.dialogs.usecases
-    app.modules.dialogs.seed
-
-[importlinter:contract:overview-encapsulation]
-name = overview module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.analytics
-forbidden_modules =
-    app.modules.overview.dto
-    app.modules.overview.di
-    app.modules.overview.usecases
-
-[importlinter:contract:passkeys-encapsulation]
-name = passkeys module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.oauth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-    app.modules.analytics
-forbidden_modules =
-    app.modules.passkeys.repository
-    app.modules.passkeys.dto
-    app.modules.passkeys.di
-    app.modules.passkeys.usecases
-    app.modules.passkeys.challenge_store
-
-[importlinter:contract:analytics-encapsulation]
-name = analytics module internals are private
-type = forbidden
-allow_indirect_imports = True
-source_modules =
-    app.core
-    app.api
-    app.telegram
-    app.worker
-    app.modules.auth
-    app.modules.settings
-    app.modules.users
-    app.modules.event_log
-    app.modules.banners
-    app.modules.api_tokens
-    app.modules.translations
-    app.modules.gateways
-    app.modules.plans
-    app.modules.subscriptions
-    app.modules.promocodes
-    app.modules.transactions
-    app.modules.oauth
-    app.modules.passkeys
-    app.modules.referrals
-    app.modules.backups
-    app.modules.pricing
-    app.modules.blacklist
-    app.modules.dialogs
-    app.modules.advertising
-    app.modules.overview
-forbidden_modules =
-    app.modules.analytics.dto
-    app.modules.analytics.di
-    app.modules.analytics.usecases
-
 [importlinter:contract:core-layer]
 name = core does not depend on modules or processes
 type = forbidden
@@ -867,12 +13,6 @@ forbidden_modules =
     app.api
     app.worker
     app.telegram
-ignore_imports =
-    app.core.event_bus -> app.modules.advertising.events
-    app.core.event_bus -> app.modules.auth.events
-    app.core.event_bus -> app.modules.oauth.events
-    app.core.event_bus -> app.modules.referrals.events
-    app.core.outbox_event_publisher -> app.modules.event_log.tasks
 
 [importlinter:contract:modules-layer]
 name = only routers and tasks reach into their process
@@ -897,3 +37,246 @@ source_modules =
 forbidden_modules =
     sqlalchemy
 
+# Module boundaries: everything below a module's package is private, other code
+# goes through its __init__.py. app.api.routers and app.worker.subscribers are the
+# composition roots that wire each module's routers and subscribers.
+
+[importlinter:contract:advertising-boundary]
+name = advertising internals are private
+type = protected
+protected_modules =
+    app.modules.advertising.*
+allowed_importers =
+    app.modules.advertising
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:analytics-boundary]
+name = analytics internals are private
+type = protected
+protected_modules =
+    app.modules.analytics.*
+allowed_importers =
+    app.modules.analytics
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:api-tokens-boundary]
+name = api_tokens internals are private
+type = protected
+protected_modules =
+    app.modules.api_tokens.*
+allowed_importers =
+    app.modules.api_tokens
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:auth-boundary]
+name = auth internals are private
+type = protected
+protected_modules =
+    app.modules.auth.*
+allowed_importers =
+    app.modules.auth
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:backups-boundary]
+name = backups internals are private
+type = protected
+protected_modules =
+    app.modules.backups.*
+allowed_importers =
+    app.modules.backups
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:banners-boundary]
+name = banners internals are private
+type = protected
+protected_modules =
+    app.modules.banners.*
+allowed_importers =
+    app.modules.banners
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:blacklist-boundary]
+name = blacklist internals are private
+type = protected
+protected_modules =
+    app.modules.blacklist.*
+allowed_importers =
+    app.modules.blacklist
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:dialogs-boundary]
+name = dialogs internals are private
+type = protected
+protected_modules =
+    app.modules.dialogs.*
+allowed_importers =
+    app.modules.dialogs
+    app.api.routers
+    app.worker.subscribers
+ignore_imports =
+    # catalog is a public registry namespace, exported as a module from __init__
+    app.telegram.** -> app.modules.dialogs.catalog
+
+[importlinter:contract:emoji-packs-boundary]
+name = emoji_packs internals are private
+type = protected
+protected_modules =
+    app.modules.emoji_packs.*
+allowed_importers =
+    app.modules.emoji_packs
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:event-log-boundary]
+name = event_log internals are private
+type = protected
+protected_modules =
+    app.modules.event_log.*
+allowed_importers =
+    app.modules.event_log
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:gateways-boundary]
+name = gateways internals are private
+type = protected
+protected_modules =
+    app.modules.gateways.*
+allowed_importers =
+    app.modules.gateways
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:oauth-boundary]
+name = oauth internals are private
+type = protected
+protected_modules =
+    app.modules.oauth.*
+allowed_importers =
+    app.modules.oauth
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:overview-boundary]
+name = overview internals are private
+type = protected
+protected_modules =
+    app.modules.overview.*
+allowed_importers =
+    app.modules.overview
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:passkeys-boundary]
+name = passkeys internals are private
+type = protected
+protected_modules =
+    app.modules.passkeys.*
+allowed_importers =
+    app.modules.passkeys
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:plans-boundary]
+name = plans internals are private
+type = protected
+protected_modules =
+    app.modules.plans.*
+allowed_importers =
+    app.modules.plans
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:pricing-boundary]
+name = pricing internals are private
+type = protected
+protected_modules =
+    app.modules.pricing.*
+allowed_importers =
+    app.modules.pricing
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:promocodes-boundary]
+name = promocodes internals are private
+type = protected
+protected_modules =
+    app.modules.promocodes.*
+allowed_importers =
+    app.modules.promocodes
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:referrals-boundary]
+name = referrals internals are private
+type = protected
+protected_modules =
+    app.modules.referrals.*
+allowed_importers =
+    app.modules.referrals
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:settings-boundary]
+name = settings internals are private
+type = protected
+protected_modules =
+    app.modules.settings.*
+allowed_importers =
+    app.modules.settings
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:subscriptions-boundary]
+name = subscriptions internals are private
+type = protected
+protected_modules =
+    app.modules.subscriptions.*
+allowed_importers =
+    app.modules.subscriptions
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:transactions-boundary]
+name = transactions internals are private
+type = protected
+protected_modules =
+    app.modules.transactions.*
+allowed_importers =
+    app.modules.transactions
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:translations-boundary]
+name = translations internals are private
+type = protected
+protected_modules =
+    app.modules.translations.*
+allowed_importers =
+    app.modules.translations
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:users-boundary]
+name = users internals are private
+type = protected
+protected_modules =
+    app.modules.users.*
+allowed_importers =
+    app.modules.users
+    app.api.routers
+    app.worker.subscribers
+
+[importlinter:contract:modules-acyclic]
+name = modules do not depend on each other in a cycle
+type = acyclic_siblings
+ancestors =
+    app.modules
+depth = 0

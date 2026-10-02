@@ -4,15 +4,16 @@ import json
 
 import pytest
 
-import app.modules.transactions.gateways.rollypay as rollypay_module
 from app.core.enums import TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.rollypay import RollyPayGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -21,8 +22,10 @@ from tests.modules.transactions.gateways.support import (
 _SETTINGS = {"api_key": "rpk", "signing_secret": "whsec"}
 
 
-def _gateway() -> RollyPayGateway:
-    return RollyPayGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+def _gateway(*, http: PaymentHttpClient = NO_HTTP) -> RollyPayGateway:
+    return RollyPayGateway(
+        settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
+    )
 
 
 def _payment(**overrides: object) -> dict[str, object]:
@@ -46,14 +49,12 @@ def _signed(**overrides: object) -> tuple[bytes, dict[str, str]]:
     return raw, {"X-Signature": signature, "X-Timestamp": timestamp}
 
 
-async def test_create_payment_sends_a_fresh_nonce(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(
-        monkeypatch,
-        rollypay_module,
+async def test_create_payment_sends_a_fresh_nonce() -> None:
+    http = HttpRecorder(
         json_response({"payment_id": "pay-1", "pay_url": "https://rolly/1"}),
     )
 
-    intent = await _gateway().create_payment(make_order())
+    intent = await _gateway(http=http.client).create_payment(make_order())
 
     assert http.last.headers["X-API-Key"] == "rpk"
     assert http.last.headers["X-Nonce"]
@@ -97,28 +98,30 @@ async def test_parse_webhook_reports_unpaid_outcomes(
     assert signal is not None and signal.reported_status is reported_status
 
 
-async def test_confirm_reads_the_payment(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(monkeypatch, rollypay_module, json_response(_payment()))
+async def test_confirm_reads_the_payment() -> None:
+    http = HttpRecorder(json_response(_payment()))
     raw, headers = _signed()
-    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, headers))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(external_payment_id="pay-1"), signal)
+    confirmed = await _gateway(http=http.client).confirm(
+        make_order(external_payment_id="pay-1"), signal
+    )
 
     assert confirmed is not None
     assert http.last.url.path == "/api/v1/payments/pay-1"
     assert http.last.headers["X-Nonce"]
 
 
-async def test_confirm_falls_back_to_signalled_payment_id(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(monkeypatch, rollypay_module, json_response(_payment()))
+async def test_confirm_falls_back_to_signalled_payment_id() -> None:
+    http = HttpRecorder(json_response(_payment()))
     raw, headers = _signed()
-    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, headers))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(external_payment_id=None), signal)
+    confirmed = await _gateway(http=http.client).confirm(
+        make_order(external_payment_id=None), signal
+    )
 
     assert confirmed is not None
     assert http.last.url.path == "/api/v1/payments/pay-1"
@@ -126,11 +129,12 @@ async def test_confirm_falls_back_to_signalled_payment_id(
 
 
 @pytest.mark.parametrize("payment", [_payment(status="created"), _payment(test=True)])
-async def test_confirm_rejects_unpaid_or_sandbox_payments(
-    monkeypatch: pytest.MonkeyPatch, payment: dict[str, object]
-) -> None:
-    install_http(monkeypatch, rollypay_module, json_response(payment))
+async def test_confirm_rejects_unpaid_or_sandbox_payments(payment: dict[str, object]) -> None:
+    http = HttpRecorder(json_response(payment))
     raw, headers = _signed()
-    signal = await _gateway().parse_webhook(webhook(raw, headers))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, headers))
     assert signal is not None
-    assert await _gateway().confirm(make_order(external_payment_id="pay-1"), signal) is None
+    assert (
+        await _gateway(http=http.client).confirm(make_order(external_payment_id="pay-1"), signal)
+        is None
+    )

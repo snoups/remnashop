@@ -6,14 +6,15 @@ from urllib.parse import quote, urlencode
 import httpx
 import pytest
 
-import app.modules.transactions.gateways.yoomoney as yoomoney_module
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.yoomoney import YooMoneyGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -22,9 +23,9 @@ from tests.modules.transactions.gateways.support import (
 _SETTINGS = {"wallet_id": "41001", "secret_key": "secret"}
 
 
-def _gateway(**extra: str) -> YooMoneyGateway:
+def _gateway(*, http: PaymentHttpClient = NO_HTTP, **extra: str) -> YooMoneyGateway:
     return YooMoneyGateway(
-        settings={**_SETTINGS, **extra}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL
+        settings={**_SETTINGS, **extra}, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
     )
 
 
@@ -59,17 +60,15 @@ def _details(**overrides: object) -> dict[str, object]:
     return details
 
 
-async def test_create_payment_follows_the_quickpay_redirect(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_create_payment_follows_the_quickpay_redirect() -> None:
     def respond(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/quickpay/confirm.xml":
             return httpx.Response(302, headers={"Location": "https://yoomoney.ru/quickpay/pay/1"})
         return httpx.Response(200)
 
-    http = install_http(monkeypatch, yoomoney_module, respond)
+    http = HttpRecorder(respond)
 
-    intent = await _gateway().create_payment(make_order())
+    intent = await _gateway(http=http.client).create_payment(make_order())
 
     assert intent.confirmation_url == "https://yoomoney.ru/quickpay/pay/1"
     assert b"label=order-key-1" in http.requests[0].content
@@ -111,11 +110,9 @@ async def test_confirm_without_a_token_trusts_the_signed_amount() -> None:
     assert await gateway.confirm(make_order(), missing) is None
 
 
-async def test_confirm_with_a_token_reads_operation_details(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(monkeypatch, yoomoney_module, json_response(_details()))
-    gateway = _gateway(access_token="wallet-token")
+async def test_confirm_with_a_token_reads_operation_details() -> None:
+    http = HttpRecorder(json_response(_details()))
+    gateway = _gateway(access_token="wallet-token", http=http.client)
     signal = await gateway.parse_webhook(webhook(_notification()))
     assert signal is not None
 
@@ -130,19 +127,17 @@ async def test_confirm_with_a_token_reads_operation_details(
 @pytest.mark.parametrize(
     "details", [_details(direction="out"), _details(status="refused"), _details(label="other")]
 )
-async def test_confirm_with_a_token_rejects_mismatches(
-    monkeypatch: pytest.MonkeyPatch, details: dict[str, object]
-) -> None:
-    install_http(monkeypatch, yoomoney_module, json_response(details))
-    gateway = _gateway(access_token="wallet-token")
+async def test_confirm_with_a_token_rejects_mismatches(details: dict[str, object]) -> None:
+    http = HttpRecorder(json_response(details))
+    gateway = _gateway(access_token="wallet-token", http=http.client)
     signal = await gateway.parse_webhook(webhook(_notification()))
     assert signal is not None
     assert await gateway.confirm(make_order(), signal) is None
 
 
-async def test_confirm_with_a_token_raises_on_api_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, yoomoney_module, json_response({"error": "invalid_token"}))
-    gateway = _gateway(access_token="wallet-token")
+async def test_confirm_with_a_token_raises_on_api_errors() -> None:
+    http = HttpRecorder(json_response({"error": "invalid_token"}))
+    gateway = _gateway(access_token="wallet-token", http=http.client)
     signal = await gateway.parse_webhook(webhook(_notification()))
     assert signal is not None
     with pytest.raises(PaymentGatewayError):

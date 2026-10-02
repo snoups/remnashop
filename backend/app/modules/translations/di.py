@@ -1,10 +1,13 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, provide, provide_all
 
-from app.modules.translations.repository import TranslationsRepository
+from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.usecases import (
+    AddLocaleUseCase,
     ExportTranslationsUseCase,
     ImportTranslationsUseCase,
+    ListActiveLocalesUseCase,
     ListTranslationsUseCase,
+    RemoveLocaleUseCase,
     ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
     UpdateTranslationUseCase,
@@ -14,13 +17,18 @@ from app.modules.translations.usecases import (
 class TranslationsProvider(Provider):
     scope = Scope.REQUEST
 
-    translations_repository = provide(TranslationsRepository)
-    list_translations_use_case = provide(ListTranslationsUseCase)
-    update_translation_use_case = provide(UpdateTranslationUseCase)
-    reset_translation_use_case = provide(ResetTranslationUseCase)
-    reset_all_translations_use_case = provide(ResetAllTranslationsUseCase)
-    export_translations_use_case = provide(ExportTranslationsUseCase)
-    import_translations_use_case = provide(ImportTranslationsUseCase)
+    translation_repository = provide(TranslationRepository)
+    use_cases = provide_all(
+        ListTranslationsUseCase,
+        UpdateTranslationUseCase,
+        ResetTranslationUseCase,
+        ResetAllTranslationsUseCase,
+        ExportTranslationsUseCase,
+        ImportTranslationsUseCase,
+        ListActiveLocalesUseCase,
+        AddLocaleUseCase,
+        RemoveLocaleUseCase,
+    )
 
 
 def get_translations_providers() -> list[Provider]:

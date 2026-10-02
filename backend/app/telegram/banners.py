@@ -4,18 +4,14 @@ from aiogram.enums import ContentType
 from aiogram_dialog.api.entities import MediaAttachment
 
 from app.core.config import AppConfig
-from app.core.enums import Locale
-from app.modules.banners import BannerRepository, banner_path
+from app.modules.banners import BannerKeyDto, GetBannerForDisplayUseCase, banner_path
+from app.modules.users import UserDto
 
 
 async def get_banner_media(
-    banner_repository: BannerRepository,
-    config: AppConfig,
-    name: str,
-    locale: Locale,
-    default_locale: Locale,
+    get_banner: GetBannerForDisplayUseCase, config: AppConfig, user: UserDto, name: str
 ) -> Optional[MediaAttachment]:
-    banner = await banner_repository.find_for_display(name, locale, default_locale)
+    banner = await get_banner(user, BannerKeyDto(name=name, locale=user.language))
     if banner is None:
         return None
 

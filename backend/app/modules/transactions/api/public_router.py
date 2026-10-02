@@ -38,4 +38,4 @@ async def create_checkout(
             plan_code=payload.plan_code,
         ),
     )
-    return CheckoutResponse(order_id=result.order_id, confirmation_url=result.confirmation_url)
+    return CheckoutResponse.model_validate(result, from_attributes=True)

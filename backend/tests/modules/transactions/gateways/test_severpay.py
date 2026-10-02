@@ -5,15 +5,16 @@ from typing import Any
 
 import pytest
 
-import app.modules.transactions.gateways.severpay as severpay_module
 from app.core.enums import TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.severpay import SeverPayGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -22,8 +23,10 @@ from tests.modules.transactions.gateways.support import (
 _SETTINGS = {"mid": "1", "token": "tok"}
 
 
-def _gateway() -> SeverPayGateway:
-    return SeverPayGateway(settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+def _gateway(*, http: PaymentHttpClient = NO_HTTP) -> SeverPayGateway:
+    return SeverPayGateway(
+        settings=_SETTINGS, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
+    )
 
 
 def _hmac(body: bytes) -> str:
@@ -74,16 +77,12 @@ def _payin(status: str = "success") -> dict[str, object]:
     }
 
 
-async def test_create_payment_signs_sorted_body_with_lifetime(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(
-        monkeypatch,
-        severpay_module,
+async def test_create_payment_signs_sorted_body_with_lifetime() -> None:
+    http = HttpRecorder(
         json_response({"status": True, "msg": "", "data": {"id": 123, "url": "https://sp/1"}}),
     )
 
-    intent = await _gateway().create_payment(make_order())
+    intent = await _gateway(http=http.client).create_payment(make_order())
 
     payload = http.last_json()
     assert payload["lifetime"] == 30
@@ -123,12 +122,14 @@ def test_ack_is_the_documented_json() -> None:
     assert ack.media_type == "application/json"
 
 
-async def test_confirm_reads_a_signed_payin_get(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(monkeypatch, severpay_module, json_response(_payin()))
-    signal = await _gateway().parse_webhook(webhook(_hook()))
+async def test_confirm_reads_a_signed_payin_get() -> None:
+    http = HttpRecorder(json_response(_payin()))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_hook()))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(external_payment_id="123"), signal)
+    confirmed = await _gateway(http=http.client).confirm(
+        make_order(external_payment_id="123"), signal
+    )
 
     payload = http.last_json()
     assert confirmed is not None
@@ -141,10 +142,11 @@ async def test_confirm_reads_a_signed_payin_get(monkeypatch: pytest.MonkeyPatch)
     "response",
     [_payin("process"), {"status": False, "msg": "not found"}],
 )
-async def test_confirm_rejects_unfinished_or_unknown_payins(
-    monkeypatch: pytest.MonkeyPatch, response: dict[str, object]
-) -> None:
-    install_http(monkeypatch, severpay_module, json_response(response))
-    signal = await _gateway().parse_webhook(webhook(_hook()))
+async def test_confirm_rejects_unfinished_or_unknown_payins(response: dict[str, object]) -> None:
+    http = HttpRecorder(json_response(response))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_hook()))
     assert signal is not None
-    assert await _gateway().confirm(make_order(external_payment_id="123"), signal) is None
+    assert (
+        await _gateway(http=http.client).confirm(make_order(external_payment_id="123"), signal)
+        is None
+    )

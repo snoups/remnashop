@@ -14,14 +14,16 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Currency, SubscriptionStatus
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
-from app.modules.subscriptions.addon_repository import AddOnRepository
+from app.modules.plans.addon_repository import AddOnRepository
+from app.modules.plans.dto import CreateAddOnDto
 from app.modules.subscriptions.dto import (
-    CreateAddOnDto,
     CreateSubscriptionDto,
     UpdateSubscriptionDto,
     UpdateSubscriptionSquadsDto,
 )
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
@@ -316,7 +318,7 @@ async def test_grant_entitlement_unknown_subscription_raises_not_found(
 async def test_get_by_remnawave_user_id_returns_none_for_unknown_id(
     subscription_repository: SubscriptionRepository,
 ) -> None:
-    result = await subscription_repository.get_by_remnawave_user_id(999999)
+    result = await subscription_repository.get_by_remnawave_user_id_for_update(999999)
     assert result is None
 
 
@@ -326,7 +328,7 @@ async def test_get_by_remnawave_user_id_finds_the_matching_subscription(
     user_id = await _create_user(user_repository, 141)
     created = await subscription_repository.create(_create_dto(user_id, 54321))
 
-    found = await subscription_repository.get_by_remnawave_user_id(54321)
+    found = await subscription_repository.get_by_remnawave_user_id_for_update(54321)
 
     assert found is not None
     assert found.id == created.id
@@ -388,11 +390,12 @@ async def test_get_by_id_for_update_returns_same_shape_as_get_by_id(
 async def test_claim_idempotency_key_first_caller_wins(
     subscription_repository: SubscriptionRepository,
     uow: UnitOfWork,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     async with uow:
-        first = await subscription_repository.claim_idempotency_key("key-1")
+        first = await idempotency_repository.claim("key-1")
     async with uow:
-        second = await subscription_repository.claim_idempotency_key("key-1")
+        second = await idempotency_repository.claim("key-1")
 
     assert first is True
     assert second is False
@@ -402,24 +405,25 @@ async def test_link_and_get_idempotency_key(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     created = await create_subscription(
         subscription_repository, user_repository, telegram_id=502, remnawave_user_id=502001
     )
     async with uow:
-        await subscription_repository.claim_idempotency_key("key-2")
-        await subscription_repository.link_idempotency_key("key-2", created.id)
+        await idempotency_repository.claim("key-2")
+        await idempotency_repository.link("key-2", created.id)
 
-    linked = await subscription_repository.get_subscription_by_idempotency_key("key-2")
+    linked = await idempotency_repository.get_subscription_id("key-2")
 
-    assert linked is not None
-    assert linked.id == created.id
+    assert linked == created.id
 
 
 async def test_get_subscription_by_unclaimed_idempotency_key_returns_none(
     subscription_repository: SubscriptionRepository,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
-    assert await subscription_repository.get_subscription_by_idempotency_key("missing") is None
+    assert await idempotency_repository.get_subscription_id("missing") is None
 
 
 async def test_plan_snapshot_round_trips_through_create_and_get(
@@ -524,7 +528,7 @@ async def test_get_by_remnawave_user_id_ignores_deleted_rows_sharing_the_uuid(
         )
     )
 
-    found = await subscription_repository.get_by_remnawave_user_id(9001)
+    found = await subscription_repository.get_by_remnawave_user_id_for_update(9001)
 
     assert found is not None
     assert found.id == live.id
@@ -597,6 +601,7 @@ async def test_list_paginated_search_matches_id_and_user_id(
 async def test_delete_stale_idempotency_keys_removes_only_old_rows(
     subscription_repository: SubscriptionRepository,
     session: AsyncSession,
+    idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     now = datetime.now(timezone.utc)
     old_purchase = SubscriptionPurchaseIdempotency(key="old-p", subscription_id=None)
@@ -616,7 +621,7 @@ async def test_delete_stale_idempotency_keys_removes_only_old_rows(
         .values(created_at=now - timedelta(days=30))
     )
 
-    purchase_deleted, addon_deleted = await subscription_repository.delete_stale_idempotency_keys(
+    purchase_deleted, addon_deleted = await idempotency_repository.delete_stale(
         now - timedelta(days=7)
     )
 
@@ -627,50 +632,10 @@ async def test_delete_stale_idempotency_keys_removes_only_old_rows(
     assert remaining_purchase == {"new-p"}
 
 
-async def test_count_active_counts_active_disabled_and_limited_but_not_expired_or_deleted(
-    subscription_repository: SubscriptionRepository, user_repository: UserRepository
-) -> None:
-    await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=820_001,
-        remnawave_user_id=820_001,
-        status=SubscriptionStatus.ACTIVE,
-    )
-    await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=820_002,
-        remnawave_user_id=820_002,
-        status=SubscriptionStatus.DISABLED,
-    )
-    await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=820_003,
-        remnawave_user_id=820_003,
-        status=SubscriptionStatus.LIMITED,
-    )
-    await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=820_004,
-        remnawave_user_id=820_004,
-        status=SubscriptionStatus.EXPIRED,
-    )
-    await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=820_005,
-        remnawave_user_id=820_005,
-        status=SubscriptionStatus.DELETED,
-    )
-
-    assert await subscription_repository.count_active() == 3
-
-
 async def test_count_by_status_groups_live_rows_and_excludes_deleted(
-    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     for offset, status in enumerate(
         (
@@ -689,7 +654,7 @@ async def test_count_by_status_groups_live_rows_and_excludes_deleted(
             status=status,
         )
 
-    assert await subscription_repository.count_by_status() == {
+    assert await subscription_stats_repository.count_by_status() == {
         SubscriptionStatus.ACTIVE: 2,
         SubscriptionStatus.LIMITED: 1,
         SubscriptionStatus.EXPIRED: 1,
@@ -697,7 +662,9 @@ async def test_count_by_status_groups_live_rows_and_excludes_deleted(
 
 
 async def test_count_expiring_between_only_counts_live_rows_in_the_window(
-    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     now = datetime_now()
     await create_subscription(
@@ -744,13 +711,17 @@ async def test_count_expiring_between_only_counts_live_rows_in_the_window(
         expire_at=now + timedelta(days=2),
     )
 
-    assert await subscription_repository.count_expiring_between(now, now + timedelta(days=7)) == 2
+    assert (
+        await subscription_stats_repository.count_expiring_between(now, now + timedelta(days=7))
+        == 2
+    )
 
 
 async def test_count_churn_window_counts_pre_window_subscriptions_only(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     session: AsyncSession,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     window_start = datetime_now() - timedelta(days=7)
 
@@ -790,14 +761,16 @@ async def test_count_churn_window_counts_pre_window_subscriptions_only(
         expire_at=datetime_now() + timedelta(days=30),
     )
 
-    prev_active, still_active = await subscription_repository.count_churn_window(window_start)
+    prev_active, still_active = await subscription_stats_repository.count_churn_window(window_start)
 
     assert prev_active == 2
     assert still_active == 1
 
 
 async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inactive(
-    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     await create_subscription(
         subscription_repository,
@@ -830,13 +803,15 @@ async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inacti
         duration_days=30,
     )
 
-    result = await subscription_repository.sum_active_mrr_by_currency()
+    result = await subscription_stats_repository.sum_active_mrr_by_currency()
 
     assert result == {Currency.RUB: Decimal("360")}
 
 
 async def test_list_user_ids_with_trial_filters_by_is_trial_and_membership(
-    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
     trial_sub = await create_subscription(
         subscription_repository,
@@ -855,7 +830,7 @@ async def test_list_user_ids_with_trial_filters_by_is_trial_and_membership(
         is_trial=False,
     )
 
-    result = await subscription_repository.list_user_ids_with_trial(
+    result = await subscription_stats_repository.list_user_ids_with_trial(
         [trial_sub.user_id, paid_sub.user_id]
     )
 

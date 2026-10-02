@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
@@ -11,12 +9,6 @@ from app.modules.blacklist.dto import BlacklistDto, BlacklistEntryInputDto
 from app.modules.blacklist.events import BlacklistEntryRemovedEvent
 from app.modules.blacklist.normalize import removal_key
 from app.modules.blacklist.repository import BlacklistRepository
-
-if TYPE_CHECKING:
-    # app.modules.users now imports BlacklistRepository (block/unblock usecases) --
-    # an eager import here would cycle back into a partially-initialized
-    # app.modules.users, same class of fix as core/usecase.py and core/events.py.
-    pass
 
 
 class RemoveBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto]):

@@ -1,7 +1,7 @@
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.referrals.dto import ReferralStatsDto
+from app.modules.referrals.dto import ReferralStatsDto, ReferralStatsRewardDto
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.users import UserDto
 
@@ -23,5 +23,8 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
                 referrer_id=edge.referrer_id if edge is not None else None,
                 points=actor.points,
                 counts_by_level=counts,
-                rewards=rewards,
+                rewards=[
+                    ReferralStatsRewardDto(type=r.type, amount=r.amount, created_at=r.created_at)
+                    for r in rewards
+                ],
             )

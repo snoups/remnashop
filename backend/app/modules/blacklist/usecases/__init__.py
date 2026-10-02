@@ -1,5 +1,7 @@
 from app.modules.blacklist.usecases.add_blacklist_entry import AddBlacklistEntryUseCase
 from app.modules.blacklist.usecases.add_blacklist_source import AddBlacklistSourceUseCase
+from app.modules.blacklist.usecases.fetch_blacklist_sources import FetchBlacklistSourcesUseCase
+from app.modules.blacklist.usecases.get_blacklist_source import GetBlacklistSourceUseCase
 from app.modules.blacklist.usecases.list_blacklist import ListBlacklistUseCase
 from app.modules.blacklist.usecases.list_blacklist_sources import ListBlacklistSourcesUseCase
 from app.modules.blacklist.usecases.remove_blacklist_entry import RemoveBlacklistEntryUseCase
@@ -10,6 +12,8 @@ from app.modules.blacklist.usecases.update_blacklist_source import UpdateBlackli
 __all__ = [
     "AddBlacklistEntryUseCase",
     "AddBlacklistSourceUseCase",
+    "FetchBlacklistSourcesUseCase",
+    "GetBlacklistSourceUseCase",
     "ListBlacklistSourcesUseCase",
     "ListBlacklistUseCase",
     "RemoveBlacklistEntryUseCase",

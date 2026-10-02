@@ -8,32 +8,25 @@ from fluentogram import TranslatorHub
 from app.core.config import AppConfig
 from app.core.constants import DEFAULT_BANNER_NAME, USER_KEY
 from app.core.enums import PromocodeRewardType
-from app.core.utils.i18n_helpers import i18n_format_expire_time
-from app.modules.banners import BannerRepository
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.banners import GetBannerForDisplayUseCase
+from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
-from app.telegram.i18n import get_translator
+from app.telegram.i18n import get_translator, i18n_format_expire_time
 
 
 @inject
 async def subscription_main_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
-    banner_repository: FromDishka[BannerRepository],
+    get_banner: FromDishka[GetBannerForDisplayUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
-    banner = await get_banner_media(
-        banner_repository,
-        config,
-        DEFAULT_BANNER_NAME,
-        user.language,
-        config.default_locale,
-    )
+    banner = await get_banner_media(get_banner, config, user, DEFAULT_BANNER_NAME)
     return {
         "banner": banner,
         "message": render_window_text(runner, "msg-subscription-main"),
@@ -59,13 +52,13 @@ async def promocode_input_getter(
 @inject
 async def promocode_target_getter(
     dialog_manager: DialogManager,
-    subscription_repository: FromDishka[SubscriptionRepository],
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
-    active = await subscription_repository.get_active_by_user(user.id)
+    active = await list_own_active_subscriptions(user)
     subscriptions = [
         {
             "id": sub.id,
@@ -83,7 +76,7 @@ async def promocode_target_getter(
 @inject
 async def promocode_confirm_getter(
     dialog_manager: DialogManager,
-    subscription_repository: FromDishka[SubscriptionRepository],
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -93,7 +86,7 @@ async def promocode_confirm_getter(
 
     will_replace = False
     if reward_type == PromocodeRewardType.SUBSCRIPTION.value:
-        will_replace = len(await subscription_repository.get_active_by_user(user.id)) > 0
+        will_replace = len(await list_own_active_subscriptions(user)) > 0
 
     return {
         "confirm_message": render_window_text(

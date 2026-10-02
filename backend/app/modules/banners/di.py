@@ -1,8 +1,9 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, provide, provide_all
 
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.usecases import (
     DeleteBannerUseCase,
+    GetBannerForDisplayUseCase,
     GetBannerImageUseCase,
     RestoreDefaultBannerUseCase,
     UploadBannerUseCase,
@@ -13,10 +14,13 @@ class BannersProvider(Provider):
     scope = Scope.REQUEST
 
     banner_repository = provide(BannerRepository)
-    upload_banner_use_case = provide(UploadBannerUseCase)
-    delete_banner_use_case = provide(DeleteBannerUseCase)
-    get_banner_image_use_case = provide(GetBannerImageUseCase)
-    restore_default_banner_use_case = provide(RestoreDefaultBannerUseCase)
+    use_cases = provide_all(
+        UploadBannerUseCase,
+        DeleteBannerUseCase,
+        GetBannerImageUseCase,
+        RestoreDefaultBannerUseCase,
+        GetBannerForDisplayUseCase,
+    )
 
 
 def get_banners_providers() -> list[Provider]:

@@ -5,9 +5,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, status
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
-from app.core.enums import Locale
 from app.modules.settings.api.schemas import (
-    ActiveLocalesResponse,
     AppearanceResponse,
     BotCommandItem,
     BotCommandsResponse,
@@ -15,6 +13,7 @@ from app.modules.settings.api.schemas import (
     BotSettingsResponse,
     BotStatusResponse,
     OAuthSettingsResponse,
+    SetBotProxyRequest,
     ShopSettingsResponse,
     UpdateAppearanceRequest,
     UpdateBotCommandsRequest,
@@ -24,14 +23,13 @@ from app.modules.settings.api.schemas import (
     UpdateShopSettingsRequest,
 )
 from app.modules.settings.dto import (
-    AppearanceSettingsDto,
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
     UpdateShopSettingsDto,
+    UploadAppearanceImageDto,
 )
 from app.modules.settings.usecases import (
-    AddLocaleUseCase,
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
     GetBotCommandsUseCase,
@@ -40,28 +38,21 @@ from app.modules.settings.usecases import (
     GetBotStatusUseCase,
     GetOAuthSettingsUseCase,
     GetShopSettingsUseCase,
-    ListActiveLocalesUseCase,
-    RemoveLocaleUseCase,
+    RemoveBotProxyUseCase,
     ResetAppearanceSettingsUseCase,
     RestartBotUseCase,
+    SetBotProxyUseCase,
     UpdateAppearanceSettingsUseCase,
     UpdateBotCommandsUseCase,
     UpdateBotSettingsUseCase,
     UpdateOAuthSettingsUseCase,
     UpdateShopSettingsUseCase,
     UploadAppearanceFaviconUseCase,
-    UploadAppearanceImageInput,
     UploadAppearanceLogoUseCase,
 )
 from app.modules.settings.usecases.upload_appearance_image import MAX_APPEARANCE_IMAGE_SIZE_BYTES
 
 router = APIRouter(prefix="/settings", tags=["settings"])
-
-
-def _to_locales_response(active: list[Locale]) -> ActiveLocalesResponse:
-    return ActiveLocalesResponse(
-        active=active, available=[locale for locale in Locale if locale not in active]
-    )
 
 
 @router.get("/bot", response_model=BotSettingsResponse)
@@ -71,10 +62,7 @@ async def get_bot_settings(
     actor: Actor = Depends(require_admin),
 ) -> BotSettingsResponse:
     settings = await use_case(actor)
-    return BotSettingsResponse(
-        is_configured=settings.is_configured,
-        drop_pending_updates=settings.drop_pending_updates,
-    )
+    return BotSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.get("/bot/status", response_model=BotStatusResponse)
@@ -84,13 +72,7 @@ async def get_bot_status(
     actor: Actor = Depends(require_admin),
 ) -> BotStatusResponse:
     status = await use_case(actor)
-    return BotStatusResponse(
-        is_configured=status.is_configured,
-        is_running=status.is_running,
-        webhook_url=status.webhook_url,
-        pending_update_count=status.pending_update_count,
-        error=status.error,
-    )
+    return BotStatusResponse.model_validate(status, from_attributes=True)
 
 
 @router.get("/bot/logs", response_model=BotLogsResponse)
@@ -117,10 +99,28 @@ async def update_bot_settings(
             drop_pending_updates=payload.drop_pending_updates,
         ),
     )
-    return BotSettingsResponse(
-        is_configured=settings.is_configured,
-        drop_pending_updates=settings.drop_pending_updates,
-    )
+    return BotSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.put("/bot/proxy", response_model=BotSettingsResponse, responses=error_responses(400))
+@inject
+async def set_bot_proxy(
+    payload: SetBotProxyRequest,
+    use_case: FromDishka[SetBotProxyUseCase],
+    actor: Actor = Depends(require_admin),
+) -> BotSettingsResponse:
+    settings = await use_case(actor, payload.proxy_url)
+    return BotSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.delete("/bot/proxy", response_model=BotSettingsResponse)
+@inject
+async def remove_bot_proxy(
+    use_case: FromDishka[RemoveBotProxyUseCase],
+    actor: Actor = Depends(require_admin),
+) -> BotSettingsResponse:
+    settings = await use_case(actor)
+    return BotSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.get("/shop", response_model=ShopSettingsResponse)
@@ -130,15 +130,7 @@ async def get_shop_settings(
     actor: Actor = Depends(require_admin),
 ) -> ShopSettingsResponse:
     settings = await use_case(actor)
-    return ShopSettingsResponse(
-        max_active_subscriptions=settings.max_active_subscriptions,
-        device_single_reset_enabled=settings.device_single_reset_enabled,
-        device_single_reset_cooldown_hours=settings.device_single_reset_cooldown_hours,
-        device_all_reset_enabled=settings.device_all_reset_enabled,
-        device_all_reset_cooldown_hours=settings.device_all_reset_cooldown_hours,
-        link_reset_enabled=settings.link_reset_enabled,
-        link_reset_cooldown_hours=settings.link_reset_cooldown_hours,
-    )
+    return ShopSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.patch("/shop", response_model=ShopSettingsResponse, responses=error_responses(400))
@@ -160,15 +152,7 @@ async def update_shop_settings(
             link_reset_cooldown_hours=payload.link_reset_cooldown_hours,
         ),
     )
-    return ShopSettingsResponse(
-        max_active_subscriptions=settings.max_active_subscriptions,
-        device_single_reset_enabled=settings.device_single_reset_enabled,
-        device_single_reset_cooldown_hours=settings.device_single_reset_cooldown_hours,
-        device_all_reset_enabled=settings.device_all_reset_enabled,
-        device_all_reset_cooldown_hours=settings.device_all_reset_cooldown_hours,
-        link_reset_enabled=settings.link_reset_enabled,
-        link_reset_cooldown_hours=settings.link_reset_cooldown_hours,
-    )
+    return ShopSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.post("/bot/actions/restart", status_code=status.HTTP_202_ACCEPTED)
@@ -189,7 +173,7 @@ async def get_bot_commands(
 ) -> BotCommandsResponse:
     commands = await use_case(actor, default_order)
     return BotCommandsResponse(
-        commands=[BotCommandItem(command=item.command, enabled=item.enabled) for item in commands]
+        commands=[BotCommandItem.model_validate(item, from_attributes=True) for item in commands]
     )
 
 
@@ -208,7 +192,7 @@ async def update_bot_commands(
     )
     return UpdateBotCommandsResponse(
         commands=[
-            BotCommandItem(command=item.command, enabled=item.enabled) for item in result.commands
+            BotCommandItem.model_validate(item, from_attributes=True) for item in result.commands
         ],
         telegram_sync_failed=result.telegram_sync_failed,
     )
@@ -280,51 +264,6 @@ async def update_oauth_settings(
     )
 
 
-@router.get("/locales", response_model=ActiveLocalesResponse)
-@inject
-async def list_locales(
-    use_case: FromDishka[ListActiveLocalesUseCase],
-    actor: Actor = Depends(require_admin),
-) -> ActiveLocalesResponse:
-    active = await use_case(actor)
-    return _to_locales_response(active)
-
-
-@router.put("/locales/{locale}", response_model=ActiveLocalesResponse)
-@inject
-async def add_locale(
-    locale: Locale,
-    use_case: FromDishka[AddLocaleUseCase],
-    actor: Actor = Depends(require_admin),
-) -> ActiveLocalesResponse:
-    active = await use_case(actor, locale)
-    return _to_locales_response(active)
-
-
-@router.delete(
-    "/locales/{locale}", response_model=ActiveLocalesResponse, responses=error_responses(400)
-)
-@inject
-async def remove_locale(
-    locale: Locale,
-    use_case: FromDishka[RemoveLocaleUseCase],
-    actor: Actor = Depends(require_admin),
-) -> ActiveLocalesResponse:
-    active = await use_case(actor, locale)
-    return _to_locales_response(active)
-
-
-def _to_appearance_response(settings: AppearanceSettingsDto) -> AppearanceResponse:
-    return AppearanceResponse(
-        brand_name=settings.brand_name,
-        primary_color=settings.primary_color,
-        shader_palette=settings.shader_palette,
-        shader_enabled=settings.shader_enabled,
-        has_logo=settings.has_logo,
-        has_favicon=settings.has_favicon,
-    )
-
-
 @router.patch("/appearance", response_model=AppearanceResponse)
 @inject
 async def update_appearance_settings(
@@ -341,7 +280,7 @@ async def update_appearance_settings(
             shader_enabled=payload.shader_enabled,
         ),
     )
-    return _to_appearance_response(settings)
+    return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
 @router.post("/appearance/actions/reset", response_model=AppearanceResponse)
@@ -351,7 +290,7 @@ async def reset_appearance_settings(
     actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
     settings = await use_case(actor)
-    return _to_appearance_response(settings)
+    return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
 @router.put("/appearance/logo", response_model=AppearanceResponse, responses=error_responses(400))
@@ -364,9 +303,9 @@ async def upload_appearance_logo(
     data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
     settings = await use_case(
         actor,
-        UploadAppearanceImageInput(content_type=file.content_type or "", data=data),
+        UploadAppearanceImageDto(content_type=file.content_type or "", data=data),
     )
-    return _to_appearance_response(settings)
+    return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
 @router.delete(
@@ -392,9 +331,9 @@ async def upload_appearance_favicon(
     data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
     settings = await use_case(
         actor,
-        UploadAppearanceImageInput(content_type=file.content_type or "", data=data),
+        UploadAppearanceImageDto(content_type=file.content_type or "", data=data),
     )
-    return _to_appearance_response(settings)
+    return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
 @router.delete(

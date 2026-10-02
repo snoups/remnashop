@@ -15,7 +15,6 @@ from app.modules.transactions.gateways.base import (
     WebhookRequest,
     WebhookSignal,
     amount_to_float,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -63,7 +62,7 @@ class SeverPayGateway(PaymentGateway):
                 ),
             }
         )
-        response = await http_client.post(f"{_API_BASE}/payin/create", json=payload)
+        response = await self._http.post(f"{_API_BASE}/payin/create", json=payload)
         response.raise_for_status()
         data = orjson.loads(response.content)
         if data.get("status") is not True:
@@ -114,7 +113,7 @@ class SeverPayGateway(PaymentGateway):
         if not order.external_payment_id:
             return NOT_PAID
         payload = self._signed({"id": int(order.external_payment_id)})
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/payin/get", json=payload, timeout=PROVIDER_API_TIMEOUT_S
         )
         response.raise_for_status()

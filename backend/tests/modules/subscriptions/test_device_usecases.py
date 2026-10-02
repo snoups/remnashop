@@ -10,10 +10,10 @@ from app.core.exceptions import CooldownError, NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.dto import CreateSubscriptionDto, DeleteDeviceDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.delete_all_devices import DeleteAllDevicesUseCase
-from app.modules.subscriptions.usecases.delete_device import DeleteDeviceDto, DeleteDeviceUseCase
+from app.modules.subscriptions.usecases.delete_device import DeleteDeviceUseCase
 from app.modules.subscriptions.usecases.list_devices import ListDevicesUseCase
 from app.modules.subscriptions.usecases.reissue_subscription import ReissueSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto

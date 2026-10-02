@@ -11,7 +11,7 @@ from app.modules.gateways.field_catalog import (
     validate_gateway_field_keys,
     validate_gateway_field_values,
 )
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 
 
 class UpdateGatewaySettingsUseCase(UseCase[UpdateGatewaySettingsDto, PaymentGatewayDto]):
@@ -19,11 +19,11 @@ class UpdateGatewaySettingsUseCase(UseCase[UpdateGatewaySettingsDto, PaymentGate
 
     def __init__(
         self,
-        gateways_repository: GatewaysRepository,
+        gateway_repository: GatewayRepository,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
-        self._gateways_repository = gateways_repository
+        self._gateway_repository = gateway_repository
         self._event_publisher = event_publisher
         self._uow = uow
 
@@ -32,7 +32,7 @@ class UpdateGatewaySettingsUseCase(UseCase[UpdateGatewaySettingsDto, PaymentGate
         validate_gateway_field_values(data.type, data.values)
 
         async with self._uow:
-            gateway = await self._gateways_repository.update_settings(data.type, data.values)
+            gateway = await self._gateway_repository.update_settings(data.type, data.values)
             await self._event_publisher.publish(
                 GatewayChangedEvent(
                     user=actor,

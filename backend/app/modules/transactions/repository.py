@@ -5,7 +5,7 @@ from typing import Final, Optional, cast
 from sqlalchemy import ColumnElement, CursorResult, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import INT32_MAX
+from app.core.constants import INT32_MAX, MAX_SQL_IN_PARAMS
 from app.core.db.models.transaction import Transaction
 from app.core.db.timestamp import NOW_FUNC
 from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
@@ -13,10 +13,6 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import DEFAULT_PAGE_SIZE, CreateTransactionDto, TransactionDto
-
-# asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
-# large attributed-user list still fits after other predicates are added.
-_MAX_IN_PARAMS: Final[int] = 20_000
 
 # Test orders never provision a subscription and must stay out of every
 # revenue/analytics/reconciliation query, and out of the admin order list.
@@ -180,17 +176,6 @@ class TransactionRepository:
         )
         return cast(CursorResult, result).rowcount > 0
 
-    async def list_expired_pending(self, cutoff: datetime) -> list[TransactionDto]:
-        rows = (
-            await self.session.scalars(
-                select(Transaction).where(
-                    Transaction.status == TransactionStatus.PENDING,
-                    Transaction.expires_at <= cutoff,
-                )
-            )
-        ).all()
-        return [self._to_dto(row) for row in rows]
-
     async def cancel_expired_pending(self, cutoff: datetime) -> list[TransactionDto]:
         # A bulk Core update() bypasses the ORM's attribute-level onupdate
         # hook, so updated_at (shown in the admin router) has to be set
@@ -316,8 +301,8 @@ class TransactionRepository:
         if not user_ids:
             return {}
         totals: dict[Currency, Decimal] = {}
-        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
-            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
             stmt = (
                 select(Transaction.currency, func.sum(Transaction.final_price))
                 .where(
@@ -358,8 +343,8 @@ class TransactionRepository:
         if not user_ids:
             return set()
         paid: set[int] = set()
-        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
-            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
             stmt = select(Transaction.user_id.distinct()).where(
                 Transaction.user_id.in_(chunk),
                 Transaction.status == TransactionStatus.PAID,
@@ -373,8 +358,8 @@ class TransactionRepository:
         if not user_ids:
             return set()
         repeat_payers: set[int] = set()
-        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
-            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
             stmt = (
                 select(Transaction.user_id)
                 .where(
@@ -398,8 +383,8 @@ class TransactionRepository:
             func.date_trunc("month", func.timezone("UTC", Transaction.updated_at))
         )
         pairs: list[tuple[int, date]] = []
-        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
-            chunk = user_ids[start : start + _MAX_IN_PARAMS]
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
             stmt = (
                 select(Transaction.user_id, month_col)
                 .where(

@@ -1,7 +1,9 @@
 from app.core.enums import BlacklistKind, Role
 from app.modules.blacklist import BlacklistRepository
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
-from app.modules.blacklist.tasks import reconcile_blacklist, sync_blacklist_sources
+from app.modules.blacklist.usecases import FetchBlacklistSourcesUseCase, fetch_blacklist_sources
+from app.modules.users import BlockBlacklistMatchesUseCase
+from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -15,13 +17,17 @@ async def test_reconcile_blocks_matching_user_and_does_not_unblock(
     user = await user_repository.create(CreateUserDto(telegram_id=777, name="x"))
     await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "777")
 
-    await reconcile_blacklist(blacklist_repository, user_repository, uow, event_publisher)
+    await BlockBlacklistMatchesUseCase(
+        blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
+    ).system()
     refetched = await user_repository.get_by_id(user.id)
     assert refetched is not None and refetched.is_blocked is True
 
     # entry removed -> reconcile must NOT unblock
     await blacklist_repository.remove_entry(BlacklistKind.TELEGRAM_ID, "777")
-    await reconcile_blacklist(blacklist_repository, user_repository, uow, event_publisher)
+    await BlockBlacklistMatchesUseCase(
+        blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
+    ).system()
     refetched = await user_repository.get_by_id(user.id)
     assert refetched is not None and refetched.is_blocked is True
 
@@ -39,7 +45,9 @@ async def test_reconcile_never_blocks_staff(
     await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "111")
     await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "222")
 
-    await reconcile_blacklist(blacklist_repository, user_repository, uow, event_publisher)
+    await BlockBlacklistMatchesUseCase(
+        blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
+    ).system()
 
     refetched_owner = await user_repository.get_by_id(owner.id)
     refetched_plain = await user_repository.get_by_id(plain.id)
@@ -58,7 +66,9 @@ async def test_reconcile_matches_email_case_insensitively(
     )
     await blacklist_repository.add_entry(BlacklistKind.EMAIL, "John@Example.com")
 
-    await reconcile_blacklist(blacklist_repository, user_repository, uow, event_publisher)
+    await BlockBlacklistMatchesUseCase(
+        blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
+    ).system()
 
     refetched = await user_repository.get_by_id(user.id)
     assert refetched is not None and refetched.is_blocked is True
@@ -78,8 +88,10 @@ async def test_sync_skips_disabled_sources(
     async def never_called(url: str) -> ParsedSourceList:
         raise AssertionError(f"disabled source must not be fetched: {url}")
 
-    monkeypatch.setattr("app.modules.blacklist.tasks.fetch_source", never_called)
-    await sync_blacklist_sources(blacklist_repository, uow)
+    monkeypatch.setattr(
+        "app.modules.blacklist.usecases.fetch_blacklist_sources.fetch_source", never_called
+    )
+    await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
 
     fetched = await blacklist_repository.get_source(src.id)
     assert fetched is not None and fetched.entries_count == 1 and fetched.last_error is None
@@ -95,16 +107,18 @@ async def test_sync_replaces_lists_and_records_error(
     async def fake_fetch(url: str) -> ParsedSourceList:
         return ParsedSourceList(telegram_ids=[1, 2], emails=[])
 
-    monkeypatch.setattr("app.modules.blacklist.tasks.fetch_source", fake_fetch)
-    await sync_blacklist_sources(blacklist_repository, uow)
+    monkeypatch.setattr(
+        "app.modules.blacklist.usecases.fetch_blacklist_sources.fetch_source", fake_fetch
+    )
+    await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
     fetched = await blacklist_repository.get_source(src.id)
     assert fetched is not None and fetched.entries_count == 2 and fetched.last_error is None
 
     async def boom(url: str) -> ParsedSourceList:
         raise ValueError("dead link")
 
-    monkeypatch.setattr("app.modules.blacklist.tasks.fetch_source", boom)
-    await sync_blacklist_sources(blacklist_repository, uow)
+    monkeypatch.setattr(fetch_blacklist_sources, "fetch_source", boom)
+    await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
     fetched = await blacklist_repository.get_source(src.id)
     assert fetched is not None
     assert fetched.entries_count == 2  # kept last-good

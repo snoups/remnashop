@@ -1,41 +1,30 @@
-from dataclasses import dataclass
-from typing import Optional
-
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanAvailability
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.plans import PlanDto, PlanRepository, is_plan_purchasable_by
-from app.modules.referrals import ReferralRepository
-from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.plans import PlanRepository
+from app.modules.subscriptions.dto import GetAvailableTrialDto
+from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.users import UserDto
 
 
-@dataclass(frozen=True, kw_only=True)
-class GetAvailableTrialResult:
-    plan: Optional[PlanDto]
-    is_trial_available: bool
-
-
-class GetAvailableTrialUseCase(UseCase[None, GetAvailableTrialResult, UserDto]):
+class GetAvailableTrialUseCase(UseCase[None, GetAvailableTrialDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
         self,
         plan_repository: PlanRepository,
-        subscription_repository: SubscriptionRepository,
-        referral_repository: ReferralRepository,
+        eligibility: PurchaseEligibility,
         uow: UnitOfWork,
     ) -> None:
         self._plan_repository = plan_repository
-        self._subscription_repository = subscription_repository
-        self._referral_repository = referral_repository
+        self._eligibility = eligibility
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> GetAvailableTrialResult:
+    async def _execute(self, actor: UserDto, data: None) -> GetAvailableTrialDto:
         async with self._uow:
             if not actor.is_trial_available:
-                return GetAvailableTrialResult(plan=None, is_trial_available=False)
+                return GetAvailableTrialDto(plan=None, is_trial_available=False)
 
             plans = await self._plan_repository.list_active()
             trial_plans = [
@@ -43,24 +32,5 @@ class GetAvailableTrialUseCase(UseCase[None, GetAvailableTrialResult, UserDto]):
                 for plan in plans
                 if plan.is_trial and plan.availability != PlanAvailability.LINK
             ]
-            if not trial_plans:
-                return GetAvailableTrialResult(plan=None, is_trial_available=True)
-
-            has_purchase_history = await self._subscription_repository.has_any_subscription(
-                actor.id, include_trial=False
-            )
-            has_referrer = await self._referral_repository.has_referrer(actor.id)
-            eligible = next(
-                (
-                    plan
-                    for plan in trial_plans
-                    if is_plan_purchasable_by(
-                        plan,
-                        actor,
-                        has_purchase_history=has_purchase_history,
-                        has_referrer=has_referrer,
-                    )
-                ),
-                None,
-            )
-            return GetAvailableTrialResult(plan=eligible, is_trial_available=True)
+            eligible = next(iter(await self._eligibility.purchasable(trial_plans, actor)), None)
+            return GetAvailableTrialDto(plan=eligible, is_trial_available=True)

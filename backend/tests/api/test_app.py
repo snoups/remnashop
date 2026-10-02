@@ -140,7 +140,9 @@ def test_index_html_is_always_revalidated(
 
 @pytest.fixture
 async def readyz_container(config: AppConfig) -> AsyncIterator[AsyncContainer]:
-    container = make_async_container(*get_core_providers(), context={AppConfig: config})
+    container = make_async_container(
+        *get_core_providers(), *get_module_providers(), context={AppConfig: config}
+    )
     yield container
     await container.close()
 

@@ -22,7 +22,7 @@ from app.core.enums import (
 )
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -39,7 +39,6 @@ from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions import (
     CreateSubscriptionDto,
     SubscriptionRepository,
-    purchase_subscription_task,
 )
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
@@ -49,7 +48,8 @@ from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseC
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
-from tests.modules.subscriptions.factories import make_plan_snapshot
+from tests.fakes.dispatch import RecordingDispatch
+from tests.modules.subscriptions.factories import make_eligibility, make_plan_snapshot
 
 
 class _FakeGateway:
@@ -78,19 +78,24 @@ def fake_gateway() -> _FakeGateway:
 
 
 @pytest.fixture
-async def _active_yookassa(gateways_repository: GatewaysRepository, uow: UnitOfWork) -> None:
+async def _active_yookassa(gateway_repository: GatewayRepository, uow: UnitOfWork) -> None:
     async with uow:
-        await gateways_repository.update_settings(
+        await gateway_repository.update_settings(
             PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k"}
         )
-        await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+        await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+
+
+@pytest.fixture
+def purchase_dispatch() -> RecordingDispatch:
+    return RecordingDispatch()
 
 
 @pytest.fixture
 def create_checkout_use_case(
     plan_repository: PlanRepository,
     user_repository: UserRepository,
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
     subscription_repository: SubscriptionRepository,
     settings_repository: SettingsRepository,
@@ -98,18 +103,19 @@ def create_checkout_use_case(
     pricing_repository: PricingRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
+    purchase_dispatch: RecordingDispatch,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
         plan_repository,
         user_repository,
-        gateways_repository,
+        gateway_repository,
         transaction_repository,
         subscription_repository,
-        settings_repository,
-        referral_repository,
+        make_eligibility(plan_repository.session),
         pricing_repository,
         uow,
         _FakeFactory(fake_gateway),
+        purchase_dispatch,
     )
 
 
@@ -171,22 +177,8 @@ async def test_create_checkout_with_100_percent_discount_skips_the_gateway(
     plan: PlanDto,
     user_repository: UserRepository,
     uow: UnitOfWork,
-    monkeypatch: pytest.MonkeyPatch,
+    purchase_dispatch: RecordingDispatch,
 ) -> None:
-    # purchase_subscription_task.kiq() is a real dispatch onto the taskiq/redis
-    # broker singleton -- fine in isolation, but that singleton's connection
-    # gets bound to whichever event loop first touches it, and pytest-asyncio
-    # hands every test its own loop, so reusing it later in a full-suite run
-    # raises "Future attached to a different loop". Faked here the same way
-    # the gateway is faked above: this test only cares that the free-order
-    # path dispatches the right payload, not that Redis is actually reachable.
-    dispatched_calls: list[dict[str, object]] = []
-
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched_calls.append(kwargs)
-
-    monkeypatch.setattr(purchase_subscription_task, "kiq", _fake_kiq)
-
     async with uow:
         await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=100))
 
@@ -204,11 +196,11 @@ async def test_create_checkout_with_100_percent_discount_skips_the_gateway(
 
     assert result.confirmation_url is None
     assert len(fake_gateway.create_payment_calls) == 0
-    assert len(dispatched_calls) == 1
-    assert dispatched_calls[0]["user_id"] == actor.id
-    assert dispatched_calls[0]["plan_snapshot"]["plan_id"] == plan.id
-    assert dispatched_calls[0]["price_paid"] == "0.00"
-    assert dispatched_calls[0]["idempotency_key"]
+    assert len(purchase_dispatch.messages) == 1
+    assert purchase_dispatch.messages[0]["user_id"] == actor.id
+    assert purchase_dispatch.messages[0]["plan_snapshot"]["plan_id"] == plan.id
+    assert purchase_dispatch.messages[0]["price_paid"] == "0.00"
+    assert purchase_dispatch.messages[0]["idempotency_key"]
 
 
 async def test_create_checkout_rejects_purchasing_for_another_user_without_privilege(
@@ -473,17 +465,17 @@ async def test_create_checkout_renew_rejects_a_target_belonging_to_another_user(
 
 async def test_checkout_asks_for_an_email_when_the_gateway_needs_a_receipt(
     create_checkout_use_case: CreateCheckoutUseCase,
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
     actor: UserDto,
     plan: PlanDto,
 ) -> None:
     async with uow:
-        await gateways_repository.update_settings(
+        await gateway_repository.update_settings(
             PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k", "vat_code": "1"}
         )
-        await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+        await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
 
     def _dto(email: Optional[str]) -> CreateCheckoutDto:
         return CreateCheckoutDto(
@@ -579,7 +571,7 @@ async def test_checkout_rejects_a_currency_the_gateway_does_not_settle(
 
 
 async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_list(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -588,7 +580,7 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
 ) -> None:
     owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
     use_case = CreateTestPaymentUseCase(
-        gateways_repository, transaction_repository, uow, _FakeFactory(fake_gateway)
+        gateway_repository, transaction_repository, uow, _FakeFactory(fake_gateway)
     )
 
     result = await use_case(owner, PaymentGatewayType.YOOKASSA)
@@ -603,7 +595,7 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
 
 
 async def test_test_payment_rejects_an_unconfigured_gateway(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -611,7 +603,7 @@ async def test_test_payment_rejects_an_unconfigured_gateway(
 ) -> None:
     owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
     use_case = CreateTestPaymentUseCase(
-        gateways_repository, transaction_repository, uow, _FakeFactory(fake_gateway)
+        gateway_repository, transaction_repository, uow, _FakeFactory(fake_gateway)
     )
 
     with pytest.raises(ValidationError):

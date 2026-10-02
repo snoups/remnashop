@@ -30,3 +30,16 @@ class CreateSessionDto:
     ip_address: str
     user_agent: Optional[str]
     expires_at: datetime
+
+
+@dataclass(frozen=True, kw_only=True)
+class RevokeSessionDto:
+    session_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class RevokeUserSessionDto:
+    user_id: int
+    session_id: int
+    client_ip: str

@@ -5,8 +5,8 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
+from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.events import UsersBulkUnblockedEvent
-from app.modules.users.repository import UserRepository
 from app.modules.users.usecases.list_blacklist_matches import _ROLES, identities_of
 
 
@@ -15,12 +15,12 @@ class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
 
     def __init__(
         self,
-        user_repository: UserRepository,
+        user_blacklist: UserBlacklistRepository,
         blacklist_repository: BlacklistRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
-        self._user_repository = user_repository
+        self._user_blacklist = user_blacklist
         self._blacklist_repository = blacklist_repository
         self._uow = uow
         self._event_publisher = event_publisher
@@ -29,7 +29,7 @@ class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
         async with self._uow:
             origins = await self._blacklist_repository.identity_origins()
             # source-list entries can't be removed here -- the next reconcile re-blocks those users
-            manual_ids, manual_emails = await self._user_repository.matching_identities(
+            manual_ids, manual_emails = await self._user_blacklist.matching_identities(
                 *identities_of(origins, "manual"), roles=_ROLES
             )
             for telegram_id in manual_ids:
@@ -38,7 +38,7 @@ class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
                 )
             for email in manual_emails:
                 await self._blacklist_repository.remove_entry(BlacklistKind.EMAIL, email)
-            count = await self._user_repository.unblock_matching(
+            count = await self._user_blacklist.unblock_matching(
                 *identities_of(origins), roles=_ROLES
             )
             await self._event_publisher.publish(UsersBulkUnblockedEvent(actor=actor, count=count))

@@ -9,7 +9,7 @@ from app.core.enums import Locale, OAuthProvider, Role
 from app.core.exceptions import AuthenticationError, ConflictError, PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.modules.auth import BootstrapOwnerUseCase, SessionIssuer, SessionRepository
-from app.modules.oauth.dto import CreateOAuthIdentityDto
+from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.events import OAuthLoginFailedEvent
 from app.modules.oauth.providers.oidc import OIDCOAuthClient
 from app.modules.oauth.providers.registry import get_oauth_client
@@ -17,10 +17,8 @@ from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthState
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
     ListOAuthIdentitiesUseCase,
-    OAuthCallbackDto,
     OAuthConnectAuthorizeUseCase,
     OAuthConnectCallbackUseCase,
-    OAuthDisconnectDto,
     OAuthDisconnectUseCase,
     OAuthLoginAuthorizeUseCase,
     OAuthLoginCallbackUseCase,

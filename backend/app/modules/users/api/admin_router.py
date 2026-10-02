@@ -14,16 +14,12 @@ from app.core.exceptions import ValidationError
 from app.core.security.permissions import ROLE_PERMISSIONS, PermissionPolicy
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
-from app.modules.blacklist import BlacklistOriginDto
 from app.modules.users.api.schemas import (
     AdminListResponse,
     AdminPromoteResponse,
     AdminResponse,
     AdminWithPasswordResponse,
-    BlacklistHitResponse,
     BlacklistMatchPageResponse,
-    BlacklistMatchResponse,
-    BlacklistOriginResponse,
     CreateAdminRequest,
     CurrentUserResponse,
     PromoteAdminRequest,
@@ -41,43 +37,43 @@ from app.modules.users.api.schemas import (
 from app.modules.users.dto import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
+    BlacklistMatchOrigin,
+    CreateAdminDto,
+    DeleteAdminDto,
     DeletedFilter,
+    DeleteUserDto,
+    DemoteAdminDto,
+    GetUserListStatsDto,
+    ListBlacklistMatchesDto,
+    ListUsersDto,
+    PromoteToAdminDto,
+    SetUserPersonalDiscountDto,
+    UpdateAdminDto,
+    UpdateOwnProfileDto,
+    UpdateSecuritySettingsDto,
     UserDto,
     UserSort,
 )
 from app.modules.users.usecases import (
-    BlacklistMatchOrigin,
     BlockUserUseCase,
-    CreateAdminDto,
     CreateAdminUseCase,
-    DeleteAdminDto,
     DeleteAdminUseCase,
-    DeleteUserDto,
     DeleteUserUseCase,
-    DemoteAdminDto,
     DemoteAdminUseCase,
     GetCurrentUserUseCase,
-    GetUserListStatsInput,
     GetUserListStatsUseCase,
     GetUserUseCase,
     ListAdminsUseCase,
-    ListBlacklistMatchesInput,
     ListBlacklistMatchesUseCase,
-    ListUsersInput,
     ListUsersUseCase,
-    PromoteToAdminDto,
     PromoteToAdminUseCase,
-    SetUserPersonalDiscountDto,
     SetUserPersonalDiscountUseCase,
     UnblockAllUsersUseCase,
     UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
-    UpdateAdminDto,
     UpdateAdminUseCase,
-    UpdateOwnProfileDto,
     UpdateOwnProfileUseCase,
     UpdateOwnSecuritySettingsUseCase,
-    UpdateSecuritySettingsDto,
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -113,27 +109,6 @@ def _to_admin_response(user: UserDto) -> AdminResponse:
         permission_revokes=list(user.permission_revokes or []),
         role_permissions=sorted(p.value for p in ROLE_PERMISSIONS.get(user.role, set())),
         effective_permissions=sorted(p.value for p in PermissionPolicy.effective_permissions(user)),
-    )
-
-
-def _to_user_response(user: UserDto) -> UserResponse:
-    return UserResponse(
-        id=user.id,
-        name=user.name,
-        role=str(user.role),
-        telegram_id=user.telegram_id,
-        username=user.username,
-        email=user.email,
-        login=user.login,
-        language=str(user.language),
-        is_blocked=user.is_blocked,
-        personal_discount=user.personal_discount,
-        purchase_discount=user.purchase_discount,
-        referral_code=user.referral_code,
-        points=user.points,
-        is_trial_available=user.is_trial_available,
-        created_at=user.created_at,
-        deleted_at=user.deleted_at,
     )
 
 
@@ -227,7 +202,7 @@ async def list_users(
 ) -> UserPageResponse:
     users, total = await use_case(
         actor,
-        ListUsersInput(
+        ListUsersDto(
             search=search,
             role=_parse_role(role),
             is_blocked=is_blocked,
@@ -247,7 +222,8 @@ async def list_users(
     )
     items = [
         UserListItemResponse(
-            **_to_user_response(u).model_dump(), active_subscriptions=u.active_subscriptions
+            **UserResponse.model_validate(u, from_attributes=True).model_dump(),
+            active_subscriptions=u.active_subscriptions,
         )
         for u in users
     ]
@@ -263,7 +239,8 @@ async def get_user(
 ) -> UserListItemResponse:
     user = await use_case(actor, user_id)
     return UserListItemResponse(
-        **_to_user_response(user).model_dump(), active_subscriptions=user.active_subscriptions
+        **UserResponse.model_validate(user, from_attributes=True).model_dump(),
+        active_subscriptions=user.active_subscriptions,
     )
 
 
@@ -274,19 +251,8 @@ async def get_user_list_stats(
     actor: Actor = Depends(require_admin),
     include_staff: bool = False,
 ) -> UserListStatsResponse:
-    stats = await use_case(actor, GetUserListStatsInput(include_staff=include_staff))
-    return UserListStatsResponse(
-        total=stats.total,
-        new=stats.new,
-        subscribed=stats.subscribed,
-        blocked=stats.blocked,
-        new_previous=stats.new_previous,
-        total_growth=stats.total_growth,
-    )
-
-
-def _to_origin_response(origin: BlacklistOriginDto) -> BlacklistOriginResponse:
-    return BlacklistOriginResponse(source_id=origin.source_id, source_name=origin.source_name)
+    stats = await use_case(actor, GetUserListStatsDto(include_staff=include_staff))
+    return UserListStatsResponse.model_validate(stats, from_attributes=True)
 
 
 @router.get("/blacklist-matches", response_model=BlacklistMatchPageResponse)
@@ -301,33 +267,14 @@ async def list_blacklist_matches(
 ) -> BlacklistMatchPageResponse:
     result = await use_case(
         actor,
-        ListBlacklistMatchesInput(
+        ListBlacklistMatchesDto(
             search=search,
             origin=origin,
             page=page,
             page_size=page_size,
         ),
     )
-    return BlacklistMatchPageResponse(
-        items=[
-            BlacklistMatchResponse(
-                user=_to_user_response(match.user),
-                hits=[
-                    BlacklistHitResponse(
-                        kind=hit.kind,
-                        value=hit.value,
-                        origins=[_to_origin_response(origin) for origin in hit.origins],
-                    )
-                    for hit in match.hits
-                ],
-            )
-            for match in result.items
-        ],
-        total=result.total,
-        all_total=result.all_total,
-        manual_total=result.manual_total,
-        lists_total=result.lists_total,
-    )
+    return BlacklistMatchPageResponse.model_validate(result, from_attributes=True)
 
 
 @router.post("/bulk/blacklist-matches/unblock", response_model=UnblockAllResponse)
@@ -353,7 +300,7 @@ async def set_user_discount(
     updated = await use_case(
         actor, SetUserPersonalDiscountDto(user_id=user_id, percent=payload.percent)
     )
-    return _to_user_response(updated)
+    return UserResponse.model_validate(updated, from_attributes=True)
 
 
 @router.post(
@@ -366,7 +313,7 @@ async def block_user(
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
     updated = await use_case(actor, user_id)
-    return _to_user_response(updated)
+    return UserResponse.model_validate(updated, from_attributes=True)
 
 
 @router.post(
@@ -379,7 +326,7 @@ async def unblock_user(
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
     updated = await use_case(actor, user_id)
-    return _to_user_response(updated)
+    return UserResponse.model_validate(updated, from_attributes=True)
 
 
 @router.post("/bulk/all/unblock", response_model=UnblockAllResponse)

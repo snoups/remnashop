@@ -7,69 +7,88 @@ from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import Currency
 from app.modules.plans.api.schemas import (
+    AddOnListResponse,
+    AddOnResponse,
+    AdjustBasePricesRequest,
+    CreateAddOnRequest,
     CreatePlanRequest,
     PlanListResponse,
     PlanResponse,
+    PreviewPricingChangeRequest,
+    PriceBookResponse,
+    PricingDiffResponse,
+    PricingSettingsResponse,
+    ReorderAddOnsRequest,
     ReorderPlansRequest,
+    SetAddOnBasePriceRequest,
+    SetAddOnPriceOverrideRequest,
     SetPlanDurationBasePriceRequest,
     SetPlanDurationsRequest,
     SetPlanPriceOverrideRequest,
+    SwitchAnchorRequest,
+    UpdateAddOnRequest,
+    UpdateCurrencyRateRequest,
     UpdatePlanAccessRequest,
     UpdatePlanRequest,
     UpdatePlanSquadsRequest,
-    to_duration_items,
+    UpdatePricingSettingsRequest,
+    to_diff_response,
+    to_price_book_response,
 )
 from app.modules.plans.dto import (
+    AdjustBasePricesDto,
+    CreateAddOnDto,
     CreatePlanDto,
-    PlanDto,
+    PricingChangePreviewDto,
+    ReorderAddOnsDto,
     ReorderPlansDto,
+    SetAddOnBasePriceDto,
+    SetAddOnPriceOverrideDto,
     SetPlanDurationBasePriceDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
     SetPlanPriceOverrideDto,
+    SwitchAnchorCurrencyDto,
+    UpdateAddOnDto,
     UpdatePlanAccessDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.usecases import (
+    AdjustBasePricesUseCase,
+    CreateAddOnUseCase,
     CreatePlanUseCase,
+    DeleteAddOnUseCase,
     DeletePlanUseCase,
+    GetAddOnUseCase,
     GetPlanUseCase,
+    GetPriceBookUseCase,
+    ListAddOnsUseCase,
     ListPlansUseCase,
+    PreviewPricingChangeUseCase,
+    ReorderAddOnsUseCase,
     ReorderPlansUseCase,
+    SetAddOnBasePriceUseCase,
+    SetAddOnPriceOverrideUseCase,
     SetPlanDurationBasePriceUseCase,
     SetPlanDurationsUseCase,
     SetPlanPriceOverrideUseCase,
+    SwitchAnchorCurrencyUseCase,
+    UpdateAddOnUseCase,
     UpdatePlanAccessUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
-from app.modules.pricing import PricingRepository
+from app.modules.pricing import (
+    UpdateCurrencyRateDto,
+    UpdateCurrencyRateUseCase,
+    UpdatePricingSettingsDto,
+    UpdatePricingSettingsUseCase,
+)
 
 router = APIRouter(prefix="/plans", tags=["plans"])
-
-
-def _to_response(plan: PlanDto) -> PlanResponse:
-    return PlanResponse(
-        id=plan.id,
-        public_code=plan.public_code,
-        name=plan.name,
-        description=plan.description,
-        tag=plan.tag,
-        type=plan.type,
-        availability=plan.availability,
-        traffic_limit_strategy=plan.traffic_limit_strategy,
-        traffic_limit=plan.traffic_limit,
-        device_limit=plan.device_limit,
-        allowed_telegram_ids=plan.allowed_telegram_ids,
-        allowed_emails=plan.allowed_emails,
-        internal_squads=plan.internal_squads,
-        external_squad=plan.external_squad,
-        order_index=plan.order_index,
-        is_active=plan.is_active,
-        is_trial=plan.is_trial,
-        durations=to_duration_items(plan.durations),
-    )
+addons_router = APIRouter(prefix="/addons", tags=["addons"])
+pricing_router = APIRouter(prefix="/pricing", tags=["pricing"])
 
 
 @router.get("", response_model=PlanListResponse)
@@ -79,7 +98,7 @@ async def list_plans(
     actor: Actor = Depends(require_admin),
 ) -> PlanListResponse:
     plans = await use_case(actor)
-    items = [_to_response(plan) for plan in plans]
+    items = [PlanResponse.model_validate(plan, from_attributes=True) for plan in plans]
     return PlanListResponse(items=items, total=len(items))
 
 
@@ -108,7 +127,7 @@ async def create_plan(
             is_trial=payload.is_trial,
         ),
     )
-    return _to_response(plan)
+    return PlanResponse.model_validate(plan, from_attributes=True)
 
 
 @router.post("/actions/reorder", response_model=PlanListResponse, responses=error_responses(400))
@@ -119,7 +138,7 @@ async def reorder_plans(
     actor: Actor = Depends(require_admin),
 ) -> PlanListResponse:
     plans = await use_case(actor, ReorderPlansDto(plan_ids=payload.plan_ids))
-    items = [_to_response(plan) for plan in plans]
+    items = [PlanResponse.model_validate(plan, from_attributes=True) for plan in plans]
     return PlanListResponse(items=items, total=len(items))
 
 
@@ -146,7 +165,7 @@ async def update_plan(
             is_trial=payload.is_trial,
         ),
     )
-    return _to_response(plan)
+    return PlanResponse.model_validate(plan, from_attributes=True)
 
 
 @router.delete(
@@ -185,7 +204,7 @@ async def set_plan_durations(
             ],
         ),
     )
-    return _to_response(plan)
+    return PlanResponse.model_validate(plan, from_attributes=True)
 
 
 @router.put(
@@ -200,10 +219,8 @@ async def set_plan_price_override(
     currency: Currency,
     payload: SetPlanPriceOverrideRequest,
     use_case: FromDishka[SetPlanPriceOverrideUseCase],
-    pricing_repository: FromDishka[PricingRepository],
     actor: Actor = Depends(require_admin),
 ) -> PlanResponse:
-    table = await pricing_repository.get_rate_table()
     plan = await use_case(
         actor,
         SetPlanPriceOverrideDto(
@@ -211,10 +228,9 @@ async def set_plan_price_override(
             days=days,
             currency=currency,
             price=payload.price,
-            anchor=table.anchor,
         ),
     )
-    return _to_response(plan)
+    return PlanResponse.model_validate(plan, from_attributes=True)
 
 
 @router.put(
@@ -234,7 +250,7 @@ async def set_plan_duration_base_price(
         actor,
         SetPlanDurationBasePriceDto(plan_id=plan_id, days=days, base_price=payload.base_price),
     )
-    return _to_response(plan)
+    return PlanResponse.model_validate(plan, from_attributes=True)
 
 
 @router.put("/{plan_id}/access", response_model=PlanResponse, responses=error_responses(400, 404))
@@ -254,7 +270,7 @@ async def update_plan_access(
             allowed_emails=payload.allowed_emails,
         ),
     )
-    return _to_response(plan)
+    return PlanResponse.model_validate(plan, from_attributes=True)
 
 
 @router.put("/{plan_id}/squads", response_model=PlanResponse, responses=error_responses(404))
@@ -273,7 +289,7 @@ async def update_plan_squads(
             external_squad=payload.external_squad,
         ),
     )
-    return _to_response(plan)
+    return PlanResponse.model_validate(plan, from_attributes=True)
 
 
 @router.get("/{plan_id:int}", response_model=PlanResponse, responses=error_responses(404))
@@ -283,4 +299,253 @@ async def get_plan(
     use_case: FromDishka[GetPlanUseCase],
     actor: Actor = Depends(require_admin),
 ) -> PlanResponse:
-    return _to_response(await use_case(actor, plan_id))
+    return PlanResponse.model_validate(await use_case(actor, plan_id), from_attributes=True)
+
+
+@addons_router.get("", response_model=AddOnListResponse)
+@inject
+async def list_addons(
+    use_case: FromDishka[ListAddOnsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AddOnListResponse:
+    addons = await use_case(actor)
+    items = [AddOnResponse.model_validate(addon, from_attributes=True) for addon in addons]
+    return AddOnListResponse(items=items, total=len(items))
+
+
+@addons_router.post(
+    "",
+    response_model=AddOnResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(409),
+)
+@inject
+async def create_addon(
+    payload: CreateAddOnRequest,
+    use_case: FromDishka[CreateAddOnUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AddOnResponse:
+    addon = await use_case(
+        actor,
+        CreateAddOnDto(
+            name=payload.name,
+            type=payload.type,
+            amount=payload.amount,
+            base_price=payload.base_price,
+        ),
+    )
+    return AddOnResponse.model_validate(addon, from_attributes=True)
+
+
+@addons_router.post(
+    "/actions/reorder", response_model=AddOnListResponse, responses=error_responses(400)
+)
+@inject
+async def reorder_addons(
+    payload: ReorderAddOnsRequest,
+    use_case: FromDishka[ReorderAddOnsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AddOnListResponse:
+    addons = await use_case(actor, ReorderAddOnsDto(addon_ids=payload.addon_ids))
+    items = [AddOnResponse.model_validate(addon, from_attributes=True) for addon in addons]
+    return AddOnListResponse(items=items, total=len(items))
+
+
+@addons_router.patch(
+    "/{addon_id}", response_model=AddOnResponse, responses=error_responses(404, 409)
+)
+@inject
+async def update_addon(
+    addon_id: int,
+    payload: UpdateAddOnRequest,
+    use_case: FromDishka[UpdateAddOnUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AddOnResponse:
+    addon = await use_case(
+        actor,
+        UpdateAddOnDto(
+            addon_id=addon_id,
+            name=payload.name,
+            type=payload.type,
+            amount=payload.amount,
+            is_active=payload.is_active,
+        ),
+    )
+    return AddOnResponse.model_validate(addon, from_attributes=True)
+
+
+@addons_router.delete(
+    "/{addon_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
+)
+@inject
+async def delete_addon(
+    addon_id: int,
+    use_case: FromDishka[DeleteAddOnUseCase],
+    actor: Actor = Depends(require_admin),
+) -> None:
+    await use_case(actor, addon_id)
+
+
+@addons_router.put(
+    "/{addon_id}/base-price", response_model=AddOnResponse, responses=error_responses(404)
+)
+@inject
+async def set_addon_base_price(
+    addon_id: int,
+    payload: SetAddOnBasePriceRequest,
+    use_case: FromDishka[SetAddOnBasePriceUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AddOnResponse:
+    addon = await use_case(
+        actor, SetAddOnBasePriceDto(addon_id=addon_id, base_price=payload.base_price)
+    )
+    return AddOnResponse.model_validate(addon, from_attributes=True)
+
+
+@addons_router.put(
+    "/{addon_id}/override/{currency}",
+    response_model=AddOnResponse,
+    responses=error_responses(400, 404),
+)
+@inject
+async def set_addon_price_override(
+    addon_id: int,
+    currency: Currency,
+    payload: SetAddOnPriceOverrideRequest,
+    use_case: FromDishka[SetAddOnPriceOverrideUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AddOnResponse:
+    addon = await use_case(
+        actor,
+        SetAddOnPriceOverrideDto(
+            addon_id=addon_id,
+            currency=currency,
+            price=payload.price,
+        ),
+    )
+    return AddOnResponse.model_validate(addon, from_attributes=True)
+
+
+@addons_router.get("/{addon_id:int}", response_model=AddOnResponse, responses=error_responses(404))
+@inject
+async def get_addon(
+    addon_id: int,
+    use_case: FromDishka[GetAddOnUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AddOnResponse:
+    return AddOnResponse.model_validate(await use_case(actor, addon_id), from_attributes=True)
+
+
+@pricing_router.get("/book", response_model=PriceBookResponse)
+@inject
+async def get_price_book(
+    use_case: FromDishka[GetPriceBookUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PriceBookResponse:
+    book = await use_case(actor)
+    return to_price_book_response(book)
+
+
+@pricing_router.put(
+    "/rates/{currency}", response_model=PriceBookResponse, responses=error_responses(400)
+)
+@inject
+async def update_currency_rate(
+    currency: Currency,
+    payload: UpdateCurrencyRateRequest,
+    use_case: FromDishka[UpdateCurrencyRateUseCase],
+    price_book_use_case: FromDishka[GetPriceBookUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PriceBookResponse:
+    await use_case(
+        actor,
+        UpdateCurrencyRateDto(
+            currency=currency,
+            rate=payload.rate,
+            rounding_mode=payload.rounding_mode,
+            charm_ending=payload.charm_ending,
+            min_amount=payload.min_amount,
+        ),
+    )
+    book = await price_book_use_case(actor)
+    return to_price_book_response(book)
+
+
+@pricing_router.patch("/settings", response_model=PricingSettingsResponse)
+@inject
+async def update_pricing_settings(
+    payload: UpdatePricingSettingsRequest,
+    use_case: FromDishka[UpdatePricingSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PricingSettingsResponse:
+    settings = await use_case(
+        actor,
+        UpdatePricingSettingsDto(
+            price_per_day=payload.price_per_day, price_per_gb=payload.price_per_gb
+        ),
+    )
+    return PricingSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@pricing_router.post(
+    "/actions/switch-anchor", response_model=PriceBookResponse, responses=error_responses(400)
+)
+@inject
+async def switch_anchor_currency(
+    payload: SwitchAnchorRequest,
+    use_case: FromDishka[SwitchAnchorCurrencyUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PriceBookResponse:
+    book = await use_case(actor, SwitchAnchorCurrencyDto(new_anchor=payload.new_anchor))
+    return to_price_book_response(book)
+
+
+@pricing_router.post(
+    "/actions/preview", response_model=PricingDiffResponse, responses=error_responses(400)
+)
+@inject
+async def preview_pricing_change(
+    payload: PreviewPricingChangeRequest,
+    use_case: FromDishka[PreviewPricingChangeUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PricingDiffResponse:
+    rate = None
+    if payload.rate is not None:
+        rate = UpdateCurrencyRateDto(
+            currency=payload.rate.currency,
+            rate=payload.rate.rate,
+            rounding_mode=payload.rate.rounding_mode,
+            charm_ending=payload.rate.charm_ending,
+            min_amount=payload.rate.min_amount,
+        )
+    adjust = None
+    if payload.adjust is not None:
+        adjust = AdjustBasePricesDto(
+            scope=payload.adjust.scope,
+            factor=payload.adjust.factor,
+            plan_duration_ids=payload.adjust.plan_duration_ids,
+            addon_ids=payload.adjust.addon_ids,
+        )
+    diff = await use_case(
+        actor, PricingChangePreviewDto(rate=rate, anchor=payload.anchor, adjust=adjust)
+    )
+    return to_diff_response(diff)
+
+
+@pricing_router.post("/actions/adjust-base-prices", response_model=PriceBookResponse)
+@inject
+async def adjust_base_prices(
+    payload: AdjustBasePricesRequest,
+    use_case: FromDishka[AdjustBasePricesUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PriceBookResponse:
+    book = await use_case(
+        actor,
+        AdjustBasePricesDto(
+            scope=payload.scope,
+            factor=payload.factor,
+            plan_duration_ids=payload.plan_duration_ids,
+            addon_ids=payload.addon_ids,
+        ),
+    )
+    return to_price_book_response(book)

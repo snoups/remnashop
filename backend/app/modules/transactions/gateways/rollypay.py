@@ -13,7 +13,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -54,7 +53,7 @@ class RollyPayGateway(PaymentGateway):
             "success_redirect_url": self._return_url,
             "fail_redirect_url": self._return_url,
         }
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/payments", json=payload, headers=self._headers()
         )
         data = orjson.loads(response.content)
@@ -96,7 +95,7 @@ class RollyPayGateway(PaymentGateway):
         payment_id = order.external_payment_id or signal.provider_payment_id
         if not payment_id:
             return NOT_PAID
-        response = await http_client.get(
+        response = await self._http.get(
             f"{_API_BASE}/payments/{payment_id}",
             headers=self._headers(),
             timeout=PROVIDER_API_TIMEOUT_S,

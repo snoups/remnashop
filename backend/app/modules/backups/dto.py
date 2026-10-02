@@ -9,10 +9,9 @@ DEFAULT_PAGE_SIZE: Final[int] = 50
 
 
 class BackupSettingsDto(BaseDto, TimestampMixin):
-    id: int = 1
-    enabled: bool = False
-    interval_hours: int = 24
-    max_files: int = 7
+    enabled: bool
+    interval_hours: int
+    max_files: int
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -46,3 +45,17 @@ class BackupStatsDto(BaseDto):
     total_size_bytes: int = 0
     last_database_backup: Optional[BackupRunDto] = None
     next_run_at: Optional[datetime] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListBackupRunsDto:
+    kind: Optional[BackupKind] = None
+    status: Optional[BackupRunStatus] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class RunBackupDto:
+    kind: BackupKind
+    run_id: int

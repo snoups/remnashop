@@ -9,3 +9,10 @@ class PlanChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.PLANS
     action: str
     plan_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class AddOnChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    action: str
+    addon_id: Optional[int] = None

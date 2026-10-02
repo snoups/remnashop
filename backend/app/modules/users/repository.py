@@ -1,26 +1,12 @@
 import secrets
 import string
-from datetime import date, datetime
+from collections.abc import Sequence
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Callable, Final, Optional, cast
 
 from loguru import logger
-from sqlalchemy import (
-    ARRAY,
-    BigInteger,
-    ColumnElement,
-    CursorResult,
-    Text,
-    any_,
-    case,
-    exists,
-    false,
-    func,
-    literal,
-    or_,
-    select,
-    update,
-)
+from sqlalchemy import ColumnElement, CursorResult, case, exists, func, or_, select, update
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,10 +14,10 @@ from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.db.errors import constraint_name
 from app.core.db.models.oauth_identity import OAuthIdentity
-from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
+from app.core.db.partial_update import apply_partial_update
 from app.core.db.user_search import user_search_filter
-from app.core.enums import Locale, Role, SubscriptionStatus
+from app.core.enums import Locale, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
@@ -43,27 +29,28 @@ from app.modules.users.dto import (
     UpdateUserDto,
     UserDto,
     UserListItemDto,
-    UserListStatsDto,
     UserSort,
 )
+from app.modules.users.filters import ACTIVE_SUBSCRIPTIONS, identity_filter
 
 _REFERRAL_CODE_ALPHABET: Final[str] = string.ascii_uppercase + string.digits
 _REFERRAL_CODE_LENGTH: Final[int] = 8
 _REFERRAL_CODE_MAX_ATTEMPTS: Final[int] = 5
 
+_DISCOUNT_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "personal_discount",
+        "personal_discount_promocode_id",
+        "purchase_discount",
+        "purchase_discount_promocode_id",
+    }
+)
 _UNIQUE_VIOLATIONS: Final[dict[str, tuple[str, ErrorCode]]] = {
     "ux_users_single_owner": ("Owner already exists", ErrorCode.OWNER_ALREADY_EXISTS),
     "ix_users_login": ("Login already taken", ErrorCode.LOGIN_TAKEN),
     "ix_users_telegram_id": ("Telegram account already registered", ErrorCode.TELEGRAM_ID_TAKEN),
 }
 
-
-_ACTIVE_SUBSCRIPTIONS: Final[ColumnElement[int]] = (
-    select(func.count())
-    .where(Subscription.user_id == User.id, Subscription.status == SubscriptionStatus.ACTIVE)
-    .correlate(User)
-    .scalar_subquery()
-)
 
 _SORT_COLUMNS: Final[dict[str, InstrumentedAttribute[Any] | ColumnElement[Any]]] = {
     "created_at": User.created_at,
@@ -74,23 +61,12 @@ _SORT_COLUMNS: Final[dict[str, InstrumentedAttribute[Any] | ColumnElement[Any]]]
     "channels": case((User.telegram_id.is_not(None), 4), else_=0)
     + case((User.email.is_not(None), 2), else_=0)
     + case((User.login.is_not(None), 1), else_=0),
-    "subscriptions": _ACTIVE_SUBSCRIPTIONS,
+    "subscriptions": ACTIVE_SUBSCRIPTIONS,
 }
 
 
 def _discount_filter() -> ColumnElement[bool]:
     return or_(User.personal_discount > 0, User.purchase_discount > 0)
-
-
-def _identity_filter(telegram_ids: set[int], emails: set[str]) -> ColumnElement[bool]:
-    # one array bind each instead of IN (...) -- a blacklist source can exceed
-    # asyncpg's 32,767 bind-parameter cap. emails are expected lowercased.
-    return or_(
-        User.telegram_id == any_(literal(list(telegram_ids), ARRAY(BigInteger)))
-        if telegram_ids
-        else false(),
-        func.lower(User.email) == any_(literal(list(emails), ARRAY(Text))) if emails else false(),
-    )
 
 
 class UserRepository:
@@ -241,7 +217,7 @@ class UserRepository:
         stmt = select(exists().where(User.role == role))
         return bool(await self.session.scalar(stmt))
 
-    async def list_by_roles(self, roles: list[Role]) -> list[UserDto]:
+    async def list_by_roles(self, roles: Sequence[Role]) -> list[UserDto]:
         stmt = select(User).where(User.role.in_(roles)).order_by(User.created_at.desc())
         rows = (await self.session.scalars(stmt)).all()
         return self._convert_to_dto_list(list(rows))
@@ -252,10 +228,10 @@ class UserRepository:
         result = await self.session.execute(select(User).where(User.id.in_(user_ids)))
         return self._convert_to_dto_list(list(result.scalars()))
 
-    async def get_list_item(self, user_id: int, roles: list[Role]) -> UserListItemDto:
+    async def get_list_item(self, user_id: int, roles: Sequence[Role]) -> UserListItemDto:
         row = (
             await self.session.execute(
-                select(User, _ACTIVE_SUBSCRIPTIONS).where(User.id == user_id, User.role.in_(roles))
+                select(User, ACTIVE_SUBSCRIPTIONS).where(User.id == user_id, User.role.in_(roles))
             )
         ).first()
         if row is None:
@@ -268,7 +244,7 @@ class UserRepository:
     async def list_filtered(
         self,
         *,
-        roles: list[Role],
+        roles: Sequence[Role],
         search: Optional[str] = None,
         is_blocked: Optional[bool] = None,
         created_from: Optional[datetime] = None,
@@ -298,7 +274,7 @@ class UserRepository:
         for condition, wanted in (
             (User.is_blocked.is_(True), is_blocked),
             (_discount_filter(), has_discount),
-            (_ACTIVE_SUBSCRIPTIONS > 0, has_subscription),
+            (ACTIVE_SUBSCRIPTIONS > 0, has_subscription),
             (User.is_trial_available.is_(True), is_trial_available),
         ):
             if wanted is not None:
@@ -306,14 +282,14 @@ class UserRepository:
         if identities is not None:
             if not any(identities):
                 return [], 0
-            filters.append(_identity_filter(*identities))
+            filters.append(identity_filter(*identities))
 
         count_stmt = select(func.count()).select_from(User).where(*filters)
         total = await self.session.scalar(count_stmt)
 
         sort_col = _SORT_COLUMNS[sort]
         stmt = (
-            select(User, _ACTIVE_SUBSCRIPTIONS)
+            select(User, ACTIVE_SUBSCRIPTIONS)
             .where(*filters)
             # ties by registration date (imported users' ids don't follow it),
             # then id to keep offset pages stable
@@ -354,24 +330,14 @@ class UserRepository:
         if db_user is None:
             return None
 
-        if data.name is not None:
-            db_user.name = data.name
-        if data.password_hash is not None:
-            db_user.password_hash = data.password_hash
-        if data.permission_grants is not None:
-            db_user.permission_grants = data.permission_grants
-        if data.permission_revokes is not None:
-            db_user.permission_revokes = data.permission_revokes
-        if data.ip_allowlist is not None:
-            db_user.ip_allowlist = data.ip_allowlist
+        apply_partial_update(db_user, data, skip=_DISCOUNT_FIELDS)
+        # each promocode id is written with its discount, None included
         if data.personal_discount is not None:
             db_user.personal_discount = data.personal_discount
             db_user.personal_discount_promocode_id = data.personal_discount_promocode_id
         if data.purchase_discount is not None:
             db_user.purchase_discount = data.purchase_discount
             db_user.purchase_discount_promocode_id = data.purchase_discount_promocode_id
-        if data.is_trial_available is not None:
-            db_user.is_trial_available = data.is_trial_available
 
         await self.session.flush()
         # updated_at is server-computed via onupdate=; refresh so the DTO
@@ -449,95 +415,6 @@ class UserRepository:
         result = await self.session.execute(stmt)
         return cast(CursorResult, result).rowcount
 
-    async def block_matching(self, telegram_ids: set[int], emails: set[str]) -> list[int]:
-        if not telegram_ids and not emails:
-            return []
-        # Role.USER only: reconcile runs with no actor and no role guard, and an
-        # auto-blocked OWNER has no recovery path (unblock_user needs a strictly
-        # higher-role actor). Blocking staff stays an explicit BlockUserUseCase call.
-        # emails come from normalize_identity (lowercased); User.email is stored as written.
-        stmt = (
-            select(User)
-            .where(User.role == Role.USER)
-            .where(User.is_blocked.is_(False))
-            .where(_identity_filter(telegram_ids, emails))
-        )
-        rows = list((await self.session.execute(stmt)).scalars())
-        for row in rows:
-            row.is_blocked = True
-        await self.session.flush()
-        return [row.id for row in rows]
-
-    async def list_matching(
-        self,
-        telegram_ids: set[int],
-        emails: set[str],
-        *,
-        roles: list[Role],
-        search: Optional[str] = None,
-        page: int = 1,
-        page_size: int = DEFAULT_PAGE_SIZE,
-    ) -> tuple[list[UserDto], int]:
-        if not telegram_ids and not emails:
-            return [], 0
-        filters = [User.role.in_(roles), _identity_filter(telegram_ids, emails)]
-        if search:
-            filters.append(user_search_filter(search))
-
-        total = await self.session.scalar(select(func.count()).select_from(User).where(*filters))
-        stmt = (
-            select(User)
-            .where(*filters)
-            .order_by(User.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        )
-        rows = (await self.session.scalars(stmt)).all()
-        return self._convert_to_dto_list(list(rows)), total or 0
-
-    async def count_matching(
-        self, telegram_ids: set[int], emails: set[str], *, roles: list[Role]
-    ) -> int:
-        if not telegram_ids and not emails:
-            return 0
-        stmt = (
-            select(func.count())
-            .select_from(User)
-            .where(User.role.in_(roles), _identity_filter(telegram_ids, emails))
-        )
-        return await self.session.scalar(stmt) or 0
-
-    async def unblock_matching(
-        self, telegram_ids: set[int], emails: set[str], *, roles: list[Role]
-    ) -> int:
-        if not telegram_ids and not emails:
-            return 0
-        stmt = (
-            update(User)
-            .where(
-                User.role.in_(roles),
-                User.is_blocked.is_(True),
-                _identity_filter(telegram_ids, emails),
-            )
-            .values(is_blocked=False)
-        )
-        result = await self.session.execute(stmt)
-        return cast(CursorResult, result).rowcount
-
-    async def matching_identities(
-        self, telegram_ids: set[int], emails: set[str], *, roles: list[Role]
-    ) -> tuple[set[int], set[str]]:
-        if not telegram_ids and not emails:
-            return set(), set()
-        stmt = select(User.telegram_id, User.email).where(
-            User.role.in_(roles), _identity_filter(telegram_ids, emails)
-        )
-        rows = (await self.session.execute(stmt)).all()
-        return (
-            {tid for tid, _ in rows if tid in telegram_ids},
-            {email.lower() for _, email in rows if email and email.lower() in emails},
-        )
-
     async def anonymize(self, user_id: int) -> Optional[UserDto]:
         # Soft delete: transactions, subscriptions and referrals keep pointing at
         # this row, so revenue and referral history survive. What identifies
@@ -567,86 +444,3 @@ class UserRepository:
         await self.session.flush()
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)
-
-    async def list_stats(
-        self,
-        *,
-        roles: list[Role],
-        new_since: datetime,
-        previous_since: datetime,
-        growth_since: datetime,
-    ) -> UserListStatsDto:
-        row = (
-            await self.session.execute(
-                select(
-                    func.count(),
-                    func.count().filter(User.created_at >= new_since),
-                    func.count().filter(_ACTIVE_SUBSCRIPTIONS > 0),
-                    func.count().filter(User.is_blocked.is_(True)),
-                    func.count().filter(
-                        User.created_at >= previous_since, User.created_at < new_since
-                    ),
-                    func.count().filter(User.created_at >= growth_since),
-                ).where(User.role.in_(roles), User.deleted_at.is_(None))
-            )
-        ).one()
-        return UserListStatsDto(
-            total=row[0],
-            new=row[1],
-            subscribed=row[2],
-            blocked=row[3],
-            new_previous=row[4],
-            total_growth=row[5],
-        )
-
-    async def count_by_role(self, role: Role) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count()).where(User.role == role, User.deleted_at.is_(None))
-            )
-            or 0
-        )
-
-    async def count_new_since(self, cutoff: datetime, role: Role) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count()).where(User.role == role, User.created_at >= cutoff)
-            )
-            or 0
-        )
-
-    async def earliest_registration(self, role: Role) -> Optional[date]:
-        earliest = await self.session.scalar(
-            select(func.min(func.date(func.timezone("UTC", User.created_at)))).where(
-                User.role == role
-            )
-        )
-        return cast(Optional[date], earliest)
-
-    async def count_registrations_by_day(
-        self, since: datetime, role: Role
-    ) -> list[tuple[date, int]]:
-        day_col = func.date(func.timezone("UTC", User.created_at))
-        stmt = (
-            select(day_col, func.count())
-            .where(User.role == role, User.created_at >= since)
-            .group_by(day_col)
-            .order_by(day_col)
-        )
-        rows = (await self.session.execute(stmt)).tuples()
-        return list(rows.all())
-
-    async def list_ids_registered_since(self, since: datetime, role: Role) -> list[int]:
-        result = await self.session.execute(
-            select(User.id).where(User.role == role, User.created_at >= since)
-        )
-        return list(result.scalars().all())
-
-    async def list_id_and_registration_date_since(
-        self, since: datetime, role: Role
-    ) -> list[tuple[int, date]]:
-        day_col = func.date(func.timezone("UTC", User.created_at))
-        result = await self.session.execute(
-            select(User.id, day_col).where(User.role == role, User.created_at >= since)
-        )
-        return list(result.tuples().all())

@@ -22,10 +22,12 @@ from app.core.utils.time import datetime_now
 from app.modules.analytics.dto import GetFunnelDto
 from app.modules.analytics.usecases import GetFunnelUseCase
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from app.modules.users.stats_repository import UserStatsRepository
 from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -57,7 +59,12 @@ def _use_case(
     transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> GetFunnelUseCase:
-    return GetFunnelUseCase(user_repository, subscription_repository, transaction_repository, uow)
+    return GetFunnelUseCase(
+        UserStatsRepository(user_repository.session),
+        SubscriptionStatsRepository(subscription_repository.session),
+        transaction_repository,
+        uow,
+    )
 
 
 async def test_actor_without_analytics_view_is_denied(

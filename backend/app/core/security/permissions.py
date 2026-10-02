@@ -23,6 +23,8 @@ class Permission(UpperStrEnum):
     BOT_SETTINGS_MANAGE = auto()
     BOT_COMMANDS_MANAGE = auto()
     BOT_RESTART = auto()
+    BOT_PROXY_SET = auto()
+    BOT_PROXY_REMOVE = auto()
     SHOP_SETTINGS_VIEW = auto()
     SHOP_SETTINGS_MANAGE = auto()
     OAUTH_SETTINGS_VIEW = auto()
@@ -143,6 +145,7 @@ class Permission(UpperStrEnum):
     BACKUPS_STATS_VIEW = auto()
     BLACKLIST_VIEW = auto()
     BLACKLIST_SOURCES_VIEW = auto()
+    BLACKLIST_SOURCE_DETAIL_VIEW = auto()
     BLACKLIST_ENTRY_ADD = auto()
     BLACKLIST_ENTRY_REMOVE = auto()
     BLACKLIST_SOURCE_ADD = auto()
@@ -181,6 +184,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BOT_SETTINGS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_COMMANDS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_RESTART: PermissionMeta(resource="bot_settings", kind="write"),
+    Permission.BOT_PROXY_SET: PermissionMeta(resource="bot_settings", kind="write"),
+    Permission.BOT_PROXY_REMOVE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.SHOP_SETTINGS_VIEW: PermissionMeta(resource="shop_settings", kind="read"),
     Permission.SHOP_SETTINGS_MANAGE: PermissionMeta(resource="shop_settings", kind="write"),
     Permission.OAUTH_SETTINGS_VIEW: PermissionMeta(resource="oauth_settings", kind="read"),
@@ -295,6 +300,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BACKUPS_STATS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BLACKLIST_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.BLACKLIST_SOURCES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
+    Permission.BLACKLIST_SOURCE_DETAIL_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.BLACKLIST_ENTRY_ADD: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_ENTRY_REMOVE: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_SOURCE_ADD: PermissionMeta(resource="blacklist", kind="write"),
@@ -336,6 +342,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_COMMANDS_MANAGE,
         Permission.BOT_RESTART,
+        Permission.BOT_PROXY_SET,
+        Permission.BOT_PROXY_REMOVE,
         Permission.SHOP_SETTINGS_VIEW,
         Permission.SHOP_SETTINGS_MANAGE,
         Permission.BANNERS_IMAGE_VIEW,

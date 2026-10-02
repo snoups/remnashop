@@ -1,4 +1,4 @@
-from dishka import Provider, Scope, alias, provide
+from dishka import Provider, Scope, alias, provide_all
 
 from app.core.ports import SessionRevoker
 from app.modules.auth.repository import SessionRepository
@@ -10,6 +10,7 @@ from app.modules.auth.usecases import (
     ListUserSessionsUseCase,
     LoginUseCase,
     LogoutUseCase,
+    PruneStaleSessionsUseCase,
     RefreshSessionUseCase,
     RevokeSessionUseCase,
     RevokeUserSessionUseCase,
@@ -19,18 +20,23 @@ from app.modules.auth.usecases import (
 class AuthProvider(Provider):
     scope = Scope.REQUEST
 
-    bootstrap_owner_use_case = provide(BootstrapOwnerUseCase)
-    login_use_case = provide(LoginUseCase)
-    get_auth_status_use_case = provide(GetAuthStatusUseCase)
-    session_repository = provide(SessionRepository)
+    services = provide_all(
+        SessionRepository,
+        SessionIssuer,
+    )
+    use_cases = provide_all(
+        BootstrapOwnerUseCase,
+        LoginUseCase,
+        GetAuthStatusUseCase,
+        RefreshSessionUseCase,
+        LogoutUseCase,
+        ListSessionsUseCase,
+        RevokeSessionUseCase,
+        ListUserSessionsUseCase,
+        RevokeUserSessionUseCase,
+        PruneStaleSessionsUseCase,
+    )
     session_revoker = alias(source=SessionRepository, provides=SessionRevoker)
-    session_issuer = provide(SessionIssuer)
-    refresh_session_use_case = provide(RefreshSessionUseCase)
-    logout_use_case = provide(LogoutUseCase)
-    list_sessions_use_case = provide(ListSessionsUseCase)
-    revoke_session_use_case = provide(RevokeSessionUseCase)
-    list_user_sessions_use_case = provide(ListUserSessionsUseCase)
-    revoke_user_session_use_case = provide(RevokeUserSessionUseCase)
 
 
 def get_auth_providers() -> list[Provider]:

@@ -12,7 +12,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -68,7 +67,7 @@ class CryptomusGateway(PaymentGateway):
                 "is_payment_multiple": False,
             }
         )
-        response = await http_client.post(
+        response = await self._http.post(
             f"{self.API_BASE}/v1/payment", content=body, headers=headers
         )
         response.raise_for_status()
@@ -102,7 +101,7 @@ class CryptomusGateway(PaymentGateway):
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         body, headers = self._signed({"order_id": order.idempotency_key})
-        response = await http_client.post(
+        response = await self._http.post(
             f"{self.API_BASE}/v1/payment/info",
             content=body,
             headers=headers,

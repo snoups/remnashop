@@ -4,11 +4,15 @@ from dishka import Provider, Scope, provide
 from loguru import logger
 from redis.asyncio import ConnectionPool, Redis
 
+from app.core.bot_signals import RedisBotSignals
 from app.core.config import AppConfig
+from app.core.ports import BotSignals
 
 
 class RedisProvider(Provider):
     scope = Scope.APP
+
+    bot_signals = provide(RedisBotSignals, provides=BotSignals)
 
     @provide
     async def get_redis(self, config: AppConfig) -> AsyncGenerator[Redis, None]:

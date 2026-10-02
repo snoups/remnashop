@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
@@ -8,14 +6,9 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher, PasskeyRevoker, SessionRevoker, SubscriptionRevoker
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.users.dto import DeleteUserDto
 from app.modules.users.events import UserDeletedEvent
 from app.modules.users.repository import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class DeleteUserDto:
-    user_id: int
-    client_ip: str
 
 
 class DeleteUserUseCase(UseCase[DeleteUserDto, None]):

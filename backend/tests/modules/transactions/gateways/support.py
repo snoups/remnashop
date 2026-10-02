@@ -1,11 +1,9 @@
 import json
 from datetime import timedelta
 from decimal import Decimal
-from types import ModuleType
 from typing import Any, Callable, Final, Optional, Union
 
 import httpx
-import pytest
 
 from app.core.enums import (
     Currency,
@@ -16,7 +14,7 @@ from app.core.enums import (
 )
 from app.core.utils.time import datetime_now
 from app.modules.transactions.dto import TransactionDto
-from app.modules.transactions.gateways.base import WebhookRequest
+from app.modules.transactions.gateways.base import PaymentHttpClient, WebhookRequest
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 WEBHOOK_URL: Final[str] = "https://shop.example/api/v1/payments/test"
@@ -24,6 +22,16 @@ RETURN_URL: Final[str] = "https://shop.example"
 ORDER_REF: Final[str] = "order-key-1"
 
 Responder = Callable[[httpx.Request], httpx.Response]
+
+
+def _no_network(request: httpx.Request) -> httpx.Response:
+    raise AssertionError(f"unexpected provider call: {request.method} {request.url}")
+
+
+# for a gateway exercised without any provider call
+NO_HTTP: Final[PaymentHttpClient] = PaymentHttpClient(
+    httpx.AsyncClient(transport=httpx.MockTransport(_no_network))
+)
 
 
 def make_order(**overrides: Any) -> TransactionDto:
@@ -60,6 +68,7 @@ class HttpRecorder:
     def __init__(self, respond: Responder) -> None:
         self.requests: list[httpx.Request] = []
         self._respond = respond
+        self.client = PaymentHttpClient(httpx.AsyncClient(transport=httpx.MockTransport(self)))
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -71,15 +80,6 @@ class HttpRecorder:
 
     def last_json(self) -> Any:
         return json.loads(self.last.content)
-
-
-def install_http(
-    monkeypatch: pytest.MonkeyPatch, module: ModuleType, respond: Responder
-) -> HttpRecorder:
-    recorder = HttpRecorder(respond)
-    client = httpx.AsyncClient(transport=httpx.MockTransport(recorder))
-    monkeypatch.setattr(module, "http_client", client)
-    return recorder
 
 
 def json_response(payload: Any, status_code: int = 200) -> Responder:

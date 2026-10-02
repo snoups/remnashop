@@ -8,11 +8,10 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.plans import PlanRepository
+from app.modules.plans import AddOnRepository, PlanRepository
 from app.modules.promocodes.dto import CreatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeChangedEvent
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.subscriptions import AddOnRepository
 
 
 class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):

@@ -13,8 +13,7 @@ from app.modules.dialogs.dto import (
     DialogWindowExportDto,
 )
 from app.modules.dialogs.repository import DialogRepository
-from app.modules.settings import SettingsRepository
-from app.modules.translations import TranslationsRepository, join_message_key
+from app.modules.translations import TranslationRepository, join_message_key
 
 # Bumped when the payload's meaning changes: banner_name went from a fixed
 # category to a free name, and a button's icon moved out into translations.
@@ -36,24 +35,22 @@ class ExportDialogsUseCase(UseCase[None, DialogExportDto]):
     def __init__(
         self,
         dialog_repository: DialogRepository,
-        translations_repository: TranslationsRepository,
-        settings_repository: SettingsRepository,
+        translation_repository: TranslationRepository,
         uow: UnitOfWork,
     ) -> None:
         self._dialog_repository = dialog_repository
-        self._translations_repository = translations_repository
-        self._settings_repository = settings_repository
+        self._translation_repository = translation_repository
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: None) -> DialogExportDto:
         async with self._uow:
             windows = await self._dialog_repository.list_all()
-            locales = await self._settings_repository.list_active_locales()
+            locales = await self._translation_repository.list_active_locales()
             text_keys = dialog_text_keys(windows)
 
             texts: list[DialogTextExportDto] = []
             for locale in locales:
-                for entry in await self._translations_repository.list_by_locale(locale):
+                for entry in await self._translation_repository.list_by_locale(locale):
                     if join_message_key(entry.message_id, entry.attribute_id) not in text_keys:
                         continue
                     texts.append(

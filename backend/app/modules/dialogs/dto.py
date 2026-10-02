@@ -3,6 +3,7 @@ from typing import Optional
 
 from pydantic import Field
 
+from app.core.constants import DEFAULT_BANNER_NAME
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     ButtonLinkType,
@@ -110,3 +111,34 @@ class DialogCatalogDto:
     seed_window_keys: list[str]
     navigable_window_keys: list[str]
     custom_window_limit: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class CreateCustomDialogWindowDto:
+    name: str
+    # Every window starts on the shared banner; the inspector is where an
+    # admin moves it to its own or turns it off.
+    banner_name: Optional[str] = DEFAULT_BANNER_NAME
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateDialogTextDto:
+    locale: Locale
+    message_id: str
+    attribute_id: str
+    value: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ConfigureDialogWindowDto:
+    key: str
+    banner_name: Optional[str] = None
+    banner_name_provided: bool = False
+    is_enabled: Optional[bool] = None
+    name: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateDialogWindowButtonsDto:
+    key: str
+    buttons: list[DialogButtonInputDto]

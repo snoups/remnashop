@@ -7,31 +7,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PaymentGatewayType, PlanType, PurchaseType, Role, RoundingMode
 from app.core.ports import EventPublisher
-from app.modules.gateways.repository import GatewaysRepository
-from app.modules.plans.api.schemas import to_public_duration_items
+from app.modules.gateways.repository import GatewayRepository
+from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
+    SwitchAnchorCurrencyDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
-from app.modules.plans.usecases import ListActivePlansUseCase
-from app.modules.pricing.dto import SwitchAnchorCurrencyDto, UpdateCurrencyRateDto
+from app.modules.plans.usecases import SwitchAnchorCurrencyUseCase
+from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.pricing.repository import PricingRepository
-from app.modules.pricing.usecases import SwitchAnchorCurrencyUseCase, UpdateCurrencyRateUseCase
+from app.modules.pricing.usecases import UpdateCurrencyRateUseCase
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions.addon_repository import AddOnRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.usecases import ListActivePlansUseCase
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.dispatch import RecordingDispatch
+from tests.modules.subscriptions.factories import make_eligibility
 
 OWNER = UserDto(name="owner", role=Role.OWNER)
 
@@ -87,12 +90,14 @@ async def _rub_catalog_price(
     uow: UnitOfWork,
 ) -> Decimal:
     list_active_plans = ListActivePlansUseCase(
-        plan_repository, subscription_repository, referral_repository, uow
+        plan_repository,
+        PricingRepository(plan_repository.session),
+        make_eligibility(plan_repository.session),
+        uow,
     )
     plans = await list_active_plans(OWNER)
     catalog_plan = next(p for p in plans if p.id == plan.id)
-    rates = await pricing_repository.get_rate_table()
-    item = to_public_duration_items(catalog_plan.durations, rates)[0]
+    item = catalog_plan.durations[0]
     return next(price for price in item.prices if price.currency is Currency.RUB).price
 
 
@@ -102,17 +107,17 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     transaction_repository: TransactionRepository,
     subscription_repository: SubscriptionRepository,
     referral_repository: ReferralRepository,
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
     settings_repository: SettingsRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> None:
     async with uow:
-        await gateways_repository.update_settings(
+        await gateway_repository.update_settings(
             PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k"}
         )
-        await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+        await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
 
     await pricing_repository.get_rate_table()
     await pricing_repository.update_rate(
@@ -133,14 +138,14 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     create_checkout = CreateCheckoutUseCase(
         plan_repository,
         user_repository,
-        gateways_repository,
+        gateway_repository,
         transaction_repository,
         subscription_repository,
-        settings_repository,
-        referral_repository,
+        make_eligibility(plan_repository.session),
         pricing_repository,
         uow,
         _FakeFactory(),
+        RecordingDispatch(),
     )
     result = await create_checkout(
         user,

@@ -15,6 +15,7 @@ from app.core.enums import ButtonLinkType, DialogFlow
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import UpdateDialogWindowDto
 from app.modules.dialogs.repository import DialogRepository
+from app.modules.providers import get_module_providers
 from app.telegram.dialogs import state_pool
 from app.telegram.dialogs.di import DialogConfigProvider
 from app.telegram.dialogs.keyboard import ConfigKeyboard
@@ -284,6 +285,7 @@ async def test_process_item_callback_dispatches_action(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -319,6 +321,7 @@ async def test_process_item_callback_dispatches_navigate(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -362,6 +365,7 @@ async def test_process_item_callback_navigate_across_state_groups_starts_dialog(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -400,6 +404,7 @@ async def test_default_id_reaches_process_item_callback(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -429,6 +434,7 @@ async def test_process_item_callback_unregistered_action_returns_false(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -460,6 +466,7 @@ async def test_process_item_callback_declared_but_unbound_action_returns_false(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -483,6 +490,7 @@ async def test_process_item_callback_unknown_button_returns_false(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -508,6 +516,7 @@ async def test_process_item_callback_unresolved_navigate_target_returns_false(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},
@@ -538,6 +547,7 @@ async def test_process_item_callback_navigate_to_disabled_window_returns_false(
 
     container = make_async_container(
         *get_core_providers(),
+        *get_module_providers(),
         DialogConfigProvider(),
         _BoundSession(session),
         context={AppConfig: config},

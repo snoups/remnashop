@@ -18,7 +18,6 @@ from app.modules.transactions.gateways.base import (
     WebhookRequest,
     WebhookSignal,
     amount_to_float,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -63,7 +62,7 @@ class AntilopayGateway(PaymentGateway):
 
     async def _post(self, path: str, payload: dict[str, Any], *, timeout: float) -> Any:
         body = compact_json(payload)
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/{path}",
             content=body,
             headers=self._signed_headers(body),

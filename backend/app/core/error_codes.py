@@ -37,6 +37,7 @@ class ErrorCode(UpperStrEnum):
     BLACKLIST_SOURCE_NOT_FOUND = auto()
     BLACKLIST_VALUE_INVALID = auto()
     BOT_COMMANDS_MISMATCH = auto()
+    BOT_PROXY_URL_INVALID = auto()
     CANNOT_DELETE_SELF = auto()
     COOLDOWN_ACTIVE = auto()
     CSRF_FAILED = auto()

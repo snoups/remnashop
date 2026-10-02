@@ -7,9 +7,9 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.analytics.dto import FunnelDto, FunnelStepDto, GetFunnelDto
 from app.modules.analytics.window import resolve_since
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserStatsRepository
 
 _STEP_KEYS: Final[tuple[str, str, str, str]] = ("registered", "trial", "first_paid", "repeat_paid")
 
@@ -19,22 +19,22 @@ class GetFunnelUseCase(UseCase[GetFunnelDto, FunnelDto]):
 
     def __init__(
         self,
-        user_repository: UserRepository,
-        subscription_repository: SubscriptionRepository,
+        user_stats: UserStatsRepository,
+        subscription_stats: SubscriptionStatsRepository,
         transaction_repository: TransactionRepository,
         uow: UnitOfWork,
     ) -> None:
-        self._user_repository = user_repository
-        self._subscription_repository = subscription_repository
+        self._user_stats = user_stats
+        self._subscription_stats = subscription_stats
         self._transaction_repository = transaction_repository
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: GetFunnelDto) -> FunnelDto:
-        since = await resolve_since(self._user_repository, data.days)
+        since = await resolve_since(self._user_stats, data.days)
         async with self._uow:
-            registered_ids = await self._user_repository.list_ids_registered_since(since, Role.USER)
+            registered_ids = await self._user_stats.list_ids_registered_since(since, Role.USER)
 
-            trial_ids = await self._subscription_repository.list_user_ids_with_trial(registered_ids)
+            trial_ids = await self._subscription_stats.list_user_ids_with_trial(registered_ids)
             first_paid_ids = await self._transaction_repository.list_user_ids_with_paid_order(
                 registered_ids
             )

@@ -6,14 +6,15 @@ import pytest
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-import app.modules.transactions.gateways.antilopay as antilopay_module
 from app.core.exceptions import PaymentGatewayError
 from app.modules.transactions.gateways.antilopay import AntilopayGateway
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -56,9 +57,14 @@ def _settings(public_key_format: str = "der") -> dict[str, str]:
     }
 
 
-def _gateway(public_key_format: str = "der") -> AntilopayGateway:
+def _gateway(
+    public_key_format: str = "der", *, http: PaymentHttpClient = NO_HTTP
+) -> AntilopayGateway:
     return AntilopayGateway(
-        settings=_settings(public_key_format), webhook_url=WEBHOOK_URL, return_url=RETURN_URL
+        settings=_settings(public_key_format),
+        webhook_url=WEBHOOK_URL,
+        return_url=RETURN_URL,
+        http=http,
     )
 
 
@@ -102,16 +108,12 @@ def _check(**overrides: object) -> dict[str, object]:
     return body
 
 
-async def test_create_payment_posts_a_signed_body_to_api_v1(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    http = install_http(
-        monkeypatch,
-        antilopay_module,
+async def test_create_payment_posts_a_signed_body_to_api_v1() -> None:
+    http = HttpRecorder(
         json_response({"code": 0, "payment_id": "APAY1", "payment_url": "https://gate/1"}),
     )
 
-    intent = await _gateway().create_payment(make_order())
+    intent = await _gateway(http=http.client).create_payment(make_order())
 
     assert http.last.url.path == "/api/v1/payment/create"
     assert http.last.headers["X-Apay-Secret-Id"] == "sid"
@@ -146,13 +148,13 @@ async def test_parse_webhook_ignores_other_types_and_failures() -> None:
     assert signal is not None and signal.claims_paid is False
 
 
-async def test_confirm_checks_the_payment_by_order_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(monkeypatch, antilopay_module, json_response(_check()))
+async def test_confirm_checks_the_payment_by_order_id() -> None:
+    http = HttpRecorder(json_response(_check()))
     raw = _callback()
-    signal = await _gateway().parse_webhook(webhook(raw, _provider_headers(raw)))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, _provider_headers(raw)))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(), signal)
+    confirmed = await _gateway(http=http.client).confirm(make_order(), signal)
 
     assert confirmed is not None
     assert confirmed.amount == 500
@@ -166,19 +168,19 @@ async def test_confirm_checks_the_payment_by_order_id(monkeypatch: pytest.Monkey
     [_check(original_amount=400.0), _check(status="PENDING"), {"code": 8, "error": "not found"}],
 )
 async def test_confirm_rejects_short_unpaid_or_unknown_payments(
-    monkeypatch: pytest.MonkeyPatch, response: dict[str, object]
+    response: dict[str, object],
 ) -> None:
-    install_http(monkeypatch, antilopay_module, json_response(response))
+    http = HttpRecorder(json_response(response))
     raw = _callback()
-    signal = await _gateway().parse_webhook(webhook(raw, _provider_headers(raw)))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, _provider_headers(raw)))
     assert signal is not None
-    assert await _gateway().confirm(make_order(), signal) is None
+    assert await _gateway(http=http.client).confirm(make_order(), signal) is None
 
 
-async def test_confirm_raises_on_api_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_http(monkeypatch, antilopay_module, json_response({"code": 3, "error": "bad sign"}))
+async def test_confirm_raises_on_api_errors() -> None:
+    http = HttpRecorder(json_response({"code": 3, "error": "bad sign"}))
     raw = _callback()
-    signal = await _gateway().parse_webhook(webhook(raw, _provider_headers(raw)))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(raw, _provider_headers(raw)))
     assert signal is not None
     with pytest.raises(PaymentGatewayError):
-        await _gateway().confirm(make_order(), signal)
+        await _gateway(http=http.client).confirm(make_order(), signal)

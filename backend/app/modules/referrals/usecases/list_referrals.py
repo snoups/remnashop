@@ -1,14 +1,9 @@
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import ReferralRewardType
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import (
-    DEFAULT_PAGE_SIZE,
+    ListReferralsDto,
     ReferralListItemDto,
     ReferralRewardTotalsDto,
 )
@@ -16,19 +11,7 @@ from app.modules.referrals.repository import ReferralRepository
 from app.modules.users import UserRepository
 
 
-@dataclass(frozen=True, kw_only=True)
-class ListReferralsInput:
-    level: Optional[int] = None
-    created_from: Optional[datetime] = None
-    created_to: Optional[datetime] = None
-    search: Optional[str] = None
-    has_rewards: Optional[bool] = None
-    reward_type: Optional[ReferralRewardType] = None
-    page: int = 1
-    page_size: int = DEFAULT_PAGE_SIZE
-
-
-class ListReferralsUseCase(UseCase[ListReferralsInput, tuple[list[ReferralListItemDto], int]]):
+class ListReferralsUseCase(UseCase[ListReferralsDto, tuple[list[ReferralListItemDto], int]]):
     required_permission = Permission.REFERRALS_LIST
 
     def __init__(
@@ -42,7 +25,7 @@ class ListReferralsUseCase(UseCase[ListReferralsInput, tuple[list[ReferralListIt
         self._uow = uow
 
     async def _execute(
-        self, actor: Actor, data: ListReferralsInput
+        self, actor: Actor, data: ListReferralsDto
     ) -> tuple[list[ReferralListItemDto], int]:
         async with self._uow:
             referrals, total = await self._referral_repository.list_paginated(

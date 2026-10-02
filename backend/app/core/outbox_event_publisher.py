@@ -1,12 +1,13 @@
 import contextlib
 import dataclasses
+from functools import partial
 from typing import Any, Final, Optional
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.actor import Actor
 from app.core.db.models import EventOutboxEntry
+from app.core.db.uow import UnitOfWork
 from app.core.events import ActorEvent, BaseEvent, UserEvent
+from app.core.ports import OutboxEntryDispatch
 
 _SKIPPED_PAYLOAD_FIELDS: Final[set[str]] = {"event_id", "occurred_at", "ip_address"}
 
@@ -47,8 +48,9 @@ def _actor_fields(
 
 
 class OutboxEventPublisher:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, uow: UnitOfWork, dispatch: OutboxEntryDispatch) -> None:
+        self._uow = uow
+        self._dispatch = dispatch
 
     async def publish(self, event: BaseEvent) -> None:
         actor_id, actor_login, actor_name, actor_email = _actor_fields(event)
@@ -63,15 +65,12 @@ class OutboxEventPublisher:
             ip_address=event.ip_address,
             payload=_build_payload(event),
         )
-        self._session.add(entry)
-        await self._session.flush()  # assigns entry.id, still inside the caller's transaction
+        self._uow.session.add(entry)
+        await self._uow.session.flush()  # assigns entry.id inside the caller's transaction
+        await self._uow.after_commit(partial(self._kick, entry.id))
 
-        # Fires before this transaction commits, so the worker's read
-        # (get_unprocessed_by_id) frequently sees no row yet and no-ops --
-        # normal under any DB pool contention, not exceptional. Either way
-        # sweep_outbox_task picks the row up on its next pass; nothing is
-        # lost, and correctness never depends on this trigger winning.
-        from app.modules.event_log.tasks import process_outbox_entry_task  # noqa: PLC0415
-
+    async def _kick(self, outbox_id: int) -> None:
+        # Fast path only: sweep_outbox_task picks up any row this misses, so a
+        # broker hiccup must not fail a request whose transaction already committed.
         with contextlib.suppress(Exception):
-            await process_outbox_entry_task.kiq(outbox_id=entry.id)  # type: ignore[call-overload]
+            await self._dispatch.kiq(outbox_id=outbox_id)

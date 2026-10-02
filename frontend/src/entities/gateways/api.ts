@@ -60,11 +60,13 @@ export interface TestPayment {
 export type TestPaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELED" | "REFUNDED";
 
 export function createTestPayment(type: string): Promise<TestPayment> {
-  return apiPost<TestPayment, Record<string, never>>(`/gateways/${type}/actions/test`, {});
+  return apiPost<TestPayment, { gateway_type: string }>("/transactions/test-payments", {
+    gateway_type: type,
+  });
 }
 
 export function getTestPaymentStatus(orderId: number): Promise<{ status: TestPaymentStatus }> {
-  return apiGet<{ status: TestPaymentStatus }>(`/gateways/test-payments/${orderId}`);
+  return apiGet<{ status: TestPaymentStatus }>(`/transactions/test-payments/${orderId}`);
 }
 
 export function reorderGateways(types: string[]): Promise<Gateway[]> {

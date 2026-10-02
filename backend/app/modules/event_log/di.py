@@ -1,12 +1,19 @@
-from dishka import Provider, Scope, provide
+from typing import cast
 
+from dishka import Provider, Scope, provide, provide_all
+
+from app.core.ports import OutboxEntryDispatch
 from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
+from app.modules.event_log.tasks import process_outbox_entry_task
 from app.modules.event_log.usecases import (
     GetNotificationGroupsUseCase,
     GetNotificationsUseCase,
     ListEventLogUseCase,
     MarkNotificationsReadUseCase,
+    ProcessOutboxEntryUseCase,
+    PruneOutboxUseCase,
+    SweepOutboxUseCase,
     UpdateNotificationGroupsUseCase,
 )
 
@@ -14,13 +21,24 @@ from app.modules.event_log.usecases import (
 class EventLogProvider(Provider):
     scope = Scope.REQUEST
 
-    event_log_repository = provide(EventLogRepository)
-    event_outbox_repository = provide(EventOutboxRepository)
-    list_event_log_use_case = provide(ListEventLogUseCase)
-    get_notifications_use_case = provide(GetNotificationsUseCase)
-    mark_notifications_read_use_case = provide(MarkNotificationsReadUseCase)
-    get_notification_groups_use_case = provide(GetNotificationGroupsUseCase)
-    update_notification_groups_use_case = provide(UpdateNotificationGroupsUseCase)
+    repositories = provide_all(
+        EventLogRepository,
+        EventOutboxRepository,
+    )
+    use_cases = provide_all(
+        ListEventLogUseCase,
+        GetNotificationsUseCase,
+        MarkNotificationsReadUseCase,
+        GetNotificationGroupsUseCase,
+        UpdateNotificationGroupsUseCase,
+        ProcessOutboxEntryUseCase,
+        SweepOutboxUseCase,
+        PruneOutboxUseCase,
+    )
+
+    @provide(scope=Scope.APP)
+    def outbox_entry_dispatch(self) -> OutboxEntryDispatch:
+        return cast(OutboxEntryDispatch, process_outbox_entry_task)
 
 
 def get_event_log_providers() -> list[Provider]:

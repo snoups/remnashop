@@ -30,3 +30,24 @@ class TranslationsExportDto:
 class TranslationsImportResultDto:
     applied: int
     skipped: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class TranslationsImportDto:
+    version: int
+    texts: list[TranslationTextExportDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResetTranslationDto:
+    locale: Locale
+    message_id: str
+    attribute_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateTranslationDto:
+    locale: Locale
+    message_id: str
+    attribute_id: str
+    value: str

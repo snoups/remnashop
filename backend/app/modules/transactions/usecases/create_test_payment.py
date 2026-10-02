@@ -13,7 +13,7 @@ from app.core.exceptions import PaymentGatewayError, ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.gateways import GatewaysRepository
+from app.modules.gateways import GatewayRepository
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import CreateTransactionDto, TestPaymentDto
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
@@ -30,12 +30,12 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
 
     def __init__(
         self,
-        gateways_repository: GatewaysRepository,
+        gateway_repository: GatewayRepository,
         transaction_repository: TransactionRepository,
         uow: UnitOfWork,
         gateway_factory: PaymentGatewayFactory,
     ) -> None:
-        self._gateways_repository = gateways_repository
+        self._gateway_repository = gateway_repository
         self._transaction_repository = transaction_repository
         self._uow = uow
         self._gateway_factory = gateway_factory
@@ -49,13 +49,13 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
             )
 
         async with self._uow:
-            gateway_config = await self._gateways_repository.get_by_type(data)
+            gateway_config = await self._gateway_repository.get_by_type(data)
             if not gateway_config.is_configured:
                 raise ValidationError(
                     f"Gateway '{data.value}' is not configured",
                     code=ErrorCode.GATEWAY_NOT_CONFIGURED,
                 )
-            settings = await self._gateways_repository.get_raw_settings(data)
+            settings = await self._gateway_repository.get_raw_settings(data)
 
         if actor.email is None and gateway_class.requires_customer_email(settings):
             raise ValidationError(

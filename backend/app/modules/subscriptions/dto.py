@@ -4,11 +4,12 @@ from decimal import Decimal
 from typing import Any, Final, Optional
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AddOnType, Currency, PurchaseType, SubscriptionStatus
+from app.core.enums import AddOnType, Currency, PlanType, PurchaseType, SubscriptionStatus
+from app.modules.plans import PlanDto
 
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
@@ -99,21 +100,6 @@ class SubscriptionDto(BaseDto, TimestampMixin):
     addon_entitlements: list[AddOnEntitlementDto] = Field(default_factory=list)
 
 
-class AddOnPriceOverrideDto(BaseDto):
-    currency: Currency
-    price: Decimal
-
-
-class AddOnDto(BaseDto, TimestampMixin):
-    name: str
-    type: AddOnType
-    amount: int
-    order_index: int = 0
-    is_active: bool = False
-    base_price: Decimal
-    overrides: list[AddOnPriceOverrideDto] = Field(default_factory=list)
-
-
 @dataclass(frozen=True, kw_only=True)
 class CreateSubscriptionDto:
     user_id: int
@@ -148,42 +134,6 @@ class UpdateSubscriptionSquadsDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class CreateAddOnDto:
-    name: str
-    type: AddOnType
-    amount: int
-    base_price: Decimal
-
-
-@dataclass(frozen=True, kw_only=True)
-class UpdateAddOnDto:
-    addon_id: int
-    name: Optional[str] = None
-    type: Optional[AddOnType] = None
-    amount: Optional[int] = None
-    is_active: Optional[bool] = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class SetAddOnBasePriceDto:
-    addon_id: int
-    base_price: Decimal
-
-
-@dataclass(frozen=True, kw_only=True)
-class SetAddOnPriceOverrideDto:
-    addon_id: int
-    currency: Currency
-    price: Optional[Decimal]
-    anchor: Currency
-
-
-@dataclass(frozen=True, kw_only=True)
-class ReorderAddOnsDto:
-    addon_ids: list[int]
-
-
-@dataclass(frozen=True, kw_only=True)
 class PurchaseSubscriptionDto:
     user_id: int
     plan_snapshot: PlanSnapshot
@@ -210,8 +160,77 @@ class GrantAddOnDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RemnawaveWebhookDto:
+    body: bytes
+    headers: dict[str, str]
+
+
+@dataclass(frozen=True, kw_only=True)
 class SyncSubscriptionStatusDto:
     remnawave_user_id: int
     status: SubscriptionStatus
     source: str
     expire_at: Optional[datetime] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class CatalogPriceDto:
+    currency: Currency
+    price: Decimal
+
+
+@dataclass(frozen=True, kw_only=True)
+class CatalogDurationDto:
+    days: int
+    order_index: int
+    prices: list[CatalogPriceDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class CatalogPlanDto:
+    id: int
+    public_code: str
+    name: str
+    description: Optional[str]
+    tag: Optional[str]
+    type: PlanType
+    traffic_limit_strategy: TrafficLimitStrategy
+    traffic_limit: int
+    device_limit: int
+    is_trial: bool
+    order_index: int
+    durations: list[CatalogDurationDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ActivateTrialSubscriptionDto:
+    plan: PlanDto
+    duration_days: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class DeleteDeviceDto:
+    hwid: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetAvailableTrialDto:
+    plan: Optional[PlanDto]
+    is_trial_available: bool
+
+
+class DeviceDto(BaseModel):
+    hwid: str
+    platform: Optional[str]
+    device_model: Optional[str]
+    user_agent: Optional[str]
+    created_at: datetime
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListSubscriptionsDto:
+    status: Optional[SubscriptionStatus] = None
+    search: Optional[str] = None
+    user_id: Optional[int] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE

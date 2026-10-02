@@ -20,6 +20,7 @@ from app.core.exceptions import (
 from app.core.ports import EventPublisher
 from app.core.security import hash_password, hash_refresh_token
 from app.core.security.permissions import Permission
+from app.modules.auth.dto import RevokeSessionDto, RevokeUserSessionDto
 from app.modules.auth.events import (
     BootstrapConflictEvent,
     LoginFailedEvent,
@@ -34,11 +35,8 @@ from app.modules.auth.usecases.list_sessions import ListSessionsUseCase
 from app.modules.auth.usecases.list_user_sessions import ListUserSessionsUseCase
 from app.modules.auth.usecases.logout import LogoutUseCase
 from app.modules.auth.usecases.refresh_session import RefreshSessionUseCase
-from app.modules.auth.usecases.revoke_session import RevokeSessionDto, RevokeSessionUseCase
-from app.modules.auth.usecases.revoke_user_session import (
-    RevokeUserSessionDto,
-    RevokeUserSessionUseCase,
-)
+from app.modules.auth.usecases.revoke_session import RevokeSessionUseCase
+from app.modules.auth.usecases.revoke_user_session import RevokeUserSessionUseCase
 from app.modules.oauth.events import (
     OAuthIdentityConnectedEvent,
     OAuthIdentityDisconnectedEvent,

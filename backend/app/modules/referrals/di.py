@@ -1,13 +1,17 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, alias, provide, provide_all
 
+from app.core.ports import ReferrerLookup
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.referrals.usecases import (
     AdjustUserPointsUseCase,
+    AssignReferralRewardsUseCase,
+    AttachReferralOnRegistrationUseCase,
     AttachReferralUseCase,
     GetOwnReferralStatsUseCase,
     GetReferralSettingsUseCase,
     GetReferralSummaryUseCase,
     GetUserReferralLinksUseCase,
+    GetUserReferralRevenueUseCase,
     GetUserReferralStatsUseCase,
     ListInvitedUsersUseCase,
     ListReferralsUseCase,
@@ -22,28 +26,26 @@ class ReferralsProvider(Provider):
     scope = Scope.REQUEST
 
     referral_repository = provide(ReferralRepository)
-    attach_referral_use_case = provide(AttachReferralUseCase)
-    request_points_withdrawal_use_case = provide(RequestPointsWithdrawalUseCase)
-    adjust_user_points_use_case = provide(AdjustUserPointsUseCase)
-    get_referral_settings_use_case = provide(GetReferralSettingsUseCase)
-    update_referral_settings_use_case = provide(UpdateReferralSettingsUseCase)
-    get_own_referral_stats_use_case = provide(GetOwnReferralStatsUseCase)
-    get_user_referral_stats_use_case = provide(GetUserReferralStatsUseCase)
-    list_referrals_use_case = provide(ListReferralsUseCase)
-    list_invited_users_use_case = provide(ListInvitedUsersUseCase)
-    get_referral_summary_use_case = provide(GetReferralSummaryUseCase)
-    get_user_referral_links_use_case = provide(GetUserReferralLinksUseCase)
-    reset_referral_code_use_case = provide(ResetReferralCodeUseCase)
-    reset_referral_settings_use_case = provide(ResetReferralSettingsUseCase)
+    use_cases = provide_all(
+        AttachReferralUseCase,
+        RequestPointsWithdrawalUseCase,
+        AdjustUserPointsUseCase,
+        GetReferralSettingsUseCase,
+        UpdateReferralSettingsUseCase,
+        GetOwnReferralStatsUseCase,
+        GetUserReferralStatsUseCase,
+        ListReferralsUseCase,
+        ListInvitedUsersUseCase,
+        GetReferralSummaryUseCase,
+        GetUserReferralLinksUseCase,
+        ResetReferralCodeUseCase,
+        ResetReferralSettingsUseCase,
+        AttachReferralOnRegistrationUseCase,
+        AssignReferralRewardsUseCase,
+        GetUserReferralRevenueUseCase,
+    )
+    referrer_lookup = alias(source=ReferralRepository, provides=ReferrerLookup)
 
 
 def get_referrals_providers() -> list[Provider]:
-    # Imported here, not at module level: transactions -> subscriptions -> plans
-    # -> referrals would re-enter transactions before it finishes loading.
-    from app.modules.referrals.usecases.get_user_referral_revenue import (  # noqa: PLC0415
-        GetUserReferralRevenueUseCase,
-    )
-
-    revenue_provider = Provider(scope=Scope.REQUEST)
-    revenue_provider.provide(GetUserReferralRevenueUseCase)
-    return [ReferralsProvider(), revenue_provider]
+    return [ReferralsProvider()]

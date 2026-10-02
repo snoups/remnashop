@@ -38,22 +38,30 @@ from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.event_log.repository import EventLogRepository
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 from app.modules.oauth.providers.state_store import OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.repository import PasskeyRepository
+from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import repository as pricing_repository_module
 from app.modules.pricing.repository import PricingRepository
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions.addon_repository import AddOnRepository
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
+from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.translations.repository import TranslationsRepository
+from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
+from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
+from app.modules.translations.repository import TranslationRepository
+from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.repository import UserRepository
+from app.modules.users.stats_repository import UserStatsRepository
+from tests.fakes.dispatch import RecordingDispatch
 from tests.fakes.remnawave import FakeHwidStore, FakeUserStore, make_fake_remnawave_transport
+from tests.modules.subscriptions.factories import make_eligibility
 
 
 @pytest.fixture
@@ -104,6 +112,16 @@ def user_repository(session: AsyncSession) -> UserRepository:
 
 
 @pytest.fixture
+def user_stats_repository(session: AsyncSession) -> UserStatsRepository:
+    return UserStatsRepository(session)
+
+
+@pytest.fixture
+def user_blacklist_repository(session: AsyncSession) -> UserBlacklistRepository:
+    return UserBlacklistRepository(session)
+
+
+@pytest.fixture
 def oauth_identity_repository(session: AsyncSession) -> OAuthIdentityRepository:
     return OAuthIdentityRepository(session)
 
@@ -124,8 +142,8 @@ def uow(session: AsyncSession) -> UnitOfWork:
 
 
 @pytest.fixture
-def event_publisher(session: AsyncSession) -> EventPublisher:
-    return OutboxEventPublisher(session)
+def event_publisher(uow: UnitOfWork) -> EventPublisher:
+    return OutboxEventPublisher(uow, RecordingDispatch())
 
 
 @pytest.fixture
@@ -155,6 +173,38 @@ def subscription_repository(session: AsyncSession) -> SubscriptionRepository:
 @pytest.fixture
 def addon_repository(session: AsyncSession) -> AddOnRepository:
     return AddOnRepository(session)
+
+
+@pytest.fixture
+def idempotency_repository(session: AsyncSession) -> PurchaseIdempotencyRepository:
+    return PurchaseIdempotencyRepository(session)
+
+
+@pytest.fixture
+def subscription_stats_repository(session: AsyncSession) -> SubscriptionStatsRepository:
+    return SubscriptionStatsRepository(session)
+
+
+@pytest.fixture
+def purchase_subscription_use_case(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    pricing_repository: PricingRepository,
+) -> PurchaseSubscriptionUseCase:
+    return PurchaseSubscriptionUseCase(
+        subscription_repository,
+        make_eligibility(subscription_repository.session),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        pricing_repository,
+        PurchaseIdempotencyRepository(subscription_repository.session),
+    )
 
 
 @pytest.fixture
@@ -188,13 +238,13 @@ def event_log_repository(session: AsyncSession) -> EventLogRepository:
 
 
 @pytest.fixture
-def gateways_repository(session: AsyncSession) -> GatewaysRepository:
-    return GatewaysRepository(session)
+def gateway_repository(session: AsyncSession) -> GatewayRepository:
+    return GatewayRepository(session)
 
 
 @pytest.fixture
-def translations_repository(session: AsyncSession) -> TranslationsRepository:
-    return TranslationsRepository(session)
+def translation_repository(session: AsyncSession) -> TranslationRepository:
+    return TranslationRepository(session)
 
 
 @pytest.fixture

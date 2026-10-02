@@ -18,3 +18,17 @@ class CreateOAuthIdentityDto:
     provider: OAuthProvider
     external_id: str
     external_login: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class OAuthCallbackDto:
+    provider: OAuthProvider
+    code: str
+    state: str
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class OAuthDisconnectDto:
+    provider: OAuthProvider
+    client_ip: str

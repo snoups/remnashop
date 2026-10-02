@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 
 from dishka import FromDishka
@@ -18,7 +17,6 @@ from app.modules.referrals.api.schemas import (
     ReferralListItemResponse,
     ReferralPageResponse,
     ReferralRevenueResponse,
-    ReferralRewardResponse,
     ReferralSettingsResponse,
     ReferralStatsResponse,
     ReferralSummaryResponse,
@@ -28,33 +26,22 @@ from app.modules.referrals.api.schemas import (
 from app.modules.referrals.dto import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
+    AdjustUserPointsDto,
+    GetReferralSummaryDto,
+    ListInvitedUsersDto,
+    ListReferralsDto,
     ReferralListItemDto,
     ReferralSettingsDto,
-    ReferralStatsDto,
     UpdateReferralSettingsDto,
 )
-from app.modules.referrals.usecases.adjust_user_points import (
-    AdjustUserPointsDto,
-    AdjustUserPointsUseCase,
-)
+from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
-from app.modules.referrals.usecases.get_referral_summary import (
-    GetReferralSummaryInput,
-    GetReferralSummaryUseCase,
-)
+from app.modules.referrals.usecases.get_referral_summary import GetReferralSummaryUseCase
 from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
-from app.modules.referrals.usecases.get_user_referral_revenue import (
-    GetUserReferralRevenueUseCase,
-)
+from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
-from app.modules.referrals.usecases.list_invited_users import (
-    ListInvitedUsersInput,
-    ListInvitedUsersUseCase,
-)
-from app.modules.referrals.usecases.list_referrals import (
-    ListReferralsInput,
-    ListReferralsUseCase,
-)
+from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
+from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
 from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
@@ -64,51 +51,13 @@ router = APIRouter(tags=["referrals"])
 
 
 def _settings_to_response(dto: ReferralSettingsDto) -> ReferralSettingsResponse:
-    return ReferralSettingsResponse(
-        enabled=dto.enabled,
-        max_level=dto.max_level,
-        accrual_strategy=dto.accrual_strategy,
-        reward_type=dto.reward_type,
-        reward_strategy=dto.reward_strategy,
-        reward_amounts=dto.reward_amounts,
-        anchor_currency=dto.anchor_currency,
-    )
-
-
-def _stats_to_response(dto: ReferralStatsDto) -> ReferralStatsResponse:
-    return ReferralStatsResponse(
-        referral_code=dto.referral_code,
-        referrer_id=dto.referrer_id,
-        points=dto.points,
-        counts_by_level=dto.counts_by_level,
-        rewards=[
-            ReferralRewardResponse(
-                type=r.type,
-                amount=r.amount,
-                created_at=r.created_at,
-                buyer=_user_to_response(dto.users.get(r.buyer_id))
-                if r.buyer_id is not None
-                else None,
-                level=dto.buyer_levels.get(r.buyer_id) if r.buyer_id is not None else None,
-            )
-            for r in dto.rewards
-        ],
-        referrer=_user_to_response(dto.users.get(dto.referrer_id))
-        if dto.referrer_id is not None
-        else None,
-    )
+    return ReferralSettingsResponse.model_validate(dto, from_attributes=True)
 
 
 def _user_to_response(user: Optional[UserDto]) -> Optional[ReferralUserResponse]:
     if user is None:
         return None
-    return ReferralUserResponse(
-        id=user.id,
-        name=user.name,
-        username=user.username,
-        telegram_id=user.telegram_id,
-        email=user.email,
-    )
+    return ReferralUserResponse.model_validate(user, from_attributes=True)
 
 
 def _list_item_to_response(item: ReferralListItemDto) -> ReferralListItemResponse:
@@ -139,7 +88,7 @@ async def list_referrals(
 ) -> ReferralPageResponse:
     items, total = await use_case(
         actor,
-        ListReferralsInput(
+        ListReferralsDto(
             level=level,
             created_from=created_from,
             created_to=created_to,
@@ -167,7 +116,7 @@ async def get_referral_summary(
 ) -> ReferralSummaryResponse:
     summary = await use_case(
         actor,
-        GetReferralSummaryInput(
+        GetReferralSummaryDto(
             level=level,
             created_from=created_from,
             created_to=created_to,
@@ -176,17 +125,7 @@ async def get_referral_summary(
             reward_type=reward_type,
         ),
     )
-    return ReferralSummaryResponse(
-        total_count=summary.total_count,
-        referrers_count=summary.referrers_count,
-        rewarded_count=summary.rewarded_count,
-        conversion_rate=(
-            Decimal(summary.rewarded_count) / summary.total_count
-            if summary.total_count > 0
-            else Decimal(0)
-        ),
-        reward_amounts=summary.reward_amounts,
-    )
+    return ReferralSummaryResponse.model_validate(summary, from_attributes=True)
 
 
 @router.get("/referrals/settings", response_model=ReferralSettingsResponse)
@@ -242,7 +181,7 @@ async def get_user_referral_stats(
     actor: Actor = Depends(require_admin),
 ) -> ReferralStatsResponse:
     stats = await use_case(actor, user_id)
-    return _stats_to_response(stats)
+    return ReferralStatsResponse.model_validate(stats, from_attributes=True)
 
 
 @router.post(
@@ -260,7 +199,7 @@ async def adjust_user_points(
 ) -> ReferralStatsResponse:
     await adjust_use_case(actor, AdjustUserPointsDto(user_id=user_id, delta=payload.delta))
     stats = await stats_use_case(actor, user_id)
-    return _stats_to_response(stats)
+    return ReferralStatsResponse.model_validate(stats, from_attributes=True)
 
 
 @router.get(
@@ -275,9 +214,7 @@ async def get_user_referral_revenue(
     actor: Actor = Depends(require_admin),
 ) -> ReferralRevenueResponse:
     revenue = await use_case(actor, user_id)
-    return ReferralRevenueResponse(
-        amount=revenue.amount, currency=revenue.currency, paying_count=revenue.paying_count
-    )
+    return ReferralRevenueResponse.model_validate(revenue, from_attributes=True)
 
 
 @router.get(
@@ -297,7 +234,7 @@ async def list_invited_users(
 ) -> InvitedUserPageResponse:
     items, total = await use_case(
         actor,
-        ListInvitedUsersInput(
+        ListInvitedUsersDto(
             user_id=user_id, level=level, search=search, page=page, page_size=page_size
         ),
     )
@@ -328,7 +265,7 @@ async def get_user_referral_links(
     actor: Actor = Depends(require_admin),
 ) -> ReferralLinksResponse:
     links = await use_case(actor, user_id)
-    return ReferralLinksResponse(bot_url=links.bot_url, webcabinet_url=links.webcabinet_url)
+    return ReferralLinksResponse.model_validate(links, from_attributes=True)
 
 
 @router.post(
@@ -345,4 +282,4 @@ async def reset_user_referral_code(
 ) -> ReferralStatsResponse:
     await reset_use_case(actor, user_id)
     stats = await stats_use_case(actor, user_id)
-    return _stats_to_response(stats)
+    return ReferralStatsResponse.model_validate(stats, from_attributes=True)

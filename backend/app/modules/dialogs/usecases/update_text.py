@@ -1,54 +1,40 @@
-from dataclasses import dataclass
-
-from redis.asyncio import Redis
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.ports import BotSignals
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
+from app.modules.dialogs.dto import UpdateDialogTextDto
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.validation import validate_window_text
 from app.modules.translations import (
     TranslationEntryDto,
-    TranslationsRepository,
+    TranslationRepository,
+    assert_fluent_compiles,
     find_disallowed_placeable,
-    publish_translation_change,
     serialize_to_fluent,
 )
 
 
-@dataclass(frozen=True, kw_only=True)
-class UpdateDialogTextInput:
-    locale: Locale
-    message_id: str
-    attribute_id: str
-    value: str
-
-
-class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto]):
+class UpdateDialogTextUseCase(UseCase[UpdateDialogTextDto, TranslationEntryDto]):
     required_permission = Permission.DIALOGS_TEXT_UPDATE
 
     def __init__(
         self,
-        translations_repository: TranslationsRepository,
+        translation_repository: TranslationRepository,
         dialog_repository: DialogRepository,
         uow: UnitOfWork,
-        redis: Redis,
+        bot_signals: BotSignals,
     ) -> None:
-        self._translations_repository = translations_repository
+        self._translation_repository = translation_repository
         self._dialog_repository = dialog_repository
         self._uow = uow
-        self._redis = redis
+        self._bot_signals = bot_signals
 
-    async def _execute(self, actor: Actor, data: UpdateDialogTextInput) -> TranslationEntryDto:
-        # Lazy import -- fluent_compiler lives under the telegram extra.
+    async def _execute(self, actor: Actor, data: UpdateDialogTextDto) -> TranslationEntryDto:
         async with self._uow:
-            from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
-
             if "." in data.message_id:
                 # An attribute belongs in attribute_id; taking it here too would
                 # write a second row that shadows the real one.
@@ -96,7 +82,7 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
             if disallowed is not None:
                 raise ValidationError(disallowed, code=ErrorCode.DIALOG_TEXT_VARIABLE_NOT_ALLOWED)
 
-            existing = await self._translations_repository.list_by_locale(data.locale)
+            existing = await self._translation_repository.list_by_locale(data.locale)
             candidate = [
                 entry
                 for entry in existing
@@ -114,28 +100,21 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextInput, TranslationEntryDto
                 )
             )
             candidate_text = serialize_to_fluent(candidate)
-            bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
-                data.locale.value, text=candidate_text
-            )
-            errors = bundle.check_messages()
-            if errors:
-                raise ValidationError(
-                    f"Invalid Fluent syntax: {errors[0][1]}", code=ErrorCode.FLUENT_SYNTAX_INVALID
-                )
+            assert_fluent_compiles(data.locale, candidate_text)
 
         async with self._uow:
             if catalog.is_icon_text_key(full_key):
                 # An icon row exists only once something sets it: the assets seed
                 # a few glyphs and no premium ids. Empty default, so a reset
                 # takes the icon off.
-                await self._translations_repository.seed_missing(
+                await self._translation_repository.seed_missing(
                     data.locale, data.message_id, data.attribute_id, ""
                 )
-            updated = await self._translations_repository.update_value(
+            updated = await self._translation_repository.update_value(
                 data.locale, data.message_id, data.attribute_id, data.value
             )
 
-        await publish_translation_change(
-            self._redis, data.locale, data.message_id, data.value, attribute_id=data.attribute_id
+        await self._bot_signals.translation_changed(
+            data.locale, data.message_id, data.attribute_id, data.value
         )
         return updated

@@ -2,16 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.enums import PaymentGatewayType, TransactionStatus
-
-
-class GatewayTestPaymentResponse(BaseModel):
-    order_id: int
-    confirmation_url: Optional[str]
-
-
-class GatewayTestPaymentStatusResponse(BaseModel):
-    status: TransactionStatus
+from app.core.enums import PaymentGatewayType
 
 
 class GatewayResponse(BaseModel):

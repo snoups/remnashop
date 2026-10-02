@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Final, Optional
+from typing import TYPE_CHECKING, Final, Optional
 
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
@@ -14,8 +14,14 @@ from app.core.enums import (
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.users import UserDto
 
+if TYPE_CHECKING:
+    # gateways.base imports TransactionDto from here
+    from app.modules.transactions.gateways.base import WebhookRequest
+
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
+# time for the normal dispatch + worker run to finish before an order counts as stuck
+_GRACE_PERIOD: Final[timedelta] = timedelta(minutes=10)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -114,3 +120,38 @@ class TransactionSummaryDto:
     # paid orders' base price minus what was actually paid, in report_currency
     discount_amount: Decimal
     refunded_amount: Decimal
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetTransactionSummaryDto:
+    status: Optional[TransactionStatus] = None
+    gateway_type: Optional[PaymentGatewayType] = None
+    purchase_type: Optional[PurchaseType] = None
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    search: Optional[str] = None
+    user_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class HandleWebhookDto:
+    gateway_type: PaymentGatewayType
+    request: "WebhookRequest"
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListTransactionsDto:
+    status: Optional[TransactionStatus] = None
+    gateway_type: Optional[PaymentGatewayType] = None
+    purchase_type: Optional[PurchaseType] = None
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    search: Optional[str] = None
+    user_id: Optional[int] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReconcilePaidTransactionsDto:
+    grace_period: timedelta = _GRACE_PERIOD

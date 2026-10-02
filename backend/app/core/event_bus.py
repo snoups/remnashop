@@ -28,29 +28,9 @@ class EventBus:
                 logger.exception(f"Event handler '{handler}' failed for '{entry.event_type}'")
         return error_message
 
-    def autodiscover(self) -> None:
-        # Imported here, not at module level: modules/*/events.py sits downstream
-        # of core, so importing it eagerly at import time would be circular.
-        from app.modules.advertising.events import (  # noqa: PLC0415
-            register_subscribers as register_advertising_subscribers,
-        )
-        from app.modules.auth.events import (  # noqa: PLC0415
-            register_subscribers as register_auth_subscribers,
-        )
-        from app.modules.oauth.events import (  # noqa: PLC0415
-            register_subscribers as register_oauth_subscribers,
-        )
-        from app.modules.referrals.events import (  # noqa: PLC0415
-            register_subscribers as register_referral_subscribers,
-        )
-
-        register_auth_subscribers(self)
-        register_oauth_subscribers(self)
-        register_referral_subscribers(self)
-        register_advertising_subscribers(self)
-
-        handler_count = sum(len(handlers) for handlers in self._handlers.values())
-        logger.debug(f"Event bus autodiscovery complete: {handler_count} handler(s) registered")
+    @property
+    def handler_count(self) -> int:
+        return sum(len(handlers) for handlers in self._handlers.values())
 
     async def shutdown(self) -> None:
         self._handlers.clear()

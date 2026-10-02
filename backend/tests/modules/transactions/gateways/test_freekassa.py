@@ -6,12 +6,14 @@ import pytest
 
 import app.modules.transactions.gateways.freekassa as freekassa_module
 from app.core.exceptions import PaymentGatewayError
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.freekassa import FreeKassaGateway
 from tests.modules.transactions.gateways.support import (
+    NO_HTTP,
     ORDER_REF,
     RETURN_URL,
     WEBHOOK_URL,
-    install_http,
+    HttpRecorder,
     json_response,
     make_order,
     webhook,
@@ -25,9 +27,11 @@ _SETTINGS = {
 }
 
 
-def _gateway(**overrides: str) -> FreeKassaGateway:
+def _gateway(*, http: PaymentHttpClient = NO_HTTP, **overrides: str) -> FreeKassaGateway:
     settings = {**_SETTINGS, **overrides}
-    return FreeKassaGateway(settings=settings, webhook_url=WEBHOOK_URL, return_url=RETURN_URL)
+    return FreeKassaGateway(
+        settings=settings, webhook_url=WEBHOOK_URL, return_url=RETURN_URL, http=http
+    )
 
 
 def _api_signature(params: dict[str, object]) -> str:
@@ -93,14 +97,12 @@ async def test_server_ip_falls_back_when_the_domain_does_not_resolve(
 
 
 async def test_create_payment_never_signs_none(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(
-        monkeypatch,
-        freekassa_module,
+    http = HttpRecorder(
         json_response({"type": "success", "orderId": 777, "location": "https://pay.fk/1"}),
     )
     monkeypatch.setattr(freekassa_module, "_resolve_server_ip", _fake_server_ip)
 
-    intent = await _gateway().create_payment(make_order(customer_email=None))
+    intent = await _gateway(http=http.client).create_payment(make_order(customer_email=None))
 
     body = http.last_json()
     signature = body.pop("signature")
@@ -111,13 +113,11 @@ async def test_create_payment_never_signs_none(monkeypatch: pytest.MonkeyPatch) 
     assert intent.provider_payment_id == "777"
 
 
-async def test_create_payment_prefers_the_order_email(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(
-        monkeypatch,
-        freekassa_module,
+async def test_create_payment_prefers_the_order_email() -> None:
+    http = HttpRecorder(
         json_response({"type": "success", "orderId": 1, "location": "https://pay.fk/1"}),
     )
-    await _gateway().create_payment(make_order(customer_email="buyer@example.com"))
+    await _gateway(http=http.client).create_payment(make_order(customer_email="buyer@example.com"))
     assert http.last_json()["email"] == "buyer@example.com"
 
 
@@ -143,12 +143,12 @@ async def test_parse_webhook_rejects_tampering(body: bytes) -> None:
         await _gateway().parse_webhook(webhook(body))
 
 
-async def test_confirm_finds_the_order_by_payment_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    http = install_http(monkeypatch, freekassa_module, json_response(_orders(_PAID_ORDER)))
-    signal = await _gateway().parse_webhook(webhook(_notification()))
+async def test_confirm_finds_the_order_by_payment_id() -> None:
+    http = HttpRecorder(json_response(_orders(_PAID_ORDER)))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_notification()))
     assert signal is not None
 
-    confirmed = await _gateway().confirm(make_order(), signal)
+    confirmed = await _gateway(http=http.client).confirm(make_order(), signal)
 
     body = http.last_json()
     signature = body.pop("signature")
@@ -166,10 +166,8 @@ async def test_confirm_finds_the_order_by_payment_id(monkeypatch: pytest.MonkeyP
         [{**_PAID_ORDER, "merchant_order_id": "someone-else"}],
     ],
 )
-async def test_confirm_rejects_missing_or_unpaid_orders(
-    monkeypatch: pytest.MonkeyPatch, orders: list[dict[str, object]]
-) -> None:
-    install_http(monkeypatch, freekassa_module, json_response(_orders(*orders)))
-    signal = await _gateway().parse_webhook(webhook(_notification()))
+async def test_confirm_rejects_missing_or_unpaid_orders(orders: list[dict[str, object]]) -> None:
+    http = HttpRecorder(json_response(_orders(*orders)))
+    signal = await _gateway(http=http.client).parse_webhook(webhook(_notification()))
     assert signal is not None
-    assert await _gateway().confirm(make_order(), signal) is None
+    assert await _gateway(http=http.client).confirm(make_order(), signal) is None

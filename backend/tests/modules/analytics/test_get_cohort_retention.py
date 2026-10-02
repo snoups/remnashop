@@ -21,6 +21,7 @@ from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from app.modules.users.stats_repository import UserStatsRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -52,7 +53,9 @@ async def test_actor_without_analytics_view_is_denied(
     uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = GetCohortRetentionUseCase(user_repository, transaction_repository, uow)
+    use_case = GetCohortRetentionUseCase(
+        UserStatsRepository(user_repository.session), transaction_repository, uow
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor)
@@ -77,7 +80,9 @@ async def test_cohort_retention_month_zero_vs_month_one(
     # updated_at is a server default -- this order lands in the current
     # calendar month, proving month-0 retention without needing to backdate.
 
-    use_case = GetCohortRetentionUseCase(user_repository, transaction_repository, uow)
+    use_case = GetCohortRetentionUseCase(
+        UserStatsRepository(user_repository.session), transaction_repository, uow
+    )
     result = await use_case(OWNER)
 
     current_month_key = datetime_now().strftime("%Y-%m")
@@ -87,20 +92,20 @@ async def test_cohort_retention_month_zero_vs_month_one(
 
 
 async def test_cohort_retention_earliest_since_is_timezone_aware(
-    user_repository: UserRepository,
+    user_stats_repository: UserStatsRepository,
     transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> None:
     captured: dict[str, datetime] = {}
-    original = user_repository.list_id_and_registration_date_since
+    original = user_stats_repository.list_id_and_registration_date_since
 
     async def _spy(since: datetime, role: Role) -> list[tuple[int, date]]:
         captured["since"] = since
         return await original(since, role)
 
-    user_repository.list_id_and_registration_date_since = _spy  # type: ignore[method-assign]
+    user_stats_repository.list_id_and_registration_date_since = _spy  # type: ignore[method-assign]
 
-    use_case = GetCohortRetentionUseCase(user_repository, transaction_repository, uow)
+    use_case = GetCohortRetentionUseCase(user_stats_repository, transaction_repository, uow)
     await use_case(OWNER)
 
     assert captured["since"].tzinfo is not None

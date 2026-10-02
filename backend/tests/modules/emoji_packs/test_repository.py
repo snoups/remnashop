@@ -35,4 +35,3 @@ async def test_delete_reports_whether_anything_was_there(
     await emoji_pack_repository.upsert(_pack(("1", "a")))
     assert await emoji_pack_repository.delete("MemeEmoji") is True
     assert await emoji_pack_repository.delete("MemeEmoji") is False
-    assert await emoji_pack_repository.get_by_set_name("MemeEmoji") is None

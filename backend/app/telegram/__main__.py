@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 
 import uvicorn
 from aiogram import Bot
+from aiogram.client.session.aiohttp import AiohttpSession
 from dishka.integrations.aiogram import setup_dishka as setup_aiogram_dishka
 from dishka.integrations.fastapi import setup_dishka as setup_fastapi_dishka
 from fastapi import FastAPI
@@ -36,7 +37,11 @@ def build_app(
     assert translator_hub is not None  # guaranteed by the __main__ block below
     dispatcher = get_dispatcher(config)
     bg_manager_factory = get_bg_manager_factory(dispatcher)
-    bot = Bot(token=bot_settings.token.get_secret_value())
+    proxy = bot_settings.proxy
+    bot = Bot(
+        token=bot_settings.token.get_secret_value(),
+        session=AiohttpSession(proxy=proxy) if proxy is not None else None,
+    )
 
     container = create_aiogram_container(config, bg_manager_factory, bot, translator_hub)
     # Must run before setup_dispatcher(): outer middlewares run in registration

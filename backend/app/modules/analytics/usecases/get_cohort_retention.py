@@ -10,7 +10,7 @@ from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.analytics.dto import CohortRowDto, CohortsDto
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserStatsRepository
 
 _COHORT_MONTHS: Final[int] = 12
 
@@ -35,11 +35,11 @@ class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
 
     def __init__(
         self,
-        user_repository: UserRepository,
+        user_stats: UserStatsRepository,
         transaction_repository: TransactionRepository,
         uow: UnitOfWork,
     ) -> None:
-        self._user_repository = user_repository
+        self._user_stats = user_stats
         self._transaction_repository = transaction_repository
         self._uow = uow
 
@@ -50,7 +50,7 @@ class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
             earliest_month = _add_months(_start_of_month(today), -(_COHORT_MONTHS - 1))
             earliest_since = datetime.combine(earliest_month, time.min, tzinfo=TIMEZONE)
 
-            registrations = await self._user_repository.list_id_and_registration_date_since(
+            registrations = await self._user_stats.list_id_and_registration_date_since(
                 earliest_since, Role.USER
             )
             cohorts: dict[str, set[int]] = {}

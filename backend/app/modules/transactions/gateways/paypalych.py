@@ -12,7 +12,6 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -54,7 +53,7 @@ class PaypalychGateway(PaymentGateway):
             "description": f"Order #{order.id}",
             "ttl": link_lifetime(order, unit="seconds"),
         }
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/bill/create", json=payload, headers=self._headers()
         )
         data = orjson.loads(response.content)
@@ -95,7 +94,7 @@ class PaypalychGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
             return NOT_PAID
-        response = await http_client.get(
+        response = await self._http.get(
             f"{_API_BASE}/bill/status",
             params={"id": order.external_payment_id},
             headers=self._headers(),

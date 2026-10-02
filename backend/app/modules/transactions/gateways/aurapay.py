@@ -13,7 +13,6 @@ from app.modules.transactions.gateways.base import (
     WebhookRequest,
     WebhookSignal,
     amount_to_float,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -50,7 +49,7 @@ class AuraPayGateway(PaymentGateway):
             "callback_url": self._webhook_url,
             "lifetime": link_lifetime(order, unit="minutes", maximum=_MAX_LIFETIME_MINUTES),
         }
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/invoice/create", json=payload, headers=self._headers()
         )
         response.raise_for_status()
@@ -91,7 +90,7 @@ class AuraPayGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:
             return NOT_PAID
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/invoice/status",
             json={"id": order.external_payment_id},
             headers=self._headers(),

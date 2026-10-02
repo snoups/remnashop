@@ -19,8 +19,10 @@ from app.core.exceptions import ConflictError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.repository import EventLogRepository
+from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from app.modules.users.stats_repository import UserStatsRepository
 
 
 async def _create_user(
@@ -342,18 +344,23 @@ async def test_list_by_ids_empty_input_returns_empty_list(
 
 
 async def test_count_by_role_only_counts_that_role(
-    user_repository: UserRepository, uow: UnitOfWork
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    user_stats_repository: UserStatsRepository,
 ) -> None:
     await _create_user(user_repository, uow, telegram_id=810_001, role=Role.USER)
     await _create_user(user_repository, uow, telegram_id=810_002, role=Role.USER)
     await _create_user(user_repository, uow, login="admin-810", role=Role.ADMIN)
 
-    assert await user_repository.count_by_role(Role.USER) == 2
-    assert await user_repository.count_by_role(Role.ADMIN) == 1
+    assert await user_stats_repository.count_by_role(Role.USER) == 2
+    assert await user_stats_repository.count_by_role(Role.ADMIN) == 1
 
 
 async def test_count_new_since_excludes_users_created_before_cutoff(
-    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    user_stats_repository: UserStatsRepository,
 ) -> None:
     old_user = await _create_user(user_repository, uow, telegram_id=810_101, role=Role.USER)
     new_user = await _create_user(user_repository, uow, telegram_id=810_102, role=Role.USER)
@@ -371,26 +378,31 @@ async def test_count_new_since_excludes_users_created_before_cutoff(
 
     assert old_user.created_at is not None
     assert new_user.created_at is not None
-    count = await user_repository.count_new_since(cutoff, Role.USER)
+    count = await user_stats_repository.count_new_since(cutoff, Role.USER)
 
     assert count == 1
 
 
 async def test_count_registrations_by_day_groups_and_excludes_before_since(
-    user_repository: UserRepository, uow: UnitOfWork
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    user_stats_repository: UserStatsRepository,
 ) -> None:
     since = datetime_now() - timedelta(days=1)
     await _create_user(user_repository, uow, telegram_id=810_201, role=Role.USER)
     await _create_user(user_repository, uow, telegram_id=810_202, role=Role.USER)
     await _create_user(user_repository, uow, login="admin-810-2", role=Role.ADMIN)
 
-    rows = await user_repository.count_registrations_by_day(since, Role.USER)
+    rows = await user_stats_repository.count_registrations_by_day(since, Role.USER)
 
     assert sum(count for _day, count in rows) == 2
 
 
 async def test_list_ids_registered_since_excludes_before_since_and_other_roles(
-    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    user_stats_repository: UserStatsRepository,
 ) -> None:
     since = datetime_now() - timedelta(days=1)
     in_window = await _create_user(user_repository, uow, telegram_id=810_301, role=Role.USER)
@@ -402,13 +414,16 @@ async def test_list_ids_registered_since_excludes_before_since_and_other_roles(
     )
     await _create_user(user_repository, uow, login="admin-810-3", role=Role.ADMIN)
 
-    ids = await user_repository.list_ids_registered_since(since, Role.USER)
+    ids = await user_stats_repository.list_ids_registered_since(since, Role.USER)
 
     assert ids == [in_window.id]
 
 
 async def test_list_id_and_registration_date_since_pairs_id_with_utc_date(
-    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    user_stats_repository: UserStatsRepository,
 ) -> None:
     since = datetime_now() - timedelta(days=1)
     in_window = await _create_user(user_repository, uow, telegram_id=810_401, role=Role.USER)
@@ -420,7 +435,7 @@ async def test_list_id_and_registration_date_since_pairs_id_with_utc_date(
     )
     await _create_user(user_repository, uow, login="admin-810-4", role=Role.ADMIN)
 
-    pairs = await user_repository.list_id_and_registration_date_since(since, Role.USER)
+    pairs = await user_stats_repository.list_id_and_registration_date_since(since, Role.USER)
 
     assert len(pairs) == 1
     user_id, registered_on = pairs[0]
@@ -429,13 +444,15 @@ async def test_list_id_and_registration_date_since_pairs_id_with_utc_date(
 
 
 async def test_block_matching_handles_more_ids_than_bind_param_cap(
-    user_repository: UserRepository, uow: UnitOfWork
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    user_blacklist_repository: UserBlacklistRepository,
 ) -> None:
     target = await _create_user(user_repository, uow, telegram_id=40_000_001)
     telegram_ids = set(range(40_000_000, 40_040_000))
 
     async with uow:
-        blocked = await user_repository.block_matching(telegram_ids, set())
+        blocked = await user_blacklist_repository.block_matching(telegram_ids, set())
 
     assert blocked == [target.id]
 
@@ -551,7 +568,10 @@ async def test_list_filtered_filters_by_subscription_trial_and_created_to(
 
 
 async def test_list_stats_counts_within_roles(
-    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    user_stats_repository: UserStatsRepository,
 ) -> None:
     fresh = await _create_user(user_repository, uow, name="Fresh")
     blocked = await _create_user(user_repository, uow, name="Blocked", is_blocked=True)
@@ -573,7 +593,7 @@ async def test_list_stats_counts_within_roles(
     )
 
     now = datetime_now()
-    stats = await user_repository.list_stats(
+    stats = await user_stats_repository.list_stats(
         roles=[Role.USER],
         new_since=now - timedelta(days=7),
         previous_since=now - timedelta(days=14),

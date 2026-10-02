@@ -159,6 +159,8 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_COMMANDS_MANAGE,
         Permission.BOT_RESTART,
+        Permission.BOT_PROXY_SET,
+        Permission.BOT_PROXY_REMOVE,
         Permission.SHOP_SETTINGS_VIEW,
         Permission.SHOP_SETTINGS_MANAGE,
         Permission.BANNERS_IMAGE_VIEW,

@@ -1,21 +1,18 @@
-from datetime import datetime
-from decimal import Decimal
-from typing import Final, Optional, cast
+from typing import Final, Optional
 
-from sqlalchemy import ColumnElement, CursorResult, Numeric, delete, func, or_, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import ColumnElement, Numeric, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import INT32_MAX
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription import Subscription
-from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
-from app.core.enums import AddOnType, Currency, SubscriptionStatus
+from app.core.db.partial_update import apply_partial_update
+from app.core.enums import AddOnType, SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
-from app.modules.subscriptions.domain import SubscriptionState
+from app.modules.subscriptions.domain import OWNED_STATUSES, SubscriptionState
 from app.modules.subscriptions.dto import (
     DEFAULT_PAGE_SIZE,
     AddOnEntitlementDto,
@@ -26,21 +23,11 @@ from app.modules.subscriptions.dto import (
     UpdateSubscriptionSquadsDto,
 )
 
-_ACTIVE_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
-    SubscriptionStatus.ACTIVE,
-    SubscriptionStatus.DISABLED,
-    SubscriptionStatus.LIMITED,
-)
-
 # Arbitrary fixed namespace key for pg_advisory_xact_lock, paired with a
 # user_id as the second key -- matches the existing convention in
 # modules/plans/repository.py (_PLAN_ORDER_LOCK_KEY = 8221938,
 # _PLAN_DURATIONS_LOCK_KEY = 8221939).
 _SUBSCRIPTION_PURCHASE_CAP_LOCK_KEY: Final[int] = 8221940
-
-# asyncpg caps a statement at 32,767 bind parameters; stay well under that so a
-# large registered-cohort list still fits after other predicates are added.
-_MAX_IN_PARAMS: Final[int] = 20_000
 
 
 class SubscriptionRepository:
@@ -187,87 +174,10 @@ class SubscriptionRepository:
             self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows
         ], int(total or 0)
 
-    async def count_active(self) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Subscription)
-                .where(Subscription.status.in_(_ACTIVE_STATUSES))
-            )
-            or 0
-        )
-
-    async def count_by_status(self) -> dict[SubscriptionStatus, int]:
-        rows = (
-            await self.session.execute(
-                select(Subscription.status, func.count())
-                .where(Subscription.status != SubscriptionStatus.DELETED)
-                .group_by(Subscription.status)
-            )
-        ).tuples()
-        return dict(rows.all())
-
-    async def count_expiring_between(self, start: datetime, end: datetime) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Subscription)
-                .where(
-                    Subscription.status.in_(_ACTIVE_STATUSES),
-                    Subscription.expire_at >= start,
-                    Subscription.expire_at < end,
-                )
-            )
-            or 0
-        )
-
-    async def count_churn_window(self, window_start: datetime) -> tuple[int, int]:
-        row = (
-            await self.session.execute(
-                select(
-                    func.count(),
-                    func.count().filter(Subscription.status == SubscriptionStatus.ACTIVE),
-                )
-                .select_from(Subscription)
-                .where(
-                    Subscription.created_at < window_start,
-                    Subscription.status != SubscriptionStatus.DELETED,
-                    Subscription.expire_at >= window_start,
-                )
-            )
-        ).one()
-        return int(row[0]), int(row[1])
-
-    async def sum_active_mrr_by_currency(self) -> dict[Currency, Decimal]:
-        currency_col = Subscription.plan_snapshot["currency"].astext
-        price_col = Subscription.plan_snapshot["price_paid"].astext.cast(Numeric)
-        duration_col = Subscription.plan_snapshot["duration_days"].astext.cast(Numeric)
-        stmt = (
-            select(currency_col, func.sum(price_col / duration_col * 30))
-            .where(Subscription.status == SubscriptionStatus.ACTIVE)
-            .group_by(currency_col)
-        )
-        rows = (await self.session.execute(stmt)).tuples()
-        return {Currency(currency): amount for currency, amount in rows.all()}
-
-    async def list_user_ids_with_trial(self, user_ids: list[int]) -> set[int]:
-        if not user_ids:
-            return set()
-        trial_users: set[int] = set()
-        for start in range(0, len(user_ids), _MAX_IN_PARAMS):
-            chunk = user_ids[start : start + _MAX_IN_PARAMS]
-            stmt = select(Subscription.user_id.distinct()).where(
-                Subscription.user_id.in_(chunk),
-                Subscription.is_trial.is_(True),
-            )
-            result = await self.session.execute(stmt)
-            trial_users.update(result.scalars().all())
-        return trial_users
-
     async def get_active_by_user(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)
-            .where(Subscription.user_id == user_id, Subscription.status.in_(_ACTIVE_STATUSES))
+            .where(Subscription.user_id == user_id, Subscription.status.in_(OWNED_STATUSES))
             .order_by(Subscription.id)
         )
         rows = result.scalars().all()
@@ -327,23 +237,10 @@ class SubscriptionRepository:
         )
         return bool(await self.session.scalar(stmt))
 
-    async def get_by_remnawave_user_id(self, remnawave_user_id: int) -> Optional[SubscriptionDto]:
-        result = await self.session.execute(
-            select(Subscription)
-            .where(Subscription.remnawave_user_id == remnawave_user_id)
-            .order_by(Subscription.status == SubscriptionStatus.DELETED, Subscription.id.desc())
-            .limit(1)
-        )
-        row = result.scalar_one_or_none()
-        if row is None:
-            return None
-        entitlements_by_subscription = await self._load_entitlements([row.id])
-        return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
-
     async def list_non_terminal(self) -> list[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)
-            .where(Subscription.status.in_(_ACTIVE_STATUSES))
+            .where(Subscription.status.in_(OWNED_STATUSES))
             .order_by(Subscription.id)
         )
         rows = result.scalars().all()
@@ -368,7 +265,7 @@ class SubscriptionRepository:
     async def get_active_by_user_for_update(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)
-            .where(Subscription.user_id == user_id, Subscription.status.in_(_ACTIVE_STATUSES))
+            .where(Subscription.user_id == user_id, Subscription.status.in_(OWNED_STATUSES))
             .order_by(Subscription.id)
             .with_for_update()
             .execution_options(populate_existing=True)
@@ -436,14 +333,7 @@ class SubscriptionRepository:
         # is UpdateSubscriptionUseCase's job, after this commits.
         row = await self._get_or_raise(data.subscription_id)
 
-        if data.tag is not None:
-            row.tag = data.tag
-        if data.traffic_limit is not None:
-            row.traffic_limit = data.traffic_limit
-        if data.device_limit is not None:
-            row.device_limit = data.device_limit
-        if data.traffic_limit_strategy is not None:
-            row.traffic_limit_strategy = data.traffic_limit_strategy
+        apply_partial_update(row, data, skip=frozenset({"subscription_id"}))
 
         await self.session.flush()
         await self.session.refresh(row)
@@ -540,68 +430,3 @@ class SubscriptionRepository:
         await self.session.refresh(row)
         entitlements_by_subscription = await self._load_entitlements([row.id])
         return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
-
-    async def claim_idempotency_key(self, key: str) -> bool:
-        result = await self.session.execute(
-            pg_insert(SubscriptionPurchaseIdempotency)
-            .values(key=key, subscription_id=None)
-            .on_conflict_do_nothing(index_elements=["key"])
-            .returning(SubscriptionPurchaseIdempotency.key)
-        )
-        claimed = result.scalar_one_or_none() is not None
-        await self.session.flush()
-        return claimed
-
-    async def get_subscription_by_idempotency_key(self, key: str) -> Optional[SubscriptionDto]:
-        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
-        if row is None or row.subscription_id is None:
-            return None
-        return await self.get_by_id(row.subscription_id)
-
-    async def link_idempotency_key(self, key: str, subscription_id: int) -> None:
-        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
-        if row is not None:
-            row.subscription_id = subscription_id
-            await self.session.flush()
-
-    async def get_pending_renew_expire_at(self, key: str) -> Optional[datetime]:
-        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
-        if row is None or row.subscription_id is not None:
-            return None
-        return row.renew_expire_at
-
-    async def pin_renew_expire_at(self, key: str, expire_at: datetime) -> None:
-        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
-        if row is not None:
-            row.renew_expire_at = expire_at
-            await self.session.flush()
-
-    async def lock_idempotency_key(self, key: str) -> Optional[SubscriptionDto]:
-        """Serializes completion of one purchase; returns its subscription if
-        another attempt already finished it."""
-        row = await self.session.scalar(
-            select(SubscriptionPurchaseIdempotency)
-            .where(SubscriptionPurchaseIdempotency.key == key)
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        )
-        if row is None or row.subscription_id is None:
-            return None
-        return await self.get_by_id(row.subscription_id)
-
-    async def release_idempotency_key(self, key: str) -> None:
-        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
-        if row is not None:
-            await self.session.delete(row)
-            await self.session.flush()
-
-    async def delete_stale_idempotency_keys(self, cutoff: datetime) -> tuple[int, int]:
-        purchase = await self.session.execute(
-            delete(SubscriptionPurchaseIdempotency).where(
-                SubscriptionPurchaseIdempotency.created_at < cutoff
-            )
-        )
-        addon = await self.session.execute(
-            delete(AddOnGrantIdempotency).where(AddOnGrantIdempotency.created_at < cutoff)
-        )
-        return cast(CursorResult, purchase).rowcount, cast(CursorResult, addon).rowcount

@@ -45,7 +45,9 @@ class GetUserReferralLinksUseCase(UseCase[int, ReferralLinksDto]):
 
         bot_url: Optional[str] = None
         if bot_settings.is_configured and bot_settings.token is not None:
-            username = await fetch_bot_username(bot_settings.token.get_secret_value())
+            username = await fetch_bot_username(
+                bot_settings.token.get_secret_value(), bot_settings.proxy
+            )
             if username:
                 bot_url = f"{T_ME}{username}{_BOT_START_QUERY.format(code=code)}"
 

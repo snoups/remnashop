@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 from app.core.enums import AdLinkChannel
 from app.core.events import EventCategory, StoredEvent
 from app.core.utils.time import datetime_now
-from app.modules.advertising.events import _on_telegram_user_registered
+from app.modules.advertising.subscribers import _on_telegram_user_registered
 
 
 def _entry(payload: dict) -> StoredEvent:
@@ -25,7 +25,7 @@ async def test_on_telegram_user_registered_enqueues_task_when_code_present() -> 
     entry = _entry({"user": {"id": 42}, "ad_link_code": "yt-jan"})
 
     with patch(
-        "app.modules.advertising.events.record_ad_link_attribution_task.kiq",
+        "app.modules.advertising.subscribers.record_ad_link_attribution_task.kiq",
         new_callable=AsyncMock,
     ) as mock_kiq:
         await _on_telegram_user_registered(entry)
@@ -39,7 +39,7 @@ async def test_on_telegram_user_registered_skips_when_code_absent() -> None:
     entry = _entry({"user": {"id": 42}, "ad_link_code": None})
 
     with patch(
-        "app.modules.advertising.events.record_ad_link_attribution_task.kiq",
+        "app.modules.advertising.subscribers.record_ad_link_attribution_task.kiq",
         new_callable=AsyncMock,
     ) as mock_kiq:
         await _on_telegram_user_registered(entry)

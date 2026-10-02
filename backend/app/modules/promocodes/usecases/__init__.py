@@ -12,10 +12,7 @@ from app.modules.promocodes.usecases.list_user_promocode_activations import (
     ListUserPromocodeActivationsUseCase,
 )
 from app.modules.promocodes.usecases.update_promocode import UpdatePromocodeUseCase
-from app.modules.promocodes.usecases.validate_promocode import (
-    ValidatePromocodeDto,
-    ValidatePromocodeUseCase,
-)
+from app.modules.promocodes.usecases.validate_promocode import ValidatePromocodeUseCase
 
 __all__ = [
     "ActivatePromocodeUseCase",
@@ -23,11 +20,10 @@ __all__ = [
     "DeletePromocodeUseCase",
     "GeneratePromocodeCodeUseCase",
     "GetPromocodeSummaryUseCase",
+    "GetPromocodeUseCase",
     "ListPromocodeActivatedUsersUseCase",
     "ListPromocodesUseCase",
-    "GetPromocodeUseCase",
     "ListUserPromocodeActivationsUseCase",
     "UpdatePromocodeUseCase",
-    "ValidatePromocodeDto",
     "ValidatePromocodeUseCase",
 ]

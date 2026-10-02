@@ -19,10 +19,12 @@ from app.core.security import create_access_token, hash_password, hash_refresh_t
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist.repository import BlacklistRepository
-from app.modules.blacklist.tasks import reconcile_blacklist
 from app.modules.providers import get_module_providers
+from app.modules.users import BlockBlacklistMatchesUseCase
+from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.dispatch import RecordingDispatch
 
 _OWNER_TELEGRAM_ID: Final[int] = 51500
 _TARGET_TELEGRAM_ID: Final[int] = 51501
@@ -106,12 +108,13 @@ async def test_api_written_entry_is_visible_to_a_separate_session(config: AppCon
 
         async with AsyncSession(read_engine, expire_on_commit=False) as read_session:
             read_user_repository = UserRepository(read_session)
-            await reconcile_blacklist(
+            read_uow = UnitOfWork(read_session)
+            await BlockBlacklistMatchesUseCase(
                 BlacklistRepository(read_session),
-                read_user_repository,
-                UnitOfWork(read_session),
-                OutboxEventPublisher(read_session),
-            )
+                UserBlacklistRepository(read_session),
+                read_uow,
+                OutboxEventPublisher(read_uow, RecordingDispatch()),
+            ).system()
             refetched = await read_user_repository.get_by_telegram_id(_TARGET_TELEGRAM_ID)
             assert refetched is not None and refetched.is_blocked is True
     finally:

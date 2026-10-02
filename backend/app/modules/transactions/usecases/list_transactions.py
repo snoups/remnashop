@@ -1,32 +1,17 @@
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.transactions.dto import DEFAULT_PAGE_SIZE, TransactionWithUserDto
+from app.modules.transactions.dto import (
+    ListTransactionsDto,
+    TransactionWithUserDto,
+)
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users import UserRepository
 
 
-@dataclass(frozen=True, kw_only=True)
-class ListTransactionsInput:
-    status: Optional[TransactionStatus] = None
-    gateway_type: Optional[PaymentGatewayType] = None
-    purchase_type: Optional[PurchaseType] = None
-    created_from: Optional[datetime] = None
-    created_to: Optional[datetime] = None
-    search: Optional[str] = None
-    user_id: Optional[int] = None
-    page: int = 1
-    page_size: int = DEFAULT_PAGE_SIZE
-
-
 class ListTransactionsUseCase(
-    UseCase[ListTransactionsInput, tuple[list[TransactionWithUserDto], int]]
+    UseCase[ListTransactionsDto, tuple[list[TransactionWithUserDto], int]]
 ):
     required_permission = Permission.TRANSACTIONS_VIEW
 
@@ -41,7 +26,7 @@ class ListTransactionsUseCase(
         self._uow = uow
 
     async def _execute(
-        self, actor: Actor, data: ListTransactionsInput
+        self, actor: Actor, data: ListTransactionsDto
     ) -> tuple[list[TransactionWithUserDto], int]:
         async with self._uow:
             orders, total = await self._transaction_repository.list_paginated(

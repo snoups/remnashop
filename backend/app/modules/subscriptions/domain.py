@@ -13,6 +13,13 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.subscriptions.dto import PlanSnapshot
 
+# a subscription that still holds a panel identity and counts as owned
+OWNED_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
+    SubscriptionStatus.ACTIVE,
+    SubscriptionStatus.DISABLED,
+    SubscriptionStatus.LIMITED,
+)
+
 # Every status maps to the set of statuses it may transition into,
 # including itself (a same-status write, e.g. a redelivered sync webhook,
 # is always legal and a no-op). DELETED is terminal: once set, no further

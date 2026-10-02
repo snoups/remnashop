@@ -416,14 +416,11 @@ async def test_set_price_override_upserts_and_unpins(
             days=30,
             currency=Currency.RUB,
             price=Decimal("299"),
-            anchor=Currency.USD,
         )
     )
     assert pinned.durations[0].overrides[0].currency is Currency.RUB
     unpinned = await plan_repository.set_price_override(
-        SetPlanPriceOverrideDto(
-            plan_id=plan.id, days=30, currency=Currency.RUB, price=None, anchor=Currency.USD
-        )
+        SetPlanPriceOverrideDto(plan_id=plan.id, days=30, currency=Currency.RUB, price=None)
     )
     assert unpinned.durations[0].overrides == []
 
@@ -447,7 +444,6 @@ async def test_set_duration_base_price_preserves_other_durations_overrides(
             days=30,
             currency=Currency.RUB,
             price=Decimal("299"),
-            anchor=Currency.USD,
         )
     )
 
@@ -469,54 +465,4 @@ async def test_set_duration_base_price_unknown_duration_raises_not_found(
     with pytest.raises(NotFoundError):
         await plan_repository.set_duration_base_price(
             SetPlanDurationBasePriceDto(plan_id=plan.id, days=30, base_price=Decimal("5"))
-        )
-
-
-async def test_set_price_override_can_unpin_the_anchor_currency(
-    plan_repository: PlanRepository, session: AsyncSession
-) -> None:
-    plan = await _make_plan(plan_repository)
-    await plan_repository.set_durations(
-        SetPlanDurationsDto(
-            plan_id=plan.id,
-            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99"))],
-        )
-    )
-    await plan_repository.set_price_override(
-        SetPlanPriceOverrideDto(
-            plan_id=plan.id,
-            days=30,
-            currency=Currency.RUB,
-            price=Decimal("299"),
-            anchor=Currency.USD,
-        )
-    )
-    # RUB has since become the anchor -- the stranded override must still be removable
-    unpinned = await plan_repository.set_price_override(
-        SetPlanPriceOverrideDto(
-            plan_id=plan.id, days=30, currency=Currency.RUB, price=None, anchor=Currency.RUB
-        )
-    )
-    assert unpinned.durations[0].overrides == []
-
-
-async def test_set_price_override_rejects_anchor_currency(
-    plan_repository: PlanRepository, session: AsyncSession
-) -> None:
-    plan = await _make_plan(plan_repository)
-    await plan_repository.set_durations(
-        SetPlanDurationsDto(
-            plan_id=plan.id,
-            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99"))],
-        )
-    )
-    with pytest.raises(ValidationError):
-        await plan_repository.set_price_override(
-            SetPlanPriceOverrideDto(
-                plan_id=plan.id,
-                days=30,
-                currency=Currency.USD,
-                price=Decimal("5"),
-                anchor=Currency.USD,
-            )
         )

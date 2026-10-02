@@ -1,18 +1,26 @@
 from app.modules.users.di import get_users_providers
-from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
+from app.modules.users.dto import (
+    CreateUserDto,
+    RegisterTelegramUserDto,
+    SetUserPersonalDiscountDto,
+    UpdateUserDto,
+    UserDto,
+)
+from app.modules.users.events import TelegramUserRegisteredEvent
 from app.modules.users.repository import UserRepository
+from app.modules.users.stats_repository import UserStatsRepository
 from app.modules.users.usecases import (
+    BlockBlacklistMatchesUseCase,
     BlockUserUseCase,
     GetCurrentUserUseCase,
-    RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
-    SetUserPersonalDiscountDto,
     SetUserPersonalDiscountUseCase,
     UnblockAllUsersUseCase,
     UnblockUserUseCase,
 )
 
 __all__ = [
+    "BlockBlacklistMatchesUseCase",
     "BlockUserUseCase",
     "CreateUserDto",
     "GetCurrentUserUseCase",
@@ -20,10 +28,12 @@ __all__ = [
     "RegisterTelegramUserUseCase",
     "SetUserPersonalDiscountDto",
     "SetUserPersonalDiscountUseCase",
+    "TelegramUserRegisteredEvent",
     "UnblockAllUsersUseCase",
     "UnblockUserUseCase",
     "UpdateUserDto",
     "UserDto",
     "UserRepository",
+    "UserStatsRepository",
     "get_users_providers",
 ]

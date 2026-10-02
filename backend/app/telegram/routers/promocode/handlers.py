@@ -11,21 +11,32 @@ from loguru import logger
 
 from app.core.constants import USER_KEY
 from app.core.enums import PromocodeRewardType
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import AppError, NotFoundError, ValidationError
 from app.modules.promocodes import (
     ActivatePromocodeDto,
     ActivatePromocodeUseCase,
     ValidatePromocodeDto,
     ValidatePromocodeUseCase,
 )
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.states import MainMenu, Subscription
 
+_NOTIFICATION_BY_CODE: Final[dict[ErrorCode, str]] = {
+    ErrorCode.PROMOCODE_NOT_FOUND: "ntf-promocode.not-found",
+    ErrorCode.PROMOCODE_EXPIRED: "ntf-promocode.expired",
+    ErrorCode.PROMOCODE_ALREADY_ACTIVATED: "ntf-promocode.already-activated",
+    ErrorCode.TARGET_SUBSCRIPTION_REQUIRED: "ntf-promocode.no-target-subscription",
+}
 _TARGET_REQUIRED_REWARDS: Final[frozenset[PromocodeRewardType]] = frozenset(
     {PromocodeRewardType.DURATION, PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES}
 )
+
+
+def _refusal_key(error: AppError) -> str:
+    return _NOTIFICATION_BY_CODE.get(error.code, "ntf-promocode.not-available")
 
 
 @inject
@@ -34,7 +45,7 @@ async def on_promocode_input(
     widget: MessageInput,
     dialog_manager: DialogManager,
     validate_promocode: FromDishka[ValidatePromocodeUseCase],
-    subscription_repository: FromDishka[SubscriptionRepository],
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     dialog_manager.show_mode = ShowMode.EDIT
@@ -46,17 +57,8 @@ async def on_promocode_input(
 
     try:
         promo = await validate_promocode(user, ValidatePromocodeDto(code=code))
-    except NotFoundError:
-        await message.answer(runner.get("ntf-promocode.not-found"))
-        return
-    except ValidationError:
-        # ValidatePromocodeUseCase raises a plain ValidationError for every
-        # failure case (expired / already-activated / not-available /
-        # activation-limit reached) without a distinct exception type per
-        # case, so there's no reliable way to map back to a specific
-        # ntf-promocode.* key here -- fall back to one catch-all key rather
-        # than guessing from the exception's message string.
-        await message.answer(runner.get("ntf-promocode.not-available"))
+    except (NotFoundError, ValidationError) as error:
+        await message.answer(runner.get(_refusal_key(error)))
         return
 
     dialog_manager.dialog_data["promo_code"] = promo.code
@@ -67,7 +69,7 @@ async def on_promocode_input(
         await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
         return
 
-    active = await subscription_repository.get_active_by_user(user.id)
+    active = await list_own_active_subscriptions(user)
     if not active:
         await message.answer(runner.get("ntf-promocode.no-target-subscription"))
         return
@@ -108,11 +110,8 @@ async def on_promocode_confirm(
         await activate_promocode(
             user, ActivatePromocodeDto(code=code, target_subscription_id=target_id)
         )
-    except NotFoundError:
-        await callback.answer(runner.get("ntf-promocode.not-found"), show_alert=True)
-        return
-    except ValidationError:
-        await callback.answer(runner.get("ntf-promocode.not-available"), show_alert=True)
+    except (NotFoundError, ValidationError) as error:
+        await callback.answer(runner.get(_refusal_key(error)), show_alert=True)
         return
     except Exception:
         logger.exception(f"{user.log} Promocode activation failed unexpectedly")

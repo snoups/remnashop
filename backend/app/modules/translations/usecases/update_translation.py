@@ -1,52 +1,36 @@
-from dataclasses import dataclass
-
-from redis.asyncio import Redis
-
 from app.core.actor import Actor
-from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.ports import BotCommandsSync, BotSignals
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.settings import SettingsRepository, repush_bot_commands_if_configured
-from app.modules.translations.dto import TranslationEntryDto
-from app.modules.translations.publish import publish_translation_change
-from app.modules.translations.repository import TranslationsRepository
-from app.modules.translations.serializer import contains_placeable, serialize_to_fluent
+from app.modules.translations.dto import TranslationEntryDto, UpdateTranslationDto
+from app.modules.translations.repository import TranslationRepository
+from app.modules.translations.serializer import (
+    assert_fluent_compiles,
+    contains_placeable,
+    serialize_to_fluent,
+)
 
 
-@dataclass(frozen=True, kw_only=True)
-class UpdateTranslationInput:
-    locale: Locale
-    message_id: str
-    attribute_id: str
-    value: str
-
-
-class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryDto]):
+class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto]):
     required_permission = Permission.TRANSLATIONS_UPDATE
 
     def __init__(
         self,
-        translations_repository: TranslationsRepository,
-        settings_repository: SettingsRepository,
+        translation_repository: TranslationRepository,
         uow: UnitOfWork,
-        config: AppConfig,
-        redis: Redis,
+        bot_commands: BotCommandsSync,
+        bot_signals: BotSignals,
     ) -> None:
-        self._translations_repository = translations_repository
-        self._settings_repository = settings_repository
+        self._translation_repository = translation_repository
         self._uow = uow
-        self._config = config
-        self._redis = redis
+        self._bot_commands = bot_commands
+        self._bot_signals = bot_signals
 
-    async def _execute(self, actor: Actor, data: UpdateTranslationInput) -> TranslationEntryDto:
-        # Lazy import -- fluent_compiler lives under the telegram extra.
+    async def _execute(self, actor: Actor, data: UpdateTranslationDto) -> TranslationEntryDto:
         async with self._uow:
-            from fluent_compiler.bundle import FluentBundle  # noqa: PLC0415
-
             if "\n" in data.value:
                 # Kept single-line even though serialize_to_fluent() now indents
                 # continuations: this editor reaches every key, including the bot
@@ -58,7 +42,7 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
                     code=ErrorCode.TRANSLATION_HAS_NEWLINES,
                 )
 
-            existing = await self._translations_repository.list_by_locale(data.locale)
+            existing = await self._translation_repository.list_by_locale(data.locale)
             candidate = [
                 entry
                 for entry in existing
@@ -76,14 +60,7 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
                 )
             )
             candidate_text = serialize_to_fluent(candidate)
-            bundle = FluentBundle.from_string(  # type: ignore[no-untyped-call]
-                data.locale.value, text=candidate_text
-            )
-            errors = bundle.check_messages()
-            if errors:
-                raise ValidationError(
-                    f"Invalid Fluent syntax: {errors[0][1]}", code=ErrorCode.FLUENT_SYNTAX_INVALID
-                )
+            assert_fluent_compiles(data.locale, candidate_text)
             # Checked against just this one submitted value, not candidate_text
             # (the whole locale) -- scoping to the whole locale would reject an
             # edit to any OTHER key the moment one placeable-bearing value exists
@@ -98,15 +75,13 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationInput, TranslationEntryD
                 )
 
         async with self._uow:
-            updated = await self._translations_repository.update_value(
+            updated = await self._translation_repository.update_value(
                 data.locale, data.message_id, data.attribute_id, data.value
             )
 
-        await publish_translation_change(
-            self._redis, data.locale, data.message_id, data.value, attribute_id=data.attribute_id
+        await self._bot_signals.translation_changed(
+            data.locale, data.message_id, data.attribute_id, data.value
         )
 
-        await repush_bot_commands_if_configured(
-            self._settings_repository, self._translations_repository, self._config, self._uow
-        )
+        await self._bot_commands.push()
         return updated

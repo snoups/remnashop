@@ -15,7 +15,9 @@ from app.core.exceptions import (
     RemnawavePanelUnavailableError,
 )
 from app.core.ports import EventPublisher
+from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
+    CreateAddOnDto,
     CreatePlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
@@ -25,15 +27,15 @@ from app.modules.plans.dto import (
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions.addon_repository import AddOnRepository
-from app.modules.subscriptions.dto import CreateAddOnDto, GrantAddOnDto, PurchaseSubscriptionDto
+from app.modules.subscriptions.dto import GrantAddOnDto, PurchaseSubscriptionDto
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore
-from tests.modules.subscriptions.factories import snapshot_from_plan
+from tests.modules.subscriptions.factories import make_eligibility, snapshot_from_plan
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 
@@ -70,13 +72,13 @@ async def _create_subscription(
     plan = await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
     use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
-        user_repository,
-        settings_repository,
+        make_eligibility(subscription_repository.session),
         remnawave_sdk,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
     )
     subscription = await use_case(
         buyer,

@@ -1,19 +1,11 @@
-from dataclasses import dataclass
-
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.http import is_ip_allowed
-from app.modules.users.dto import UpdateUserDto, UserDto
+from app.modules.users.dto import UpdateSecuritySettingsDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class UpdateSecuritySettingsDto:
-    ip_allowlist: list[str]
-    client_ip: str
 
 
 class UpdateOwnSecuritySettingsUseCase(UseCase[UpdateSecuritySettingsDto, UserDto, UserDto]):

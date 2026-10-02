@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from decimal import Decimal
-
 from loguru import logger
 
 from app.core.actor import Actor
@@ -10,14 +7,9 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.referrals.dto import AdjustUserPointsDto
 from app.modules.referrals.events import UserPointsAdjustedEvent
 from app.modules.users import UserDto, UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class AdjustUserPointsDto:
-    user_id: int
-    delta: Decimal
 
 
 class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):

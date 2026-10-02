@@ -5,9 +5,9 @@ from app.core.enums import Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
+from app.modules.api_tokens.dto import IssueApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.api_tokens.usecases import (
-    CreateApiTokenInput,
     CreateApiTokenUseCase,
     ListApiTokensUseCase,
     RevokeApiTokenUseCase,
@@ -40,7 +40,7 @@ async def test_owner_can_create_token_and_secret_is_returned_once(
     use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
 
     result = await use_case(
-        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
     )
 
     assert result.token.name == "ci-script"
@@ -54,9 +54,7 @@ async def test_create_token_rejects_manage_admins_permission(
     use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
-        await use_case(
-            OWNER, CreateApiTokenInput(name="bad", permissions=[Permission.ADMINS_MANAGE])
-        )
+        await use_case(OWNER, IssueApiTokenDto(name="bad", permissions=[Permission.ADMINS_MANAGE]))
 
 
 async def test_create_token_rejects_manage_own_account_permission(
@@ -66,7 +64,7 @@ async def test_create_token_rejects_manage_own_account_permission(
 
     with pytest.raises(ValidationError):
         await use_case(
-            OWNER, CreateApiTokenInput(name="bad", permissions=[Permission.OWN_ACCOUNT_MANAGE])
+            OWNER, IssueApiTokenDto(name="bad", permissions=[Permission.OWN_ACCOUNT_MANAGE])
         )
 
 
@@ -78,7 +76,7 @@ async def test_regular_user_cannot_create_token(
     with pytest.raises(PermissionDeniedError):
         await use_case(
             REGULAR_USER,
-            CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD]),
+            IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD]),
         )
 
 
@@ -92,7 +90,7 @@ async def test_list_returns_created_tokens_without_secret(
     list_use_case = ListApiTokensUseCase(api_token_repository, uow)
 
     await create_use_case(
-        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
     )
 
     tokens = await list_use_case(OWNER)
@@ -111,7 +109,7 @@ async def test_revoke_removes_token_from_list(
     list_use_case = ListApiTokensUseCase(api_token_repository, uow)
 
     created = await create_use_case(
-        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
     )
 
     await revoke_use_case(owner, created.token.id)
@@ -139,7 +137,7 @@ async def test_create_token_with_expires_in_days_computes_expiry(
 
     result = await use_case(
         owner,
-        CreateApiTokenInput(
+        IssueApiTokenDto(
             name="ci-script", permissions=[Permission.BANNERS_IMAGE_VIEW], expires_in_days=30
         ),
     )
@@ -156,7 +154,7 @@ async def test_create_token_without_expires_in_days_never_expires(
     use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
 
     result = await use_case(
-        owner, CreateApiTokenInput(name="ci-script", permissions=[Permission.BANNERS_IMAGE_VIEW])
+        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_IMAGE_VIEW])
     )
 
     assert result.token.expires_at is None

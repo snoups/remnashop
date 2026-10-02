@@ -10,12 +10,12 @@ _TIMEOUT_SECONDS: Final[float] = 5.0
 _USERNAME_CACHE: Final[dict[str, str]] = {}
 
 
-async def fetch_bot_status(token: str) -> BotStatusDto:
+async def fetch_bot_status(token: str, proxy: Optional[str]) -> BotStatusDto:
     # getWebhookInfo is the one call that answers "is the bot actually up": it
     # needs a valid token, and its `url` stays empty until the telegram process
     # has started and registered the webhook.
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy) as client:
             response = await client.get(f"{TELEGRAM_API_URL}/bot{token}/getWebhookInfo")
     except httpx.HTTPError as error:
         return BotStatusDto(is_configured=True, error=str(error) or type(error).__name__)
@@ -33,11 +33,11 @@ async def fetch_bot_status(token: str) -> BotStatusDto:
     )
 
 
-async def fetch_bot_username(token: str) -> Optional[str]:
+async def fetch_bot_username(token: str, proxy: Optional[str]) -> Optional[str]:
     if token in _USERNAME_CACHE:
         return _USERNAME_CACHE[token]
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy) as client:
             response = await client.get(f"{TELEGRAM_API_URL}/bot{token}/getMe")
         payload: dict[str, Any] = response.json()
     except (httpx.HTTPError, ValueError):

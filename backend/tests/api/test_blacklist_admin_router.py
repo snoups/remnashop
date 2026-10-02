@@ -200,6 +200,37 @@ async def test_update_source(
     assert update_response.json()["enabled"] is False
 
 
+async def test_get_source(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _fake_assert_public_https_host(url: str) -> None:
+        return None
+
+    monkeypatch.setattr(
+        add_blacklist_source_module, "assert_public_https_host", _fake_assert_public_https_host
+    )
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    add_response = await client.post(
+        f"{API_V1}/blacklist/sources",
+        headers=headers,
+        json={"url": "https://x.example/detail.txt", "name": "detail"},
+    )
+    source_id = add_response.json()["id"]
+
+    response = await client.get(f"{API_V1}/blacklist/sources/{source_id}", headers=headers)
+    missing = await client.get(f"{API_V1}/blacklist/sources/999999", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json() == add_response.json()
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "BLACKLIST_SOURCE_NOT_FOUND"
+
+
 async def test_add_duplicate_source_url_returns_409(
     client: httpx.AsyncClient,
     user_repository: UserRepository,

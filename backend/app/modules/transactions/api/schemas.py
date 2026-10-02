@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.core.enums import Currency, PaymentGatewayType, PurchaseType
+from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
 
 
 class CreateCheckoutRequest(BaseModel):
@@ -77,3 +77,16 @@ class TransactionSummaryResponse(BaseModel):
 class TransactionGatewayListResponse(BaseModel):
     items: list[PaymentGatewayType]
     total: int
+
+
+class CreateTestPaymentRequest(BaseModel):
+    gateway_type: PaymentGatewayType
+
+
+class TestPaymentResponse(BaseModel):
+    order_id: int
+    confirmation_url: Optional[str]
+
+
+class TestPaymentStatusResponse(BaseModel):
+    status: TransactionStatus

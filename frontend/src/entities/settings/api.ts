@@ -1,7 +1,8 @@
-import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 
 export interface BotSettings {
   is_configured: boolean;
+  is_proxy_configured: boolean;
   drop_pending_updates: boolean;
 }
 
@@ -33,6 +34,14 @@ export function getBotLogs(signal?: AbortSignal): Promise<string[]> {
 
 export function updateBotSettings(payload: UpdateBotSettingsPayload): Promise<BotSettings> {
   return apiPatch<BotSettings, UpdateBotSettingsPayload>("/settings/bot", payload);
+}
+
+export function setBotProxy(proxyUrl: string): Promise<BotSettings> {
+  return apiPut<BotSettings, { proxy_url: string }>("/settings/bot/proxy", { proxy_url: proxyUrl });
+}
+
+export function removeBotProxy(): Promise<BotSettings> {
+  return apiDelete<BotSettings>("/settings/bot/proxy");
 }
 
 export function restartBot(): Promise<null> {

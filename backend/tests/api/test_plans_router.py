@@ -15,6 +15,9 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
+from app.core.security.permissions import Permission
+from app.modules.api_tokens.dto import CreateApiTokenDto
+from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.providers import get_module_providers
@@ -220,3 +223,27 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     assert "external_squad" not in plan
     assert "availability" not in plan
     assert "is_active" not in plan
+
+
+async def test_catalog_refuses_an_api_token(
+    client: httpx.AsyncClient, session: AsyncSession, uow: UnitOfWork
+) -> None:
+    # the catalog is filtered by the caller's own purchase history and referrer,
+    # which a staff token doesn't have
+    secret = "test-api-token-secret"
+    async with uow:
+        await ApiTokenRepository(session).create(
+            CreateApiTokenDto(
+                name="script",
+                token_hash=hash_refresh_token(secret),
+                permissions=[Permission.PLANS_VIEW],
+                created_by_user_id=None,
+                expires_at=None,
+            )
+        )
+
+    response = await client.get(
+        f"{API_V1}/plans/catalog", headers={"Authorization": f"Bearer {secret}"}
+    )
+
+    assert response.status_code == 403

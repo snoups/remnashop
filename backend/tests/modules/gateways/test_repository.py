@@ -2,22 +2,22 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import PaymentGatewayType
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 
 
 async def test_get_all_returns_every_gateway_type_with_defaults(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
 ) -> None:
-    gateways = await gateways_repository.get_all()
+    gateways = await gateway_repository.get_all()
 
     assert {g.type for g in gateways} == set(PaymentGatewayType)
     assert all(not g.is_active for g in gateways)
 
 
 async def test_get_by_type_synthesizes_default_for_missing_row(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
 ) -> None:
-    gateway = await gateways_repository.get_by_type(PaymentGatewayType.CRYPTOMUS)
+    gateway = await gateway_repository.get_by_type(PaymentGatewayType.CRYPTOMUS)
 
     assert gateway.type == PaymentGatewayType.CRYPTOMUS
     assert not gateway.is_active
@@ -25,9 +25,9 @@ async def test_get_by_type_synthesizes_default_for_missing_row(
 
 
 async def test_update_settings_creates_row_and_marks_configured(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
 ) -> None:
-    gateway = await gateways_repository.update_settings(
+    gateway = await gateway_repository.update_settings(
         PaymentGatewayType.CRYPTOMUS, {"merchant_id": "m1", "api_key": "secret"}
     )
 
@@ -35,10 +35,10 @@ async def test_update_settings_creates_row_and_marks_configured(
 
 
 async def test_update_settings_merges_without_dropping_existing_fields(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
 ) -> None:
-    await gateways_repository.update_settings(PaymentGatewayType.CRYPTOMUS, {"merchant_id": "m1"})
-    gateway = await gateways_repository.update_settings(
+    await gateway_repository.update_settings(PaymentGatewayType.CRYPTOMUS, {"merchant_id": "m1"})
+    gateway = await gateway_repository.update_settings(
         PaymentGatewayType.CRYPTOMUS, {"api_key": "secret"}
     )
 
@@ -48,9 +48,9 @@ async def test_update_settings_merges_without_dropping_existing_fields(
 
 
 async def test_settings_stored_encrypted_at_rest(
-    gateways_repository: GatewaysRepository, session: AsyncSession
+    gateway_repository: GatewayRepository, session: AsyncSession
 ) -> None:
-    await gateways_repository.update_settings(
+    await gateway_repository.update_settings(
         PaymentGatewayType.CRYPTOMUS, {"merchant_id": "merchant-1", "api_key": "secret-value"}
     )
 
@@ -67,36 +67,36 @@ async def test_settings_stored_encrypted_at_rest(
     assert "merchant-1" not in row.settings
 
 
-async def test_set_active_toggles_flag(gateways_repository: GatewaysRepository) -> None:
-    await gateways_repository.update_settings(PaymentGatewayType.WATA, {"api_key": "secret"})
+async def test_set_active_toggles_flag(gateway_repository: GatewayRepository) -> None:
+    await gateway_repository.update_settings(PaymentGatewayType.WATA, {"api_key": "secret"})
 
-    gateway = await gateways_repository.set_active(PaymentGatewayType.WATA, True)
+    gateway = await gateway_repository.set_active(PaymentGatewayType.WATA, True)
     assert gateway.is_active
 
-    gateway = await gateways_repository.set_active(PaymentGatewayType.WATA, False)
+    gateway = await gateway_repository.set_active(PaymentGatewayType.WATA, False)
     assert not gateway.is_active
 
 
 async def test_get_raw_settings_returns_stored_values(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
 ) -> None:
-    await gateways_repository.update_settings(
+    await gateway_repository.update_settings(
         PaymentGatewayType.YOOKASSA, {"shop_id": "123", "api_key": "secret"}
     )
 
-    values = await gateways_repository.get_raw_settings(PaymentGatewayType.YOOKASSA)
+    values = await gateway_repository.get_raw_settings(PaymentGatewayType.YOOKASSA)
     assert values == {"shop_id": "123", "api_key": "secret"}
 
 
 async def test_get_raw_settings_returns_empty_dict_for_unconfigured_gateway(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
 ) -> None:
-    values = await gateways_repository.get_raw_settings(PaymentGatewayType.YOOKASSA)
+    values = await gateway_repository.get_raw_settings(PaymentGatewayType.YOOKASSA)
     assert values == {}
 
 
 async def test_reorder_persists_order_and_creates_missing_rows(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
 ) -> None:
     rest = [
         t
@@ -105,9 +105,9 @@ async def test_reorder_persists_order_and_creates_missing_rows(
     ]
     ordered = [PaymentGatewayType.WATA, PaymentGatewayType.VALUTIX, *rest]
 
-    gateways = await gateways_repository.reorder(ordered)
+    gateways = await gateway_repository.reorder(ordered)
     assert [g.type for g in gateways] == ordered
 
-    refreshed = await gateways_repository.get_all()
+    refreshed = await gateway_repository.get_all()
     assert refreshed[0].type == PaymentGatewayType.WATA
     assert refreshed[1].type == PaymentGatewayType.VALUTIX

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from functools import partial
 from typing import Final, Optional
 
 from loguru import logger
@@ -10,14 +10,14 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import PaymentGatewayError, PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
-from app.modules.gateways import VERIFY_IP_FIELD_KEY, GatewaysRepository, gateway_flags
-from app.modules.subscriptions import purchase_subscription_task
-from app.modules.transactions.dto import TransactionDto
+from app.modules.gateways import VERIFY_IP_FIELD_KEY, GatewayRepository, gateway_flags
+from app.modules.subscriptions import PurchaseSubscriptionDispatch
+from app.modules.transactions.dto import HandleWebhookDto, TransactionDto
 from app.modules.transactions.events import TransactionRefundedEvent
+from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.base import (
     PaymentGateway,
     WebhookAck,
-    WebhookRequest,
     WebhookSignal,
 )
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
@@ -46,34 +46,30 @@ _REPORTED_FROM: Final[dict[TransactionStatus, frozenset[TransactionStatus]]] = {
 }
 
 
-@dataclass(frozen=True, kw_only=True)
-class HandleWebhookInput:
-    gateway_type: PaymentGatewayType
-    request: WebhookRequest
-
-
-class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, WebhookAck]):
+class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
     required_permission = None
 
     def __init__(
         self,
         transaction_repository: TransactionRepository,
-        gateways_repository: GatewaysRepository,
+        gateway_repository: GatewayRepository,
         gateway_factory: PaymentGatewayFactory,
         user_repository: UserRepository,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
+        purchase_dispatch: PurchaseSubscriptionDispatch,
     ) -> None:
         self._user_repository = user_repository
         self._transaction_repository = transaction_repository
-        self._gateways_repository = gateways_repository
+        self._gateway_repository = gateway_repository
         self._gateway_factory = gateway_factory
         self._event_publisher = event_publisher
         self._uow = uow
+        self._purchase_dispatch = purchase_dispatch
 
-    async def _execute(self, actor: Actor, data: HandleWebhookInput) -> WebhookAck:
+    async def _execute(self, actor: Actor, data: HandleWebhookDto) -> WebhookAck:
         async with self._uow:
-            settings = await self._gateways_repository.get_raw_settings(data.gateway_type)
+            settings = await self._gateway_repository.get_raw_settings(data.gateway_type)
             gateway = self._gateway_factory.build(data.gateway_type, settings)
 
         self._assert_trusted_source(gateway, data, settings)
@@ -120,26 +116,17 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookInput, WebhookAck]):
                 TransactionStatus.PAID,
                 external_payment_id=payment.provider_payment_id or order.external_payment_id,
             )
-        if order.is_test:
-            logger.info(f"Test transaction '{order.id}' confirmed by {data.gateway_type.value}")
-            return gateway.webhook_ack(signal)
-        await purchase_subscription_task.kiq(  # type: ignore[call-overload]
-            user_id=order.user_id,
-            plan_snapshot=order.plan_snapshot.to_json(),
-            duration_days=order.duration_days,
-            price_paid=str(order.final_price),
-            base_price=str(order.base_price),
-            currency=order.currency.value,
-            purchase_type=order.purchase_type.value,
-            target_subscription_id=order.target_subscription_id,
-            idempotency_key=order.idempotency_key,
-        )
-
+            if order.is_test:
+                logger.info(f"Test transaction '{order.id}' confirmed by {data.gateway_type.value}")
+            else:
+                await self._uow.after_commit(
+                    partial(dispatch_fulfillment, self._purchase_dispatch, order)
+                )
         return gateway.webhook_ack(signal)
 
     @staticmethod
     def _assert_trusted_source(
-        gateway: PaymentGateway, data: HandleWebhookInput, settings: dict[str, str]
+        gateway: PaymentGateway, data: HandleWebhookDto, settings: dict[str, str]
     ) -> None:
         if not gateway.trusted_networks:
             return

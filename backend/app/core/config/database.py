@@ -20,9 +20,8 @@ class DatabaseConfig(BaseConfig, env_prefix="DATABASE_"):
 
     # All four are "give up instead of hanging forever" safety nets --
     # statement/idle timeouts are enforced by Postgres itself, command/connect
-    # timeouts by the asyncpg driver. Defaults match what was previously
-    # hardcoded in DatabaseProvider.get_engine(); override for a DB with
-    # higher latency (e.g. a managed cloud Postgres) without editing code.
+    # timeouts by the asyncpg driver. Raise them for a higher-latency database
+    # (e.g. a managed cloud Postgres).
     statement_timeout_ms: int = 60_000
     idle_in_transaction_timeout_ms: int = 300_000
     command_timeout_s: int = 30

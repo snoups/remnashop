@@ -4,12 +4,9 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.exceptions import ValidationError
-from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.dto import CreateUserDto, UpdateOwnProfileDto, UserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.update_own_profile import (
-    UpdateOwnProfileDto,
-    UpdateOwnProfileUseCase,
-)
+from app.modules.users.usecases.update_own_profile import UpdateOwnProfileUseCase
 
 
 class _NoopRevoker:

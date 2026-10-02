@@ -22,27 +22,24 @@ from app.core.enums import (
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository, convert_for_report
-from app.modules.referrals.dto import UpdateReferralSettingsDto
+from app.modules.referrals.dto import (
+    AdjustUserPointsDto,
+    AttachReferralDto,
+    ListReferralsDto,
+    RequestPointsWithdrawalDto,
+    UpdateReferralSettingsDto,
+)
 from app.modules.referrals.events import ReferralCodeResetEvent, UserPointsAdjustedEvent
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.referrals.usecases.adjust_user_points import (
-    AdjustUserPointsDto,
-    AdjustUserPointsUseCase,
-)
-from app.modules.referrals.usecases.attach_referral import AttachReferralDto, AttachReferralUseCase
+from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
+from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
 from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
 from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
-from app.modules.referrals.usecases.list_referrals import (
-    ListReferralsInput,
-    ListReferralsUseCase,
-)
-from app.modules.referrals.usecases.request_points_withdrawal import (
-    RequestPointsWithdrawalDto,
-    RequestPointsWithdrawalUseCase,
-)
+from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
+from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
 from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
@@ -532,7 +529,7 @@ async def test_list_referrals_requires_permission(
     regular_actor = UserDto(id=999, name="Bob", role=Role.USER, language=Locale.EN)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(regular_actor, ListReferralsInput())
+        await use_case(regular_actor, ListReferralsDto())
 
 
 async def test_list_referrals_joins_users_and_empty_rewards(
@@ -545,7 +542,7 @@ async def test_list_referrals_joins_users_and_empty_rewards(
     )
     use_case = ListReferralsUseCase(referral_repository, user_repository, uow)
 
-    items, total = await use_case(OWNER, ListReferralsInput())
+    items, total = await use_case(OWNER, ListReferralsDto())
 
     assert total == 1
     assert items[0].referred is not None and items[0].referred.id == referred.id

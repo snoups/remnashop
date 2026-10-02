@@ -17,9 +17,9 @@ from app.modules.analytics.dto import (
 )
 from app.modules.analytics.window import resolve_since
 from app.modules.pricing import PricingRepository, convert_for_report
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserStatsRepository
 
 _ALL_TIME_CHURN_WINDOW_DAYS: Final[int] = 30
 
@@ -29,27 +29,27 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
 
     def __init__(
         self,
-        user_repository: UserRepository,
-        subscription_repository: SubscriptionRepository,
+        user_stats: UserStatsRepository,
+        subscription_stats: SubscriptionStatsRepository,
         transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
     ) -> None:
-        self._user_repository = user_repository
-        self._subscription_repository = subscription_repository
+        self._user_stats = user_stats
+        self._subscription_stats = subscription_stats
         self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: GetAnalyticsDto) -> AnalyticsDto:
-        since = await resolve_since(self._user_repository, data.days)
+        since = await resolve_since(self._user_stats, data.days)
         async with self._uow:
             today_start = datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
             rate_table = await self._pricing_repository.get_rate_table()
             report_currency = rate_table.anchor
 
-            active_subscriptions = (await self._subscription_repository.count_by_status()).get(
+            active_subscriptions = (await self._subscription_stats.count_by_status()).get(
                 SubscriptionStatus.ACTIVE, 0
             )
 
@@ -64,7 +64,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
                 start=Decimal(0),
             )
 
-            mrr_by_currency = await self._subscription_repository.sum_active_mrr_by_currency()
+            mrr_by_currency = await self._subscription_stats.sum_active_mrr_by_currency()
             mrr = sum(
                 (
                     convert_for_report(amount, currency, report_currency, rate_table)
@@ -73,7 +73,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
                 start=Decimal(0),
             ).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
-            registered_ids = await self._user_repository.list_ids_registered_since(since, Role.USER)
+            registered_ids = await self._user_stats.list_ids_registered_since(since, Role.USER)
             paid_ids = await self._transaction_repository.list_user_ids_with_paid_order(
                 registered_ids
             )
@@ -102,7 +102,7 @@ class GetAnalyticsUseCase(UseCase[GetAnalyticsDto, AnalyticsDto]):
                 if data.days == 0
                 else since
             )
-            prev_active, still_active = await self._subscription_repository.count_churn_window(
+            prev_active, still_active = await self._subscription_stats.count_churn_window(
                 churn_since
             )
             churn = ChurnSnapshotDto(

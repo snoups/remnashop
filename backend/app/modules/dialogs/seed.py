@@ -1,15 +1,13 @@
 from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
-from app.modules.settings import SettingsRepository
-from app.modules.translations import TranslationsRepository, split_message_key
+from app.modules.translations import TranslationRepository, split_message_key
 
 
 async def ensure_dialogs_seeded(
     dialog_repository: DialogRepository,
-    translations_repository: TranslationsRepository,
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
 ) -> None:
-    locales = await settings_repository.list_active_locales()
+    locales = await translation_repository.list_active_locales()
     for position, window in enumerate(catalog.all_windows()):
         await dialog_repository.upsert_seed(
             window.key,
@@ -22,9 +20,9 @@ async def ensure_dialogs_seeded(
         for locale in locales:
             for text_key in text_keys:
                 message_id, attribute_id = split_message_key(text_key)
-                await translations_repository.seed_missing(locale, message_id, attribute_id, "")
+                await translation_repository.seed_missing(locale, message_id, attribute_id, "")
                 if attribute_id:
                     # Earlier seeds stored the dotted key as a message id of its
                     # own, which shadows the real row everywhere the two are
                     # looked up by joined key.
-                    await translations_repository.delete_blank(locale, text_key, "")
+                    await translation_repository.delete_blank(locale, text_key, "")

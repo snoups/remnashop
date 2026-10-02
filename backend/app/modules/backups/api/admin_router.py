@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Optional
 
 from dishka import FromDishka
@@ -10,8 +9,6 @@ from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import BackupKind, BackupRunStatus
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
 from app.modules.backups.api.schemas import (
     BackupRunPageResponse,
     BackupRunResponse,
@@ -22,8 +19,7 @@ from app.modules.backups.api.schemas import (
 )
 from app.modules.backups.dto import (
     DEFAULT_PAGE_SIZE,
-    BackupRunDto,
-    BackupSettingsDto,
+    ListBackupRunsDto,
     UpdateBackupSettingsDto,
 )
 from app.modules.backups.usecases import (
@@ -33,35 +29,12 @@ from app.modules.backups.usecases import (
     GetBackupRunUseCase,
     GetBackupSettingsUseCase,
     GetBackupStatsUseCase,
-    ListBackupRunsInput,
     ListBackupRunsUseCase,
     ResetBackupSettingsUseCase,
     UpdateBackupSettingsUseCase,
 )
 
 router = APIRouter(prefix="/backups", tags=["backups"])
-
-
-def _to_settings_response(settings: BackupSettingsDto) -> BackupSettingsResponse:
-    return BackupSettingsResponse(
-        enabled=settings.enabled,
-        interval_hours=settings.interval_hours,
-        max_files=settings.max_files,
-    )
-
-
-def _to_run_response(run: BackupRunDto) -> BackupRunResponse:
-    return BackupRunResponse(
-        id=run.id,
-        kind=run.kind,
-        status=run.status,
-        size_bytes=run.size_bytes,
-        checksum_sha256=run.checksum_sha256,
-        triggered_by=run.triggered_by,
-        error=run.error,
-        created_at=run.created_at,
-        finished_at=run.finished_at,
-    )
 
 
 @router.get("/settings", response_model=BackupSettingsResponse)
@@ -71,7 +44,7 @@ async def get_backup_settings(
     actor: Actor = Depends(require_admin),
 ) -> BackupSettingsResponse:
     settings = await use_case(actor)
-    return _to_settings_response(settings)
+    return BackupSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.patch("/settings", response_model=BackupSettingsResponse)
@@ -82,7 +55,7 @@ async def update_backup_settings(
     actor: Actor = Depends(require_admin),
 ) -> BackupSettingsResponse:
     settings = await use_case(actor, UpdateBackupSettingsDto(**body.model_dump()))
-    return _to_settings_response(settings)
+    return BackupSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.post("/settings/actions/reset", response_model=BackupSettingsResponse)
@@ -92,7 +65,7 @@ async def reset_backup_settings(
     actor: Actor = Depends(require_admin),
 ) -> BackupSettingsResponse:
     settings = await use_case(actor)
-    return _to_settings_response(settings)
+    return BackupSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.get("/stats", response_model=BackupStatsResponse)
@@ -102,14 +75,7 @@ async def get_backup_stats(
     actor: Actor = Depends(require_admin),
 ) -> BackupStatsResponse:
     stats = await use_case(actor)
-    latest = stats.last_database_backup
-    return BackupStatsResponse(
-        completed_count=stats.completed_count,
-        failed_count=stats.failed_count,
-        total_size_bytes=stats.total_size_bytes,
-        last_database_backup=_to_run_response(latest) if latest is not None else None,
-        next_run_at=stats.next_run_at,
-    )
+    return BackupStatsResponse.model_validate(stats, from_attributes=True)
 
 
 @router.post(
@@ -125,7 +91,7 @@ async def create_backup_run(
     actor: Actor = Depends(require_admin),
 ) -> BackupRunResponse:
     run = await use_case(actor, body.kind)
-    return _to_run_response(run)
+    return BackupRunResponse.model_validate(run, from_attributes=True)
 
 
 @router.get("/runs", response_model=BackupRunPageResponse)
@@ -139,10 +105,13 @@ async def list_backup_runs(
     page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
 ) -> BackupRunPageResponse:
     runs, total = await use_case(
-        actor, ListBackupRunsInput(kind=kind, status=status_filter, page=page, page_size=page_size)
+        actor, ListBackupRunsDto(kind=kind, status=status_filter, page=page, page_size=page_size)
     )
     return BackupRunPageResponse(
-        items=[_to_run_response(r) for r in runs], total=total, page=page, page_size=page_size
+        items=[BackupRunResponse.model_validate(r, from_attributes=True) for r in runs],
+        total=total,
+        page=page,
+        page_size=page_size,
     )
 
 
@@ -154,7 +123,7 @@ async def get_backup_run(
     actor: Actor = Depends(require_admin),
 ) -> BackupRunResponse:
     run = await use_case(actor, run_id)
-    return _to_run_response(run)
+    return BackupRunResponse.model_validate(run, from_attributes=True)
 
 
 @router.get("/runs/{run_id}/download", responses=error_responses(404))
@@ -164,12 +133,7 @@ async def download_backup_run(
     use_case: FromDishka[DownloadBackupRunUseCase],
     actor: Actor = Depends(require_admin),
 ) -> FileResponse:
-    run = await use_case(actor, run_id)
-    if run.status != BackupRunStatus.COMPLETED or not run.file_path:
-        raise NotFoundError("Backup not ready", code=ErrorCode.BACKUP_NOT_READY)
-    path = Path(run.file_path)
-    if not path.exists():
-        raise NotFoundError("Backup file missing", code=ErrorCode.BACKUP_FILE_MISSING)
+    path = await use_case(actor, run_id)
     return FileResponse(path, filename=path.name, media_type="application/octet-stream")
 
 

@@ -19,4 +19,4 @@ class GetBotStatusUseCase(UseCase[None, BotStatusDto]):
             settings = await self._settings_repository.get_bot_settings()
         if not settings.is_configured or settings.token is None:
             return BotStatusDto(is_configured=False)
-        return await fetch_bot_status(settings.token.get_secret_value())
+        return await fetch_bot_status(settings.token.get_secret_value(), settings.proxy)

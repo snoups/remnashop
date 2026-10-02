@@ -10,7 +10,6 @@ from dishka import AsyncContainer, Provider, Scope, make_async_container, provid
 from dishka.integrations.fastapi import setup_dishka
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.modules.transactions.gateways.yookassa as yookassa_module
 from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
@@ -20,7 +19,7 @@ from app.core.enums import Locale, PaymentGatewayType, PlanType, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.gateways import GatewaysRepository
+from app.modules.gateways import GatewayRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -31,9 +30,7 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.providers import get_module_providers
-from app.modules.transactions.gateways.factory import PaymentGatewayFactory
-from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -50,12 +47,23 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
-class _TransactionsProvider(Provider):
-    scope = Scope.REQUEST
+def _yookassa_payment_created(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "id": "yk-payment-router-1",
+            "confirmation": {"confirmation_url": "https://yookassa.ru/pay/router-1"},
+        },
+    )
 
-    transaction_repository = provide(TransactionRepository)
-    create_checkout_use_case = provide(CreateCheckoutUseCase)
-    payment_gateway_factory = provide(PaymentGatewayFactory, scope=Scope.APP)
+
+class _PaymentHttpProvider(Provider):
+    scope = Scope.APP
+
+    @provide
+    def payment_http(self) -> PaymentHttpClient:
+        transport = httpx.MockTransport(_yookassa_payment_created)
+        return PaymentHttpClient(httpx.AsyncClient(transport=transport))
 
 
 @pytest.fixture
@@ -63,7 +71,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
     providers = [
         *get_core_providers(),
         *get_module_providers(),
-        _TransactionsProvider(),
+        _PaymentHttpProvider(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -145,37 +153,16 @@ async def plan(plan_repository: PlanRepository) -> PlanDto:
     return await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
 
 
-def _patch_yookassa_transport(
-    monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTransport
-) -> None:
-    # The gateway reuses one module-level client rather than constructing one
-    # per call -- swap that instance out for the duration of the test instead
-    # of patching the AsyncClient constructor.
-    monkeypatch.setattr(yookassa_module, "http_client", httpx.AsyncClient(transport=handler))
-
-
 async def test_checkout_returns_confirmation_url_for_a_valid_plan(
     client: httpx.AsyncClient,
     plan: PlanDto,
     auth_headers: dict[str, str],
-    gateways_repository: GatewaysRepository,
-    monkeypatch: pytest.MonkeyPatch,
+    gateway_repository: GatewayRepository,
 ) -> None:
-    await gateways_repository.update_settings(
+    await gateway_repository.update_settings(
         PaymentGatewayType.YOOKASSA, {"shop_id": "1000", "api_key": "test_key"}
     )
-    await gateways_repository.set_active(PaymentGatewayType.YOOKASSA, True)
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={
-                "id": "yk-payment-router-1",
-                "confirmation": {"confirmation_url": "https://yookassa.ru/pay/router-1"},
-            },
-        )
-
-    _patch_yookassa_transport(monkeypatch, httpx.MockTransport(handler))
+    await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
 
     response = await client.post(
         f"{API_V1}/checkout",

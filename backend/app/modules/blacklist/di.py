@@ -1,9 +1,15 @@
-from dishka import Provider, Scope, provide
+from typing import cast
 
+from dishka import Provider, Scope, provide, provide_all
+
+from app.modules.blacklist.dispatch import SyncBlacklistSourcesDispatch
 from app.modules.blacklist.repository import BlacklistRepository
+from app.modules.blacklist.tasks import sync_blacklist_sources_task
 from app.modules.blacklist.usecases import (
     AddBlacklistEntryUseCase,
     AddBlacklistSourceUseCase,
+    FetchBlacklistSourcesUseCase,
+    GetBlacklistSourceUseCase,
     ListBlacklistSourcesUseCase,
     ListBlacklistUseCase,
     RemoveBlacklistEntryUseCase,
@@ -17,14 +23,22 @@ class BlacklistProvider(Provider):
     scope = Scope.REQUEST
 
     blacklist_repository = provide(BlacklistRepository)
-    list_blacklist_use_case = provide(ListBlacklistUseCase)
-    add_blacklist_entry_use_case = provide(AddBlacklistEntryUseCase)
-    remove_blacklist_entry_use_case = provide(RemoveBlacklistEntryUseCase)
-    list_blacklist_sources_use_case = provide(ListBlacklistSourcesUseCase)
-    add_blacklist_source_use_case = provide(AddBlacklistSourceUseCase)
-    remove_blacklist_source_use_case = provide(RemoveBlacklistSourceUseCase)
-    update_blacklist_source_use_case = provide(UpdateBlacklistSourceUseCase)
-    sync_blacklist_sources_use_case = provide(SyncBlacklistSourcesUseCase)
+    use_cases = provide_all(
+        ListBlacklistUseCase,
+        AddBlacklistEntryUseCase,
+        RemoveBlacklistEntryUseCase,
+        ListBlacklistSourcesUseCase,
+        GetBlacklistSourceUseCase,
+        AddBlacklistSourceUseCase,
+        RemoveBlacklistSourceUseCase,
+        UpdateBlacklistSourceUseCase,
+        SyncBlacklistSourcesUseCase,
+        FetchBlacklistSourcesUseCase,
+    )
+
+    @provide(scope=Scope.APP)
+    def sync_blacklist_sources_dispatch(self) -> SyncBlacklistSourcesDispatch:
+        return cast(SyncBlacklistSourcesDispatch, sync_blacklist_sources_task)
 
 
 def get_blacklist_providers() -> list[Provider]:

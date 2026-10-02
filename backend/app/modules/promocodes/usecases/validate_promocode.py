@@ -1,68 +1,47 @@
-from dataclasses import dataclass
-
-from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeRewardType
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.core.utils.time import datetime_now
 from app.modules.plans import PlanRepository
 from app.modules.promocodes.availability import (
     assert_available_to,
     assert_subscription_reward_grantable,
+    get_usable_promocode,
 )
-from app.modules.promocodes.dto import PromocodeDto
+from app.modules.promocodes.dto import PromocodeDto, ValidatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.referrals import ReferralRepository
-from app.modules.settings import SettingsRepository
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import PurchaseEligibility, SubscriptionRepository
+from app.modules.users import UserDto
 
 
-@dataclass(frozen=True, kw_only=True)
-class ValidatePromocodeDto:
-    code: str
-
-
-class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto]):
+class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
         self,
         promocode_repository: PromocodeRepository,
         subscription_repository: SubscriptionRepository,
-        referral_repository: ReferralRepository,
         plan_repository: PlanRepository,
-        settings_repository: SettingsRepository,
+        eligibility: PurchaseEligibility,
         uow: UnitOfWork,
     ) -> None:
         self._promocode_repository = promocode_repository
         self._subscription_repository = subscription_repository
-        self._referral_repository = referral_repository
         self._plan_repository = plan_repository
-        self._settings_repository = settings_repository
+        self._eligibility = eligibility
         self._uow = uow
 
-    async def _execute(self, actor: Actor, data: ValidatePromocodeDto) -> PromocodeDto:
+    async def _execute(self, actor: UserDto, data: ValidatePromocodeDto) -> PromocodeDto:
         async with self._uow:
-            code = data.code.strip().upper()
-            promo = await self._promocode_repository.get_by_code(code)
-            if promo is None or not promo.is_active:
-                raise NotFoundError(
-                    f"Promocode '{code}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND
-                )
-
-            if promo.expires_at is not None and datetime_now() > promo.expires_at:
-                raise ValidationError(
-                    f"Promocode '{code}' has expired", code=ErrorCode.PROMOCODE_EXPIRED
-                )
+            promo = await get_usable_promocode(self._promocode_repository, data.code)
 
             if promo.max_activations is not None:
                 count = await self._promocode_repository.get_activations_count(promo.id)
                 if count >= promo.max_activations:
                     raise ValidationError(
-                        f"Promocode '{code}' activation limit reached",
+                        f"Promocode '{promo.code}' activation limit reached",
                         code=ErrorCode.PROMOCODE_LIMIT_REACHED,
                     )
 
@@ -72,7 +51,7 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto]):
                 )
                 if existing is not None:
                     raise ValidationError(
-                        f"Promocode '{code}' already activated by this user",
+                        f"Promocode '{promo.code}' already activated by this user",
                         code=ErrorCode.PROMOCODE_ALREADY_ACTIVATED,
                     )
 
@@ -82,8 +61,6 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto]):
                 promo,
                 actor,
                 self._plan_repository,
-                self._subscription_repository,
-                self._referral_repository,
-                self._settings_repository,
+                self._eligibility,
             )
         return promo

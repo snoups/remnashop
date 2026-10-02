@@ -287,6 +287,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("token", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("secret_token", app.core.db.encrypted_string.EncryptedString(), nullable=True),
+        sa.Column("proxy_url", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("drop_pending_updates", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",

@@ -14,7 +14,6 @@ from app.modules.transactions.gateways.base import (
     WebhookRequest,
     WebhookSignal,
     amount_to_float,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -48,7 +47,7 @@ class CloudPaymentsGateway(PaymentGateway):
             "SuccessRedirectUrl": self._return_url,
             "FailRedirectUrl": self._return_url,
         }
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/orders/create", json=payload, auth=self._auth()
         )
         response.raise_for_status()
@@ -86,7 +85,7 @@ class CloudPaymentsGateway(PaymentGateway):
         )
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
-        response = await http_client.post(
+        response = await self._http.post(
             f"{_API_BASE}/payments/find",
             json={"InvoiceId": order.idempotency_key},
             auth=self._auth(),

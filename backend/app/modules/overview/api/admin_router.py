@@ -8,15 +8,7 @@ from fastapi import APIRouter, Depends
 from app.api.dependencies.admin import require_admin
 from app.core.actor import Actor
 from app.modules.overview.api.schemas import (
-    DailyAmountResponse,
-    DailyCountResponse,
-    HostMemoryResponse,
-    OverviewOnlineResponse,
     OverviewResponse,
-    OverviewSubscriptionsResponse,
-    OverviewTransactionsResponse,
-    OverviewUsersResponse,
-    RuntimeProcessResponse,
 )
 from app.modules.overview.dto import GetOverviewDto, OverviewDays
 from app.modules.overview.usecases import GetOverviewUseCase
@@ -49,68 +41,4 @@ async def get_overview(
     days: OverviewPeriodDays = OverviewPeriodDays.SEVEN,
 ) -> OverviewResponse:
     overview = await use_case(actor, GetOverviewDto(days=cast(OverviewDays, int(days))))
-    return OverviewResponse(
-        days=overview.days,
-        granularity=overview.granularity,
-        users=(
-            OverviewUsersResponse(
-                total=overview.users.total,
-                new_today=overview.users.new_today,
-                daily_registrations=[
-                    DailyCountResponse(day=d.day, count=d.count)
-                    for d in overview.users.daily_registrations
-                ],
-            )
-            if overview.users is not None
-            else None
-        ),
-        subscriptions=(
-            OverviewSubscriptionsResponse(
-                total=overview.subscriptions.total,
-                active=overview.subscriptions.active,
-                limited=overview.subscriptions.limited,
-                expired=overview.subscriptions.expired,
-                expiring_soon=overview.subscriptions.expiring_soon,
-            )
-            if overview.subscriptions is not None
-            else None
-        ),
-        transactions=(
-            OverviewTransactionsResponse(
-                paid_orders_count=overview.transactions.paid_orders_count,
-                revenue_by_currency=overview.transactions.revenue_by_currency,
-                report_currency=overview.transactions.report_currency,
-                daily_revenue=[
-                    DailyAmountResponse(day=d.day, amount=d.amount)
-                    for d in overview.transactions.daily_revenue
-                ],
-            )
-            if overview.transactions is not None
-            else None
-        ),
-        runtime=[
-            RuntimeProcessResponse(
-                process=p.process,
-                pid=p.pid,
-                uptime_seconds=p.uptime_seconds,
-                rss_bytes=p.rss_bytes,
-                event_loop_delay_ms=p.event_loop_delay_ms,
-                event_loop_p99_ms=p.event_loop_p99_ms,
-            )
-            for p in overview.runtime
-        ],
-        host_memory=(
-            HostMemoryResponse(
-                total_bytes=overview.host_memory.total_bytes,
-                used_bytes=overview.host_memory.used_bytes,
-            )
-            if overview.host_memory is not None
-            else None
-        ),
-        online=OverviewOnlineResponse(
-            current=overview.online.current,
-            daily_peak=[
-                DailyCountResponse(day=d.day, count=d.count) for d in overview.online.daily_peak
-            ],
-        ),
-    )
+    return OverviewResponse.model_validate(overview, from_attributes=True)

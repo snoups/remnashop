@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.db.models.referral_reward import ReferralReward
+from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
     DiscountSource,
@@ -15,19 +16,23 @@ from app.core.enums import (
     ReferralRewardType,
     SubscriptionStatus,
 )
+from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.pricing.repository import PricingRepository
-from app.modules.referrals.dto import ReferralSettingsDto, UpdateReferralSettingsDto
+from app.modules.referrals.dto import (
+    AssignReferralRewardsDto,
+    AttachReferralOnRegistrationDto,
+    ReferralSettingsDto,
+    UpdateReferralSettingsDto,
+)
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.referrals.tasks import (
+from app.modules.referrals.usecases import AttachReferralOnRegistrationUseCase
+from app.modules.referrals.usecases.assign_referral_rewards import (
+    AssignReferralRewardsUseCase,
     _level_amounts,
-    assign_referral_rewards,
-    attach_referral_on_registration,
 )
 from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
-from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
-from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.transactions.dto import CreateTransactionDto
@@ -37,22 +42,25 @@ from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
-def _purchase_use_case(
-    subscription_repository: SubscriptionRepository,
+@pytest.fixture
+def assign_rewards(
+    referral_repository: ReferralRepository,
     user_repository: UserRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
-) -> PurchaseSubscriptionUseCase:
-    return PurchaseSubscriptionUseCase(
-        subscription_repository,
+    subscription_repository: SubscriptionRepository,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> AssignReferralRewardsUseCase:
+    session = referral_repository.session
+    return AssignReferralRewardsUseCase(
+        referral_repository,
+        TransactionRepository(session),
+        PricingRepository(session),
         user_repository,
-        SettingsRepository(subscription_repository.session),
-        remnawave_sdk,
+        subscription_repository,
+        purchase_subscription_use_case,
         uow,
         event_publisher,
-        SubscriptionLifecycleService(subscription_repository),
-        PricingRepository(subscription_repository.session),
     )
 
 
@@ -86,9 +94,7 @@ async def test_assign_referral_rewards_skips_when_system_disabled(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     referrer_id = await _create_user(user_repository, 4001)
     buyer_id = await _create_user(user_repository, 4002)
@@ -97,21 +103,13 @@ async def test_assign_referral_rewards_skips_when_system_disabled(
     )
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4002)
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=TransactionRepository(referral_repository.session),
-        pricing_repository=PricingRepository(referral_repository.session),
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer_id,
-        subscription_id=subscription_id,
-        is_new_purchase=True,
-        payment_key="order-1",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer_id,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-1",
+        )
     )
 
     updated_referrer = await user_repository.get_by_id(referrer_id)
@@ -122,9 +120,7 @@ async def test_assign_referral_rewards_credits_points_up_the_chain(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -146,21 +142,13 @@ async def test_assign_referral_rewards_credits_points_up_the_chain(
     )
     subscription_id = await _create_active_subscription(subscription_repository, buyer, 4005)
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=TransactionRepository(referral_repository.session),
-        pricing_repository=PricingRepository(referral_repository.session),
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer,
-        subscription_id=subscription_id,
-        is_new_purchase=True,
-        payment_key="order-1",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-1",
+        )
     )
 
     assert (await user_repository.get_by_id(middle)).points == Decimal("10")
@@ -182,9 +170,7 @@ async def test_assign_referral_rewards_skips_trial_purchase(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -214,21 +200,13 @@ async def test_assign_referral_rewards_skips_trial_purchase(
         )
     )
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=TransactionRepository(referral_repository.session),
-        pricing_repository=PricingRepository(referral_repository.session),
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer_id,
-        subscription_id=sub.id,
-        is_new_purchase=True,
-        payment_key="order-1",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer_id,
+            subscription_id=sub.id,
+            is_new_purchase=True,
+            payment_key="order-1",
+        )
     )
 
     assert (await user_repository.get_by_id(referrer_id)).points == Decimal(0)
@@ -238,9 +216,7 @@ async def test_assign_referral_rewards_first_payment_strategy_skips_renewal(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -258,21 +234,13 @@ async def test_assign_referral_rewards_first_payment_strategy_skips_renewal(
     )
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4009)
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=TransactionRepository(referral_repository.session),
-        pricing_repository=PricingRepository(referral_repository.session),
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer_id,
-        subscription_id=subscription_id,
-        is_new_purchase=False,  # a renewal, not the first purchase
-        payment_key="order-1",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer_id,
+            subscription_id=subscription_id,
+            is_new_purchase=False,  # a renewal, not the first purchase
+            payment_key="order-1",
+        )
     )
 
     assert (await user_repository.get_by_id(referrer_id)).points == Decimal(0)
@@ -282,10 +250,9 @@ async def test_assign_referral_rewards_one_level_failure_does_not_block_the_next
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
     uow,
-    event_publisher,
     monkeypatch,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     # Level 1's grant blows up; level 2 must still be paid, and the failure
     # must reach the caller so the task's own retry can pick it up.
@@ -318,21 +285,13 @@ async def test_assign_referral_rewards_one_level_failure_does_not_block_the_next
     monkeypatch.setattr(user_repository, "credit_points", _failing_credit_points)
 
     with pytest.raises(RuntimeError):
-        await assign_referral_rewards(
-            referral_repository=referral_repository,
-            transaction_repository=TransactionRepository(referral_repository.session),
-            pricing_repository=PricingRepository(referral_repository.session),
-            user_repository=user_repository,
-            subscription_repository=subscription_repository,
-            purchase_subscription_use_case=_purchase_use_case(
-                subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-            ),
-            uow=uow,
-            event_publisher=event_publisher,
-            user_id=buyer,
-            subscription_id=subscription_id,
-            is_new_purchase=True,
-            payment_key="order-1",
+        await assign_rewards.system(
+            AssignReferralRewardsDto(
+                user_id=buyer,
+                subscription_id=subscription_id,
+                is_new_purchase=True,
+                payment_key="order-1",
+            )
         )
 
     rewarded = set(
@@ -348,9 +307,7 @@ async def test_assign_referral_rewards_is_idempotent_against_duplicate_delivery(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -369,21 +326,13 @@ async def test_assign_referral_rewards_is_idempotent_against_duplicate_delivery(
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4014)
 
     for _ in range(2):
-        await assign_referral_rewards(
-            referral_repository=referral_repository,
-            transaction_repository=TransactionRepository(referral_repository.session),
-            pricing_repository=PricingRepository(referral_repository.session),
-            user_repository=user_repository,
-            subscription_repository=subscription_repository,
-            purchase_subscription_use_case=_purchase_use_case(
-                subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-            ),
-            uow=uow,
-            event_publisher=event_publisher,
-            user_id=buyer_id,
-            subscription_id=subscription_id,
-            is_new_purchase=True,
-            payment_key="order-1",
+        await assign_rewards.system(
+            AssignReferralRewardsDto(
+                user_id=buyer_id,
+                subscription_id=subscription_id,
+                is_new_purchase=True,
+                payment_key="order-1",
+            )
         )
 
     assert (await user_repository.get_by_id(referrer_id)).points == Decimal("10")
@@ -402,9 +351,7 @@ async def test_assign_referral_rewards_stops_walk_at_mutual_referral_cycle(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -423,21 +370,13 @@ async def test_assign_referral_rewards_stops_walk_at_mutual_referral_cycle(
     await referral_repository.create_referral(referrer_id=b, referred_id=a, level=1)
     subscription_id = await _create_active_subscription(subscription_repository, b, 4016)
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=TransactionRepository(referral_repository.session),
-        pricing_repository=PricingRepository(referral_repository.session),
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=b,
-        subscription_id=subscription_id,
-        is_new_purchase=True,
-        payment_key="order-1",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=b,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-1",
+        )
     )
 
     # Level 1 (b -> a) rewards a; the walk must stop there instead of looping
@@ -450,9 +389,7 @@ async def test_assign_referral_rewards_every_payment_strategy_rewards_each_renew
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -471,21 +408,13 @@ async def test_assign_referral_rewards_every_payment_strategy_rewards_each_renew
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4021)
 
     for payment_key, is_new_purchase in (("order-1", True), ("order-2", False), ("order-3", False)):
-        await assign_referral_rewards(
-            referral_repository=referral_repository,
-            transaction_repository=TransactionRepository(referral_repository.session),
-            pricing_repository=PricingRepository(referral_repository.session),
-            user_repository=user_repository,
-            subscription_repository=subscription_repository,
-            purchase_subscription_use_case=_purchase_use_case(
-                subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-            ),
-            uow=uow,
-            event_publisher=event_publisher,
-            user_id=buyer_id,
-            subscription_id=subscription_id,
-            is_new_purchase=is_new_purchase,
-            payment_key=payment_key,
+        await assign_rewards.system(
+            AssignReferralRewardsDto(
+                user_id=buyer_id,
+                subscription_id=subscription_id,
+                is_new_purchase=is_new_purchase,
+                payment_key=payment_key,
+            )
         )
 
     assert (await user_repository.get_by_id(referrer_id)).points == Decimal("30")
@@ -495,9 +424,7 @@ async def test_first_payment_strategy_skips_a_second_paid_subscription(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     # Both are NEW purchases (several concurrent subscriptions are allowed),
     # but only the first one is the buyer's first payment.
@@ -520,21 +447,13 @@ async def test_first_payment_strategy_skips_a_second_paid_subscription(
         subscription_repository, buyer_id, 4022
     )
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=TransactionRepository(referral_repository.session),
-        pricing_repository=PricingRepository(referral_repository.session),
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer_id,
-        subscription_id=second_subscription_id,
-        is_new_purchase=True,
-        payment_key="order-2",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer_id,
+            subscription_id=second_subscription_id,
+            is_new_purchase=True,
+            payment_key="order-2",
+        )
     )
 
     assert (await user_repository.get_by_id(referrer_id)).points == Decimal(0)
@@ -545,10 +464,9 @@ async def test_points_reward_is_not_recorded_when_the_credit_fails(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
     uow,
-    event_publisher,
     monkeypatch,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     # Ledger row and credit share one transaction, so a failed credit leaves
     # nothing behind to make the retry skip the hop as "already granted".
@@ -579,30 +497,20 @@ async def test_points_reward_is_not_recorded_when_the_credit_fails(
 
     monkeypatch.setattr(user_repository, "credit_points", _flaky_credit_points)
 
-    kwargs: dict[str, object] = {
-        "referral_repository": referral_repository,
-        "transaction_repository": TransactionRepository(referral_repository.session),
-        "pricing_repository": PricingRepository(referral_repository.session),
-        "user_repository": user_repository,
-        "subscription_repository": subscription_repository,
-        "purchase_subscription_use_case": _purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        "uow": uow,
-        "event_publisher": event_publisher,
-        "user_id": buyer_id,
-        "subscription_id": subscription_id,
-        "is_new_purchase": True,
-        "payment_key": "order-3",
-    }
+    data = AssignReferralRewardsDto(
+        user_id=buyer_id,
+        subscription_id=subscription_id,
+        is_new_purchase=True,
+        payment_key="order-3",
+    )
 
     with pytest.raises(RuntimeError):
-        await assign_referral_rewards(**kwargs)
+        await assign_rewards.system(data)
 
     assert await referral_repository.list_rewards_by_referrer(referrer_id) == []
 
     failing = False
-    await assign_referral_rewards(**kwargs)
+    await assign_rewards.system(data)
 
     assert (await user_repository.get_by_id(referrer_id)).points == Decimal("10")
     assert len(await referral_repository.list_rewards_by_referrer(referrer_id)) == 1
@@ -612,9 +520,7 @@ async def test_assign_referral_rewards_percent_points_from_order_price(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -656,21 +562,13 @@ async def test_assign_referral_rewards_percent_points_from_order_price(
         )
     )
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=transaction_repository,
-        pricing_repository=pricing_repository,
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer,
-        subscription_id=subscription_id,
-        is_new_purchase=True,
-        payment_key="order-percent",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-percent",
+        )
     )
 
     # 10% of 250 = 25; 3% of 250 = 7.5, rounded down
@@ -700,11 +598,8 @@ async def test_attach_referral_on_registration_links_the_new_user(
     newcomer_id = await _create_user(user_repository, 4202)
     use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
 
-    await attach_referral_on_registration(
-        user_id=newcomer_id,
-        referral_code=referrer.referral_code,
-        user_repository=user_repository,
-        attach_referral_use_case=use_case,
+    await AttachReferralOnRegistrationUseCase(user_repository, use_case).system(
+        AttachReferralOnRegistrationDto(user_id=newcomer_id, referral_code=referrer.referral_code)
     )
 
     edge = await referral_repository.get_by_referred_id(newcomer_id)
@@ -722,11 +617,8 @@ async def test_attach_referral_on_registration_ignores_an_unknown_code(
     newcomer_id = await _create_user(user_repository, 4203)
     use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
 
-    await attach_referral_on_registration(
-        user_id=newcomer_id,
-        referral_code="NOPE0000",
-        user_repository=user_repository,
-        attach_referral_use_case=use_case,
+    await AttachReferralOnRegistrationUseCase(user_repository, use_case).system(
+        AttachReferralOnRegistrationDto(user_id=newcomer_id, referral_code="NOPE0000")
     )
 
     assert await referral_repository.get_by_referred_id(newcomer_id) is None
@@ -756,9 +648,7 @@ async def test_free_order_earns_no_referral_reward(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -782,21 +672,13 @@ async def test_free_order_earns_no_referral_reward(
     anchor = (await pricing_repository.get_rate_table()).anchor
     await transaction_repository.create(_free_order(buyer, "order-free", anchor))
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=transaction_repository,
-        pricing_repository=pricing_repository,
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer,
-        subscription_id=subscription_id,
-        is_new_purchase=True,
-        payment_key="order-free",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-free",
+        )
     )
 
     # PERCENT would otherwise floor at 1 point even on a zero base
@@ -807,9 +689,7 @@ async def test_first_payment_strategy_ignores_an_earlier_free_subscription(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    remnawave_sdk,
-    uow,
-    event_publisher,
+    assign_rewards: AssignReferralRewardsUseCase,
 ) -> None:
     await referral_repository.update_settings(
         UpdateReferralSettingsDto(
@@ -826,21 +706,13 @@ async def test_first_payment_strategy_ignores_an_earlier_free_subscription(
     await _create_active_subscription(subscription_repository, buyer, 4312, price_paid=Decimal("0"))
     paid_subscription_id = await _create_active_subscription(subscription_repository, buyer, 4313)
 
-    await assign_referral_rewards(
-        referral_repository=referral_repository,
-        transaction_repository=TransactionRepository(referral_repository.session),
-        pricing_repository=PricingRepository(referral_repository.session),
-        user_repository=user_repository,
-        subscription_repository=subscription_repository,
-        purchase_subscription_use_case=_purchase_use_case(
-            subscription_repository, user_repository, remnawave_sdk, uow, event_publisher
-        ),
-        uow=uow,
-        event_publisher=event_publisher,
-        user_id=buyer,
-        subscription_id=paid_subscription_id,
-        is_new_purchase=True,
-        payment_key="order-first-paid",
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer,
+            subscription_id=paid_subscription_id,
+            is_new_purchase=True,
+            payment_key="order-first-paid",
+        )
     )
 
     assert (await user_repository.get_by_id(referrer)).points == Decimal("10")

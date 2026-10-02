@@ -15,24 +15,23 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.promocodes.availability import (
     assert_available_to,
     assert_subscription_reward_grantable,
+    get_usable_promocode,
 )
 from app.modules.promocodes.dto import ActivatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeActivatedEvent
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.referrals import ReferralRepository
-from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
+    GrantAddOnDispatch,
     PlanSnapshot,
+    PurchaseEligibility,
     PurchaseSubscriptionDto,
     PurchaseSubscriptionUseCase,
     SubscriptionDto,
     SubscriptionRepository,
-    grant_addon_task,
 )
 from app.modules.users import UpdateUserDto, UserDto, UserRepository
 
@@ -56,36 +55,26 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
         promocode_repository: PromocodeRepository,
         subscription_repository: SubscriptionRepository,
         plan_repository: PlanRepository,
-        settings_repository: SettingsRepository,
+        eligibility: PurchaseEligibility,
         user_repository: UserRepository,
         purchase_subscription_use_case: PurchaseSubscriptionUseCase,
-        referral_repository: ReferralRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
+        grant_addon_dispatch: GrantAddOnDispatch,
     ) -> None:
         self._promocode_repository = promocode_repository
         self._subscription_repository = subscription_repository
         self._plan_repository = plan_repository
-        self._settings_repository = settings_repository
+        self._eligibility = eligibility
         self._user_repository = user_repository
         self._purchase_subscription_use_case = purchase_subscription_use_case
-        self._referral_repository = referral_repository
         self._uow = uow
         self._event_publisher = event_publisher
+        self._grant_addon_dispatch = grant_addon_dispatch
 
     async def _execute(self, actor: UserDto, data: ActivatePromocodeDto) -> PromocodeDto:
         async with self._uow:
-            code = data.code.strip().upper()
-            promo = await self._promocode_repository.get_by_code(code)
-            if promo is None or not promo.is_active:
-                raise NotFoundError(
-                    f"Promocode '{code}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND
-                )
-
-            if promo.expires_at is not None and datetime_now() > promo.expires_at:
-                raise ValidationError(
-                    f"Promocode '{code}' has expired", code=ErrorCode.PROMOCODE_EXPIRED
-                )
+            promo = await get_usable_promocode(self._promocode_repository, data.code)
 
         await assert_available_to(promo, actor, self._subscription_repository)
 
@@ -122,9 +111,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                 promo,
                 actor,
                 self._plan_repository,
-                self._subscription_repository,
-                self._referral_repository,
-                self._settings_repository,
+                self._eligibility,
             )
 
         async with self._uow:
@@ -182,7 +169,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                 # a panel failure in between leaves the two out of step with
                 # the code already spent. The task retries, and its key makes
                 # a redelivery land once.
-                await grant_addon_task.kiq(  # type: ignore[call-overload]
+                await self._grant_addon_dispatch.kiq(
                     subscription_id=target.id,
                     addon_id=promo.reward_addon_id,
                     idempotency_key=_addon_grant_key(activation_id),

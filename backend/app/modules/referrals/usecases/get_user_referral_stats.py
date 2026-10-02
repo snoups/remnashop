@@ -4,7 +4,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.referrals.dto import ReferralStatsDto
+from app.modules.referrals.dto import ReferralStatsDto, ReferralStatsRewardDto
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.users import UserRepository
 
@@ -35,13 +35,21 @@ class GetUserReferralStatsUseCase(UseCase[int, ReferralStatsDto]):
             buyer_levels = await self._referral_repository.downline_depths(target.id, buyer_ids)
             referrer_id = edge.referrer_id if edge is not None else None
             user_ids = buyer_ids + ([referrer_id] if referrer_id is not None else [])
-            users = await self._user_repository.list_by_ids(user_ids)
-            return ReferralStatsDto(
-                referral_code=target.referral_code,
-                referrer_id=referrer_id,
-                points=target.points,
-                counts_by_level=counts,
-                rewards=rewards,
-                users={user.id: user for user in users},
-                buyer_levels=buyer_levels,
-            )
+            users = {user.id: user for user in await self._user_repository.list_by_ids(user_ids)}
+        return ReferralStatsDto(
+            referral_code=target.referral_code,
+            referrer_id=referrer_id,
+            points=target.points,
+            counts_by_level=counts,
+            rewards=[
+                ReferralStatsRewardDto(
+                    type=r.type,
+                    amount=r.amount,
+                    created_at=r.created_at,
+                    buyer=users.get(r.buyer_id) if r.buyer_id is not None else None,
+                    level=buyer_levels.get(r.buyer_id) if r.buyer_id is not None else None,
+                )
+                for r in rewards
+            ],
+            referrer=users.get(referrer_id) if referrer_id is not None else None,
+        )

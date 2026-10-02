@@ -25,3 +25,11 @@ class UploadBannerDto:
 class BannerKeyDto:
     name: str
     locale: Locale
+
+
+@dataclass(frozen=True, kw_only=True)
+class UploadBannerFileDto:
+    name: str
+    locale: Locale
+    content_type: str
+    data: bytes

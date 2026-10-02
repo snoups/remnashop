@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 from app.core.events import EventCategory, StoredEvent
 from app.core.utils.time import datetime_now
-from app.modules.referrals.events import _on_telegram_user_registered
+from app.modules.referrals.subscribers import _on_telegram_user_registered
 
 _KIQ = "app.modules.referrals.tasks.attach_referral_on_registration_task.kiq"
 

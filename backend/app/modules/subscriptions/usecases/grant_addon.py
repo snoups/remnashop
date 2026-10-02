@@ -8,7 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
-from app.modules.subscriptions.addon_repository import AddOnRepository
+from app.modules.plans import AddOnRepository
 from app.modules.subscriptions.dto import GrantAddOnDto, SubscriptionDto
 from app.modules.subscriptions.events import SubscriptionAddOnGrantedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository

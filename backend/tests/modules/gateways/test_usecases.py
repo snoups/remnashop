@@ -9,7 +9,7 @@ from app.modules.gateways.dto import (
     UpdateGatewaySettingsDto,
 )
 from app.modules.gateways.events import GatewayChangedEvent
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 from app.modules.gateways.usecases import (
     ListGatewaysUseCase,
     ReorderGatewaysUseCase,
@@ -23,27 +23,27 @@ REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
 async def test_owner_can_list_gateways(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
     uow: UnitOfWork,
 ) -> None:
-    use_case = ListGatewaysUseCase(gateways_repository, uow)
+    use_case = ListGatewaysUseCase(gateway_repository, uow)
     gateways = await use_case(OWNER)
     assert len(gateways) == len(list(PaymentGatewayType))
 
 
 async def test_regular_user_cannot_list_gateways(
-    gateways_repository: GatewaysRepository,
+    gateway_repository: GatewayRepository,
     uow: UnitOfWork,
 ) -> None:
-    use_case = ListGatewaysUseCase(gateways_repository, uow)
+    use_case = ListGatewaysUseCase(gateway_repository, uow)
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER)
 
 
 async def test_update_gateway_settings_rejects_unknown_field(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = UpdateGatewaySettingsUseCase(gateways_repository, event_publisher, uow)
+    use_case = UpdateGatewaySettingsUseCase(gateway_repository, event_publisher, uow)
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
@@ -52,9 +52,9 @@ async def test_update_gateway_settings_rejects_unknown_field(
 
 
 async def test_update_gateway_settings_persists_values(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = UpdateGatewaySettingsUseCase(gateways_repository, event_publisher, uow)
+    use_case = UpdateGatewaySettingsUseCase(gateway_repository, event_publisher, uow)
     gateway = await use_case(
         OWNER,
         UpdateGatewaySettingsDto(
@@ -65,9 +65,9 @@ async def test_update_gateway_settings_persists_values(
 
 
 async def test_regular_user_cannot_update_gateway_settings(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = UpdateGatewaySettingsUseCase(gateways_repository, event_publisher, uow)
+    use_case = UpdateGatewaySettingsUseCase(gateway_repository, event_publisher, uow)
     with pytest.raises(PermissionDeniedError):
         await use_case(
             REGULAR_USER,
@@ -78,23 +78,23 @@ async def test_regular_user_cannot_update_gateway_settings(
 
 
 async def test_set_active_rejects_activating_unconfigured_gateway(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = SetGatewayActiveUseCase(gateways_repository, event_publisher, uow)
+    use_case = SetGatewayActiveUseCase(gateway_repository, event_publisher, uow)
     with pytest.raises(ValidationError):
         await use_case(OWNER, SetGatewayActiveDto(type=PaymentGatewayType.WATA, is_active=True))
 
 
 async def test_set_active_activates_configured_gateway(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    settings_use_case = UpdateGatewaySettingsUseCase(gateways_repository, event_publisher, uow)
+    settings_use_case = UpdateGatewaySettingsUseCase(gateway_repository, event_publisher, uow)
     await settings_use_case(
         OWNER,
         UpdateGatewaySettingsDto(type=PaymentGatewayType.WATA, values={"api_key": "secret"}),
     )
 
-    set_active_use_case = SetGatewayActiveUseCase(gateways_repository, event_publisher, uow)
+    set_active_use_case = SetGatewayActiveUseCase(gateway_repository, event_publisher, uow)
     gateway = await set_active_use_case(
         OWNER, SetGatewayActiveDto(type=PaymentGatewayType.WATA, is_active=True)
     )
@@ -102,9 +102,9 @@ async def test_set_active_activates_configured_gateway(
 
 
 async def test_set_active_disables_gateway_and_is_idempotent(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = SetGatewayActiveUseCase(gateways_repository, event_publisher, uow)
+    use_case = SetGatewayActiveUseCase(gateway_repository, event_publisher, uow)
     disable = SetGatewayActiveDto(type=PaymentGatewayType.WATA, is_active=False)
 
     first = await use_case(OWNER, disable)
@@ -115,17 +115,17 @@ async def test_set_active_disables_gateway_and_is_idempotent(
 
 
 async def test_reorder_rejects_incomplete_list(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = ReorderGatewaysUseCase(gateways_repository, event_publisher, uow)
+    use_case = ReorderGatewaysUseCase(gateway_repository, event_publisher, uow)
     with pytest.raises(ValidationError):
         await use_case(OWNER, ReorderGatewaysDto(ordered_types=[PaymentGatewayType.WATA]))
 
 
 async def test_reorder_accepts_full_permutation(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork, event_publisher
+    gateway_repository: GatewayRepository, uow: UnitOfWork, event_publisher
 ) -> None:
-    use_case = ReorderGatewaysUseCase(gateways_repository, event_publisher, uow)
+    use_case = ReorderGatewaysUseCase(gateway_repository, event_publisher, uow)
     reversed_types = list(reversed(list(PaymentGatewayType)))
     gateways = await use_case(OWNER, ReorderGatewaysDto(ordered_types=reversed_types))
     assert [g.type for g in gateways] == reversed_types
@@ -140,10 +140,10 @@ class _RecordingPublisher:
 
 
 async def test_settings_change_is_audited_by_field_name_only(
-    gateways_repository: GatewaysRepository, uow: UnitOfWork
+    gateway_repository: GatewayRepository, uow: UnitOfWork
 ) -> None:
     publisher = _RecordingPublisher()
-    use_case = UpdateGatewaySettingsUseCase(gateways_repository, publisher, uow)  # type: ignore[arg-type]
+    use_case = UpdateGatewaySettingsUseCase(gateway_repository, publisher, uow)  # type: ignore[arg-type]
 
     await use_case(
         OWNER,

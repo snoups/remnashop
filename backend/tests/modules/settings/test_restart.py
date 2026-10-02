@@ -3,6 +3,7 @@ import asyncio
 import pytest
 from redis.asyncio import Redis
 
+from app.core.bot_signals import RedisBotSignals
 from app.core.constants import TELEGRAM_RESTART_CHANNEL
 from app.core.enums import Locale, Role
 from app.core.exceptions import PermissionDeniedError
@@ -18,7 +19,7 @@ async def test_publishes_to_restart_channel(redis: Redis) -> None:
     await pubsub.subscribe(TELEGRAM_RESTART_CHANNEL)
     await pubsub.get_message(timeout=1)  # discard the subscribe confirmation
 
-    await RestartBotUseCase(redis)(OWNER)
+    await RestartBotUseCase(RedisBotSignals(redis))(OWNER)
 
     message = await pubsub.get_message(timeout=2)
     assert message is not None
@@ -31,9 +32,9 @@ async def test_publishes_to_restart_channel(redis: Redis) -> None:
 
 async def test_regular_user_cannot_restart_bot(redis: Redis) -> None:
     with pytest.raises(PermissionDeniedError):
-        await RestartBotUseCase(redis)(REGULAR_USER)
+        await RestartBotUseCase(RedisBotSignals(redis))(REGULAR_USER)
 
 
 async def test_no_subscriber_does_not_raise(redis: Redis) -> None:
     # Fire-and-forget: publishing with nobody listening must not error.
-    await asyncio.wait_for(RestartBotUseCase(redis)(OWNER), timeout=2)
+    await asyncio.wait_for(RestartBotUseCase(RedisBotSignals(redis))(OWNER), timeout=2)

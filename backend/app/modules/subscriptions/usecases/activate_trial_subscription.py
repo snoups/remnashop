@@ -1,27 +1,25 @@
 from contextlib import suppress
-from dataclasses import dataclass
 from decimal import Decimal
 
-from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.plans import PlanDto
-from app.modules.subscriptions.dto import PlanSnapshot, PurchaseSubscriptionDto, SubscriptionDto
+from app.modules.subscriptions.dto import (
+    ActivateTrialSubscriptionDto,
+    PlanSnapshot,
+    PurchaseSubscriptionDto,
+    SubscriptionDto,
+)
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
-from app.modules.users import UpdateUserDto, UserRepository
+from app.modules.users import UpdateUserDto, UserDto, UserRepository
 
 
-@dataclass(frozen=True, kw_only=True)
-class ActivateTrialSubscriptionDto:
-    plan: PlanDto
-    duration_days: int
-
-
-class ActivateTrialSubscriptionUseCase(UseCase[ActivateTrialSubscriptionDto, SubscriptionDto]):
+class ActivateTrialSubscriptionUseCase(
+    UseCase[ActivateTrialSubscriptionDto, SubscriptionDto, UserDto]
+):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -34,7 +32,7 @@ class ActivateTrialSubscriptionUseCase(UseCase[ActivateTrialSubscriptionDto, Sub
         self._purchase_subscription_use_case = purchase_subscription_use_case
         self._uow = uow
 
-    async def _execute(self, actor: Actor, data: ActivateTrialSubscriptionDto) -> SubscriptionDto:
+    async def _execute(self, actor: UserDto, data: ActivateTrialSubscriptionDto) -> SubscriptionDto:
         # Spend the flag before provisioning, not after: actor is loaded per
         # request, so two concurrent taps both read is_trial_available=True.
         async with self._uow:

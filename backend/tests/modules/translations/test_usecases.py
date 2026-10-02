@@ -2,6 +2,7 @@ import httpx
 import pytest
 from redis.asyncio import Redis
 
+from app.core.bot_signals import RedisBotSignals
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
@@ -9,40 +10,43 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError, Validation
 from app.modules.settings.dto import UpdateBotSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import UpdateBotSettingsUseCase
-from app.modules.translations.dto import TranslationTextExportDto
-from app.modules.translations.repository import TranslationsRepository
+from app.modules.translations.dto import (
+    ResetTranslationDto,
+    TranslationsImportDto,
+    TranslationTextExportDto,
+    UpdateTranslationDto,
+)
+from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.usecases import (
     ExportTranslationsUseCase,
     ImportTranslationsUseCase,
     ListTranslationsUseCase,
     ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
-    TranslationsImportInput,
     UpdateTranslationUseCase,
 )
 from app.modules.translations.usecases.export_translations import EXPORT_VERSION
-from app.modules.translations.usecases.reset_translation import ResetTranslationInput
-from app.modules.translations.usecases.update_translation import UpdateTranslationInput
 from app.modules.users.dto import UserDto
+from tests.modules.settings.factories import make_bot_commands_sync
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
 async def _seed(
-    settings_repository: SettingsRepository, translations_repository: TranslationsRepository
+    settings_repository: SettingsRepository, translation_repository: TranslationRepository
 ) -> None:
-    await settings_repository.add_active_locale(Locale.EN)
-    await translations_repository.seed_missing(Locale.EN, "command", "menu", "Open the main menu")
+    await translation_repository.add_active_locale(Locale.EN)
+    await translation_repository.seed_missing(Locale.EN, "command", "menu", "Open the main menu")
 
 
 async def test_owner_can_list_translations(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
-    use_case = ListTranslationsUseCase(translations_repository, uow)
+    await _seed(settings_repository, translation_repository)
+    use_case = ListTranslationsUseCase(translation_repository, uow)
 
     entries = await use_case(OWNER)
 
@@ -53,19 +57,22 @@ async def test_owner_can_list_translations(
 
 async def test_owner_can_update_translation_value(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     updated = await use_case(
         OWNER,
-        UpdateTranslationInput(
+        UpdateTranslationDto(
             locale=Locale.EN, message_id="command", attribute_id="menu", value="New text"
         ),
     )
@@ -76,72 +83,81 @@ async def test_owner_can_update_translation_value(
 
 async def test_update_translation_rejects_invalid_fluent_syntax(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
     async with uow:
-        await _seed(settings_repository, translations_repository)
+        await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
-            UpdateTranslationInput(
+            UpdateTranslationDto(
                 locale=Locale.EN, message_id="command", attribute_id="menu", value="{ unterminated"
             ),
         )
 
-    entry = await translations_repository.get(Locale.EN, "command", "menu")
+    entry = await translation_repository.get(Locale.EN, "command", "menu")
     assert entry is not None
     assert entry.value == "Open the main menu"
 
 
 async def test_update_translation_rejects_placeables(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
     async with uow:
-        await _seed(settings_repository, translations_repository)
+        await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     with pytest.raises(ValidationError):
         await use_case(
             OWNER,
-            UpdateTranslationInput(
+            UpdateTranslationDto(
                 locale=Locale.EN, message_id="command", attribute_id="menu", value="Hi { $name }"
             ),
         )
 
-    entry = await translations_repository.get(Locale.EN, "command", "menu")
+    entry = await translation_repository.get(Locale.EN, "command", "menu")
     assert entry is not None
     assert entry.value == "Open the main menu"
 
 
 async def test_update_translation_raises_not_found_for_unknown_key(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     with pytest.raises(NotFoundError):
         await use_case(
             OWNER,
-            UpdateTranslationInput(
+            UpdateTranslationDto(
                 locale=Locale.RU, message_id="command", attribute_id="menu", value="New text"
             ),
         )
@@ -149,35 +165,38 @@ async def test_update_translation_raises_not_found_for_unknown_key(
 
 async def test_reset_translation_raises_not_found_for_unknown_key(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     use_case = ResetTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     with pytest.raises(NotFoundError):
         await use_case(
             OWNER,
-            ResetTranslationInput(locale=Locale.RU, message_id="command", attribute_id="menu"),
+            ResetTranslationDto(locale=Locale.RU, message_id="command", attribute_id="menu"),
         )
 
 
 async def test_update_translation_repushes_to_telegram_when_bot_configured(
     monkeypatch: pytest.MonkeyPatch,
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     # the description the registry actually points at
-    await translations_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
-    await translations_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
+    await translation_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
+    await translation_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
     await UpdateBotSettingsUseCase(settings_repository, uow)(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
@@ -193,11 +212,14 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     monkeypatch.setattr(httpx.AsyncClient, "post", _capturing_post)
 
     use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
     await use_case(
         OWNER,
-        UpdateTranslationInput(
+        UpdateTranslationDto(
             locale=Locale.EN, message_id="command", attribute_id="start", value="New text"
         ),
     )
@@ -208,27 +230,33 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
 
 async def test_owner_can_reset_translation_to_default(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     update_use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
     await update_use_case(
         OWNER,
-        UpdateTranslationInput(
+        UpdateTranslationDto(
             locale=Locale.EN, message_id="command", attribute_id="menu", value="Changed"
         ),
     )
     reset_use_case = ResetTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     reset = await reset_use_case(
-        OWNER, ResetTranslationInput(locale=Locale.EN, message_id="command", attribute_id="menu")
+        OWNER, ResetTranslationDto(locale=Locale.EN, message_id="command", attribute_id="menu")
     )
 
     assert reset.value == "Open the main menu"
@@ -236,20 +264,23 @@ async def test_owner_can_reset_translation_to_default(
 
 async def test_regular_user_cannot_update_translation(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
             REGULAR_USER,
-            UpdateTranslationInput(
+            UpdateTranslationDto(
                 locale=Locale.EN, message_id="command", attribute_id="menu", value="x"
             ),
         )
@@ -257,14 +288,12 @@ async def test_regular_user_cannot_update_translation(
 
 async def test_export_returns_every_active_locale_string(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
 
-    export = await ExportTranslationsUseCase(translations_repository, settings_repository, uow)(
-        OWNER
-    )
+    export = await ExportTranslationsUseCase(translation_repository, uow)(OWNER)
 
     assert export.version == EXPORT_VERSION
     assert [(text.message_id, text.attribute_id, text.value) for text in export.texts] == [
@@ -274,19 +303,22 @@ async def test_export_returns_every_active_locale_string(
 
 async def test_import_applies_known_keys_and_skips_the_rest(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     use_case = ImportTranslationsUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     result = await use_case(
         OWNER,
-        TranslationsImportInput(
+        TranslationsImportDto(
             version=EXPORT_VERSION,
             texts=[
                 TranslationTextExportDto(
@@ -305,58 +337,67 @@ async def test_import_applies_known_keys_and_skips_the_rest(
     )
 
     assert (result.applied, result.skipped) == (1, 2)
-    entry = await translations_repository.get(Locale.EN, "command", "menu")
+    entry = await translation_repository.get(Locale.EN, "command", "menu")
     assert entry is not None
     assert entry.value == "Imported"
 
 
 async def test_import_rejects_a_foreign_export_version(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
     use_case = ImportTranslationsUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )
 
     with pytest.raises(ValidationError):
-        await use_case(OWNER, TranslationsImportInput(version=EXPORT_VERSION + 1, texts=[]))
+        await use_case(OWNER, TranslationsImportDto(version=EXPORT_VERSION + 1, texts=[]))
 
 
 async def test_reset_all_restores_every_edited_string(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     config: AppConfig,
     redis: Redis,
 ) -> None:
-    await _seed(settings_repository, translations_repository)
+    await _seed(settings_repository, translation_repository)
     await UpdateTranslationUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )(
         OWNER,
-        UpdateTranslationInput(
+        UpdateTranslationDto(
             locale=Locale.EN, message_id="command", attribute_id="menu", value="Changed"
         ),
     )
 
     await ResetAllTranslationsUseCase(
-        translations_repository, settings_repository, uow, config, redis
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow, config),
+        RedisBotSignals(redis),
     )(OWNER)
 
-    entry = await translations_repository.get(Locale.EN, "command", "menu")
+    entry = await translation_repository.get(Locale.EN, "command", "menu")
     assert entry is not None
     assert entry.value == "Open the main menu"
 
 
 async def test_regular_user_cannot_export_translations(
     settings_repository: SettingsRepository,
-    translations_repository: TranslationsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
 ) -> None:
-    use_case = ExportTranslationsUseCase(translations_repository, settings_repository, uow)
+    use_case = ExportTranslationsUseCase(translation_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER)

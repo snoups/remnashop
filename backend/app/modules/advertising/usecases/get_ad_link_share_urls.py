@@ -37,7 +37,9 @@ class GetAdLinkShareUrlsUseCase(UseCase[int, AdLinkShareUrlsDto]):
 
         bot_url: Optional[str] = None
         if ad_link.allow_bot and bot_settings.is_configured and bot_settings.token is not None:
-            username = await fetch_bot_username(bot_settings.token.get_secret_value())
+            username = await fetch_bot_username(
+                bot_settings.token.get_secret_value(), bot_settings.proxy
+            )
             if username:
                 bot_url = f"{T_ME}{username}{_BOT_START_QUERY.format(code=ad_link.code)}"
 

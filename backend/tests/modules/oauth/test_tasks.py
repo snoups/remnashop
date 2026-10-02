@@ -2,7 +2,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.modules.oauth.dto import CreateOAuthIdentityDto
 from app.modules.oauth.repository import OAuthIdentityRepository
-from app.modules.oauth.tasks import cleanup_oidc_identities
+from app.modules.oauth.usecases import CleanupOidcIdentitiesUseCase
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -41,20 +41,12 @@ async def test_cleanup_oidc_identities_deletes_only_oidc_rows(
         )
     )
 
-    await cleanup_oidc_identities(oauth_identity_repository=oauth_identity_repository, uow=uow)
+    await CleanupOidcIdentitiesUseCase(oauth_identity_repository, uow).system()
 
-    assert (
-        await oauth_identity_repository.get_by_user_and_provider(oidc_user_a.id, OAuthProvider.OIDC)
-        is None
-    )
-    assert (
-        await oauth_identity_repository.get_by_user_and_provider(oidc_user_b.id, OAuthProvider.OIDC)
-        is None
-    )
-    remaining_github = await oauth_identity_repository.get_by_user_and_provider(
-        github_user.id, OAuthProvider.GITHUB
-    )
-    assert remaining_github is not None
+    assert await oauth_identity_repository.list_by_user(oidc_user_a.id) == []
+    assert await oauth_identity_repository.list_by_user(oidc_user_b.id) == []
+    remaining_github = await oauth_identity_repository.list_by_user(github_user.id)
+    assert [identity.provider for identity in remaining_github] == [OAuthProvider.GITHUB]
 
 
 async def test_cleanup_oidc_identities_is_a_noop_when_nothing_to_clean(
@@ -72,9 +64,7 @@ async def test_cleanup_oidc_identities_is_a_noop_when_nothing_to_clean(
         )
     )
 
-    await cleanup_oidc_identities(oauth_identity_repository=oauth_identity_repository, uow=uow)
+    await CleanupOidcIdentitiesUseCase(oauth_identity_repository, uow).system()
 
-    remaining_github = await oauth_identity_repository.get_by_user_and_provider(
-        github_user.id, OAuthProvider.GITHUB
-    )
-    assert remaining_github is not None
+    remaining_github = await oauth_identity_repository.list_by_user(github_user.id)
+    assert [identity.provider for identity in remaining_github] == [OAuthProvider.GITHUB]

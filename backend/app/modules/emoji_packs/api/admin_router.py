@@ -26,12 +26,7 @@ def _to_response(pack: EmojiPackDto) -> EmojiPackResponse:
         set_name=pack.set_name,
         title=pack.title,
         items=[
-            EmojiPackItemResponse(
-                custom_emoji_id=item.custom_emoji_id,
-                fallback_emoji=item.fallback_emoji,
-                animation_kind=item.animation_kind,
-            )
-            for item in pack.items
+            EmojiPackItemResponse.model_validate(item, from_attributes=True) for item in pack.items
         ],
     )
 

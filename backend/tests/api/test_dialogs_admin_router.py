@@ -20,6 +20,7 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.providers import get_module_providers
+from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -383,11 +384,11 @@ async def test_window_response_includes_text_keys_for_custom_window(
 
 
 async def test_update_dialog_text_requires_permission(
-    client: httpx.AsyncClient, settings_repository, translations_repository
+    client: httpx.AsyncClient, settings_repository, translation_repository
 ) -> None:
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
-    await translations_repository.seed_missing(Locale.EN, "msg-router-test", "", "Hi!")
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
+    await translation_repository.seed_missing(Locale.EN, "msg-router-test", "", "Hi!")
 
     response = await client.put(
         f"{API_V1}/dialogs/text/en/msg-router-test", json={"value": "Hi there!"}
@@ -402,7 +403,7 @@ async def test_update_dialog_text_updates_value(
     uow: UnitOfWork,
     config: AppConfig,
     settings_repository,
-    translations_repository,
+    translation_repository,
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
     catalog.register_window(
@@ -413,9 +414,9 @@ async def test_update_dialog_text_updates_value(
             banner_name=None,
         )
     )
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
-    await translations_repository.seed_missing(Locale.EN, "msg-router-window-text", "", "Hi!")
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
+    await translation_repository.seed_missing(Locale.EN, "msg-router-window-text", "", "Hi!")
 
     response = await client.put(
         f"{API_V1}/dialogs/text/en/msg-router-window-text",
@@ -443,8 +444,11 @@ async def test_update_dialog_text_missing_key_is_404(
             banner_name=None,
         )
     )
-    if Locale.EN not in await settings_repository.list_active_locales():
-        await settings_repository.add_active_locale(Locale.EN)
+    if (
+        Locale.EN
+        not in await TranslationRepository(settings_repository.session).list_active_locales()
+    ):
+        await TranslationRepository(settings_repository.session).add_active_locale(Locale.EN)
 
     response = await client.put(
         f"{API_V1}/dialogs/text/en/msg-router-ghost-text",

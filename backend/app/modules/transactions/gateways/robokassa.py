@@ -13,7 +13,6 @@ from app.modules.transactions.gateways.base import (
     WebhookAck,
     WebhookRequest,
     WebhookSignal,
-    http_client,
 )
 from app.modules.transactions.gateways.common import (
     PROVIDER_API_TIMEOUT_S,
@@ -104,7 +103,7 @@ class RobokassaGateway(PaymentGateway):
             return NOT_PAID
         login = self._require("merchant_login")
         inv_id = str(order.id)
-        response = await http_client.get(
+        response = await self._http.get(
             _OP_STATE_URL,
             params={
                 "MerchantLogin": login,

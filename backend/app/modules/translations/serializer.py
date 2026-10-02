@@ -2,8 +2,14 @@ import re
 from collections import defaultdict
 from typing import Final, Optional
 
+from fluent.syntax import FluentParser
+from fluent.syntax.ast import Junk, Message, Pattern, Placeable, StringLiteral, VariableReference
+from fluent_compiler.bundle import FluentBundle
 from loguru import logger
 
+from app.core.enums import Locale
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.modules.translations.dto import TranslationEntryDto
 
 
@@ -89,11 +95,6 @@ def serialize_to_fluent(entries: list[TranslationEntryDto]) -> str:
 
 
 def contains_placeable(text: str) -> bool:
-    # Lazy import -- fluent.syntax ships with fluent_compiler, which lives
-    # under the `telegram` extra.
-    from fluent.syntax import FluentParser  # noqa: PLC0415
-    from fluent.syntax.ast import Message, Pattern, Placeable  # noqa: PLC0415
-
     patterns: list[Pattern] = []
     for entry in FluentParser().parse(text).body:
         if not isinstance(entry, Message):
@@ -111,7 +112,6 @@ def _check_placeable_expression(
     expression: object, allowed_variables: frozenset[str]
 ) -> Optional[str]:
     """Check a single placeable expression. Helper for find_disallowed_placeable."""
-    from fluent.syntax.ast import StringLiteral, VariableReference  # noqa: PLC0415
 
     # the serializer's own escapes: a line start (_escape_line_start) or an empty value
     if isinstance(expression, StringLiteral) and (
@@ -138,15 +138,6 @@ def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> O
     parse as a clean Pattern (Junk) and contains both braces is rejected,
     matching Fluent's own grammar and the general editor's effective behavior.
     """
-    # Lazy import -- fluent.syntax ships with fluent_compiler, which lives
-    # under the `telegram` extra.
-    from fluent.syntax import FluentParser  # noqa: PLC0415
-    from fluent.syntax.ast import (  # noqa: PLC0415
-        Junk,
-        Message,
-        Pattern,
-        Placeable,
-    )
 
     # wrapped exactly as serialize_to_fluent writes it
     wrapped = "placeholder-id = " + _block(text, "    ")
@@ -186,3 +177,13 @@ def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> O
             if result is not None:
                 return result
     return None
+
+
+def assert_fluent_compiles(locale: Locale, text: str) -> None:
+    bundle = FluentBundle.from_string(locale.value, text=text)  # type: ignore[no-untyped-call]
+    errors = bundle.check_messages()
+    if errors:
+        raise ValidationError(
+            f"Invalid Fluent syntax in {locale.value}: {errors[0][1]}",
+            code=ErrorCode.FLUENT_SYNTAX_INVALID,
+        )

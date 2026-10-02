@@ -4,9 +4,9 @@ from typing import Final
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
+from app.cli.reset_owner_access import reset_owner_access
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
-from app.modules.auth import reset_owner_access
 from app.modules.settings import enable_password_login
 
 # Break-glass tool, run via `docker exec -it <api-container> python -m app.cli` --

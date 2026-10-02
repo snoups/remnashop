@@ -1,16 +1,28 @@
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, provide_all
 
+from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.repository import PlanRepository
 from app.modules.plans.usecases import (
+    AdjustBasePricesUseCase,
+    CreateAddOnUseCase,
     CreatePlanUseCase,
+    DeleteAddOnUseCase,
     DeletePlanUseCase,
+    GetAddOnUseCase,
     GetPlanUseCase,
-    ListActivePlansUseCase,
+    GetPriceBookUseCase,
+    ListAddOnsUseCase,
     ListPlansUseCase,
+    PreviewPricingChangeUseCase,
+    ReorderAddOnsUseCase,
     ReorderPlansUseCase,
+    SetAddOnBasePriceUseCase,
+    SetAddOnPriceOverrideUseCase,
     SetPlanDurationBasePriceUseCase,
     SetPlanDurationsUseCase,
     SetPlanPriceOverrideUseCase,
+    SwitchAnchorCurrencyUseCase,
+    UpdateAddOnUseCase,
     UpdatePlanAccessUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
@@ -20,19 +32,35 @@ from app.modules.plans.usecases import (
 class PlansProvider(Provider):
     scope = Scope.REQUEST
 
-    plan_repository = provide(PlanRepository)
-    list_plans_use_case = provide(ListPlansUseCase)
-    get_plan_use_case = provide(GetPlanUseCase)
-    list_active_plans_use_case = provide(ListActivePlansUseCase)
-    create_plan_use_case = provide(CreatePlanUseCase)
-    update_plan_use_case = provide(UpdatePlanUseCase)
-    delete_plan_use_case = provide(DeletePlanUseCase)
-    set_plan_durations_use_case = provide(SetPlanDurationsUseCase)
-    set_plan_duration_base_price_use_case = provide(SetPlanDurationBasePriceUseCase)
-    set_plan_price_override_use_case = provide(SetPlanPriceOverrideUseCase)
-    update_plan_access_use_case = provide(UpdatePlanAccessUseCase)
-    update_plan_squads_use_case = provide(UpdatePlanSquadsUseCase)
-    reorder_plans_use_case = provide(ReorderPlansUseCase)
+    repositories = provide_all(
+        PlanRepository,
+        AddOnRepository,
+    )
+    use_cases = provide_all(
+        ListPlansUseCase,
+        GetPlanUseCase,
+        CreatePlanUseCase,
+        UpdatePlanUseCase,
+        DeletePlanUseCase,
+        SetPlanDurationsUseCase,
+        SetPlanDurationBasePriceUseCase,
+        SetPlanPriceOverrideUseCase,
+        UpdatePlanAccessUseCase,
+        UpdatePlanSquadsUseCase,
+        ReorderPlansUseCase,
+        CreateAddOnUseCase,
+        DeleteAddOnUseCase,
+        GetAddOnUseCase,
+        ListAddOnsUseCase,
+        ReorderAddOnsUseCase,
+        SetAddOnBasePriceUseCase,
+        SetAddOnPriceOverrideUseCase,
+        UpdateAddOnUseCase,
+        AdjustBasePricesUseCase,
+        GetPriceBookUseCase,
+        PreviewPricingChangeUseCase,
+        SwitchAnchorCurrencyUseCase,
+    )
 
 
 def get_plans_providers() -> list[Provider]:

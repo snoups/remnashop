@@ -40,7 +40,9 @@ class ImportEmojiPackUseCase(UseCase[str, EmojiPackDto]):
             )
 
         try:
-            fetched = await fetch_emoji_pack(bot_settings.token.get_secret_value(), set_name)
+            fetched = await fetch_emoji_pack(
+                bot_settings.token.get_secret_value(), bot_settings.proxy, set_name
+            )
         except ValueError as err:
             raise ValidationError(str(err), code=ErrorCode.EMOJI_PACK_FETCH_FAILED) from None
 

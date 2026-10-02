@@ -32,7 +32,7 @@ dependencies = [
     "greenlet>=3.3.0",
     "prometheus-fastapi-instrumentator>=7.1.0",
     "pillow>=12.0.0",
-    "httpx>=0.27.2",
+    "httpx[socks]>=0.27.2",
     # dialog text validation runs in api (update_text, import_dialogs, command_translations)
     "fluent-compiler~=1.1",
 ]
@@ -82,6 +82,7 @@ lint.select = [
     "PLC",
     "PLE",
     "Q",
+    "RUF022",
     "T",
     "TID",
     "W",
@@ -132,17 +133,10 @@ explicit_package_bases = true
 module = [
     "fluentogram.*",
     "fluent_compiler.*",
-    "remnawave.*",
     "qrcode.*",
     "remnapy.*",
 ]
 follow_untyped_imports = true
-
-[[tool.mypy.overrides]]
-module = ["app.modules.*.telegram.*"]
-strict_optional = false
-warn_return_any = false
-disable_error_code = ["union-attr"]
 
 [[tool.mypy.overrides]]
 module = ["authlib.*"]

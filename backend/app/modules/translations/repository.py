@@ -2,17 +2,20 @@ from typing import Optional
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.errors import constraint_name
+from app.core.db.models.active_locale import ActiveLocale
 from app.core.db.models.bot_translation import BotTranslation
 from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.translations.dto import TranslationEntryDto
 from app.modules.translations.serializer import serialize_to_fluent
 
 
-class TranslationsRepository:
+class TranslationRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -27,6 +30,24 @@ class TranslationsRepository:
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
+
+    async def list_active_locales(self) -> list[Locale]:
+        result = await self.session.execute(select(ActiveLocale.locale))
+        return list(result.scalars())
+
+    async def add_active_locale(self, locale: Locale) -> None:
+        self.session.add(ActiveLocale(locale=locale))
+        try:
+            await self.session.flush()
+        except IntegrityError as error:
+            if constraint_name(error) != "ux_active_locales_locale":
+                raise
+            raise ConflictError(
+                f"Locale already active: {locale}", code=ErrorCode.LOCALE_ALREADY_ACTIVE
+            ) from error
+
+    async def remove_active_locale(self, locale: Locale) -> None:
+        await self.session.execute(delete(ActiveLocale).where(ActiveLocale.locale == locale))
 
     async def list_all(self) -> list[TranslationEntryDto]:
         result = await self.session.execute(
@@ -172,6 +193,3 @@ class TranslationsRepository:
                 for entry in entries
             ],
         )
-
-    async def delete_locale(self, locale: Locale) -> None:
-        await self.session.execute(delete(BotTranslation).where(BotTranslation.locale == locale))

@@ -1,6 +1,4 @@
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Final, Optional
+from typing import Final
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
@@ -10,13 +8,11 @@ from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import (
-    DEFAULT_PAGE_SIZE,
-    DeletedFilter,
+    ListUsersDto,
     UserListItemDto,
-    UserSort,
 )
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.list_blacklist_matches import BlacklistMatchOrigin, identities_of
+from app.modules.users.usecases.list_blacklist_matches import identities_of
 
 # Staff accounts (ADMIN/OWNER) are listed via ListAdminsUseCase, gated by the
 # non-grantable ADMINS_MANAGE permission -- USERS_VIEW is grantable to a
@@ -36,27 +32,7 @@ def resolve_list_roles(actor: Actor, include_staff: bool) -> list[Role]:
     return STAFF_ROLES
 
 
-@dataclass(frozen=True, kw_only=True)
-class ListUsersInput:
-    search: Optional[str] = None
-    role: Optional[Role] = None
-    is_blocked: Optional[bool] = None
-    include_staff: bool = False
-    created_from: Optional[datetime] = None
-    created_to: Optional[datetime] = None
-    has_discount: Optional[bool] = None
-    has_subscription: Optional[bool] = None
-    is_trial_available: Optional[bool] = None
-    # blocked users whose telegram id/email is on that blacklist origin
-    blocked_by: Optional[BlacklistMatchOrigin] = None
-    deleted: DeletedFilter = "exclude"
-    sort: UserSort = "created_at"
-    descending: bool = True
-    page: int = 1
-    page_size: int = DEFAULT_PAGE_SIZE
-
-
-class ListUsersUseCase(UseCase[ListUsersInput, tuple[list[UserListItemDto], int]]):
+class ListUsersUseCase(UseCase[ListUsersDto, tuple[list[UserListItemDto], int]]):
     required_permission = Permission.USERS_VIEW
 
     def __init__(
@@ -69,9 +45,7 @@ class ListUsersUseCase(UseCase[ListUsersInput, tuple[list[UserListItemDto], int]
         self._blacklist_repository = blacklist_repository
         self._uow = uow
 
-    async def _execute(
-        self, actor: Actor, data: ListUsersInput
-    ) -> tuple[list[UserListItemDto], int]:
+    async def _execute(self, actor: Actor, data: ListUsersDto) -> tuple[list[UserListItemDto], int]:
         async with self._uow:
             allowed_roles = resolve_list_roles(actor, data.include_staff)
             roles = [data.role] if data.role in allowed_roles else allowed_roles

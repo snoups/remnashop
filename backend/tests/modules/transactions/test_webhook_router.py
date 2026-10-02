@@ -10,7 +10,6 @@ from dishka.integrations.fastapi import setup_dishka
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.modules.transactions.usecases.handle_payment_webhook as webhook_usecase_module
 from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
@@ -23,15 +22,12 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.utils.time import datetime_now
-from app.modules.pricing import PricingRepository
 from app.modules.providers import get_module_providers
-from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions import PurchaseSubscriptionDispatch
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.gateways.base import ProviderPayment, WebhookAck, WebhookSignal
-from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
-from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
+from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 _CONFIRMED = ProviderPayment(
@@ -98,23 +94,31 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
-class _TransactionsProvider(Provider):
-    scope = Scope.REQUEST
+class _DispatchProvider(Provider):
+    scope = Scope.APP
 
-    transaction_repository = provide(TransactionRepository)
-    subscription_repository = provide(SubscriptionRepository)
-    # referral settings read the pricing anchor; the pricing usecase graph isn't needed
-    pricing_repository = provide(PricingRepository)
-    handle_payment_webhook_use_case = provide(HandlePaymentWebhookUseCase)
-    payment_gateway_factory = provide(PaymentGatewayFactory, scope=Scope.APP)
+    def __init__(self, purchase_dispatch: RecordingDispatch) -> None:
+        super().__init__()
+        self._purchase_dispatch = purchase_dispatch
+
+    @provide
+    def purchase_dispatch(self) -> PurchaseSubscriptionDispatch:
+        return self._purchase_dispatch
 
 
 @pytest.fixture
-async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
+def purchase_dispatch() -> RecordingDispatch:
+    return RecordingDispatch()
+
+
+@pytest.fixture
+async def test_container(
+    session: AsyncSession, config: AppConfig, purchase_dispatch: RecordingDispatch
+) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
         *get_module_providers(),
-        _TransactionsProvider(),
+        _DispatchProvider(purchase_dispatch),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -220,33 +224,26 @@ async def test_webhook_already_paid_order_is_a_noop_and_never_confirms(
 
 
 async def test_webhook_confirmed_payment_marks_paid_and_dispatches_purchase(
-    client, transaction_repository, uow, user_id, plan_id, monkeypatch
+    client, transaction_repository, uow, user_id, plan_id, monkeypatch, purchase_dispatch
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
             _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-2")
         )
     _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-key-2")))
-    dispatched: list[dict[str, object]] = []
-
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
-
-    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
-
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
 
     assert response.status_code == 200
     fetched = await transaction_repository.get_by_id(order.id)
     assert fetched.status is TransactionStatus.PAID
     assert fetched.external_payment_id == "yk-2"
-    assert len(dispatched) == 1
-    assert dispatched[0]["idempotency_key"] == "wh-key-2"
-    assert dispatched[0]["base_price"] == "500.00"
+    assert len(purchase_dispatch.messages) == 1
+    assert purchase_dispatch.messages[0]["idempotency_key"] == "wh-key-2"
+    assert purchase_dispatch.messages[0]["base_price"] == "500.00"
 
 
 async def test_webhook_confirmed_test_payment_marks_paid_without_provisioning(
-    client, transaction_repository, uow, user_id, plan_id, monkeypatch
+    client, transaction_repository, uow, user_id, plan_id, monkeypatch, purchase_dispatch
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
@@ -256,42 +253,28 @@ async def test_webhook_confirmed_test_payment_marks_paid_without_provisioning(
             )
         )
     _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-test")))
-    dispatched: list[dict[str, object]] = []
-
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
-
-    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
-
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
 
     assert response.status_code == 200
     assert (await transaction_repository.get_by_id(order.id)).status is TransactionStatus.PAID
-    assert dispatched == []
+    assert purchase_dispatch.messages == []
     assert await transaction_repository.count_paid_since(datetime_now() - timedelta(days=1)) == 0
 
 
 async def test_webhook_unconfirmed_payment_returns_502_and_leaves_the_order_pending(
-    client, transaction_repository, uow, user_id, plan_id, monkeypatch
+    client, transaction_repository, uow, user_id, plan_id, monkeypatch, purchase_dispatch
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
             _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-key-4")
         )
     _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-key-4"), payment=None))
-    dispatched: list[dict[str, object]] = []
-
-    async def _fake_kiq(**kwargs: object) -> None:
-        dispatched.append(kwargs)
-
-    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
-
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
 
     assert response.status_code == 502
     fetched = await transaction_repository.get_by_id(order.id)
     assert fetched.status is TransactionStatus.PENDING
-    assert dispatched == []
+    assert purchase_dispatch.messages == []
 
 
 async def test_webhook_confirm_exception_returns_502(
@@ -390,11 +373,6 @@ async def test_webhook_late_payment_on_a_canceled_order_is_still_honoured(
         await transaction_repository.mark_status(order.id, TransactionStatus.CANCELED)
     _install_stub(monkeypatch, _StubGateway(signal=_paid_signal("wh-fail-4")))
 
-    async def _fake_kiq(**kwargs: object) -> None:
-        return None
-
-    monkeypatch.setattr(webhook_usecase_module.purchase_subscription_task, "kiq", _fake_kiq)
-
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
 
     assert response.status_code == 200
@@ -483,9 +461,9 @@ async def test_yookassa_webhook_spoofed_forwarded_for_is_not_trusted(client) -> 
     assert response.status_code == 403
 
 
-async def test_yookassa_ip_check_can_be_switched_off(client, gateways_repository, uow) -> None:
+async def test_yookassa_ip_check_can_be_switched_off(client, gateway_repository, uow) -> None:
     async with uow:
-        await gateways_repository.update_settings(
+        await gateway_repository.update_settings(
             PaymentGatewayType.YOOKASSA, {"verify_ip": "false"}
         )
 

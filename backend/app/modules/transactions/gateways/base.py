@@ -2,7 +2,7 @@ import ipaddress
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import ClassVar, Final, Optional
+from typing import ClassVar, Final, NewType, Optional
 
 import httpx
 
@@ -10,8 +10,9 @@ from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.transactions.dto import TransactionDto
 
-_HTTP_TIMEOUT_S: Final[float] = 20.0
-http_client: Final[httpx.AsyncClient] = httpx.AsyncClient(timeout=_HTTP_TIMEOUT_S)
+HTTP_TIMEOUT_S: Final[float] = 20.0
+# one pooled client for every provider call, owned by the DI container
+PaymentHttpClient = NewType("PaymentHttpClient", httpx.AsyncClient)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -78,8 +79,16 @@ class PaymentGateway(ABC):
     # means the signature (or the confirm() re-fetch) is the only check.
     trusted_networks: ClassVar[tuple[str, ...]] = ()
 
-    def __init__(self, *, settings: dict[str, str], webhook_url: str, return_url: str) -> None:
+    def __init__(
+        self,
+        *,
+        settings: dict[str, str],
+        webhook_url: str,
+        return_url: str,
+        http: PaymentHttpClient,
+    ) -> None:
         self._settings = settings
+        self._http = http
         self._webhook_url = webhook_url
         self._return_url = return_url
 

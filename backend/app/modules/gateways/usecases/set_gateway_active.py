@@ -9,7 +9,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.gateways.dto import PaymentGatewayDto, SetGatewayActiveDto
 from app.modules.gateways.events import GatewayChangedEvent
-from app.modules.gateways.repository import GatewaysRepository
+from app.modules.gateways.repository import GatewayRepository
 
 
 class SetGatewayActiveUseCase(UseCase[SetGatewayActiveDto, PaymentGatewayDto]):
@@ -17,17 +17,17 @@ class SetGatewayActiveUseCase(UseCase[SetGatewayActiveDto, PaymentGatewayDto]):
 
     def __init__(
         self,
-        gateways_repository: GatewaysRepository,
+        gateway_repository: GatewayRepository,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
-        self._gateways_repository = gateways_repository
+        self._gateway_repository = gateway_repository
         self._event_publisher = event_publisher
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: SetGatewayActiveDto) -> PaymentGatewayDto:
         async with self._uow:
-            current = await self._gateways_repository.get_by_type(data.type)
+            current = await self._gateway_repository.get_by_type(data.type)
             if data.is_active and not current.is_configured:
                 raise ValidationError(
                     f"Gateway '{data.type.value}' is not configured",
@@ -35,7 +35,7 @@ class SetGatewayActiveUseCase(UseCase[SetGatewayActiveDto, PaymentGatewayDto]):
                 )
 
         async with self._uow:
-            gateway = await self._gateways_repository.set_active(data.type, data.is_active)
+            gateway = await self._gateway_repository.set_active(data.type, data.is_active)
             await self._event_publisher.publish(
                 GatewayChangedEvent(
                     user=actor,

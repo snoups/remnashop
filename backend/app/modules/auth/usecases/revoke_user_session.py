@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
@@ -7,16 +5,10 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
+from app.modules.auth.dto import RevokeUserSessionDto
 from app.modules.auth.events import UserSessionRevokedByAdminEvent
 from app.modules.auth.repository import SessionRepository
 from app.modules.users import UserRepository
-
-
-@dataclass(frozen=True, kw_only=True)
-class RevokeUserSessionDto:
-    user_id: int
-    session_id: int
-    client_ip: str
 
 
 class RevokeUserSessionUseCase(UseCase[RevokeUserSessionDto, None]):

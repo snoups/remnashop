@@ -24,7 +24,21 @@ from app.modules.blacklist import BlacklistRepository
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
 from app.modules.passkeys.dto import CreatePasskeyCredentialDto
 from app.modules.passkeys.repository import PasskeyRepository
-from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
+from app.modules.users.dto import (
+    CreateAdminDto,
+    CreateUserDto,
+    DeleteAdminDto,
+    DeleteUserDto,
+    DemoteAdminDto,
+    ListUsersDto,
+    PromoteToAdminDto,
+    RegisterTelegramUserDto,
+    SetUserPersonalDiscountDto,
+    UpdateAdminDto,
+    UpdateSecuritySettingsDto,
+    UpdateUserDto,
+    UserDto,
+)
 from app.modules.users.events import (
     AdminCreatedEvent,
     AdminDeletedEvent,
@@ -38,27 +52,17 @@ from app.modules.users.events import (
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
     BlockUserUseCase,
-    CreateAdminDto,
     CreateAdminUseCase,
-    DeleteAdminDto,
     DeleteAdminUseCase,
-    DeleteUserDto,
     DeleteUserUseCase,
-    DemoteAdminDto,
     DemoteAdminUseCase,
     ListAdminsUseCase,
-    ListUsersInput,
     ListUsersUseCase,
-    PromoteToAdminDto,
     PromoteToAdminUseCase,
-    RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
-    SetUserPersonalDiscountDto,
     SetUserPersonalDiscountUseCase,
-    UpdateAdminDto,
     UpdateAdminUseCase,
     UpdateOwnSecuritySettingsUseCase,
-    UpdateSecuritySettingsDto,
 )
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -748,7 +752,7 @@ async def test_list_users_excludes_admins_and_owner(
         await uow.commit()
 
     list_use_case = ListUsersUseCase(user_repository, blacklist_repository, uow)
-    users, _total = await list_use_case(OWNER, ListUsersInput())
+    users, _total = await list_use_case(OWNER, ListUsersDto())
 
     names = {u.name for u in users}
     assert "Regular10" in names
@@ -776,7 +780,7 @@ async def test_admin_with_view_users_grant_does_not_see_admins_or_owner(
     granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_VIEW"]})
     list_use_case = ListUsersUseCase(user_repository, blacklist_repository, uow)
 
-    users, _total = await list_use_case(granted_admin, ListUsersInput())
+    users, _total = await list_use_case(granted_admin, ListUsersDto())
 
     names = {u.name for u in users}
     assert "Regular12" in names
@@ -802,7 +806,7 @@ async def test_owner_with_include_staff_sees_admins_and_owner(
         await uow.commit()
 
     list_use_case = ListUsersUseCase(user_repository, blacklist_repository, uow)
-    users, _total = await list_use_case(OWNER, ListUsersInput(include_staff=True))
+    users, _total = await list_use_case(OWNER, ListUsersDto(include_staff=True))
 
     names = {u.name for u in users}
     assert {"Regular13", "owner13", "admin13"} <= names
@@ -817,7 +821,7 @@ async def test_admin_with_view_users_grant_cannot_use_include_staff(
     list_use_case = ListUsersUseCase(user_repository, blacklist_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await list_use_case(granted_admin, ListUsersInput(include_staff=True))
+        await list_use_case(granted_admin, ListUsersDto(include_staff=True))
 
 
 async def test_admin_with_view_users_revoked_cannot_list_users(
@@ -846,7 +850,7 @@ async def test_admin_with_view_users_grant_can_list_users(
     granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_VIEW"]})
     list_use_case = ListUsersUseCase(user_repository, blacklist_repository, uow)
 
-    everyone, _total = await list_use_case(granted_admin, ListUsersInput())
+    everyone, _total = await list_use_case(granted_admin, ListUsersDto())
 
     assert "Regular11" in {u.name for u in everyone}
 
@@ -2004,9 +2008,9 @@ async def test_list_users_filters_blocked_by_origin(
         await uow.commit()
     list_use_case = ListUsersUseCase(user_repository, blacklist_repository, uow)
 
-    by_manual, _ = await list_use_case(OWNER, ListUsersInput(blocked_by="manual"))
+    by_manual, _ = await list_use_case(OWNER, ListUsersDto(blocked_by="manual"))
     assert [u.name for u in by_manual] == ["Manual"]
 
-    by_lists, total = await list_use_case(OWNER, ListUsersInput(blocked_by="lists"))
+    by_lists, total = await list_use_case(OWNER, ListUsersDto(blocked_by="lists"))
     assert [u.name for u in by_lists] == ["Listed"]
     assert total == 1
