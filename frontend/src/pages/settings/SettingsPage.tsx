@@ -12,14 +12,12 @@ import {
 import { useTranslation } from "react-i18next";
 import { Outlet, useMatch } from "react-router-dom";
 
-import { useBounceStrength } from "@shared/lib/bounceState";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { TabBar } from "@shared/ui/TabBar";
 import type { TabBarItem } from "@shared/ui/TabBar";
 
 export function SettingsPage() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const userState = useCurrentUser();
   const isOwner = userState.kind === "ready" && userState.data.role === "OWNER";
   const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
@@ -77,7 +75,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <TabBar items={items} bounceStrength={bounceStrength} />
+      <TabBar items={items} />
       <div className="mt-6">
         <Outlet />
       </div>

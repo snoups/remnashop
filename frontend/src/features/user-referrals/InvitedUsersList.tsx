@@ -7,7 +7,7 @@ import { type InvitedUser, listInvitedUsers } from "@entities/referrals/api";
 import { userCardLink } from "@entities/user/api";
 import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { formatRewardAmounts, initials, userHandle } from "@features/user-referrals/format";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { Badge } from "@shared/ui/Badge";
@@ -59,7 +59,6 @@ export function InvitedUsersList({ userId }: { userId: number }) {
 
 function InvitedUsersPage({ userId, level, search }: { userId: number; level?: number; search: string }) {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const navigate = useNavigate();
   const filters = { level, search: search || undefined, pageSize: PAGE_SIZE };
   const [state, , setData] = useAsyncResource((signal) => listInvitedUsers(userId, filters, signal));
@@ -113,11 +112,10 @@ function InvitedUsersPage({ userId, level, search }: { userId: number; level?: n
               type="button"
               disabled={!item.user}
               onClick={() => openUser(item)}
-              {...bounceTap(bounceStrength, 0.03)}
+              {...bounceTap(0.03)}
               className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors enabled:hover:bg-white/[0.04]"
             >
               <span
-                aria-hidden
                 className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground"
               >
                 {item.user?.name ? initials(item.user.name) : "?"}

@@ -157,7 +157,7 @@ export function HintsSection() {
       <Specimen name="GuideDialog" usage={k("u.guide")} stage="stretch">
         <div className="flex items-center justify-between rounded-full bg-white/[0.04] px-3 py-2">
           <span className="text-sm text-foreground/80">{k("s.guideRow")}</span>
-          <GuideDialog ariaLabel={k("s.guideOpen")} title={k("s.guideTitle")}>
+          <GuideDialog title={k("s.guideTitle")}>
             <div>
               <h3 className="text-sm font-bold text-foreground">{k("s.guideStep")}</h3>
               <p className="mt-2">{k("s.guideStepText")}</p>
@@ -165,7 +165,6 @@ export function HintsSection() {
                 <CopyableValue
                   label={k("s.guideValue")}
                   value="https://shop.example.com/oauth2/callback/github"
-                  copyAria={k("s.copy")}
                 />
               </div>
               <p className="mt-2 text-[12px] text-muted-foreground">{k("s.guideNote")}</p>
@@ -177,18 +176,18 @@ export function HintsSection() {
         <div className="flex flex-wrap items-center justify-center gap-6 px-24 py-8">
           {TOOLTIP_SIDES.map((side) => (
             <div key={side} className="flex flex-col items-center gap-1.5">
-              <IconButton size="9" tone="glass" aria-label={side} className="group relative">
+              <IconButton size="9" tone="glass" className="group relative">
                 <Settings className="size-4" />
                 <Tooltip text={k("s.tooltipSide", { side })} side={side} />
               </IconButton>
               <span className="font-mono text-[11px] text-muted-foreground">{side}</span>
             </div>
           ))}
-          <IconButton size="9" tone="glass" aria-label={k("s.delete")} className="group relative">
+          <IconButton size="9" tone="glass" className="group relative">
             <Trash2 className="size-4" />
             <Tooltip text={k("s.tooltipLong")} side="top" />
           </IconButton>
-          <Badge tone="warning" tabIndex={0} aria-label={t("dialogs.beta")} className="group relative outline-none">
+          <Badge tone="warning" tabIndex={0} className="group relative outline-none">
             {t("dialogs.beta")}
             <Tooltip text={k("s.tooltipBadge")} side="bottom" />
           </Badge>

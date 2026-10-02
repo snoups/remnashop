@@ -2,7 +2,8 @@ import { AlertCircle, BarChart3, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { type AdLink, getAdLinkStats } from "@entities/advertising/api";
-import { formatMoney, formatPercent, roiClassName } from "@entities/advertising/format";
+import { roiClassName } from "@entities/advertising/format";
+import { formatMoney, formatPercent } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { Card } from "@shared/ui/Card";
@@ -120,8 +121,6 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
             return (
               <div
                 key={day.day}
-                role="img"
-                aria-label={day.count > 0 ? `${heading}. ${split}` : heading}
                 className="group relative flex h-full flex-1 items-end"
               >
                 <div

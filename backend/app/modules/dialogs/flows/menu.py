@@ -4,9 +4,8 @@ from app.modules.dialogs import catalog
 
 
 def register_menu_metadata() -> None:
-    # Idempotent -- app.telegram.dialogs.catalog_menu.register_menu_catalog() calls
-    # this unconditionally on every entry (including re-entrant ones), so it must be
-    # safe to call more than once.
+    # Idempotent -- app.telegram.routers.menu.catalog.register_menu_catalog() calls
+    # this on every entry, so it must be safe to call more than once.
     if catalog.has_window("menu.main"):
         return
 

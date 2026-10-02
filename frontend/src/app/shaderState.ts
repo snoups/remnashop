@@ -45,15 +45,3 @@ export type ShaderUniforms = {
 export function buildHueRotationMatrix(angleRadians: number): Float32Array {
   return Float32Array.from(hueRotationCoefficients(angleRadians));
 }
-
-/**
- * Live handle onto the running shader's uniforms, for DebugPanel (dev-only)
- * to read/write directly — ShaderBackground's render loop already reads
- * `.value` off these objects every frame, so mutating them here takes effect
- * immediately with no extra plumbing. `uniforms` is null until the WebGL
- * setup effect has run, and reset to null on unmount.
- */
-export const shaderDebugState: { uniforms: ShaderUniforms | null; speed: number } = {
-  uniforms: null,
-  speed: DEFAULT_TIME_SCALE,
-};

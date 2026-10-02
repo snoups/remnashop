@@ -27,6 +27,7 @@ import type {
   RuntimeProcess,
 } from "@entities/overview/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
+import { formatBytes, formatMoney } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { PeriodPills } from "@shared/ui/PeriodPills";
@@ -84,7 +85,6 @@ function TrendChart({
   granularity: OverviewGranularity;
   valueName?: string;
 }) {
-  const { t } = useTranslation();
   const gradientId = useId();
   return (
     <div className="rounded-2xl border border-border bg-surface/40 p-4">
@@ -94,7 +94,7 @@ function TrendChart({
           {total && <p className="mt-1 text-2xl font-bold text-foreground">{total}</p>}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <PeriodPills value={days} onChange={onDaysChange} ariaLabel={t("dashboard.periodLabel")} />
+          <PeriodPills value={days} onChange={onDaysChange} />
           {badges && badges.length > 0 && (
             <div className="flex gap-1.5">
               {badges.map((badge) => (
@@ -201,7 +201,7 @@ function ChartCardMessage({ kind }: { kind: "loading" | "error" }) {
 }
 
 function RevenueCard({ refreshKey }: { refreshKey: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [days, setDays] = useState<OverviewPeriodDays>(7);
   const [state, setState] = useState<OverviewState>({ kind: "loading" });
 
@@ -224,7 +224,7 @@ function RevenueCard({ refreshKey }: { refreshKey: number }) {
 
   const revenueTotal =
     Object.entries(transactions.revenue_by_currency)
-      .map(([currency, amount]) => `${amount} ${currency}`)
+      .map(([currency, amount]) => formatMoney(amount, currency, i18n.language))
       .join(", ") || "—";
   const revenueSeries =
     days === 0
@@ -241,7 +241,7 @@ function RevenueCard({ refreshKey }: { refreshKey: number }) {
       onDaysChange={setDays}
       data={revenueChartData}
       color="var(--color-success)"
-      valueFormatter={(v) => `${v.toFixed(2)} ${transactions.report_currency}`}
+      valueFormatter={(v) => formatMoney(v, transactions.report_currency, i18n.language, true)}
       granularity={state.data.granularity}
     />
   );
@@ -408,18 +408,6 @@ function SubscriptionsDonut({ subscriptions }: { subscriptions: OverviewSubscrip
   );
 }
 
-function formatBytes(t: ReturnType<typeof useTranslation>["t"], bytes: number): string {
-  const unitKeys = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte"];
-  if (bytes < 1024) return `${bytes} ${t(`dashboard.runtime.units.${unitKeys[0]}`)}`;
-  let value = bytes / 1024;
-  let unitIndex = 1;
-  while (value >= 1024 && unitIndex < unitKeys.length - 1) {
-    value /= 1024;
-    unitIndex++;
-  }
-  return `${value.toFixed(1)} ${t(`dashboard.runtime.units.${unitKeys[unitIndex]}`)}`;
-}
-
 function formatUptime(t: ReturnType<typeof useTranslation>["t"], seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -447,7 +435,7 @@ const RUNTIME_PROCESS_LABELS: Record<string, string> = {
 };
 
 function RuntimeProcessCard({ process }: { process: RuntimeProcess }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface/40 p-4">
       <div className="flex items-center justify-between gap-2">
@@ -463,7 +451,7 @@ function RuntimeProcessCard({ process }: { process: RuntimeProcess }) {
       </div>
       <div className="flex items-center justify-between text-[12px]">
         <span className="text-muted-foreground">{t("dashboard.runtime.memory")}</span>
-        <span className="font-semibold text-foreground">{formatBytes(t, process.rss_bytes)}</span>
+        <span className="font-semibold text-foreground">{formatBytes(process.rss_bytes, i18n.language)}</span>
       </div>
       <div className="flex items-center justify-between text-[12px]">
         <span className="text-muted-foreground">{t("dashboard.runtime.uptime")}</span>
@@ -493,7 +481,7 @@ function RuntimeProcessCard({ process }: { process: RuntimeProcess }) {
 }
 
 function HostMemoryCard({ memory }: { memory: HostMemory }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const percent =
     memory.total_bytes > 0 ? Math.min(100, (memory.used_bytes / memory.total_bytes) * 100) : 0;
   return (
@@ -503,7 +491,7 @@ function HostMemoryCard({ memory }: { memory: HostMemory }) {
           {t("dashboard.runtime.ramUsage")}
         </span>
         <span className="text-[12px] text-muted-foreground">
-          {t("dashboard.runtime.totalRam")}: {formatBytes(t, memory.total_bytes)}
+          {t("dashboard.runtime.totalRam")}: {formatBytes(memory.total_bytes, i18n.language)}
         </span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.06]">
@@ -513,7 +501,7 @@ function HostMemoryCard({ memory }: { memory: HostMemory }) {
         />
       </div>
       <div className="mt-1.5 text-[11px] text-muted-foreground">
-        {formatBytes(t, memory.used_bytes)} ({percent.toFixed(0)}%)
+        {formatBytes(memory.used_bytes, i18n.language)} ({percent.toFixed(0)}%)
       </div>
     </div>
   );

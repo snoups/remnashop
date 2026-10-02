@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { anchorFor, type PopoverAnchor } from "@shared/lib/popover-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
@@ -44,7 +44,6 @@ export function SelectDropdown({
   size = "default",
   variant = "glass",
 }: SelectDropdownProps) {
-  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
@@ -64,17 +63,15 @@ export function SelectDropdown({
   const selectedLabel = selectedOption?.label ?? placeholder;
   const TriggerIcon = selectedOption?.icon ?? Icon;
 
-  const toggleOpen = () => {
-    setIsOpen((open) => {
-      const next = !open;
-      if (next) {
-        const trigger = triggerRef.current?.getBoundingClientRect();
-        if (trigger) setAnchor(anchorFor(trigger, POPOVER_MAX_HEIGHT));
-        setActiveIndex(Math.max(options.findIndex((option) => option.value === value), 0));
-      }
-      return next;
-    });
+  // measured on every open, keyboard included: the popover only renders with an anchor
+  const openMenu = () => {
+    const trigger = triggerRef.current?.getBoundingClientRect();
+    if (trigger) setAnchor(anchorFor(trigger, POPOVER_MAX_HEIGHT));
+    setActiveIndex(Math.max(options.findIndex((option) => option.value === value), 0));
+    setIsOpen(true);
   };
+
+  const toggleOpen = () => (isOpen ? setIsOpen(false) : openMenu());
 
   const selectIndex = (index: number) => {
     const option = options[index];
@@ -89,8 +86,7 @@ export function SelectDropdown({
       case "ArrowUp": {
         event.preventDefault();
         if (!isOpen) {
-          setIsOpen(true);
-          setActiveIndex(Math.max(options.findIndex((option) => option.value === value), 0));
+          openMenu();
         } else {
           const delta = event.key === "ArrowDown" ? 1 : -1;
           setActiveIndex((i) => Math.min(Math.max(i + delta, 0), options.length - 1));
@@ -138,10 +134,7 @@ export function SelectDropdown({
         onClick={toggleOpen}
         onKeyDown={handleTriggerKeyDown}
         disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-activedescendant={isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-        {...bounceTap(bounceStrength, 0.04)}
+        {...bounceTap(0.04)}
         className={`group flex w-full items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : "py-2 text-sm"} font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
       >
         <TriggerIcon className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
@@ -161,7 +154,6 @@ export function SelectDropdown({
               exit={{ opacity: 0, scale: 0.96, y: -4 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
               style={{ transformOrigin: "top" in anchor ? "top" : "bottom", ...anchor }}
-              role="listbox"
               id={`${baseId}-listbox`}
               onKeyDown={(event) => event.key === "Escape" && setIsOpen(false)}
               // z above Modal's own z-50: the popover lives in the body, so a
@@ -176,8 +168,6 @@ export function SelectDropdown({
                     key={option.value}
                     id={optionId(index)}
                     type="button"
-                    role="option"
-                    aria-selected={option.value === value}
                     onClick={() => selectIndex(index)}
                     onMouseEnter={() => setActiveIndex(index)}
                     initial="rest"

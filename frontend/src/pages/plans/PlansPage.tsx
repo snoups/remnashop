@@ -23,13 +23,13 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatMoney } from "@entities/advertising/format";
 import { deletePlan, listPlans, type Plan, type PlanAvailability, reorderPlans, updatePlan } from "@entities/plans/api";
 import { getPriceBook } from "@entities/pricing/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { PlanAccessDialog } from "@features/plan-access/PlanAccessDialog";
 import { PlanEditDialog } from "@features/plan-edit/PlanEditDialog";
 import { getErrorMessage } from "@shared/api/http";
+import { formatMoney } from "@shared/lib/format";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
@@ -178,7 +178,6 @@ export function PlansPage() {
           <SegmentedPills
             value={filter}
             onChange={setFilter}
-            ariaLabel={t("plans.filters.label")}
             options={[
               { value: "all", label: t("plans.filters.all") },
               { value: "active", label: t("plans.filters.active") },
@@ -327,7 +326,6 @@ function PlanCard({
     >
       <div className="flex items-start gap-2.5">
         <span
-          aria-hidden
           className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
             plan.is_active ? "bg-primary/10 text-primary" : "bg-white/[0.06] text-muted-foreground"
           }`}
@@ -356,7 +354,6 @@ function PlanCard({
           {sortable && (
             <IconButton size="8" className="cursor-grab touch-none active:cursor-grabbing"
               ref={setActivatorNodeRef}
-              aria-label={t("plans.dragHandle", { name: plan.name })}
               {...attributes}
               {...listeners}
             >
@@ -408,7 +405,7 @@ function PlanCard({
           <span className="truncate">{t(`plans.access.availability.${plan.availability}`)}</span>
         </Badge>
         {onToggleActive && (
-          <Switch checked={plan.is_active} onChange={onToggleActive} ariaLabel={t("plans.edit.isActiveLabel")} />
+          <Switch checked={plan.is_active} onChange={onToggleActive} />
         )}
       </div>
     </article>

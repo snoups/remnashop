@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { login } from "@entities/auth/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
@@ -18,7 +18,6 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +65,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             type="button"
             onClick={() => setShowPassword((value) => !value)}
             tabIndex={-1}
-            {...bounceTap(bounceStrength, 0.12)}
+            {...bounceTap(0.12)}
             className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
           >
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}

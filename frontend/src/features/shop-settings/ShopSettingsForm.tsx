@@ -114,13 +114,12 @@ export function ShopSettingsForm() {
               step="1"
               min="1"
               placeholder={t("settings.shop.unlimitedPlaceholder")}
-              aria-label={t("settings.shop.maxActiveSubscriptionsLabel")}
               value={maxActiveSubscriptions}
               onChange={(event) => setMaxActiveSubscriptions(event.target.value)}
               className="w-24 shrink-0"
             />
             {/* switch-sized gap, so this input lines up with the reset rows' inputs */}
-            <span aria-hidden className="mr-1 w-10 shrink-0" />
+            <span className="mr-1 w-10 shrink-0" />
           </div>
 
           <div className="mt-2 flex flex-col gap-1 border-t border-white/[0.08] pt-2">
@@ -196,14 +195,13 @@ function ResetRow({
         onKeyDown={blockNonIntegerKeys}
         step="1"
         min="0"
-        aria-label={t("settings.shop.cooldownHoursLabel")}
         value={cooldownHours}
         onChange={(event) => onCooldownChange(event.target.value)}
         disabled={!enabled}
         className="w-24 shrink-0"
       />
       <div className="mr-1 flex">
-        <Switch checked={enabled} onChange={onEnabledChange} ariaLabel={label} />
+        <Switch checked={enabled} onChange={onEnabledChange} />
       </div>
     </div>
   );

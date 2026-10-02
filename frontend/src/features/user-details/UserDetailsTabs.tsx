@@ -28,7 +28,7 @@ import type { UserListItem } from "@entities/user/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -211,7 +211,6 @@ export function SessionsTab({ userId }: { userId: number }) {
 
 export function EventsTab({ actorId }: { actorId: number }) {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [openedEntry, setOpenedEntry] = useState<EventLogEntry | null>(null);
   const [state, , setData] = useAsyncResource((signal) => listEventLog({ actorId, pageSize: EVENTS_PAGE_SIZE }, signal));
   const [page, setPage] = useState(1);
@@ -244,11 +243,10 @@ export function EventsTab({ actorId }: { actorId: number }) {
             key={entry.id}
             type="button"
             onClick={() => setOpenedEntry(entry)}
-            {...bounceTap(bounceStrength, 0.03)}
+            {...bounceTap(0.03)}
             className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors hover:bg-white/[0.04]"
           >
             <span
-              aria-hidden
               className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
             >
               <EventTypeIcon eventType={entry.event_type} className="size-3.5" />

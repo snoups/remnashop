@@ -16,6 +16,7 @@ import {
 import { PricingDiffList } from "@entities/pricing/PricingDiffList";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
+import { currencySymbol } from "@shared/lib/format";
 import { blockNonDecimalKeys, blockNonIntegerKeys, parseOptionalInt, toTwoDecimals } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
@@ -29,7 +30,6 @@ import { Field } from "@shared/ui/Field";
 const CURRENCIES: Currency[] = ["USD", "RUB", "XTR"];
 const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
 const ROUNDING_MODES: RoundingMode[] = ["INTEGER", "DECIMAL_2"];
-const CURRENCY_SYMBOLS: Record<Currency, string> = { USD: "$", XTR: "★", RUB: "₽" };
 
 
 interface CurrencyRatesPanelProps {
@@ -61,7 +61,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
         {canManageRates && (
           <div className="mt-4 grid items-center gap-3 md:grid-cols-2 xl:grid-cols-3">
             <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground xl:col-span-2">
-              <Info className="size-3.5 shrink-0" aria-hidden />
+              <Info className="size-3.5 shrink-0" />
               {t("pricing.anchor.description")}
             </p>
             <AnchorSwitcher anchorCurrency={book.settings.anchor_currency} onChanged={onChanged} />
@@ -190,12 +190,12 @@ function RateRow({
     >
       <div className="flex items-center gap-2.5">
         <span className="flex size-[34px] items-center justify-center rounded-[10px] border border-glass-border bg-white/[0.05] text-base font-bold text-foreground">
-          {CURRENCY_SYMBOLS[rate.currency]}
+          {currencySymbol(rate.currency)}
         </span>
         <span className="text-[15px] font-bold tracking-wide text-foreground">{rate.currency}</span>
         {isAnchor && (
           <Badge tone="accent" className="ml-auto">
-            <Anchor className="size-2.5" aria-hidden />
+            <Anchor className="size-2.5" />
             {t("pricing.anchor.badge")}
           </Badge>
         )}
@@ -312,9 +312,9 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
   };
 
   return (
-    <div role="group" aria-label={t("pricing.anchor.title")} className="flex w-full items-center gap-1 rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
+    <div className="flex w-full items-center gap-1 rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
       <span className="flex items-center gap-1.5 pl-3 pr-2 text-xs text-foreground">
-        <Anchor className="size-3.5" aria-hidden />
+        <Anchor className="size-3.5" />
         {t("pricing.anchor.title")}
       </span>
       {ANCHOR_CURRENCIES.map((currency) => (
@@ -322,7 +322,6 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
           key={currency}
           type="button"
           disabled={isLoading}
-          aria-pressed={currency === anchorCurrency}
           onClick={() => currency !== anchorCurrency && void handlePreview(currency)}
           className={`flex h-[30px] flex-1 items-center justify-center rounded-full px-3 text-[12.5px] transition-colors disabled:cursor-not-allowed ${
             currency === anchorCurrency ? "bg-accent text-primary" : "text-foreground/70 hover:bg-white/[0.06]"

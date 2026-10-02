@@ -5,15 +5,7 @@ import type { ReactNode } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { formatMoney } from "@entities/advertising/format";
-import {
-  CURRENCY_SYMBOL,
-  PAYMENT_STATUS_BADGE_TONE,
-  PURCHASE_TYPES,
-  getTransactionSummary,
-  listTransactions,
-  type TransactionItem,
-} from "@entities/transactions/api";
+import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, listTransactions, type TransactionItem } from "@entities/transactions/api";
 import { listUserPromocodeActivations, type UserPromocodeActivation } from "@entities/promocodes/api";
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
@@ -24,7 +16,8 @@ import { TransactionDetailsDialog } from "@features/transaction-details/Transact
 import { ReferralManagePanel } from "@features/user-referrals/ReferralManagePanel";
 import { ReferralKpis, ReferralProgramCard } from "@features/user-referrals/ReferralOverview";
 import { ResetReferralCodeButton } from "@features/user-referrals/ResetReferralCodeButton";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { currencySymbol, formatMoney } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
 import { Badge } from "@shared/ui/Badge";
@@ -203,7 +196,6 @@ export function AnalyticsTab({ userId }: { userId: number }) {
 
 export function TransactionsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const canViewDetails = usePermissions().includes("TRANSACTIONS_DETAIL_VIEW");
   const [state, , setData] = useAsyncResource((signal) =>
     listTransactions({ userId, pageSize: TRANSACTIONS_PAGE_SIZE }, signal),
@@ -235,17 +227,17 @@ export function TransactionsTab({ userId }: { userId: number }) {
       )}
       {state.kind === "ready" &&
         state.data.items.map((order) => {
-          const symbol = CURRENCY_SYMBOL[order.currency] ?? order.currency;
+          const symbol = currencySymbol(order.currency);
           return (
             <motion.button
               key={order.id}
               type="button"
               disabled={!canViewDetails}
               onClick={() => setOpenedOrder(order)}
-              {...(canViewDetails && bounceTap(bounceStrength, 0.03))}
+              {...(canViewDetails && bounceTap(0.03))}
               className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
             >
-              <span aria-hidden className={ROW_ICON_CLASSNAME}>
+              <span className={ROW_ICON_CLASSNAME}>
                 {symbol}
               </span>
               <span className="min-w-0 flex-1">
@@ -299,7 +291,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
       {state.kind === "ready" &&
         state.data.items.map((subscription) => (
           <div key={subscription.id} className={ROW_CLASSNAME}>
-            <span aria-hidden className={ROW_ICON_CLASSNAME}>
+            <span className={ROW_ICON_CLASSNAME}>
               <CreditCard className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1">
@@ -345,7 +337,7 @@ export function PromocodesTab({ userId }: { userId: number }) {
       {state.kind === "ready" &&
         state.data.map((activation) => (
           <div key={activation.activation_id} className={ROW_CLASSNAME}>
-            <span aria-hidden className={ROW_ICON_CLASSNAME}>
+            <span className={ROW_ICON_CLASSNAME}>
               <Ticket className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-foreground/90">

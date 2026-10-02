@@ -1,7 +1,6 @@
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { ComponentType } from "react";
-import { useTranslation } from "react-i18next";
 
 import { dismissToast, pauseToast, resumeToast, useToasts } from "@shared/lib/toast";
 import type { ToastVariant } from "@shared/lib/toast";
@@ -22,7 +21,6 @@ const VARIANT_COLOR: Record<ToastVariant, string> = {
 };
 
 export function ToastContainer() {
-  const { t } = useTranslation();
   const toasts = useToasts();
 
   return (
@@ -48,7 +46,6 @@ export function ToastContainer() {
               <p className="flex-1 text-[13px] leading-6 text-foreground">{item.message}</p>
               <IconButton size="8" className="-my-1 -mr-1"
                 onClick={() => dismissToast(item.id)}
-                aria-label={t("toast.close")}
               >
                 <X className="size-4" />
               </IconButton>

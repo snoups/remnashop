@@ -115,7 +115,6 @@ export function ApiTokensForm() {
         <OneTimeSecretDialog
           title={t("apiTokens.secretTitle")}
           value={revealedSecret}
-          copyAria={t("apiTokens.copy")}
           onDone={() => setRevealedSecret(null)}
         />
       )}
@@ -198,9 +197,7 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
   return (
     <div
       {...(canExpand && {
-        role: "button",
         tabIndex: 0,
-        "aria-expanded": isExpanded,
         onClick: toggleExpanded,
         onKeyDown: (event: React.KeyboardEvent) => {
           if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
@@ -228,7 +225,7 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
               ref={areaRef}
               className={`relative mt-1.5 flex min-w-0 flex-1 gap-1 ${isExpanded ? "flex-wrap" : "overflow-hidden"}`}
             >
-              <div aria-hidden ref={measureRef} className="invisible absolute flex gap-1">
+              <div ref={measureRef} className="invisible absolute flex gap-1">
                 {token.permissions.map((permission) => (
                   <Tag key={permission}>
                     {t(`permissions.${permission}`)}
@@ -294,7 +291,6 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
           event.stopPropagation();
           onRevoke();
         }}
-        aria-label={t("apiTokens.revoke")}
       >
         <Trash2 className="size-4" />
       </IconButton>

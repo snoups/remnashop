@@ -37,13 +37,13 @@ import {
   type UsersLocationState,
 } from "@entities/user/api";
 import { deleteAdmin } from "@entities/admin/api";
-import { formatPercent } from "@entities/advertising/format";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import { UserDetailsDialog, type UserDetailsFollowUp } from "@features/user-details/UserDetailsDialog";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
 import { UserSessionsDialog } from "@features/user-sessions/UserSessionsDialog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { formatPercent } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { formatDate, formatRelative } from "@shared/lib/relative-time";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
@@ -141,7 +141,6 @@ function FilterSelect({
 
 export function UsersPage() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [searchInput, setSearchInput] = useUrlSearch();
@@ -375,7 +374,6 @@ export function UsersPage() {
       <button
         type="button"
         onClick={() => toggleSort(by)}
-        aria-label={t("users.sortBy", { column: label })}
         className={`flex items-center gap-1 uppercase transition-colors hover:text-foreground ${
           isActive ? "text-foreground" : ""
         }`}
@@ -386,12 +384,12 @@ export function UsersPage() {
     );
   };
 
-  const channels = (user: UserListItem): { key: string; icon: LucideIcon; label: string }[] =>
+  const channels = (user: UserListItem): { key: string; icon: LucideIcon }[] =>
     [
-      user.telegram_id !== null && { key: "telegram", icon: Send, label: t("users.channels.telegram") },
-      user.email && { key: "email", icon: Mail, label: t("users.channels.email") },
-      user.login && { key: "login", icon: KeyRound, label: t("users.channels.login") },
-    ].filter((channel): channel is { key: string; icon: LucideIcon; label: string } => Boolean(channel));
+      user.telegram_id !== null && { key: "telegram", icon: Send },
+      user.email && { key: "email", icon: Mail },
+      user.login && { key: "login", icon: KeyRound },
+    ].filter((channel): channel is { key: string; icon: LucideIcon } => Boolean(channel));
 
   return (
     <div className="flex flex-col gap-4">
@@ -543,18 +541,16 @@ export function UsersPage() {
                   return (
                     <motion.div
                       key={user.id}
-                      {...bounceTap(bounceStrength, 0.03)}
+                      {...bounceTap(0.03)}
                       className={`${ROW_GRID_CLASSNAME} relative ${LIST_ROW_CLASS} hover:bg-white/[0.04] has-[[aria-expanded=true]]:z-20`}
                     >
                       {/* whole-row hit area; sits under the action menu (z-10) */}
                       <button
                         type="button"
                         onClick={() => setDetailsUser(user)}
-                        aria-label={`${t("users.details.button")}: ${displayName}`}
                         className="absolute inset-0 cursor-pointer rounded-full"
                       />
                       <span
-                        aria-hidden
                         className={`flex size-9 items-center justify-center rounded-full text-[12.5px] font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
                       >
                         {isDeleted ? <Trash2 className="size-4" /> : getInitials(user)}
@@ -577,11 +573,9 @@ export function UsersPage() {
                         </span>
                       </span>
                       <span className="flex flex-wrap gap-1">
-                        {channels(user).map(({ key, icon: Icon, label }) => (
+                        {channels(user).map(({ key, icon: Icon }) => (
                           <span
                             key={key}
-                            role="img"
-                            aria-label={label}
                             className="flex size-6 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground"
                           >
                             <Icon className="size-3" />

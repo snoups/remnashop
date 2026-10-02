@@ -1,10 +1,10 @@
 import { Gift, Hash, UserPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { formatMoney } from "@entities/advertising/format";
 import { getUserReferralRevenue, type ReferralStats } from "@entities/referrals/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { REWARD_TYPES, formatReward, userHandle } from "@features/user-referrals/format";
+import { formatMoney } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { InfoRow } from "@shared/ui/InfoRow";

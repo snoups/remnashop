@@ -212,7 +212,6 @@ export function SubscriptionsPage() {
         <SegmentedPills
           value={status}
           onChange={setStatus}
-          ariaLabel={t("subscriptions.filters.status")}
           options={[
             { value: "", label: t("subscriptions.filters.all") },
             ...STATUSES.map((s) => ({ value: s, label: t(`subscriptions.status.${s}`) })),
@@ -279,7 +278,7 @@ export function SubscriptionsPage() {
                     <GroupToggle
                       open={!collapsedGroups.has(group.key)}
                       onToggle={() => toggleGroup(group.key)}
-                      leading={<span aria-hidden className={`-ml-1 size-1.5 rounded-full ${GROUP_DOT_CLASSNAME[group.key]}`} />}
+                      leading={<span className={`-ml-1 size-1.5 rounded-full ${GROUP_DOT_CLASSNAME[group.key]}`} />}
                       label={t(`subscriptions.groups.${group.key}`)}
                       count={group.items.length}
                     />
@@ -313,7 +312,6 @@ export function SubscriptionsPage() {
                           className={`${ROW_GRID_CLASSNAME} ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
                         >
                           <span
-                            aria-hidden
                             className={`flex size-9 items-center justify-center rounded-full ${
                               subscription.status === "ACTIVE"
                                 ? "bg-primary/10 text-primary"

@@ -95,7 +95,7 @@ function AdLinkCreateDialogBody({
 
   return (
     <>
-      <DialogHeader icon={Link2} title={t("advertising.create.title")} closeLabel={t("advertising.create.close")} />
+      <DialogHeader icon={Link2} title={t("advertising.create.title")} />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3">
@@ -151,7 +151,6 @@ function AdLinkCreateDialogBody({
                   placeholder={t("advertising.create.codePlaceholder")}
                   maxLength={AD_LINK_CODE_MAX_LENGTH}
                   aria-invalid={isCodeInvalid}
-                  aria-describedby={isCodeInvalid ? "adlink-code-hint" : undefined}
                   className="flex-1 font-mono"
                 />
                 {canGenerateCode && (

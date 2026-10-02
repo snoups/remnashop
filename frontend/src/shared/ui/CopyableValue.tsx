@@ -1,21 +1,24 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+
+import { copyToClipboard } from "@shared/lib/clipboard";
 import { IconButton } from "@shared/ui/IconButton";
 
 interface CopyableValueProps {
   /** omit when the surrounding Field/Card already names the value */
   label?: string;
   value: string;
-  copyAria: string;
 }
 
-export function CopyableValue({ label, value, copyAria }: CopyableValueProps) {
+export function CopyableValue({ label, value }: CopyableValueProps) {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard?.writeText(value).catch(() => {});
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 1500);
+    void copyToClipboard(value).then((copied) => {
+      if (!copied) return;
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1500);
+    });
   };
 
   return (
@@ -30,7 +33,6 @@ export function CopyableValue({ label, value, copyAria }: CopyableValueProps) {
       >
         <span className="min-w-0 truncate font-mono text-[13px] text-foreground">{value}</span>
         <IconButton size="7" tone="group"
-          aria-label={copyAria}
         >
           {isCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
         </IconButton>

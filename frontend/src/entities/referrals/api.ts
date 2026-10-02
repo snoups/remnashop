@@ -81,15 +81,6 @@ export function resetUserReferralCode(userId: number): Promise<ReferralStats> {
   return apiPost<ReferralStats, Record<string, never>>(`/users/${userId}/referral-code/actions/reset`, {});
 }
 
-export interface ReferralLinks {
-  bot_url: string | null;
-  webcabinet_url: string | null;
-}
-
-export function getUserReferralLinks(userId: number, signal?: AbortSignal): Promise<ReferralLinks> {
-  return apiGet<ReferralLinks>(`/users/${userId}/referral-links`, signal);
-}
-
 export const REFERRALS_PAGE_SIZE = 50;
 
 export interface ReferralUser {

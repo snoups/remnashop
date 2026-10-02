@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useEffect, useId, useRef } from "react";
 import type { ComponentType } from "react";
 
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { ActivePill } from "@shared/ui/ActivePill";
 import { BounceIcon } from "@shared/ui/BounceIcon";
@@ -22,7 +22,6 @@ export function DialogTabs<T extends string>({
   activeKey: T;
   onSelect: (key: T) => void;
 }) {
-  const bounceStrength = useBounceStrength();
   const wheelRef = useHorizontalWheelScroll<HTMLDivElement>();
   const stripRef = useRef<HTMLDivElement | null>(null);
   const pillId = useId();
@@ -44,7 +43,6 @@ export function DialogTabs<T extends string>({
           stripRef.current = el;
           wheelRef(el);
         }}
-        role="tablist"
         className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full"
       >
         {items.map((item) => {
@@ -53,7 +51,6 @@ export function DialogTabs<T extends string>({
             <motion.button
               key={item.key}
               type="button"
-              role="tab"
               aria-selected={isActive}
               onClick={() => onSelect(item.key)}
               // flex-1 without min-w-0: equal widths while they fit, never narrower than the label
@@ -63,11 +60,10 @@ export function DialogTabs<T extends string>({
               whileTap="tap"
             >
               {isActive ? (
-                <ActivePill layoutId={pillId} bounceStrength={bounceStrength} />
+                <ActivePill layoutId={pillId} />
               ) : (
                 <motion.span
-                  aria-hidden
-                  variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+                  variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
                   className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
                 />
               )}

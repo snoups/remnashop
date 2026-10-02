@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import { getDebugState } from "@shared/lib/debug-bar";
+import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 import { toast } from "@shared/lib/toast";
 
 import en from "./locales/en.json";
@@ -17,7 +18,7 @@ function isSupportedLanguage(value: string | null): value is SupportedLanguage {
 }
 
 function detectInitialLanguage(): SupportedLanguage {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = readStorage(STORAGE_KEY);
   if (isSupportedLanguage(stored)) return stored;
 
   const browserLanguage = navigator.language.slice(0, 2);
@@ -43,8 +44,12 @@ void i18n.use(initReactI18next).init({
   },
 });
 
+// lang on <html> drives the browser's own hyphenation, spellcheck and translate offer
+document.documentElement.lang = i18n.language;
+
 i18n.on("languageChanged", (language) => {
-  localStorage.setItem(STORAGE_KEY, language);
+  writeStorage(STORAGE_KEY, language);
+  document.documentElement.lang = language;
 });
 
 export default i18n;

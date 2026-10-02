@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogFlow, DialogWindow } from "@entities/dialogs/api";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { TAP_PILL_SCALE, bounceTap } from "@shared/lib/bounceState";
 import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { CreateWindowDialog } from "@features/dialog-canvas-editor/CreateWindowDialog";
@@ -55,7 +55,6 @@ function WindowChip({
   isUnreachable,
   isDirty,
   canDelete,
-  bounceStrength,
   onSelect,
   onDelete,
 }: {
@@ -65,7 +64,6 @@ function WindowChip({
   isUnreachable: boolean;
   isDirty: boolean;
   canDelete: boolean;
-  bounceStrength: number;
   onSelect: () => void;
   onDelete: () => void;
 }) {
@@ -78,8 +76,7 @@ function WindowChip({
     >
       {/* Only the pill behind the row scales on tap, same split as TabBar. */}
       <motion.span
-        aria-hidden
-        variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+        variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
         className={`absolute inset-0 rounded-full transition-colors ${
           isSelected ? "bg-accent" : "group-hover:bg-white/[0.04]"
         }`}
@@ -102,7 +99,6 @@ function WindowChip({
         <button
           type="button"
           onClick={onDelete}
-          aria-label={t("dialogs.windowList.deleteWindow")}
           className="relative z-10 cursor-pointer px-1 text-[13px] text-muted-foreground opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
         >
           ×
@@ -126,7 +122,6 @@ export function WindowSwitcher({
   onDelete,
 }: WindowSwitcherProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DialogWindow | null>(null);
   // only what somebody clicked is remembered; everything else starts expanded
@@ -156,8 +151,7 @@ export function WindowSwitcher({
               className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
             >
               <motion.span
-                aria-hidden
-                variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+                variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
                 className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
               />
               <ChevronRight
@@ -180,7 +174,6 @@ export function WindowSwitcher({
                   isUnreachable={unreachableKeys.has(window.key)}
                   isDirty={window.key === dirtyKey}
                   canDelete={canDelete}
-                  bounceStrength={bounceStrength}
                   onSelect={() => onSelect(window.key)}
                   onDelete={() => setDeleteTarget(window)}
                 />
@@ -193,7 +186,7 @@ export function WindowSwitcher({
         <motion.button
           type="button"
           onClick={() => setIsCreateOpen(true)}
-          {...bounceTap(bounceStrength)}
+          {...bounceTap()}
           className="mt-1 flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="size-3.5" />

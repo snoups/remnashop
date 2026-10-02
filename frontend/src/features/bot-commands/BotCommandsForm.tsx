@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { getErrorMessage } from "@shared/api/http";
 import { type BotCommandItem, getBotCommands, updateBotCommands } from "@entities/settings/api";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
@@ -26,7 +26,6 @@ interface CommandRowProps {
 }
 
 function CommandRow({ row, onChange }: CommandRowProps) {
-  const { t } = useTranslation();
   const dragControls = useDragControls();
 
   return (
@@ -40,7 +39,6 @@ function CommandRow({ row, onChange }: CommandRowProps) {
       <button
         type="button"
         onPointerDown={(event) => dragControls.start(event)}
-        aria-label={t("settings.botCommands.dragHandle")}
         className="flex cursor-grab items-center justify-center rounded-full p-1.5 text-foreground/60 transition-colors hover:bg-white/5 active:cursor-grabbing"
       >
         <MoreVertical className="size-4" />
@@ -49,7 +47,6 @@ function CommandRow({ row, onChange }: CommandRowProps) {
       <Switch
         checked={row.enabled}
         onChange={(checked) => onChange("enabled", checked)}
-        ariaLabel={t("settings.botCommands.enabledLabel")}
       />
     </Reorder.Item>
   );
@@ -57,7 +54,6 @@ function CommandRow({ row, onChange }: CommandRowProps) {
 
 export function BotCommandsForm() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [rows, setRows] = useState<Row[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const nextRowId = useRef(0);
@@ -154,7 +150,7 @@ export function BotCommandsForm() {
                 type="button"
                 onClick={() => void handleResetOrder()}
                 disabled={isResettingOrder}
-                {...bounceTap(bounceStrength)}
+                {...bounceTap()}
                 className="flex w-fit h-9 items-center gap-1.5 rounded-full border border-white/[0.12] px-4 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isResettingOrder && <Loader2 className="size-3.5 animate-spin" />}

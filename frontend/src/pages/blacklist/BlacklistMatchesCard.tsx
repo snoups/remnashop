@@ -15,7 +15,7 @@ import {
 import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
@@ -50,7 +50,6 @@ interface BlacklistMatchesCardProps {
 
 export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: BlacklistMatchesCardProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isUnblockConfirmOpen, setIsUnblockConfirmOpen] = useState(false);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [search, setSearch] = useState("");
@@ -171,14 +170,14 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                     <span className="sr-only">{t("blacklist.matches.openUser")}</span>
                   </th>
                 </tr>
-                <tr aria-hidden className="h-1" />
+                <tr className="h-1" />
               </thead>
               <tbody className="[&>tr:not(:last-child)>td]:border-b [&>tr:not(:last-child)>td]:border-border/50">
                 {data.items.map((match) => (
                   <motion.tr
                     key={match.user.id}
                     onClick={() => setDetailsUser(match.user)}
-                    {...bounceTap(bounceStrength, 0.03)}
+                    {...bounceTap(0.03)}
                     className="cursor-pointer [&>td]:transition-colors hover:[&>td]:bg-white/[0.04] [&>td:first-child]:rounded-l-full [&>td:last-child]:rounded-r-full"
                   >
                     <td className="px-3 py-2">
@@ -229,7 +228,6 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                     <td className="px-3 py-2 text-right">
                       <IconButton size="8"
                         onClick={() => setDetailsUser(match.user)}
-                        aria-label={t("blacklist.matches.openUser")}
                       >
                         <ChevronRight className="size-4" />
                       </IconButton>
@@ -257,7 +255,6 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   type="button"
                   onClick={() => setPage(page - 1)}
                   disabled={page <= 1}
-                  aria-label={t("blacklist.matches.prevPage")}
                   className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft className="size-4" />
@@ -266,7 +263,6 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   type="button"
                   onClick={() => setPage(page + 1)}
                   disabled={page >= pageCount}
-                  aria-label={t("blacklist.matches.nextPage")}
                   className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronRight className="size-4" />

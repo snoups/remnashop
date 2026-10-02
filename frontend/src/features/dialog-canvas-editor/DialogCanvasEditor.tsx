@@ -49,7 +49,7 @@ import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel"
 import { WindowInspector } from "@features/dialog-canvas-editor/WindowInspector";
 import { WindowSwitcher } from "@features/dialog-canvas-editor/WindowSwitcher";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { localeLabel } from "@shared/i18n/locale-label";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
@@ -79,20 +79,18 @@ export function ToolbarButton({
   icon: Icon,
   label,
   danger,
-  bounceStrength,
   onClick,
 }: {
   icon: LucideIcon;
   label: string;
   danger?: boolean;
-  bounceStrength: number;
   onClick: () => void;
 }) {
   return (
     <motion.button
       type="button"
       onClick={onClick}
-      {...bounceTap(bounceStrength)}
+      {...bounceTap()}
       className={`flex h-9 cursor-pointer items-center rounded-full border border-border transition-colors ${
         danger
           ? "gap-2 px-3 text-[12.5px] font-semibold text-error hover:bg-error/10"
@@ -107,7 +105,6 @@ export function ToolbarButton({
 
 export function DialogCanvasEditor() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const currentUserState = useCurrentUser();
   const permissions =
     currentUserState.kind === "ready"
@@ -208,7 +205,7 @@ export function DialogCanvasEditor() {
       <div className="min-w-0">
         <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
           {t("dialogs.title")}
-          <Badge tone="warning" tabIndex={0} aria-label={t("dialogs.betaHint")} className="group relative outline-none">
+          <Badge tone="warning" tabIndex={0} className="group relative outline-none">
             {t("dialogs.beta")}
             <Tooltip text={t("dialogs.betaHint")} side="bottom" />
           </Badge>
@@ -525,7 +522,6 @@ export function DialogCanvasEditor() {
               <ToolbarButton
                 icon={Download}
                 label={t("dialogs.toolbar.export")}
-                bounceStrength={bounceStrength}
                 onClick={() => void handleExport()}
               />
             )}
@@ -533,7 +529,6 @@ export function DialogCanvasEditor() {
               <ToolbarButton
                 icon={Upload}
                 label={t("dialogs.toolbar.import")}
-                bounceStrength={bounceStrength}
                 onClick={() => fileInputRef.current?.click()}
               />
             )}
@@ -542,7 +537,6 @@ export function DialogCanvasEditor() {
                 icon={RotateCcw}
                 label={t("dialogs.inspector.resetAll")}
                 danger
-                bounceStrength={bounceStrength}
                 onClick={() => setIsResetAllConfirmOpen(true)}
               />
             )}
@@ -607,7 +601,7 @@ export function DialogCanvasEditor() {
               <motion.button
                 type="button"
                 onClick={handleAddButton}
-                {...bounceTap(bounceStrength)}
+                {...bounceTap()}
                 className="flex h-9 w-full max-w-sm cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
               >
                 <Plus className="size-3.5" />

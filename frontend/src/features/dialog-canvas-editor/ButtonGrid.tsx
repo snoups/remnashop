@@ -236,7 +236,7 @@ function NewRowIndicator({ id }: { id: string }) {
     <div ref={setNodeRef} className="flex h-5 items-center">
       <span
         className={`relative h-[3px] w-full rounded-full transition-colors ${
-          isOver ? "bg-primary shadow-[0_0_14px_rgba(34,211,238,0.55)]" : "bg-primary/35"
+          isOver ? "bg-primary shadow-[0_0_14px_color-mix(in_srgb,var(--color-primary)_55%,transparent)]" : "bg-primary/35"
         }`}
       >
         <span className="absolute -left-0.5 -top-[2.5px] size-2 rounded-full bg-inherit" />

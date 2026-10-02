@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 
 interface PillTabsProps<T extends string> {
@@ -25,7 +25,6 @@ export function PillTabs<T extends string>({
 }: PillTabsProps<T>) {
   const scrollerRef = useHorizontalWheelScroll<HTMLDivElement>();
   const activeRef = useRef<HTMLButtonElement>(null);
-  const bounceStrength = useBounceStrength();
 
   useEffect(() => {
     // With twenty locales the selected one can sit past the right edge, and a
@@ -58,8 +57,7 @@ export function PillTabs<T extends string>({
             {/* Same split as TabBar: only the pill behind the label scales, so
                 the text stays crisp through the bounce. */}
             <motion.span
-              aria-hidden
-              variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+              variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
               className={`absolute inset-0 rounded-full transition-colors ${
                 activeKey === item.key ? "bg-accent" : "group-hover:bg-white/[0.06]"
               }`}

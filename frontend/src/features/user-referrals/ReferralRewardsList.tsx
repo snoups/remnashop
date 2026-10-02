@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import type { ReferralReward } from "@entities/referrals/api";
 import { userCardLink } from "@entities/user/api";
 import { formatReward, initials, userHandle } from "@features/user-referrals/format";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -17,7 +17,6 @@ const PAGE_SIZE = 10;
 
 export function ReferralRewardsList({ rewards }: { rewards: ReferralReward[] }) {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const navigate = useNavigate();
   // the whole history arrives with the stats; paged here only to keep the list short
   const [shown, setShown] = useState(PAGE_SIZE);
@@ -47,11 +46,10 @@ export function ReferralRewardsList({ rewards }: { rewards: ReferralReward[] }) 
           type="button"
           disabled={!reward.buyer}
           onClick={() => openBuyer(reward)}
-          {...bounceTap(bounceStrength, 0.03)}
+          {...bounceTap(0.03)}
           className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors enabled:hover:bg-white/[0.04]"
         >
           <span
-            aria-hidden
             className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground"
           >
             {reward.buyer?.name ? initials(reward.buyer.name) : "?"}

@@ -7,7 +7,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { useCurrentUser } from "@entities/user/use-current-user";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toggleSidebarCollapsed, useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
@@ -51,7 +51,6 @@ function NavItemLink({
     <MotionNavLink
       to={item.to}
       end={item.end}
-      aria-label={label}
       className={linkClassName}
       initial="rest"
       whileHover="hover"
@@ -81,7 +80,6 @@ function NavItemLink({
 
 export function Sidebar() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const brandName = useBrandName();
   const [hint, setHint] = useState<Hint | null>(null);
   // kept after leave so the bubble fades out in place instead of jumping
@@ -96,7 +94,7 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission));
   // Bounce via `scale` (transform), not width/height — transform is layout-inert,
   // so a pressed row never pushes its neighbours.
-  const tapProps = bounceTap(bounceStrength);
+  const tapProps = bounceTap();
 
   return (
     <aside
@@ -122,20 +120,14 @@ export function Sidebar() {
             initial="rest"
             whileHover="hover"
             onClick={toggleSidebarCollapsed}
-            aria-label={t(isCollapsed ? "sidebar.expand" : "sidebar.collapse")}
-            aria-expanded={!isCollapsed}
           >
             <BounceIcon icon={isCollapsed ? ChevronsRight : ChevronsLeft} size={17} hoverSize={21.25} />
           </IconButton>
         </div>
       </div>
 
-      <nav aria-label={t("header.dashboard")} className="flex flex-col gap-0.5">
-        {visibleItems.slice(0, 1).map((item) => (
-          <NavItemLink key={item.key} item={item} tapProps={tapProps} label={t(`sidebar.${item.key}`)} onHint={handleHint} />
-        ))}
-
-        {visibleItems.slice(1).map((item) => (
+      <nav className="flex flex-col gap-0.5">
+        {visibleItems.map((item) => (
           <NavItemLink key={item.key} item={item} tapProps={tapProps} label={t(`sidebar.${item.key}`)} onHint={handleHint} />
         ))}
       </nav>
@@ -145,8 +137,6 @@ export function Sidebar() {
           absolute one would be clipped at its edge. */}
       {lastHint && (
         <span
-          role="tooltip"
-          aria-hidden
           className={`${HINT_BUBBLE_CLASS} z-50 -translate-y-1/2 xl:group-data-expanded/sidebar:hidden`}
           style={{ position: "fixed", top: lastHint.top, left: lastHint.left, opacity: hint ? 1 : 0 }}
         >

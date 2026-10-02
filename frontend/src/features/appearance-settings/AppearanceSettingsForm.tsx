@@ -15,7 +15,7 @@ import {
 } from "@entities/appearance/api";
 import { getErrorMessage } from "@shared/api/http";
 import { useAppearancePreview, useReloadAppearance } from "@entities/appearance/use-appearance";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { DEFAULT_ACCENT_COLOR, DEFAULT_SHADER_PALETTE_HEX, hexToHueDegrees, hueRotateHex } from "@shared/lib/color";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useCurrentUser } from "@entities/user/use-current-user";
@@ -76,7 +76,6 @@ interface ImageSlotProps {
 
 function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, className = "", onChanged }: ImageSlotProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isBusy, setIsBusy] = useState(false);
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -154,8 +153,7 @@ function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, classNam
             type="button"
             onClick={() => void handleDelete()}
             disabled={isBusy}
-            aria-label={t("settings.appearance.delete")}
-            {...bounceTap(bounceStrength)}
+            {...bounceTap()}
             className="absolute right-3.5 top-3.5 flex size-6 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/75 disabled:opacity-60"
           >
             <X className="size-3" />
@@ -163,8 +161,9 @@ function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, classNam
         )}
         {canUpload && (
           <motion.label
-            {...bounceTap(bounceStrength)}
-            className="absolute inset-x-2 bottom-2 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/[0.08] text-sm font-medium text-foreground/60 transition-colors hover:bg-white/[0.06] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+            {...bounceTap()}
+            data-disabled={isBusy || undefined}
+            className="absolute inset-x-2 bottom-2 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/[0.08] text-sm font-medium text-foreground/60 transition-colors hover:bg-white/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-60"
           >
             <input
               type="file"
@@ -189,7 +188,6 @@ function Section({ children }: { children: ReactNode }) {
 
 export function AppearanceSettingsForm() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const reloadAppearance = useReloadAppearance();
   const { setPreviewColor, setPreviewPalette, setPreviewShaderEnabled } = useAppearancePreview();
   const userState = useCurrentUser();
@@ -437,7 +435,6 @@ export function AppearanceSettingsForm() {
                       <ColorPickerField
                         value={accentColor}
                         onChange={setAccent}
-                        ariaLabel={t("settings.appearance.accentColorLabel")}
                       />
                       <TextInput
                         id="appearance-accent-hex"
@@ -453,10 +450,9 @@ export function AppearanceSettingsForm() {
                       <motion.button
                         type="button"
                         onClick={() => setAccent(previousColor)}
-                        aria-label={t("settings.appearance.previousColorLabel")}
                         style={{ backgroundColor: previousColor }}
                         whileHover={{ scale: 1.15 }}
-                        {...bounceTap(bounceStrength)}
+                        {...bounceTap()}
                         className={`ml-auto ${swatchClass(accentColor.toLowerCase() === previousColor.toLowerCase())}`}
                       />
                     )}
@@ -471,10 +467,9 @@ export function AppearanceSettingsForm() {
                         key={preset}
                         type="button"
                         onClick={() => setAccent(preset)}
-                        aria-label={preset}
                         style={{ backgroundColor: preset }}
                         whileHover={{ scale: 1.15 }}
-                        {...bounceTap(bounceStrength)}
+                        {...bounceTap()}
                         className={swatchClass(accentColor.toLowerCase() === preset)}
                       />
                     ))}
@@ -487,7 +482,6 @@ export function AppearanceSettingsForm() {
                     <Switch
                       checked={shaderEnabled}
                       onChange={setShaderEnabled}
-                      ariaLabel={t("settings.appearance.shaderEnabledLabel")}
                     />
                   </div>
                   <div
@@ -503,7 +497,6 @@ export function AppearanceSettingsForm() {
                             value={rawColor}
                             onChange={(value) => setPaletteColor(index, value)}
                             displayValue={shownColor}
-                            ariaLabel={t(`settings.appearance.shaderPalette.${key}`)}
                           />
                           <div className="flex min-w-0 flex-col">
                             <span className="truncate text-[12.5px] font-medium text-foreground">
@@ -515,8 +508,7 @@ export function AppearanceSettingsForm() {
                             type="button"
                             onClick={() => setPaletteColor(index, defaultColor)}
                             disabled={rawColor.toLowerCase() === defaultColor}
-                            aria-label={t("settings.appearance.resetColor")}
-                            {...bounceTap(bounceStrength)}
+                            {...bounceTap()}
                             className="ml-auto flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-foreground/70"
                           >
                             <RotateCcw className="size-3.5" />

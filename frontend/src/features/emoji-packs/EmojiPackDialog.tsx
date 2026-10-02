@@ -1,8 +1,8 @@
 import { Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 
 import type { EmojiPack } from "@entities/emoji-packs/api";
+import { copyToClipboard } from "@shared/lib/clipboard";
 import { Modal } from "@shared/ui/Modal";
 import { PremiumEmoji } from "@shared/ui/PremiumEmoji";
 import { DialogHeader } from "@shared/ui/DialogHeader";
@@ -24,21 +24,18 @@ export function EmojiPackDialog({ pack, onClose }: EmojiPackDialogProps) {
 }
 
 function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
-  const { t } = useTranslation();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => () => clearTimeout(timer.current ?? undefined), []);
 
   const handleCopy = (customEmojiId: string) => {
-    navigator.clipboard
-      ?.writeText(customEmojiId)
-      .then(() => {
-        setCopiedId(customEmojiId);
-        clearTimeout(timer.current ?? undefined);
-        timer.current = setTimeout(() => setCopiedId(null), COPIED_MS);
-      })
-      .catch(() => undefined);
+    void copyToClipboard(customEmojiId).then((copied) => {
+      if (!copied) return;
+      setCopiedId(customEmojiId);
+      clearTimeout(timer.current ?? undefined);
+      timer.current = setTimeout(() => setCopiedId(null), COPIED_MS);
+    });
   };
 
   return (
@@ -51,7 +48,6 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
             {pack.items.length}
           </Tag>
         }
-        closeLabel={t("dialogs.emojiPacks.close")}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">

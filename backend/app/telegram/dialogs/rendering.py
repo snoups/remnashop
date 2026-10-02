@@ -1,16 +1,14 @@
 import html
-import logging
 import re
 from typing import Any, Optional
 
 from fluentogram import TranslatorRunner
 from fluentogram.exceptions import KeyNotFoundError
+from loguru import logger
 
 from app.modules.dialogs import catalog
 from app.modules.translations import strip_serializer_escapes
 from app.telegram.dialogs.config_cache import DialogConfigCache
-
-logger = logging.getLogger(__name__)
 
 
 def render_window_text(runner: TranslatorRunner, key: str, **kwargs: Any) -> str:
@@ -30,7 +28,7 @@ def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Opt
     def _sub(match: "re.Match[str]") -> str:
         key = match.group(1)
         if key not in catalog.variable_keys():
-            logger.warning("Unknown dialog variable token: %s", key)
+            logger.warning(f"Unknown dialog variable token: {key}")
             return ""
         return str(catalog.get_variable(key)(getter_data))
 
@@ -80,7 +78,7 @@ async def render_dialog_buttons(
             continue
         if button.visibility_condition:
             if button.visibility_condition not in catalog.condition_keys():
-                logger.warning("Unknown dialog condition: %s", button.visibility_condition)
+                logger.warning(f"Unknown dialog condition: {button.visibility_condition}")
                 continue
             condition = catalog.get_condition(button.visibility_condition)
             if not condition(getter_data):

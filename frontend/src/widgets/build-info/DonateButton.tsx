@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { BOOSTY_URL, COMMUNITY_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { DialogHeader } from "@shared/ui/DialogHeader";
@@ -13,21 +13,19 @@ import { useDialogFocus } from "@shared/ui/modal-hooks";
 
 export function DonateButton() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
 
-  const tapProps = bounceTap(bounceStrength, 0.12);
+  const tapProps = bounceTap(0.12);
 
   return (
     <>
       <motion.button
         type="button"
         onClick={() => setIsOpen(true)}
-        aria-label={t("donate.button")}
         className={SIDEBAR_PILL_CLASSNAME}
         initial="rest"
         whileHover="hover"
-        {...bounceTap(bounceStrength)}
+        {...bounceTap()}
       >
         <BounceIcon icon={Crown} size={17} hoverSize={23.5} />
         <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>
@@ -44,7 +42,6 @@ export function DonateButton() {
           >
             <button
               type="button"
-              aria-hidden
               tabIndex={-1}
               className="absolute inset-0 cursor-default"
               onClick={() => setIsOpen(false)}
@@ -110,8 +107,7 @@ function DonatePanel({ onEscape, children }: { onEscape: () => void; children: R
   return (
     <motion.div
       ref={panelRef}
-      role="dialog"
-      aria-modal
+      data-dialog
       tabIndex={-1}
       initial={{ opacity: 0, scale: 0.94, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}

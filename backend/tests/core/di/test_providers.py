@@ -14,7 +14,7 @@ def test_remnawave_provider_is_registered() -> None:
 async def test_remnawave_client_transport_is_wrapped(config: AppConfig) -> None:
     provider = RemnawaveProvider()
     async for sdk in provider.get_remnawave(config):
-        assert isinstance(sdk._client._transport, ResilientTransport)  # noqa: SLF001
+        assert isinstance(sdk._client._transport, ResilientTransport)
         break
 
 

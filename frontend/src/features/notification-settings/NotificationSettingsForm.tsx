@@ -1,4 +1,5 @@
 import { Bell, CircleAlert, HandCoins, ShieldAlert, ShoppingCart, UserCog, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -30,17 +31,22 @@ export function NotificationSettingsForm() {
   const canView =
     userState.kind === "ready" && userState.data.effective_permissions.includes("NOTIFICATIONS_VIEW");
   const [state, , setData] = useAsyncResource(getNotificationGroups);
+  // one save at a time: each sends the whole list, so overlapping answers could land out of order
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!canView) return null;
 
   const toggle = async (current: NotificationGroups, group: string, enabled: boolean) => {
     const next = enabled ? [...current.groups, group] : current.groups.filter((g) => g !== group);
     setData({ ...current, groups: next });
+    setIsSaving(true);
     try {
       setData(await updateNotificationGroups(next));
     } catch (err) {
       setData(current);
       toast.error(getErrorMessage(err, t("profile.notifications.saveError")));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -82,7 +88,7 @@ export function NotificationSettingsForm() {
                   <Switch
                     checked={enabled}
                     onChange={(value) => void toggle(state.data, group, value)}
-                    ariaLabel={t(`profile.notifications.groups.${group}.title`)}
+                    disabled={isSaving}
                   />
                 </div>
               </div>

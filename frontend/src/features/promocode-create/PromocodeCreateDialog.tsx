@@ -26,7 +26,7 @@ import {
   PromocodeLimitsFields,
 } from "@entities/promocodes/PromocodeLimitsFields";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
@@ -64,7 +64,6 @@ function PromocodeCreateDialogBody({
   onSaved,
 }: Omit<PromocodeCreateDialogProps, "onClose">) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const close = useModalClose();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -169,7 +168,7 @@ function PromocodeCreateDialogBody({
 
   return (
     <>
-      <DialogHeader icon={Ticket} title={t("promocodes.create.title")} closeLabel={t("promocodes.create.close")} />
+      <DialogHeader icon={Ticket} title={t("promocodes.create.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
@@ -184,7 +183,6 @@ function PromocodeCreateDialogBody({
                   autoComplete="off"
                   maxLength={PROMOCODE_CODE_MAX_LENGTH}
                   aria-invalid={isCodeInvalid}
-                  aria-describedby={isCodeInvalid ? "promo-code-hint" : undefined}
                   className="min-w-0 flex-1 font-mono tracking-wider"
                 />
                 {canGenerateCode && (
@@ -209,7 +207,7 @@ function PromocodeCreateDialogBody({
 
           <Card variant="form">
             <Field label={t("promocodes.sections.reward")}>
-              <div role="radiogroup" aria-label={t("promocodes.create.rewardTypeLabel")} className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {REWARD_TYPES.map((type) => {
                   const Icon = REWARD_TYPE_ICON[type];
                   const isSelected = rewardType === type;
@@ -217,10 +215,8 @@ function PromocodeCreateDialogBody({
                     <motion.button
                       key={type}
                       type="button"
-                      role="radio"
-                      aria-checked={isSelected}
                       onClick={() => setRewardType(type)}
-                      {...bounceTap(bounceStrength, 0.03)}
+                      {...bounceTap(0.03)}
                       className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
                         isSelected
                           ? "border-primary/50 bg-accent text-primary"
@@ -252,7 +248,6 @@ function PromocodeCreateDialogBody({
                   {DAY_PRESETS.map((days) => (
                     <ChoiceChip
                       key={days}
-                      aria-pressed={rewardDays === String(days)}
                       onClick={() => setRewardDays(String(days))}
                       active={rewardDays === String(days)}
                     >

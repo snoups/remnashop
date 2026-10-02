@@ -12,7 +12,6 @@ import { motion } from "motion/react";
 import { type ComponentType, type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CURRENCY_SYMBOL } from "@entities/transactions/api";
 import {
   type CreatePlanRequest,
   createPlan,
@@ -23,7 +22,8 @@ import {
   updatePlan,
 } from "@entities/plans/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { currencySymbol } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { blockNonDecimalKeys, blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
@@ -78,7 +78,6 @@ function PlanEditDialogBody({
   onSaved,
 }: Pick<PlanEditDialogProps, "plan" | "anchorCurrency" | "onSaved">) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const close = useModalClose();
   const isCreate = plan === null;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -120,7 +119,7 @@ function PlanEditDialogBody({
 
   const usedDays = new Set(durations.map((row) => Number(row.days)));
   const presets = DURATION_PRESETS.filter((days) => !usedDays.has(days));
-  const currencySuffix = anchorCurrency ? (CURRENCY_SYMBOL[anchorCurrency] ?? anchorCurrency) : null;
+  const currencySuffix = anchorCurrency ? currencySymbol(anchorCurrency) : null;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -198,7 +197,6 @@ function PlanEditDialogBody({
       <DialogHeader
         icon={Layers}
         title={isCreate ? t("plans.edit.createTitle") : t("plans.edit.editTitle")}
-        closeLabel={t("plans.edit.close")}
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
@@ -207,7 +205,7 @@ function PlanEditDialogBody({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {plan && (
                 <Field label={t("plans.edit.publicCodeLabel")} hint={t("plans.edit.publicCodeHint")}>
-                  <CopyableValue value={plan.public_code} copyAria={t("plans.edit.copyPublicCodeAria")} />
+                  <CopyableValue value={plan.public_code} />
                 </Field>
               )}
               <Field label={t("plans.edit.nameLabel")} htmlFor="plan-name" required>
@@ -234,7 +232,7 @@ function PlanEditDialogBody({
 
           <Card variant="form">
             <Field label={t("plans.edit.typeLabel")}>
-              <div role="radiogroup" aria-label={t("plans.edit.typeLabel")} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {PLAN_TYPES.map((value) => {
                   const Icon = PLAN_TYPE_ICON[value];
                   const isSelected = type === value;
@@ -242,10 +240,8 @@ function PlanEditDialogBody({
                     <motion.button
                       key={value}
                       type="button"
-                      role="radio"
-                      aria-checked={isSelected}
                       onClick={() => setType(value)}
-                      {...bounceTap(bounceStrength, 0.03)}
+                      {...bounceTap(0.03)}
                       className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
                         isSelected
                           ? "border-primary/50 bg-accent text-primary"
@@ -282,12 +278,10 @@ function PlanEditDialogBody({
             </div>
             <div className="flex flex-col gap-1.5">
               <span className={labelClassName}>{t("plans.edit.strategyLabel")}</span>
-              <div role="radiogroup" aria-label={t("plans.edit.strategyLabel")} className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {STRATEGIES.map((value) => (
                   <ChoiceChip
                     key={value}
-                    role="radio"
-                    aria-checked={strategy === value}
                     onClick={() => setStrategy(value)}
                     active={strategy === value}
                   >
@@ -437,7 +431,6 @@ function DurationRowItem({
       <button
         ref={setActivatorNodeRef}
         type="button"
-        aria-label={t("plans.edit.dragDuration")}
         {...attributes}
         {...listeners}
         className="flex h-9 cursor-grab touch-none items-center justify-center text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
@@ -451,7 +444,6 @@ function DurationRowItem({
         step="1"
         value={row.days}
         onChange={(event) => onChange({ days: event.target.value })}
-        aria-label={t("plans.edit.daysLabel")}
         suffix={t("plans.edit.daysSuffix")}
       />
       <SuffixInput
@@ -461,12 +453,10 @@ function DurationRowItem({
         step="0.01"
         value={row.base_price}
         onChange={(event) => onChange({ base_price: event.target.value })}
-        aria-label={t("plans.edit.basePriceLabel")}
         suffix={currencySuffix}
       />
       <IconButton size="9.5" tone="danger"
         onClick={onRemove}
-        aria-label={t("plans.edit.removeDuration")}
       >
         <Trash2 className="size-4" />
       </IconButton>
@@ -504,7 +494,7 @@ function ToggleRow({
         <span className="block text-[13.5px] font-semibold text-foreground">{label}</span>
         <span className={hintClassName}>{hint}</span>
       </span>
-      <Switch checked={checked} onChange={onChange} ariaLabel={label} />
+      <Switch checked={checked} onChange={onChange} />
     </div>
   );
 }

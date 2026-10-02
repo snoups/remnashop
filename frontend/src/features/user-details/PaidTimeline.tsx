@@ -2,7 +2,7 @@ import { CalendarRange } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatMoney } from "@entities/advertising/format";
+import { formatMoney } from "@shared/lib/format";
 import type { TransactionItem, PurchaseType } from "@entities/transactions/api";
 import { Card } from "@shared/ui/Card";
 import { EmptyState } from "@shared/ui/EmptyState";

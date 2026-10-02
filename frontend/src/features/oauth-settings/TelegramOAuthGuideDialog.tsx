@@ -33,7 +33,6 @@ export function TelegramOAuthGuideDialog() {
 
   return (
     <GuideDialog
-      ariaLabel={t("settings.oauth.guideAriaLabel")}
       title={t("settings.oauth.telegramGuide.title")}
     >
       <p>{t("settings.oauth.telegramGuide.intro")}</p>
@@ -58,12 +57,10 @@ export function TelegramOAuthGuideDialog() {
           <CopyableValue
             label={t("settings.oauth.telegramGuide.trustedOriginsLabel")}
             value={t("settings.oauth.telegramGuide.trustedOriginsValue")}
-            copyAria={t("settings.oauth.copy")}
           />
           <CopyableValue
             label={t("settings.oauth.telegramGuide.redirectUrisLabel")}
             value={t("settings.oauth.telegramGuide.redirectUrisValue")}
-            copyAria={t("settings.oauth.copy")}
           />
         </div>
       </div>

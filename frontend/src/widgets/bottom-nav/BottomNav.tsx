@@ -2,14 +2,12 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
 import { useCurrentUser } from "@entities/user/use-current-user";
-import { useBounceStrength } from "@shared/lib/bounceState";
 import { TabBar } from "@shared/ui/TabBar";
 import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
 
 export function BottomNav() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const bounceStrength = useBounceStrength();
   const userState = useCurrentUser();
   const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
   const items = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission)).map((item) => ({
@@ -23,7 +21,7 @@ export function BottomNav() {
 
   return (
     <div className="mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] mt-2 flex justify-center md:hidden">
-      <TabBar items={items} bounceStrength={bounceStrength} />
+      <TabBar items={items} />
     </div>
   );
 }

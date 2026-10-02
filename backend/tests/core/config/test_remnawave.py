@@ -20,6 +20,6 @@ def test_rejects_empty_webhook_secret() -> None:
 
 
 def test_accepts_a_real_token_and_webhook_secret() -> None:
-    config = RemnawaveConfig(token="real-token", webhook_secret="real-secret")  # noqa: S106
+    config = RemnawaveConfig(token="real-token", webhook_secret="real-secret")
     assert config.token is not None
     assert config.token.get_secret_value() == "real-token"

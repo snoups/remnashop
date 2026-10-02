@@ -1,6 +1,5 @@
 from typing import Final, Optional, TypeVar
 
-from pydantic import SecretStr
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,16 +46,7 @@ class SettingsRepository:
     def _to_dto(self, row: Optional[BotSettings]) -> BotSettingsDto:
         if row is None:
             return BotSettingsDto()
-
-        return BotSettingsDto(
-            id=row.id,
-            token=SecretStr(row.token) if row.token is not None else None,
-            secret_token=SecretStr(row.secret_token) if row.secret_token is not None else None,
-            proxy_url=SecretStr(row.proxy_url) if row.proxy_url is not None else None,
-            drop_pending_updates=row.drop_pending_updates,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return BotSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_bot_settings(self) -> BotSettingsDto:
         row = await self.session.get(BotSettings, _SINGLETON_ID)
@@ -81,18 +71,7 @@ class SettingsRepository:
     def _to_shop_dto(self, row: Optional[ShopSettings]) -> ShopSettingsDto:
         if row is None:
             return ShopSettingsDto()
-        return ShopSettingsDto(
-            id=row.id,
-            max_active_subscriptions=row.max_active_subscriptions,
-            device_single_reset_enabled=row.device_single_reset_enabled,
-            device_single_reset_cooldown_hours=row.device_single_reset_cooldown_hours,
-            device_all_reset_enabled=row.device_all_reset_enabled,
-            device_all_reset_cooldown_hours=row.device_all_reset_cooldown_hours,
-            link_reset_enabled=row.link_reset_enabled,
-            link_reset_cooldown_hours=row.link_reset_cooldown_hours,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return ShopSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_shop_settings(self) -> ShopSettingsDto:
         row = await self.session.get(ShopSettings, _SINGLETON_ID)
@@ -115,37 +94,7 @@ class SettingsRepository:
     def _to_oauth_dto(self, row: Optional[OAuthSettings]) -> OAuthSettingsDto:
         if row is None:
             return OAuthSettingsDto()
-
-        return OAuthSettingsDto(
-            id=row.id,
-            github_client_id=row.github_client_id,
-            github_client_secret=(
-                SecretStr(row.github_client_secret)
-                if row.github_client_secret is not None
-                else None
-            ),
-            github_enabled=row.github_enabled,
-            telegram_client_id=row.telegram_client_id,
-            telegram_client_secret=(
-                SecretStr(row.telegram_client_secret)
-                if row.telegram_client_secret is not None
-                else None
-            ),
-            telegram_enabled=row.telegram_enabled,
-            oidc_issuer_url=row.oidc_issuer_url,
-            oidc_client_id=row.oidc_client_id,
-            oidc_client_secret=(
-                SecretStr(row.oidc_client_secret) if row.oidc_client_secret is not None else None
-            ),
-            oidc_display_name=row.oidc_display_name,
-            oidc_enabled=row.oidc_enabled,
-            password_login_enabled=row.password_login_enabled,
-            passkey_enabled=row.passkey_enabled,
-            passkey_rp_id=row.passkey_rp_id,
-            passkey_origin=row.passkey_origin,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return OAuthSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_oauth_settings(self) -> OAuthSettingsDto:
         row = await self.session.get(OAuthSettings, _SINGLETON_ID)
@@ -250,14 +199,7 @@ class SettingsRepository:
         return self._to_appearance_dto(row)
 
     def _to_command_dto(self, row: BotCommand) -> BotCommandDto:
-        return BotCommandDto(
-            id=row.id,
-            command=row.command,
-            sort_order=row.sort_order,
-            enabled=row.enabled,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return BotCommandDto.model_validate(row, from_attributes=True)
 
     async def list_bot_commands(self) -> list[BotCommandDto]:
         result = await self.session.execute(select(BotCommand).order_by(BotCommand.sort_order))

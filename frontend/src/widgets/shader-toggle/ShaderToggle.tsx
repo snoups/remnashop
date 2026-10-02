@@ -23,8 +23,6 @@ export function ShaderToggle() {
       bounce={0.12}
       className="group relative"
       onClick={toggleShaderMuted}
-      aria-pressed={muted}
-      aria-label={label}
     >
       {muted ? <ZapOff className="size-[17px]" /> : <Zap className="size-[17px]" />}
       <Tooltip text={label} />

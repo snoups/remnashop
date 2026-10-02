@@ -78,7 +78,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
             signal = await gateway.parse_webhook(data.request)
         except PaymentGatewayError:
             raise
-        except Exception as error:  # noqa: BLE001 -- an adapter that leaks its own parse
+        except Exception as error:  # an adapter that leaks its own parse
             # errors still owes the caller the documented contract (see
             # PaymentGateway.parse_webhook), not a 500 with a stack trace.
             raise PaymentGatewayError("Could not parse webhook") from error
@@ -102,7 +102,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
             payment = await gateway.confirm(order, signal)
         except PaymentGatewayError:
             raise
-        except Exception as error:  # noqa: BLE001 -- any provider API failure is a gateway problem
+        except Exception as error:  # any provider API failure is a gateway problem
             raise PaymentGatewayError("Could not confirm payment") from error
         if payment is None:
             raise PaymentGatewayError(

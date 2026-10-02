@@ -11,7 +11,7 @@ import {
 } from "@entities/emoji-packs/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { EMOJI_PACKS_ANCHOR_ID } from "@shared/lib/emoji-packs-anchor";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -30,7 +30,6 @@ const SET_LINK_RE = /^(?:https?:\/\/)?(?:t\.me\/addemoji\/)?[A-Za-z0-9_]{1,64}\/
 
 export function EmojiPacksManager() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [packsState, reloadPacks] = useAsyncResource(listEmojiPacks);
   const [link, setLink] = useState("");
   const [isImporting, setIsImporting] = useState(false);
@@ -94,9 +93,7 @@ export function EmojiPacksManager() {
                 value={link}
                 onChange={(event) => setLink(event.target.value)}
                 placeholder={t("dialogs.emojiPacks.linkPlaceholder")}
-                aria-label={t("dialogs.emojiPacks.linkLabel")}
                 aria-invalid={isLinkInvalid}
-                aria-describedby={isLinkInvalid ? "emoji-pack-link-error" : undefined}
                 className="min-w-0 flex-1"
               />
               <Button
@@ -136,7 +133,6 @@ export function EmojiPacksManager() {
             {packsState.data.map((pack) => (
               <motion.div
                 key={pack.set_name}
-                role="button"
                 tabIndex={0}
                 onClick={() => setOpenPack(pack)}
                 onKeyDown={(event) => {
@@ -144,7 +140,7 @@ export function EmojiPacksManager() {
                   event.preventDefault();
                   setOpenPack(pack);
                 }}
-                {...bounceTap(bounceStrength, 0.03)}
+                {...bounceTap(0.03)}
                 className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
@@ -163,7 +159,6 @@ export function EmojiPacksManager() {
                       event.stopPropagation();
                       setPendingDelete(pack);
                     }}
-                    aria-label={t("dialogs.emojiPacks.delete")}
                     className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-error/[0.08] text-error transition-colors hover:bg-error/15"
                   >
                     <Trash2 className="size-3.5" />

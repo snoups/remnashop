@@ -5,8 +5,8 @@ from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
-from app.telegram.dialogs.catalog_menu import register_menu_catalog
 from app.telegram.dialogs.keyboard import ConfigKeyboard
+from app.telegram.routers.menu.catalog import register_menu_catalog
 from app.telegram.routers.menu.getters import (
     device_confirm_delete_all_getter,
     device_confirm_delete_getter,

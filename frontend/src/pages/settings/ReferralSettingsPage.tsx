@@ -24,10 +24,10 @@ import {
   type ReferralSettings,
   updateReferralSettings,
 } from "@entities/referrals/api";
-import { CURRENCY_SYMBOL } from "@entities/transactions/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { currencySymbol } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
@@ -107,22 +107,19 @@ function OptionGroup<T extends string>({
   describe: (value: T) => string;
   name: (value: T) => string;
 }) {
-  const bounceStrength = useBounceStrength();
   return (
     <div className="flex flex-col gap-2">
       <span className={EYEBROW_CLASS}>{label}</span>
-      <div role="radiogroup" aria-label={label} className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         {options.map(({ value: option, icon: Icon }) => {
           const isActive = option === value;
           return (
             <motion.button
               key={option}
               type="button"
-              role="radio"
-              aria-checked={isActive}
               disabled={disabled}
               onClick={() => onChange(option)}
-              {...(!disabled && bounceTap(bounceStrength))}
+              {...(!disabled && bounceTap())}
               className={`flex items-start gap-2.5 rounded-[14px] border p-3 text-left transition-colors disabled:cursor-not-allowed ${
                 isActive
                   ? "border-primary/45 bg-primary/[0.07]"
@@ -296,7 +293,6 @@ export function ReferralSettingsPage() {
             checked={enabled}
             onChange={setEnabled}
             disabled={isLocked}
-            ariaLabel={t("referrals.settings.enabledLabel")}
           />
         </div>
 
@@ -369,7 +365,6 @@ export function ReferralSettingsPage() {
             value={maxLevel}
             onChange={setMaxLevel}
             disabled={areSettingsLocked}
-            ariaLabel={t("referrals.settings.maxLevelLabel")}
             options={LEVELS.map((level) => ({ value: level, label: String(level) }))}
           />
         </div>
@@ -406,7 +401,7 @@ export function ReferralSettingsPage() {
                   />
                   <span className="shrink-0 text-[13px] text-muted-foreground">
                     {rewardType === "POINTS"
-                      ? (anchorCurrency && CURRENCY_SYMBOL[anchorCurrency]) || anchorCurrency
+                      ? anchorCurrency && currencySymbol(anchorCurrency)
                       : t("referrals.units.EXTRA_DAYS", { count: Number(exampleBase.EXTRA_DAYS) || 0 })}
                   </span>
                 </div>
@@ -444,7 +439,6 @@ export function ReferralSettingsPage() {
                       step="1"
                       value={amountOf(level)}
                       disabled={areSettingsLocked}
-                      aria-label={t("referrals.settings.levelRewardLabel", { level })}
                       onChange={(event) =>
                         setRewardAmounts((prev) => ({ ...prev, [String(level)]: event.target.value }))
                       }

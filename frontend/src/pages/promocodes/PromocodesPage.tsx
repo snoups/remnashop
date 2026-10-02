@@ -21,12 +21,12 @@ import {
   PROMOCODE_STATUSES,
   REWARD_TYPES,
 } from "@entities/promocodes/display";
-import { formatMoney } from "@entities/advertising/format";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { PromocodeCreateDialog } from "@features/promocode-create/PromocodeCreateDialog";
 import { PromocodeDetailsDialog } from "@features/promocode-details/PromocodeDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { formatMoney } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -46,7 +46,6 @@ const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_120px_110px_100px
 
 export function PromocodesPage() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [addons, setAddons] = useState<AddOnListItem[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -272,11 +271,10 @@ export function PromocodesPage() {
                     key={promo.id}
                     type="button"
                     onClick={() => setDetailsId(promo.id)}
-                    {...bounceTap(bounceStrength, 0.03)}
+                    {...bounceTap(0.03)}
                     className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
                   >
                     <span
-                      aria-hidden
                       className={`flex size-9 items-center justify-center rounded-full ${
                         promoStatus === "ACTIVE" ? "bg-success/10 text-success" : "bg-white/[0.06] text-muted-foreground"
                       }`}

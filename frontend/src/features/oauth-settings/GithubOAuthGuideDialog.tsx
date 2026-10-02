@@ -9,7 +9,6 @@ export function GithubOAuthGuideDialog() {
 
   return (
     <GuideDialog
-      ariaLabel={t("settings.oauth.guideAriaLabel")}
       title={t("settings.oauth.githubGuide.title")}
     >
       <div>
@@ -36,7 +35,6 @@ export function GithubOAuthGuideDialog() {
           <CopyableValue
             label={t("settings.oauth.githubGuide.callbackCommentLabel")}
             value={t("settings.oauth.githubGuide.callbackUrlValue")}
-            copyAria={t("settings.oauth.copy")}
           />
         </div>
 

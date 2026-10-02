@@ -79,7 +79,6 @@ function UserReferralsDialogBody({
             </>
           )
         }
-        closeLabel={t("referrals.stats.close")}
       />
 
       <div className="px-4 pb-3 pt-4">

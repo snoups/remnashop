@@ -1,5 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost, BASE_URL } from "@shared/api/http";
-import { getAccessToken } from "@shared/lib/token-storage";
+import { apiDelete, apiGet, apiGetRaw, apiPatch, apiPost } from "@shared/api/http";
 
 export type BackupKind = "DATABASE" | "ASSETS";
 export type BackupRunStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
@@ -88,17 +87,11 @@ export function deleteBackupRun(runId: number): Promise<void> {
   return apiDelete<void>(`/backups/runs/${runId}`);
 }
 
-// Not routed through apiGet: the response is a raw file, not JSON -- apiGet
-// always calls response.json(). Mirrors entities/banners/api.ts's
-// fetchBannerImageBlob for the same reason.
+// the whole dump is buffered in the tab before the save dialog --
+// fine for tens of MB; past that, a short-lived signed download URL the
+// browser streams straight to disk.
 export async function fetchBackupRunFile(runId: number): Promise<{ blob: Blob; filename: string }> {
-  const token = getAccessToken();
-  const response = await fetch(`${BASE_URL}/backups/runs/${runId}/download`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to download backup: ${response.status}`);
-  }
+  const response = await apiGetRaw(`/backups/runs/${runId}/download`);
   const disposition = response.headers.get("Content-Disposition") ?? "";
   const match = /filename="?([^"]+)"?/.exec(disposition);
   const filename = match ? match[1] : `backup-${runId}`;

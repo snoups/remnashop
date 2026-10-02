@@ -10,20 +10,19 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 interface OneTimeSecretDialogProps {
   title: string;
   value: string;
-  copyAria: string;
   onDone: () => void;
 }
 
 /** A secret the backend returns once (API token, generated password). Only "Done" closes it, so it isn't lost by a stray click. */
-export function OneTimeSecretDialog({ title, value, copyAria, onDone }: OneTimeSecretDialogProps) {
+export function OneTimeSecretDialog({ title, value, onDone }: OneTimeSecretDialogProps) {
   return (
     <Modal onClose={onDone} size="sm" dismissable={false}>
-      <OneTimeSecretDialogBody title={title} value={value} copyAria={copyAria} />
+      <OneTimeSecretDialogBody title={title} value={value} />
     </Modal>
   );
 }
 
-function OneTimeSecretDialogBody({ title, value, copyAria }: Omit<OneTimeSecretDialogProps, "onDone">) {
+function OneTimeSecretDialogBody({ title, value }: Omit<OneTimeSecretDialogProps, "onDone">) {
   const { t } = useTranslation();
   const close = useModalClose();
 
@@ -36,7 +35,7 @@ function OneTimeSecretDialogBody({ title, value, copyAria }: Omit<OneTimeSecretD
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-error" />
           <p className="text-[12px] leading-snug text-error">{t("app.secretShownOnce")}</p>
         </div>
-        <CopyableValue value={value} copyAria={copyAria} />
+        <CopyableValue value={value} />
         <div className="flex justify-end">
           <Button variant="accent" type="button" onClick={close}>
             {t("app.done")}

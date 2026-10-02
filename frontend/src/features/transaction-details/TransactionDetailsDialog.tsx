@@ -16,9 +16,9 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { formatMoney } from "@entities/advertising/format";
 import { OpenUserFooter } from "@features/open-user/OpenUserFooter";
-import { CURRENCY_SYMBOL, PAYMENT_STATUS_BADGE_TONE, type TransactionItem } from "@entities/transactions/api";
+import { PAYMENT_STATUS_BADGE_TONE, type TransactionItem } from "@entities/transactions/api";
+import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { Modal } from "@shared/ui/Modal";
@@ -50,7 +50,7 @@ export function TransactionDetailsDialog({ order, onClose }: TransactionDetailsD
 function TransactionDetailsDialogBody({ order }: { order: TransactionItem }) {
   const { t, i18n } = useTranslation();
   const money = (amount: string) => formatMoney(amount, order.currency, i18n.language, true);
-  const symbol = CURRENCY_SYMBOL[order.currency] ?? order.currency;
+  const symbol = currencySymbol(order.currency);
   const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}`);
   const statusLabel = t(`transactions.status.${order.status}`);
   const none = t("transactions.details.none");
@@ -73,7 +73,6 @@ function TransactionDetailsDialogBody({ order }: { order: TransactionItem }) {
             {statusLabel}
           </Badge>
         }
-        closeLabel={t("transactions.details.close")}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">

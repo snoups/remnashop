@@ -140,7 +140,6 @@ export function ButtonInspector({
             checked={!button.is_hidden}
             onChange={(value) => onChange({ ...button, is_hidden: !value })}
             disabled={!canEditButtons || button.is_system}
-            ariaLabel={t("dialogs.inspector.enabledLabel")}
           />
         </div>
 

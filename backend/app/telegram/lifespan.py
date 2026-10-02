@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         Groups Mode  - {_BOT_STATE_LABELS[me.can_join_groups]}
         Privacy Mode - {_BOT_STATE_LABELS[privacy_mode]}
         Inline Mode  - {_BOT_STATE_LABELS[me.supports_inline_queries]}
-        """  # noqa: W605
+        """
     )
 
     yield

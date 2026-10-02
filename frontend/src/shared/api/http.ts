@@ -9,31 +9,43 @@ export interface ListResponse<T> {
   total: number;
 }
 
-let refreshPromise: Promise<string | null> | null = null;
+// rejected: the refresh token is dead, the session is over. unavailable: the
+// backend didn't answer (offline, restarting, proxy 5xx) -- the session may well
+// be fine, so the caller keeps the token and just fails this one request.
+type RefreshResult = { kind: "token"; token: string } | { kind: "rejected" } | { kind: "unavailable" };
+
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 export function readCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-async function attemptRefresh(): Promise<string | null> {
+async function attemptRefresh(): Promise<RefreshResult> {
   const csrfToken = readCookie("csrf_token");
-  if (!csrfToken) return null;
+  if (!csrfToken) return { kind: "rejected" };
 
+  let response: Response;
   try {
-    const response = await fetch(`${BASE_URL}/auth/refresh`, {
+    response = await fetch(`${BASE_URL}/auth/refresh`, {
       method: "POST",
       headers: { "X-CSRF-Token": csrfToken },
     });
-    if (!response.ok) return null;
-    const data = (await response.json()) as { access_token: string };
-    return data.access_token;
   } catch {
-    return null;
+    return { kind: "unavailable" };
+  }
+  // 429: the refresh endpoint is rate-limited, which says nothing about the session
+  if (response.status >= 500 || response.status === 429) return { kind: "unavailable" };
+  if (!response.ok) return { kind: "rejected" };
+  try {
+    const data = (await response.json()) as { access_token: string };
+    return { kind: "token", token: data.access_token };
+  } catch {
+    return { kind: "unavailable" };
   }
 }
 
-function refreshOnce(): Promise<string | null> {
+function refreshOnce(): Promise<RefreshResult> {
   if (!refreshPromise) {
     refreshPromise = attemptRefresh().finally(() => {
       refreshPromise = null;
@@ -47,8 +59,8 @@ function refreshOnce(): Promise<string | null> {
 // httponly refresh cookie before route guards check for a token.
 export async function initializeAuth(): Promise<void> {
   if (!readCookie("csrf_token")) return;
-  const token = await refreshOnce();
-  if (token) saveAccessToken(token);
+  const result = await refreshOnce();
+  if (result.kind === "token") saveAccessToken(result.token);
 }
 
 /**
@@ -124,15 +136,9 @@ function extractErrorMessage(body: unknown): string {
   return "Request failed";
 }
 
-// A single fetch attempt: turns a connection failure or a proxy gateway error
-// into NetworkError, otherwise returns the response alongside its parsed body
-// (null if there's no JSON). Both the initial request and the post-refresh
-// retry go through here so neither can leak a raw TypeError.
-async function sendRequest(
-  path: string,
-  init: RequestInit | undefined,
-  bearer: string | null,
-): Promise<{ response: Response; data: unknown }> {
+// A single fetch attempt: a connection failure becomes NetworkError, so neither
+// the initial request nor the post-refresh retry can leak a raw TypeError.
+async function sendRequest(path: string, init: RequestInit | undefined, bearer: string | null): Promise<Response> {
   const { apiFailure, latency } = getDebugState();
   if (latency) await new Promise((resolve) => setTimeout(resolve, latency));
   if (apiFailure === "network") throw new NetworkError("Forced failure (debug bar)");
@@ -141,56 +147,64 @@ async function sendRequest(
   const headers = new Headers(init?.headers);
   if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
 
-  let response: Response;
   try {
-    response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+    return await fetch(`${BASE_URL}${path}`, { ...init, headers });
   } catch (err) {
     // A caller aborting via AbortSignal must propagate as-is, not surface as
     // a "backend unreachable" toast.
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new NetworkError("Network request failed");
   }
+}
 
-  const data: unknown = await response.json().catch(() => null);
-  // a proxy answering for a dead upstream has no error code; the API's own 502/503 does
-  if (GATEWAY_ERROR_STATUSES.has(response.status) && extractErrorCode(data) === null) {
-    throw new NetworkError("Backend unreachable");
+function endSession(): void {
+  clearAccessToken();
+  window.location.href = "/";
+}
+
+// Every API call, JSON or binary, goes through here: a 401 on a live token
+// refreshes it once and retries; only a refused refresh ends the session.
+async function authorizedFetch(path: string, init?: RequestInit): Promise<Response> {
+  const token = getAccessToken();
+  const response = await sendRequest(path, init, token);
+  if (response.status !== 401 || !token) return response;
+
+  const refreshed = await refreshOnce();
+  if (refreshed.kind === "unavailable") throw new NetworkError("Session refresh failed");
+  if (refreshed.kind === "rejected") {
+    endSession();
+    return response;
   }
+  saveAccessToken(refreshed.token);
+  const retry = await sendRequest(path, init, refreshed.token);
+  if (retry.status === 401) endSession();
+  return retry;
+}
 
-  return { response, data };
+function readBody(response: Response): Promise<unknown> {
+  return response.json().catch(() => null);
+}
+
+// a proxy answering for a dead upstream has no error code; the API's own 502/503 does
+function errorFor(response: Response, body: unknown): Error {
+  if (GATEWAY_ERROR_STATUSES.has(response.status) && extractErrorCode(body) === null) {
+    return new NetworkError("Backend unreachable");
+  }
+  return new ApiError(response.status, extractErrorMessage(body), extractErrorCode(body));
 }
 
 async function request<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
-  const token = getAccessToken();
-  const { response, data } = await sendRequest(path, init, token);
+  const response = await authorizedFetch(path, init);
+  const body = await readBody(response);
+  if (!response.ok) throw errorFor(response, body);
+  return body as TResponse;
+}
 
-  if (!response.ok) {
-    if (response.status === 401 && token) {
-      const newAccessToken = await refreshOnce();
-      if (newAccessToken) {
-        saveAccessToken(newAccessToken);
-        const retry = await sendRequest(path, init, newAccessToken);
-        if (!retry.response.ok) {
-          if (retry.response.status === 401) {
-            clearAccessToken();
-            window.location.href = "/";
-          }
-          throw new ApiError(
-            retry.response.status,
-            extractErrorMessage(retry.data),
-            extractErrorCode(retry.data),
-          );
-        }
-        return retry.data as TResponse;
-      }
-
-      clearAccessToken();
-      window.location.href = "/";
-    }
-    throw new ApiError(response.status, extractErrorMessage(data), extractErrorCode(data));
-  }
-
-  return data as TResponse;
+/** The raw response of a GET whose body isn't JSON (an image, a file); same refresh and errors as apiGet. */
+export async function apiGetRaw(path: string, signal?: AbortSignal): Promise<Response> {
+  const response = await authorizedFetch(path, { signal });
+  if (!response.ok) throw errorFor(response, await readBody(response));
+  return response;
 }
 
 export function apiGet<TResponse>(path: string, signal?: AbortSignal): Promise<TResponse> {

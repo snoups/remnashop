@@ -15,6 +15,7 @@ from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
 from app.modules.subscriptions.domain import calculate_proration_credit
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
+from app.modules.subscriptions.eligibility import get_owned_target
 from app.modules.subscriptions.events import SubscriptionChangedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -55,12 +56,9 @@ class ChangePurchase:
                     "duration_days must be positive", code=ErrorCode.DURATION_NOT_POSITIVE
                 )
 
-            old = await self._subscription_repository.get_by_id(data.target_subscription_id)
-            if old.user_id != data.user_id:
-                raise ValidationError(
-                    "target_subscription_id does not belong to this user",
-                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
-                )
+            old = await get_owned_target(
+                self._subscription_repository, data.target_subscription_id, data.user_id
+            )
             if old.status is SubscriptionStatus.DELETED:
                 raise ValidationError(
                     "Cannot change a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED

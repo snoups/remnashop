@@ -2,6 +2,8 @@ import { Check } from "lucide-react";
 import { useState, type ComponentType, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { copyToClipboard } from "@shared/lib/clipboard";
+
 interface InfoRowProps {
   icon: ComponentType<{ className?: string }>;
   label: string;
@@ -17,9 +19,11 @@ export function InfoRow({ icon: Icon, label, children, copyValue, mono = false }
 
   const handleCopy = () => {
     if (!copyValue) return;
-    navigator.clipboard?.writeText(copyValue).catch(() => {});
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 1500);
+    void copyToClipboard(copyValue).then((copied) => {
+      if (!copied) return;
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1500);
+    });
   };
 
   const left = (

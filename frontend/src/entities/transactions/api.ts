@@ -116,9 +116,6 @@ export function listTransactionGateways(signal?: AbortSignal): Promise<string[]>
 
 export const PURCHASE_TYPES: readonly PurchaseType[] = ["NEW", "RENEW", "CHANGE"];
 
-// Mirrors backend/app/core/enums.py's Currency.symbol.
-export const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", XTR: "★", RUB: "₽" };
-
 export const CURRENCY_ICON: Record<string, LucideIcon> = { USD: DollarSign, XTR: Star, RUB: RussianRuble };
 
 export const PAYMENT_STATUS_BADGE_TONE: Record<TransactionStatus, BadgeTone> = {

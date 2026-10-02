@@ -102,7 +102,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
         except PaymentGatewayError:
             logger.exception(f"Test payment failed on gateway '{data.value}'")
             raise
-        except Exception as error:  # noqa: BLE001 -- surfaced to the admin, not a 500
+        except Exception as error:  # surfaced to the admin, not a 500
             logger.exception(f"Test payment failed on gateway '{data.value}'")
             raise PaymentGatewayError(f"Provider request failed: {type(error).__name__}") from error
 

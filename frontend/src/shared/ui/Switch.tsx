@@ -4,16 +4,12 @@ interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
-  ariaLabel: string;
 }
 
-export function Switch({ checked, onChange, disabled = false, ariaLabel }: SwitchProps) {
+export function Switch({ checked, onChange, disabled = false }: SwitchProps) {
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative h-6 w-10 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${

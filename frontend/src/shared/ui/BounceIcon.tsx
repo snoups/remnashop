@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import type { ComponentType } from "react";
 
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { BOUNCE_STRENGTH } from "@shared/lib/bounceState";
 
 interface BounceIconProps {
   icon: ComponentType<{ className?: string }>;
@@ -33,13 +33,16 @@ interface BounceIconProps {
  * whole row triggers it, not just the icon's own small hit area.
  */
 export function BounceIcon({ icon: Icon, size, hoverSize, className = "" }: BounceIconProps) {
-  const strength = useBounceStrength();
-  const scaledHover = size + (hoverSize - size) * strength;
+  const scaledHover = size + (hoverSize - size) * BOUNCE_STRENGTH;
 
   return (
     <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
       <motion.span
         className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+        // the rest size as a plain style too: under AnimatePresence initial={false}
+        // (every dashboard page) the "rest" variant is never applied, and the icon
+        // collapsed to the SVG's default size
+        style={{ width: size, height: size }}
         variants={{
           rest: { width: size, height: size },
           hover: { width: scaledHover, height: scaledHover },

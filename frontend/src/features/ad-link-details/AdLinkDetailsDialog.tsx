@@ -116,7 +116,6 @@ function AdLinkDetailsDialogBody({
           </Badge>
         }
         subtitle={<span className="font-mono">{adLink.code}</span>}
-        closeLabel={t("advertising.stats.close")}
       />
 
       {tabs.length > 1 && (

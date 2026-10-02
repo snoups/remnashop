@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { NetworkError } from "@shared/api/http";
 
@@ -36,14 +36,18 @@ export function useAsyncResource<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadToken]);
 
-  const reload = () => setReloadToken((token) => token + 1);
+  // stable identities, so a caller can list them as effect dependencies
+  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
   // An updater sees the latest data even when several writes land back to back;
   // it's a no-op until the first load has finished.
-  const setData = (data: T | ((prev: T) => T)) =>
-    setState((prev) => {
-      if (typeof data !== "function") return { kind: "ready", data };
-      return prev.kind === "ready" ? { kind: "ready", data: (data as (prev: T) => T)(prev.data) } : prev;
-    });
+  const setData = useCallback(
+    (data: T | ((prev: T) => T)) =>
+      setState((prev) => {
+        if (typeof data !== "function") return { kind: "ready", data };
+        return prev.kind === "ready" ? { kind: "ready", data: (data as (prev: T) => T)(prev.data) } : prev;
+      }),
+    [],
+  );
 
   return [state, reload, setData];
 }

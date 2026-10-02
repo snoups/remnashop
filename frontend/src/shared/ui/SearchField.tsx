@@ -1,16 +1,15 @@
 import { Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, type ComponentProps } from "react";
-import { useTranslation } from "react-i18next";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { IconButton } from "@shared/ui/IconButton";
 
 interface SearchFieldProps {
   id: string;
   label: string;
-  /** no visible label; it stays as the input's aria-label */
+  /** no visible label above the field */
   hideLabel?: boolean;
   placeholder: string;
   value: string;
@@ -28,9 +27,8 @@ export function SearchClearButton({
   size: ComponentProps<typeof IconButton>["size"];
   className: string;
 }) {
-  const { t } = useTranslation();
   return (
-    <IconButton size={size} onClick={onClear} aria-label={t("app.clearSearch")} className={className}>
+    <IconButton size={size} onClick={onClear} className={className}>
       <X className="size-3.5" />
     </IconButton>
   );
@@ -38,7 +36,6 @@ export function SearchClearButton({
 
 // glass: filters and search, not form fields (those use TextInput)
 export function SearchField({ id, label, hideLabel = false, placeholder, value, onChange }: SearchFieldProps) {
-  const bounceStrength = useBounceStrength();
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -46,7 +43,7 @@ export function SearchField({ id, label, hideLabel = false, placeholder, value, 
       {!hideLabel && <span className={EYEBROW_CLASS}>{label}</span>}
       {/* border sits on the scaled element itself -- scaling a wrapper around a bordered <input> leaves seams in Firefox */}
       <motion.label
-        {...bounceTap(bounceStrength, 0.04)}
+        {...bounceTap(0.04)}
         className="group flex w-full items-center gap-2.5 rounded-full border border-glass-border bg-white/[0.03] px-3 py-2 backdrop-blur-md transition-colors not-focus-within:hover:bg-white/[0.06] focus-within:border-primary"
       >
         <Search className="size-3.5 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
@@ -57,7 +54,6 @@ export function SearchField({ id, label, hideLabel = false, placeholder, value, 
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          aria-label={label}
           className="w-full min-w-0 border-0 bg-transparent text-sm font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground"
         />
         {value && (

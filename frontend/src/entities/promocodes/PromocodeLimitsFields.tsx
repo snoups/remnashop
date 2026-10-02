@@ -31,7 +31,7 @@ function PromocodeSwitchRow({
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-[12px] text-muted-foreground">{hint}</p>
       </div>
-      <Switch checked={checked} onChange={onChange} ariaLabel={label} />
+      <Switch checked={checked} onChange={onChange} />
     </div>
   );
 }
@@ -99,7 +99,6 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange }: PromocodeLi
                 {id}
                 <IconButton size="18px"
                   onClick={() => set({ allowedUserIds: value.allowedUserIds.filter((other) => other !== id) })}
-                  aria-label={t("promocodes.limits.removeUserAria", { id })}
                 >
                   <X className="size-2.5" />
                 </IconButton>
@@ -128,7 +127,6 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange }: PromocodeLi
             value={value.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}
             placeholder={t("promocodes.limits.expiresPlaceholder")}
-            clearAriaLabel={t("promocodes.limits.clearDate")}
           />
         </Field>
         <Field label={t("promocodes.limits.maxActivationsLabel")} htmlFor={`${idPrefix}-max-activations`}>

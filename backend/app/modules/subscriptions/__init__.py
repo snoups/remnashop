@@ -15,7 +15,7 @@ from app.modules.subscriptions.dto import (
     UpdateSubscriptionDto,
     UpdateSubscriptionSquadsDto,
 )
-from app.modules.subscriptions.eligibility import PurchaseEligibility
+from app.modules.subscriptions.eligibility import PurchaseEligibility, get_owned_target
 from app.modules.subscriptions.events import (
     SubscriptionChangedEvent,
     SubscriptionPurchasedEvent,
@@ -84,5 +84,6 @@ __all__ = [
     "UpdateSubscriptionSquadsDto",
     "UpdateSubscriptionSquadsUseCase",
     "UpdateSubscriptionUseCase",
+    "get_owned_target",
     "get_subscriptions_providers",
 ]

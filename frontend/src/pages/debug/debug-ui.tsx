@@ -9,7 +9,7 @@ export interface DebugSectionLink {
 }
 
 /** Sticky section strip; highlights the section under the upper part of the viewport. */
-export function DebugNav({ links, ariaLabel }: { links: DebugSectionLink[]; ariaLabel: string }) {
+export function DebugNav({ links }: { links: DebugSectionLink[] }) {
   const [active, setActive] = useState(links[0]?.id);
 
   useEffect(() => {
@@ -29,14 +29,12 @@ export function DebugNav({ links, ariaLabel }: { links: DebugSectionLink[]; aria
 
   return (
     <nav
-      aria-label={ariaLabel}
       className="no-scrollbar sticky top-0 z-20 flex gap-1 overflow-x-auto rounded-full border border-glass-border bg-popover/60 p-1 backdrop-blur-2xl backdrop-saturate-150"
     >
       {links.map(({ id, label }) => (
         <button
           key={id}
           type="button"
-          aria-current={active === id ? "true" : undefined}
           onClick={() => {
             setActive(id);
             document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });

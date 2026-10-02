@@ -11,7 +11,6 @@ const POPOVER_MAX_HEIGHT = 230;
 interface ColorPickerFieldProps {
   value: string;
   onChange: (value: string) => void;
-  ariaLabel: string;
   // What the closed swatch button shows, if different from the raw value
   // being edited -- e.g. previewing a hue rotation applied on top of the
   // stored color. The picker popover itself still edits `value` untouched,
@@ -19,7 +18,7 @@ interface ColorPickerFieldProps {
   displayValue?: string;
 }
 
-export function ColorPickerField({ value, onChange, ariaLabel, displayValue }: ColorPickerFieldProps) {
+export function ColorPickerField({ value, onChange, displayValue }: ColorPickerFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -32,7 +31,6 @@ export function ColorPickerField({ value, onChange, ariaLabel, displayValue }: C
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        aria-label={ariaLabel}
         style={{ backgroundColor: displayValue ?? value }}
         className="size-9.5 shrink-0 rounded-full border-2 border-glass-border shadow-inner transition-transform hover:scale-105"
       />

@@ -6,7 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { useCurrentUser } from "@entities/user/use-current-user";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { usePageTitle } from "@shared/lib/use-page-title";
@@ -39,7 +39,6 @@ export function Header({ onLogout }: HeaderProps) {
   const { t } = useTranslation();
   const brandName = useBrandName();
   const pageTitle = usePageTitle(brandName);
-  const bounceStrength = useBounceStrength();
   const location = useLocation();
   const isOverviewPage = location.pathname === "/dashboard" || location.pathname === "/dashboard/";
   const { refresh } = useRefreshSignal();
@@ -76,7 +75,6 @@ export function Header({ onLogout }: HeaderProps) {
             bounce={0.12}
             onClick={handleRefresh}
             disabled={isRefreshing}
-            aria-label={t("dashboard.refresh")}
           >
             <RefreshCw className={`size-[15px] ${isRefreshing ? "animate-spin" : ""}`} />
           </IconButton>
@@ -102,13 +100,10 @@ export function Header({ onLogout }: HeaderProps) {
           <motion.button
             type="button"
             onClick={() => setOpenPopover((open) => (open === "user" ? null : "user"))}
-            aria-haspopup="menu"
-            aria-expanded={openPopover === "user"}
-            {...bounceTap(bounceStrength, 0.05)}
+            {...bounceTap(0.05)}
             className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1"
           >
             <span
-              aria-hidden
               className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.05]"
             />
             <div className="relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas">

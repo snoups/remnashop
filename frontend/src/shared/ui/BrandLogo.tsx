@@ -1,6 +1,6 @@
 export function BrandLogo({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 64 64" fill="none" className={className} aria-hidden="true">
+    <svg viewBox="0 0 64 64" fill="none" className={className}>
       <rect x="13.47" y="36.64" width="2.25" height="10.24" rx="1.13" fill="currentColor" stroke="currentColor" strokeWidth="2.25" />
       <rect x="21.97" y="31.11" width="2.25" height="21.51" rx="1.13" fill="currentColor" stroke="currentColor" strokeWidth="2.25" />
       <rect x="31.6" y="23.12" width="2.25" height="38.92" rx="1.13" fill="currentColor" stroke="currentColor" strokeWidth="2.25" />

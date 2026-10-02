@@ -10,7 +10,7 @@ import {
   type UpdateOAuthSettingsPayload,
 } from "@entities/settings/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
@@ -262,7 +262,6 @@ function ProviderPanel({
   fields,
 }: ProviderPanelProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -287,7 +286,6 @@ function ProviderPanel({
   return (
     <div>
       <motion.div
-        role="button"
         tabIndex={0}
         onClick={() => setIsOpen((open) => !open)}
         onKeyDown={(event) => {
@@ -295,7 +293,7 @@ function ProviderPanel({
           event.preventDefault();
           setIsOpen((open) => !open);
         }}
-        {...bounceTap(bounceStrength, 0.03)}
+        {...bounceTap(0.03)}
         className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
@@ -322,7 +320,6 @@ function ProviderPanel({
             checked={isEnabled}
             onChange={(value) => void handleToggle(value)}
             disabled={isToggling || !isConfigured}
-            ariaLabel={t("settings.oauth.enableAria", { provider: label })}
           />
         </div>
       </motion.div>
@@ -377,7 +374,6 @@ function PasskeyPanel({
   onToggled,
 }: PasskeyPanelProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -396,7 +392,6 @@ function PasskeyPanel({
   return (
     <div>
       <motion.div
-        role="button"
         tabIndex={0}
         onClick={() => setIsOpen((open) => !open)}
         onKeyDown={(event) => {
@@ -404,7 +399,7 @@ function PasskeyPanel({
           event.preventDefault();
           setIsOpen((open) => !open);
         }}
-        {...bounceTap(bounceStrength, 0.03)}
+        {...bounceTap(0.03)}
         className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
@@ -433,7 +428,6 @@ function PasskeyPanel({
             checked={isEnabled}
             onChange={(value) => void handleToggle(value)}
             disabled={isToggling || !isConfigured}
-            ariaLabel={t("settings.oauth.enableAria", { provider: t("settings.oauth.passkeyTitle") })}
           />
         </div>
       </motion.div>
@@ -514,7 +508,6 @@ function PasswordLoginToggle({ isEnabled, onToggled }: PasswordLoginToggleProps)
           checked={isEnabled}
           onChange={(value) => void handleToggle(value)}
           disabled={isToggling}
-          ariaLabel={t("settings.oauth.passwordLoginLabel")}
         />
       </div>
     </div>

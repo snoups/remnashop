@@ -134,7 +134,7 @@ export function KpiTile({
         {valueSuffix && <span className="text-[13px] font-medium text-muted-foreground">{valueSuffix}</span>}
         {tone && (
           <span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${tone.badge}`}>
-            <tone.Icon className="size-3.5" aria-hidden />
+            <tone.Icon className="size-3.5" />
           </span>
         )}
       </div>

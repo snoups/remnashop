@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import { type AdLink, type AttributedUser, listAdLinkAttributedUsers } from "@entities/advertising/api";
 import { userCardLink } from "@entities/user/api";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
@@ -18,7 +18,6 @@ const USERS_PAGE_SIZE = 10;
 
 export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const navigate = useNavigate();
   const [state, , setData] = useAsyncResource((signal) =>
     listAdLinkAttributedUsers(adLink.id, 1, USERS_PAGE_SIZE, signal),
@@ -58,11 +57,10 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
             key={user.user_id}
             type="button"
             onClick={() => openUser(user)}
-            {...bounceTap(bounceStrength, 0.03)}
+            {...bounceTap(0.03)}
             className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors hover:bg-white/[0.04]"
           >
             <span
-              aria-hidden
               className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground"
             >
               {user.name ? user.name.slice(0, 2).toUpperCase() : "?"}

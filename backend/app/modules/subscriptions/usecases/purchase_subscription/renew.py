@@ -13,6 +13,7 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now, truncate_to_ms
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
+from app.modules.subscriptions.eligibility import get_owned_target
 from app.modules.subscriptions.events import SubscriptionRenewedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
@@ -50,15 +51,12 @@ class RenewPurchase:
             # never hold a row lock across the SDK round-trip: a remote call
             # inside `async with self._uow:` risks holding a Postgres lock for
             # the panel's full timeout.
-            target = await self._subscription_repository.get_by_id(data.target_subscription_id)
+            target = await get_owned_target(
+                self._subscription_repository, data.target_subscription_id, data.user_id
+            )
             if target.status is SubscriptionStatus.DELETED:
                 raise ValidationError(
                     "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
-                )
-            if target.user_id != data.user_id:
-                raise ValidationError(
-                    "target_subscription_id does not belong to this user",
-                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
                 )
             if target.plan_snapshot.plan_id != data.plan_snapshot.plan_id:
                 raise ValidationError(

@@ -13,7 +13,6 @@ import {
 import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 
 import {
   type BackupKind,
@@ -32,7 +31,8 @@ import {
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { formatBytes } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { formatDateTime, formatRelative } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
@@ -79,19 +79,6 @@ const STATUS_BADGE_TONE: Record<BackupRun["status"], BadgeTone> = {
   PENDING: "neutral",
   FAILED: "error",
 };
-
-function formatBytes(t: TFunction, bytes: number | null): string {
-  if (bytes === null) return "—";
-  const unitKeys = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte"];
-  if (bytes < 1024) return `${bytes} ${t(`backups.units.${unitKeys[0]}`)}`;
-  let value = bytes / 1024;
-  let unitIndex = 1;
-  while (value >= 1024 && unitIndex < unitKeys.length - 1) {
-    value /= 1024;
-    unitIndex++;
-  }
-  return `${value.toFixed(1)} ${t(`backups.units.${unitKeys[unitIndex]}`)}`;
-}
 
 function CardHeader({
   icon: Icon,
@@ -169,7 +156,6 @@ function PresetButtons({
           <ChoiceChip
             key={value}
             onClick={() => onPick(String(value))}
-            aria-pressed={isActive}
             disabled={disabled}
             active={isActive}
             size="sm"
@@ -184,7 +170,6 @@ function PresetButtons({
 
 export function BackupsPage() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
 
   const [settingsState, setSettingsState] = useState<SettingsState>({ kind: "loading" });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -228,14 +213,24 @@ export function BackupsPage() {
       });
   };
 
-  const loadRuns = (value: RunsFilter, signal?: AbortSignal) => {
+  // Each primary load cancels the one before it and bumps the generation, so a
+  // slow answer for the previous filter, or a load-more started under it, can't
+  // land in the new list.
+  const runsControllerRef = useRef<AbortController | null>(null);
+  const runsGenRef = useRef(0);
+
+  const loadRuns = (value: RunsFilter) => {
+    runsControllerRef.current?.abort();
+    const controller = new AbortController();
+    runsControllerRef.current = controller;
+    runsGenRef.current += 1;
     setPage(1);
-    listBackupRuns({ kind: kindFilter(value), page: 1, pageSize: DEFAULT_PAGE_SIZE }, signal)
+    listBackupRuns({ kind: kindFilter(value), page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
       .then((result) => {
-        if (!signal?.aborted) setRunsState({ kind: "ready", items: result.items, total: result.total });
+        if (!controller.signal.aborted) setRunsState({ kind: "ready", items: result.items, total: result.total });
       })
       .catch(() => {
-        if (!signal?.aborted) setRunsState({ kind: "error" });
+        if (!controller.signal.aborted) setRunsState({ kind: "error" });
       });
   };
 
@@ -254,8 +249,11 @@ export function BackupsPage() {
       });
 
     loadStats(controller.signal);
-    if (canViewRuns) loadRuns("ALL", controller.signal);
-    return () => controller.abort();
+    if (canViewRuns) loadRuns("ALL");
+    return () => {
+      controller.abort();
+      runsControllerRef.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -363,6 +361,7 @@ export function BackupsPage() {
   // removes) can drift a row at a page boundary; acceptable here.
   // offset drift on boundary, switch to keyset if it bites.
   const handleLoadMore = async () => {
+    const gen = runsGenRef.current;
     const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
@@ -371,6 +370,7 @@ export function BackupsPage() {
         page: nextPage,
         pageSize: DEFAULT_PAGE_SIZE,
       });
+      if (gen !== runsGenRef.current) return;
       setRunsState((prev) =>
         prev.kind === "ready"
           ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
@@ -480,7 +480,6 @@ export function BackupsPage() {
                   checked={enabled}
                   onChange={setEnabled}
                   disabled={!canManageSettings}
-                  ariaLabel={t("backups.schedule.enabledLabel")}
                 />
               </div>
 
@@ -603,8 +602,6 @@ export function BackupsPage() {
                 <>
                   <span className={EYEBROW_CLASS}>{t("backups.manual.kindLabel")}</span>
                   <div
-                    role="radiogroup"
-                    aria-label={t("backups.manual.kindLabel")}
                     className="grid gap-2.5 sm:grid-cols-2"
                   >
                     {BACKUP_KINDS.map((kind) => {
@@ -614,9 +611,7 @@ export function BackupsPage() {
                         <motion.button
                           key={kind}
                           type="button"
-                          {...bounceTap(bounceStrength)}
-                          role="radio"
-                          aria-checked={isActive}
+                          {...bounceTap()}
                           onClick={() => setRunKind(kind)}
                           className={`flex items-start gap-3 rounded-[14px] border p-3.5 text-left transition-colors ${
                             isActive
@@ -671,7 +666,7 @@ export function BackupsPage() {
                     <div className="rounded-xl bg-white/[0.03] px-3 py-2.5">
                       <div className="text-xs text-muted-foreground">{t("backups.manual.statSize")}</div>
                       <div className="mt-0.5 text-lg font-bold text-foreground">
-                        {formatBytes(t, stats.total_size_bytes)}
+                        {formatBytes(stats.total_size_bytes, i18n.language)}
                       </div>
                     </div>
                     <div className="rounded-xl bg-white/[0.03] px-3 py-2.5">
@@ -697,7 +692,7 @@ export function BackupsPage() {
             title={t("backups.runs.title")}
             description={t("backups.runs.description")}
             aside={
-              <div role="group" aria-label={t("backups.runs.filterLabel")} className="shrink-0">
+              <div className="shrink-0">
                 <PillTabs
                   items={RUNS_FILTERS.map((value) => ({
                     key: value,
@@ -730,7 +725,7 @@ export function BackupsPage() {
                   const duration = formatDuration(run);
                   const meta = [
                     formatDateTime(run.created_at, i18n.language),
-                    formatBytes(t, run.size_bytes),
+                    run.size_bytes === null ? "—" : formatBytes(run.size_bytes, i18n.language),
                     ...(duration === null ? [] : [duration]),
                   ].join(" · ");
                   return (
@@ -790,7 +785,6 @@ export function BackupsPage() {
                             bounce={0.05}
                             onClick={() => setPendingDelete(run)}
                             disabled={isRunning}
-                            aria-label={t("backups.runs.deleteButton")}
                           >
                             <Trash2 className="size-4" />
                           </IconButton>

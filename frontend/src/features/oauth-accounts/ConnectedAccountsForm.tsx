@@ -284,7 +284,7 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
 
   return (
     <>
-      <DialogHeader icon={Fingerprint} title={t("profile.passkeys.title")} closeLabel={t("profile.passkeys.close")} />
+      <DialogHeader icon={Fingerprint} title={t("profile.passkeys.title")} />
 
       <div className="flex flex-col divide-y divide-border/50 px-5 pb-5 pt-4">
         {passkeys.length === 0 && (
@@ -315,7 +315,6 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
                 type="button"
                 onClick={() => setRenameTarget(passkey)}
                 disabled={pendingAction !== null}
-                aria-label={t("profile.passkeys.rename")}
                 className="rounded-full p-1.5 text-foreground/70 hover:bg-white/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Pencil className="size-4" />
@@ -324,7 +323,6 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
                 type="button"
                 onClick={() => setDeleteTarget(passkey)}
                 disabled={pendingAction !== null}
-                aria-label={t("profile.passkeys.delete")}
                 className="rounded-full p-1.5 text-error/80 hover:bg-white/5 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {pendingAction === `delete:${passkey.id}` ? (

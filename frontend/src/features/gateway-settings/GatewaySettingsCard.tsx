@@ -13,7 +13,7 @@ import {
   type TestPaymentStatus,
 } from "@entities/gateways/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { isHttpsUrl } from "@shared/lib/external-links";
 import { toast } from "@shared/lib/toast";
 import { Switch } from "@shared/ui/Switch";
@@ -45,7 +45,6 @@ export function GatewaySettingsCard({
   onChanged,
 }: GatewaySettingsCardProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,7 +148,6 @@ export function GatewaySettingsCard({
   return (
     <div>
       <motion.div
-        role="button"
         tabIndex={0}
         onClick={toggleOpen}
         onKeyDown={(event) => {
@@ -157,7 +155,7 @@ export function GatewaySettingsCard({
           event.preventDefault();
           toggleOpen();
         }}
-        {...bounceTap(bounceStrength, 0.03)}
+        {...bounceTap(0.03)}
         className={`flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04] ${canExpand ? "cursor-pointer" : ""}`}
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-bold text-foreground">
@@ -186,7 +184,6 @@ export function GatewaySettingsCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(event) => event.stopPropagation()}
-            aria-label={t("settings.gateways.docsAria", { gateway: label })}
             className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
           >
             <BookOpen className="size-4" />
@@ -197,7 +194,6 @@ export function GatewaySettingsCard({
             checked={gateway.is_active}
             onChange={() => void handleToggle()}
             disabled={isToggling || !gateway.is_configured}
-            ariaLabel={t("settings.gateways.enableAria", { gateway: label })}
           />
         </div>
       </motion.div>
@@ -217,7 +213,7 @@ export function GatewaySettingsCard({
             >
               {webhookUrl !== null && (
                 <Field label={t("settings.gateways.webhookLabel")}>
-                  <CopyableValue value={webhookUrl} copyAria={t("settings.gateways.copyWebhookAria")} />
+                  <CopyableValue value={webhookUrl} />
                 </Field>
               )}
               {flagFields.map((field) => (
@@ -235,7 +231,6 @@ export function GatewaySettingsCard({
                       checked={gateway.flags[field.key] ?? false}
                       onChange={(enabled) => void handleFlag(field.key, enabled)}
                       disabled={savingFlag === field.key}
-                      ariaLabel={t(`settings.gateways.fields.${gateway.type}.${field.key}`)}
                     />
                   </div>
                 </div>

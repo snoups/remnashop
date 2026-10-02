@@ -6,12 +6,11 @@ import { IconButton } from "@shared/ui/IconButton";
 import { Modal } from "@shared/ui/Modal";
 
 interface GuideDialogProps {
-  ariaLabel: string;
   title: string;
   children: ReactNode;
 }
 
-export function GuideDialog({ ariaLabel, title, children }: GuideDialogProps) {
+export function GuideDialog({ title, children }: GuideDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -21,7 +20,6 @@ export function GuideDialog({ ariaLabel, title, children }: GuideDialogProps) {
           event.stopPropagation();
           setIsOpen(true);
         }}
-        aria-label={ariaLabel}
       >
         <CircleHelp className="size-4" />
       </IconButton>

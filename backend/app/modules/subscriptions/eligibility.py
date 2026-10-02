@@ -2,10 +2,11 @@ from collections.abc import Sequence
 
 from app.core.actor import Actor
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import ReferrerLookup
 from app.modules.plans import PlanDto, is_plan_purchasable_by
 from app.modules.settings import SettingsRepository
+from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 
 
@@ -57,3 +58,23 @@ class PurchaseEligibility:
 
     async def is_purchasable(self, plan: PlanDto, user: Actor) -> bool:
         return bool(await self.purchasable([plan], user))
+
+
+async def get_owned_target(
+    repository: SubscriptionRepository, subscription_id: int, user_id: int
+) -> SubscriptionDto:
+    # A missing subscription answers the same as someone else's -- a distinct
+    # one would let a caller walk ids and learn which ones exist.
+    try:
+        target = await repository.get_by_id(subscription_id)
+    except NotFoundError as error:
+        raise ValidationError(
+            "target_subscription_id does not belong to this user",
+            code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
+        ) from error
+    if target.user_id != user_id:
+        raise ValidationError(
+            "target_subscription_id does not belong to this user",
+            code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
+        )
+    return target

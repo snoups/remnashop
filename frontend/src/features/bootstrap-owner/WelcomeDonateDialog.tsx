@@ -3,7 +3,7 @@ import { motion, type Variants } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { BOOSTY_URL, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { TelegramIcon } from "@shared/ui/BrandIcons";
@@ -36,11 +36,10 @@ function riseIn(delay: number) {
 
 export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
 
   const [isLeaving, setIsLeaving] = useState(false);
 
-  const tapProps = bounceTap(bounceStrength, 0.12);
+  const tapProps = bounceTap(0.12);
 
   return (
     <DialogPortal>
@@ -54,7 +53,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
         >
           <div className="relative">
             <motion.div
-              className="flex size-[72px] items-center justify-center rounded-full border border-primary/40 bg-accent shadow-[0_0_46px_rgba(34,211,238,0.28)]"
+              className="flex size-[72px] items-center justify-center rounded-full border border-primary/40 bg-accent shadow-[0_0_46px_color-mix(in_srgb,var(--color-primary)_28%,transparent)]"
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.12, duration: 0.6, ease: EASE_POP }}
@@ -63,7 +62,6 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
             </motion.div>
             {/* one-shot glow burst once the logo has landed */}
             <motion.span
-              aria-hidden
               className="pointer-events-none absolute inset-0 rounded-full border border-primary/60"
               initial={{ opacity: 0, scale: 1 }}
               animate={{ opacity: [0.7, 0], scale: [1, 1.7] }}

@@ -1,15 +1,9 @@
 {
   "app": {
-    "title": "Remnashop — панель управления",
     "copied": "Скопировано",
-    "close": "Закрыть",
     "secretShownOnce": "Показывается один раз — скопируйте и сохраните его сейчас.",
     "done": "Готово",
-    "clearSearch": "Очистить поиск",
-    "moreActions": "Ещё действия"
-  },
-  "toast": {
-    "close": "Закрыть"
+    "copyFailed": "Не удалось скопировать — браузер не дал доступ к буферу обмена."
   },
   "errors": {
     "notFoundTitle": "Страница не найдена",
@@ -31,7 +25,10 @@
       "pattern": "Недопустимые символы.",
       "tooShort": "Минимум {{count}} символов.",
       "generic": "Недопустимое значение."
-    }
+    },
+    "crashTitle": "Что-то пошло не так",
+    "crashDescription": "Не удалось отобразить страницу. Перезагрузите её — если ошибка повторится, загляните в консоль браузера.",
+    "reload": "Перезагрузить"
   },
   "auth": {
     "loginPageTitle": "Вход",
@@ -74,10 +71,8 @@
   },
   "dashboard": {
     "loadError": "Не удалось загрузить обзор. Попробуйте обновить страницу.",
-    "refresh": "Обновить данные",
     "periodDays": "{{count}} дн.",
     "periodAll": "Всё время",
-    "periodLabel": "Период",
     "stats": {
       "totalUsers": "Всего пользователей"
     },
@@ -111,11 +106,6 @@
       "durationHours": "{{count}} ч",
       "durationMinutes": "{{count}} мин",
       "units": {
-        "byte": "Б",
-        "kilobyte": "КБ",
-        "megabyte": "МБ",
-        "gigabyte": "ГБ",
-        "terabyte": "ТБ",
         "millisecond": "мс"
       }
     }
@@ -208,8 +198,7 @@
       "actor": "Инициатор",
       "actorPlaceholder": "Имя, @username, ID или email",
       "dateFrom": "С",
-      "dateTo": "По",
-      "clearDate": "Очистить дату"
+      "dateTo": "По"
     },
     "columns": {
       "occurredAt": "Время",
@@ -228,7 +217,6 @@
       "target": "Цель",
       "ip": "IP-адрес",
       "payload": "Данные",
-      "copyPayload": "Скопировать данные",
       "tabs": {
         "details": "Детали",
         "payload": "Данные"
@@ -329,8 +317,7 @@
       "error": "Не удалось создать администратора."
     },
     "passwordModal": {
-      "title": "Временный пароль",
-      "copyAria": "Скопировать пароль"
+      "title": "Временный пароль"
     },
     "permissionsForm": {
       "cancel": "Отмена",
@@ -506,7 +493,6 @@
     "status": {
       "blocked": "Заблокирован"
     },
-    "sortBy": "Сортировать по: {{column}}",
     "deleted": {
       "name": "Удалённый пользователь",
       "badge": "Удалён",
@@ -514,13 +500,11 @@
     }
   },
   "header": {
-    "dashboard": "Панель управления",
     "account": "Логин",
     "profile": "Профиль",
     "logout": "Выйти",
     "searchPlaceholder": "Поиск",
     "searchEmpty": "Ничего не найдено",
-    "notifications": "Уведомления",
     "shaderOn": "Включить фоновый шейдер",
     "shaderOff": "Выключить фоновый шейдер",
     "searchEvents": "Искать в журнале событий",
@@ -530,7 +514,6 @@
     "searchPlan": "Тариф",
     "notificationsEmpty": "Нет уведомлений",
     "openEventLog": "Открыть журнал событий",
-    "notificationsUnread": "Уведомления: непрочитанных {{count}}",
     "searching": "Поиск…",
     "notificationsLoadError": "Не удалось загрузить уведомления."
   },
@@ -577,7 +560,6 @@
       "restartRequested": "Перезапуск запрошен. Процесс бота скоро поднимется с сохранёнными настройками.",
       "showLogs": "Посмотреть логи",
       "logsTitle": "Логи Telegram-бота",
-      "closeLogs": "Закрыть",
       "refreshLogs": "Обновить",
       "logsEmpty": "Логов пока нет. Они появятся после запуска процесса telegram.",
       "logsLoadError": "Не удалось загрузить логи.",
@@ -592,9 +574,7 @@
       "title": "Команды",
       "description": "Список доступных команд и их порядок",
       "loadError": "Не удалось загрузить команды.",
-      "enabledLabel": "Включена",
       "resetOrder": "Сбросить порядок",
-      "dragHandle": "Перетащить для изменения порядка",
       "save": "Сохранить",
       "saving": "Сохранение…",
       "saved": "Сохранено.",
@@ -612,7 +592,6 @@
       "brandNamePlaceholder": "Remnashop",
       "accentColorLabel": "Акцентный цвет",
       "presetsLabel": "Готовые пресеты",
-      "previousColorLabel": "Предыдущий цвет",
       "shaderEnabledLabel": "Фоновый шейдер",
       "shaderPalette": {
         "base": "База",
@@ -631,14 +610,12 @@
       "defaultImage": "По умолчанию",
       "upload": "Загрузить",
       "replace": "Заменить",
-      "delete": "Удалить",
       "save": "Сохранить",
       "saveSuccess": "Внешний вид обновлён.",
       "saveError": "Не удалось сохранить настройки внешнего вида.",
       "uploadError": "Не удалось загрузить изображение.",
       "deleteError": "Не удалось удалить изображение.",
       "reset": "Сбросить",
-      "resetColor": "Вернуть цвет по умолчанию",
       "resetConfirmTitle": "Сбросить внешний вид?",
       "resetConfirmMessage": "Название бренда, акцентный цвет и фоновый шейдер вернутся к значениям по умолчанию. Загруженные логотип и фавикон будут удалены.",
       "cancel": "Отмена",
@@ -651,7 +628,6 @@
       "loadError": "Не удалось загрузить текущий статус.",
       "configured": "настроен",
       "notConfigured": "не настроен",
-      "enableAria": "Включить {{provider}}",
       "clientIdLabel": "Client ID",
       "clientSecretLabel": "Client secret",
       "oidcDisplayNameLabel": "Отображаемое имя",
@@ -674,8 +650,6 @@
       "saving": "Сохранение…",
       "saved": "Сохранено.",
       "errorEmptyFields": "Заполните хотя бы одно поле для обновления.",
-      "guideAriaLabel": "Справочная статья",
-      "copy": "Копировать",
       "telegramGuide": {
         "title": "Telegram OAuth2",
         "intro": "Для работы функции «Вход через Telegram» необходим Telegram-бот, который нужно дополнительно настроить.",
@@ -756,15 +730,12 @@
       "loadError": "Не удалось загрузить платёжные шлюзы.",
       "configured": "настроен",
       "notConfigured": "не настроен",
-      "enableAria": "Включить {{gateway}}",
       "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
       "save": "Сохранить",
       "saving": "Сохранение…",
       "saved": "Сохранено.",
       "errorEmptyFields": "Заполните хотя бы одно поле для обновления.",
-      "docsAria": "Документация {{gateway}}",
       "webhookLabel": "URL вебхука",
-      "copyWebhookAria": "Скопировать URL вебхука",
       "toggleError": "Не удалось изменить статус шлюза.",
       "testPayment": "Тестовый платёж",
       "testPaymentCreating": "Создание…",
@@ -951,7 +922,6 @@
     "cancel": "Отмена",
     "createError": "Не удалось создать токен.",
     "secretTitle": "Токен создан",
-    "copy": "Копировать",
     "columnToken": "Токен",
     "columnLastUsed": "Использован",
     "columnExpiry": "Срок действия",
@@ -969,8 +939,6 @@
       "button": "Редактировать",
       "title": "Редактирование профиля",
       "close": "Закрыть",
-      "changeAvatar": "Изменить аватар",
-      "avatarHint": "Загрузка аватара пока недоступна.",
       "nameLabel": "Отображаемое имя",
       "changePassword": "Изменить пароль",
       "currentPasswordLabel": "Текущий пароль",
@@ -1002,9 +970,7 @@
       "addButton": "Добавить Passkey",
       "adding": "Ожидание устройства…",
       "manage": "Управление",
-      "close": "Закрыть",
       "namePrompt": "Название Passkey",
-      "rename": "Переименовать",
       "delete": "Удалить",
       "deleteConfirm": "Это устройство больше не сможет входить с помощью этого Passkey.",
       "lastUsed": "Использован {{date}}",
@@ -1069,9 +1035,6 @@
     "cancel": "Отмена",
     "thisDevice": "Это устройство",
     "lastUsed": "{{date}}"
-  },
-  "language": {
-    "label": "Язык"
   },
   "roles": {
     "USER": "Пользователь",
@@ -1266,17 +1229,14 @@
   },
   "permissionPicker": {
     "read": "Чтение",
-    "write": "Запись",
-    "changed": "изменено"
+    "write": "Запись"
   },
   "buildInfo": {
     "title": "О сборке",
-    "close": "Закрыть",
     "version": "Текущая версия",
     "branch": "Ветка",
     "commit": "Коммит",
     "commitDate": "Дата коммита",
-    "copyCommit": "Скопировать хеш коммита",
     "githubButton": "GitHub",
     "telegramButton": "Telegram"
   },
@@ -1346,9 +1306,6 @@
       "plansSection": "Планы",
       "addonsSection": "Дополнения",
       "empty": "Пока нет ни одного плана или дополнения.",
-      "pinned": "Закреплённое переопределение",
-      "clearPin": "Снять переопределение",
-      "pin": "Закрепить текущую цену",
       "saved": "Цена обновлена.",
       "saveError": "Не удалось обновить цену.",
       "planNotFound": "Не удалось определить план для этой строки.",
@@ -1387,7 +1344,6 @@
       "kindTelegramId": "Telegram",
       "kindEmail": "Email",
       "add": "Добавить",
-      "remove": "Удалить",
       "empty": "Записей пока нет.",
       "loadError": "Не удалось загрузить чёрный список.",
       "addError": "Не удалось добавить запись.",
@@ -1395,7 +1351,6 @@
       "searchPlaceholder": "Поиск по записям",
       "filterAll": "Все",
       "noResults": "Ничего не найдено.",
-      "valueLabel": "Telegram ID или email",
       "valuePlaceholder": "243323533 или name@example.com",
       "valueInvalid": "Введите Telegram ID (число) или email."
     },
@@ -1405,10 +1360,8 @@
       "urlPlaceholder": "https://example.com/list.txt",
       "namePlaceholder": "Например, Remnashop",
       "add": "Добавить источник",
-      "remove": "Удалить источник",
       "removeConfirmTitle": "Удалить источник?",
       "removeConfirm": "Удалить источник «{{name}}»?\nЕго записи сразу исчезнут из чёрного списка. Уже заблокированные пользователи останутся заблокированными.",
-      "enabled": "Включён",
       "entriesCount": "записей: {{count}}",
       "lastSynced": "Синхронизирован {{date}}",
       "neverSynced": "Ещё не синхронизировался",
@@ -1444,8 +1397,6 @@
       "pendingHint": "Будет заблокирован, когда чёрный список применится к пользователям. Это происходит раз в час и после каждого изменения списка.",
       "noResults": "Ничего не найдено.",
       "range": "{{from}}–{{to}} из {{total}}",
-      "prevPage": "Предыдущая страница",
-      "nextPage": "Следующая страница",
       "blocked": "Заблокирован",
       "unblockAll": {
         "button": "Разблокировать всех",
@@ -1514,7 +1465,6 @@
     "runs": {
       "title": "История резервных копий",
       "description": "Скачивание и удаление готовых резервных копий",
-      "filterLabel": "Фильтр по типу",
       "filterAll": "Все",
       "triggerSchedule": "По расписанию",
       "triggerManual": "Вручную",
@@ -1523,19 +1473,11 @@
       "durationMinutes": "{{minutes}} мин {{seconds}} с",
       "downloadButton": "Скачать",
       "downloadError": "Не удалось скачать резервную копию.",
-      "deleteButton": "Удалить резервную копию",
       "deleteConfirmTitle": "Удалить резервную копию?",
       "deleteConfirm": "Безвозвратно удалить эту резервную копию? Это действие нельзя отменить.",
       "deleteError": "Не удалось удалить резервную копию.",
       "deleteConfirmButton": "Удалить",
       "deleteCancelButton": "Отмена"
-    },
-    "units": {
-      "byte": "Б",
-      "kilobyte": "КБ",
-      "megabyte": "МБ",
-      "gigabyte": "ГБ",
-      "terabyte": "ТБ"
     }
   },
   "advertising": {
@@ -1563,7 +1505,6 @@
       "currencyLabel": "Валюта",
       "noteLabel": "Заметка",
       "cancel": "Отмена",
-      "close": "Закрыть",
       "save": "Создать",
       "saving": "Создание…",
       "saved": "Рекламная ссылка создана.",
@@ -1591,7 +1532,6 @@
       "cancelButton": "Отмена"
     },
     "stats": {
-      "close": "Закрыть",
       "attributions": "Регистрации",
       "paidCount": "Покупки",
       "conversionRate": "Конверсия",
@@ -1652,7 +1592,6 @@
       "botUnavailable": "Бот не настроен",
       "webUnavailable": "Не задан APP_WEB_CABINET_URL",
       "loadError": "Не удалось получить ссылки",
-      "copyError": "Не удалось скопировать ссылку.",
       "qrError": "Не удалось скачать QR-код."
     }
   },
@@ -1679,7 +1618,6 @@
       "description": "Локали, уведомления, ошибки и прочие сообщения",
       "languages": "Локали · {{total}}",
       "localeSource": "исходник · {{total}}",
-      "untranslated": "Не переведено на выбранную локаль",
       "localeTranslated": "{{translated}} из {{total}}",
       "loadError": "Не удалось загрузить локали.",
       "importConfirm": "Заменить переводы значениями из файла? Строки активных локалей будут перезаписаны, остальные пропущены.",
@@ -1692,15 +1630,12 @@
       "title": "Наборы эмодзи",
       "description": "Наборы премиум-эмодзи из Telegram",
       "linkPlaceholder": "t.me/addemoji/...",
-      "linkLabel": "Ссылка на набор эмодзи",
       "linkInvalid": "Вставьте ссылку вида t.me/addemoji/название или само название набора.",
       "add": "Добавить",
       "adding": "Добавление…",
       "imported": "Набор «{{title}}» добавлен.",
       "empty": "Наборы эмодзи ещё не добавлены.",
       "loadError": "Не удалось загрузить наборы эмодзи.",
-      "close": "Закрыть",
-      "delete": "Удалить набор",
       "deleteTitle": "Удалить набор?",
       "deleteConfirm": "Удалить «{{title}}»? На кнопках с его эмодзи останутся обычные глифы.",
       "deleteConfirmButton": "Удалить"
@@ -1714,7 +1649,6 @@
       "addWindowTitle": "Новое окно",
       "addWindowNameLabel": "Название окна",
       "addWindowNameHint": "Видно только в редакторе, пользователи бота его не увидят",
-      "deleteWindow": "Удалить окно",
       "deleteWindowTitle": "Удалить окно?",
       "deleteWindowConfirm": "Удалить «{{key}}»? Это действие нельзя отменить.",
       "deleteWindowConfirmButton": "Удалить",
@@ -1751,7 +1685,6 @@
       "unlabelledButton": "Без текста"
     },
     "inspector": {
-      "copyKey": "Копировать внутреннее имя окна",
       "keyCopied": "Внутреннее имя окна скопировано.",
       "bannerLabel": "Баннер",
       "nameLabel": "Название окна",
@@ -1808,14 +1741,10 @@
       },
       "bannerUpload": "Загрузить",
       "bannerReplace": "Заменить",
-      "bannerDelete": "Удалить баннер",
-      "emojiPick": "Выбрать эмодзи",
-      "variablePick": "Вставить переменную",
       "variableSearch": "Поиск переменных",
       "variableEmpty": "Ничего не найдено",
       "emojiClear": "Убрать эмодзи",
       "emojiStandard": "Стандартные",
-      "emojiManage": "Управление наборами",
       "emojiGroup": {
         "smileys": "Смайлики",
         "people": "Люди",
@@ -1827,8 +1756,7 @@
         "symbols": "Знаки",
         "flags": "Флаги"
       },
-      "dirtyTitle": "Несохранённые изменения",
-      "bannerRestoreDefault": "Вернуть стандартный"
+      "dirtyTitle": "Несохранённые изменения"
     },
     "toolbar": {
       "export": "Экспортировать",
@@ -1856,7 +1784,6 @@
         "EXTRA_DAYS": "Дни подписки",
         "POINTS": "Баллы"
       },
-      "levelRewardLabel": "Награда за уровень {{level}}",
       "rewardStrategyLabel": "Размер награды",
       "rewardStrategy": {
         "AMOUNT": "Фиксированный",
@@ -1949,7 +1876,6 @@
     },
     "stats": {
       "button": "Реферальная статистика",
-      "close": "Закрыть",
       "referralCodeLabel": "Реферальный код",
       "botLinkLabel": "Ссылка на бота",
       "webLinkLabel": "Ссылка на веб-кабинет",
@@ -2050,7 +1976,6 @@
       "codeLabel": "Код",
       "codePlaceholder": "например, WELCOME30",
       "generate": "Сгенерировать",
-      "rewardTypeLabel": "Тип награды",
       "rewardDaysLabel": "Сколько дней добавить",
       "rewardPercentLabel": "Скидка, %",
       "rewardAddonLabel": "Дополнение",
@@ -2061,7 +1986,6 @@
       "rewardPlanEmpty": "Планов пока нет",
       "rewardDurationDaysLabel": "Длительность, дней",
       "cancel": "Отмена",
-      "close": "Закрыть",
       "save": "Создать",
       "saving": "Создание…",
       "saved": "Промокод создан.",
@@ -2083,7 +2007,6 @@
       "cancelButton": "Отмена",
       "title": "Удалить промокод?"
     },
-    "copyAria": "Скопировать код {{code}}",
     "noMatches": "Нет промокодов под выбранные фильтры.",
     "status": {
       "ACTIVE": "Активен",
@@ -2118,10 +2041,8 @@
       "availabilityLabel": "Кому доступен",
       "allowedUserIdsLabel": "ID пользователей",
       "allowedUserIdsPlaceholder": "Введите ID и нажмите Enter",
-      "removeUserAria": "Убрать {{id}}",
       "expiresLabel": "Действует до",
       "expiresPlaceholder": "Без срока",
-      "clearDate": "Очистить дату",
       "maxActivationsLabel": "Лимит активаций",
       "maxActivationsHint": "Без ограничений",
       "reusableLabel": "Многоразовый",
@@ -2144,7 +2065,6 @@
         "users": "Пользователи",
         "settings": "Настройки"
       },
-      "close": "Закрыть",
       "availability": "Кому доступен",
       "expires": "Действует до",
       "used": "Использовано",
@@ -2168,7 +2088,6 @@
     "activeCount": "активных: {{count}}",
     "noMatches": "Нет планов под этот фильтр.",
     "filters": {
-      "label": "Фильтр планов",
       "all": "Все",
       "active": "Активные",
       "inactive": "Скрытые"
@@ -2183,7 +2102,6 @@
     "devices_few": "{{count}} устройства",
     "devices_many": "{{count}} устройств",
     "devices_other": "{{count}} устройства",
-    "dragHandle": "Перетащить план «{{name}}»",
     "create": {
       "button": "Новый план"
     },
@@ -2192,7 +2110,6 @@
       "editTitle": "Редактирование плана",
       "button": "Редактировать",
       "publicCodeLabel": "Публичный код",
-      "copyPublicCodeAria": "Скопировать код",
       "nameLabel": "Название",
       "descriptionLabel": "Описание",
       "tagLabel": "Тег",
@@ -2222,9 +2139,7 @@
       "daysLabel": "Дней",
       "basePriceLabel": "Базовая цена",
       "addDuration": "Добавить длительность",
-      "removeDuration": "Удалить",
       "cancel": "Отмена",
-      "close": "Закрыть",
       "save": "Сохранить",
       "saving": "Сохранение…",
       "saved": "План сохранён.",
@@ -2242,7 +2157,6 @@
       "daysSuffix": "дн.",
       "addPresetLabel": "Добавить:",
       "customDuration": "Своя",
-      "dragDuration": "Перетащить длительность",
       "isActiveHint": "Выключенный план не виден клиентам",
       "isTrialHint": "Предлагается как пробный период",
       "durationsAfterCreate": "Длительности добавляются после создания плана."
@@ -2250,7 +2164,6 @@
     "access": {
       "button": "Доступ",
       "title": "Доступ к плану",
-      "availabilityLabel": "Доступность",
       "availability": {
         "ALL": "Все",
         "NEW": "Новые пользователи",
@@ -2264,7 +2177,6 @@
       "emailsLabel": "Разрешённые Email",
       "emailsHint": "По одному на строку",
       "cancel": "Отмена",
-      "close": "Закрыть",
       "save": "Сохранить",
       "saving": "Сохранение…",
       "saved": "Доступ обновлён.",
@@ -2346,7 +2258,6 @@
       "PURCHASE": "За покупку"
     },
     "details": {
-      "close": "Закрыть",
       "total": "К оплате",
       "noDiscount": "Без скидки",
       "basePrice": "было {{price}}",
@@ -2389,7 +2300,6 @@
     "filters": {
       "search": "Поиск",
       "searchPlaceholder": "ID подписки, ID пользователя, тег или тариф",
-      "status": "Статус",
       "statusAll": "Все статусы",
       "all": "Все"
     },
@@ -2424,7 +2334,6 @@
         "MONTH_ROLLING": "Ежемесячно (скользящее)"
       },
       "cancel": "Отмена",
-      "close": "Закрыть",
       "save": "Сохранить",
       "saving": "Сохранение…",
       "saved": "Подписка обновлена.",
@@ -2708,10 +2617,6 @@
     "loadMore": "Показать ещё",
     "loading": "Загрузка…",
     "progress": "{{shown}} из {{total}}"
-  },
-  "datePicker": {
-    "prevMonth": "Предыдущий месяц",
-    "nextMonth": "Следующий месяц"
   },
   "apiErrors": {
     "ADDON_NAME_TAKEN": "Аддон с таким названием уже есть",

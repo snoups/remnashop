@@ -53,7 +53,7 @@ class ReconcileSubscriptionsUseCase(UseCase[None, None]):
                     "remaining subscriptions will be picked up by the next scheduled sweep"
                 )
                 break
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception(
                     f"Reconcile sweep failed for subscription '{subscription.id}' "
                     f"(remnawave_user_id={subscription.remnawave_user_id}); "

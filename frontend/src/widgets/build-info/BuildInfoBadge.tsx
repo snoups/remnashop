@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { copyToClipboard } from "@shared/lib/clipboard";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toggleDebugBar, useDebugState } from "@shared/lib/debug-bar";
 import { githubApiUrl, TELEGRAM_URL } from "@shared/lib/external-links";
 import { isNewerVersion } from "@shared/lib/version-compare";
@@ -31,7 +32,6 @@ const footerLinkClassName =
 
 export function BuildInfoBadge() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const { fakeUpdate } = useDebugState();
   const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
   const [stars, setStars] = useState<number | null>(null);
@@ -99,11 +99,11 @@ export function BuildInfoBadge() {
   const handleCopyCommit = () => {
     const sha = metadata?.git.commit_sha;
     if (!sha) return;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(sha).catch(() => {});
-    }
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 1500);
+    void copyToClipboard(sha).then((copied) => {
+      if (!copied) return;
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1500);
+    });
   };
 
   if (!metadata) return null;
@@ -123,11 +123,10 @@ export function BuildInfoBadge() {
         onPointerUp={cancelLongPress}
         onPointerLeave={cancelLongPress}
         onContextMenu={(event) => event.preventDefault()}
-        aria-label={t("buildInfo.title")}
         className={SIDEBAR_PILL_CLASSNAME}
         initial="rest"
         whileHover="hover"
-        {...bounceTap(bounceStrength)}
+        {...bounceTap()}
       >
         <BounceIcon icon={Info} size={17} hoverSize={23.5} />
         <span className={`${LABEL_CLASSNAME} font-mono`}>{currentVersion}</span>
@@ -151,7 +150,6 @@ export function BuildInfoBadge() {
           >
             <button
               type="button"
-              aria-hidden
               tabIndex={-1}
               className="absolute inset-0 cursor-default"
               onClick={() => setIsOpen(false)}
@@ -162,7 +160,6 @@ export function BuildInfoBadge() {
               icon={Info}
               title={t("buildInfo.title")}
               onClose={() => setIsOpen(false)}
-              closeLabel={t("buildInfo.close")}
             />
 
             <div className="flex flex-col gap-3 px-5 pb-5 pt-4">
@@ -206,7 +203,6 @@ export function BuildInfoBadge() {
                     </a>
                     <IconButton size="6"
                       onClick={handleCopyCommit}
-                      aria-label={t("buildInfo.copyCommit")}
                     >
                       {isCopied ? (
                         <Check className="size-3.5 text-success" />
@@ -229,7 +225,7 @@ export function BuildInfoBadge() {
                   href={TELEGRAM_URL}
                   target="_blank"
                   rel="noreferrer"
-                  {...bounceTap(bounceStrength)}
+                  {...bounceTap()}
                   className={footerLinkClassName}
                 >
                   <TelegramIcon className="size-4" />
@@ -239,7 +235,7 @@ export function BuildInfoBadge() {
                   href={metadata.repository_url}
                   target="_blank"
                   rel="noreferrer"
-                  {...bounceTap(bounceStrength)}
+                  {...bounceTap()}
                   className={footerLinkClassName}
                 >
                   <GithubIcon className="size-4" />
@@ -270,8 +266,7 @@ function BuildInfoPanel({ onEscape, children }: { onEscape: () => void; children
   return (
     <motion.div
       ref={panelRef}
-      role="dialog"
-      aria-modal
+      data-dialog
       tabIndex={-1}
       initial={{ opacity: 0, scale: 0.94, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}

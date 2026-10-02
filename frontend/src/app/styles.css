@@ -63,16 +63,6 @@ html {
   }
 }
 
-/* Leva (DebugPanel, dev-only) has no prop for panel position — it's always
-   fixed top-right by default. Override its root to anchor bottom-right
-   instead. `.leva-c-kWgxhW` is leva 0.10.1's own generated class for that
-   root div (verified against the installed version, not a public API) —
-   silently stops working on any leva upgrade; re-inspect the DOM if so. */
-.leva-c-kWgxhW {
-  top: auto !important;
-  bottom: 10px !important;
-}
-
 /* react-colorful (ColorPickerField's accent color popover) ships square
    corners and its own sizing by default — round it to match this app's
    rounded-xl/rounded-full language and fit it to the popover it's mounted
@@ -145,7 +135,7 @@ textarea::-webkit-resizer {
 /* Dialog bodies reserve the scrollbar's width up front, so content doesn't shift when
    the scrollbar appears, and give that width back out of their right padding (p-4/px-4),
    keeping the content area as wide as without a gutter. Nested lists keep their own layout. */
-[role="dialog"] .min-h-0.flex-1.overflow-y-auto {
+[data-dialog] .min-h-0.flex-1.overflow-y-auto {
   scrollbar-gutter: stable;
   padding-right: calc(1rem - 10px);
 }

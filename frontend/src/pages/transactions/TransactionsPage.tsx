@@ -14,26 +14,11 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import {
-  CURRENCY_SYMBOL,
-  DEFAULT_PAGE_SIZE,
-  getTransactionSummary,
-  PAYMENT_STATUS_BADGE_TONE,
-  PAYMENT_STATUS_DOT_CLASSNAME,
-  PAYMENT_STATUS_ICON_CLASSNAME,
-  PURCHASE_TYPES,
-  listTransactionGateways,
-  listTransactions,
-  type TransactionItem,
-  type TransactionListFilters,
-  type TransactionStatus,
-  type TransactionSummary,
-  type PurchaseType,
-} from "@entities/transactions/api";
-import { formatMoney, formatPercent } from "@entities/advertising/format";
+import { DEFAULT_PAGE_SIZE, getTransactionSummary, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactions, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { currencySymbol, formatMoney, formatPercent } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -91,7 +76,6 @@ function groupByDay(orders: TransactionItem[]): DayGroup[] {
 
 export function TransactionsPage() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [status, setStatus] = useState("");
@@ -381,7 +365,7 @@ export function TransactionsPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <span className={EYEBROW_CLASS}>{t("transactions.filters.period")}</span>
-            <PeriodPills value={period} onChange={setPeriod} ariaLabel={t("transactions.filters.period")} />
+            <PeriodPills value={period} onChange={setPeriod} />
           </div>
         </div>
       </Card>
@@ -426,7 +410,7 @@ export function TransactionsPage() {
                       </h3>
                       <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
                         {group.orders.map((order) => {
-                          const symbol = CURRENCY_SYMBOL[order.currency] ?? order.currency;
+                          const symbol = currencySymbol(order.currency);
                           const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}`);
 
                           return (
@@ -435,11 +419,10 @@ export function TransactionsPage() {
                               type="button"
                               disabled={!canViewDetails}
                               onClick={() => setDetailsOrder(order)}
-                              {...(canViewDetails && bounceTap(bounceStrength, 0.03))}
+                              {...(canViewDetails && bounceTap(0.03))}
                               className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left enabled:hover:bg-white/[0.04] disabled:cursor-default`}
                             >
                               <span
-                                aria-hidden
                                 className={`flex size-9 items-center justify-center rounded-full text-[14px] font-semibold ${PAYMENT_STATUS_ICON_CLASSNAME[order.status]}`}
                               >
                                 {symbol}

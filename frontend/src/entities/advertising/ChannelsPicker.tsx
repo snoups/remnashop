@@ -23,7 +23,6 @@ export function ChannelsPicker({ value, onChange }: { value: AdLinkChannels; onC
     <SegmentedPills
       value={key}
       onChange={(next) => onChange(CHANNELS[next])}
-      ariaLabel={t("advertising.channels.label")}
       stretch
       options={[
         { value: "all", label: t("advertising.channels.all") },

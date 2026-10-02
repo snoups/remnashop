@@ -15,6 +15,7 @@ import { BottomNav } from "@widgets/bottom-nav/BottomNav";
 import { Header } from "@widgets/header/Header";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 import { Sidebar } from "@widgets/sidebar/Sidebar";
+import { Spinner } from "@shared/ui/Spinner";
 
 // Keyed by the first segment under /dashboard, so switching tabs inside
 // settings doesn't fade the whole page. useOutlet() instead of <Outlet /> keeps
@@ -58,6 +59,11 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
 
   if (userState.kind === "error") {
     return userState.isNetworkError ? <ServerUnreachable /> : <ServerError />;
+  }
+  // Pages read permissions on mount; rendered before /users/me answers they see
+  // none, fetch with the wrong filters and flash their buttons in a beat later.
+  if (userState.kind === "loading") {
+    return <Spinner className="h-dvh" />;
   }
 
   return (

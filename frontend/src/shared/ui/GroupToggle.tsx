@@ -15,7 +15,6 @@ export function GroupToggle({ open, onToggle, label, count, leading }: GroupTogg
   return (
     <button
       type="button"
-      aria-expanded={open}
       onClick={onToggle}
       className="group flex w-full items-center gap-2.5 rounded-full px-3 py-1.5 text-left"
     >

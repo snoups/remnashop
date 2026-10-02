@@ -19,7 +19,8 @@ const DARK_TEXT_FROM = 0.45;
 function retentionCellStyle(value: number): { background: string; color?: string } {
   const alpha = Math.max(0.06, Math.min(0.85, value));
   return {
-    background: `rgba(34, 211, 238, ${alpha})`,
+    // the admin-picked accent, not a fixed cyan -- the legend above is drawn from it too
+    background: `color-mix(in srgb, var(--color-primary) ${Math.round(alpha * 100)}%, transparent)`,
     color: alpha > DARK_TEXT_FROM ? "var(--color-primary-foreground)" : undefined,
   };
 }

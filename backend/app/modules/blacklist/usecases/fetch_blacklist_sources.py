@@ -20,7 +20,7 @@ class FetchBlacklistSourcesUseCase(UseCase[None, None]):
                 continue
             try:
                 parsed = await fetch_source(source.url)
-            except Exception as exc:  # noqa: BLE001 -- one bad source must not abort the rest
+            except Exception as exc:  # one bad source must not abort the rest
                 logger.warning(f"Blacklist source '{source.url}' sync failed: {exc}")
                 async with self._uow:
                     await self._blacklist_repository.mark_source_error(source.id, str(exc))

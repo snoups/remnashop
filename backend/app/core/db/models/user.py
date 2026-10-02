@@ -14,7 +14,7 @@ from app.core.enums import Locale, Role
 class User(BaseSql, TimestampMixin):
     __tablename__ = "users"
     __table_args__ = (
-        # Only one OWNER may ever exist; the app-level check in bootstrap_owner()
+        # Only one OWNER may ever exist; the app-level check in BootstrapOwnerUseCase
         # is TOCTOU-racy on its own, so this is the actual guarantee.
         Index(
             "ux_users_single_owner",
@@ -73,7 +73,7 @@ class User(BaseSql, TimestampMixin):
     # One-way latch: True until the user's first trial activation, then
     # never re-derived from subscription history (a trial subscription can
     # later become DELETED via a trial->paid conversion -- see
-    # PurchaseSubscriptionUseCase._purchase_new -- so "has a trial row"
+    # NewPurchase._upgrade_trial_in_place -- so "has a trial row"
     # would give the wrong answer post-conversion).
     is_trial_available: Mapped[bool] = mapped_column(default=True, server_default="true")
     # dashboard bell: events up to this moment count as read

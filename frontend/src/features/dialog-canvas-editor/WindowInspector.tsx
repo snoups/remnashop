@@ -7,6 +7,7 @@ import type { BannerMode, DialogWindow } from "@entities/dialogs/api";
 import { bannerMode, bannerNameForMode, resetWindow, updateWindow } from "@entities/dialogs/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
+import { copyToClipboard } from "@shared/lib/clipboard";
 import { toast } from "@shared/lib/toast";
 import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
@@ -161,10 +162,10 @@ export function WindowInspector({
         <button
           type="button"
           onClick={() => {
-            navigator.clipboard?.writeText(window.key).catch(() => {});
-            toast.success(t("dialogs.inspector.keyCopied"));
+            void copyToClipboard(window.key).then((copied) => {
+              if (copied) toast.success(t("dialogs.inspector.keyCopied"));
+            });
           }}
-          aria-label={t("dialogs.inspector.copyKey")}
           className="block max-w-full truncate text-left font-mono text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {window.key}
@@ -200,7 +201,6 @@ export function WindowInspector({
             checked={window.is_enabled}
             onChange={(value) => void handleEnabledChange(value)}
             disabled={!canUpdate || window.kind === "seed"}
-            ariaLabel={t("dialogs.inspector.enabledLabel")}
           />
         </div>
       </div>
@@ -263,7 +263,6 @@ export function WindowInspector({
                   type="button"
                   disabled={isBusy}
                   onClick={() => void handleBannerDelete()}
-                  aria-label={t("dialogs.inspector.bannerDelete")}
                   className="ml-auto flex size-6 cursor-pointer items-center justify-center rounded-full border border-error/20 bg-error/[0.08] text-error transition-colors hover:bg-error/15 disabled:opacity-40"
                 >
                   <Trash2 className="size-3" />
@@ -274,7 +273,6 @@ export function WindowInspector({
                   type="button"
                   disabled={isBusy}
                   onClick={() => void handleRestoreDefault()}
-                  aria-label={t("dialogs.inspector.bannerRestoreDefault")}
                   className={`flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:bg-white/[0.06] disabled:opacity-40 ${
                     canDeleteBanner && bannerUrl ? "" : "ml-auto"
                   }`}

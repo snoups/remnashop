@@ -9,7 +9,6 @@ import { ButtonsSection, IconButtonsSection } from "@pages/debug/sections/Button
 import { CardsSection, FieldsSection, TablesSection } from "@pages/debug/sections/FormSections";
 import { DialogsSection, HintsSection, MenusSection, StatesSection } from "@pages/debug/sections/OverlaySections";
 import { BadgesSection, TabsSection } from "@pages/debug/sections/SelectionSections";
-import { useBounceStrength } from "@shared/lib/bounceState";
 import { TabBar } from "@shared/ui/TabBar";
 import type { TabBarItem } from "@shared/ui/TabBar";
 
@@ -29,7 +28,6 @@ const SECTION_IDS = [
 
 export function DebugPage() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const isKitActive = useMatch({ path: "/dashboard/debug", end: true }) !== null;
   const isVariantsActive = useMatch("/dashboard/debug/variants") !== null;
 
@@ -40,7 +38,7 @@ export function DebugPage() {
 
   return (
     <div>
-      <TabBar items={items} bounceStrength={bounceStrength} />
+      <TabBar items={items} />
       <div className="mt-6">
         <Outlet />
       </div>
@@ -63,7 +61,7 @@ export function DebugKitPage() {
         <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">{k("intro.meta")}</span>
       </div>
 
-      <DebugNav links={links} ariaLabel={k("intro.nav")} />
+      <DebugNav links={links} />
 
       <ButtonsSection />
       <IconButtonsSection />

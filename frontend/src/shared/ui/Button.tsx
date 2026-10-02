@@ -1,6 +1,6 @@
 import { motion, type HTMLMotionProps } from "motion/react";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 
 // accent/solid/outline/danger: primary and destructive actions, dialog and form footers (14px).
 // secondary: card-header actions and buttons next to a field (12.5px semibold).
@@ -36,14 +36,13 @@ interface ButtonProps extends HTMLMotionProps<"button"> {
 }
 
 export function Button({ variant, size = "md", className = "", type = "button", ...props }: ButtonProps) {
-  const bounceStrength = useBounceStrength();
   const typography =
     size === "sm" ? `${SM_TYPE_CLASS} ${variant === "danger" ? "font-semibold" : "font-medium"}` : TYPE_CLASS[variant];
 
   return (
     <motion.button
       type={type}
-      {...bounceTap(bounceStrength)}
+      {...bounceTap()}
       className={`flex shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${COLOR_CLASS[variant]} ${typography} ${className}`}
       {...props}
     />

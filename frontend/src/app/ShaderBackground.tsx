@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { buildHueRotationMatrix, PALETTE, shaderDebugState, type ShaderUniforms } from "@app/shaderState";
+import { buildHueRotationMatrix, DEFAULT_TIME_SCALE, PALETTE, type ShaderUniforms } from "@app/shaderState";
 import { DEFAULT_ACCENT_COLOR, DEFAULT_SHADER_PALETTE_HEX, hexToHueDegrees, hexToRgbNormalized } from "@shared/lib/color";
 import {
   useEffectiveAccentColor,
@@ -232,7 +232,6 @@ export function ShaderBackground() {
     context.useProgram(program);
 
     uniformsRef.current = uniforms;
-    shaderDebugState.uniforms = uniforms;
 
     // Re-uploaded every frame so outside writes to `uniforms` (the effects below) apply on the next draw.
     function renderFrame() {
@@ -304,7 +303,7 @@ export function ShaderBackground() {
       const idle = now - lastActivity > IDLE_TIMEOUT_MS;
       motion = Math.min(1, Math.max(0, motion + (idle ? -dt : dt) / EASE_DURATION_MS));
       const eased = motion * motion * (3 - 2 * motion);
-      elapsed += (dt / 1000) * shaderDebugState.speed * eased;
+      elapsed += (dt / 1000) * DEFAULT_TIME_SCALE * eased;
 
       uniforms.uTime.value = elapsed;
       // Same reason the hue matrix is precomputed in shaderState.ts: one value
@@ -345,7 +344,6 @@ export function ShaderBackground() {
 
     return () => {
       uniformsRef.current = null;
-      shaderDebugState.uniforms = null;
       stop();
       window.removeEventListener("blur", stop);
       window.removeEventListener("focus", onActivity);
@@ -396,7 +394,6 @@ export function ShaderBackground() {
   return (
     <canvas
       ref={canvasRef}
-      aria-hidden="true"
       className={`pointer-events-none fixed inset-0 -z-20 h-full w-full ${shaderEnabled ? "" : "hidden"}`}
     />
   );

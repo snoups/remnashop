@@ -1,11 +1,11 @@
 import { ChevronDown, Eye, EyeOff, Pencil } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { updateOwnProfile } from "@entities/user/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { toast } from "@shared/lib/toast";
 import { useReloadCurrentUser } from "@entities/user/use-current-user";
@@ -47,7 +47,6 @@ export function EditProfileDialog({ name, login }: EditProfileDialogProps) {
 
 function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const close = useModalClose();
   const reloadCurrentUser = useReloadCurrentUser();
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
@@ -59,25 +58,8 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initials = (login ?? "?").slice(0, 2).toUpperCase();
-
-  // Revokes on unmount too, not just on the next pick -- otherwise a picked
-  // preview outlives the dialog for as long as the tab stays open.
-  useEffect(() => {
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    };
-  }, [avatarPreview]);
-
-  const handleAvatarPick = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    // The unmount/change effect above revokes whatever this replaces.
-    setAvatarPreview(URL.createObjectURL(file));
-  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -122,22 +104,8 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
         {/* small form, nothing scrolls: the buttons sit under the fields, no footer */}
         <div className="flex flex-col gap-3 p-4">
           <Card variant="form">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                aria-label={t("profile.edit.changeAvatar")}
-                className="group relative shrink-0"
-              >
-                <div className="flex size-14 items-center justify-center overflow-hidden rounded-full bg-foreground text-[18px] font-bold text-canvas">
-                  {avatarPreview ? <img src={avatarPreview} alt="" className="size-full object-cover" /> : initials}
-                </div>
-                <span className="absolute -bottom-1 -right-1 z-10 flex size-6 items-center justify-center rounded-full border border-glass-border bg-surface text-foreground transition-colors group-hover:border-primary group-hover:text-primary">
-                  <Pencil className="size-3.5" />
-                </span>
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarPick} className="hidden" />
-              <p className="text-[12px] text-muted-foreground">{t("profile.edit.avatarHint")}</p>
+            <div className="flex size-14 items-center justify-center rounded-full bg-foreground text-[18px] font-bold text-canvas">
+              {initials}
             </div>
 
             <Field label={t("profile.edit.nameLabel")} htmlFor="edit-name">
@@ -153,7 +121,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
               <motion.button
                 type="button"
                 onClick={() => setIsPasswordOpen((open) => !open)}
-                {...bounceTap(bounceStrength)}
+                {...bounceTap()}
                 className="flex w-full items-center justify-between rounded-xl py-1 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
               >
                 {t("profile.edit.changePassword")}
@@ -187,7 +155,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
                             type="button"
                             onClick={() => setShowCurrentPassword((value) => !value)}
                             tabIndex={-1}
-                            {...bounceTap(bounceStrength, 0.12)}
+                            {...bounceTap(0.12)}
                             className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
                           >
                             {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -210,7 +178,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
                             type="button"
                             onClick={() => setShowNewPassword((value) => !value)}
                             tabIndex={-1}
-                            {...bounceTap(bounceStrength, 0.12)}
+                            {...bounceTap(0.12)}
                             className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
                           >
                             {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -233,7 +201,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
                             type="button"
                             onClick={() => setShowConfirmPassword((value) => !value)}
                             tabIndex={-1}
-                            {...bounceTap(bounceStrength, 0.12)}
+                            {...bounceTap(0.12)}
                             className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
                           >
                             {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}

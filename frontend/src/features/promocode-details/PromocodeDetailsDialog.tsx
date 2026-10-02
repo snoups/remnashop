@@ -17,6 +17,7 @@ import {
 import { PromocodeLimitsFields } from "@entities/promocodes/PromocodeLimitsFields";
 import { PromocodeUsersList } from "@features/promocode-details/PromocodeUsersList";
 import { getErrorMessage } from "@shared/api/http";
+import { copyToClipboard } from "@shared/lib/clipboard";
 import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
@@ -99,9 +100,11 @@ function PromocodeDetailsDialogBody({
   ];
 
   const handleCopy = () => {
-    navigator.clipboard?.writeText(promocode.code).catch(() => {});
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), COPIED_RESET_MS);
+    void copyToClipboard(promocode.code).then((copied) => {
+      if (!copied) return;
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), COPIED_RESET_MS);
+    });
   };
 
   const handleToggleActive = async () => {
@@ -145,14 +148,13 @@ function PromocodeDetailsDialogBody({
         title={<span className="font-mono">{promocode.code}</span>}
         badges={
           <>
-            <IconButton size="6" onClick={handleCopy} aria-label={t("promocodes.copyAria", { code: promocode.code })}>
+            <IconButton size="6" onClick={handleCopy}>
               {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
             </IconButton>
             <Badge tone={PROMOCODE_STATUS_BADGE_TONE[status]}>{t(`promocodes.status.${status}`)}</Badge>
           </>
         }
         subtitle={t(`promocodes.rewardType.${promocode.reward_type}`)}
-        closeLabel={t("promocodes.details.close")}
       />
 
       {tabs.length > 1 && (

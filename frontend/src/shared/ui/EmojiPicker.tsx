@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { listEmojiPacks } from "@entities/emoji-packs/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { scrollToEmojiPacks } from "@shared/lib/emoji-packs-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
@@ -49,14 +49,10 @@ const POPOVER_MOTION = {
 
 export function PackTab({
   isActive,
-  bounceStrength,
-  label,
   glyph,
   onSelect,
 }: {
   isActive: boolean;
-  bounceStrength: number;
-  label: string;
   glyph: ReactNode;
   onSelect: () => void;
 }) {
@@ -64,14 +60,12 @@ export function PackTab({
     <motion.button
       type="button"
       onClick={onSelect}
-      aria-label={label}
       initial="rest"
       whileTap="tap"
       className="group relative isolate block shrink-0 cursor-pointer rounded-full"
     >
       <motion.span
-        aria-hidden
-        variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+        variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
         className={`absolute inset-0 rounded-full transition-colors ${
           isActive ? "bg-accent" : "group-hover:bg-white/[0.06]"
         }`}
@@ -101,7 +95,6 @@ export function EmojiPicker({
   const popoverRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
   const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
-  const bounceStrength = useBounceStrength();
   // Portalled and fixed: the inspector pane scrolls, and the shell's backdrop-blur
   // wrapper is both a containing block for fixed children and an overflow-hidden
   // box, so a popover positioned in place gets clipped either way.
@@ -143,14 +136,15 @@ export function EmojiPicker({
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        onMouseEnter={() => {
-          if (disabled) return;
+        // hover-to-open is for a mouse only: a tap fires an emulated enter right
+        // before the click, which would open and then toggle the picker shut
+        onPointerEnter={(event) => {
+          if (disabled || event.pointerType !== "mouse") return;
           cancelClose();
           open();
         }}
-        onMouseLeave={closeSoon}
+        onPointerLeave={(event) => event.pointerType === "mouse" && closeSoon()}
         onClick={() => (isOpen ? setIsOpen(false) : open())}
-        aria-label={t("dialogs.inspector.emojiPick")}
         className="flex size-[26px] cursor-pointer items-center justify-center rounded-full text-[16px] disabled:cursor-not-allowed disabled:opacity-40"
       >
         {current ?? <Smile className="size-[18px] text-muted-foreground" />}
@@ -181,8 +175,6 @@ export function EmojiPicker({
                 >
                   <PackTab
                     isActive={activeTab === "standard"}
-                    bounceStrength={bounceStrength}
-                    label={t("dialogs.inspector.emojiStandard")}
                     glyph={<Smile className="size-[18px]" />}
                     onSelect={() => setActiveTab("standard")}
                   />
@@ -190,8 +182,6 @@ export function EmojiPicker({
                     <PackTab
                       key={pack.set_name}
                       isActive={activeTab === pack.set_name}
-                      bounceStrength={bounceStrength}
-                      label={pack.title}
                       glyph={<PremiumEmoji item={pack.items[0]} size={20} />}
                       onSelect={() => setActiveTab(pack.set_name)}
                     />
@@ -202,7 +192,6 @@ export function EmojiPicker({
                     setIsOpen(false);
                     scrollToEmojiPacks();
                   }}
-                  aria-label={t("dialogs.inspector.emojiManage")}
                 >
                   <Plus className="size-[18px]" />
                 </IconButton>

@@ -101,7 +101,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
 
   return (
     <>
-      <DialogHeader icon={KeyRound} title={t("apiTokens.createTitle")} closeLabel={t("apiTokens.cancel")} />
+      <DialogHeader icon={KeyRound} title={t("apiTokens.createTitle")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">

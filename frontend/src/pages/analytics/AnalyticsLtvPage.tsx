@@ -2,9 +2,9 @@ import { TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { currencySymbol } from "@shared/lib/format";
 import { getLtvDistribution } from "@entities/analytics/api";
 import type { LtvDistribution } from "@entities/analytics/api";
-import { CURRENCY_SYMBOL } from "@entities/transactions/api";
 import { AnalyticsCardHeader } from "@pages/analytics/AnalyticsCardHeader";
 import { Card } from "@shared/ui/Card";
 import { LIST_HEAD_CLASS } from "@shared/ui/classes";
@@ -37,7 +37,7 @@ export function AnalyticsLtvPage() {
   }
 
   const { buckets, report_currency: currency } = state.data;
-  const symbol = CURRENCY_SYMBOL[currency] ?? currency;
+  const symbol = currencySymbol(currency);
   const total = buckets.reduce((sum, bucket) => sum + bucket.users, 0);
   const max = Math.max(1, ...buckets.map((bucket) => bucket.users));
   const header = (

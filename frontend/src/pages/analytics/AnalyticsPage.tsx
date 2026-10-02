@@ -2,13 +2,11 @@ import { ArrowRightLeft, BarChart3, Layers, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Outlet, useMatch } from "react-router-dom";
 
-import { useBounceStrength } from "@shared/lib/bounceState";
 import { TabBar } from "@shared/ui/TabBar";
 import type { TabBarItem } from "@shared/ui/TabBar";
 
 export function AnalyticsPage() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const isMetricsActive = useMatch({ path: "/dashboard/analytics", end: true }) !== null;
   const isFunnelActive = useMatch("/dashboard/analytics/funnel") !== null;
   const isCohortsActive = useMatch("/dashboard/analytics/cohorts") !== null;
@@ -23,7 +21,7 @@ export function AnalyticsPage() {
 
   return (
     <div>
-      <TabBar items={items} bounceStrength={bounceStrength} />
+      <TabBar items={items} />
       <div className="mt-6">
         <Outlet />
       </div>

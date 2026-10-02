@@ -4,8 +4,24 @@ import { createRoot } from "react-dom/client";
 import { App } from "@app/App";
 import "@shared/i18n";
 import { installFormValidationMessages } from "@shared/lib/form-validation";
+import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 
 import "@app/styles.css";
+
+const CHUNK_RELOAD_KEY = "remnashop_chunk_reload_at";
+// a second failure this soon after reloading is a real outage, not a stale tab
+const CHUNK_RELOAD_COOLDOWN_MS = 10_000;
+
+// A tab opened before a deploy still asks for the old hashed chunks, which are
+// gone now -- reloading picks up the new index.html. Left to throw, the error
+// reaches the route's errorElement instead.
+window.addEventListener("vite:preloadError", (event) => {
+  const lastReload = Number(readStorage(CHUNK_RELOAD_KEY, "session"));
+  if (Date.now() - lastReload < CHUNK_RELOAD_COOLDOWN_MS) return;
+  writeStorage(CHUNK_RELOAD_KEY, String(Date.now()), "session");
+  event.preventDefault();
+  window.location.reload();
+});
 
 installFormValidationMessages();
 

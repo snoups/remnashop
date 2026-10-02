@@ -74,16 +74,16 @@ export function FieldsSection() {
         </Field>
       </Specimen>
       <Specimen name="TextInput · disabled · pr-10" usage={k("u.textInput")} stage="stretch">
-        <TextInput aria-label={k("s.disabled")} disabled defaultValue="42" />
+        <TextInput disabled defaultValue="42" />
         <div className="relative">
-          <TextInput aria-label={k("s.password")} type="password" defaultValue="secret-pass" className="w-full pr-10" />
+          <TextInput type="password" defaultValue="secret-pass" className="w-full pr-10" />
           <Eye className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         </div>
       </Specimen>
       <Specimen name="SuffixInput · aria-invalid · disabled" usage={k("u.suffixInput")} stage="stretch">
-        <SuffixInput aria-label={k("s.days")} type="number" defaultValue="30" suffix={k("s.days")} />
-        <SuffixInput aria-label="₽" type="number" defaultValue="199" aria-invalid suffix="₽" />
-        <SuffixInput aria-label="USDT" type="number" defaultValue="5" disabled suffix="USDT" />
+        <SuffixInput type="number" defaultValue="30" suffix={k("s.days")} />
+        <SuffixInput type="number" defaultValue="199" aria-invalid suffix="₽" />
+        <SuffixInput type="number" defaultValue="5" disabled suffix="USDT" />
       </Specimen>
       <Specimen name="SearchField" usage={k("u.search")} stage="stretch">
         <SearchField
@@ -106,11 +106,11 @@ export function FieldsSection() {
         />
       </Specimen>
       <Specimen name="Switch · ColorPickerField" usage={`${k("u.switch")} ${k("u.color")}`}>
-        <Switch checked={isOn} onChange={setIsOn} ariaLabel="on" />
-        <Switch checked={!isOn} onChange={(value) => setIsOn(!value)} ariaLabel="off" />
-        <Switch checked onChange={() => undefined} disabled ariaLabel={k("s.disabled")} />
+        <Switch checked={isOn} onChange={setIsOn} />
+        <Switch checked={!isOn} onChange={(value) => setIsOn(!value)} />
+        <Switch checked onChange={() => undefined} disabled />
         <span className="mx-2 h-6 w-px bg-border" />
-        <ColorPickerField value={color} onChange={setColor} ariaLabel="color" />
+        <ColorPickerField value={color} onChange={setColor} />
       </Specimen>
       <Specimen name="label · EYEBROW_CLASS" usage={k("u.labels")} wide>
         <span className="text-sm font-medium text-foreground/80">{k("s.name")}</span>
@@ -286,7 +286,7 @@ function GroupToggleDemo() {
       <GroupToggle
         open={open[1]}
         onToggle={() => flip(1)}
-        leading={<span aria-hidden className="-ml-1 size-1.5 rounded-full bg-success" />}
+        leading={<span className="-ml-1 size-1.5 rounded-full bg-success" />}
         label={k("s.active")}
         count={12}
       />

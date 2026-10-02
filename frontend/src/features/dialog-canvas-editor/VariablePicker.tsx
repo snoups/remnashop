@@ -64,8 +64,6 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
         // keeps the field's caret where it is, so the token lands there
         onMouseDown={(event) => event.preventDefault()}
         onClick={toggle}
-        aria-label={t("dialogs.inspector.variablePick")}
-        aria-expanded={isOpen}
         className="flex size-[26px] cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Braces className="size-[16px]" />

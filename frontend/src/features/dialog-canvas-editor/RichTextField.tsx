@@ -162,9 +162,6 @@ export const RichTextField = forwardRef<RichTextFieldHandle, RichTextFieldProps>
   return (
     <div
       ref={rootRef}
-      role="textbox"
-      aria-multiline
-      aria-disabled={disabled}
       contentEditable={!disabled}
       suppressContentEditableWarning
       spellCheck={false}

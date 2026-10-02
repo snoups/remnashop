@@ -4,7 +4,7 @@ import pytest
 
 from app.modules.dialogs import catalog
 from app.telegram.dialogs import state_pool
-from app.telegram.dialogs.catalog_menu import register_menu_catalog
+from app.telegram.routers.menu.catalog import register_menu_catalog
 from app.telegram.states import MainMenu
 
 
@@ -64,14 +64,7 @@ async def test_registers_seed_states() -> None:
 
 
 def test_calling_twice_is_idempotent() -> None:
-    # Not just a nice-to-have: routers/menu/__init__.py's eager dual-import of
-    # `dialog`/`handlers`, combined with dialog.py calling this function at its
-    # own module level, means register_menu_catalog() can be re-entered as a
-    # side effect of its own lazy handlers import on a cold process (a direct
-    # call -- e.g. from this test file -- triggers the routers.menu package
-    # init, which imports dialog.py, which calls this function again, nested,
-    # before the outer call's own registration lines run). Both calls are the
-    # same logical operation, so the second one is a no-op, not an error.
+    # dialog.py calls it at import time, tests call it again after a reset
     register_menu_catalog()
     register_menu_catalog()
     assert {w.key for w in catalog.all_windows()} == {

@@ -9,7 +9,7 @@ import { prefetchPermissionCatalog } from "@entities/admin/use-permission-catalo
 import { AdminCreateForm } from "@features/admin-create/AdminCreateForm";
 import type { AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
 import { AdminDetailsFlow, DemoteAdminConfirm } from "@features/admin-details/AdminDetailsFlow";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
@@ -21,7 +21,6 @@ import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
 
 export function AdminsPage() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, reload] = useAsyncResource(listAdmins);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [details, setDetails] = useState<{ admin: Admin; tab: AdminDetailsTab } | null>(null);
@@ -92,14 +91,13 @@ export function AdminsPage() {
               return (
                 <motion.div
                   key={admin.id}
-                  {...bounceTap(bounceStrength, 0.03)}
+                  {...bounceTap(0.03)}
                   className={`relative col-span-full grid grid-cols-subgrid items-center has-[[aria-expanded=true]]:z-20 gap-y-0 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
                 >
                   {/* whole-row hit area; sits under the menu and channel icons (z-10) */}
                   <button
                     type="button"
                     onClick={() => setDetails({ admin, tab: "profile" })}
-                    aria-label={`${t("users.details.button")}: ${admin.name}`}
                     className="absolute inset-0 cursor-pointer rounded-full"
                   />
                   <div
@@ -141,7 +139,6 @@ export function AdminsPage() {
         <OneTimeSecretDialog
           title={t("admins.passwordModal.title")}
           value={revealedPassword}
-          copyAria={t("admins.passwordModal.copyAria")}
           onDone={() => setRevealedPassword(null)}
         />
       )}

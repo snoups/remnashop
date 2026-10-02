@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { anchorFor, type PopoverAnchor } from "@shared/lib/popover-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
@@ -20,7 +20,6 @@ interface DatePickerFieldProps {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  clearAriaLabel: string;
   // form: inside a form, the same dark surface as TextInput; glass is for filters
   variant?: "glass" | "form";
 }
@@ -48,9 +47,8 @@ function getMonthGrid(year: number, month: number): Date[] {
   );
 }
 
-export function DatePickerField({ id, value, onChange, placeholder, clearAriaLabel, variant = "glass" }: DatePickerFieldProps) {
-  const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
+export function DatePickerField({ id, value, onChange, placeholder, variant = "glass" }: DatePickerFieldProps) {
+  const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -87,7 +85,6 @@ export function DatePickerField({ id, value, onChange, placeholder, clearAriaLab
       <motion.div
         ref={triggerRef}
         id={id}
-        role="button"
         tabIndex={0}
         onClick={toggleOpen}
         onKeyDown={(event) => {
@@ -96,7 +93,7 @@ export function DatePickerField({ id, value, onChange, placeholder, clearAriaLab
             toggleOpen();
           }
         }}
-        {...bounceTap(bounceStrength, 0.04)}
+        {...bounceTap(0.04)}
         className={`group flex w-full cursor-pointer items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} py-2 pl-9 pr-8 text-sm font-medium text-foreground outline-none focus:border-primary`}
       >
         <Calendar className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
@@ -109,7 +106,6 @@ export function DatePickerField({ id, value, onChange, placeholder, clearAriaLab
               event.stopPropagation();
               onChange("");
             }}
-            aria-label={clearAriaLabel}
           >
             <X className="size-3" />
           </IconButton>
@@ -134,7 +130,6 @@ export function DatePickerField({ id, value, onChange, placeholder, clearAriaLab
                 <IconButton
                   size="7"
                   onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-                  aria-label={t("datePicker.prevMonth")}
                 >
                   <ChevronLeft className="size-4" />
                 </IconButton>
@@ -142,7 +137,6 @@ export function DatePickerField({ id, value, onChange, placeholder, clearAriaLab
                 <IconButton
                   size="7"
                   onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-                  aria-label={t("datePicker.nextMonth")}
                 >
                   <ChevronRight className="size-4" />
                 </IconButton>

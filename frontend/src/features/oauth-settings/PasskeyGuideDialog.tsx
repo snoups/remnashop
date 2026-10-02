@@ -8,7 +8,6 @@ export function PasskeyGuideDialog() {
 
   return (
     <GuideDialog
-      ariaLabel={t("settings.oauth.guideAriaLabel")}
       title={t("settings.oauth.passkeyGuide.title")}
     >
       <div>

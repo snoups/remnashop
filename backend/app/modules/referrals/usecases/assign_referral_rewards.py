@@ -121,7 +121,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
                 continue
             try:
                 await self._grant_one_level(hop, data, settings.reward_type, amount)
-            except Exception as error:  # noqa: BLE001 -- re-raised below, after every hop has run
+            except Exception as error:  # re-raised below, after every hop has run
                 logger.exception(
                     f"Referral reward failed at level '{hop.level}' for referrer "
                     f"'{hop.referrer_id}' (buyer '{data.user_id}')"

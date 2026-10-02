@@ -26,12 +26,14 @@ from app.modules.subscriptions import (
     PurchaseEligibility,
     PurchaseSubscriptionDispatch,
     SubscriptionRepository,
+    get_owned_target,
 )
 from app.modules.transactions.dto import (
     CheckoutResultDto,
     CreateCheckoutDto,
     CreateTransactionDto,
     PriceQuote,
+    TransactionDto,
 )
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
@@ -90,66 +92,21 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         return customer_email
 
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
+        if data.user_id != actor.id and not actor.is_privileged:
+            raise PermissionDeniedError
+
         async with self._uow:
-            if data.user_id != actor.id and not actor.is_privileged:
-                raise PermissionDeniedError
-
-            if data.gateway_type is PaymentGatewayType.TELEGRAM_STARS:
-                raise ValidationError(
-                    "Telegram Stars checkout runs in the bot, not the web API",
-                    code=ErrorCode.TELEGRAM_STARS_BOT_ONLY,
-                )
-            if data.gateway_type not in GATEWAY_REGISTRY:
-                raise ValidationError(
-                    f"Gateway '{data.gateway_type.value}' is not yet supported",
-                    code=ErrorCode.GATEWAY_NOT_SUPPORTED,
-                )
-            gateway_settings = await self._gateway_repository.get_raw_settings(data.gateway_type)
-            if data.currency is not gateway_currency(data.gateway_type, gateway_settings):
-                raise ValidationError(
-                    f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'",
-                    code=ErrorCode.GATEWAY_CURRENCY_UNSUPPORTED,
-                )
-
-            plan = await self._plan_repository.get_by_id(data.plan_id)
-            user = await self._user_repository.get_by_id(data.user_id)
-            if user is None:
-                raise NotFoundError(
-                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
-                )
-
+            gateway_settings = await self._load_gateway_settings(data)
+            plan, user = await self._load_purchasable_plan(data)
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
-
-            if not await self._eligibility.is_purchasable(plan, user) or not _link_code_matches(
-                plan, data.plan_code
-            ):
-                # Same answer as a missing plan: a distinct one would let anyone
-                # walk plan ids and learn which hidden plans exist.
-                raise NotFoundError(
-                    f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND
-                )
 
         await self._validate_provisioning_preconditions(data)
 
         async with self._uow:
             rates = await self._pricing_repository.get_rate_table()
             quote = quote_price(plan, data.duration_days, data.currency, user, rates)
-            plan_snapshot = PlanSnapshot(
-                plan_id=plan.id,
-                public_code=plan.public_code,
-                name=plan.name,
-                price_paid=quote.final_price,
-                currency=data.currency,
-                duration_days=data.duration_days,
-                traffic_limit=plan.traffic_limit,
-                device_limit=plan.device_limit,
-                traffic_limit_strategy=plan.traffic_limit_strategy,
-                is_trial=plan.is_trial,
-                internal_squads=plan.internal_squads,
-                external_squad=plan.external_squad,
-            )
 
-            is_free = quote.final_price == 0
+        is_free = quote.final_price == 0
         if not is_free:
             await self._validate_gateway_availability(data.gateway_type)
 
@@ -158,26 +115,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             # the same transaction -- a second checkout racing this one finds
             # it gone and has to re-quote.
             await self._spend_purchase_discount(quote, user)
-            order = await self._transaction_repository.create(
-                CreateTransactionDto(
-                    user_id=data.user_id,
-                    plan_id=data.plan_id,
-                    plan_snapshot=plan_snapshot,
-                    duration_days=data.duration_days,
-                    currency=data.currency,
-                    purchase_type=data.purchase_type,
-                    target_subscription_id=data.target_subscription_id,
-                    gateway_type=data.gateway_type,
-                    base_price=quote.base_price,
-                    discount_percent=quote.discount_percent,
-                    discount_source=quote.discount_source,
-                    final_price=quote.final_price,
-                    discount_promocode_id=quote.discount_promocode_id,
-                    customer_email=customer_email,
-                    idempotency_key=uuid4().hex,
-                    expires_at=datetime_now() + _ORDER_TTL,
-                )
-            )
+            order = await self._create_order(data, plan, quote, customer_email)
 
             if is_free:
                 order = await self._transaction_repository.mark_status(
@@ -199,6 +137,72 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             )
 
         return CheckoutResultDto(order_id=order.id, confirmation_url=intent.confirmation_url)
+
+    async def _load_gateway_settings(self, data: CreateCheckoutDto) -> dict[str, str]:
+        if data.gateway_type is PaymentGatewayType.TELEGRAM_STARS:
+            raise ValidationError(
+                "Telegram Stars checkout runs in the bot, not the web API",
+                code=ErrorCode.TELEGRAM_STARS_BOT_ONLY,
+            )
+        if data.gateway_type not in GATEWAY_REGISTRY:
+            raise ValidationError(
+                f"Gateway '{data.gateway_type.value}' is not yet supported",
+                code=ErrorCode.GATEWAY_NOT_SUPPORTED,
+            )
+        gateway_settings = await self._gateway_repository.get_raw_settings(data.gateway_type)
+        if data.currency is not gateway_currency(data.gateway_type, gateway_settings):
+            raise ValidationError(
+                f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'",
+                code=ErrorCode.GATEWAY_CURRENCY_UNSUPPORTED,
+            )
+        return gateway_settings
+
+    async def _load_purchasable_plan(self, data: CreateCheckoutDto) -> tuple[PlanDto, UserDto]:
+        plan = await self._plan_repository.get_by_id(data.plan_id)
+        user = await self._user_repository.get_by_id(data.user_id)
+        if user is None:
+            raise NotFoundError(f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+
+        if not await self._eligibility.is_purchasable(plan, user) or not _link_code_matches(
+            plan, data.plan_code
+        ):
+            # Same answer as a missing plan: a distinct one would let anyone
+            # walk plan ids and learn which hidden plans exist.
+            raise NotFoundError(f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND)
+        return plan, user
+
+    async def _create_order(
+        self,
+        data: CreateCheckoutDto,
+        plan: PlanDto,
+        quote: PriceQuote,
+        customer_email: Optional[str],
+    ) -> TransactionDto:
+        return await self._transaction_repository.create(
+            CreateTransactionDto(
+                user_id=data.user_id,
+                plan_id=data.plan_id,
+                plan_snapshot=PlanSnapshot.from_plan(
+                    plan,
+                    price_paid=quote.final_price,
+                    currency=data.currency,
+                    duration_days=data.duration_days,
+                ),
+                duration_days=data.duration_days,
+                currency=data.currency,
+                purchase_type=data.purchase_type,
+                target_subscription_id=data.target_subscription_id,
+                gateway_type=data.gateway_type,
+                base_price=quote.base_price,
+                discount_percent=quote.discount_percent,
+                discount_source=quote.discount_source,
+                final_price=quote.final_price,
+                discount_promocode_id=quote.discount_promocode_id,
+                customer_email=customer_email,
+                idempotency_key=uuid4().hex,
+                expires_at=datetime_now() + _ORDER_TTL,
+            )
+        )
 
     async def _spend_purchase_discount(self, quote: PriceQuote, user: UserDto) -> None:
         if quote.discount_source is not DiscountSource.PURCHASE:
@@ -243,18 +247,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
                 )
 
-            try:
-                target = await self._subscription_repository.get_by_id(data.target_subscription_id)
-            except NotFoundError as error:
-                raise ValidationError(
-                    "target_subscription_id does not belong to this user",
-                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
-                ) from error
-            if target.user_id != data.user_id:
-                raise ValidationError(
-                    "target_subscription_id does not belong to this user",
-                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
-                )
+            target = await get_owned_target(
+                self._subscription_repository, data.target_subscription_id, data.user_id
+            )
             if target.status is SubscriptionStatus.DELETED:
                 raise ValidationError(
                     f"Cannot {data.purchase_type.value.lower()} a deleted subscription",

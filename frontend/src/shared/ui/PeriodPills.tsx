@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { ActivePill } from "@shared/ui/ActivePill";
 
 export type PeriodDays = 0 | 7 | 30 | 90;
@@ -12,27 +12,22 @@ const PERIODS: PeriodDays[] = [7, 30, 90, 0];
 export function PeriodPills({
   value,
   onChange,
-  ariaLabel,
 }: {
   value: PeriodDays;
   onChange: (days: PeriodDays) => void;
-  ariaLabel: string;
 }) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const pillId = useId();
 
   return (
     <motion.nav
       layoutScroll
-      aria-label={ariaLabel}
       className="no-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md"
     >
       {PERIODS.map((days) => (
         <motion.button
           key={days}
           type="button"
-          aria-pressed={value === days}
           onClick={() => onChange(days)}
           initial="rest"
           whileTap="tap"
@@ -40,11 +35,10 @@ export function PeriodPills({
         >
           {/* only the pill scales, so the label stays crisp */}
           {value === days ? (
-            <ActivePill layoutId={pillId} bounceStrength={bounceStrength} />
+            <ActivePill layoutId={pillId} />
           ) : (
             <motion.span
-              aria-hidden
-              variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+              variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
               className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
             />
           )}

@@ -83,6 +83,7 @@ lint.select = [
     "PLE",
     "Q",
     "RUF022",
+    "RUF100",
     "T",
     "TID",
     "W",

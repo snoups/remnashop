@@ -20,7 +20,7 @@ import { listPromocodes, type Promocode } from "@entities/promocodes/api";
 import { listSubscriptions, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { listUsers, type UserListItem } from "@entities/user/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { BounceIcon } from "@shared/ui/BounceIcon";
@@ -60,7 +60,6 @@ const matches = (haystack: string, tokens: string[]) => {
 export function HeaderSearch() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const bounceStrength = useBounceStrength();
   const userState = useCurrentUser();
   const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
   const canViewUsers = permissions.includes("USERS_VIEW");
@@ -233,7 +232,7 @@ export function HeaderSearch() {
   return (
     <div ref={rootRef} className="relative flex min-w-40 max-w-80 flex-1">
       <motion.label
-        {...bounceTap(bounceStrength, 0.03)}
+        {...bounceTap(0.03)}
         className="group flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] h-9 px-3.5 transition-colors not-focus-within:hover:bg-white/[0.08] focus-within:border-primary"
       >
         <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />

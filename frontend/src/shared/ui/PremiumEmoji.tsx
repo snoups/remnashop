@@ -1,5 +1,6 @@
 // light canvas build: no expressions support, and no eval() -- Telegram emoji never use expressions
 import lottie from "lottie-web/build/player/lottie_light_canvas";
+import { Smile } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -9,7 +10,8 @@ import {
 } from "@entities/emoji-packs/api";
 
 interface PremiumEmojiProps {
-  item: EmojiPackItem;
+  /** undefined for an empty pack's cover (`pack.items[0]`): drawn as a plain smiley */
+  item: EmojiPackItem | undefined;
   /** Rendered size in px; the source artwork is always 512x512. */
   size: number;
 }
@@ -22,16 +24,17 @@ interface PremiumEmojiProps {
 export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
   const [failed, setFailed] = useState(false);
   const container = useRef<HTMLDivElement>(null);
-  const isLottie = item.animation_kind === "lottie";
+  const isLottie = item?.animation_kind === "lottie";
+  const emojiId = item?.custom_emoji_id;
 
   useEffect(() => {
-    if (!isLottie || container.current === null) return;
+    if (!emojiId || !isLottie || container.current === null) return;
     const animation = lottie.loadAnimation({
       container: container.current,
       renderer: "canvas",
       loop: true,
       autoplay: true,
-      path: emojiAnimationUrl(item.custom_emoji_id),
+      path: emojiAnimationUrl(emojiId),
       // dpr defaults to devicePixelRatio, so a 22px emoji rasterizes the whole
       // vector scene into a 44x44 canvas every frame on a Retina display.
       rendererSettings: { dpr: 1 },
@@ -42,8 +45,9 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
     // 120Hz. Integer frames let it skip.
     animation.setSubframe(false);
     return () => animation.destroy();
-  }, [isLottie, item.custom_emoji_id]);
+  }, [isLottie, emojiId]);
 
+  if (!item) return <Smile className="text-muted-foreground" style={{ width: size, height: size }} />;
   if (isLottie) return <div ref={container} style={{ width: size, height: size }} />;
 
   if (item.animation_kind === "video") {

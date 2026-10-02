@@ -148,7 +148,7 @@ async def poll_runtime_heartbeat(redis: Redis, process: str) -> None:
                     event_loop_delay_ms=delay_ms,
                     event_loop_p99_ms=p99_ms,
                 )
-            except Exception:  # noqa: BLE001 -- a transient Redis blip must not kill the poller
+            except Exception:  # a transient Redis blip must not kill the poller
                 logger.warning(f"Failed to publish runtime heartbeat for '{process}'")
             await asyncio.sleep(RUNTIME_HEARTBEAT_INTERVAL_S)
     finally:

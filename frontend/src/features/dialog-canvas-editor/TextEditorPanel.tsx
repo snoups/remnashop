@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { sentTextLength, splitTextKey, updateDialogText } from "@entities/dialogs/api";
 import type { VariableOption } from "@entities/dialogs/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { resetTranslation } from "@entities/translations/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
@@ -66,7 +66,6 @@ export function TextEditorPanel({
   onSaved,
 }: TextEditorPanelProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const { messageId, attributeId } = splitTextKey(textKey);
   const entry = entries.find(
     (e) => e.locale === activeLocale && e.message_id === messageId && e.attribute_id === attributeId,
@@ -199,7 +198,7 @@ export function TextEditorPanel({
               draft === (entry?.value ?? "") || (required && draft.trim() === "") || isTooLong
             }
             onClick={() => void handleSave()}
-            {...bounceTap(bounceStrength)}
+            {...bounceTap()}
             className="h-9 flex-1 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/80 hover:bg-white/[0.06] disabled:opacity-30"
           >
             {t(canShowReset ? "dialogs.inspector.textSaveShort" : "dialogs.inspector.textSave")}
@@ -210,7 +209,7 @@ export function TextEditorPanel({
             type="button"
             onClick={() => void handleReset()}
             disabled={isResetting}
-            {...bounceTap(bounceStrength)}
+            {...bounceTap()}
             className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isResetting && <Loader2 className="size-3.5 animate-spin" />}

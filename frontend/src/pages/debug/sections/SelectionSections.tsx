@@ -6,7 +6,6 @@ import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
-import { useBounceStrength } from "@shared/lib/bounceState";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { DialogTabs } from "@shared/ui/DialogTabs";
@@ -28,7 +27,6 @@ const TONES: BadgeTone[] = ["success", "warning", "error", "neutral", "accent", 
 export function TabsSection() {
   const k = useKit();
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [searchParams] = useSearchParams();
   const routeTab = (searchParams.get("tab") as DemoTab | null) ?? "overview";
   const [dialogTab, setDialogTab] = useState<DemoTab>("overview");
@@ -43,7 +41,6 @@ export function TabsSection() {
     <DebugSection id="tabs">
       <Specimen name="TabBar" usage={k("u.tabBar")}>
         <TabBar
-          bounceStrength={bounceStrength}
           items={DEMO_TABS.map((tab) => ({
             key: tab,
             to: `?tab=${tab}`,
@@ -64,7 +61,6 @@ export function TabsSection() {
         <SegmentedPills
           value={segment}
           onChange={setSegment}
-          ariaLabel="SegmentedPills"
           options={DEMO_TABS.map((tab) => ({ value: tab, label: label(tab) }))}
         />
       </Specimen>
@@ -72,13 +68,12 @@ export function TabsSection() {
         <SegmentedPills
           value={segment}
           onChange={setSegment}
-          ariaLabel="SegmentedPills stretch"
           stretch
           options={DEMO_TABS.map((tab) => ({ value: tab, label: label(tab) }))}
         />
       </Specimen>
       <Specimen name="PeriodPills" usage={k("u.period")}>
-        <PeriodPills value={period} onChange={setPeriod} ariaLabel="PeriodPills" />
+        <PeriodPills value={period} onChange={setPeriod} />
       </Specimen>
       <Specimen name='PillTabs · size="compact | field"' usage={k("u.pillTabs")} stage="stretch">
         <PillTabs
@@ -101,8 +96,6 @@ export function TabsSection() {
               <PackTab
                 key={tab}
                 isActive={packTab === tab}
-                bounceStrength={bounceStrength}
-                label={label(tab)}
                 glyph={<Glyph className="size-[18px]" />}
                 onSelect={() => setPackTab(tab)}
               />
@@ -113,7 +106,7 @@ export function TabsSection() {
       <Specimen name='ChoiceChip · size="md | sm"' usage={k("u.choice")} wide>
         <div className="flex flex-wrap gap-1.5">
           {[7, 30, 90].map((days) => (
-            <ChoiceChip key={days} active={chip === days} aria-pressed={chip === days} onClick={() => setChip(days)}>
+            <ChoiceChip key={days} active={chip === days} onClick={() => setChip(days)}>
               {k("s.month")} · {days}
             </ChoiceChip>
           ))}
@@ -124,7 +117,6 @@ export function TabsSection() {
               key={hours}
               size="sm"
               active={chip === hours}
-              aria-pressed={chip === hours}
               onClick={() => setChip(hours)}
             >
               {t("backups.schedule.preset", { hours })}

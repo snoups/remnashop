@@ -11,12 +11,13 @@ import {
   getAdvertisingSummary,
   listAdLinks,
 } from "@entities/advertising/api";
-import { formatMoney, formatPercent, roiClassName } from "@entities/advertising/format";
+import { roiClassName } from "@entities/advertising/format";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { AdLinkCreateDialog } from "@features/ad-link-create/AdLinkCreateDialog";
 import { AdLinkDetailsDialog } from "@features/ad-link-details/AdLinkDetailsDialog";
 import { ApiError, getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { formatMoney, formatPercent } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -53,7 +54,6 @@ function compareAdLinks(a: AdLink, b: AdLink): number {
 
 export function AdvertisingPage() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
@@ -284,7 +284,6 @@ export function AdvertisingPage() {
             <SegmentedPills
               value={statusFilter}
               onChange={setStatusFilter}
-              ariaLabel={t("advertising.columns.status")}
               options={[
                 { value: "", label: t("advertising.filters.statusAll") },
                 { value: "true", label: t("advertising.filters.statusActive") },
@@ -295,7 +294,7 @@ export function AdvertisingPage() {
           {canViewSummary && (
             <div className="flex flex-col gap-1.5">
               <span className={EYEBROW_CLASS}>{t("advertising.filters.period")}</span>
-              <PeriodPills value={period} onChange={setPeriod} ariaLabel={t("advertising.filters.period")} />
+              <PeriodPills value={period} onChange={setPeriod} />
             </div>
           )}
           {canCreate && (
@@ -356,11 +355,10 @@ export function AdvertisingPage() {
                     key={link.id}
                     type="button"
                     onClick={() => setDetailsId(link.id)}
-                    {...bounceTap(bounceStrength, 0.03)}
+                    {...bounceTap(0.03)}
                     className={`${gridClassName} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
                   >
                     <span
-                      aria-hidden
                       className={`flex size-9 items-center justify-center rounded-full ${
                         link.is_active ? "bg-success/10 text-success" : "bg-white/[0.06] text-muted-foreground"
                       }`}

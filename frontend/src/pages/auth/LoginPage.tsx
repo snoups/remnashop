@@ -68,7 +68,7 @@ export function LoginPage() {
             exit="leave"
             onAnimationComplete={(definition) => definition === "leave" && isLeaving && enterDashboard()}
           >
-            <div className="flex items-center gap-3" aria-label={t("app.title")}>
+            <div className="flex items-center gap-3">
               <BrandMark className="size-9 shrink-0 text-primary" />
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{brandName}</h1>
             </div>

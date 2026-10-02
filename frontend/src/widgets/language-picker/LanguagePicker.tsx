@@ -16,7 +16,7 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 };
 
 export function LanguagePicker() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -45,9 +45,6 @@ export function LanguagePicker() {
           this stays put regardless of the button's hover/tap scale. */}
       <motion.button
         type="button"
-        aria-label={t("language.label")}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -57,7 +54,7 @@ export function LanguagePicker() {
         <Languages className="size-4 shrink-0" />
         {currentLanguageLabel}
       </motion.button>
-      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full border border-glass-border" />
+      <span className="pointer-events-none absolute inset-0 rounded-full border border-glass-border" />
 
       <PortalPopover
         open={isOpen}
@@ -75,8 +72,6 @@ export function LanguagePicker() {
           <button
             key={language}
             type="button"
-            role="menuitemradio"
-            aria-checked={language === currentLanguage}
             onClick={() => handleSelect(language)}
             className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07]"
           >

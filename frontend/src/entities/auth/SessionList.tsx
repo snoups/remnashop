@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { formatDateTime } from "@shared/lib/relative-time";
 import type { Session } from "@entities/auth/sessions";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { parseUserAgent } from "@shared/lib/parse-user-agent";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { Badge } from "@shared/ui/Badge";
@@ -17,7 +17,6 @@ interface SessionListProps {
 
 export function SessionList({ sessions, currentSessionId, onRequestRevoke }: SessionListProps) {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
 
   if (sessions.length === 0) {
     return (
@@ -35,8 +34,7 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke }: Ses
             key={session.id}
             type="button"
             onClick={() => onRequestRevoke(session)}
-            {...bounceTap(bounceStrength)}
-            aria-label={t("sessions.revoke")}
+            {...bounceTap()}
             className="group flex w-full items-center justify-between gap-3 rounded-full px-[12.5px] py-2.5 text-left transition-colors hover:bg-white/[0.04]"
           >
             <div className="flex items-center gap-3">

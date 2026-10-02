@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 
+import { readStorage, writeStorage } from "@shared/lib/safe-storage";
+
 export type ApiFailureMode = "off" | "network" | "server";
 
 export type LatencyMode = 0 | 2000 | 10000;
@@ -32,7 +34,7 @@ const listeners = new Set<() => void>();
 
 function load(): DebugState {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "") as Partial<DebugState>;
+    const stored = JSON.parse(readStorage(STORAGE_KEY) ?? "") as Partial<DebugState>;
     return { ...DEFAULT_STATE, ...stored };
   } catch {
     return DEFAULT_STATE;
@@ -47,7 +49,7 @@ export function getDebugState(): DebugState {
 
 export function setDebugState(patch: Partial<DebugState>): void {
   state = { ...state, ...patch };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  writeStorage(STORAGE_KEY, JSON.stringify(state));
   listeners.forEach((listener) => listener());
 }
 

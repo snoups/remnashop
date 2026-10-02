@@ -220,13 +220,7 @@ async def list_users(
             page_size=page_size,
         ),
     )
-    items = [
-        UserListItemResponse(
-            **UserResponse.model_validate(u, from_attributes=True).model_dump(),
-            active_subscriptions=u.active_subscriptions,
-        )
-        for u in users
-    ]
+    items = [UserListItemResponse.model_validate(u, from_attributes=True) for u in users]
     return UserPageResponse(items=items, total=total)
 
 
@@ -238,10 +232,7 @@ async def get_user(
     actor: Actor = Depends(require_admin),
 ) -> UserListItemResponse:
     user = await use_case(actor, user_id)
-    return UserListItemResponse(
-        **UserResponse.model_validate(user, from_attributes=True).model_dump(),
-        active_subscriptions=user.active_subscriptions,
-    )
+    return UserListItemResponse.model_validate(user, from_attributes=True)
 
 
 @router.get("/stats", response_model=UserListStatsResponse)

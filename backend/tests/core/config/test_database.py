@@ -4,7 +4,7 @@ from app.core.config.database import DatabaseConfig
 
 
 def test_timeout_defaults_match_current_hardcoded_values() -> None:
-    config = DatabaseConfig(password="test")  # noqa: S106
+    config = DatabaseConfig(password="test")
     assert config.statement_timeout_ms == 60_000
     assert config.idle_in_transaction_timeout_ms == 300_000
     assert config.command_timeout_s == 30

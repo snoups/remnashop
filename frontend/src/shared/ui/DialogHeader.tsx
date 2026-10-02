@@ -1,6 +1,5 @@
 import { X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { IconButton } from "@shared/ui/IconButton";
@@ -28,7 +27,6 @@ interface DialogHeaderProps {
   actions?: ReactNode;
   /** defaults to the surrounding Modal's close; null hides the button */
   onClose?: (() => void) | null;
-  closeLabel?: string;
 }
 
 export function DialogHeader({
@@ -41,9 +39,7 @@ export function DialogHeader({
   subtitle,
   actions,
   onClose,
-  closeLabel,
 }: DialogHeaderProps) {
-  const { t } = useTranslation();
   const modalClose = useModalClose();
   const close = onClose === undefined ? modalClose : onClose;
   const hasCircle = Icon !== undefined || glyph !== undefined;
@@ -54,7 +50,6 @@ export function DialogHeader({
         {leading ||
           (hasCircle && (
             <div
-              aria-hidden
               className={`flex size-8 shrink-0 items-center justify-center rounded-full ${TONE_CLASS[tone]}`}
             >
               {Icon ? <Icon className="size-4" /> : glyph}
@@ -72,7 +67,6 @@ export function DialogHeader({
       {close && (
         <IconButton size="8"
           onClick={close}
-          aria-label={closeLabel ?? t("app.close")}
         >
           <X className="size-4" />
         </IconButton>

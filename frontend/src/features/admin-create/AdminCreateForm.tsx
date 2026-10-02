@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { createAdmin } from "@entities/admin/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
@@ -22,7 +22,6 @@ interface AdminCreateFormProps {
 
 export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -30,7 +29,7 @@ export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
       <motion.button
         type="button"
         onClick={() => setIsOpen(true)}
-        {...bounceTap(bounceStrength, 0.03)}
+        {...bounceTap(0.03)}
         className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] h-15 px-3 text-[13.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] transition-colors group-hover:bg-transparent">

@@ -78,29 +78,25 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
         icon={ShieldCheck}
         title={t("plans.access.title")}
         subtitle={plan.name}
-        closeLabel={t("plans.access.close")}
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <Card variant="form">
             <Field label={t("plans.access.availabilitySection")}>
-              <div role="radiogroup" aria-label={t("plans.access.availabilityLabel")} className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5">
                 {AVAILABILITIES.map((value) => {
                   const isSelected = availability === value;
                   return (
                     <button
                       key={value}
                       type="button"
-                      role="radio"
-                      aria-checked={isSelected}
                       onClick={() => setAvailability(value)}
                       className={`flex items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition-colors ${
                         isSelected ? "border-primary/50 bg-accent" : "border-border bg-white/[0.02] hover:bg-white/[0.05]"
                       }`}
                     >
                       <span
-                        aria-hidden
                         className={`size-4 shrink-0 rounded-full border-[1.5px] transition-[border-width,border-color] ${
                           isSelected ? "border-[5px] border-primary" : "border-foreground/30"
                         }`}

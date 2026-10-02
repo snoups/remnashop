@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { Button } from "@shared/ui/Button";
 import { CopyableValue } from "@shared/ui/CopyableValue";
 import { DatePickerField } from "@shared/ui/DatePickerField";
@@ -15,7 +15,6 @@ import { TextInput } from "@shared/ui/TextInput";
 
 export function ButtonsSection() {
   const k = useKit();
-  const bounceStrength = useBounceStrength();
 
   return (
     <DebugSection id="buttons">
@@ -39,7 +38,7 @@ export function ButtonsSection() {
           sm
         </Button>
         <Button variant="outline">md</Button>
-        <TextInput aria-label="field" placeholder="38px" className="w-24" />
+        <TextInput placeholder="38px" className="w-24" />
         <Button variant="secondary" size="field">
           field
         </Button>
@@ -58,7 +57,7 @@ export function ButtonsSection() {
       <Specimen name="dashed" usage={k("u.dashed")}>
         <motion.button
           type="button"
-          {...bounceTap(bounceStrength)}
+          {...bounceTap()}
           className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="size-3.5" />
@@ -77,10 +76,10 @@ export function IconButtonsSection() {
   return (
     <DebugSection id="icons">
       <Specimen name='size="7" tone="group"' usage={k("u.copy")} stage="stretch">
-        <CopyableValue label="start" value="?start=ad_summer" copyAria={k("s.copy")} />
+        <CopyableValue label="start" value="?start=ad_summer" />
       </Specimen>
       <Specimen name='size="5"' usage={k("u.clear")} stage="stretch">
-        <DatePickerField value={date} onChange={setDate} placeholder="—" clearAriaLabel={k("s.delete")} />
+        <DatePickerField value={date} onChange={setDate} placeholder="—" />
       </Specimen>
       <Specimen name='size="18px"' usage={k("u.chip")} stage="stretch">
         <div className="flex min-h-9.5 flex-wrap items-center gap-1.5 rounded-[19px] border border-border bg-input/60 px-1.5 py-1">
@@ -90,7 +89,7 @@ export function IconButtonsSection() {
               className="flex items-center gap-1 rounded-full bg-white/[0.06] py-0.5 pl-2.5 pr-0.5 font-mono text-[12.5px] text-foreground"
             >
               {id}
-              <IconButton size="18px" aria-label={k("s.delete")}>
+              <IconButton size="18px">
                 <X className="size-2.5" />
               </IconButton>
             </span>
@@ -99,8 +98,8 @@ export function IconButtonsSection() {
       </Specimen>
       <Specimen name='size="9.5" tone="danger"' usage={k("u.fieldRow")} stage="stretch">
         <div className="flex items-center gap-2">
-          <TextInput aria-label="199" defaultValue="199" className="min-w-0 flex-1" />
-          <IconButton size="9.5" tone="danger" aria-label={k("s.delete")}>
+          <TextInput defaultValue="199" className="min-w-0 flex-1" />
+          <IconButton size="9.5" tone="danger">
             <Trash2 className="size-4" />
           </IconButton>
         </div>
@@ -109,7 +108,7 @@ export function IconButtonsSection() {
         <div className="flex items-start justify-between gap-3 rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-4">
           <span className="text-sm font-bold text-foreground">{k("s.month")}</span>
           <div className="-mr-1.5 -mt-1.5 flex shrink-0 items-center">
-            <IconButton size="8" aria-label="drag" className="cursor-grab">
+            <IconButton size="8" className="cursor-grab">
               <GripVertical className="size-4" />
             </IconButton>
           </div>
@@ -118,7 +117,7 @@ export function IconButtonsSection() {
       <Specimen name='size="8"' usage={k("u.toast")} stage="stretch">
         <div className="flex items-start gap-2.5 rounded-popover-item border border-white/[0.14] bg-popover p-3.5">
           <p className="flex-1 text-[13px] leading-6 text-foreground">{k("s.toast")}</p>
-          <IconButton size="8" aria-label={k("s.close")} className="-my-1 -mr-1">
+          <IconButton size="8" className="-my-1 -mr-1">
             <X className="size-4" />
           </IconButton>
         </div>
@@ -129,10 +128,10 @@ export function IconButtonsSection() {
         </div>
       </Specimen>
       <Specimen name='tone="glass" bounce' usage={k("u.glass")}>
-        <IconButton size="8" tone="glass" bounce={0.12} aria-label={k("s.refresh")}>
+        <IconButton size="8" tone="glass" bounce={0.12}>
           <RefreshCw className="size-[15px]" />
         </IconButton>
-        <IconButton size="9" tone="glass" bounce={0.12} aria-label="notifications">
+        <IconButton size="9" tone="glass" bounce={0.12}>
           <Bell className="size-[17px]" />
         </IconButton>
       </Specimen>

@@ -20,7 +20,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import {
   setDebugState,
   useDebugState,
@@ -66,15 +66,12 @@ function DebugButton({
   onClick: () => void;
   className?: string;
 }) {
-  const bounceStrength = useBounceStrength();
 
   return (
     <motion.button
       type="button"
       onClick={onClick}
-      aria-label={label}
-      aria-pressed={active}
-      {...bounceTap(bounceStrength, 0.12)}
+      {...bounceTap(0.12)}
       className={`${className} group relative flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border transition-colors ${
         active
           ? "bg-accent text-primary"
@@ -168,7 +165,7 @@ export function DebugBar() {
     },
   ];
   const toggleItems = toggles.map(({ key, ...toggle }) => ({ key, node: <DebugButton {...toggle} /> }));
-  const divider = { key: "divider", node: <span aria-hidden className="block h-px w-6 bg-glass-border" /> };
+  const divider = { key: "divider", node: <span className="block h-px w-6 bg-glass-border" /> };
 
   const items: { key: string; node: ReactNode }[] = barCollapsed
     ? [

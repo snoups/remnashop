@@ -1,7 +1,6 @@
 import { ChevronDown, MoreVertical } from "lucide-react";
 import { motion } from "motion/react";
 import { Fragment, useRef, useState, type ComponentType } from "react";
-import { useTranslation } from "react-i18next";
 
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
@@ -32,7 +31,6 @@ interface ActionMenuProps {
 }
 
 export function ActionMenu({ items, trigger }: ActionMenuProps) {
-  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -45,7 +43,7 @@ export function ActionMenu({ items, trigger }: ActionMenuProps) {
   return (
     <div ref={ref} className="relative">
       {trigger ? (
-        <Button variant="outline" onClick={() => setIsOpen((open) => !open)} aria-haspopup="menu" aria-expanded={isOpen}>
+        <Button variant="outline" onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen}>
           <trigger.icon className="size-3.5" />
           {trigger.label}
           <ChevronDown className={`size-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -54,9 +52,7 @@ export function ActionMenu({ items, trigger }: ActionMenuProps) {
         <IconButton
           size="8"
           bounce={0.12}
-          aria-label={t("app.moreActions")}
           onClick={() => setIsOpen((open) => !open)}
-          aria-haspopup="menu"
           aria-expanded={isOpen}
           propagate={{ tap: false }}
         >
@@ -78,21 +74,18 @@ export function ActionMenu({ items, trigger }: ActionMenuProps) {
         whileTap={{}}
         propagate={{ tap: false }}
         tabIndex={-1}
-        role="menu"
         className="min-w-44 outline-none p-1.5"
       >
         {items.map((item, index) => (
           <Fragment key={item.label}>
             {item.separatorBefore && index > 0 && (
-              <div role="separator" className="my-1 h-px bg-white/[0.08]" />
+              <div className="my-1 h-px bg-white/[0.08]" />
             )}
             {/* the wrapper carries the hover: a disabled button doesn't reliably get one */}
             <div className="group relative">
               <motion.button
                 type="button"
-                role="menuitem"
                 disabled={item.disabled}
-                aria-label={item.hint ? `${item.label}. ${item.hint}` : undefined}
                 onClick={() => {
                   setIsOpen(false);
                   item.onClick();

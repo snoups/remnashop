@@ -33,6 +33,7 @@ import {
 import type { UserSnapshot } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { OpenUserFooter } from "@features/open-user/OpenUserFooter";
+import { copyToClipboard } from "@shared/lib/clipboard";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { InfoRow } from "@shared/ui/InfoRow";
@@ -160,9 +161,11 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
   ];
 
   const handleCopyPayload = () => {
-    navigator.clipboard?.writeText(JSON.stringify(otherPayload, null, 2)).catch(() => {});
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 1500);
+    void copyToClipboard(JSON.stringify(otherPayload, null, 2)).then((copied) => {
+      if (!copied) return;
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1500);
+    });
   };
 
   return (
@@ -228,7 +231,6 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
                   </h3>
                   <IconButton size="7"
                     onClick={handleCopyPayload}
-                    aria-label={t("eventLog.detail.copyPayload")}
                   >
                     <Copy className="size-3.5" />
                   </IconButton>

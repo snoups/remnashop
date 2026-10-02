@@ -5,7 +5,7 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.seed import ensure_dialogs_seeded
 from app.telegram.dialogs import state_pool
-from app.telegram.dialogs.catalog_menu import register_menu_catalog
+from app.telegram.routers.menu.catalog import register_menu_catalog
 
 
 @pytest.fixture(autouse=True)

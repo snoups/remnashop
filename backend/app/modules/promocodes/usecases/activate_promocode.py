@@ -11,7 +11,7 @@ from app.core.enums import (
     SubscriptionStatus,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -32,6 +32,7 @@ from app.modules.subscriptions import (
     PurchaseSubscriptionUseCase,
     SubscriptionDto,
     SubscriptionRepository,
+    get_owned_target,
 )
 from app.modules.users import UpdateUserDto, UserDto, UserRepository
 
@@ -87,19 +88,8 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                     code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
                 )
             async with self._uow:
-                try:
-                    target = await self._subscription_repository.get_by_id(
-                        data.target_subscription_id
-                    )
-                except NotFoundError as error:
-                    raise ValidationError(
-                        "target_subscription_id does not belong to this user",
-                        code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
-                    ) from error
-            if target.user_id != actor.id:
-                raise ValidationError(
-                    "target_subscription_id does not belong to this user",
-                    code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
+                target = await get_owned_target(
+                    self._subscription_repository, data.target_subscription_id, actor.id
                 )
             if target.status is not SubscriptionStatus.ACTIVE:
                 raise ValidationError(
@@ -142,86 +132,30 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
         activation_id: int,
     ) -> None:
         try:
-            if promo.reward_type is PromocodeRewardType.DURATION:
+            reward_type = promo.reward_type
+            if reward_type is PromocodeRewardType.DURATION:
                 assert target is not None
-                assert promo.reward is not None
-                await self._purchase_subscription_use_case(
-                    actor,
-                    PurchaseSubscriptionDto(
-                        user_id=actor.id,
-                        # RENEW never rebuilds the subscription's own
-                        # plan_snapshot column (see _renew()) -- reusing the
-                        # target's existing snapshot is only used for the
-                        # "same plan" identity check via .plan_id.
-                        plan_snapshot=target.plan_snapshot,
-                        duration_days=promo.reward,
-                        price_paid=Decimal(0),
-                        currency=Currency.USD,
-                        purchase_type=PurchaseType.RENEW,
-                        target_subscription_id=target.id,
-                    ),
-                )
-            elif promo.reward_type in (PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES):
+                await self._extend_subscription(actor, promo, target)
+            elif reward_type in (PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES):
                 assert target is not None
-                assert promo.reward_addon_id is not None
-                # Dispatched, not applied inline: granting writes the
-                # entitlement and then pushes the new limit to the panel, and
-                # a panel failure in between leaves the two out of step with
-                # the code already spent. The task retries, and its key makes
-                # a redelivery land once.
-                await self._grant_addon_dispatch.kiq(
-                    subscription_id=target.id,
-                    addon_id=promo.reward_addon_id,
-                    idempotency_key=_addon_grant_key(activation_id),
-                )
-            elif promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
+                await self._grant_addon(promo, target, activation_id)
+            elif reward_type is PromocodeRewardType.SUBSCRIPTION:
                 assert reward_plan is not None
-                assert promo.reward_duration_days is not None
-                plan = reward_plan
-                await self._purchase_subscription_use_case(
+                await self._grant_subscription(actor, promo, reward_plan)
+            elif reward_type is PromocodeRewardType.PERSONAL_DISCOUNT and promo.reward:
+                await self._set_discount(
                     actor,
-                    PurchaseSubscriptionDto(
-                        user_id=actor.id,
-                        plan_snapshot=PlanSnapshot(
-                            plan_id=plan.id,
-                            public_code=plan.public_code,
-                            name=plan.name,
-                            price_paid=Decimal(0),
-                            currency=Currency.USD,
-                            duration_days=promo.reward_duration_days,
-                            traffic_limit=plan.traffic_limit,
-                            device_limit=plan.device_limit,
-                            traffic_limit_strategy=plan.traffic_limit_strategy,
-                            is_trial=plan.is_trial,
-                            internal_squads=plan.internal_squads,
-                            external_squad=plan.external_squad,
-                        ),
-                        duration_days=promo.reward_duration_days,
-                        price_paid=Decimal(0),
-                        currency=Currency.USD,
-                        purchase_type=PurchaseType.NEW,
+                    UpdateUserDto(
+                        personal_discount=promo.reward, personal_discount_promocode_id=promo.id
                     ),
                 )
-            elif promo.reward_type is PromocodeRewardType.PERSONAL_DISCOUNT:
-                if promo.reward:
-                    async with self._uow:
-                        await self._user_repository.update_fields(
-                            actor.id,
-                            UpdateUserDto(
-                                personal_discount=promo.reward,
-                                personal_discount_promocode_id=promo.id,
-                            ),
-                        )
-            elif promo.reward_type is PromocodeRewardType.PURCHASE_DISCOUNT:
-                if promo.reward:
-                    async with self._uow:
-                        await self._user_repository.update_fields(
-                            actor.id,
-                            UpdateUserDto(
-                                purchase_discount=promo.reward,
-                                purchase_discount_promocode_id=promo.id,
-                            ),
-                        )
+            elif reward_type is PromocodeRewardType.PURCHASE_DISCOUNT and promo.reward:
+                await self._set_discount(
+                    actor,
+                    UpdateUserDto(
+                        purchase_discount=promo.reward, purchase_discount_promocode_id=promo.id
+                    ),
+                )
         except Exception:
             # The claim above is already committed -- an orphaned activation
             # with no reward, not a double-grant past a limit. Same accepted
@@ -231,3 +165,60 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                 f"application failed -- possible orphaned activation"
             )
             raise
+
+    async def _extend_subscription(
+        self, actor: UserDto, promo: PromocodeDto, target: SubscriptionDto
+    ) -> None:
+        assert promo.reward is not None
+        await self._purchase_subscription_use_case(
+            actor,
+            PurchaseSubscriptionDto(
+                user_id=actor.id,
+                # RENEW never rebuilds the subscription's own plan_snapshot
+                # column (see RenewPurchase) -- the target's existing snapshot
+                # only feeds the "same plan" identity check via .plan_id.
+                plan_snapshot=target.plan_snapshot,
+                duration_days=promo.reward,
+                price_paid=Decimal(0),
+                currency=Currency.USD,
+                purchase_type=PurchaseType.RENEW,
+                target_subscription_id=target.id,
+            ),
+        )
+
+    async def _grant_addon(
+        self, promo: PromocodeDto, target: SubscriptionDto, activation_id: int
+    ) -> None:
+        assert promo.reward_addon_id is not None
+        # Dispatched, not applied inline: granting writes the entitlement and
+        # then pushes the new limit to the panel, and a panel failure in
+        # between leaves the two out of step with the code already spent. The
+        # task retries, and its key makes a redelivery land once.
+        await self._grant_addon_dispatch.kiq(
+            subscription_id=target.id,
+            addon_id=promo.reward_addon_id,
+            idempotency_key=_addon_grant_key(activation_id),
+        )
+
+    async def _grant_subscription(self, actor: UserDto, promo: PromocodeDto, plan: PlanDto) -> None:
+        assert promo.reward_duration_days is not None
+        await self._purchase_subscription_use_case(
+            actor,
+            PurchaseSubscriptionDto(
+                user_id=actor.id,
+                plan_snapshot=PlanSnapshot.from_plan(
+                    plan,
+                    price_paid=Decimal(0),
+                    currency=Currency.USD,
+                    duration_days=promo.reward_duration_days,
+                ),
+                duration_days=promo.reward_duration_days,
+                price_paid=Decimal(0),
+                currency=Currency.USD,
+                purchase_type=PurchaseType.NEW,
+            ),
+        )
+
+    async def _set_discount(self, actor: UserDto, update: UpdateUserDto) -> None:
+        async with self._uow:
+            await self._user_repository.update_fields(actor.id, update)

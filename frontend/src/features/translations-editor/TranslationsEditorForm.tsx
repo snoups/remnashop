@@ -23,7 +23,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { useBounceStrength } from "@shared/lib/bounceState";
+import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { localeLabel } from "@shared/i18n/locale-label";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
@@ -62,7 +62,6 @@ function toGroups(
 
 export function TranslationsEditorForm() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [windowsState] = useAsyncResource(listWindows);
   const [localesState, , setLocalesState] = useAsyncResource(listActiveLocales);
   const [entriesState, reloadEntries, setEntriesData] = useAsyncResource(listTranslations);
@@ -218,7 +217,6 @@ export function TranslationsEditorForm() {
             <ToolbarButton
               icon={Download}
               label={t("dialogs.toolbar.export")}
-              bounceStrength={bounceStrength}
               onClick={() => void handleExport()}
             />
           )}
@@ -226,7 +224,6 @@ export function TranslationsEditorForm() {
             <ToolbarButton
               icon={Upload}
               label={t("dialogs.toolbar.import")}
-              bounceStrength={bounceStrength}
               onClick={() => fileInputRef.current?.click()}
             />
           )}
@@ -235,7 +232,6 @@ export function TranslationsEditorForm() {
               icon={RotateCcw}
               label={t("dialogs.inspector.resetAll")}
               danger
-              bounceStrength={bounceStrength}
               onClick={() => setIsResetAllConfirmOpen(true)}
             />
           )}
@@ -269,8 +265,7 @@ export function TranslationsEditorForm() {
                     className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
                   >
                     <motion.span
-                      aria-hidden
-                      variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+                      variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
                       className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
                     />
                     <ChevronRight
@@ -279,7 +274,6 @@ export function TranslationsEditorForm() {
                     <span className="relative z-10 truncate">{group}</span>
                     {keys.some((key) => untranslatedKeys.has(key)) && (
                       <CircleAlert
-                        aria-label={t("dialogs.texts.untranslated")}
                         className="relative z-10 size-3 shrink-0 text-warning"
                       />
                     )}
@@ -298,10 +292,9 @@ export function TranslationsEditorForm() {
                         className="group relative isolate flex min-w-0 cursor-pointer items-center rounded-full"
                       >
                         <motion.span
-                          aria-hidden
                           variants={{
                             rest: { scale: 1 },
-                            tap: { scale: 1 + 0.05 * bounceStrength },
+                            tap: { scale: TAP_PILL_SCALE },
                           }}
                           className={`absolute inset-0 rounded-full transition-colors ${
                             key === selectedKey ? "bg-accent" : "group-hover:bg-white/[0.04]"
@@ -318,7 +311,6 @@ export function TranslationsEditorForm() {
                         </span>
                         {untranslatedKeys.has(key) && (
                           <CircleAlert
-                            aria-label={t("dialogs.texts.untranslated")}
                             className="relative z-10 mr-2.5 size-3.5 shrink-0 text-warning"
                           />
                         )}

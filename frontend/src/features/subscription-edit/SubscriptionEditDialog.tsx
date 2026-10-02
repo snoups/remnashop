@@ -101,7 +101,6 @@ function SubscriptionEditDialogBody({ subscription, onDelete, onSaved }: Omit<Su
         actions={
           <OpenUserButton label={t("subscriptions.edit.toUser")} icon={User} user={{ id: subscription.user_id }} size="sm" />
         }
-        closeLabel={t("subscriptions.edit.close")}
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">

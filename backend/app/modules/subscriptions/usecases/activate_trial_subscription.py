@@ -42,25 +42,17 @@ class ActivateTrialSubscriptionUseCase(
                 f"Trial is not available for user '{actor.id}'", code=ErrorCode.TRIAL_NOT_AVAILABLE
             )
 
-        plan = data.plan
         try:
             return await self._purchase_subscription_use_case(
                 actor,
                 PurchaseSubscriptionDto(
                     user_id=actor.id,
-                    plan_snapshot=PlanSnapshot(
-                        plan_id=plan.id,
-                        public_code=plan.public_code,
-                        name=plan.name,
+                    plan_snapshot=PlanSnapshot.from_plan(
+                        data.plan,
                         price_paid=Decimal(0),
                         currency=Currency.USD,
                         duration_days=data.duration_days,
-                        traffic_limit=plan.traffic_limit,
-                        device_limit=plan.device_limit,
-                        traffic_limit_strategy=plan.traffic_limit_strategy,
                         is_trial=True,
-                        internal_squads=plan.internal_squads,
-                        external_squad=plan.external_squad,
                     ),
                     duration_days=data.duration_days,
                     price_paid=Decimal(0),
@@ -69,7 +61,7 @@ class ActivateTrialSubscriptionUseCase(
                 ),
             )
         except Exception:
-            # _purchase_new disables the panel user it minted on failure, so
+            # NewPurchase disables the panel user it minted on failure, so
             # nothing was granted -- give the trial back for a retry.
             with suppress(Exception):
                 async with self._uow:

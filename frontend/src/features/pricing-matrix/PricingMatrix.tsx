@@ -274,11 +274,10 @@ function MatrixRow({
                   type="number"
                   value={cell.amount}
                   disabled
-                  aria-label={currency}
                   className={`${cellInputClassName} cursor-not-allowed border-border bg-input/60 text-foreground opacity-50`}
                 />
                 {/* pin-sized gap, so the anchor column lines up with the others */}
-                <span aria-hidden className="size-6 shrink-0" />
+                <span className="size-6 shrink-0" />
               </div>
             </Cell>
           );
@@ -293,7 +292,6 @@ function MatrixRow({
                 step="0.01"
                 min="0"
                 defaultValue={cell.amount}
-                aria-label={cell.is_pinned ? t("pricing.matrix.pinned") : undefined}
                 onBlur={(event) => {
                   if (event.target.value === "" || event.target.value === cell.amount) return;
                   onSaveOverride(row, currency, event.target.value);
@@ -308,7 +306,6 @@ function MatrixRow({
                 <IconButton
                   size="6"
                   onClick={() => onSaveOverride(row, currency, null)}
-                  aria-label={t("pricing.matrix.clearPin")}
                 >
                   <Pin className="size-4 text-primary" />
                 </IconButton>
@@ -316,7 +313,6 @@ function MatrixRow({
                 <IconButton
                   size="6"
                   onClick={() => onSaveOverride(row, currency, cell.amount)}
-                  aria-label={t("pricing.matrix.pin")}
                 >
                   <PinOff className="size-4" />
                 </IconButton>
@@ -376,7 +372,7 @@ function BulkAdjustButton({ onChanged }: { onChanged: () => void }) {
         variant="secondary"
         onClick={() => setStep("form")}
       >
-        <Wand2 className="size-4" aria-hidden />
+        <Wand2 className="size-4" />
         {t("pricing.matrix.bulkAdjust")}
       </Button>
 

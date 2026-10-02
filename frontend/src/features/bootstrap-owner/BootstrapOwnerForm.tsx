@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 
 import { bootstrapOwner } from "@entities/auth/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { copyToClipboard } from "@shared/lib/clipboard";
+import { bounceTap } from "@shared/lib/bounceState";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
 import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { randomString } from "@shared/lib/random-string";
@@ -46,7 +47,6 @@ interface BootstrapOwnerFormProps {
 
 export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,16 +61,12 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
     setPassword(generated);
     setConfirmPassword(generated);
 
-    navigator.clipboard
-      ?.writeText(generated)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {
-        // Clipboard access can be denied by the browser; the password is still
-        // filled into both fields, so this is a soft failure.
-      });
+    // a refused copy is soft: the password is in both fields either way
+    void copyToClipboard(generated).then((copied) => {
+      if (!copied) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const isLoginInvalid = login.trim() !== "" && !LOGIN_PATTERN.test(login.trim());
@@ -152,7 +148,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
               type="button"
               onClick={() => setShowPassword((value) => !value)}
               tabIndex={-1}
-              {...bounceTap(bounceStrength, 0.12)}
+              {...bounceTap(0.12)}
               className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -177,7 +173,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
               type="button"
               onClick={() => setShowConfirmPassword((value) => !value)}
               tabIndex={-1}
-              {...bounceTap(bounceStrength, 0.12)}
+              {...bounceTap(0.12)}
               className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
             >
               {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}

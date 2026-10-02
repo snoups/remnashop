@@ -1,6 +1,6 @@
 import { motion, type HTMLMotionProps } from "motion/react";
 
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 
 // size follows the container: equal inset on every side, concentric corners (see /dashboard/debug)
 const SIZE_CLASS = {
@@ -28,17 +28,15 @@ interface IconButtonProps extends HTMLMotionProps<"button"> {
   tone?: keyof typeof TONE_CLASS;
   /** tap bounce multiplier (bounceTap's); omit for no bounce */
   bounce?: number;
-  "aria-label": string;
   /** layout and positioning only (absolute, -mr-1, cursor-grab...) */
   className?: string;
 }
 
 export function IconButton({ size, tone = "default", bounce, className = "", type = "button", ...props }: IconButtonProps) {
-  const bounceStrength = useBounceStrength();
   return (
     <motion.button
       type={type}
-      {...(bounce !== undefined ? bounceTap(bounceStrength, bounce) : {})}
+      {...(bounce !== undefined ? bounceTap(bounce) : {})}
       className={`flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${TONE_CLASS[tone]} ${className}`}
       {...props}
     />

@@ -9,7 +9,6 @@ export function OidcOAuthGuideDialog() {
 
   return (
     <GuideDialog
-      ariaLabel={t("settings.oauth.guideAriaLabel")}
       title={t("settings.oauth.oidcGuide.title")}
     >
       <div>
@@ -26,7 +25,6 @@ export function OidcOAuthGuideDialog() {
           <CopyableValue
             label={t("settings.oauth.oidcGuide.callbackCommentLabel")}
             value={t("settings.oauth.oidcGuide.callbackUrlValue")}
-            copyAria={t("settings.oauth.copy")}
           />
         </div>
 

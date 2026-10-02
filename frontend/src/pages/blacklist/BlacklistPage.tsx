@@ -196,9 +196,7 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
               value={entryValue}
               onChange={(event) => setEntryValue(event.target.value)}
               placeholder={t("blacklist.manual.valuePlaceholder")}
-              aria-label={t("blacklist.manual.valueLabel")}
               aria-invalid={isEntryInvalid}
-              aria-describedby={isEntryInvalid ? "blacklist-entry-error" : undefined}
               className="min-w-0 flex-1"
             />
             <Button
@@ -263,7 +261,6 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
                     tone="danger"
                     onClick={() => void handleRemoveEntry(row)}
                     disabled={removingKey !== null}
-                    aria-label={t("blacklist.manual.remove")}
                   >
                     {removingKey === `${row.kind}:${row.value}` ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -434,7 +431,6 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
             >
               <div className="flex items-start gap-3">
                 <span
-                  aria-hidden
                   className={`mt-1.5 size-2 shrink-0 rounded-full ${
                     !source.enabled ? "bg-muted-foreground" : source.last_error ? "bg-warning" : "bg-success"
                   }`}
@@ -461,7 +457,6 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                   <Switch
                     checked={source.enabled}
                     onChange={(checked) => void handleToggleSource(source, checked)}
-                    ariaLabel={t("blacklist.sources.enabled")}
                   />
                 )}
                 {permissions.includes("BLACKLIST_SOURCE_REMOVE") && (
@@ -469,7 +464,6 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                     size="8"
                     tone="danger"
                     onClick={() => setPendingRemoveSource(source)}
-                    aria-label={t("blacklist.sources.remove")}
                     className="-mt-1"
                   >
                     <Trash2 className="size-4" />

@@ -11,13 +11,9 @@ const SIDE_CLASSNAME = {
 } as const;
 
 // Sits inside the control it describes -- that control needs `group relative`.
-// aria-hidden because the control already carries the same text as its
-// aria-label; this is the visible half only.
 export function Tooltip({ text, side = "right" }: { text: string; side?: keyof typeof SIDE_CLASSNAME }) {
   return (
     <span
-      role="tooltip"
-      aria-hidden
       className={`${HINT_BUBBLE_CLASS} z-50 whitespace-pre-line ${SIDE_CLASSNAME[side]} group-hover:opacity-100 group-focus-visible:opacity-100`}
     >
       {text}

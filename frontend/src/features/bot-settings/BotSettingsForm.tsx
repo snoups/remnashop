@@ -14,7 +14,8 @@ import {
   updateBotSettings,
 } from "@entities/settings/api";
 import type { BotSettings, BotStatus } from "@entities/settings/api";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { copyToClipboard } from "@shared/lib/clipboard";
+import { bounceTap } from "@shared/lib/bounceState";
 import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -68,13 +69,15 @@ function StatusBadge({ status }: { status: BotStatus }) {
 
 function BotLogsDialogBody() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, reload] = useAsyncResource(getBotLogs);
 
+  // the next poll waits for the previous answer: a fixed interval aborted any
+  // response slower than itself, so on a slow backend the logs never arrived
   useEffect(() => {
-    const timer = setInterval(reload, LOGS_POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [reload]);
+    if (state.kind === "loading") return;
+    const timer = setTimeout(reload, LOGS_POLL_INTERVAL_MS);
+    return () => clearTimeout(timer);
+  }, [state, reload]);
 
   const logRef = useRef<HTMLPreElement>(null);
   // follows the tail unless the user scrolled up to read older lines
@@ -96,14 +99,13 @@ function BotLogsDialogBody() {
             <motion.button
               type="button"
               onClick={reload}
-              {...bounceTap(bounceStrength)}
+              {...bounceTap()}
               className="flex h-8 w-fit items-center rounded-full border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-white/5"
             >
               {t("settings.bot.refreshLogs")}
             </motion.button>
           </>
         }
-        closeLabel={t("settings.bot.closeLogs")}
       />
       <div className="flex h-[70vh] flex-col p-5">
         <pre
@@ -128,7 +130,6 @@ function BotLogsDialogBody() {
 
 export function BotSettingsForm() {
   const { t } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [token, setToken] = useState("");
   const [secretToken, setSecretToken] = useState("");
   const [proxyUrl, setProxyUrl] = useState("");
@@ -155,9 +156,11 @@ export function BotSettingsForm() {
   const handleGenerateSecretToken = () => {
     const generated = generateSecretToken();
     setSecretToken(generated);
-    navigator.clipboard?.writeText(generated).catch(() => {});
-    setIsSecretCopied(true);
-    setTimeout(() => setIsSecretCopied(false), 1500);
+    void copyToClipboard(generated).then((copied) => {
+      if (!copied) return;
+      setIsSecretCopied(true);
+      setTimeout(() => setIsSecretCopied(false), 1500);
+    });
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -303,7 +306,7 @@ export function BotSettingsForm() {
               <motion.button
                 type="button"
                 onClick={handleGenerateSecretToken}
-                {...bounceTap(bounceStrength)}
+                {...bounceTap()}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.1] hover:text-foreground"
               >
                 {isSecretCopied ? t("settings.bot.secretTokenCopied") : t("settings.bot.generateSecretToken")}
@@ -338,7 +341,7 @@ export function BotSettingsForm() {
                   type="button"
                   onClick={() => void handleRemoveProxy()}
                   disabled={isRemovingProxy}
-                  {...bounceTap(bounceStrength)}
+                  {...bounceTap()}
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.1] hover:text-foreground"
                 >
                   {t("settings.bot.removeProxy")}
@@ -355,7 +358,6 @@ export function BotSettingsForm() {
             <Switch
               checked={dropPendingUpdates}
               onChange={setDropPendingUpdates}
-              ariaLabel={t("settings.bot.dropPendingUpdatesLabel")}
             />
           </div>
 

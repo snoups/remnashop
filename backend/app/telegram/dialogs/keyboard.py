@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Awaitable
 from typing import Any, Optional, Union, cast
 
@@ -9,13 +8,12 @@ from aiogram_dialog.api.protocols import DialogManager, DialogProtocol
 from aiogram_dialog.widgets.kbd import Keyboard
 from dishka import AsyncContainer
 from dishka.integrations.aiogram_dialog import CONTAINER_NAME
+from loguru import logger
 
 from app.core.enums import ButtonLinkType
 from app.modules.dialogs import catalog
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.state_pool import resolve_custom_window_key, resolve_state
-
-logger = logging.getLogger(__name__)
 
 
 async def _cache_from(manager: DialogManager) -> DialogConfigCache:
@@ -46,9 +44,7 @@ class ConfigKeyboard(Keyboard):
                     # refusing the whole keyboard -- a label nobody has filled in
                     # yet would otherwise take the entire window down.
                     logger.warning(
-                        "Skipping button %s in window %s: its label is empty",
-                        button["id"],
-                        window_key,
+                        f"Skipping button {button['id']} in window {window_key}: its label is empty"
                     )
                     continue
                 # A plain emoji has to ride in the label -- Telegram's icon field
@@ -71,10 +67,8 @@ class ConfigKeyboard(Keyboard):
                         # a variable that resolved to nothing usable drops its own
                         # button instead of taking the window down.
                         logger.warning(
-                            "Skipping URL button %s in window %s: unusable resolved url_value %r",
-                            button["id"],
-                            window_key,
-                            url,
+                            f"Skipping URL button {button['id']} in window {window_key}: "
+                            f"unusable resolved url_value {url!r}"
                         )
                         continue
                     rendered_row.append(
@@ -97,7 +91,7 @@ class ConfigKeyboard(Keyboard):
                 keyboard.append(rendered_row)
         return keyboard
 
-    async def _process_item_callback(  # noqa: PLR0911
+    async def _process_item_callback(
         self,
         callback: CallbackQuery,
         item_id: str,
@@ -107,29 +101,25 @@ class ConfigKeyboard(Keyboard):
         try:
             button_id = int(item_id)
         except ValueError:
-            logger.warning(
-                "Non-numeric dialog button id in window %s: %s", self.window_key, item_id
-            )
+            logger.warning(f"Non-numeric dialog button id in window {self.window_key}: {item_id}")
             return False
 
         window_key = await self._resolve_window_key(manager)
         if window_key is None:
-            logger.warning("Could not resolve the window behind button %s", button_id)
+            logger.warning(f"Could not resolve the window behind button {button_id}")
             return False
 
         cache = await _cache_from(manager)
         button = await cache.get_button(window_key, button_id)
         if button is None:
-            logger.warning("Unknown dialog button %s in window %s", button_id, window_key)
+            logger.warning(f"Unknown dialog button {button_id} in window {window_key}")
             return False
 
         if button.link_type == ButtonLinkType.ACTION:
             if button.action_key is None or not catalog.has_action_handler(button.action_key):
                 logger.warning(
-                    "Unregistered action_key %r on button %s in window %s",
-                    button.action_key,
-                    button_id,
-                    window_key,
+                    f"Unregistered action_key {button.action_key!r} on button {button_id} "
+                    f"in window {window_key}"
                 )
                 return False
             handler = catalog.get_action(button.action_key)
@@ -139,18 +129,14 @@ class ConfigKeyboard(Keyboard):
         if button.link_type == ButtonLinkType.NAVIGATE:
             if button.target_window_key is None:
                 logger.warning(
-                    "NAVIGATE button %s in window %s has no target_window_key",
-                    button_id,
-                    window_key,
+                    f"NAVIGATE button {button_id} in window {window_key} has no target_window_key"
                 )
                 return False
             state = await resolve_state(button.target_window_key, cache)
             if state is None:
                 logger.warning(
-                    "Could not resolve state for target window %s (from button %s in window %s)",
-                    button.target_window_key,
-                    button_id,
-                    window_key,
+                    f"Could not resolve state for target window {button.target_window_key} "
+                    f"(from button {button_id} in window {window_key})"
                 )
                 return False
             if state.group == manager.current_context().state.group:
@@ -164,10 +150,7 @@ class ConfigKeyboard(Keyboard):
             return True
 
         logger.warning(
-            "Button %s in window %s has unhandled link_type %s",
-            button_id,
-            window_key,
-            button.link_type,
+            f"Button {button_id} in window {window_key} has unhandled link_type {button.link_type}"
         )
         return False
 

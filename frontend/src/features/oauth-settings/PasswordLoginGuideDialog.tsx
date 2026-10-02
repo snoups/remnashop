@@ -8,7 +8,6 @@ export function PasswordLoginGuideDialog() {
 
   return (
     <GuideDialog
-      ariaLabel={t("settings.oauth.guideAriaLabel")}
       title={t("settings.oauth.passwordLoginGuide.title")}
     >
       <div>
@@ -21,7 +20,6 @@ export function PasswordLoginGuideDialog() {
           <CopyableValue
             label={t("settings.oauth.passwordLoginGuide.rescueCommandLabel")}
             value={t("settings.oauth.passwordLoginGuide.rescueCommandValue")}
-            copyAria={t("settings.oauth.copy")}
           />
         </div>
 

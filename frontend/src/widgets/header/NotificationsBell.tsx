@@ -99,9 +99,6 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         bounce={0.12}
         className="relative"
         onClick={onToggle}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-label={unread > 0 ? t("header.notificationsUnread", { count: unread }) : t("header.notifications")}
       >
         <Bell className="size-[17px]" />
         {unread > 0 && (
@@ -148,7 +145,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                   </span>
                 </span>
                 {index < highlighted && (
-                  <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
+                  <span className="size-1.5 shrink-0 rounded-full bg-primary" />
                 )}
               </button>
             ))

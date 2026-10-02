@@ -118,8 +118,8 @@ async def test_circuit_closes_again_after_the_recovery_timeout_on_a_successful_p
     # Force the breaker open directly rather than re-deriving it via failures --
     # this test is about the recovery half, not the opening half (already covered
     # by test_circuit_opens_after_the_failure_threshold_and_fails_fast).
-    transport._consecutive_failures = _FAILURE_THRESHOLD  # noqa: SLF001
-    transport._opened_at = fake_now[0]  # noqa: SLF001
+    transport._consecutive_failures = _FAILURE_THRESHOLD
+    transport._opened_at = fake_now[0]
 
     async with _client(transport) as client:
         with pytest.raises(RemnawavePanelUnavailableError):
@@ -165,7 +165,7 @@ async def test_a_discarded_5xx_retry_response_releases_its_pooled_connection() -
         real_transport = httpx.AsyncHTTPTransport(
             limits=httpx.Limits(max_connections=10, max_keepalive_connections=10)
         )
-        pool = real_transport._pool  # noqa: SLF001
+        pool = real_transport._pool
         transport = ResilientTransport(real_transport)
 
         async with httpx.AsyncClient(
@@ -181,4 +181,4 @@ async def test_a_discarded_5xx_retry_response_releases_its_pooled_connection() -
             # this was `_MAX_RETRY_ATTEMPTS` (every discarded response leaked
             # its connection, and this assertion sees `client` before its own
             # teardown would otherwise close everything and mask the leak).
-            assert len(pool._connections) == 1  # noqa: SLF001
+            assert len(pool._connections) == 1

@@ -26,7 +26,7 @@ class PlanSnapshot:
     # Operational fields, needed to actually provision a Remnawave panel user
     # (NEW/CHANGE) without a live PlanRepository lookup at provisioning time --
     # captured once, at checkout/redemption time, when the plan is known to
-    # still exist and be purchasable. See purchase_subscription.py.
+    # still exist and be purchasable. See usecases/purchase_subscription/.
     traffic_limit: int
     device_limit: int
     traffic_limit_strategy: TrafficLimitStrategy
@@ -65,6 +65,31 @@ class PlanSnapshot:
             is_trial=data["is_trial"],
             internal_squads=[UUID(squad) for squad in data["internal_squads"]],
             external_squad=UUID(data["external_squad"]) if data["external_squad"] else None,
+        )
+
+    @classmethod
+    def from_plan(
+        cls,
+        plan: PlanDto,
+        *,
+        price_paid: Decimal,
+        currency: Currency,
+        duration_days: int,
+        is_trial: bool = False,
+    ) -> "PlanSnapshot":
+        return cls(
+            plan_id=plan.id,
+            public_code=plan.public_code,
+            name=plan.name,
+            price_paid=price_paid,
+            currency=currency,
+            duration_days=duration_days,
+            traffic_limit=plan.traffic_limit,
+            device_limit=plan.device_limit,
+            traffic_limit_strategy=plan.traffic_limit_strategy,
+            is_trial=plan.is_trial or is_trial,
+            internal_squads=plan.internal_squads,
+            external_squad=plan.external_squad,
         )
 
 

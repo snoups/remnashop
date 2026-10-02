@@ -96,7 +96,7 @@ def _resolve_rate_limit_identity(request: Request, jwt_secret: str) -> str:
         token = auth_header[len("Bearer ") :]
         try:
             payload = decode_access_token(token, jwt_secret)
-        except Exception:  # noqa: BLE001 -- any decode failure just falls through to IP
+        except Exception:  # any decode failure just falls through to IP
             pass
         else:
             return f"user:{payload.get('sub')}"
@@ -126,5 +126,5 @@ async def global_rate_limit(
         )
     except HTTPException:
         raise  # the actual 429 -- not a Redis failure, must propagate
-    except Exception:  # noqa: BLE001 -- fail open: Redis being down must not take the API down
+    except Exception:  # fail open: Redis being down must not take the API down
         logger.warning("Global rate limiter failed open: Redis unavailable")

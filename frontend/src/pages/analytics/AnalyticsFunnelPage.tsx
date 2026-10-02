@@ -2,6 +2,7 @@ import { ArrowDown, Filter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { formatPercent } from "@shared/lib/format";
 import { getFunnel } from "@entities/analytics/api";
 import type { Funnel, AnalyticsPeriodDays, FunnelStep } from "@entities/analytics/api";
 import { AnalyticsCardHeader } from "@pages/analytics/AnalyticsCardHeader";
@@ -14,10 +15,6 @@ import { Spinner } from "@shared/ui/Spinner";
 
 type FunnelState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Funnel };
 
-function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
 function FunnelStepRow({ step, index }: { step: FunnelStep; index: number }) {
   const { t, i18n } = useTranslation();
   return (
@@ -25,7 +22,7 @@ function FunnelStepRow({ step, index }: { step: FunnelStep; index: number }) {
       {index > 0 && (
         <div className="flex items-center gap-2 py-0.5 pl-[26px] text-[11.5px] text-muted-foreground">
           <ArrowDown className="size-3" />
-          <span className="tabular-nums text-foreground">{formatPercent(step.pct_of_prev)}</span>
+          <span className="tabular-nums text-foreground">{formatPercent(step.pct_of_prev, i18n.language)}</span>
           {t("analytics.funnel.ofPrevious")}
         </div>
       )}
@@ -44,7 +41,7 @@ function FunnelStepRow({ step, index }: { step: FunnelStep; index: number }) {
           {step.count.toLocaleString(i18n.language)}
         </span>
         <span className="text-right text-[12.5px] tabular-nums text-muted-foreground">
-          {formatPercent(step.pct_of_start)}
+          {formatPercent(step.pct_of_start, i18n.language)}
         </span>
       </div>
     </div>
@@ -52,7 +49,7 @@ function FunnelStepRow({ step, index }: { step: FunnelStep; index: number }) {
 }
 
 export function AnalyticsFunnelPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [days, setDays] = useState<AnalyticsPeriodDays>(7);
   const [state, setState] = useState<FunnelState>({ kind: "loading" });
 
@@ -82,7 +79,7 @@ export function AnalyticsFunnelPage() {
   return (
     <div className="flex flex-col gap-4 pb-2">
       <div className="flex justify-end">
-        <PeriodPills value={days} onChange={setDays} ariaLabel={t("dashboard.periodLabel")} />
+        <PeriodPills value={days} onChange={setDays} />
       </div>
 
       {state.kind === "loading" && <Spinner size="page" />}
@@ -108,7 +105,7 @@ export function AnalyticsFunnelPage() {
             {firstPaid && steps[0] && (
               <KpiTile
                 label={t("analytics.funnel.conversion")}
-                value={formatPercent(firstPaid.pct_of_start)}
+                value={formatPercent(firstPaid.pct_of_start, i18n.language)}
                 hint={t("analytics.kpi.conversionOf", { paid: firstPaid.count, total: steps[0].count })}
               />
             )}
@@ -119,7 +116,7 @@ export function AnalyticsFunnelPage() {
                   {t(`analytics.funnel.steps.${biggestDrop.prev.key}`)} → {t(`analytics.funnel.steps.${biggestDrop.step.key}`)}
                 </span>
                 <Badge tone="warning" className="self-start">
-                  {t("analytics.funnel.dropBadge", { pct: formatPercent(1 - biggestDrop.step.pct_of_prev) })}
+                  {t("analytics.funnel.dropBadge", { pct: formatPercent(1 - biggestDrop.step.pct_of_prev, i18n.language) })}
                 </Badge>
               </Card>
             )}

@@ -240,8 +240,6 @@ function PermissionRow({ permission, ...props }: { permission: Permission } & Pe
         {props.baseline !== undefined && (
           // slot kept on every row so labels stay aligned
           <span
-            role={isChanged ? "img" : undefined}
-            aria-label={isChanged ? t("permissionPicker.changed") : undefined}
             className={`size-1.5 shrink-0 rounded-full ${isChanged ? "bg-warning" : ""}`}
           />
         )}
@@ -251,7 +249,6 @@ function PermissionRow({ permission, ...props }: { permission: Permission } & Pe
         checked={props.selected.has(permission)}
         onChange={() => props.onToggle(permission)}
         disabled={props.disabled}
-        ariaLabel={label}
       />
     </div>
   );

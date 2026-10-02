@@ -2,6 +2,7 @@ import { Copy, Download, Forward } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { type AdLink, type AdLinkChannel, fetchAdLinkQr, getAdLinkShareUrls } from "@entities/advertising/api";
+import { copyToClipboard } from "@shared/lib/clipboard";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
@@ -31,10 +32,9 @@ export function AdLinkShareMenu({ adLink }: { adLink: AdLink }) {
   };
 
   const copy = (url: string) => {
-    navigator.clipboard
-      .writeText(url)
-      .then(() => toast.success(t("app.copied")))
-      .catch(() => toast.error(t("advertising.share.copyError")));
+    void copyToClipboard(url).then((copied) => {
+      if (copied) toast.success(t("app.copied"));
+    });
   };
 
   const downloadQr = async (channel: AdLinkChannel) => {

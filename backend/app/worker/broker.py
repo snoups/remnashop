@@ -19,9 +19,8 @@ broker = ListQueueBroker(url=AppConfig.get().redis.dsn).with_serializer(
 # isolation, since only one loop ever exists then). Every test that needs to
 # assert a real dispatch happened should monkeypatch the specific task's
 # `.kiq()` instead of calling through to this broker -- see
-# tests/modules/transactions/test_webhook_router.py's `_fake_kiq` pattern for the
-# shape. Production is unaffected: one process, one loop, for the worker's
-# whole lifetime.
+# tests/core/test_event_bus.py's `_capture_kiq` for the shape. Production is
+# unaffected: one process, one loop, for the worker's whole lifetime.
 
 # Used by SmartRetryMiddleware below (in this process, to schedule a delayed
 # retry) and by scheduler.py (in the scheduler process, to actually poll and
@@ -57,10 +56,9 @@ broker.add_middlewares(
         # raised before the request leaves the process, so a retry is provably
         # safe. Real transport errors (httpx.HTTPError, remnapy ServerError)
         # stay non-retryable: a POST/PATCH that landed but lost its response
-        # would double-apply -- orphan panel users from
-        # PurchaseSubscriptionUseCase._purchase_new, and the keyless (promocode/
-        # referral) relative extend_user in _renew. Widening this needs those
-        # paths made idempotent first.
+        # would double-apply -- orphan panel users from NewPurchase, and the
+        # keyless (promocode/referral) relative extend_user in RenewPurchase.
+        # Widening this needs those paths made idempotent first.
         types_of_exceptions=(RemnawavePanelUnavailableError,),
     ),
     TaskMetricsMiddleware(),

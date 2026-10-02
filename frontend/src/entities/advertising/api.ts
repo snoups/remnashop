@@ -1,5 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost, BASE_URL } from "@shared/api/http";
-import { getAccessToken } from "@shared/lib/token-storage";
+import { apiDelete, apiGet, apiGetRaw, apiPatch, apiPost } from "@shared/api/http";
 
 export type AdLinkChannel = "BOT" | "WEBCABINET";
 
@@ -189,15 +188,6 @@ export function getAdLinkShareUrls(adLinkId: number, signal?: AbortSignal): Prom
   return apiGet<AdLinkShareUrls>(`/advertising/links/${adLinkId}/share`, signal);
 }
 
-// Not routed through apiGet: the response is a PNG, not JSON -- same as
-// entities/banners/api.ts's fetchBannerImageBlob.
 export async function fetchAdLinkQr(adLinkId: number, channel: AdLinkChannel): Promise<Blob> {
-  const token = getAccessToken();
-  const response = await fetch(`${BASE_URL}/advertising/links/${adLinkId}/qr?channel=${channel}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch QR code: ${response.status}`);
-  }
-  return response.blob();
+  return (await apiGetRaw(`/advertising/links/${adLinkId}/qr?channel=${channel}`)).blob();
 }

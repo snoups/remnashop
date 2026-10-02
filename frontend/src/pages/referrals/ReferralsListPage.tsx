@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatPercent } from "@entities/advertising/format";
 import {
   REFERRALS_PAGE_SIZE,
   getReferralSummary,
@@ -16,7 +15,8 @@ import {
 } from "@entities/referrals/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { formatPercent } from "@shared/lib/format";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { GroupToggle } from "@shared/ui/GroupToggle";
@@ -85,7 +85,6 @@ function initials(name: string): string {
 
 export function ReferralsListPage() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [level, setLevel] = useState("");
@@ -332,7 +331,7 @@ export function ReferralsListPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <span className={EYEBROW_CLASS}>{t("referrals.list.periodFilter")}</span>
-            <PeriodPills value={period} onChange={setPeriod} ariaLabel={t("referrals.list.periodFilter")} />
+            <PeriodPills value={period} onChange={setPeriod} />
           </div>
           <div className="sm:col-span-2">
             <SearchField
@@ -396,11 +395,10 @@ export function ReferralsListPage() {
                           type="button"
                           disabled={!canOpen}
                           onClick={() => setStatsUser(referred)}
-                          {...(canOpen && bounceTap(bounceStrength, 0.03))}
+                          {...(canOpen && bounceTap(0.03))}
                           className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left enabled:hover:bg-white/[0.04] disabled:cursor-default`}
                         >
                           <span
-                            aria-hidden
                             className="flex size-9 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-semibold text-foreground"
                           >
                             {referred?.name ? initials(referred.name) : "?"}
@@ -418,7 +416,6 @@ export function ReferralsListPage() {
                           <span className="flex min-w-0 items-center gap-2">
                             <CornerUpLeft className="size-3.5 shrink-0 text-muted-foreground" />
                             <span
-                              aria-hidden
                               className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[10.5px] font-semibold text-foreground"
                             >
                               {item.referrer?.name ? initials(item.referrer.name) : "?"}

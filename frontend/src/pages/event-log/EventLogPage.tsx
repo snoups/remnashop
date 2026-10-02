@@ -30,7 +30,7 @@ import {
 import { describeEntry } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
-import { bounceTap, useBounceStrength } from "@shared/lib/bounceState";
+import { bounceTap } from "@shared/lib/bounceState";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { GroupToggle } from "@shared/ui/GroupToggle";
@@ -112,7 +112,6 @@ function groupByDay(entries: EventLogEntry[]): DayGroup[] {
 
 export function EventLogPage() {
   const { t, i18n } = useTranslation();
-  const bounceStrength = useBounceStrength();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isFetching, setIsFetching] = useState(false);
   const [category, setCategory] = useState("");
@@ -256,7 +255,6 @@ export function EventLogPage() {
               value={dateFromInput}
               onChange={setDateFromInput}
               placeholder={t("eventLog.filters.dateFrom")}
-              clearAriaLabel={t("eventLog.filters.clearDate")}
             />
           </div>
 
@@ -267,7 +265,6 @@ export function EventLogPage() {
               value={dateToInput}
               onChange={setDateToInput}
               placeholder={t("eventLog.filters.dateTo")}
-              clearAriaLabel={t("eventLog.filters.clearDate")}
             />
           </div>
         </div>
@@ -322,7 +319,6 @@ export function EventLogPage() {
                           {group.entries.map((entry) => (
                             <motion.div
                               key={entry.id}
-                              role="button"
                               tabIndex={0}
                               onClick={() => setSelectedEntry(entry)}
                               onKeyDown={(event) => {
@@ -331,12 +327,11 @@ export function EventLogPage() {
                                   setSelectedEntry(entry);
                                 }
                               }}
-                              {...bounceTap(bounceStrength, 0.03)}
+                              {...bounceTap(0.03)}
                               className={`grid cursor-pointer grid-cols-[1.2fr_170px_1fr_140px_16px] items-center gap-4 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
                             >
                               <span className="flex min-w-0 items-center gap-3 text-[13.5px] font-medium text-foreground/90">
                                 <span
-                                  aria-hidden
                                   className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
                                 >
                                   <EventTypeIcon eventType={entry.event_type} className="size-4" />

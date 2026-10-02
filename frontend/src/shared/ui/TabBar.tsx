@@ -3,6 +3,7 @@ import { useEffect, useId, useRef } from "react";
 import type { ComponentType, MouseEvent } from "react";
 import { NavLink } from "react-router-dom";
 
+import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { ActivePill } from "@shared/ui/ActivePill";
 import { BounceIcon } from "@shared/ui/BounceIcon";
@@ -32,7 +33,7 @@ function preventNavigationWhenActive(isActive: boolean) {
 // not on the link itself -- scaling the text via `transform` blurs it (same
 // reasoning as BounceIcon avoiding transform for icons), so only the pill
 // grows on tap while the content stays crisp and fixed-size.
-function Tab({ to, end, icon, label, isActive, bounceStrength, pillId }: TabBarItem & { bounceStrength: number; pillId: string }) {
+function Tab({ to, end, icon, label, isActive, pillId }: TabBarItem & { pillId: string }) {
   return (
     <MotionNavLink
       to={to}
@@ -44,11 +45,10 @@ function Tab({ to, end, icon, label, isActive, bounceStrength, pillId }: TabBarI
       whileTap="tap"
     >
       {isActive ? (
-        <ActivePill layoutId={pillId} bounceStrength={bounceStrength} />
+        <ActivePill layoutId={pillId} />
       ) : (
         <motion.span
-          aria-hidden
-          variants={{ rest: { scale: 1 }, tap: { scale: 1 + 0.05 * bounceStrength } }}
+          variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
           className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
         />
       )}
@@ -64,7 +64,7 @@ function Tab({ to, end, icon, label, isActive, bounceStrength, pillId }: TabBarI
   );
 }
 
-export function TabBar({ items, bounceStrength }: { items: TabBarItem[]; bounceStrength: number }) {
+export function TabBar({ items }: { items: TabBarItem[] }) {
   const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
   const navRef = useRef<HTMLElement>(null);
   const activeKey = items.find((item) => item.isActive)?.key;
@@ -93,7 +93,7 @@ export function TabBar({ items, bounceStrength }: { items: TabBarItem[]; bounceS
           fair trade for corners that actually line up. */}
       <motion.div ref={tabsRef} layoutScroll className="no-scrollbar flex gap-1 overflow-x-auto rounded-full">
         {items.map(({ key, ...item }) => (
-          <Tab key={key} {...item} bounceStrength={bounceStrength} pillId={pillId} />
+          <Tab key={key} {...item} pillId={pillId} />
         ))}
       </motion.div>
     </nav>

@@ -49,7 +49,7 @@ async def poll_worker_gauges(redis: Redis, queue_name: str, retry_schedule_prefi
         try:
             await _sample_queue_depth(redis, queue_name)
             await _sample_scheduled_retries(redis, retry_schedule_prefix)
-        except Exception:  # noqa: BLE001 -- a transient Redis blip must not kill the poller
+        except Exception:  # a transient Redis blip must not kill the poller
             logger.warning("Failed to sample taskiq worker gauges")
         await asyncio.sleep(_WORKER_GAUGE_POLL_INTERVAL_S)
 
