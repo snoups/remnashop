@@ -31,6 +31,7 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.ports import EventPublisher
+from app.modules.announcements.repository import AnnouncementRepository
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.repository import SessionRepository
 from app.modules.banners.repository import BannerRepository
@@ -210,6 +211,11 @@ def purchase_subscription_use_case(
 @pytest.fixture
 def api_token_repository(session: AsyncSession) -> ApiTokenRepository:
     return ApiTokenRepository(session)
+
+
+@pytest.fixture
+def announcement_repository(session: AsyncSession) -> AnnouncementRepository:
+    return AnnouncementRepository(session)
 
 
 @pytest.fixture

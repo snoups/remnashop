@@ -35,6 +35,7 @@ dependencies = [
     "httpx[socks]>=0.27.2",
     # dialog text validation runs in api (update_text, import_dialogs, command_translations)
     "fluent-compiler~=1.1",
+    "packaging>=25.0",
 ]
 
 [project.optional-dependencies]

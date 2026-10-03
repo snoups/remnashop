@@ -58,6 +58,7 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
     discovered = {label for label, _ in _discover_admin_routers()}
     assert discovered == {
         "advertising.router",
+        "announcements.router",
         "analytics.router",
         "api_tokens.router",
         "auth.sessions_router",

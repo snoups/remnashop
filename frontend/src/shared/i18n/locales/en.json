@@ -504,6 +504,20 @@
       "at": "Deleted"
     }
   },
+  "announcements": {
+    "from": "From the developer",
+    "critical": "Important",
+    "counter": "{{current}} of {{total}}",
+    "close": "Close",
+    "pause": "Pause",
+    "play": "Play",
+    "prevSlide": "Previous slide",
+    "nextSlide": "Next slide",
+    "prevStory": "Previous announcement",
+    "nextStory": "Next announcement",
+    "openStory": "Watch shorts",
+    "openLink": "Learn more"
+  },
   "header": {
     "account": "Login",
     "profile": "Profile",
@@ -2383,6 +2397,7 @@
         "nav": "Sections"
       },
       "u": {
+        "announcementsCarousel": "Developer shorts: story carousel over the dashboard",
         "primary": "Main actions, dialog and form footers. 14px.",
         "secondary": "Card headers and beside fields. 12.5px semibold, same height as pills.",
         "sizes": "sm 32 — list rows, md 36, field 38 — beside a field.",
@@ -2449,6 +2464,7 @@
         "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards"
       },
       "s": {
+        "openCarousel": "Open carousel",
         "save": "Save",
         "create": "Create",
         "cancel": "Cancel",

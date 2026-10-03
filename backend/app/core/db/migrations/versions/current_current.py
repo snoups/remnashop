@@ -103,6 +103,31 @@ def upgrade() -> None:
     op.create_index(op.f("ix_addons_name"), "addons", ["name"], unique=True)
     op.create_index(op.f("ix_addons_order_index"), "addons", ["order_index"], unique=False)
     op.create_table(
+        "announcements",
+        sa.Column("id", sa.String(length=100), nullable=False),
+        sa.Column("notify_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("roles", sa.ARRAY(sa.String(length=16)), nullable=True),
+        sa.Column("versions", sa.String(length=200), nullable=True),
+        sa.Column("auto_open", sa.Boolean(), nullable=False),
+        sa.Column("content", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_announcements_notify_at"), "announcements", ["notify_at"], unique=False
+    )
+    op.create_table(
         "appearance_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("brand_name", sa.String(length=64), nullable=True),
@@ -829,6 +854,15 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_ad_links_code"), "ad_links", ["code"], unique=True)
+    op.create_table(
+        "announcement_views",
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("announcement_id", sa.String(length=100), nullable=False),
+        sa.Column("seen_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["announcement_id"], ["announcements.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("user_id", "announcement_id"),
+    )
     op.create_table(
         "addon_price_overrides",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -1702,6 +1736,7 @@ def downgrade() -> None:
     op.drop_table("backup_runs")
     op.drop_index(op.f("ix_api_tokens_token_hash"), table_name="api_tokens")
     op.drop_table("api_tokens")
+    op.drop_table("announcement_views")
     op.drop_index(op.f("ix_addon_price_overrides_addon_id"), table_name="addon_price_overrides")
     op.drop_table("addon_price_overrides")
     op.drop_index(op.f("ix_ad_links_code"), table_name="ad_links")
@@ -1736,6 +1771,8 @@ def downgrade() -> None:
     op.drop_table("banners")
     op.drop_table("backup_settings")
     op.drop_table("appearance_settings")
+    op.drop_index(op.f("ix_announcements_notify_at"), table_name="announcements")
+    op.drop_table("announcements")
     op.drop_index(op.f("ix_addons_order_index"), table_name="addons")
     op.drop_index(op.f("ix_addons_name"), table_name="addons")
     op.drop_table("addons")

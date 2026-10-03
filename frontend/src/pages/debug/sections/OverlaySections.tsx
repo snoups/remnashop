@@ -2,8 +2,10 @@ import { Coins, Copy, Download, Forward, Hash, Layers, Pencil, SearchX, Settings
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { Announcement } from "@entities/announcements/api";
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
+import { AnnouncementsCarousel } from "@widgets/announcements/AnnouncementsCarousel";
 import { ActionMenu } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
@@ -29,6 +31,41 @@ const MENU_ITEM =
   "flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07]";
 const noop = () => undefined;
 
+const SAMPLE_STORIES: Announcement[] = [
+  {
+    id: "sample-info",
+    icon: "sparkles",
+    severity: "info",
+    title: { en: "Sample announcement", ru: "Пример объявления" },
+    text: { en: "Sample announcement", ru: "Пример объявления" },
+    url: null,
+    notify_at: "2026-01-01T00:00:00Z",
+    auto_open: false,
+    seen: false,
+    slides: [
+      { image_url: null, text: { en: "First slide of a sample announcement", ru: "Первый слайд примера объявления" }, url: null },
+      { image_url: null, text: { en: "Second slide of a sample announcement", ru: "Второй слайд примера объявления" }, url: null },
+      {
+        image_url: null,
+        text: { en: "Last slide with a link", ru: "Последний слайд со ссылкой" },
+        url: "https://github.com/remnashop/remnashop/releases",
+      },
+    ],
+  },
+  {
+    id: "sample-critical",
+    icon: "warning",
+    severity: "critical",
+    title: { en: "Sample critical announcement", ru: "Пример важного объявления" },
+    text: { en: "Sample critical announcement", ru: "Пример важного объявления" },
+    url: null,
+    notify_at: "2026-01-02T00:00:00Z",
+    auto_open: false,
+    seen: false,
+    slides: [{ image_url: null, text: { en: "Something needs your attention", ru: "Нужно ваше внимание" }, url: null }],
+  },
+];
+
 function DemoModalBody() {
   const k = useKit();
   const close = useModalClose();
@@ -50,6 +87,7 @@ export function DialogsSection() {
   const { t } = useTranslation();
   const [modalSize, setModalSize] = useState<"sm" | "lg" | null>(null);
   const [confirm, setConfirm] = useState<"accent" | "danger" | null>(null);
+  const [carouselOpen, setCarouselOpen] = useState(false);
   const frame = "overflow-hidden rounded-dialog border border-white/[0.14] bg-popover/60";
 
   return (
@@ -104,7 +142,15 @@ export function DialogsSection() {
           {k("s.delete")}
         </Button>
       </Specimen>
+      <Specimen name="AnnouncementsCarousel" usage={k("u.announcementsCarousel")}>
+        <Button variant="outline" onClick={() => setCarouselOpen(true)}>
+          {k("s.openCarousel")}
+        </Button>
+      </Specimen>
 
+      {carouselOpen && (
+        <AnnouncementsCarousel stories={SAMPLE_STORIES} startIndex={0} onClose={() => setCarouselOpen(false)} />
+      )}
       {modalSize && (
         <Modal onClose={() => setModalSize(null)} size={modalSize}>
           <DemoModalBody />

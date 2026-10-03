@@ -23,6 +23,13 @@ def _worker_task_modules() -> set[str]:
     return set(re.findall(r"app\.modules\.\w+\.tasks", worker_line))
 
 
+def _scheduler_task_modules() -> set[str]:
+    scheduler_line = next(
+        line for line in _ENTRYPOINT.read_text().splitlines() if "exec taskiq scheduler" in line
+    )
+    return set(re.findall(r"app\.modules\.\w+\.tasks", scheduler_line))
+
+
 def _injected_types(task: AsyncTaskiqDecoratedTask[Any, Any]) -> list[Any]:
     func = task.original_func
     hints = typing.get_type_hints(getattr(func, "__dishka_orig_func__", func), include_extras=True)
@@ -37,6 +44,16 @@ def _injected_types(task: AsyncTaskiqDecoratedTask[Any, Any]) -> list[Any]:
 def test_worker_command_lists_every_tasks_module() -> None:
     on_disk = {f"app.modules.{path.parent.name}.tasks" for path in _MODULES_DIR.glob("*/tasks.py")}
     assert _worker_task_modules() == on_disk
+
+
+def test_scheduler_command_lists_every_module_with_a_schedule() -> None:
+    # a module missing here is executed by the worker but never kicked by the scheduler
+    scheduled = {
+        f"app.modules.{path.parent.name}.tasks"
+        for path in _MODULES_DIR.glob("*/tasks.py")
+        if "schedule=" in path.read_text()
+    }
+    assert scheduled <= _scheduler_task_modules()
 
 
 @pytest.mark.parametrize("module_name", sorted(_worker_task_modules()))

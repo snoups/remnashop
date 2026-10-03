@@ -61,6 +61,16 @@ allowed_importers =
     app.api.routers
     app.worker.subscribers
 
+[importlinter:contract:announcements-boundary]
+name = announcements internals are private
+type = protected
+protected_modules =
+    app.modules.announcements.*
+allowed_importers =
+    app.modules.announcements
+    app.api.routers
+    app.worker.subscribers
+
 [importlinter:contract:api-tokens-boundary]
 name = api_tokens internals are private
 type = protected

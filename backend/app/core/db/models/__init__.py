@@ -5,6 +5,7 @@ from app.core.db.models.addon import AddOn
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.addon_price_override import AddOnPriceOverride
+from app.core.db.models.announcement import Announcement, AnnouncementView
 from app.core.db.models.api_token import ApiToken
 from app.core.db.models.appearance_settings import AppearanceSettings
 from app.core.db.models.backup_run import BackupRun
@@ -48,6 +49,8 @@ __all__ = [
     "AddOnEntitlement",
     "AddOnGrantIdempotency",
     "AddOnPriceOverride",
+    "Announcement",
+    "AnnouncementView",
     "ApiToken",
     "AppearanceSettings",
     "BackupRun",

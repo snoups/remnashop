@@ -2,6 +2,7 @@ from dishka import Provider
 
 from app.modules.advertising import get_advertising_providers
 from app.modules.analytics import get_analytics_providers
+from app.modules.announcements import get_announcements_providers
 from app.modules.api_tokens import get_api_tokens_providers
 from app.modules.auth import get_auth_providers
 from app.modules.backups import get_backups_providers
@@ -52,4 +53,5 @@ def get_module_providers() -> list[Provider]:
         *get_advertising_providers(),
         *get_analytics_providers(),
         *get_overview_providers(),
+        *get_announcements_providers(),
     ]
