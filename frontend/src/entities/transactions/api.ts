@@ -1,6 +1,6 @@
 import { DollarSign, RussianRuble, Star, type LucideIcon } from "lucide-react";
 
-import { apiGet } from "@shared/api/http";
+import { apiGet, apiPost } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
 import type { BadgeTone } from "@shared/ui/Badge";
 
@@ -31,6 +31,8 @@ export interface TransactionItem {
   currency: string;
   purchase_type: PurchaseType;
   target_subscription_id: number | null;
+  /** the subscription the order provisioned, once reconciled */
+  fulfilled_subscription_id: number | null;
   gateway_type: string;
   external_payment_id: string | null;
   status: TransactionStatus;
@@ -112,6 +114,16 @@ export function getTransactionSummary(
 /** Gateway types that appear in at least one (non-test) order. */
 export function getTransaction(transactionId: number, signal?: AbortSignal): Promise<TransactionItem> {
   return apiGet<TransactionItem>(`/transactions/${transactionId}`, signal);
+}
+
+/** FAILED/CANCELED become PAID; a PAID order without a subscription is redispatched. */
+export function fulfillTransaction(transactionId: number): Promise<TransactionItem> {
+  return apiPost<TransactionItem, Record<string, never>>(`/transactions/${transactionId}/actions/fulfill`, {});
+}
+
+export function canFulfillTransaction(order: TransactionItem): boolean {
+  if (order.status === "FAILED" || order.status === "CANCELED") return true;
+  return order.status === "PAID" && order.fulfilled_subscription_id === null;
 }
 
 export function listTransactionGateways(signal?: AbortSignal): Promise<string[]> {

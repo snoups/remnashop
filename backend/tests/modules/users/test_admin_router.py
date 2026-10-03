@@ -476,7 +476,7 @@ async def test_set_user_discount_updates_personal_discount(
 
     response = await client.patch(
         f"/api/v1/users/{target.id}/discount",
-        json={"percent": 30},
+        json={"personal_discount": 30},
         headers={"Authorization": f"Bearer {token}"},
     )
 

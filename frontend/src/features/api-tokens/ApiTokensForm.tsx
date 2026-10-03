@@ -9,6 +9,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Tag } from "@shared/ui/Tag";
@@ -54,7 +55,7 @@ export function ApiTokensForm() {
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
             <KeyRound className="size-4" />
           </div>
           <div>
@@ -83,7 +84,7 @@ export function ApiTokensForm() {
           <Spinner size="card" />
         </div>
       )}
-      {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("apiTokens.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("apiTokens.loadError")} />}
       {state.kind === "ready" && state.data.length === 0 && (
         <div className="flex flex-col items-center gap-3.5 -mx-4 -mb-4 px-4 pt-8 pb-10 text-center">
           <div>

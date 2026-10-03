@@ -1418,8 +1418,10 @@ def upgrade() -> None:
         sa.Column("ip_address", sa.String(length=45), nullable=True),
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("outbox_id", sa.Integer(), nullable=True),
+        sa.Column("target_id", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(["actor_id"], ["users.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["outbox_id"], ["event_outbox.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["target_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("outbox_id"),
     )
@@ -1434,6 +1436,9 @@ def upgrade() -> None:
     )
     op.create_index(
         op.f("ix_event_log_entries_occurred_at"), "event_log_entries", ["occurred_at"], unique=False
+    )
+    op.create_index(
+        op.f("ix_event_log_entries_target_id"), "event_log_entries", ["target_id"], unique=False
     )
     op.create_table(
         "transactions",
@@ -1498,6 +1503,7 @@ def upgrade() -> None:
         sa.Column("idempotency_key", sa.String(length=36), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("fulfilled_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("fulfilled_subscription_id", sa.Integer(), nullable=True),
         sa.Column("is_test", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",
@@ -1512,6 +1518,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(["discount_promocode_id"], ["promocodes.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["fulfilled_subscription_id"], ["subscriptions.id"], ondelete="SET NULL"
+        ),
         sa.ForeignKeyConstraint(["plan_id"], ["plans.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(
             ["target_subscription_id"],
@@ -1689,6 +1698,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_transactions_discount_promocode_id"), table_name="transactions")
     op.drop_index("ix_transactions_status_expires_at", table_name="transactions")
     op.drop_table("transactions")
+    op.drop_index(op.f("ix_event_log_entries_target_id"), table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_occurred_at"), table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_event_type"), table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_category"), table_name="event_log_entries")

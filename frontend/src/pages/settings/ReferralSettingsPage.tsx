@@ -1,5 +1,4 @@
 import {
-  AlertCircle,
   CalendarDays,
   Coins,
   CreditCard,
@@ -31,6 +30,7 @@ import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
 import { FieldHint } from "@shared/ui/FieldHint";
@@ -196,10 +196,7 @@ export function ReferralSettingsPage() {
   if (state.kind === "loading") return <Spinner size="page" />;
   if (state.kind === "error") {
     return (
-      <div className="flex flex-col items-center gap-2 py-12 text-error">
-        <AlertCircle className="size-5" />
-        <p className="text-sm">{t("referrals.loadError")}</p>
-      </div>
+      <ErrorState text={t("referrals.loadError")} size="page" />
     );
   }
 

@@ -5,7 +5,7 @@ import { getCohorts } from "@entities/analytics/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { CardHeader } from "@shared/ui/CardHeader";
 
@@ -28,7 +28,7 @@ export function AnalyticsCohortsPage() {
 
   if (state.kind === "loading") return <Spinner size="page" />;
   if (state.kind === "error") {
-    return <div className="py-6 text-center text-sm text-error">{t("analytics.cohorts.loadError")}</div>;
+    return <ErrorState text={t("analytics.cohorts.loadError")} />;
   }
 
   return (

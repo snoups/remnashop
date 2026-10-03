@@ -165,3 +165,24 @@ async def test_list_filters_by_actor_id(
 
     assert total == 1
     assert items[0].actor_login == "admin"
+
+
+async def test_list_filters_by_target_id_and_event_type(
+    event_log_repository: EventLogRepository, user_repository: UserRepository
+) -> None:
+    first = await user_repository.create(CreateUserDto(name="First", login="first"))
+    second = await user_repository.create(CreateUserDto(name="Second", login="second"))
+    await event_log_repository.create(
+        _entry(event_type="UserPointsAdjustedEvent", target_id=first.id)
+    )
+    await event_log_repository.create(_entry(event_type="UserBlockedEvent", target_id=first.id))
+    await event_log_repository.create(
+        _entry(event_type="UserPointsAdjustedEvent", target_id=second.id)
+    )
+
+    items, total = await event_log_repository.list(
+        target_id=first.id, event_type="UserPointsAdjustedEvent"
+    )
+
+    assert total == 1
+    assert (items[0].target_id, items[0].event_type) == (first.id, "UserPointsAdjustedEvent")

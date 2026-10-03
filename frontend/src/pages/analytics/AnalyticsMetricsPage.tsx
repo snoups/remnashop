@@ -7,6 +7,7 @@ import { getAnalytics } from "@entities/analytics/api";
 import type { Analytics, AnalyticsPeriodDays } from "@entities/analytics/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { PeriodPills } from "@shared/ui/PeriodPills";
 import { Spinner } from "@shared/ui/Spinner";
@@ -33,7 +34,7 @@ export function AnalyticsMetricsPage() {
 
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && (
-        <div className="py-6 text-center text-sm text-error">{t("analytics.loadError")}</div>
+        <ErrorState text={t("analytics.loadError")} />
       )}
       {state.kind === "ready" && <Overview data={state.data} />}
     </div>

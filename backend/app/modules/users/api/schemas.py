@@ -110,6 +110,8 @@ class BlacklistMatchPageResponse(BaseModel):
 
 class UserListItemResponse(UserResponse):
     active_subscriptions: int
+    limited_subscriptions: int
+    expired_subscriptions: int
 
 
 class UserPageResponse(BaseModel):
@@ -199,8 +201,9 @@ class UpdateSecurityRequest(BaseModel):
         return value
 
 
-class SetPersonalDiscountRequest(BaseModel):
-    percent: int = Field(ge=0, le=100)
+class SetDiscountRequest(BaseModel):
+    personal_discount: Optional[int] = Field(None, ge=0, le=100)
+    purchase_discount: Optional[int] = Field(None, ge=0, le=100)
 
 
 class SecurityResponse(BaseModel):

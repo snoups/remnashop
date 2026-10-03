@@ -17,6 +17,8 @@ from app.modules.event_log.tasks import (
     prune_outbox_task,
 )
 from app.modules.event_log.usecases import ProcessOutboxEntryUseCase
+from app.modules.users.dto import CreateUserDto
+from app.modules.users.repository import UserRepository
 
 
 @pytest.fixture
@@ -27,14 +29,16 @@ def outbox_repository(session) -> EventOutboxRepository:
 async def test_process_outbox_entry_persists_and_marks_processed(
     event_log_repository: EventLogRepository,
     outbox_repository: EventOutboxRepository,
+    user_repository: UserRepository,
     session,
     uow: UnitOfWork,
 ) -> None:
+    target = await user_repository.create(CreateUserDto(name="Target", login="target"))
     entry = EventOutboxEntry(
         category=EventCategory.ADMIN_MANAGEMENT,
         event_type="AdminCreatedEvent",
         occurred_at=datetime.now(timezone.utc),
-        payload={"target": {"id": 2}},
+        payload={"target": {"id": target.id}},
         attempts=0,
     )
     session.add(entry)
@@ -48,6 +52,7 @@ async def test_process_outbox_entry_persists_and_marks_processed(
     items, total = await event_log_repository.list()
     assert total == 1
     assert items[0].outbox_id == entry.id
+    assert items[0].target_id == target.id
     row = await outbox_repository.get_unprocessed_by_id(entry.id)
     assert row is None  # marked processed
 

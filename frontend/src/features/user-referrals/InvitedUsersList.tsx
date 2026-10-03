@@ -9,7 +9,7 @@ import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { Spinner } from "@shared/ui/Spinner";
@@ -55,7 +55,16 @@ export function InvitedUsersList({ userId }: { userId: number }) {
   );
 }
 
-function InvitedUsersPage({ userId, level, search }: { userId: number; level?: number; search: string }) {
+/** One filtered list, newest first; on its own (no filters) in the user card's Invited tab. */
+export function InvitedUsersPage({
+  userId,
+  level,
+  search = "",
+}: {
+  userId: number;
+  level?: number;
+  search?: string;
+}) {
   const { t, i18n } = useTranslation();
   const { openUser: openUserCard } = useOpenEntity();
   const filters = useMemo(() => ({ level, search: search || undefined, pageSize: PAGE_SIZE }), [level, search]);
@@ -83,7 +92,7 @@ function InvitedUsersPage({ userId, level, search }: { userId: number; level?: n
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="p-3 text-sm text-error">{t("referrals.dialog.invitedLoadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("referrals.dialog.invitedLoadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("referrals.dialog.invitedEmpty")} />
       )}

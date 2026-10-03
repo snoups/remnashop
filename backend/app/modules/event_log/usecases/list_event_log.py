@@ -20,6 +20,8 @@ class ListEventLogUseCase(UseCase[ListEventLogDto, tuple[list[EventLogEntryDto],
             return await self._event_log_repository.list(
                 category=data.category,
                 actor_id=data.actor_id,
+                target_id=data.target_id,
+                event_type=data.event_type,
                 search=data.search,
                 occurred_from=data.occurred_from,
                 occurred_to=data.occurred_to,

@@ -23,6 +23,7 @@ import { toast } from "@shared/lib/toast";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
@@ -347,7 +348,7 @@ export function AppearanceSettingsForm() {
       />
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("settings.appearance.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("settings.appearance.loadError")} />}
 
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSave(event)} className="mt-4 flex flex-col gap-4">

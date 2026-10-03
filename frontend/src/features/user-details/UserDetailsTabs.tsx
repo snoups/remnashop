@@ -13,12 +13,14 @@ import {
   Send,
   Trash2,
   User,
+  UserPlus,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getUserAdAttribution } from "@entities/advertising/api";
+import { getUserReferralStats } from "@entities/referrals/api";
 import { listEventLog } from "@entities/event-log/api";
 import type { EventLogEntry } from "@entities/event-log/api";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
@@ -26,14 +28,15 @@ import type { UserListItem } from "@entities/user/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
+import { BalanceTiles } from "@features/user-details/BalanceTiles";
+import { userHandle } from "@features/user-referrals/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { InfoRow } from "@shared/ui/InfoRow";
-import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
@@ -55,7 +58,8 @@ function languageName(code: string, uiLanguage: string): string {
 const sectionTitleClassName =
   "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
 
-export function ProfileTab({ user }: { user: UserListItem }) {
+/** onChanged makes points and discounts editable, permissions allowing */
+export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?: (user: UserListItem) => void }) {
   const { t, i18n } = useTranslation();
   const dash = "—";
   const yesNo = (value: boolean) => (value ? t("common.yes") : t("common.no"));
@@ -63,10 +67,23 @@ export function ProfileTab({ user }: { user: UserListItem }) {
   const trialAvailable = user.is_trial_available ? t("users.details.trialYes") : t("users.details.trialNo");
   const createdAt = user.created_at ? formatDateTime(user.created_at, i18n.language) : undefined;
   const language = languageName(user.language, i18n.language);
-  const canViewAdSource = usePermissions().includes("AD_LINKS_USER_ATTRIBUTION_VIEW");
+  const permissions = usePermissions();
+  const canViewAdSource = permissions.includes("AD_LINKS_USER_ATTRIBUTION_VIEW");
+  const canViewReferrer = permissions.includes("REFERRALS_VIEW");
   const [adSource] = useAsyncResource((signal) =>
     canViewAdSource ? getUserAdAttribution(user.id, signal) : Promise.resolve(null),
   );
+  const [referralStats] = useAsyncResource((signal) =>
+    canViewReferrer ? getUserReferralStats(user.id, signal) : Promise.resolve(null),
+  );
+  const referralData = referralStats.kind === "ready" ? referralStats.data : null;
+  const referrer = referralData?.referrer;
+  const referrerContact = referrer && userHandle(referrer);
+  const referrerText = referrer
+    ? `${referrer.name || t("users.deleted.name")} ${referrerContact}`
+    : referralData?.referrer_id != null
+      ? `#${referralData.referrer_id}`
+      : undefined;
 
   if (user.deleted_at) {
     // name and contacts are wiped on delete; only what history still refers to is left
@@ -120,6 +137,16 @@ export function ProfileTab({ user }: { user: UserListItem }) {
             {user.referral_code}
           </InfoRow>
         )}
+        {canViewReferrer && (
+          <InfoRow icon={UserPlus} label={t("referrals.stats.referrerLabel")} copyValue={referrerText}>
+            {referrer ? (
+              // contacts go to the clipboard only
+              <span className="truncate">{referrer.name || t("users.deleted.name")}</span>
+            ) : (
+              (referrerText ?? dash)
+            )}
+          </InfoRow>
+        )}
         {canViewAdSource && (
           <InfoRow
             icon={Megaphone}
@@ -157,11 +184,7 @@ export function ProfileTab({ user }: { user: UserListItem }) {
         )}
       </Card>
 
-      <div className="grid grid-cols-3 gap-3">
-        <KpiTile label={t("users.details.points")} value={String(user.points)} />
-        <KpiTile label={t("users.details.personalDiscount")} value={`${user.personal_discount}%`} />
-        <KpiTile label={t("users.details.purchaseDiscount")} value={`${user.purchase_discount}%`} />
-      </div>
+      <BalanceTiles user={user} onChanged={onChanged} />
     </div>
   );
 }
@@ -185,7 +208,7 @@ export function EventsTab({ actorId }: { actorId: number }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="p-3 text-sm text-error">{t("eventLog.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("eventLog.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("admins.details.eventsEmpty")} />
       )}

@@ -28,6 +28,7 @@ from app.modules.promocodes.usecases.get_promocode import GetPromocodeUseCase
 from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
 from app.modules.subscriptions.usecases.get_subscription import GetSubscriptionUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
+from app.modules.transactions.usecases.fulfill_transaction import FulfillTransactionUseCase
 from app.modules.transactions.usecases.get_test_payment_status import GetTestPaymentStatusUseCase
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
 from app.modules.transactions.usecases.list_transaction_gateways import (
@@ -39,7 +40,7 @@ from app.modules.translations.usecases.remove_locale import RemoveLocaleUseCase
 from app.modules.translations.usecases.reset_translation import ResetTranslationUseCase
 from app.modules.translations.usecases.update_translation import UpdateTranslationUseCase
 from app.modules.users.usecases.get_user import GetUserUseCase
-from app.modules.users.usecases.set_user_personal_discount import SetUserPersonalDiscountUseCase
+from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
 
 
 @pytest.mark.parametrize(
@@ -65,10 +66,11 @@ from app.modules.users.usecases.set_user_personal_discount import SetUserPersona
         (ReorderGatewaysUseCase, Permission.GATEWAYS_REORDER),
         (CreateTestPaymentUseCase, Permission.GATEWAYS_TEST),
         (GetTestPaymentStatusUseCase, Permission.GATEWAYS_TEST_VIEW),
-        (SetUserPersonalDiscountUseCase, Permission.USERS_DISCOUNT_MANAGE),
+        (SetUserDiscountUseCase, Permission.USERS_DISCOUNT_MANAGE),
         (ListTransactionsUseCase, Permission.TRANSACTIONS_VIEW),
         (ListTransactionGatewaysUseCase, Permission.TRANSACTIONS_GATEWAYS_VIEW),
         (GetTransactionUseCase, Permission.TRANSACTIONS_DETAIL_VIEW),
+        (FulfillTransactionUseCase, Permission.TRANSACTIONS_FULFILL),
         (
             SetPlanDurationBasePriceUseCase,
             Permission.PLANS_DURATION_BASE_PRICE_MANAGE,

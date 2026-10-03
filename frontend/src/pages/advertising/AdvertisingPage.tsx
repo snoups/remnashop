@@ -1,4 +1,4 @@
-import { AlertCircle, ChevronRight, Link2, Loader2, Plus } from "lucide-react";
+import { ChevronRight, Link2, Loader2, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,7 +19,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
 import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
@@ -225,10 +225,7 @@ export function AdvertisingPage() {
 
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("advertising.loadError")}</p>
-          </div>
+          <ErrorState text={t("advertising.loadError")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
           <EmptyState text={t("advertising.empty")} size="page" />

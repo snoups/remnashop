@@ -41,7 +41,8 @@ function AnimatedOutlet() {
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={section}
-        className="flex flex-1 flex-col"
+        // a page that scrolls on its own (data-fills-main) gets main's height, not its content's
+        className="flex flex-1 flex-col has-[>[data-fills-main]]:min-h-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 0.18, ease: "easeOut" } }}
         exit={{ opacity: 0, transition: { duration: 0.15, ease: "easeIn" } }}
@@ -105,7 +106,8 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
         >
           <Header onLogout={onLogout} />
           {/* the stable gutter's 10px comes out of the right padding, like dialog bodies (app/styles.css) */}
-          <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] pb-6 pl-4 pr-[calc(1rem-10px)] pt-2 md:pb-8 md:pl-8 md:pr-[calc(2rem-10px)] md:pt-4">
+          {/* a page with its own scroller (data-fills-main) takes the gutter for its scrollbar */}
+          <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] has-[[data-fills-main]]:[scrollbar-gutter:auto] pb-6 pl-4 pr-[calc(1rem-10px)] pt-2 md:pb-8 md:pl-8 md:pr-[calc(2rem-10px)] md:pt-4">
             <AnimatedOutlet />
           </main>
           {/* dialogs portal here, not into `main` (see DialogPortal) */}

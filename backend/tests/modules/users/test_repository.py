@@ -519,17 +519,23 @@ async def test_list_filtered_counts_and_sorts_by_active_subscriptions(
         (two.id, SubscriptionStatus.ACTIVE),
         (two.id, SubscriptionStatus.EXPIRED),
         (one.id, SubscriptionStatus.ACTIVE),
+        (one.id, SubscriptionStatus.LIMITED),
+        (one.id, SubscriptionStatus.DISABLED),
     ]
     for index, (user_id, status) in enumerate(statuses):
         _add_subscription(session, user_id, status, remnawave_user_id=900 + index)
     await session.flush()
 
     items, _ = await user_repository.list_filtered(roles=[Role.USER], sort="subscriptions")
-    assert [(u.name, u.active_subscriptions) for u in items] == [
-        ("Two", 2),
-        ("One", 1),
-        ("None", 0),
-        ("Older", 0),
+    counts = [
+        (u.name, u.active_subscriptions, u.limited_subscriptions, u.expired_subscriptions)
+        for u in items
+    ]
+    assert counts == [
+        ("Two", 2, 0, 1),
+        ("One", 1, 1, 0),
+        ("None", 0, 0, 0),
+        ("Older", 0, 0, 0),
     ]
 
 

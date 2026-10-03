@@ -123,6 +123,7 @@ class Permission(UpperStrEnum):
     TRANSACTIONS_SUMMARY_VIEW = auto()
     TRANSACTIONS_DETAIL_VIEW = auto()
     TRANSACTIONS_GATEWAYS_VIEW = auto()
+    TRANSACTIONS_FULFILL = auto()
     REFERRALS_VIEW = auto()
     REFERRALS_LINKS_VIEW = auto()
     REFERRALS_INVITED_VIEW = auto()
@@ -279,6 +280,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSACTIONS_SUMMARY_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_GATEWAYS_VIEW: PermissionMeta(resource="transactions", kind="read"),
+    Permission.TRANSACTIONS_FULFILL: PermissionMeta(resource="transactions", kind="write"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_LINKS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_INVITED_VIEW: PermissionMeta(resource="referrals", kind="read"),
@@ -341,6 +343,8 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         # merchant credentials: payments land in another account
         Permission.GATEWAYS_UPDATE,
         Permission.GATEWAYS_ACTIVE_SET,
+        # provisions an order nobody was paid for
+        Permission.TRANSACTIONS_FULFILL,
         # irreversible or bulk
         Permission.BACKUPS_SETTINGS_MANAGE,
         Permission.BACKUPS_RUN_DELETE,
@@ -480,6 +484,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.TRANSACTIONS_SUMMARY_VIEW,
         Permission.TRANSACTIONS_DETAIL_VIEW,
         Permission.TRANSACTIONS_GATEWAYS_VIEW,
+        Permission.TRANSACTIONS_FULFILL,
         Permission.REFERRALS_VIEW,
         Permission.REFERRALS_LINKS_VIEW,
         Permission.REFERRALS_INVITED_VIEW,

@@ -13,20 +13,24 @@ from app.core.enums import (
     Role,
     TransactionStatus,
 )
-from app.core.exceptions import NotFoundError, PermissionDeniedError
+from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
+from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.transactions.dto import (
     CreateTransactionDto,
     GetTransactionSummaryDto,
     ListTransactionsDto,
 )
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.usecases.fulfill_transaction import FulfillTransactionUseCase
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
 from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
 from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UserDto
+from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
@@ -187,3 +191,41 @@ async def test_get_transaction_summary_counts_and_converts_paid_revenue(
         * rates.for_currency(rates.anchor).rate
     )
     assert summary.discount_amount == expected_base - expected_revenue
+
+
+async def test_fulfill_transaction_marks_a_failed_order_paid_and_dispatches_it(
+    transaction_repository: TransactionRepository,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    user_repository: UserRepository,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    admin_actor: UserDto,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        failed = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="fulfill-failed")
+        )
+        await transaction_repository.mark_status(failed.id, TransactionStatus.FAILED)
+        pending = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="fulfill-pending")
+        )
+    dispatch = RecordingDispatch()
+    use_case = FulfillTransactionUseCase(
+        transaction_repository,
+        idempotency_repository,
+        user_repository,
+        event_publisher,
+        uow,
+        dispatch,
+    )
+
+    result = await use_case(admin_actor, failed.id)
+
+    assert result.order.status is TransactionStatus.PAID
+    assert [message["idempotency_key"] for message in dispatch.messages] == ["fulfill-failed"]
+
+    with pytest.raises(ConflictError):
+        await use_case(admin_actor, pending.id)
+    assert len(dispatch.messages) == 1

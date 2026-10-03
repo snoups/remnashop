@@ -30,6 +30,7 @@ import { useCurrentUser, usePermissions } from "@entities/user/use-current-user"
 import { formatBytes, formatMoney } from "@shared/lib/format";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { PeriodPills } from "@shared/ui/PeriodPills";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LIST_BODY_CLASS } from "@shared/ui/classes";
@@ -166,10 +167,7 @@ function RecentEventsCard({ refreshKey }: { refreshKey: number }) {
         </div>
       )}
       {state.kind === "error" && (
-        <div className="flex items-center gap-2 py-6 text-error">
-          <AlertCircle className="size-4" />
-          <span className="text-sm">{t("dashboard.loadError")}</span>
-        </div>
+        <ErrorState text={t("dashboard.loadError")} />
       )}
       {state.kind === "ready" && (
         <div className={`${LIST_BODY_CLASS}`}>
@@ -509,10 +507,7 @@ export function DashboardPage() {
         </div>
       )}
       {kpiState.kind === "error" && (
-        <div className="flex items-center justify-center gap-2 py-4 text-error">
-          <AlertCircle className="size-4" />
-          <span className="text-sm">{t("dashboard.loadError")}</span>
-        </div>
+        <ErrorState text={t("dashboard.loadError")} />
       )}
       {kpiState.kind === "ready" && kpiState.data.users && (
         <KpiTile

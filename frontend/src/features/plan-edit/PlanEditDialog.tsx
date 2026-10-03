@@ -195,7 +195,7 @@ function PlanEditDialogBody({
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <Card variant="form">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {plan && (

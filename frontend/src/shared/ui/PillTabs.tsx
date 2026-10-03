@@ -12,6 +12,8 @@ interface PillTabsProps<T extends string> {
   disabled?: boolean;
   /** field: 38px, lines up with a text input in the same row */
   size?: "compact" | "field";
+  /** false: no backdrop blur, for a capsule that shouldn't frost what's behind it */
+  blurred?: boolean;
 }
 
 /** The settings TabBar's capsule, for tabs that switch state instead of routes:
@@ -22,6 +24,7 @@ export function PillTabs<T extends string>({
   onSelect,
   disabled = false,
   size = "compact",
+  blurred = true,
 }: PillTabsProps<T>) {
   const scrollerRef = useHorizontalWheelScroll<HTMLDivElement>();
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -41,7 +44,9 @@ export function PillTabs<T extends string>({
   }, [activeKey]);
 
   return (
-    <div className="flex w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
+    <div
+      className={`flex w-full rounded-full border border-glass-border bg-white/[0.03] p-1 ${blurred ? "backdrop-blur-md" : ""}`}
+    >
       <div ref={scrollerRef} className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full">
         {items.map((item) => (
           <motion.button

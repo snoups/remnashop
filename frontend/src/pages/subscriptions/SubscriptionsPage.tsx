@@ -1,4 +1,4 @@
-import { AlertCircle, Layers, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Layers, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,7 +21,7 @@ import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useUrlSearch } from "@shared/lib/use-url-search";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
@@ -90,6 +90,7 @@ export function SubscriptionsPage() {
   const unlimitedLabel = t("subscriptions.unlimited");
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
+  const hasFilters = Boolean(status || debouncedSearch);
   const baseFilters = useMemo<{ status?: SubscriptionStatus; search?: string }>(
     () => ({
       status: (status || undefined) as SubscriptionStatus | undefined,
@@ -179,13 +180,10 @@ export function SubscriptionsPage() {
 
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("subscriptions.loadError")}</p>
-          </div>
+          <ErrorState text={t("subscriptions.loadError")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
-          <EmptyState text={t("subscriptions.empty")} size="page" />
+          <EmptyState text={t(hasFilters ? "subscriptions.noMatches" : "subscriptions.empty")} size="page" />
         )}
         {state.kind === "ready" && state.items.length > 0 && (
           <div className="mt-3">

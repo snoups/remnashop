@@ -34,6 +34,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { usePermissionCatalog, groupCatalogByResource, resourceCategoryKey } from "@entities/admin/use-permission-catalog";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
@@ -108,7 +109,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
     return <Spinner size="card" />;
   }
   if (catalogState.kind === "error") {
-    return <p className="text-sm text-error">{t("apiTokens.loadError")}</p>;
+    return <ErrorState text={t("permissionPicker.loadError")} />;
   }
 
   const groups = groupCatalogByResource(

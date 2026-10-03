@@ -1,6 +1,5 @@
 import type { ParseKeys } from "i18next";
 import {
-  AlertCircle,
   ArrowLeftRight,
   ChevronRight,
   Filter,
@@ -27,7 +26,7 @@ import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { dotIcon, letterIcon } from "@shared/ui/optionIcons";
@@ -71,6 +70,7 @@ export function TransactionsPage() {
   );
   const gatewayOptions = gatewaysState.kind === "ready" ? gatewaysState.data : [];
 
+  const hasFilters = Boolean(status || gatewayType || purchaseType || period || search);
   const baseFilters = useMemo<TransactionListFilters>(
     () => ({
       status: (status || undefined) as TransactionStatus | undefined,
@@ -266,15 +266,12 @@ export function TransactionsPage() {
         )}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("transactions.loadError")}</p>
-          </div>
+          <ErrorState text={t("transactions.loadError")} size="page" />
         )}
         {state.kind === "ready" && (
           <>
             {state.items.length === 0 && (
-              <EmptyState text={t("transactions.empty")} size="page" />
+              <EmptyState text={t(hasFilters ? "transactions.noMatches" : "transactions.empty")} size="page" />
             )}
             {state.items.length > 0 && (
               <>
@@ -334,14 +331,12 @@ export function TransactionsPage() {
                               </span>
                               <span className="tabular-nums">
                                 <span className="block text-[14px] font-semibold text-foreground">
-                                  {symbol}
-                                  {order.final_price}
+                                  {formatMoney(order.final_price, order.currency, i18n.language, true)}
                                 </span>
                                 {order.discount_percent > 0 && (
                                   <span className="block text-[11.5px] text-muted-foreground">
                                     <span className="line-through">
-                                      {symbol}
-                                      {order.base_price}
+                                      {formatMoney(order.base_price, order.currency, i18n.language, true)}
                                     </span>{" "}
                                     <span className="text-primary">−{order.discount_percent}%</span>
                                   </span>

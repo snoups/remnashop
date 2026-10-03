@@ -148,6 +148,12 @@ export function BadgesSection() {
         </Tag>
         <Tag>{k("s.month")}</Tag>
       </Specimen>
+      <Specimen name='Badge shape="count"' usage={k("u.badgeCount")}>
+        <Badge tone="success" shape="count">2</Badge>
+        <Badge tone="warning" shape="count">1</Badge>
+        <Badge tone="error" shape="count">14</Badge>
+        <Badge tone="neutral" shape="count">128</Badge>
+      </Specimen>
       <Specimen name="Badge + icon" usage={k("u.badgeIcon")}>
         <Badge tone="accent">
           <ShieldCheck className="size-2.5" />

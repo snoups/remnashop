@@ -43,6 +43,8 @@ async def list_event_log(
     actor: Actor = Depends(require_admin),
     category: Optional[EventCategory] = None,
     actor_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
+    target_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
+    event_type: Optional[str] = Query(None, max_length=128),
     search: Optional[str] = None,
     occurred_from: Optional[datetime] = None,
     occurred_to: Optional[datetime] = None,
@@ -54,6 +56,8 @@ async def list_event_log(
         ListEventLogDto(
             category=category,
             actor_id=actor_id,
+            target_id=target_id,
+            event_type=event_type,
             search=search,
             occurred_from=range_start_utc(occurred_from),
             occurred_to=range_end_utc(occurred_to),

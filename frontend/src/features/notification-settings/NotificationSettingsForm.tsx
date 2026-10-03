@@ -12,6 +12,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Card } from "@shared/ui/Card";
@@ -60,7 +61,7 @@ export function NotificationSettingsForm() {
 
       <div className="mt-4 flex flex-col divide-y divide-border/50">
         {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <p className="text-sm text-error">{t("profile.notifications.loadError")}</p>}
+        {state.kind === "error" && <ErrorState text={t("profile.notifications.loadError")} />}
         {state.kind === "ready" &&
           state.data.available.map((group) => {
             const Icon = GROUP_ICONS[group] ?? Bell;

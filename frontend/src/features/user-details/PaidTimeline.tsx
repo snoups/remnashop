@@ -16,24 +16,60 @@ const MAX_MONTH_TICKS = 8;
 
 const LEGEND_TYPES: readonly PurchaseType[] = ["NEW", "RENEW", "CHANGE"];
 
+// one lane per row of bars: a bar's label sits above it, the next lane starts right under it
+const LANE_PX = 44;
+const BAR_TOP_PX = 18;
+const BAR_PX = 22;
+
 interface Segment {
   order: TransactionItem;
   start: number;
   end: number;
+  lane: number;
 }
 
-// A renewal extends the period it renews, so it starts where the previous paid period ends
-// if that is still ahead. chains onto the latest period of any subscription, a user
-// renewing one of two parallel subscriptions gets a slightly shifted bar.
+// A renewal extends its own subscription's period, starting where that one ends if it's
+// still ahead; a plan change carries the chain on to the subscription it creates and cuts the
+// replaced period short. Orders
+// with no subscription link (not reconciled yet) each start a chain of their own.
 function buildSegments(paid: TransactionItem[]): Segment[] {
-  let lastEnd = 0;
-  return paid.map((order) => {
+  const chainOf = new Map<number, string>();
+  const chainEnd = new Map<string, number>();
+  const placed: { order: TransactionItem; start: number; end: number; chain: string }[] = [];
+  for (const order of paid) {
+    const linked = order.target_subscription_id ?? order.fulfilled_subscription_id;
+    const chain =
+      (order.purchase_type !== "NEW" && order.target_subscription_id !== null
+        ? chainOf.get(order.target_subscription_id)
+        : undefined) ?? (linked !== null ? `sub-${linked}` : `order-${order.id}`);
+    for (const id of [order.target_subscription_id, order.fulfilled_subscription_id]) {
+      if (id !== null) chainOf.set(id, chain);
+    }
     const created = new Date(order.created_at).getTime();
-    const start = order.purchase_type === "RENEW" ? Math.max(created, lastEnd) : created;
+    const start = order.purchase_type === "RENEW" ? Math.max(created, chainEnd.get(chain) ?? 0) : created;
     const end = start + order.duration_days * DAY_MS;
-    lastEnd = Math.max(lastEnd, end);
-    return { order, start, end };
-  });
+    if (order.purchase_type === "CHANGE") {
+      for (const earlier of placed) if (earlier.chain === chain) earlier.end = Math.min(earlier.end, start);
+    }
+    chainEnd.set(chain, order.purchase_type === "CHANGE" ? end : Math.max(chainEnd.get(chain) ?? 0, end));
+    placed.push({ order, start, end, chain });
+  }
+
+  // chains that don't overlap in time share a lane
+  const extent = new Map<string, [number, number]>();
+  for (const { chain, start, end } of placed) {
+    const [from, to] = extent.get(chain) ?? [start, end];
+    extent.set(chain, [Math.min(from, start), Math.max(to, end)]);
+  }
+  const laneEnds: number[] = [];
+  const laneOf = new Map<string, number>();
+  for (const [chain, [from, to]] of [...extent].sort((a, b) => a[1][0] - b[1][0])) {
+    const free = laneEnds.findIndex((laneEnd) => laneEnd <= from);
+    const lane = free === -1 ? laneEnds.length : free;
+    laneEnds[lane] = to;
+    laneOf.set(chain, lane);
+  }
+  return placed.map(({ order, start, end, chain }) => ({ order, start, end, lane: laneOf.get(chain)! }));
 }
 
 function mergeIntervals(segments: Segment[]): [number, number][] {
@@ -57,6 +93,12 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
   const byDate = [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at));
   const segments = buildSegments(byDate.filter((order) => order.status === "PAID"));
   const refunds = byDate.filter((order) => order.status === "REFUNDED");
+  const laneOfSubscription = new Map<number, number>();
+  for (const { order, lane } of segments) {
+    for (const id of [order.target_subscription_id, order.fulfilled_subscription_id]) {
+      if (id !== null) laneOfSubscription.set(id, lane);
+    }
+  }
   if (segments.length === 0) {
     return (
       <Card variant="form" title={t("users.details.analytics.timeline.title")} icon={CalendarRange}>
@@ -66,6 +108,8 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
   }
 
   const now = Date.now();
+  const lanes = Math.max(...segments.map(({ lane }) => lane)) + 1;
+  const barsBottom = (lanes - 1) * LANE_PX + BAR_TOP_PX + BAR_PX;
   const intervals = mergeIntervals(segments);
   const gaps: [number, number][] = [];
   intervals.forEach(([, end], index) => {
@@ -134,47 +178,64 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
         {gaps.length > 0 && ` · ${t("users.details.analytics.timeline.gaps", { count: gaps.length })}`}
       </p>
       <div>
-        <div className="relative h-16">
-          {segments.map(({ order, start, end }) => (
+        <div className="relative" style={{ height: barsBottom + 24 }}>
+          {segments.map(({ order, start, end, lane }) => (
             <div key={order.id}>
               <div
-                className={`absolute top-[18px] h-[22px] rounded-full ${PURCHASE_TYPE_BAR_CLASS[order.purchase_type]}`}
-                style={{ left: `${pct(start)}%`, width: `calc(${pct(end) - pct(start)}% - 2px)` }}
+                className={`absolute rounded-full ${PURCHASE_TYPE_BAR_CLASS[order.purchase_type]}`}
+                style={{
+                  top: lane * LANE_PX + BAR_TOP_PX,
+                  height: BAR_PX,
+                  left: `${pct(start)}%`,
+                  width: `calc(${pct(end) - pct(start)}% - 2px)`,
+                }}
               />
               {pct(end) - pct(start) >= MIN_LABEL_PCT && (
                 <span
-                  className="absolute top-0 whitespace-nowrap text-[10.5px] font-semibold tabular-nums text-foreground"
-                  style={{ left: `${pct(start)}%` }}
+                  className="absolute whitespace-nowrap text-[10.5px] font-semibold tabular-nums text-foreground"
+                  style={{ top: lane * LANE_PX, left: `${pct(start)}%` }}
                 >
-                  {formatMoney(order.final_price, order.currency, i18n.language)}
+                  {formatMoney(order.final_price, order.currency, i18n.language, true)}
                 </span>
               )}
             </div>
           ))}
           {gaps.map(([start, end]) => (
             <div key={start}>
+              {/* no subscription at all: centred across every lane */}
               <div
-                className="absolute top-[28px] border-t-2 border-dashed border-error/70"
-                style={{ left: `${pct(start)}%`, width: `${pct(end) - pct(start)}%` }}
+                className="absolute border-t-2 border-dashed border-error/70"
+                style={{
+                  top: (BAR_TOP_PX + barsBottom) / 2 - 1,
+                  left: `${pct(start)}%`,
+                  width: `${pct(end) - pct(start)}%`,
+                }}
               />
               {pct(end) - pct(start) >= MIN_LABEL_PCT && (
                 <span
-                  className="absolute top-[46px] whitespace-nowrap pl-1 text-[10.5px] text-error"
-                  style={{ left: `${pct(start)}%` }}
+                  className="absolute whitespace-nowrap pl-1 text-[10.5px] text-error"
+                  style={{ top: barsBottom + 6, left: `${pct(start)}%` }}
                 >
                   {t("users.details.analytics.timeline.gap", { count: Math.round((end - start) / DAY_MS) })}
                 </span>
               )}
             </div>
           ))}
-          {refunds.map((order) => (
-            <div
-              key={order.id}
-              className="absolute top-[13px] size-2.5 -translate-x-1/2 rounded-full border-2 border-warning bg-canvas"
-              style={{ left: `${pct(new Date(order.created_at).getTime())}%` }}
-            />
-          ))}
-          <div className="absolute top-3 h-9 w-px bg-foreground/60" style={{ left: `${pct(now)}%` }} />
+          {refunds.map((order) => {
+            const subscription = order.target_subscription_id ?? order.fulfilled_subscription_id;
+            const lane = (subscription !== null && laneOfSubscription.get(subscription)) || 0;
+            return (
+              <div
+                key={order.id}
+                className="absolute size-2.5 -translate-x-1/2 rounded-full border-2 border-warning bg-canvas"
+                style={{ top: lane * LANE_PX + 13, left: `${pct(new Date(order.created_at).getTime())}%` }}
+              />
+            );
+          })}
+          <div
+            className="absolute top-3 w-px bg-foreground/60"
+            style={{ height: barsBottom - 12 + 8, left: `${pct(now)}%` }}
+          />
         </div>
         <div className="relative h-5 border-t border-white/[0.07]">
           {months.map((month, index) =>

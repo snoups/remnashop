@@ -121,7 +121,7 @@ function SubscriptionEditDialogBody({ subscription, onSaved, onDeleted }: Omit<S
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <fieldset disabled={!canEdit} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <fieldset disabled={!canEdit} className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <Card variant="form">
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("subscriptions.edit.trafficLabel")} htmlFor="sub-edit-traffic" hint={t("subscriptions.edit.trafficHint")}>

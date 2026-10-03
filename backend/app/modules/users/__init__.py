@@ -2,7 +2,7 @@ from app.modules.users.di import get_users_providers
 from app.modules.users.dto import (
     CreateUserDto,
     RegisterTelegramUserDto,
-    SetUserPersonalDiscountDto,
+    SetUserDiscountDto,
     UpdateUserDto,
     UserDto,
 )
@@ -14,7 +14,7 @@ from app.modules.users.usecases import (
     BlockUserUseCase,
     GetCurrentUserUseCase,
     RegisterTelegramUserUseCase,
-    SetUserPersonalDiscountUseCase,
+    SetUserDiscountUseCase,
     UnblockAllUsersUseCase,
     UnblockUserUseCase,
 )
@@ -26,8 +26,8 @@ __all__ = [
     "GetCurrentUserUseCase",
     "RegisterTelegramUserDto",
     "RegisterTelegramUserUseCase",
-    "SetUserPersonalDiscountDto",
-    "SetUserPersonalDiscountUseCase",
+    "SetUserDiscountDto",
+    "SetUserDiscountUseCase",
     "TelegramUserRegisteredEvent",
     "UnblockAllUsersUseCase",
     "UnblockUserUseCase",

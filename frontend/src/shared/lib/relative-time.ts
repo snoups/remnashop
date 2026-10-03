@@ -1,6 +1,13 @@
+import i18n from "@shared/i18n";
+
 /** "5 minutes ago" / "in 3 hours" / "yesterday", in the given UI language. */
 export function formatRelative(iso: string, language: string): string {
   const minutes = Math.round((new Date(iso).getTime() - Date.now()) / 60_000);
+  // Intl's own word for 0 minutes ("в эту минуту") reads oddly in a sentence
+  if (minutes === 0) {
+    const elapsed = new Date(iso).getTime() <= Date.now();
+    return i18n.t(elapsed ? "common.lessThanMinuteAgo" : "common.inLessThanMinute", { lng: language });
+  }
   const rtf = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
   if (Math.abs(minutes) < 60) return rtf.format(minutes, "minute");
   const hours = Math.round(minutes / 60);

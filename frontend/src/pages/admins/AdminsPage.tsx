@@ -1,4 +1,4 @@
-import { AlertCircle, History, KeyRound, LaptopMinimal, UserMinus } from "lucide-react";
+import { History, KeyRound, LaptopMinimal, UserMinus } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +14,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { initials } from "@shared/lib/initials";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
@@ -39,10 +40,7 @@ export function AdminsPage() {
     <Card>
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && (
-        <div className="flex flex-col items-center gap-2 py-12 text-error">
-          <AlertCircle className="size-5" />
-          <p className="text-sm">{t("admins.loadError")}</p>
-        </div>
+        <ErrorState text={t("admins.loadError")} size="page" />
       )}
       {state.kind === "ready" && (
         <>

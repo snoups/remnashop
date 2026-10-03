@@ -28,6 +28,8 @@ interface TextEditorPanelProps {
   /** A window body is a Telegram message and may have paragraphs; a button
    * label is one line. */
   multiline?: boolean;
+  /** false: the multiline field without backdrop blur */
+  blurred?: boolean;
   /** Text takes emoji inline, at the cursor. A premium one becomes the markup
    * the bot turns into a custom_emoji entity. */
   emojiInsert?: boolean;
@@ -58,6 +60,7 @@ export function TextEditorPanel({
   canUpdate,
   canReset,
   multiline = false,
+  blurred = true,
   emojiInsert = false,
   fieldAction,
   required = false,
@@ -146,7 +149,7 @@ export function TextEditorPanel({
             value={draft}
             disabled={!canUpdate}
             onChange={setDraft}
-            className="min-h-36 w-full resize-y overflow-auto rounded-lg border border-glass-border bg-white/[0.03] px-2.5 pb-9 pt-1.5 text-[13px] text-foreground outline-none backdrop-blur-md transition-colors hover:bg-white/[0.06] focus:border-primary"
+            className={`min-h-36 w-full resize-y overflow-auto rounded-lg border border-glass-border bg-white/[0.03] px-2.5 pb-9 pt-1.5 text-[13px] text-foreground outline-none transition-colors hover:bg-white/[0.06] focus:border-primary ${blurred ? "backdrop-blur-md" : ""}`}
           />
         ) : (
           <input

@@ -95,6 +95,8 @@ class UserDto(BaseDto, TimestampMixin):
 
 class UserListItemDto(UserDto):
     active_subscriptions: int = 0
+    limited_subscriptions: int = 0
+    expired_subscriptions: int = 0
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -141,9 +143,10 @@ class PromoteAdminDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class SetUserPersonalDiscountDto:
+class SetUserDiscountDto:
     user_id: int
-    percent: int
+    personal_discount: Optional[int] = None
+    purchase_discount: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)

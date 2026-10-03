@@ -9,6 +9,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
@@ -123,7 +124,7 @@ export function BotCommandsForm() {
           <Spinner size="card" />
         )}
         {state.kind === "error" && (
-          <p className="text-sm text-error">{t("settings.botCommands.loadError")}</p>
+          <ErrorState text={t("settings.botCommands.loadError")} />
         )}
         {state.kind === "ready" && (
           <>

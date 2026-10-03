@@ -10,7 +10,6 @@ import {
 import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  AlertCircle,
   ArrowDownUp,
   GripVertical,
   Layers,
@@ -35,7 +34,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
@@ -127,7 +126,7 @@ export function PlansPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
             <Layers className="size-4" />
           </div>
           <div className="min-w-0">
@@ -168,10 +167,7 @@ export function PlansPage() {
 
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && (
-        <div className="flex flex-col items-center gap-2 py-12 text-error">
-          <AlertCircle className="size-5" />
-          <p className="text-sm">{t("plans.loadError")}</p>
-        </div>
+        <ErrorState text={t("plans.loadError")} size="page" />
       )}
       {state.kind === "ready" && visibleItems.length === 0 && !canCreate && (
         <EmptyState text={t(state.data.length === 0 ? "plans.empty" : "plans.noMatches")} size="page" />

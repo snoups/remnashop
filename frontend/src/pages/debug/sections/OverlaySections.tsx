@@ -16,7 +16,7 @@ import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { CopyableValue } from "@shared/ui/CopyableValue";
 import { DialogHeader } from "@shared/ui/DialogHeader";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
 import { GuideDialog } from "@shared/ui/GuideDialog";
 import { IconButton } from "@shared/ui/IconButton";
@@ -316,6 +316,16 @@ export function StatesSection() {
           </div>
           <div className="rounded-xl border border-dashed border-white/[0.12]">
             <EmptyState text={k("s.emptySearch")} icon={SearchX} size="card" />
+          </div>
+        </div>
+      </Specimen>
+      <Specimen name='ErrorState size="page | card"' usage={k("u.error")} stage="stretch" wide>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-dashed border-white/[0.12]">
+            <ErrorState text={k("s.error")} size="page" />
+          </div>
+          <div className="rounded-xl border border-dashed border-white/[0.12]">
+            <ErrorState text={k("s.error")} size="card" />
           </div>
         </div>
       </Specimen>

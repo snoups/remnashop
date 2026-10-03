@@ -71,5 +71,10 @@ class Transaction(BaseSql, TimestampMixin):
     # the durable "provisioned" record, unlike the idempotency key it's read
     # from (pruned after IDEMPOTENCY_KEY_RETENTION_DAYS).
     fulfilled_at: Mapped[Optional[datetime]]
+    # the subscription this order provisioned, recorded with fulfilled_at --
+    # a NEW order has no target_subscription_id to tell it otherwise
+    fulfilled_subscription_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("subscriptions.id", ondelete="SET NULL")
+    )
     # Dashboard gateway check: never provisioned, excluded from every revenue query.
     is_test: Mapped[bool] = mapped_column(default=False, server_default="false")

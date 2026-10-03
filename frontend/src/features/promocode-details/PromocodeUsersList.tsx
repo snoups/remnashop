@@ -8,7 +8,7 @@ import {
   type PromocodeActivatedUser,
 } from "@entities/promocodes/api";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Card } from "@shared/ui/Card";
@@ -32,7 +32,7 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="p-3 text-sm text-error">{t("promocodes.details.usersLoadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("promocodes.details.usersLoadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("promocodes.details.usersEmpty")} />
       )}

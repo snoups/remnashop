@@ -22,7 +22,9 @@
     "none": "—",
     "errors": {
       "generic": "Something went wrong."
-    }
+    },
+    "lessThanMinuteAgo": "less than a minute ago",
+    "inLessThanMinute": "in less than a minute"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -117,7 +119,7 @@
     },
     "recentEvents": "Recent events",
     "viewAllEvents": "View all",
-    "noEvents": "No events yet",
+    "noEvents": "No events.",
     "runtime": {
       "title": "Runtime",
       "memory": "Memory",
@@ -203,7 +205,8 @@
   "eventLog": {
     "title": "Event log",
     "loadError": "Failed to load event log.",
-    "empty": "No events found.",
+    "empty": "No events.",
+    "noMatches": "Nothing found.",
     "filters": {
       "category": "Type",
       "categoryAll": "All categories",
@@ -298,9 +301,12 @@
       "TelegramRegistrationBlockedEvent": "Sign-up blocked",
       "UserBlockedEvent": "User blocked",
       "UserPointsAdjustedEvent": "Points adjusted",
+      "UserPersonalDiscountChangedEvent": "Personal discount changed",
+      "UserPurchaseDiscountChangedEvent": "Purchase discount changed",
       "UserUnblockedEvent": "User unblocked",
       "UsersBulkUnblockedEvent": "Bulk unblock",
       "TransactionRefundedEvent": "Transaction refunded",
+      "TransactionFulfilledManuallyEvent": "Subscription issued manually",
       "BackupFailedEvent": "Backup failed",
       "GatewayChangedEvent": "Payment gateway changed",
       "PricingSettingsChangedEvent": "Pricing settings changed",
@@ -361,24 +367,25 @@
         "telegram": "Telegram"
       },
       "blocked": "Blocked",
-      "eventsEmpty": "No events yet."
+      "eventsEmpty": "No events."
     },
     "promote": {
-      "button": "Make admin",
-      "title": "Make admin",
+      "button": "Promote to admin",
+      "title": "Promote to admin",
       "message": "{{name}} gets access to the dashboard with the default admin permissions.",
       "loginLabel": "Login",
       "loginHint": "The user has no login yet — they will sign in with this one.",
-      "submit": "Make admin",
+      "submit": "Promote to admin",
       "success": "{{name}} is now an admin.",
       "error": "Failed to make the user an admin."
     }
   },
   "users": {
-    "openUser": "Go to user",
+    "openUser": "To user",
     "title": "Users",
     "loadError": "Failed to load users.",
-    "empty": "No users found.",
+    "empty": "No users.",
+    "noMatches": "Nothing found.",
     "filters": {
       "search": "Search",
       "searchPlaceholder": "Name, @username, ID or email",
@@ -418,6 +425,7 @@
     },
     "details": {
       "button": "Details",
+      "actions": "Actions",
       "id": "ID",
       "login": "Login",
       "username": "Username",
@@ -437,7 +445,8 @@
         "transactions": "Transactions",
         "subscriptions": "Subscriptions",
         "promocodes": "Promocodes",
-        "referrals": "Referrals"
+        "referrals": "Referrals",
+        "invited": "Invited"
       },
       "analytics": {
         "purchases": "Purchases",
@@ -470,15 +479,25 @@
           "gaps_one": "{{count}} gap",
           "gaps_other": "{{count}} gaps",
           "gap": "gap {{count}}d",
-          "empty": "No purchases yet."
+          "empty": "No purchases."
         }
       },
       "empty": {
-        "transactions": "No transactions yet.",
+        "transactions": "No transactions.",
         "subscriptions": "No subscriptions.",
-        "promocodes": "No promocodes activated."
+        "promocodes": "No promocodes used."
       },
-      "adSource": "Ad link"
+      "adSource": "Ad link",
+      "balance": {
+        "apply": "Apply",
+        "willBe": "Change:",
+        "lastChange": "Changed by {{name}} · {{when}}",
+        "saved": "Saved.",
+        "pointsError": "Failed to adjust points.",
+        "discountError": "Failed to change the discount.",
+        "pointsHint": "Enter a number or an expression: +50; −10; 100−50.",
+        "discountHint": "Enter a number or an expression: +5; −5; 100−50."
+      }
     },
     "kpi": {
       "all": "Total",
@@ -525,7 +544,7 @@
     "profile": "Profile",
     "logout": "Log out",
     "searchPlaceholder": "Search",
-    "searchEmpty": "Nothing found",
+    "searchEmpty": "Nothing found.",
     "shaderOn": "Turn the background shader on",
     "shaderOff": "Turn the background shader off",
     "searchEvents": "Search event log",
@@ -536,7 +555,7 @@
     "tabNews": "News",
     "tabEvents": "Events",
     "clear": "Clear",
-    "notificationsEmpty": "No notifications",
+    "notificationsEmpty": "No notifications.",
     "openEventLog": "Open the event log",
     "searching": "Searching…",
     "notificationsLoadError": "Failed to load notifications.",
@@ -583,7 +602,7 @@
       "showLogs": "View logs",
       "logsTitle": "Telegram bot logs",
       "refreshLogs": "Refresh",
-      "logsEmpty": "No logs yet. They appear once the telegram process starts.",
+      "logsEmpty": "No logs. They appear once the telegram process starts.",
       "logsLoadError": "Failed to load logs.",
       "proxyLabel": "Telegram proxy",
       "proxyHint": "Every Telegram API request goes through it: the bot itself and the dashboard (status, commands, emoji packs). Supports socks5, socks5h and http as scheme://[user:password@]host:port. The bot picks it up after a restart.",
@@ -821,7 +840,7 @@
     "title": "API tokens",
     "description": "Tokens for programmatic access to the dashboard API",
     "loadError": "Failed to load API tokens.",
-    "empty": "No API tokens yet",
+    "empty": "No API tokens.",
     "emptyHint": "A token gives a script or integration API access with the permissions you pick. The secret is shown once, right after creation.",
     "createFirst": "Create token",
     "createTitle": "Create API token",
@@ -869,7 +888,7 @@
     "oauthAccounts": {
       "title": "Sign-in methods",
       "description": "Sign in without a password — using a linked account or a passkey",
-      "loadError": "Failed to load.",
+      "loadError": "Failed to load sign-in methods.",
       "github": "GitHub",
       "telegram": "Telegram",
       "oidcFallback": "SSO",
@@ -881,7 +900,7 @@
     },
     "passkeys": {
       "title": "Passkeys",
-      "empty": "No passkeys registered yet.",
+      "empty": "No passkeys.",
       "addButton": "Add a passkey",
       "adding": "Waiting for your device…",
       "manage": "Manage",
@@ -901,7 +920,7 @@
       "title": "IP allowlist",
       "description": "Restrict your own account to specific IP addresses or CIDR ranges",
       "placeholder": "e.g. 203.0.113.5 or 203.0.113.0/24, one per line",
-      "loadError": "Failed to load.",
+      "loadError": "Failed to load the IP allowlist.",
       "saveError": "Failed to save.",
       "currentIp": "Your current IP: {{ip}}",
       "invalidEntries": "Not an IP address or CIDR range: {{entries}}",
@@ -939,7 +958,7 @@
   "sessions": {
     "title": "Active sessions",
     "description": "Devices currently signed in to this account",
-    "loadError": "Failed to load.",
+    "loadError": "Failed to load sessions.",
     "empty": "No active sessions.",
     "revoke": "Revoke",
     "revokeTitle": "Revoke session?",
@@ -1043,6 +1062,7 @@
     "TRANSACTIONS_SUMMARY_VIEW": "View transaction summary",
     "TRANSACTIONS_DETAIL_VIEW": "View transaction details",
     "TRANSACTIONS_GATEWAYS_VIEW": "View gateways used in transactions",
+    "TRANSACTIONS_FULFILL": "Issue subscription for an unsettled transaction",
     "REFERRALS_VIEW": "View referrals",
     "REFERRALS_LINKS_VIEW": "View referral links",
     "REFERRALS_INVITED_VIEW": "View a user's invited users",
@@ -1141,6 +1161,7 @@
     "emojiPacks": "Emoji packs"
   },
   "permissionPicker": {
+    "loadError": "Failed to load permissions.",
     "read": "Read",
     "write": "Write"
   },
@@ -1212,7 +1233,7 @@
       "basePrice": "Base price",
       "plansSection": "Plans",
       "addonsSection": "Addons",
-      "empty": "No plans or addons yet.",
+      "empty": "No plans or add-ons.",
       "saved": "Price updated.",
       "saveError": "Failed to update the price.",
       "planNotFound": "Failed to resolve the plan for this row.",
@@ -1249,7 +1270,7 @@
       "description": "Telegram IDs and emails blocked by hand",
       "kindTelegramId": "Telegram",
       "kindEmail": "Email",
-      "empty": "No manual entries yet.",
+      "empty": "No entries.",
       "loadError": "Failed to load the blacklist.",
       "addError": "Failed to add the entry.",
       "removeError": "Failed to remove the entry.",
@@ -1272,7 +1293,7 @@
       "neverSynced": "Never synced",
       "syncNow": "Sync now",
       "syncStarted": "Sync started — the list will update shortly.",
-      "empty": "No sources added yet.",
+      "empty": "No sources.",
       "loadError": "Failed to load sources.",
       "addError": "Failed to add the source.",
       "removeError": "Failed to remove the source.",
@@ -1287,7 +1308,7 @@
       "description": "Registered users found on the blacklist",
       "count": "Matches: {{count}}",
       "loadError": "Failed to load matched users.",
-      "empty": "No registered users match the blacklist.",
+      "empty": "No matches among users.",
       "searchPlaceholder": "Name, @username, ID or email",
       "allOrigins": "All",
       "manualOrigin": "Manual",
@@ -1313,7 +1334,7 @@
   },
   "backups": {
     "loadError": "Failed to load backups.",
-    "empty": "No backups yet.",
+    "empty": "No backups.",
     "kind": {
       "DATABASE": "Database",
       "ASSETS": "Files"
@@ -1381,7 +1402,7 @@
   "advertising": {
     "title": "Advertising links",
     "loadError": "Failed to load advertising links.",
-    "empty": "No advertising links yet.",
+    "empty": "No advertising links.",
     "filters": {
       "statusAll": "All",
       "statusActive": "Active",
@@ -1429,7 +1450,7 @@
       "cost": "Cost",
       "cpa": "CPA",
       "roi": "ROI",
-      "usersEmpty": "No attributed users yet.",
+      "usersEmpty": "No attributed users.",
       "loadError": "Failed to load stats.",
       "hasPaid": "Purchased",
       "notPaid": "No purchase",
@@ -1479,7 +1500,7 @@
       },
       "botUnavailable": "The bot is not configured",
       "webUnavailable": "APP_WEB_CABINET_URL is not set",
-      "loadError": "Failed to load the links",
+      "loadError": "Failed to load the links.",
       "qrError": "Failed to download the QR code."
     }
   },
@@ -1521,7 +1542,7 @@
       "linkInvalid": "Paste a t.me/addemoji/name link or just the pack name.",
       "adding": "Adding…",
       "imported": "Pack “{{title}}” added.",
-      "empty": "No emoji packs added yet.",
+      "empty": "No emoji packs.",
       "loadError": "Failed to load the packs.",
       "deleteTitle": "Remove pack?",
       "deleteConfirm": "Remove “{{title}}”? Buttons already using its emoji will fall back to the plain glyph.",
@@ -1619,7 +1640,7 @@
       "bannerUpload": "Upload",
       "bannerReplace": "Replace",
       "variableSearch": "Search variables",
-      "variableEmpty": "Nothing found",
+      "variableEmpty": "Nothing found.",
       "emojiClear": "Remove the emoji",
       "emojiGroup": {
         "smileys": "Smileys",
@@ -1727,25 +1748,20 @@
         "rewards": "Rewards"
       },
       "invited": "Invited",
-      "onBalance": "on balance",
       "rewardsCount": "Rewards",
       "searchPlaceholder": "Name, @username or ID",
       "revenue": "Purchases total",
       "payingCount": "Paid: {{paid}} of {{total}}",
       "program": "Referral program",
-      "afterAdjust": "After applying:",
-      "invitedByCode_one": "{{count}} invited",
-      "invitedByCode_other": "{{count}} invited",
-      "resetHint": "Resetting issues a new code. Old bot and web cabinet links stop working; users already invited stay attached.",
       "levelAll": "All",
       "via": "via {{name}}",
-      "invitedEmpty": "Hasn't invited anyone yet.",
+      "invitedEmpty": "No invited users.",
       "invitedLoadError": "Failed to load invited users."
     },
     "stats": {
       "button": "Referral stats",
       "referralCodeLabel": "Referral code",
-      "resetCode": "Reset code",
+      "resetCode": "Reset referral code",
       "resetConfirmTitle": "Reset the referral code?",
       "resetConfirmText": "Old links will stop working. Users already invited stay attached.",
       "resetDone": "Referral code reset.",
@@ -1753,13 +1769,7 @@
       "referrerLabel": "Referred by",
       "toReferrer": "To referrer",
       "toUser": "To user",
-      "pointsLabel": "Points",
-      "rewardsEmpty": "No rewards yet.",
-      "adjustLabel": "Adjust points",
-      "adjustPlaceholder": "e.g. 10 or -5",
-      "adjustButton": "Apply",
-      "adjustSaved": "Points adjusted.",
-      "adjustError": "Failed to adjust points.",
+      "rewardsEmpty": "No rewards.",
       "loadError": "Failed to load referral stats."
     },
     "list": {
@@ -1785,8 +1795,8 @@
       },
       "rewardCount_one": "{{count}} payout",
       "rewardCount_other": "{{count}} payouts",
-      "noRewards": "no payouts yet",
-      "empty": "No referrals yet.",
+      "noRewards": "no rewards",
+      "empty": "No referrals.",
       "loadError": "Failed to load referrals.",
       "noPermission": "You don't have permission to view the referral list."
     },
@@ -1810,7 +1820,7 @@
   "promocodes": {
     "title": "Promocodes",
     "loadError": "Failed to load promocodes.",
-    "empty": "No promocodes yet.",
+    "empty": "No promocodes.",
     "noExpiry": "No expiry",
     "rewardType": {
       "DURATION": "Extra days",
@@ -1836,10 +1846,10 @@
       "rewardPercentLabel": "Discount (%)",
       "rewardAddonLabel": "Add-on",
       "rewardAddonPlaceholder": "Select an add-on",
-      "rewardAddonEmpty": "No add-ons of this type exist yet",
+      "rewardAddonEmpty": "No add-ons of this type.",
       "rewardPlanLabel": "Plan",
       "rewardPlanPlaceholder": "Select a plan",
-      "rewardPlanEmpty": "No plans exist yet",
+      "rewardPlanEmpty": "No plans.",
       "rewardDurationDaysLabel": "Duration (days)",
       "saving": "Creating…",
       "saved": "Promocode created.",
@@ -1856,7 +1866,7 @@
       "error": "Failed to delete the promocode.",
       "title": "Delete promocode?"
     },
-    "noMatches": "No promocodes match the filters.",
+    "noMatches": "Nothing found.",
     "status": {
       "ACTIVE": "Active",
       "INACTIVE": "Disabled",
@@ -1918,7 +1928,7 @@
       "used": "Used",
       "ofMax": "of {{max}}",
       "reusable": "Reusable",
-      "usersEmpty": "Nobody has redeemed this code yet.",
+      "usersEmpty": "No activations.",
       "usersLoadError": "Failed to load activations."
     },
     "pause": "Disable",
@@ -1927,12 +1937,12 @@
   "plans": {
     "title": "Plans",
     "loadError": "Failed to load plans.",
-    "empty": "No plans yet.",
+    "empty": "No plans.",
     "unlimited": "Unlimited",
     "reorderError": "Failed to reorder plans.",
     "description": "Plans are shown to customers in this order. Drag a card by its handle to reorder.",
     "activeCount": "{{count}} active",
-    "noMatches": "No plans match this filter.",
+    "noMatches": "Nothing found.",
     "filters": {
       "all": "All",
       "active": "Active",
@@ -2045,8 +2055,17 @@
       "periodTrend": "vs. prior {{days}} days"
     },
     "loadError": "Failed to load transactions.",
-    "empty": "No transactions found.",
+    "empty": "No transactions.",
+    "noMatches": "Nothing found.",
     "orderLabel": "Transaction #{{id}}",
+    "fulfill": {
+      "action": "Issue subscription",
+      "title": "Issue subscription",
+      "confirm": "The customer will receive the subscription from this order.",
+      "confirmStatusChange": "The transaction status will change from “{{status}}” to “{{paid}}” and it will count towards revenue. Issue the subscription only if the payment was actually received.",
+      "success": "Issuing started — the subscription will appear for the customer in a few seconds.",
+      "error": "Failed to issue the subscription."
+    },
     "filters": {
       "status": "Status",
       "gateway": "Gateway",
@@ -2082,7 +2101,6 @@
     "details": {
       "total": "Total",
       "noDiscount": "No discount",
-      "basePrice": "was {{price}}",
       "period": "Period",
       "plan": "Plan",
       "purchaseType": "Purchase type",
@@ -2106,7 +2124,8 @@
   "subscriptions": {
     "title": "Subscriptions",
     "loadError": "Failed to load subscriptions.",
-    "empty": "No subscriptions found.",
+    "empty": "No subscriptions.",
+    "noMatches": "Nothing found.",
     "description": "User subscriptions synced with Remnawave",
     "trial": "Trial",
     "unlimited": "Unlimited",
@@ -2241,6 +2260,7 @@
         "choice": "One of a small set; sm — dense grids.",
         "badge": "Status: uppercase with a border, colored by tone.",
         "tag": "Counts and metadata: grey pill, no uppercase.",
+        "badgeCount": "A number in a circle: subscriptions in the users list; stretches past one digit.",
         "badgeIcon": "Status with an icon.",
         "field": "Label, a 38px field and text under it.",
         "fieldInfo": "info — hint icon, aside — required star or a count.",
@@ -2271,6 +2291,7 @@
         "popover": "Menu shells: glass (1.5 and 3 padding) and solid — emoji and toasts.",
         "spinner": "Loading: shows after 150 ms, same heights as the empty state.",
         "empty": "Empty states: page, card, search.",
+        "error": "Load failure in place of a list, card, form or tab",
         "collapse": "Height expand in 0.2s.",
         "brand": "Logo and sign-in provider icons.",
         "suffixInput": "Number with a unit after the value: days, currency. The suffix takes its own width; error and disabled match TextInput. Plans, promocodes, currency rates.",
@@ -2330,6 +2351,7 @@
         "emptyPage": "Nothing here yet",
         "emptyCard": "No data for this period",
         "emptySearch": "Nothing found",
+        "error": "Failed to load plans.",
         "copy": "Copy",
         "hintShort": "A short hint.",
         "hintLong": "The new interval counts from the last successful backup. A shorter interval means more backups and more disk space.",
@@ -2418,7 +2440,7 @@
         "states": {
           "nav": "States",
           "title": "States",
-          "meta": "Spinner · EmptyState · Collapse · brand"
+          "meta": "Spinner · EmptyState · ErrorState · Collapse · brand"
         }
       },
       "variants": {
@@ -2564,6 +2586,7 @@
     "PAYLOAD_TOO_LARGE": "The request is too large.",
     "PAYMENT_GATEWAY_ERROR": "The payment gateway returned an error.",
     "PAYMENT_ORDER_NOT_FOUND": "Order not found.",
+    "PAYMENT_ORDER_NOT_FULFILLABLE": "This transaction can’t be fulfilled.",
     "PERMISSION_DENIED": "You don't have permission for this.",
     "PERMISSION_NOT_GRANTABLE": "Some of these permissions can't be granted.",
     "PLAN_CONFLICT": "The plan conflicts with an existing one.",

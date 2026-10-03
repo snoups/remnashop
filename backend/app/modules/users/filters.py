@@ -17,13 +17,20 @@ from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.enums import SubscriptionStatus
 
-# per-user count of active subscriptions, correlated to the outer User row
-ACTIVE_SUBSCRIPTIONS: Final[ColumnElement[int]] = (
-    select(func.count())
-    .where(Subscription.user_id == User.id, Subscription.status == SubscriptionStatus.ACTIVE)
-    .correlate(User)
-    .scalar_subquery()
-)
+
+def _subscriptions_in(status: SubscriptionStatus) -> ColumnElement[int]:
+    # per-user count, correlated to the outer User row
+    return (
+        select(func.count())
+        .where(Subscription.user_id == User.id, Subscription.status == status)
+        .correlate(User)
+        .scalar_subquery()
+    )
+
+
+ACTIVE_SUBSCRIPTIONS: Final[ColumnElement[int]] = _subscriptions_in(SubscriptionStatus.ACTIVE)
+LIMITED_SUBSCRIPTIONS: Final[ColumnElement[int]] = _subscriptions_in(SubscriptionStatus.LIMITED)
+EXPIRED_SUBSCRIPTIONS: Final[ColumnElement[int]] = _subscriptions_in(SubscriptionStatus.EXPIRED)
 
 
 def identity_filter(telegram_ids: set[int], emails: set[str]) -> ColumnElement[bool]:

@@ -29,7 +29,7 @@ export function GuideDialog({ title, children }: GuideDialogProps) {
         <span className="contents" onClick={(event) => event.stopPropagation()}>
           <Modal onClose={() => setIsOpen(false)} size="lg" scrollable>
             <DialogHeader icon={CircleHelp} title={title} />
-            <div className="flex min-h-0 flex-col gap-5 overflow-y-auto px-5 py-4 text-sm text-foreground/90">
+            <div className="scroll-fade-y flex min-h-0 flex-col gap-5 overflow-y-auto px-5 py-4 text-sm text-foreground/90">
               {children}
             </div>
           </Modal>

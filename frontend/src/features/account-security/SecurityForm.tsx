@@ -6,6 +6,7 @@ import { getOwnSecurity, updateOwnSecurity } from "@entities/user/security";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { TextArea } from "@shared/ui/TextInput";
@@ -76,7 +77,7 @@ export function SecurityForm() {
         <Spinner size="card" />
       )}
       {state.kind === "error" && (
-        <p className="mt-4 text-sm text-error">{t("profile.accountSecurity.loadError")}</p>
+        <ErrorState text={t("profile.accountSecurity.loadError")} />
       )}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">

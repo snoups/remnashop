@@ -47,7 +47,7 @@ class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, Non
             linked = await self._idempotency_repository.get_subscription_id(order.idempotency_key)
             if linked is not None:
                 async with self._uow:
-                    await self._transaction_repository.mark_fulfilled(order.id)
+                    await self._transaction_repository.mark_fulfilled(order.id, linked)
                 continue
 
             # same idempotency_key as the original attempt, safe even if it's

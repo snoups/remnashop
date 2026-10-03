@@ -164,3 +164,28 @@ async def test_unblock_all_clears_flag_and_leaves_blacklist_untouched(
     assert len(published) == 1
     assert published[0].actor == owner
     assert published[0].count == 2
+
+
+async def test_staff_cannot_block_themselves(
+    user_repository: UserRepository,
+    blacklist_repository,
+    uow,
+    event_publisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
+) -> None:
+    # equal role: the same can_manage gate that keeps an admin off another admin
+    self_owner = await user_repository.create(
+        CreateUserDto(login="self-owner", name="self-owner", role=Role.OWNER)
+    )
+    use_case = BlockUserUseCase(
+        user_repository,
+        blacklist_repository,
+        uow,
+        event_publisher,
+        session_repository,
+        passkey_repository,
+    )
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(self_owner, self_owner.id)

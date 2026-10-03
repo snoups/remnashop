@@ -1,4 +1,4 @@
-import { AlertCircle, ChevronRight, Coins, CornerUpLeft, Gift, Layers, Loader2 } from "lucide-react";
+import { ChevronRight, Coins, CornerUpLeft, Gift, Layers, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ import {
 } from "@entities/referrals/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
+import { userHandle } from "@features/user-referrals/format";
 import { DAY_MS, previousWindow } from "@shared/lib/period";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
@@ -27,7 +28,7 @@ import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { initials } from "@shared/lib/initials";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
 import { SearchField } from "@shared/ui/SearchField";
@@ -105,15 +106,6 @@ export function ReferralsListPage() {
     });
     return parts.length ? parts.join(" · ") : null;
   };
-
-  const userHandle = (user: ReferralUser): string =>
-    [
-      user.username ? `@${user.username}` : null,
-      user.email,
-      user.telegram_id !== null ? `ID ${user.telegram_id}` : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
 
   const none = t("common.none");
   const rewardAmount = (source: ReferralSummary, type: ReferralRewardType): number =>
@@ -225,12 +217,7 @@ export function ReferralsListPage() {
         )}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">
-              {permissions.includes("REFERRALS_LIST") ? t("referrals.list.loadError") : t("referrals.list.noPermission")}
-            </p>
-          </div>
+          <ErrorState text={permissions.includes("REFERRALS_LIST") ? t("referrals.list.loadError") : t("referrals.list.noPermission")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
           <EmptyState text={t("referrals.list.empty")} size="page" />

@@ -10,6 +10,7 @@ import { Badge } from "@shared/ui/Badge";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { PeriodPills } from "@shared/ui/PeriodPills";
 import { Spinner } from "@shared/ui/Spinner";
@@ -71,7 +72,7 @@ export function AnalyticsFunnelPage() {
 
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && (
-        <div className="py-6 text-center text-sm text-error">{t("analytics.funnel.loadError")}</div>
+        <ErrorState text={t("analytics.funnel.loadError")} />
       )}
       {state.kind === "ready" && (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">

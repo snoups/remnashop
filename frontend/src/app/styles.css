@@ -171,6 +171,76 @@ textarea::-webkit-resizer {
   mask-repeat: no-repeat, no-repeat;
 }
 
+/* Both edges of a dialog's scrolling body. The fades fit inside the body's
+   own padding (--fade-top-size, 12px by default, on top; 16px+ at the
+   bottom), so at rest they cover only padding. The scrollbar keeps its
+   opaque layer, as in .scroll-fade-top. */
+.scroll-fade-y {
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      transparent,
+      black var(--fade-top-size, 12px),
+      black calc(100% - 16px),
+      transparent
+    ),
+    linear-gradient(black, black);
+  -webkit-mask-size:
+    calc(100% - 10px) 100%,
+    10px 100%;
+  -webkit-mask-position: left top, right top;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-image:
+    linear-gradient(
+      to bottom,
+      transparent,
+      black var(--fade-top-size, 12px),
+      black calc(100% - 16px),
+      transparent
+    ),
+    linear-gradient(black, black);
+  mask-size:
+    calc(100% - 10px) 100%,
+    10px 100%;
+  mask-position: left top, right top;
+  mask-repeat: no-repeat, no-repeat;
+}
+
+/* A backdrop-filter element is drawn on its own layer that ignores an
+   ancestor's mask, so glass controls would cut off hard at a faded edge.
+   Each gets its own mask instead: shared/lib/glass-fade.ts sets
+   --fade-top/--fade-bottom to where the scroller's edges fall in the
+   element's box. Unset (not near an edge yet): fully opaque. */
+.scroll-fade-top [class*="backdrop-blur"]:not(.sticky) {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent var(--fade-top, -100000px),
+    black calc(var(--fade-top, -100000px) + 24px)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent var(--fade-top, -100000px),
+    black calc(var(--fade-top, -100000px) + 24px)
+  );
+}
+
+.scroll-fade-y [class*="backdrop-blur"]:not(.sticky) {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent var(--fade-top, -100000px),
+    black calc(var(--fade-top, -100000px) + var(--fade-top-size, 12px)),
+    black calc(var(--fade-bottom, 100000px) - 16px),
+    transparent var(--fade-bottom, 100000px)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent var(--fade-top, -100000px),
+    black calc(var(--fade-top, -100000px) + var(--fade-top-size, 12px)),
+    black calc(var(--fade-bottom, 100000px) - 16px),
+    transparent var(--fade-bottom, 100000px)
+  );
+}
+
 /* Scrolls without reserving the app-wide scrollbar's height/width, for
    compact strips (a pill tab bar) the scrollbar would visibly grow. */
 .no-scrollbar {

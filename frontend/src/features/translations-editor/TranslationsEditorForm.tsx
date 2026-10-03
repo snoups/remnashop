@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
 import { Button } from "@shared/ui/Button";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import {
@@ -201,7 +202,7 @@ export function TranslationsEditorForm() {
   return (
     <Card variant="bare" className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.07] p-4">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
           <Languages className="size-4" />
         </div>
         <div className="min-w-0">
@@ -320,7 +321,7 @@ export function TranslationsEditorForm() {
         <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-2 pb-4">
           {entriesState.kind === "loading" && <Spinner size="card" />}
           {entriesState.kind === "error" && (
-            <p className="text-sm text-error">{t("dialogs.texts.loadError")}</p>
+            <ErrorState text={t("dialogs.texts.loadError")} />
           )}
           {activeLocales.length > 1 && (
             <div className="w-full max-w-sm">
@@ -331,6 +332,7 @@ export function TranslationsEditorForm() {
                 }))}
                 activeKey={activeLocale}
                 onSelect={setActiveLocale}
+                blurred={false}
               />
             </div>
           )}
@@ -345,6 +347,7 @@ export function TranslationsEditorForm() {
                 activeLocale={activeLocale}
                 variables={[]}
                 multiline
+                blurred={false}
                 emojiInsert
                 canUpdate={permissions.includes("TRANSLATIONS_UPDATE")}
                 canReset={permissions.includes("TRANSLATIONS_RESET")}

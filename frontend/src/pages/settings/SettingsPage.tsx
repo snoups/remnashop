@@ -25,7 +25,13 @@ export function SettingsPage() {
   }
 
   return (
-    <div>
+    // fills main and scrolls on its own, so the tabs stay put like a dialog's (data-fills-main:
+    // see AnimatedOutlet and main). Negative margins hand main's bottom and right padding to the
+    // scroller, so its scrollbar sits on the panel edge as main's did; pr-2.5 is that 10px
+    // scrollbar, keeping the tabs as wide as before. The 12px under the tabs is 4px outside the
+    // scroller and 8px of padding under its 8px fade, so content stays 12px off the tabs both at
+    // rest and while scrolling
+    <div data-fills-main className="-mb-6 flex min-h-0 flex-1 flex-col pr-2.5 md:-mb-8">
       <TabBar
         items={tabs.map((tab) => ({
           key: tab.key,
@@ -36,7 +42,7 @@ export function SettingsPage() {
           isActive: isActive(tab),
         }))}
       />
-      <div className="mt-6">
+      <div className="scroll-fade-y -mr-4 mt-1 min-h-0 flex-1 overflow-y-auto pt-2 [--fade-top-size:8px] [scrollbar-gutter:stable] pb-6 pr-[calc(1rem-10px)] md:-mr-8 md:pb-8 md:pr-[calc(2rem-10px)]">
         <Outlet />
       </div>
     </div>

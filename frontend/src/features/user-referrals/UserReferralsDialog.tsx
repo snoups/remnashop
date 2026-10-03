@@ -1,4 +1,4 @@
-import { AlertCircle, BarChart3, Coins, User, UserPlus, Users } from "lucide-react";
+import { BarChart3, Coins, User, UserPlus, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ import { initials } from "@shared/lib/initials";
 import { Badge } from "@shared/ui/Badge";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Modal } from "@shared/ui/Modal";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -80,11 +81,11 @@ function UserReferralsDialogBody({
         }
       />
 
-      <div className="px-4 pb-3 pt-4">
+      <div className="px-4 pt-4">
         <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-3">
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -93,10 +94,7 @@ function UserReferralsDialogBody({
           <div ref={contentRef}>
             {state.kind === "loading" && <Spinner size="card" />}
             {state.kind === "error" && (
-              <div className="flex flex-col items-center gap-2 py-8 text-error">
-                <AlertCircle className="size-5" />
-                <p className="text-sm">{t("referrals.stats.loadError")}</p>
-              </div>
+              <ErrorState text={t("referrals.stats.loadError")} />
             )}
             {state.kind === "ready" && (
               <>

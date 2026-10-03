@@ -43,6 +43,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePermissions } from "@entities/user/use-current-user";
 import { ButtonInspector } from "@features/dialog-canvas-editor/ButtonInspector";
 import { DialogCanvas } from "@features/dialog-canvas-editor/DialogCanvas";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import { WindowInspector } from "@features/dialog-canvas-editor/WindowInspector";
@@ -166,7 +167,7 @@ export function DialogCanvasEditor() {
 
   const heading = (
     <>
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
         <MessagesSquare className="size-4" />
       </div>
       <div className="min-w-0">
@@ -191,7 +192,7 @@ export function DialogCanvasEditor() {
           {heading}
         </div>
         {windowsState.kind === "error" ? (
-          <p className="p-4 text-sm text-error">{t("dialogs.loadError")}</p>
+          <ErrorState text={t("dialogs.loadError")} />
         ) : (
           <Spinner className="p-4" />
         )}
@@ -545,6 +546,7 @@ export function DialogCanvasEditor() {
                   }))}
                   activeKey={previewLocale}
                   onSelect={setPreviewLocale}
+                  blurred={false}
                 />
               </div>
             )}
@@ -578,6 +580,7 @@ export function DialogCanvasEditor() {
               items={inspectorTabs}
               activeKey={inspectorTab}
               onSelect={setInspectorTab}
+              blurred={false}
             />
             {inspectorTab === "window"
               ? selectedWindow && (

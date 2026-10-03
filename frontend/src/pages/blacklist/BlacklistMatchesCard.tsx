@@ -20,7 +20,7 @@ import { toast } from "@shared/lib/toast";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { initials } from "@shared/lib/initials";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
 import { Spinner } from "@shared/ui/Spinner";
 import { SearchField } from "@shared/ui/SearchField";
@@ -124,7 +124,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
       }
     >
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("blacklist.matches.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("blacklist.matches.loadError")} />}
       {data !== null && data.all_total === 0 && (
         <EmptyState text={t("blacklist.matches.empty")} />
       )}

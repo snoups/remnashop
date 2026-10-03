@@ -63,3 +63,17 @@ class TelegramRegistrationBlockedEvent(UserEvent):
 class UsersBulkUnblockedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
     count: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserPersonalDiscountChangedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+    old_percent: int
+    new_percent: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserPurchaseDiscountChangedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+    old_percent: int
+    new_percent: int

@@ -27,6 +27,9 @@ export interface EventLogPage {
 export interface EventLogFilters {
   category?: string;
   actorId?: number;
+  /** the account the event was about */
+  targetId?: number;
+  eventType?: string;
   search?: string;
   occurredFrom?: string;
   occurredTo?: string;
@@ -41,6 +44,8 @@ export function listEventLog(
   const params = new URLSearchParams();
   if (filters.category) params.set("category", filters.category);
   if (filters.actorId !== undefined) params.set("actor_id", String(filters.actorId));
+  if (filters.targetId !== undefined) params.set("target_id", String(filters.targetId));
+  if (filters.eventType) params.set("event_type", filters.eventType);
   if (filters.search) params.set("search", filters.search);
   if (filters.occurredFrom) params.set("occurred_from", filters.occurredFrom);
   if (filters.occurredTo) params.set("occurred_to", filters.occurredTo);

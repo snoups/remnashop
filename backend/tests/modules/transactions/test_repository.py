@@ -12,10 +12,13 @@ from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
     PurchaseType,
+    SubscriptionStatus,
     TransactionStatus,
 )
 from app.core.utils.time import datetime_now
 from app.modules.plans.repository import PlanRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
@@ -163,16 +166,33 @@ async def test_list_paid_awaiting_reconciliation_excludes_orders_paid_too_recent
 
 
 async def test_list_paid_awaiting_reconciliation_excludes_fulfilled_orders(
-    transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
+    transaction_repository: TransactionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
 ) -> None:
     async with uow:
         paid = await transaction_repository.create(
             _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-recon-fulfilled")
         )
         paid = await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
-        await transaction_repository.mark_fulfilled(paid.id)
+        subscription = await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=user_id,
+                remnawave_user_id=555101,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime_now(),
+                url="https://fake-panel.test/sub/555101",
+                plan_snapshot=make_plan_snapshot(),
+            )
+        )
+        await transaction_repository.mark_fulfilled(paid.id, subscription.id)
 
     fetched = await transaction_repository.get_by_id(paid.id)
+    assert fetched.fulfilled_subscription_id == subscription.id
     # updated_at drives revenue-by-day analytics, fulfilment must not move it
     assert fetched.updated_at == paid.updated_at
 

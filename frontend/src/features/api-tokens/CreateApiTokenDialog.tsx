@@ -109,7 +109,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
       <DialogHeader icon={KeyRound} title={t("apiTokens.createTitle")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
             <p className="text-[12px] leading-snug text-warning">{t("apiTokens.createNotice")}</p>

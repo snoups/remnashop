@@ -168,6 +168,9 @@ async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
     assert dispatch.messages == []
+    # the link outlives the idempotency key it was read from
+    fulfilled = await transaction_repository.get_by_id(order.id)
+    assert fulfilled.fulfilled_subscription_id == subscription.id
 
 
 async def test_reconcile_paid_transactions_ignores_orders_that_are_not_paid(

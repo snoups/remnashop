@@ -61,7 +61,7 @@ export function PackTab({
         }`}
       />
       <span
-        className={`relative z-10 flex h-[26px] items-center justify-center px-3.5 ${
+        className={`relative z-10 flex size-[26px] items-center justify-center ${
           isActive ? "text-primary" : "text-muted-foreground"
         }`}
       >
@@ -138,6 +138,8 @@ export function EmojiPicker({
         popoverRef={popoverRef}
         align="right"
         maxHeight={POPOVER_MAX_HEIGHT}
+        // opens on hover: a layer under the cursor would leave the trigger and close it again
+        modal={false}
         onMouseEnter={cancelClose}
         onMouseLeave={closeSoon}
         {...POPOVER_MOTION}

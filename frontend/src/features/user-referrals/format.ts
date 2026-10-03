@@ -17,8 +17,8 @@ export function formatRewardAmounts(t: TFunction, amounts: Partial<Record<Referr
   });
 }
 
-export function userHandle(user: ReferralUser): string {
-  if (user.username) return `@${user.username}`;
-  if (user.email) return user.email;
-  return user.telegram_id !== null ? `ID ${user.telegram_id}` : `#${user.id}`;
+/** TG ID and email, whichever exist; the internal id when neither does. No username: it's optional and changes. */
+export function userHandle(user: Pick<ReferralUser, "id" | "telegram_id" | "email">): string {
+  const contacts = [user.telegram_id !== null ? `TG ID ${user.telegram_id}` : null, user.email].filter(Boolean);
+  return contacts.length > 0 ? contacts.join(" · ") : `#${user.id}`;
 }

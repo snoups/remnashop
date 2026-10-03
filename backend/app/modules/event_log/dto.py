@@ -22,7 +22,12 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
     "failures": frozenset({"BackupFailedEvent"}),
     "requests": frozenset({"PointsWithdrawalRequestedEvent"}),
     "money": frozenset(
-        {"SubscriptionPurchasedEvent", "SubscriptionRenewedEvent", "TransactionRefundedEvent"}
+        {
+            "SubscriptionPurchasedEvent",
+            "SubscriptionRenewedEvent",
+            "TransactionRefundedEvent",
+            "TransactionFulfilledManuallyEvent",
+        }
     ),
     "admins": frozenset(
         {
@@ -54,6 +59,7 @@ class EventLogEntryDto(BaseDto):
     payload: dict[str, Any] = {}
 
     outbox_id: Optional[int] = None
+    target_id: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -71,6 +77,8 @@ def notification_event_types(groups: Optional[list[str]]) -> frozenset[str]:
 class ListEventLogDto:
     category: Optional[EventCategory] = None
     actor_id: Optional[int] = None
+    target_id: Optional[int] = None
+    event_type: Optional[str] = None
     search: Optional[str] = None
     occurred_from: Optional[datetime] = None
     occurred_to: Optional[datetime] = None

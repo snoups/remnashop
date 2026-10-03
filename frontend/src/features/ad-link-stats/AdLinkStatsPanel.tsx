@@ -1,10 +1,11 @@
-import { AlertCircle, BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { type AdLink, getAdLinkStats } from "@entities/advertising/api";
 import { roiClassName } from "@entities/advertising/format";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { Card } from "@shared/ui/Card";
 import { KpiTile } from "@shared/ui/KpiTile";
@@ -37,10 +38,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
   }
   if (state.kind === "error") {
     return (
-      <div className="flex items-center justify-center gap-2 py-6 text-sm text-error">
-        <AlertCircle className="size-4" />
-        {t("advertising.stats.loadError")}
-      </div>
+      <ErrorState text={t("advertising.stats.loadError")} />
     );
   }
 

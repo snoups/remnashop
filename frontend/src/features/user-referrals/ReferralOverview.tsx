@@ -51,24 +51,22 @@ export function ReferralKpis({ userId, stats }: { userId: number; stats: Referra
         <KpiTile
           label={t("referrals.dialog.revenue")}
           value={revenue ? formatMoney(revenue.amount, revenue.currency, i18n.language) : none}
-          hint={revenue ? t("referrals.dialog.payingCount", { paid: revenue.paying_count, total: invited }) : undefined}
+          hint={revenue && invited > 0 ? t("referrals.dialog.payingCount", { paid: revenue.paying_count, total: invited }) : undefined}
         />
       )}
     </div>
   );
 }
 
-export function ReferralProgramCard({ stats, showCode = true }: { stats: ReferralStats; showCode?: boolean }) {
+export function ReferralProgramCard({ stats }: { stats: ReferralStats }) {
   const { t } = useTranslation();
   const none = t("common.none");
 
   return (
     <Card variant="list" title={t("referrals.dialog.program")} icon={Gift}>
-      {showCode && (
-        <InfoRow icon={Hash} label={t("referrals.stats.referralCodeLabel")} copyValue={stats.referral_code ?? undefined} mono>
-          {stats.referral_code ?? none}
-        </InfoRow>
-      )}
+      <InfoRow icon={Hash} label={t("referrals.stats.referralCodeLabel")} copyValue={stats.referral_code ?? undefined} mono>
+        {stats.referral_code ?? none}
+      </InfoRow>
       <InfoRow icon={UserPlus} label={t("referrals.stats.referrerLabel")}>
         {stats.referrer ? (
           <span className="truncate">

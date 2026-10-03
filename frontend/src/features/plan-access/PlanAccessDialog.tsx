@@ -74,7 +74,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <Card variant="form">
             <Field label={t("plans.access.availabilitySection")}>
               <div className="flex flex-col gap-1.5">

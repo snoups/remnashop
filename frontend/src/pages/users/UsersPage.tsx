@@ -1,11 +1,11 @@
 import {
-  AlertCircle,
   Ban,
   CircleCheck,
   CreditCard,
   ArrowDown,
   ArrowUp,
   Gift,
+  History,
   Info,
   KeyRound,
   LaptopMinimal,
@@ -31,10 +31,11 @@ import {
   type UserSort,
 } from "@entities/user/api";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
+import { SUBSCRIPTION_STATUS_BADGE_TONE } from "@entities/subscriptions/api";
+import type { SubscriptionStatus } from "@entities/subscriptions/api";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
 import type { UserDetailsTab } from "@features/user-details/UserDetailsDialog";
 import { useUserActions } from "@features/user-details/use-user-actions";
-import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
@@ -45,10 +46,11 @@ import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { initials } from "@shared/lib/initials";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { userHandle } from "@features/user-referrals/format";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
@@ -77,12 +79,15 @@ const KPI_STAT: Record<Kpi, keyof UserListStats> = {
   blocked: "blocked",
 };
 
-function getHandle(user: UserListItem): string {
-  if (user.deleted_at) return `#${user.id}`;
-  const telegram = [user.username ? `@${user.username}` : null, user.telegram_id !== null ? `ID ${user.telegram_id}` : null]
-    .filter(Boolean)
-    .join(" · ");
-  return telegram || user.email || user.login || "—";
+// active, limited, expired; a zero is left out
+function subscriptionCounts(user: UserListItem): { status: SubscriptionStatus; count: number }[] {
+  return (
+    [
+      ["ACTIVE", user.active_subscriptions],
+      ["LIMITED", user.limited_subscriptions],
+      ["EXPIRED", user.expired_subscriptions],
+    ] as const
+  ).flatMap(([status, count]) => (count ? [{ status, count }] : []));
 }
 
 function getAvatarClassName(user: UserListItem, isSelf: boolean): string {
@@ -136,7 +141,6 @@ export function UsersPage() {
   const includeStaff = permissions.includes("ADMINS_MANAGE");
   const [detailsUser, setDetailsUser] = useState<UserListItem | null>(null);
   const [detailsTab, setDetailsTab] = useState<UserDetailsTab>();
-  const [referralsUser, setReferralsUser] = useState<UserListItem | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
   const [statsState, refreshStats] = useAsyncResource((signal) => getUserListStats(includeStaff, signal), {
@@ -145,6 +149,7 @@ export function UsersPage() {
   });
   const stats = statsState.kind === "ready" ? statsState.data : null;
 
+  const hasFilters = Boolean(debouncedSearch || blockedBy || subscription || trial);
   const baseFilters = useMemo<Omit<UserListFilters, "page" | "pageSize">>(
     () => ({
       search: debouncedSearch || undefined,
@@ -308,12 +313,9 @@ export function UsersPage() {
         )}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("users.loadError")}</p>
-          </div>
+          <ErrorState text={t("users.loadError")} size="page" />
         )}
-        {state.kind === "ready" && state.items.length === 0 && <EmptyState text={t("users.empty")} size="page" />}
+        {state.kind === "ready" && state.items.length === 0 && <EmptyState text={t(hasFilters ? "users.noMatches" : "users.empty")} size="page" />}
         {state.kind === "ready" && state.items.length > 0 && (
           // overflow-y-hidden: overflow-x-auto alone makes y scrollable too, and the rows' rise-in (list-rows) would flash a scrollbar
           <div className="-mx-2 -my-1 overflow-x-auto overflow-y-hidden px-2 py-1">
@@ -352,11 +354,14 @@ export function UsersPage() {
                       },
                     });
                   }
-                  if (!isDeleted && permissions.includes("REFERRALS_VIEW")) {
+                  if (permissions.includes("EVENT_LOG_VIEW")) {
                     menuItems.push({
-                      label: t("referrals.stats.button"),
-                      icon: Gift,
-                      onClick: () => setReferralsUser(user),
+                      label: t("admins.details.tabs.events"),
+                      icon: History,
+                      onClick: () => {
+                        setDetailsTab("events");
+                        setDetailsUser(user);
+                      },
                     });
                   }
                   const available = actions.available(user);
@@ -367,21 +372,31 @@ export function UsersPage() {
                       onClick: () => actions.run("promote", user),
                     });
                   }
-                  if (available.includes("block") || available.includes("unblock")) {
+                  if (available.includes("unblock")) {
                     menuItems.push({
-                      label: user.is_blocked ? t("users.unblock.button") : t("users.block.button"),
-                      icon: user.is_blocked ? CircleCheck : Ban,
-                      onClick: () => actions.run(user.is_blocked ? "unblock" : "block", user),
+                      label: t("users.unblock.button"),
+                      icon: CircleCheck,
+                      onClick: () => actions.run("unblock", user),
+                    });
+                  }
+                  const dangerItems: ActionMenuItem[] = [];
+                  if (available.includes("block")) {
+                    dangerItems.push({
+                      label: t("users.block.button"),
+                      icon: Ban,
+                      variant: "danger",
+                      onClick: () => actions.run("block", user),
                     });
                   }
                   if (available.includes("delete")) {
-                    menuItems.push({
+                    dangerItems.push({
                       label: t("users.delete.button"),
                       icon: Trash2,
                       variant: "danger",
                       onClick: () => actions.run("delete", user),
                     });
                   }
+                  menuItems.push(...dangerItems.map((item, index) => ({ ...item, separatorBefore: index === 0 })));
 
                   return (
                     <motion.div
@@ -414,7 +429,7 @@ export function UsersPage() {
                           )}
                         </span>
                         <span className="block truncate font-mono text-[12px] text-muted-foreground">
-                          {getHandle(user)}
+                          {userHandle(user)}
                         </span>
                       </span>
                       <span className="flex flex-wrap gap-1">
@@ -427,10 +442,13 @@ export function UsersPage() {
                           </span>
                         ))}
                       </span>
-                      <span>
-                        {user.active_subscriptions ? (
-                          <Badge tone="success">{user.active_subscriptions}</Badge>
-                        ) : (
+                      <span className="flex items-center gap-1">
+                        {subscriptionCounts(user).map(({ status, count }) => (
+                          <Badge key={status} tone={SUBSCRIPTION_STATUS_BADGE_TONE[status]} shape="count">
+                            {count}
+                          </Badge>
+                        ))}
+                        {subscriptionCounts(user).length === 0 && (
                           <span className="text-[13.5px] text-muted-foreground">—</span>
                         )}
                       </span>
@@ -483,15 +501,6 @@ export function UsersPage() {
             setDetailsUser(null);
             setDetailsTab(undefined);
           }}
-        />
-      )}
-
-      {referralsUser && (
-        <UserReferralsDialog
-          userId={referralsUser.id}
-          userName={referralsUser.name}
-          username={referralsUser.username}
-          onClose={() => setReferralsUser(null)}
         />
       )}
 

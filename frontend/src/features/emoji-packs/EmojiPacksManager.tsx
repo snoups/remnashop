@@ -17,7 +17,7 @@ import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { EmojiPackDialog } from "@features/emoji-packs/EmojiPackDialog";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
@@ -110,7 +110,7 @@ export function EmojiPacksManager() {
       <div className="-mx-2 mt-4 max-h-[72vh] overflow-y-auto">
         {packsState.kind === "loading" && <Spinner size="card" />}
         {packsState.kind === "error" && (
-          <p className="px-2 text-sm text-error">{t("dialogs.emojiPacks.loadError")}</p>
+          <ErrorState text={t("dialogs.emojiPacks.loadError")} />
         )}
         {packsState.kind === "ready" && packsState.data.length === 0 && (
           <EmptyState text={t("dialogs.emojiPacks.empty")} />

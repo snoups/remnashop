@@ -8,6 +8,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { blockNonIntegerKeys, parseOptionalInt, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
@@ -94,7 +95,7 @@ export function ShopSettingsForm() {
         <Spinner size="card" />
       )}
       {state.kind === "error" && (
-        <p className="mt-4 text-sm text-error">{t("settings.shop.loadError")}</p>
+        <ErrorState text={t("settings.shop.loadError")} />
       )}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">

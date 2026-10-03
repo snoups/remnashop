@@ -12,6 +12,7 @@ from app.modules.transactions.usecases import (
 )
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
+from app.modules.transactions.usecases.fulfill_transaction import FulfillTransactionUseCase
 from app.modules.transactions.usecases.get_test_payment_status import GetTestPaymentStatusUseCase
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
 from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
@@ -29,6 +30,7 @@ class TransactionsProvider(Provider):
     use_cases = provide_all(
         CreateCheckoutUseCase,
         CreateTestPaymentUseCase,
+        FulfillTransactionUseCase,
         GetTestPaymentStatusUseCase,
         ListTransactionsUseCase,
         ListTransactionGatewaysUseCase,

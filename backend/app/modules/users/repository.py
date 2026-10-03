@@ -31,7 +31,12 @@ from app.modules.users.dto import (
     UserListItemDto,
     UserSort,
 )
-from app.modules.users.filters import ACTIVE_SUBSCRIPTIONS, identity_filter
+from app.modules.users.filters import (
+    ACTIVE_SUBSCRIPTIONS,
+    EXPIRED_SUBSCRIPTIONS,
+    LIMITED_SUBSCRIPTIONS,
+    identity_filter,
+)
 
 _REFERRAL_CODE_ALPHABET: Final[str] = string.ascii_uppercase + string.digits
 _REFERRAL_CODE_LENGTH: Final[int] = 8
@@ -67,6 +72,23 @@ _SORT_COLUMNS: Final[dict[str, InstrumentedAttribute[Any] | ColumnElement[Any]]]
 
 def _discount_filter() -> ColumnElement[bool]:
     return or_(User.personal_discount > 0, User.purchase_discount > 0)
+
+
+_SUBSCRIPTION_COUNTS: Final[tuple[ColumnElement[int], ...]] = (
+    ACTIVE_SUBSCRIPTIONS,
+    LIMITED_SUBSCRIPTIONS,
+    EXPIRED_SUBSCRIPTIONS,
+)
+
+
+def _list_item(user: User, active: int, limited: int, expired: int) -> UserListItemDto:
+    return UserListItemDto.model_validate(user, from_attributes=True).model_copy(
+        update={
+            "active_subscriptions": active,
+            "limited_subscriptions": limited,
+            "expired_subscriptions": expired,
+        }
+    )
 
 
 class UserRepository:
@@ -229,15 +251,12 @@ class UserRepository:
     async def get_list_item(self, user_id: int, roles: Sequence[Role]) -> UserListItemDto:
         row = (
             await self.session.execute(
-                select(User, ACTIVE_SUBSCRIPTIONS).where(User.id == user_id, User.role.in_(roles))
+                select(User, *_SUBSCRIPTION_COUNTS).where(User.id == user_id, User.role.in_(roles))
             )
         ).first()
         if row is None:
             raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
-        user, count = row
-        return UserListItemDto.model_validate(user, from_attributes=True).model_copy(
-            update={"active_subscriptions": count}
-        )
+        return _list_item(*row)
 
     async def list_filtered(
         self,
@@ -287,7 +306,7 @@ class UserRepository:
 
         sort_col = _SORT_COLUMNS[sort]
         stmt = (
-            select(User, ACTIVE_SUBSCRIPTIONS)
+            select(User, *_SUBSCRIPTION_COUNTS)
             .where(*filters)
             # ties by registration date (imported users' ids don't follow it),
             # then id to keep offset pages stable
@@ -301,13 +320,7 @@ class UserRepository:
         )
         rows = (await self.session.execute(stmt)).all()
 
-        items = [
-            UserListItemDto.model_validate(user, from_attributes=True).model_copy(
-                update={"active_subscriptions": count}
-            )
-            for user, count in rows
-        ]
-        return items, int(total or 0)
+        return [_list_item(*row) for row in rows], int(total or 0)
 
     async def update_telegram_profile(
         self, user_id: int, *, name: str, username: Optional[str], language: Locale

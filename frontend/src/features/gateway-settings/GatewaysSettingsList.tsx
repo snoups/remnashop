@@ -8,6 +8,7 @@ import {
   type GatewayCatalogEntry,
 } from "@entities/gateways/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
@@ -38,7 +39,7 @@ export function GatewaysSettingsList() {
 
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && (
-        <p className="mt-4 text-sm text-error">{t("settings.gateways.loadError")}</p>
+        <ErrorState text={t("settings.gateways.loadError")} />
       )}
       {state.kind === "ready" && (
         <div className="mt-4 flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">

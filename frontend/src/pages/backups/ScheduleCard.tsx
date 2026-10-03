@@ -1,4 +1,4 @@
-import { AlertCircle, Clock, Database, ShieldCheck } from "lucide-react";
+import { Clock, Database, ShieldCheck } from "lucide-react";
 import { useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,6 +21,7 @@ import { CardHeader } from "@shared/ui/CardHeader";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Field } from "@shared/ui/Field";
 import { FieldHint } from "@shared/ui/FieldHint";
 import { Spinner } from "@shared/ui/Spinner";
@@ -178,10 +179,7 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
 
         {settingsState.kind === "loading" && <Spinner size="card" />}
         {settingsState.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-10 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("backups.loadError")}</p>
-          </div>
+          <ErrorState text={t("backups.loadError")} />
         )}
         {settingsState.kind === "ready" && (
           <form

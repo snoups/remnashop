@@ -39,3 +39,9 @@ class EventLogEntry(BaseSql):
     outbox_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("event_outbox.id", ondelete="SET NULL"), unique=True, nullable=True
     )
+
+    # the account the event was about (ActorTargetEvent's target); a column, not a
+    # payload lookup, since a user's card filters the log by it
+    target_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )

@@ -87,7 +87,8 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         type="button"
         onClick={toggleOpen}
         {...bounceTap()}
-        className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5"
+        // the PillTabs capsule next to it: same border, fill, text and hover
+        className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-4 text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.06]"
       >
         <Globe className="size-3.5" />
         {t("dialogs.texts.languages", { total: active.length })}

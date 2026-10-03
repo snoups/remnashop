@@ -52,6 +52,8 @@ class TransactionDto(BaseDto, TimestampMixin):
     customer_email: Optional[str] = None
     idempotency_key: str
     expires_at: datetime
+    fulfilled_at: Optional[datetime] = None
+    fulfilled_subscription_id: Optional[int] = None
     is_test: bool = False
 
 

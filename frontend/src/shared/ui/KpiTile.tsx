@@ -102,8 +102,8 @@ export function KpiTile({
   highlighted?: boolean;
   /** overrides the value's color, e.g. ROI green/red */
   valueClassName?: string;
-  /** muted text right after the value, e.g. "of 5" */
-  valueSuffix?: string;
+  /** muted text right after the value, e.g. "of 5" or a struck-out old price */
+  valueSuffix?: ReactNode;
 }) {
   const tone = trend && trendTone(trend.delta);
   return (

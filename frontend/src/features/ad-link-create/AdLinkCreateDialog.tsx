@@ -97,7 +97,7 @@ function AdLinkCreateDialogBody({
     <>
       <DialogHeader icon={Link2} title={t("advertising.create.title")} />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 py-4">
         <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3">
           <Card variant="form">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

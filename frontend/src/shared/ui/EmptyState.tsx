@@ -1,4 +1,4 @@
-import { Inbox, type LucideIcon } from "lucide-react";
+import { AlertCircle, Inbox, type LucideIcon } from "lucide-react";
 
 const PADDING = {
   // a list that is the whole page
@@ -17,6 +17,16 @@ export function EmptyState({ text, icon: Icon = Inbox, size = "card" }: EmptySta
   return (
     <div className={`flex flex-col items-center gap-2 text-muted-foreground ${PADDING[size]}`}>
       <Icon className="size-5" />
+      <p className="text-sm">{text}</p>
+    </div>
+  );
+}
+
+/** EmptyState's layout in the error tone, for a block whose data failed to load. */
+export function ErrorState({ text, size = "card" }: Omit<EmptyStateProps, "icon">) {
+  return (
+    <div className={`flex flex-col items-center gap-2 text-error ${PADDING[size]}`}>
+      <AlertCircle className="size-5" />
       <p className="text-sm">{text}</p>
     </div>
   );

@@ -25,7 +25,7 @@ import { setOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
@@ -117,7 +117,7 @@ export function ConnectedAccountsForm() {
           <Spinner size="card" />
         )}
         {state.kind === "error" && (
-          <p className="text-sm text-error">{t("profile.oauthAccounts.loadError")}</p>
+          <ErrorState text={t("profile.oauthAccounts.loadError")} />
         )}
         {state.kind === "ready" &&
           PROVIDERS.map((provider) => {

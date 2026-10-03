@@ -4,7 +4,7 @@ import { formatDateTime } from "@shared/lib/relative-time";
 
 import { type AdLink, type AttributedUser, listAdLinkAttributedUsers } from "@entities/advertising/api";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
@@ -28,7 +28,7 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="p-3 text-sm text-error">{t("advertising.stats.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("advertising.stats.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("advertising.stats.usersEmpty")} />
       )}

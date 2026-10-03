@@ -16,7 +16,7 @@ import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
 import { LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { IconButton } from "@shared/ui/IconButton";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { PillTabs } from "@shared/ui/PillTabs";
@@ -111,10 +111,7 @@ export function RunsCard({
 
         {runsState.kind === "loading" && <Spinner size="page" />}
         {runsState.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("backups.loadError")}</p>
-          </div>
+          <ErrorState text={t("backups.loadError")} size="page" />
         )}
         {runsState.kind === "ready" && runsState.items.length === 0 && (
           <EmptyState text={t("backups.empty")} size="page" />

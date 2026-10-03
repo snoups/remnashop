@@ -8,6 +8,7 @@ import {
   Layers,
   Mail,
   Package,
+  PackageCheck,
   Receipt,
   Repeat,
   Send,
@@ -15,17 +16,28 @@ import {
   User,
   Wallet,
 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { OpenUserFooter } from "@features/open-user/OpenUserFooter";
-import { PAYMENT_STATUS_BADGE_TONE, type TransactionItem } from "@entities/transactions/api";
+import {
+  PAYMENT_STATUS_BADGE_TONE,
+  type TransactionItem,
+  canFulfillTransaction,
+  fulfillTransaction,
+} from "@entities/transactions/api";
+import { usePermissions } from "@entities/user/use-current-user";
+import { getErrorMessage } from "@shared/api/http";
+import { toast } from "@shared/lib/toast";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { Modal } from "@shared/ui/Modal";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
+import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { KpiTile } from "@shared/ui/KpiTile";
 
 interface TransactionDetailsDialogProps {
@@ -48,13 +60,29 @@ export function TransactionDetailsDialog({ order, onClose }: TransactionDetailsD
   );
 }
 
-function TransactionDetailsDialogBody({ order }: { order: TransactionItem }) {
+function TransactionDetailsDialogBody({ order: initialOrder }: { order: TransactionItem }) {
   const { t, i18n } = useTranslation();
+  const [order, setOrder] = useState(initialOrder);
+  const [isConfirmingFulfill, setIsConfirmingFulfill] = useState(false);
+  const [isFulfilling, setIsFulfilling] = useState(false);
+  const canFulfill = usePermissions().includes("TRANSACTIONS_FULFILL") && canFulfillTransaction(order);
   const money = (amount: string) => formatMoney(amount, order.currency, i18n.language, true);
   const symbol = currencySymbol(order.currency);
   const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
   const statusLabel = t(`transactions.status.${order.status}`);
   const none = t("common.none");
+
+  const handleFulfill = async () => {
+    setIsFulfilling(true);
+    try {
+      setOrder(await fulfillTransaction(order.id));
+      toast.success(t("transactions.fulfill.success"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("transactions.fulfill.error")));
+    } finally {
+      setIsFulfilling(false);
+    }
+  };
 
   const plan = `${order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? none} · ${t("plans.daysShort", { count: order.duration_days })}`;
   const purchaseType = t(`transactions.purchaseType.${order.purchase_type}`);
@@ -76,18 +104,19 @@ function TransactionDetailsDialogBody({ order }: { order: TransactionItem }) {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-4">
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <KpiTile
               label={t("transactions.details.total")}
               value={money(order.final_price)}
+              valueSuffix={order.discount_percent > 0 && <s>{money(order.base_price)}</s>}
               hint={
                 order.discount_percent > 0
-                  ? `${t("transactions.details.discount", {
+                  ? t("transactions.details.discount", {
                       percent: order.discount_percent,
                       source: t(`transactions.discountSource.${order.discount_source}`),
-                    })} · ${t("transactions.details.basePrice", { price: money(order.base_price) })}`
+                    })
                   : t("transactions.details.noDiscount")
               }
             />
@@ -167,7 +196,36 @@ function TransactionDetailsDialogBody({ order }: { order: TransactionItem }) {
 
       <OpenUserFooter
         links={[{ label: t("users.openUser"), icon: User, user: user && { id: order.user_id } }]}
-      />
+      >
+        {canFulfill && (
+          <Button variant="accent" onClick={() => setIsConfirmingFulfill(true)} disabled={isFulfilling}>
+            <PackageCheck className="size-3.5" />
+            {t("transactions.fulfill.action")}
+          </Button>
+        )}
+      </OpenUserFooter>
+      {isConfirmingFulfill && (
+        <ConfirmDialog
+          title={t("transactions.fulfill.title")}
+          message={
+            order.status === "PAID"
+              ? t("transactions.fulfill.confirm")
+              : t("transactions.fulfill.confirmStatusChange", {
+                  status: statusLabel,
+                  paid: t("transactions.status.PAID"),
+                })
+          }
+          confirmLabel={t("transactions.fulfill.action")}
+          cancelLabel={t("common.cancel")}
+          danger={order.status !== "PAID"}
+          icon={PackageCheck}
+          onConfirm={() => {
+            setIsConfirmingFulfill(false);
+            void handleFulfill();
+          }}
+          onCancel={() => setIsConfirmingFulfill(false)}
+        />
+      )}
     </>
   );
 }

@@ -1,6 +1,5 @@
 import type { ParseKeys } from "i18next";
 import {
-  AlertCircle,
   ChevronRight,
   Coins,
   CreditCard,
@@ -40,7 +39,7 @@ import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { DatePickerField } from "@shared/ui/DatePickerField";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
@@ -103,6 +102,7 @@ export function EventLogPage() {
   const debouncedDateFrom = useDebouncedValue(dateFromInput, FILTER_DEBOUNCE_MS);
   const debouncedDateTo = useDebouncedValue(dateToInput, FILTER_DEBOUNCE_MS);
 
+  const hasFilters = Boolean(category || debouncedSearch || debouncedDateFrom || debouncedDateTo);
   const baseFilters = useMemo<Omit<EventLogFilters, "page" | "pageSize">>(
     () => ({
       category: category || undefined,
@@ -183,15 +183,12 @@ export function EventLogPage() {
         )}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <div className="flex flex-col items-center gap-2 py-12 text-error">
-            <AlertCircle className="size-5" />
-            <p className="text-sm">{t("eventLog.loadError")}</p>
-          </div>
+          <ErrorState text={t("eventLog.loadError")} size="page" />
         )}
         {state.kind === "ready" && (
           <>
             {state.items.length === 0 && (
-              <EmptyState text={t("eventLog.empty")} size="page" />
+              <EmptyState text={t(hasFilters ? "eventLog.noMatches" : "eventLog.empty")} size="page" />
             )}
             {state.items.length > 0 && (
               <>

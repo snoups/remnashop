@@ -44,6 +44,8 @@ export interface UserListItem {
   deleted_at?: string | null;
   // list endpoint only
   active_subscriptions?: number;
+  limited_subscriptions?: number;
+  expired_subscriptions?: number;
 }
 
 export const DEFAULT_PAGE_SIZE = 50;
@@ -114,6 +116,13 @@ export function getUserListStats(includeStaff: boolean, signal?: AbortSignal): P
 
 export function deleteUser(userId: number): Promise<void> {
   return apiDelete<void>(`/users/${userId}`);
+}
+
+export function setUserDiscount(
+  userId: number,
+  discounts: { personal_discount?: number; purchase_discount?: number },
+): Promise<UserListItem> {
+  return apiPatch<UserListItem, typeof discounts>(`/users/${userId}/discount`, discounts);
 }
 
 export function blockUser(userId: number): Promise<UserListItem> {

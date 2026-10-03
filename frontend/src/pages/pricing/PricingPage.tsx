@@ -4,6 +4,7 @@ import { getPriceBook } from "@entities/pricing/api";
 import { CurrencyRatesPanel } from "@features/currency-rates-panel/CurrencyRatesPanel";
 import { PricingMatrix } from "@features/pricing-matrix/PricingMatrix";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 
 export function PricingPage() {
@@ -11,7 +12,7 @@ export function PricingPage() {
   const [state, reload] = useAsyncResource(getPriceBook);
 
   if (state.kind === "error") {
-    return <p className="text-sm text-error">{t("pricing.loadError")}</p>;
+    return <ErrorState text={t("pricing.loadError")} />;
   }
 
   if (state.kind === "loading") {

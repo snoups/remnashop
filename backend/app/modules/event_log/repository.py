@@ -50,6 +50,8 @@ class EventLogRepository:
         *,
         category: Optional[EventCategory] = None,
         actor_id: Optional[int] = None,
+        target_id: Optional[int] = None,
+        event_type: Optional[str] = None,
         search: Optional[str] = None,
         occurred_from: Optional[datetime] = None,
         occurred_to: Optional[datetime] = None,
@@ -61,6 +63,10 @@ class EventLogRepository:
             filters.append(EventLogEntry.category == category)
         if actor_id is not None:
             filters.append(EventLogEntry.actor_id == actor_id)
+        if target_id is not None:
+            filters.append(EventLogEntry.target_id == target_id)
+        if event_type is not None:
+            filters.append(EventLogEntry.event_type == event_type)
         if search:
             pattern = f"%{search}%"
             search_filters: list[ColumnElement[bool]] = [

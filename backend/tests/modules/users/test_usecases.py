@@ -33,7 +33,7 @@ from app.modules.users.dto import (
     ListUsersDto,
     PromoteToAdminDto,
     RegisterTelegramUserDto,
-    SetUserPersonalDiscountDto,
+    SetUserDiscountDto,
     UpdateAdminDto,
     UpdateSecuritySettingsDto,
     UpdateUserDto,
@@ -48,6 +48,8 @@ from app.modules.users.events import (
     TelegramRegistrationBlockedEvent,
     TelegramUserRegisteredEvent,
     UserDeletedEvent,
+    UserPersonalDiscountChangedEvent,
+    UserPurchaseDiscountChangedEvent,
 )
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
@@ -60,7 +62,7 @@ from app.modules.users.usecases import (
     ListUsersUseCase,
     PromoteToAdminUseCase,
     RegisterTelegramUserUseCase,
-    SetUserPersonalDiscountUseCase,
+    SetUserDiscountUseCase,
     UpdateAdminUseCase,
     UpdateOwnSecuritySettingsUseCase,
 )
@@ -1765,8 +1767,8 @@ async def test_delete_user_twice_raises_not_found_on_second_call(
         await delete_use_case(OWNER, DeleteUserDto(user_id=target.id, client_ip="127.0.0.1"))
 
 
-async def test_set_user_personal_discount_updates_the_user(
-    user_repository: UserRepository, uow: UnitOfWork
+async def test_set_user_discount_updates_the_user(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     async with uow:
         target = await user_repository.create(
@@ -1774,14 +1776,42 @@ async def test_set_user_personal_discount_updates_the_user(
         )
         await uow.commit()
 
-    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
-    result = await use_case(OWNER, SetUserPersonalDiscountDto(user_id=target.id, percent=50))
+    use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
+    result = await use_case(OWNER, SetUserDiscountDto(user_id=target.id, personal_discount=50))
 
     assert result.personal_discount == 50
 
 
-async def test_set_user_personal_discount_rejects_out_of_range_percent(
-    user_repository: UserRepository, uow: UnitOfWork
+async def test_set_user_discount_publishes_an_event_per_changed_discount(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="discount-events", role=Role.USER, language=Locale.EN)
+        )
+        await user_repository.update_fields(target.id, UpdateUserDto(personal_discount=5))
+        await uow.commit()
+
+    use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
+    result = await use_case(
+        OWNER,
+        SetUserDiscountDto(user_id=target.id, personal_discount=5, purchase_discount=20),
+    )
+
+    assert (result.personal_discount, result.purchase_discount) == (5, 20)
+    # personal_discount was already 5: no change, no event
+    assert await _outbox_rows(session, UserPersonalDiscountChangedEvent.__name__) == []
+    [row] = await _outbox_rows(session, UserPurchaseDiscountChangedEvent.__name__)
+    assert row.actor_id == OWNER.id
+    assert row.payload["target"]["id"] == target.id
+    assert (row.payload["old_percent"], row.payload["new_percent"]) == (0, 20)
+
+
+async def test_set_user_discount_rejects_out_of_range_percent(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     async with uow:
         target = await user_repository.create(
@@ -1789,13 +1819,13 @@ async def test_set_user_personal_discount_rejects_out_of_range_percent(
         )
         await uow.commit()
 
-    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
+    use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
     with pytest.raises(ValidationError):
-        await use_case(OWNER, SetUserPersonalDiscountDto(user_id=target.id, percent=150))
+        await use_case(OWNER, SetUserDiscountDto(user_id=target.id, personal_discount=150))
 
 
 async def test_regular_admin_cannot_set_discount_on_staff_account(
-    user_repository: UserRepository, uow: UnitOfWork
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     async with uow:
         target = await user_repository.create(
@@ -1806,14 +1836,14 @@ async def test_regular_admin_cannot_set_discount_on_staff_account(
         await uow.commit()
 
     granted_admin = ADMIN.model_copy(update={"permission_grants": ["USERS_DISCOUNT_MANAGE"]})
-    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
+    use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
-        await use_case(granted_admin, SetUserPersonalDiscountDto(user_id=target.id, percent=10))
+        await use_case(granted_admin, SetUserDiscountDto(user_id=target.id, personal_discount=10))
 
 
 async def test_owner_can_set_discount_on_staff_account(
-    user_repository: UserRepository, uow: UnitOfWork
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     async with uow:
         target = await user_repository.create(
@@ -1823,8 +1853,8 @@ async def test_owner_can_set_discount_on_staff_account(
         )
         await uow.commit()
 
-    use_case = SetUserPersonalDiscountUseCase(user_repository, uow)
-    result = await use_case(OWNER, SetUserPersonalDiscountDto(user_id=target.id, percent=10))
+    use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
+    result = await use_case(OWNER, SetUserDiscountDto(user_id=target.id, personal_discount=10))
 
     assert result.personal_discount == 10
 

@@ -15,6 +15,7 @@ import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
@@ -113,7 +114,7 @@ export function OAuthSettingsForm() {
         <Spinner size="card" />
       )}
       {state.kind === "error" && (
-        <p className="mt-4 text-sm text-error">{t("settings.oauth.loadError")}</p>
+        <ErrorState text={t("settings.oauth.loadError")} />
       )}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">

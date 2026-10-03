@@ -84,6 +84,8 @@ class TransactionRepository:
             customer_email=row.customer_email,
             idempotency_key=row.idempotency_key,
             expires_at=row.expires_at,
+            fulfilled_at=row.fulfilled_at,
+            fulfilled_subscription_id=row.fulfilled_subscription_id,
             is_test=row.is_test,
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -204,13 +206,17 @@ class TransactionRepository:
         ).all()
         return [self._to_dto(row) for row in rows]
 
-    async def mark_fulfilled(self, order_id: int) -> None:
+    async def mark_fulfilled(self, order_id: int, subscription_id: int) -> None:
         # updated_at is the paid-at timestamp every revenue query groups by --
         # pinned to itself, since Core update() still applies its onupdate.
         await self.session.execute(
             update(Transaction)
             .where(Transaction.id == order_id, Transaction.fulfilled_at.is_(None))
-            .values(fulfilled_at=NOW_FUNC, updated_at=Transaction.updated_at)
+            .values(
+                fulfilled_at=NOW_FUNC,
+                fulfilled_subscription_id=subscription_id,
+                updated_at=Transaction.updated_at,
+            )
         )
 
     async def list_paginated(

@@ -1,3 +1,5 @@
+from typing import Any, Optional
+
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.event_bus import EventBus
@@ -6,6 +8,13 @@ from app.core.usecase import UseCase
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
+
+
+def _target_id(payload: dict[str, Any]) -> Optional[int]:
+    # ActorTargetEvent's target, as the outbox publisher serialized it
+    target = payload.get("target")
+    target_id = target.get("id") if isinstance(target, dict) else None
+    return target_id if isinstance(target_id, int) and target_id > 0 else None
 
 
 class ProcessOutboxEntryUseCase(UseCase[int, None]):
@@ -41,6 +50,7 @@ class ProcessOutboxEntryUseCase(UseCase[int, None]):
                         ip_address=row.ip_address,
                         payload=row.payload,
                         outbox_id=row.id,
+                        target_id=_target_id(row.payload),
                     )
                 )
                 error_message = await self._bus.dispatch_stored(

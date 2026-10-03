@@ -24,7 +24,7 @@ from app.modules.users.api.schemas import (
     CurrentUserResponse,
     PromoteAdminRequest,
     SecurityResponse,
-    SetPersonalDiscountRequest,
+    SetDiscountRequest,
     UnblockAllResponse,
     UpdateAdminRequest,
     UpdateOwnProfileRequest,
@@ -47,7 +47,7 @@ from app.modules.users.dto import (
     ListBlacklistMatchesDto,
     ListUsersDto,
     PromoteToAdminDto,
-    SetUserPersonalDiscountDto,
+    SetUserDiscountDto,
     UpdateAdminDto,
     UpdateOwnProfileDto,
     UpdateSecuritySettingsDto,
@@ -67,7 +67,7 @@ from app.modules.users.usecases import (
     ListBlacklistMatchesUseCase,
     ListUsersUseCase,
     PromoteToAdminUseCase,
-    SetUserPersonalDiscountUseCase,
+    SetUserDiscountUseCase,
     UnblockAllUsersUseCase,
     UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
@@ -292,12 +292,17 @@ async def unblock_blacklist_matches(
 @inject
 async def set_user_discount(
     user_id: int,
-    payload: SetPersonalDiscountRequest,
-    use_case: FromDishka[SetUserPersonalDiscountUseCase],
+    payload: SetDiscountRequest,
+    use_case: FromDishka[SetUserDiscountUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
     updated = await use_case(
-        actor, SetUserPersonalDiscountDto(user_id=user_id, percent=payload.percent)
+        actor,
+        SetUserDiscountDto(
+            user_id=user_id,
+            personal_discount=payload.personal_discount,
+            purchase_discount=payload.purchase_discount,
+        ),
     )
     return UserResponse.model_validate(updated, from_attributes=True)
 

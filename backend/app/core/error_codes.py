@@ -133,6 +133,7 @@ class ErrorCode(UpperStrEnum):
     PAYLOAD_TOO_LARGE = auto()
     PAYMENT_GATEWAY_ERROR = auto()
     PAYMENT_ORDER_NOT_FOUND = auto()
+    PAYMENT_ORDER_NOT_FULFILLABLE = auto()
     PERMISSION_DENIED = auto()
     PERMISSION_NOT_GRANTABLE = auto()
     PLAN_CONFLICT = auto()

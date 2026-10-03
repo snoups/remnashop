@@ -11,15 +11,22 @@ const TONE_CLASS: Record<BadgeTone, string> = {
   violet: "border-violet-400/35 bg-violet-400/10 text-violet-300",
 };
 
+const SHAPE_CLASS = {
+  pill: "gap-1 px-2 py-0.5 text-[10.5px] uppercase tracking-wide",
+  // a circle for one digit, stretching into a pill for more
+  count: "h-6 min-w-6 justify-center px-1.5 text-[11px] tabular-nums",
+} as const;
+
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone;
+  shape?: keyof typeof SHAPE_CLASS;
 }
 
-/** Status pill: uppercase, bordered, colored by tone. */
-export function Badge({ tone = "neutral", className = "", ...props }: BadgeProps) {
+/** Status pill: uppercase, bordered, colored by tone; shape="count" for a number. */
+export function Badge({ tone = "neutral", shape = "pill", className = "", ...props }: BadgeProps) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide ${TONE_CLASS[tone]} ${className}`}
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-semibold ${SHAPE_CLASS[shape]} ${TONE_CLASS[tone]} ${className}`}
       {...props}
     />
   );

@@ -171,7 +171,7 @@ function PromocodeCreateDialogBody({
       <DialogHeader icon={Ticket} title={t("promocodes.create.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <Card variant="form">
             <Field label={t("promocodes.sections.code")} htmlFor="promo-code" required>
               <div className="flex gap-2">

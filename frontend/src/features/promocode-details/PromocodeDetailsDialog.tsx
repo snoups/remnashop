@@ -166,12 +166,12 @@ function PromocodeDetailsDialogBody({
       />
 
       {tabs.length > 1 && (
-        <div className="px-4 pb-3 pt-4">
+        <div className="px-4 pt-4">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
       )}
 
-      <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "" : "pt-4"}`}>
+      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "pt-3" : "pt-4"}`}>
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}

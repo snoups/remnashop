@@ -1,16 +1,18 @@
 import {
   BarChart3,
   CreditCard,
-  Gift,
   History,
   Lock,
   MonitorSmartphone,
   Receipt,
+  RotateCcw,
+  Settings2,
   ShieldPlus,
   Ticket,
   Trash2,
   Unlock,
   User,
+  Users,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -21,8 +23,8 @@ import type { UserListItem } from "@entities/user/api";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import {
   AnalyticsTab,
+  InvitedTab,
   PromocodesTab,
-  ReferralsTab,
   SubscriptionsTab,
   TransactionsTab,
 } from "@features/user-details/UserActivityTabs";
@@ -31,8 +33,8 @@ import { useUserActions } from "@features/user-details/use-user-actions";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { initials } from "@shared/lib/initials";
 import type { Permission } from "@shared/types/rbac";
+import { ActionMenu } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
-import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
@@ -41,10 +43,10 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 export type UserDetailsTab =
   | "profile"
   | "analytics"
-  | "transactions"
   | "subscriptions"
+  | "transactions"
   | "promocodes"
-  | "referrals"
+  | "invited"
   | "sessions"
   | "events";
 
@@ -80,11 +82,12 @@ function UserDetailsDialogBody({
   const { t } = useTranslation();
   const close = useModalClose();
   const [user, setUser] = useState(initialUser);
+  const handleUpdated = (updated: UserListItem) => {
+    setUser(updated);
+    onChanged?.(updated);
+  };
   const actions = useUserActions({
-    onUpdated: (updated) => {
-      setUser(updated);
-      onChanged?.(updated);
-    },
+    onUpdated: handleUpdated,
     onDeleted: (deleted) => {
       onDeleted?.(deleted);
       close();
@@ -106,17 +109,17 @@ function UserDetailsDialogBody({
     ...(hasAny("TRANSACTIONS_VIEW", "TRANSACTIONS_SUMMARY_VIEW", "REFERRALS_VIEW")
       ? [{ key: "analytics" as const, label: t("users.details.tabs.analytics"), icon: BarChart3 }]
       : []),
-    ...(hasAny("TRANSACTIONS_VIEW")
-      ? [{ key: "transactions" as const, label: t("users.details.tabs.transactions"), icon: Receipt }]
-      : []),
     ...(hasAny("SUBSCRIPTIONS_VIEW")
       ? [{ key: "subscriptions" as const, label: t("users.details.tabs.subscriptions"), icon: CreditCard }]
+      : []),
+    ...(hasAny("TRANSACTIONS_VIEW")
+      ? [{ key: "transactions" as const, label: t("users.details.tabs.transactions"), icon: Receipt }]
       : []),
     ...(hasAny("PROMOCODES_ACTIVATIONS_VIEW")
       ? [{ key: "promocodes" as const, label: t("users.details.tabs.promocodes"), icon: Ticket }]
       : []),
-    ...(hasAny("REFERRALS_VIEW")
-      ? [{ key: "referrals" as const, label: t("users.details.tabs.referrals"), icon: Gift }]
+    ...(hasAny("REFERRALS_INVITED_VIEW")
+      ? [{ key: "invited" as const, label: t("users.details.tabs.invited"), icon: Users }]
       : []),
     ...(permissions.includes("USER_SESSIONS_VIEW") && !isSelf && !isDeleted
       ? [{ key: "sessions" as const, label: t("admins.details.tabs.sessions"), icon: MonitorSmartphone }]
@@ -149,24 +152,24 @@ function UserDetailsDialogBody({
       />
 
       {tabs.length > 1 && (
-        <div className="px-4 pb-3 pt-4">
+        <div className="px-4 pt-4">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
       )}
 
-      <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "" : "pt-4"}`}>
+      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "pt-3" : "pt-4"}`}>
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="overflow-hidden"
         >
           <div ref={contentRef}>
-            {tab === "profile" && <ProfileTab user={user} />}
+            {tab === "profile" && <ProfileTab user={user} onChanged={handleUpdated} />}
             {tab === "analytics" && <AnalyticsTab userId={user.id} />}
-            {tab === "transactions" && <TransactionsTab userId={user.id} />}
             {tab === "subscriptions" && <SubscriptionsTab userId={user.id} />}
+            {tab === "transactions" && <TransactionsTab userId={user.id} />}
             {tab === "promocodes" && <PromocodesTab userId={user.id} />}
-            {tab === "referrals" && <ReferralsTab userId={user.id} readOnly={isDeleted} />}
+            {tab === "invited" && <InvitedTab userId={user.id} />}
             {tab === "sessions" && <SessionsTab userId={user.id} />}
             {tab === "events" && <EventsTab actorId={user.id} />}
           </div>
@@ -175,31 +178,35 @@ function UserDetailsDialogBody({
 
       {available.length > 0 && (
         <div className="flex items-center gap-2 border-t border-white/[0.07] px-5 py-4">
-          {available.includes("delete") && (
-            <Button variant="danger" onClick={() => actions.run("delete", user)}>
-              <Trash2 className="size-3.5" />
-              {t("common.delete")}
-            </Button>
-          )}
-          <div className="ml-auto flex gap-2">
-            {available.includes("promote") && (
-              <Button variant="secondary" onClick={() => actions.run("promote", user)}>
-                <ShieldPlus className="size-3.5" />
-                {t("admins.promote.button")}
-              </Button>
-            )}
-            {available.includes("block") && (
-              <Button variant="secondary" onClick={() => actions.run("block", user)}>
-                <Lock className="size-3.5" />
-                {t("users.block.action")}
-              </Button>
-            )}
-            {available.includes("unblock") && (
-              <Button variant="secondary" onClick={() => actions.run("unblock", user)}>
-                <Unlock className="size-3.5" />
-                {t("users.unblock.action")}
-              </Button>
-            )}
+          <div className="ml-auto">
+            <ActionMenu
+              trigger={{ label: t("users.details.actions"), icon: Settings2 }}
+              items={[
+                ...(available.includes("promote")
+                  ? [{ label: t("admins.promote.button"), icon: ShieldPlus, onClick: () => actions.run("promote", user) }]
+                  : []),
+                ...(available.includes("unblock")
+                  ? [{ label: t("users.unblock.action"), icon: Unlock, onClick: () => actions.run("unblock", user) }]
+                  : []),
+                ...[
+                  ...(available.includes("block")
+                    ? [{ label: t("users.block.action"), icon: Lock, onClick: () => actions.run("block", user) }]
+                    : []),
+                  ...(available.includes("resetReferralCode")
+                    ? [
+                        {
+                          label: t("referrals.stats.resetCode"),
+                          icon: RotateCcw,
+                          onClick: () => actions.run("resetReferralCode", user),
+                        },
+                      ]
+                    : []),
+                  ...(available.includes("delete")
+                    ? [{ label: t("common.delete"), icon: Trash2, onClick: () => actions.run("delete", user) }]
+                    : []),
+                ].map((item, index) => ({ ...item, variant: "danger" as const, separatorBefore: index === 0 })),
+              ]}
+            />
           </div>
         </div>
       )}

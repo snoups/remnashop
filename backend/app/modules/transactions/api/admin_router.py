@@ -29,6 +29,7 @@ from app.modules.transactions.dto import (
 )
 from app.modules.transactions.usecases import (
     CreateTestPaymentUseCase,
+    FulfillTransactionUseCase,
     GetTestPaymentStatusUseCase,
     GetTransactionSummaryUseCase,
     GetTransactionUseCase,
@@ -64,6 +65,7 @@ def _to_response(item: TransactionWithUserDto) -> TransactionResponse:
         customer_email=order.customer_email,
         idempotency_key=order.idempotency_key,
         expires_at=order.expires_at,
+        fulfilled_subscription_id=order.fulfilled_subscription_id,
         created_at=order.created_at,
         updated_at=order.updated_at,
     )
@@ -177,6 +179,21 @@ async def get_test_payment_status(
 async def get_transaction(
     transaction_id: int,
     use_case: FromDishka[GetTransactionUseCase],
+    actor: Actor = Depends(require_admin),
+) -> TransactionResponse:
+    item = await use_case(actor, transaction_id)
+    return _to_response(item)
+
+
+@router.post(
+    "/{transaction_id:int}/actions/fulfill",
+    response_model=TransactionResponse,
+    responses=error_responses(404, 409),
+)
+@inject
+async def fulfill_transaction(
+    transaction_id: int,
+    use_case: FromDishka[FulfillTransactionUseCase],
     actor: Actor = Depends(require_admin),
 ) -> TransactionResponse:
     item = await use_case(actor, transaction_id)

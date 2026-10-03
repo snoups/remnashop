@@ -51,6 +51,8 @@ class TransactionResponse(BaseModel):
     customer_email: Optional[str]
     idempotency_key: str
     expires_at: datetime
+    # the subscription the order provisioned, once reconciliation has seen it
+    fulfilled_subscription_id: Optional[int]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 

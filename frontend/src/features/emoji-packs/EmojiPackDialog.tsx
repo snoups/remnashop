@@ -50,7 +50,7 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
         <div className="grid grid-cols-8 gap-2">
           {pack.items.map((item) => (
             <button

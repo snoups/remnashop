@@ -22,7 +22,7 @@ import { toast } from "@shared/lib/toast";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { IconButton } from "@shared/ui/IconButton";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
@@ -217,7 +217,7 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
       )}
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("blacklist.manual.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("blacklist.manual.loadError")} />}
       {state.kind === "ready" && rows.length === 0 && (
         <EmptyState text={t("blacklist.manual.empty")} />
       )}
@@ -416,7 +416,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
       )}
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("blacklist.sources.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("blacklist.sources.loadError")} />}
       {state.kind === "ready" && sources.length === 0 && (
         <EmptyState text={t("blacklist.sources.empty")} />
       )}

@@ -25,6 +25,9 @@ interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "class
   className: string;
   /** no backdrop blur: for content that repaints every frame (animated emoji), which a blur re-renders */
   solid?: boolean;
+  /** false: no click-catching layer under the open popover, for one that stays open while its trigger is used (a search
+   * field) or opens on hover (the layer would take the pointer off the trigger and close it) */
+  modal?: boolean;
 }
 
 const SOLID_POPOVER_CLASS =
@@ -47,6 +50,7 @@ export function PortalPopover({
   maxHeight,
   className,
   solid = false,
+  modal = true,
   style,
   children,
   ...motionProps
@@ -60,23 +64,27 @@ export function PortalPopover({
   }, [open]);
 
   return createPortal(
-    <AnimatePresence>
-      {open && anchor && (
-        <motion.div
-          ref={popoverRef}
-          {...motionProps}
-          style={{
-            transformOrigin: `${"top" in anchor ? "top" : "bottom"} ${align === "stretch" ? "center" : align}`,
-            ...anchor,
-            ...style,
-          }}
-          // above Modal's z-50, so a popover opened inside a dialog draws over it
-          className={`${solid ? SOLID_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
-        >
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>,
+    <>
+      {/* a click outside only closes the popover, nothing behind it reacts; same z, earlier in the DOM: under it */}
+      {modal && open && <div className="fixed inset-0 z-[60]" />}
+      <AnimatePresence>
+        {open && anchor && (
+          <motion.div
+            ref={popoverRef}
+            {...motionProps}
+            style={{
+              transformOrigin: `${"top" in anchor ? "top" : "bottom"} ${align === "stretch" ? "center" : align}`,
+              ...anchor,
+              ...style,
+            }}
+            // above Modal's z-50, so a popover opened inside a dialog draws over it
+            className={`${solid ? SOLID_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>,
     document.body,
   );
 }

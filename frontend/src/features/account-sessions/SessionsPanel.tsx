@@ -15,6 +15,7 @@ import { clearAccessToken, getSessionId } from "@shared/lib/token-storage";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 
 /** Sessions with revoke: the actor's own without `userId`, another account's with it. */
@@ -47,7 +48,7 @@ export function SessionsPanel({ userId }: { userId?: number }) {
   return (
     <>
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="p-3 text-sm text-error">{t("sessions.loadError")}</p>}
+      {state.kind === "error" && <ErrorState text={t("sessions.loadError")} />}
       {state.kind === "ready" && (
         <SessionList sessions={state.data} currentSessionId={currentSessionId} onRequestRevoke={setPendingRevoke} />
       )}

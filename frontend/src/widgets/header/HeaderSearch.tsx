@@ -262,6 +262,8 @@ export function HeaderSearch() {
 
       <PortalPopover
         open={open && query.trim() !== ""}
+        // the field stays usable while results are open
+        modal={false}
         triggerRef={rootRef}
         popoverRef={popoverRef}
         align="left"

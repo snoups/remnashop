@@ -14,7 +14,7 @@ export function CardHeader({ icon: Icon, title, description, aside }: CardHeader
     <>
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-3">
         <div className="flex min-w-0 flex-1 basis-56 items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
             <Icon className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
