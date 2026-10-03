@@ -69,9 +69,8 @@ class SessionIssuer:
     async def reissue_access_only(
         self, user_id: int, session_id: int, refresh_token: str
     ) -> IssuedSession:
-        # Used by RefreshSessionUseCase after it has already rotated the
-        # session row -- unlike issue(), this does NOT create a new session,
-        # it mints the access/csrf pair for an *existing* one.
+        # for RefreshSessionUseCase after it rotated the row: mints the
+        # access/csrf pair for an existing session instead of creating one
         session = await self._session_repository.get_active_by_id(session_id)
         assert session is not None
         secret = self._config.jwt_secret.get_secret_value()

@@ -116,7 +116,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 purchase_type is PurchaseType.RENEW
                 and await self._idempotency.get_pending_renew_expire_at(key) is not None
             ):
-                return None  # resume -- the renewal re-applies the pinned expire_at
+                return None  # resume: the renewal re-applies the pinned expire_at
             raise ValidationError(
                 f"Purchase with idempotency_key '{key}' is already in progress",
                 code=ErrorCode.PURCHASE_IN_PROGRESS,

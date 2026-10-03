@@ -157,9 +157,9 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                     ),
                 )
         except Exception:
-            # The claim above is already committed -- an orphaned activation
-            # with no reward, not a double-grant past a limit. Same accepted
-            # dual-write risk shape as GrantAddOnUseCase's own sibling code.
+            # the claim is already committed: the worst case is an activation
+            # with no reward, never a grant past the limit (the same accepted
+            # dual-write risk as GrantAddOnUseCase)
             logger.error(
                 f"{actor.log} Promocode '{promo.code}' activation recorded but reward "
                 f"application failed -- possible orphaned activation"
@@ -174,9 +174,8 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
             actor,
             PurchaseSubscriptionDto(
                 user_id=actor.id,
-                # RENEW never rebuilds the subscription's own plan_snapshot
-                # column (see RenewPurchase) -- the target's existing snapshot
-                # only feeds the "same plan" identity check via .plan_id.
+                # RENEW never rebuilds plan_snapshot (RenewPurchase); the
+                # target's snapshot only feeds the same-plan check via .plan_id
                 plan_snapshot=target.plan_snapshot,
                 duration_days=promo.reward,
                 price_paid=Decimal(0),

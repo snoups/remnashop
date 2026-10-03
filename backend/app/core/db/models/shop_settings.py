@@ -9,19 +9,16 @@ from app.core.db.timestamp import TimestampMixin
 class ShopSettings(BaseSql, TimestampMixin):
     __tablename__ = "shop_settings"
 
-    # Single row, always id=1 -- core/db/singleton.py's get_or_create_singleton.
+    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # NULL = unlimited. No column default here on purpose -- SQLAlchemy's
-    # client-side `default=` fires on an explicit None too (it can't tell
-    # "unset" from "set to null"), which would make it impossible to ever
-    # persist "unlimited" on a first-ever write. ShopSettingsDto's default
-    # covers the row-doesn't-exist-yet case instead.
+    # NULL = unlimited. No column default: SQLAlchemy's `default=` also fires
+    # on an explicit None, so "unlimited" could never be the first value
+    # written. ShopSettingsDto's default covers a missing row.
     max_active_subscriptions: Mapped[Optional[int]] = mapped_column()
 
-    # Self-service device/link reset cooldowns. Boolean-off means "feature
-    # disabled", not "no cooldown" -- checked before the cooldown_hours
-    # comparison in every usecase that uses these.
+    # Self-service device/link reset cooldowns. Off means "feature disabled",
+    # not "no cooldown"; usecases check it before cooldown_hours.
     device_single_reset_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")
     device_single_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")
     device_all_reset_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")

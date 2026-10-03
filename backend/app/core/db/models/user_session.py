@@ -14,9 +14,8 @@ class UserSession(BaseSql, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     refresh_token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    # The hash rotation just replaced -- kept briefly so a same-moment refresh
-    # from another browser tab can be recognized as a benign race, not theft.
-    # See RefreshSessionUseCase.
+    # the hash the last rotation replaced, kept briefly so a refresh from
+    # another tab reads as a race, not theft (RefreshSessionUseCase)
     previous_refresh_token_hash: Mapped[Optional[str]] = mapped_column(String(64), index=True)
     previous_hash_grace_until: Mapped[Optional[datetime]]
     ip_address: Mapped[str] = mapped_column(String(45))  # IPv6-safe length

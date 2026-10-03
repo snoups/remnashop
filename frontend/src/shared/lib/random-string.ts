@@ -1,7 +1,5 @@
-// Rejection sampling instead of `byte % charset.length`: a plain modulo skews
-// toward the low end of the charset whenever 256 isn't a multiple of its
-// length (true for any charset not sized as a power of two) -- rejecting the
-// spillover bytes keeps every index uniformly likely.
+// Rejection sampling, not `byte % charset.length`: modulo favours the start of
+// the charset unless its length divides 256.
 function randomIndex(max: number): number {
   const limit = 256 - (256 % max);
   const bytes = new Uint8Array(1);

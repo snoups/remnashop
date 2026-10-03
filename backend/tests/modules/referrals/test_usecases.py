@@ -180,8 +180,8 @@ async def test_attach_referral_rejects_second_attach(
 async def test_attach_referral_rejects_a_mutual_cycle(
     referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
 ) -> None:
-    # A invited B; B's code must not attach A back -- that pair would earn
-    # from each other's payments forever.
+    # A invited B, so B's code must not attach A: the pair would earn from
+    # each other forever
     await _enabled_settings(referral_repository)
     a = await _create_user(user_repository, 3021)
     b = await _create_user(user_repository, 3022)

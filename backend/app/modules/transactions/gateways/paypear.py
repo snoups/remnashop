@@ -70,8 +70,8 @@ class PayPearGateway(PaymentGateway):
         )
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
-        # The documented `signature` field has no published algorithm, so
-        # nothing here authenticates the sender -- fetch_payment does.
+        # the `signature` field has no published algorithm, so fetch_payment
+        # is what authenticates the payment
         data = parse_json(request.body, "PayPear")
         obj = data.get("object") or {}
         payment_id = obj.get("id")

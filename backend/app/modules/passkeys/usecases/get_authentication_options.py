@@ -32,9 +32,8 @@ class GetPasskeyAuthenticationOptionsUseCase:
                     "Passkeys are not configured", code=ErrorCode.PASSKEYS_NOT_CONFIGURED
                 )
 
-            # No allow_credentials -- a discoverable/usernameless ceremony, so the
-            # browser's own passkey picker resolves which credential (and
-            # therefore which user) is used, not a username typed up front.
+            # no allow_credentials: a usernameless ceremony, the browser's
+            # passkey picker decides the credential and with it the user
             options = generate_authentication_options(
                 rp_id=settings.passkey_rp_id,
                 user_verification=UserVerificationRequirement.REQUIRED,

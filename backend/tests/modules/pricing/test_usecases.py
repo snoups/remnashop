@@ -268,7 +268,7 @@ async def test_adjust_base_prices_multiplies_scope_and_leaves_overrides_untouche
     plan_row = next(row for row in book.plans if row.ref_id == plan.durations[0].id)
     assert plan_row.base_price == Decimal("2.20")  # 2.00 * 1.1
     addon_row = next(row for row in book.addons if row.ref_id == addon.id)
-    assert addon_row.base_price == Decimal("1.00")  # untouched -- scope was ALL_PLANS
+    assert addon_row.base_price == Decimal("1.00")  # scope was ALL_PLANS
 
     # pinned override survives the base-price adjustment untouched
     rub_cell = next(c for c in plan_row.cells if c.currency is Currency.RUB)

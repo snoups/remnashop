@@ -37,8 +37,7 @@ ADMIN = UserDto(
 
 @pytest.fixture(autouse=True)
 async def _seed_owner_row(session) -> None:
-    # event_outbox.actor_id is a real FK into users -- OWNER is used as an
-    # actor/user below, so a matching row has to exist for the same id.
+    # event_outbox.actor_id is a real FK, so OWNER needs a row
     session.add(
         User(
             id=OWNER.id,
@@ -177,9 +176,8 @@ async def test_publish_drops_system_actor_id(session) -> None:
 async def test_publish_writes_inside_the_callers_transaction_not_committed_separately(
     session,
 ) -> None:
-    # Confirms the row is visible via the SAME session/transaction without
-    # a separate commit -- proves publish() doesn't open or close its own
-    # transaction boundary, which is the entire point of this class.
+    # visible in the same transaction without a commit: publish() joins the
+    # caller's transaction
     publisher = OutboxEventPublisher(UnitOfWork(session), RecordingDispatch())
     await publisher.publish(LoginSucceededEvent(user=OWNER))
     count = await session.scalar(select(func.count()).select_from(EventOutboxEntry))

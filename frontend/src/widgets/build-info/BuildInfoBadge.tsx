@@ -56,7 +56,7 @@ export function BuildInfoBadge() {
           })
           .catch(() => {});
 
-        // Only a real CI-built artifact is comparable against releases — skip for dev/local runs.
+        // only a CI build can be compared against releases
         if (!data.git.is_official_build) return;
 
         fetch(githubApiUrl(data.repository_url, "/releases/latest"), { signal: controller.signal })

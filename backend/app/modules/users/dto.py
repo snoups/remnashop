@@ -261,11 +261,10 @@ class RegisterTelegramUserDto:
     name: str
     username: Optional[str] = None
     language: Locale
-    # True when `language` is the user's own Telegram language (and active),
-    # not the deployment default -- only then may it overwrite a stored one.
+    # True when `language` is the user's own active Telegram language, not the
+    # deployment default; only then may it overwrite a stored one
     sync_language: bool = False
-    # Raw deep-link payloads, opaque to `users` -- advertising and referrals
-    # resolve them.
+    # raw deep-link payloads; advertising and referrals resolve them
     ad_link_code: Optional[str] = None
     referral_code: Optional[str] = None
 

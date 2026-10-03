@@ -65,11 +65,8 @@ async def test_plan_deletion_nulls_plan_id_but_keeps_the_snapshot(
     user_id: int,
     plan_id: int,
 ) -> None:
-    # purchase_subscription_task provisions entirely from plan_snapshot
-    # (captured at checkout time) -- it never re-resolves plan_id via
-    # PlanRepository, even for a PAID order still awaiting provisioning. So
-    # deleting the plan is safe: plan_id is SET NULL, plan_snapshot survives
-    # as the durable record of what was actually ordered.
+    # purchase_subscription_task provisions from plan_snapshot alone, even for
+    # a PAID order not yet provisioned, so deleting the plan is safe
     async with uow:
         created = await transaction_repository.create(
             _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-snapshot")
@@ -157,8 +154,7 @@ async def test_list_paid_awaiting_reconciliation_excludes_orders_paid_too_recent
         )
         await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
 
-    # A cutoff before this order was even created -- its updated_at is after
-    # the cutoff, so it hasn't cleared the grace period yet.
+    # the cutoff precedes the order, so it's still inside the grace period
     cutoff = datetime_now() - timedelta(minutes=5)
     awaiting = await transaction_repository.list_paid_awaiting_reconciliation(
         cutoff, since=cutoff - timedelta(days=1)
@@ -177,7 +173,7 @@ async def test_list_paid_awaiting_reconciliation_excludes_fulfilled_orders(
         await transaction_repository.mark_fulfilled(paid.id)
 
     fetched = await transaction_repository.get_by_id(paid.id)
-    # updated_at drives revenue-by-day analytics -- fulfilment must not move it
+    # updated_at drives revenue-by-day analytics, fulfilment must not move it
     assert fetched.updated_at == paid.updated_at
 
     awaiting = await transaction_repository.list_paid_awaiting_reconciliation(
@@ -525,12 +521,8 @@ async def test_count_paid_since_excludes_pending_and_old_orders(
             _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="count-paid-old")
         )
     await transaction_repository.mark_status(old_order.id, TransactionStatus.PAID)
-    # updated_at is a server default -- Postgres now() is frozen for the
-    # whole test transaction, so two rows created moments apart in the same
-    # test get an IDENTICAL updated_at. Force the "old" row back in time
-    # (same idiom as tests/modules/subscriptions/test_repository.py's
-    # test_delete_stale_idempotency_keys_removes_only_old_rows) so `since`
-    # below has something real to exclude.
+    # now() is frozen for the test transaction, so both rows get the same
+    # updated_at; the old one is backdated by hand
     now = datetime_now()
     await session.execute(
         update(Transaction)

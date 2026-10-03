@@ -8,14 +8,14 @@ export function formatRelative(iso: string, language: string): string {
   return rtf.format(Math.round(hours / 24), "day");
 }
 
-/** "30.09.2026 23:00" in the given UI language (09/30/2026 11:00 PM in en) -- every date with a time. */
+/** "30.09.2026 23:00" in the given UI language (09/30/2026 11:00 PM in en), for every date with a time. */
 export function formatDateTime(iso: string, language: string): string {
   return new Date(iso)
     .toLocaleString(language, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
     .replace(",", "");
 }
 
-/** "30.09.2026" in the given UI language -- every date without a time. */
+/** "30.09.2026" in the given UI language, for every date without a time. */
 export function formatDate(iso: string, language: string): string {
   return new Date(iso).toLocaleDateString(language, { day: "2-digit", month: "2-digit", year: "numeric" });
 }

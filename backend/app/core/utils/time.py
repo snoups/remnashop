@@ -14,9 +14,8 @@ def truncate_to_ms(value: datetime) -> datetime:
 
 
 def range_start_utc(value: Optional[datetime]) -> Optional[datetime]:
-    # A bare "YYYY-MM-DD" (e.g. from an <input type="date">) parses into a
-    # naive datetime -- treat it as UTC rather than the server's local
-    # timezone, which asyncpg would otherwise assume for a naive value.
+    # a bare "YYYY-MM-DD" parses naive; asyncpg would read that as server
+    # local time, so it's pinned to UTC
     if value is None or value.tzinfo is not None:
         return value
     return value.replace(tzinfo=TIMEZONE)

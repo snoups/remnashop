@@ -209,7 +209,7 @@ class AdjustBasePricesDto:
 
 @dataclass(frozen=True, kw_only=True)
 class PricingChangePreviewDto:
-    # Exactly one of these three is set by the caller -- the usecase validates that.
+    # exactly one of the three is set; the usecase checks it
     rate: Optional[UpdateCurrencyRateDto] = None
     anchor: Optional[Currency] = None
     adjust: Optional[AdjustBasePricesDto] = None

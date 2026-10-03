@@ -23,10 +23,9 @@ async def _cache_from(manager: DialogManager) -> DialogConfigCache:
 
 class ConfigKeyboard(Keyboard):
     def __init__(self, window_key: Optional[str] = None, id: Optional[str] = None) -> None:
-        # Keyboard.callback_prefix() is falsy without a widget id, so
-        # process_callback() never reaches _process_item_callback -- every
-        # window has exactly one ConfigKeyboard, so a fixed id only needs to
-        # be unique within the window, not globally.
+        # without a widget id Keyboard.callback_prefix() is falsy and
+        # process_callback() never reaches _process_item_callback; one
+        # ConfigKeyboard per window, so a fixed id is unique enough
         super().__init__(id=id or "cfgkb")
         self.window_key = window_key
 
@@ -40,19 +39,16 @@ class ConfigKeyboard(Keyboard):
             rendered_row: list[Union[InlineKeyboardButton, KeyboardButton]] = []
             for button in row:
                 if not button["text"]:
-                    # Telegram refuses a button with no text, and refusing it means
-                    # refusing the whole keyboard -- a label nobody has filled in
-                    # yet would otherwise take the entire window down.
+                    # Telegram rejects the whole keyboard over one empty button,
+                    # so an unfilled label would take the window down
                     logger.warning(
                         f"Skipping button {button['id']} in window {window_key}: its label is empty"
                     )
                     continue
-                # A plain emoji has to ride in the label -- Telegram's icon field
-                # takes a custom emoji id and nothing else, and drops the icon
-                # silently for a bot whose owner has no Premium. When both are
-                # stored the id wins: the glyph is only kept so the dashboard has
-                # something to draw, and prepending it too would show the emoji
-                # twice.
+                # A plain emoji goes into the label: the icon field takes only a
+                # custom emoji id, and is silently dropped if the bot's owner has
+                # no Premium. With both stored the id wins; the glyph is there for
+                # the dashboard, and adding it would show the emoji twice.
                 icon_id = button.get("icon_custom_emoji_id")
                 icon = button.get("icon")
                 text = f"{icon} {button['text']}" if icon and not icon_id else button["text"]

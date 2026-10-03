@@ -1,4 +1,4 @@
-// light canvas build: no expressions support, and no eval() -- Telegram emoji never use expressions
+// light canvas build: no expressions and no eval(); Telegram emoji never use expressions
 import lottie from "lottie-web/build/player/lottie_light_canvas";
 import { Smile } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -16,11 +16,10 @@ interface PremiumEmojiProps {
   size: number;
 }
 
-/** Telegram's own artwork: a lottie animation, a .webm, or -- while either
- * loads, or for a pack imported before they were stored -- the static
- * thumbnail, falling back again to the plain glyph.
- * every emoji in an open pack animates at once, which is what
- * Telegram does too; pause off-screen ones if a large pack ever stutters. */
+/** Telegram's own artwork: a lottie animation or a .webm, the static thumbnail
+ * while it loads (or for a pack imported before animations were stored), and
+ * the plain glyph as the last resort. Every emoji in an open pack animates at
+ * once, as in Telegram; pause off-screen ones if a large pack stutters. */
 export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
   const [failed, setFailed] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -39,10 +38,9 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
       // vector scene into a 44x44 canvas every frame on a Retina display.
       rendererSettings: { dpr: 1 },
     });
-    // Subframe rendering is on by default, which keeps the frame number
-    // fractional -- the canvas renderer's "same frame, skip the draw" guard
-    // then never matches, and a 30fps animation redraws at the display's
-    // 120Hz. Integer frames let it skip.
+    // with subframes (the default) the frame number stays fractional, the
+    // renderer's "same frame" skip never fires and a 30fps animation redraws
+    // at 120Hz
     animation.setSubframe(false);
     return () => animation.destroy();
   }, [isLottie, emojiId]);

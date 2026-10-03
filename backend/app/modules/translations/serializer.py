@@ -16,7 +16,7 @@ from app.modules.translations.dto import TranslationEntryDto
 def split_message_key(key: str) -> tuple[str, str]:
     """Split a Fluent lookup key into the (message_id, attribute_id) pair a
     translations row is keyed by. `btn-menu.trial` is message `btn-menu`'s
-    `trial` attribute -- storing it whole as a message id produces a row that
+    `trial` attribute; storing it whole as a message id produces a row that
     shadows the real one and serializes to invalid Fluent, since a message id
     cannot contain a dot."""
     message_id, separator, attribute_id = key.rpartition(".")
@@ -28,7 +28,7 @@ def join_message_key(message_id: str, attribute_id: str) -> str:
 
 
 # Fluent reads an indented line starting with one of these as a variant key,
-# default variant or attribute -- a premium emoji's `[glyph](emoji:id)` among them.
+# default variant or attribute, and a premium emoji's `[glyph](emoji:id)` starts with one.
 _LINE_START_SPECIAL: Final[frozenset[str]] = frozenset("[*.")
 
 
@@ -37,9 +37,9 @@ def _escape_line_start(line: str) -> str:
     return f'{{"{line[0]}"}}{line[1:]}' if line[:1] in _LINE_START_SPECIAL else line
 
 
-# Fluent has no empty value -- `key =` alone is a syntax error that takes the
-# whole message down. An unset icon or a banner-only window's blank caption is
-# written as an empty string literal instead.
+# Fluent has no empty value: `key =` alone is a syntax error that takes the
+# whole message down, so an unset icon or a banner-only window's blank caption
+# is written as an empty string literal.
 _EMPTY_VALUE: Final[str] = '{ "" }'
 
 
@@ -64,8 +64,8 @@ def _block(value: str, indent: str) -> str:
     return f"\n{indent}".join([first, *map(_escape_line_start, rest)])
 
 
-# Ids are written unescaped -- one that isn't an identifier would start a new
-# top-level entry and shadow a real message, so such a row is dropped instead.
+# Ids are written unescaped: one that isn't an identifier would start a new
+# top-level entry and shadow a real message, so such a row is dropped.
 _FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"[a-zA-Z][a-zA-Z0-9_-]*")
 
 
@@ -151,11 +151,9 @@ def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> O
         # placeables found".
         if "{" in text and "}" in text:
             return "Disallowed Fluent expression: malformed or complex expression"
-        # Text with an unmatched brace (e.g. "{ unterminated") falls through
-        # to None here rather than being flagged -- this function's job is the
-        # placeable-kind allowlist, not full Fluent syntax validity; a genuinely
-        # malformed value is still caught by the separate FluentBundle.check_messages()
-        # compile check the caller runs afterward.
+        # an unmatched brace ("{ unterminated") falls through to None: this only
+        # allowlists placeable kinds, the caller's FluentBundle.check_messages()
+        # catches broken syntax
         return None
 
     patterns: list[Pattern] = []

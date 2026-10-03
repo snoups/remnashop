@@ -206,11 +206,8 @@ def test_spa_fallback_rejects_path_traversal_outside_frontend_dist(
 
 @pytest.fixture
 async def protected_route_container(config: AppConfig) -> AsyncIterator[AsyncContainer]:
-    # readyz_container only carries core providers (enough for the DB/Redis
-    # probes /readyz needs) -- get_current_actor also needs UserRepository,
-    # SessionRepository and ApiTokenRepository, and /plans/catalog's own
-    # use_case param needs PlanRepository, so hitting that route at all
-    # (even to fail with a 401) needs the fuller provider set below.
+    # readyz_container has only core providers; even a 401 from /plans/catalog
+    # needs get_current_actor's repositories and PlanRepository
     providers = [
         *get_core_providers(),
         *get_module_providers(),
@@ -234,12 +231,8 @@ async def test_global_rate_limit_returns_429_after_the_threshold(
 
     await redis.delete(key)
 
-    # /plans/catalog requires an authenticated actor and this request carries
-    # no token, so every response before the limit trips is 401 -- that's
-    # fine, the point is proving the GLOBAL dependency (registered ahead of
-    # the route's own get_current_actor in FastAPI's dependency resolution
-    # order) intercepts request 301 with 429 before the route's own auth
-    # check ever runs, not that the route itself succeeds.
+    # no token, so every response is 401 until the limit trips: the global
+    # dependency runs before the route's auth and answers request 301 with 429
     assert all(r.status_code != 429 for r in responses[:300])
     assert responses[300].status_code == 429
 
@@ -272,9 +265,8 @@ async def test_remnawave_webhook_is_exempt_from_the_global_rate_limit(
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         responses = [await client.post("/api/v1/remnawave", json={}) for _ in range(301)]
 
-    # No valid webhook signature is sent, so the route itself rejects every
-    # request -- the point is proving the global limiter never engages, not
-    # that the webhook succeeds.
+    # unsigned, so the route rejects every request; what matters is that the
+    # global limiter never answers
     assert all(r.status_code != 429 for r in responses)
     assert await redis.get(key) is None
 

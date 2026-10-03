@@ -368,7 +368,7 @@
       "title": "Make admin",
       "message": "{{name}} gets access to the dashboard with the default admin permissions.",
       "loginLabel": "Login",
-      "loginHint": "The user has no login yet -- they will sign in with this one.",
+      "loginHint": "The user has no login yet — they will sign in with this one.",
       "submit": "Make admin",
       "success": "{{name}} is now an admin.",
       "error": "Failed to make the user an admin."
@@ -540,7 +540,7 @@
     "openEventLog": "Open the event log",
     "searching": "Searching…",
     "notificationsLoadError": "Failed to load notifications.",
-    "entityNotFound": "Not found -- it may have been deleted."
+    "entityNotFound": "Not found — it may have been deleted."
   },
   "settings": {
     "title": "Settings",

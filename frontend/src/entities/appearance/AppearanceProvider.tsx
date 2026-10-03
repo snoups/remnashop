@@ -30,8 +30,8 @@ function applyTheme(primaryColor: string | null) {
   root.setProperty("--color-accent-foreground", theme.accentForeground);
 }
 
-// Fill baked into public/favicon.svg. A tab icon is its own document, so
-// --color-primary can't reach it -- recolor by rewriting the SVG instead.
+// Fill baked into public/favicon.svg. A tab icon is its own document that
+// --color-primary can't reach, so the SVG itself is rewritten.
 const DEFAULT_FAVICON_COLOR = "#22D3EE";
 let defaultFaviconSvg: Promise<string> | null = null;
 

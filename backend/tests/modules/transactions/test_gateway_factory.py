@@ -22,8 +22,7 @@ def test_build_returns_the_registered_adapter_wired_with_config(config: AppConfi
 def test_build_rejects_an_unregistered_gateway(
     config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Every currently-defined PaymentGatewayType has an adapter -- remove
-    # one to exercise the miss.
+    # every PaymentGatewayType has an adapter, so one is removed to get a miss
     monkeypatch.delitem(GATEWAY_REGISTRY, PaymentGatewayType.YOOKASSA)
     factory = PaymentGatewayFactory(config, NO_HTTP)
     with pytest.raises(ValidationError):

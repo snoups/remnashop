@@ -24,8 +24,8 @@ const INSTANT = { duration: 0 };
 const MORPH_OPTIONS: KeyframeAnimationOptions = { duration: 200, easing: "ease-out", fill: "forwards" };
 const PANEL_CLIP_RADIUS = "round var(--radius-dialog)";
 
-// The parent panel becomes a content-less "ghost" resizing between the two boxes while the
-// nested panel's content is clipped to it -- one box morphing, like the tab height animation.
+// The parent panel becomes an empty "ghost" resizing between the two boxes while the
+// nested panel's content is clipped to it: one box morphing, like the tab height animation.
 async function morphPanels(parent: HTMLElement, child: HTMLElement, direction: "in" | "out"): Promise<void> {
   const from = parent.getBoundingClientRect();
   const to = child.getBoundingClientRect();
@@ -57,16 +57,15 @@ async function morphPanels(parent: HTMLElement, child: HTMLElement, direction: "
 }
 
 interface ModalProps {
-  /** Fires after the exit animation finishes -- unmount the modal here. */
+  /** Fires after the exit animation; unmount the modal here. */
   onClose: () => void;
   size?: keyof typeof SIZE_CLASS;
   /** Panel becomes a flex column capped at 85vh; children own their scroll region. */
   scrollable?: boolean;
   /** false: backdrop click and Esc don't dismiss (the modal must be acknowledged). */
   dismissable?: boolean;
-  /** false: render in place instead of portaling -- for a caller that deliberately wants
-   * the backdrop bounded by its own container. Off by default; see DialogPortal's own
-   * comment for why portaling is almost always the right call. */
+  /** false: render in place, for a caller that wants the backdrop bounded by its own
+   * container (see DialogPortal). */
   portal?: boolean;
   children: ReactNode;
 }

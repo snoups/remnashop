@@ -26,13 +26,11 @@ class Subscription(BaseSql, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
-    # Remnawave 3.x addresses users by numeric id, not UUID --
-    # UserResponseDto.id/UpdateUserRequestDto.id are both `int`. Two LIVE
-    # rows must never point at the same panel
-    # identity -- enforced below as a partial unique index, not a plain
-    # `unique=True`, because a trial->paid conversion or a plan CHANGE
-    # replaces a row (marks it DELETED, inserts a new one reusing the same
-    # remnawave_user_id) instead of mutating it in place.
+    # Remnawave 3.x addresses users by numeric id, not UUID
+    # (UserResponseDto.id is `int`). Two live rows must never share a panel
+    # user: a partial unique index, not `unique=True`, since a trial->paid
+    # conversion or a plan CHANGE marks the row DELETED and inserts a new one
+    # with the same remnawave_user_id.
     remnawave_user_id: Mapped[int] = mapped_column(index=True)
 
     status: Mapped[SubscriptionStatus] = mapped_column(index=True)

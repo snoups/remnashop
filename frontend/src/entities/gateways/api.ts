@@ -6,7 +6,7 @@ export interface Gateway {
   order_index: number;
   is_active: boolean;
   is_configured: boolean;
-  /** current state of the gateway's boolean settings -- the only readable ones */
+  /** current state of the gateway's boolean settings, the only readable ones */
   flags: Record<string, boolean>;
 }
 

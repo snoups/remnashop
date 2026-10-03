@@ -132,9 +132,8 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             raise first_failure
 
     async def _walk_chain(self, buyer_id: int, max_level: int) -> list[_Hop]:
-        # Each hop's own edge (id, referrer_id) is kept as-is -- re-fetching by
-        # referrer_id would return the referrer's own referrer's edge instead,
-        # one level further up the chain than the reward is for.
+        # each hop keeps its own edge: re-fetching by referrer_id would return
+        # the edge one level further up the chain
         chain: list[_Hop] = []
         seen: set[int] = {buyer_id}
         current_id = buyer_id
@@ -164,10 +163,9 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         if subscription.is_trial:
             return False
 
-        # is_new_purchase only says "bought, not renewed" -- with several
-        # concurrent subscriptions allowed, the buyer's second and third one reach
-        # here too, and FIRST_PAYMENT would pay the referrer for each. A trial
-        # converted in place doesn't count against this: its own row is a trial.
+        # is_new_purchase only means "bought, not renewed": a buyer's second and
+        # third subscription get here too, and FIRST_PAYMENT would pay for each.
+        # A trial converted in place doesn't count, its row is a trial.
         if is_first_payment_only and (
             await self._subscription_repository.has_paid_subscription_before(
                 data.user_id, data.subscription_id
@@ -212,11 +210,10 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
                 )
                 return
             target = active[0]
-            # Granted before the ledger row, not after: the renewal is a panel
-            # call that can fail or be retried, and its own idempotency key makes
-            # a redispatch land once. Written the other way round, a ledger row
-            # committed ahead of a failing grant turns every retry into a
-            # ConflictError skip -- the reward is recorded and never given.
+            # Granted before the ledger row: the renewal is a panel call that may
+            # fail, and its idempotency key makes a redispatch land once. A ledger
+            # row committed ahead of a failed grant would make every retry skip
+            # with ConflictError, recording a reward never given.
             await self._purchase_subscription_use_case.system(
                 PurchaseSubscriptionDto(
                     user_id=hop.referrer_id,
@@ -232,9 +229,8 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             if not await self._record_reward(hop, data, reward_type, amount):
                 return
         else:
-            # Ledger row and the credit itself commit together -- the row is the
-            # idempotency guard, so a crash between the two would record a reward
-            # nobody received and make every retry skip it.
+            # ledger row and credit commit together: the row is the idempotency
+            # guard, and a crash between them would record a reward never given
             if not await self._record_reward(hop, data, reward_type, amount, credit_points=True):
                 return
 

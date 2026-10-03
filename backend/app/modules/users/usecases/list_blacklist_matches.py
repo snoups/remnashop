@@ -16,8 +16,7 @@ from app.modules.users.dto import (
     UserDto,
 )
 
-# Role.USER only -- same staff-visibility rule as ListUsersUseCase, and
-# reconcile never blocks staff anyway.
+# Role.USER only, like ListUsersUseCase; reconcile never blocks staff anyway.
 _ROLES: Final[tuple[Role, ...]] = (Role.USER,)
 
 

@@ -467,7 +467,7 @@ async def test_create_reward_does_not_report_a_broken_reference_as_already_grant
         referrer_id=referrer_id, referred_id=referred_id, level=1
     )
 
-    # a missing subscription is not a duplicate -- the retry must see the real error
+    # a missing subscription is not a duplicate; the retry must see the real error
     with pytest.raises(IntegrityError):
         await referral_repository.create_reward(
             referral_id=edge.id,

@@ -81,10 +81,8 @@ class UploadBannerUseCase(UseCase[UploadBannerFileDto, BannerDto]):
                     size_bytes=len(data.data),
                 )
             )
-        # Only touch the filesystem once the DB row committed to the new
-        # extension -- otherwise a failed commit could leave a row pointing at
-        # the old file after we'd already overwritten/deleted it (same
-        # extension re-upload writes to the same path as the existing file).
+        # files change only after the row commits: a failed commit must not
+        # leave the row pointing at a file already overwritten or deleted
         save_banner_file(
             self._config.media_dir, data.name, data.locale, banner_format.value, data.data
         )

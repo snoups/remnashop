@@ -52,18 +52,17 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
                     subscription.id, data.status
                 )
             if expire_at_drifted and subscription.status is not SubscriptionStatus.DELETED:
-                # Panel is the source of truth for expire_at -- pulls a
-                # renewal that landed on the panel but never made it into our
-                # own commit back in sync. Status stays whatever the panel
-                # reported alongside -- a renewal arrives as ACTIVE on its own.
+                # the panel owns expire_at: this pulls in a renewal that landed
+                # there but not in our commit; status is whatever the panel
+                # reported, a renewal arrives as ACTIVE
                 assert data.expire_at is not None
                 subscription = await self._lifecycle_service.sync_expire_at(
                     subscription.id, data.expire_at
                 )
 
             if subscription.status is old_status and not expire_at_drifted:
-                # sync_status() no-op'd (already DELETED) and nothing else
-                # moved -- SubscriptionState's own rule, not this usecase's.
+                # sync_status() was a no-op (already DELETED) and nothing else
+                # moved
                 return subscription
 
             await self._event_publisher.publish(

@@ -44,8 +44,8 @@ class DialogWindowDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateDialogWindowDto:
-    # banner_name=None is ambiguous on its own -- it's both "leave the banner
-    # alone" and "drop the banner". The flag is what tells them apart.
+    # banner_name=None means both "keep the banner" and "drop it"; the flag
+    # tells them apart
     banner_name: Optional[str] = None
     banner_name_provided: bool = False
     is_enabled: Optional[bool] = None
@@ -105,7 +105,7 @@ class DialogCatalogDto:
     condition_keys: list[str]
     variable_keys: list[str]
     text_variable_keys: list[str]
-    # per window, on top of text_variable_keys -- only windows that have any
+    # per window, on top of text_variable_keys; only windows that have any
     window_text_variable_keys: dict[str, list[str]]
     variable_categories: dict[str, str]
     seed_window_keys: list[str]

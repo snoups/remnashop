@@ -17,8 +17,8 @@ class OIDCOAuthClient:
         self._client_secret = client_secret
 
     async def _discover(self) -> dict[str, str]:
-        # Re-checked here, not just at settings-save time, to shrink the
-        # DNS-rebinding TOCTOU window -- see assert_public_https_host.
+        # re-checked here, not only on save, to narrow the DNS-rebinding window
+        # (assert_public_https_host)
         await assert_public_https_host(self._issuer_url)
         # No redirects: the guard above only vets the issuer's own host, and a
         # redirect would carry this server-side request to an unvetted one
@@ -55,9 +55,9 @@ class OIDCOAuthClient:
         self, redirect_uri: str, code: str, code_verifier: Optional[str]
     ) -> tuple[str, Optional[str]]:
         metadata = await self._discover()
-        # These are genuine server-side requests carrying client_secret / the
-        # access token, unlike authorization_endpoint (browser-redirect only)
-        # -- a malicious discovery response can't point them off-issuer.
+        # server-side requests carrying client_secret or the access token
+        # (unlike authorization_endpoint, a browser redirect), so a malicious
+        # discovery response can't point them off-issuer
         await assert_public_https_host(metadata["token_endpoint"])
         await assert_public_https_host(metadata["userinfo_endpoint"])
         async with AsyncOAuth2Client(

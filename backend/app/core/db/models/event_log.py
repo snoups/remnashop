@@ -18,10 +18,9 @@ class EventLogEntry(BaseSql):
     event_type: Mapped[str] = mapped_column(String(128), index=True)
     occurred_at: Mapped[datetime] = mapped_column(index=True)
 
-    # Snapshot at the time of the event, not a live join -- demote_admin clears
-    # login/password_hash, so resolving the actor's name via a live join would
-    # turn a historical "Ivan created an admin" row into "null created an admin"
-    # once Ivan himself gets demoted. actor_id is kept too for programmatic joins.
+    # Snapshot, not a live join: demote_admin clears the login, so a join would
+    # turn "Ivan created an admin" into "null created an admin" once Ivan is
+    # demoted. actor_id stays for joins.
     actor_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )

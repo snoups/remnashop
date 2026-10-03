@@ -77,8 +77,7 @@ async def test_cohort_retention_month_zero_vs_month_one(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="cohort-1")
         )
     await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
-    # updated_at is a server default -- this order lands in the current
-    # calendar month, proving month-0 retention without needing to backdate.
+    # updated_at is a server default, so this order lands in the current month
 
     use_case = GetCohortRetentionUseCase(
         UserStatsRepository(user_repository.session), transaction_repository, uow

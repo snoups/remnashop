@@ -81,7 +81,7 @@ export function BotCommandsForm() {
     try {
       const defaults = await getBotCommands(undefined, true);
       const rank = new Map(defaults.map((item, index) => [item.command, index]));
-      // Only the order resets -- unsaved toggles stay as the admin left them.
+      // only the order resets, unsaved toggles stay
       setRows((current) =>
         [...current].sort((a, b) => (rank.get(a.command) ?? 0) - (rank.get(b.command) ?? 0)),
       );

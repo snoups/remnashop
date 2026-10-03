@@ -35,7 +35,7 @@ class UnitOfWork:
             await self.commit()
 
     async def after_commit(self, callback: AfterCommit) -> None:
-        """Run `callback` once the current transaction commits -- dropped if it
+        """Run `callback` once the current transaction commits; dropped if it
         rolls back. Outside a transaction there is nothing to wait for, so it
         runs right away."""
         if self._depth:

@@ -99,7 +99,6 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
       <DialogHeader icon={Pencil} title={t("profile.edit.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        {/* small form, nothing scrolls: the buttons sit under the fields, no footer */}
         <div className="flex flex-col gap-3 p-4">
           <Card variant="form">
             <div className="flex size-14 items-center justify-center rounded-full bg-foreground text-[18px] font-bold text-canvas">

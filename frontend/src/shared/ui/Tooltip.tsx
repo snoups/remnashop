@@ -10,7 +10,7 @@ const SIDE_CLASSNAME = {
   "top-end": "bottom-full right-0 mb-2",
 } as const;
 
-// Sits inside the control it describes -- that control needs `group relative`.
+// sits inside the control it describes, which needs `group relative`
 export function Tooltip({ text, side = "right" }: { text: string; side?: keyof typeof SIDE_CLASSNAME }) {
   return (
     <span

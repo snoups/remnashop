@@ -163,9 +163,8 @@ async def test_unknown_gateway_type_returns_404(client) -> None:
 
 
 async def test_gateway_type_with_no_adapter_returns_404(client, monkeypatch) -> None:
-    # Real PaymentGatewayFactory.build (not the stub) -- every currently
-    # defined PaymentGatewayType has an adapter, so remove one to exercise
-    # the miss.
+    # the real PaymentGatewayFactory.build; every type has an adapter, so one
+    # is removed to get a miss
     monkeypatch.delitem(GATEWAY_REGISTRY, PaymentGatewayType.YOOKASSA)
     response = await client.post("/api/v1/payments/yookassa", content=b"{}")
     assert response.status_code == 404

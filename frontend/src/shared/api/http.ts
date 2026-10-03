@@ -12,8 +12,8 @@ export interface ListResponse<T> {
 }
 
 // rejected: the refresh token is dead, the session is over. unavailable: the
-// backend didn't answer (offline, restarting, proxy 5xx) -- the session may well
-// be fine, so the caller keeps the token and just fails this one request.
+// backend didn't answer (offline, restarting, proxy 5xx); the session may be
+// fine, so the caller keeps the token and fails only this request.
 type RefreshResult = { kind: "token"; token: string } | { kind: "rejected" } | { kind: "unavailable" };
 
 let refreshPromise: Promise<RefreshResult> | null = null;
@@ -56,9 +56,9 @@ function refreshOnce(): Promise<RefreshResult> {
   return refreshPromise;
 }
 
-// The access token lives in memory only (see token-storage.ts), so a hard
-// reload loses it -- call once at app boot to re-derive it from the
-// httponly refresh cookie before route guards check for a token.
+// The access token lives in memory only (token-storage.ts) and a reload loses
+// it; call once at boot to get it back from the refresh cookie before the
+// route guards look.
 export async function initializeAuth(): Promise<void> {
   if (!readCookie("csrf_token")) return;
   const result = await refreshOnce();
@@ -66,10 +66,9 @@ export async function initializeAuth(): Promise<void> {
 }
 
 /**
- * Returns whether the server confirmed the session was revoked. Callers must
- * clear local state either way -- but a false here means the refresh token is
- * still live server-side, which the user should be told rather than shown a
- * logged-out screen that implies otherwise.
+ * Whether the server confirmed the revoke. Callers clear local state either
+ * way, but on false the refresh token still works server-side and the user
+ * should be told so.
  */
 export async function logout(): Promise<boolean> {
   const csrfToken = readCookie("csrf_token");

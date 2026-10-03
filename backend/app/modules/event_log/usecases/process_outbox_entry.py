@@ -65,9 +65,8 @@ class ProcessOutboxEntryUseCase(UseCase[int, None]):
                 else:
                     await self._outbox_repository.mark_processed(row.id)
         except Exception as error:
-            # dispatch_stored never raises -- only a genuine DB error in the audit
-            # write / record_failure / mark_processed reaches here, poisoning that
-            # transaction. Record the failure in a fresh one so attempts still
-            # advances toward the cap.
+            # dispatch_stored never raises, so this is a DB error that broke the
+            # transaction; the failure is recorded in a fresh one so attempts
+            # still counts toward the cap
             async with self._uow:
                 await self._outbox_repository.record_failure(data, error=str(error))

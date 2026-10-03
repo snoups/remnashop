@@ -137,9 +137,7 @@ async def owner_headers(
     uow: UnitOfWork,
     config: AppConfig,
 ) -> dict[str, str]:
-    # BACKUPS_* permissions are OWNER/SYSTEM-only by default (see
-    # ROLE_PERMISSIONS) -- an ADMIN actor without an explicit grant gets 403,
-    # same shape as tests/modules/api_tokens/test_admin_router.py.
+    # BACKUPS_* are OWNER/SYSTEM-only by default, so an ADMIN gets 403
     owner = await _create_user(user_repository, uow, config, Role.OWNER, "backupsowner")
     token = await _issue_token(owner.id, session_repository, config)
     return {"Authorization": f"Bearer {token}"}

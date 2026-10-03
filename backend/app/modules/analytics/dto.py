@@ -5,8 +5,7 @@ from typing import Literal, Optional
 from app.core.dto import BaseDto
 from app.core.enums import Currency
 
-# 0 means "all time" -- resolved to a since-date at the first registration,
-# same convention as overview/dto.py's OverviewDays.
+# 0 means "all time", resolved to the first registration (as in overview/dto.py)
 AnalyticsDays = Literal[0, 7, 30, 90]
 
 

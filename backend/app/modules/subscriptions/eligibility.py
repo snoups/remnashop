@@ -13,7 +13,7 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 class PurchaseEligibility:
     """What a user may buy: the concurrent-subscription cap and plan
     availability, shared by the catalog, trial, checkout, promocode rewards and
-    the purchase itself so none of them can disagree. Reads only -- callers
+    the purchase itself so none of them can disagree. Reads only; callers
     run it inside their own unit of work."""
 
     def __init__(
@@ -63,8 +63,7 @@ class PurchaseEligibility:
 async def get_owned_target(
     repository: SubscriptionRepository, subscription_id: int, user_id: int
 ) -> SubscriptionDto:
-    # A missing subscription answers the same as someone else's -- a distinct
-    # one would let a caller walk ids and learn which ones exist.
+    # a missing subscription answers like someone else's, so ids can't be probed
     try:
         target = await repository.get_by_id(subscription_id)
     except NotFoundError as error:

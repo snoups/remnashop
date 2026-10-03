@@ -15,7 +15,7 @@ const IDLE_TIMEOUT_MS = 30_000;
 const EASE_DURATION_MS = 2_000;
 const ACTIVITY_EVENTS = ["pointermove", "pointerdown", "keydown", "wheel", "touchstart", "scroll"] as const;
 
-// One oversized triangle covering the viewport, generated from gl_VertexID -- no vertex buffer.
+// One oversized triangle over the viewport, generated from gl_VertexID; no vertex buffer.
 const VERTEX_SHADER = `#version 300 es
 out vec2 vUv;
 
@@ -149,7 +149,7 @@ function compileProgram(gl: WebGL2RenderingContext): WebGLProgram | null {
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
     gl.attachShader(program, shader);
-    gl.deleteShader(shader); // flagged only -- freed together with the program
+    gl.deleteShader(shader); // only flagged, freed with the program
   }
   gl.linkProgram(program);
   if (gl.getProgramParameter(program, gl.LINK_STATUS)) return program;
@@ -274,9 +274,8 @@ export function ShaderBackground() {
       if (running) {
         frame = requestAnimationFrame(render);
       }
-      // rAF runs at display refresh — 120Hz on ProMotion — while
-      // DEFAULT_TIME_SCALE makes the motion slow enough that 30fps is
-      // indistinguishable from it.
+      // rAF runs at display refresh (120Hz on ProMotion), but the motion is
+      // slow enough that 30fps looks the same
       if (now - lastDraw < MIN_FRAME_INTERVAL_MS) return;
       lastDraw = now;
       const dt = now - lastTick;
@@ -316,9 +315,8 @@ export function ShaderBackground() {
       render();
     } else {
       start();
-      // rAF only stops on its own when the tab is hidden, not when the window
-      // merely loses focus -- a dashboard sitting on a second monitor keeps
-      // paying full GPU cost.
+      // rAF stops only when the tab is hidden, not on blur, so a dashboard on
+      // a second monitor would keep the GPU busy
       window.addEventListener("blur", stop);
       window.addEventListener("focus", onActivity);
       for (const event of ACTIVITY_EVENTS) window.addEventListener(event, onActivity, { passive: true });

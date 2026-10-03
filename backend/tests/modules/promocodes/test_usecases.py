@@ -270,9 +270,8 @@ async def test_update_promocode_deactivates(
 async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist(
     promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
-    # The patch alone carries no availability, so the merged state -- not the
-    # patch -- is what has to be validated: an ALLOWED promocode with an empty
-    # allowlist stays active but is redeemable by nobody.
+    # the patch carries no availability, so the merged state is validated: an
+    # ALLOWED promocode with an empty allowlist would be redeemable by nobody
     create_use_case = CreatePromocodeUseCase(
         promocode_repository,
         AddOnRepository(promocode_repository.session),
@@ -404,9 +403,8 @@ async def test_activate_subscription_reward_creates_new_subscription(
     uow,
     event_publisher,
 ) -> None:
-    # promocode_activations.user_id is a real FK -- REGULAR_USER (id=2) has no
-    # backing row, so claim_activation's insert would violate it; every other
-    # activate test raises before reaching claim_activation and never needs this.
+    # promocode_activations.user_id is a real FK and REGULAR_USER (id=2) has no
+    # row; the other activate tests fail before claim_activation
     actor = await user_repository.create(CreateUserDto(name="Bob", telegram_id=301))
     plan_repository = PlanRepository(promocode_repository.session)
     plan = await plan_repository.create(
@@ -460,8 +458,8 @@ async def test_activate_subscription_reward_for_unavailable_plan_does_not_spend_
     uow,
     event_publisher,
 ) -> None:
-    # A plan the actor can't get is a deterministic refusal -- it must not
-    # burn a single-use code the actor could redeem once the plan is back.
+    # a plan the actor can't get must not burn a single-use code they could
+    # redeem once the plan is back
     actor = await user_repository.create(CreateUserDto(name="Carol", telegram_id=305))
     plan_repository = PlanRepository(promocode_repository.session)
     plan = await plan_repository.create(
@@ -618,8 +616,8 @@ async def test_activate_new_availability_denies_a_user_with_a_deleted_subscripti
     uow,
     event_publisher,
 ) -> None:
-    # "New" means never purchased a non-trial subscription, not "has none
-    # ACTIVE right now" -- a DELETED row still disqualifies, matching main.
+    # "new" means never bought a non-trial subscription, so a DELETED row
+    # still disqualifies
     actor = await user_repository.create(CreateUserDto(name="Returning", telegram_id=911))
     await subscription_repository.create(
         CreateSubscriptionDto(

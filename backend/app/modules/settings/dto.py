@@ -117,8 +117,7 @@ class OAuthSettingsDto(BaseDto, TimestampMixin):
 
     @property
     def is_oidc_configured(self) -> bool:
-        # display_name is required alongside the credentials -- without it the
-        # login button has nothing to render as its label.
+        # display_name is the login button's label, so it's required too
         return (
             self.oidc_issuer_url is not None
             and self.oidc_client_id is not None

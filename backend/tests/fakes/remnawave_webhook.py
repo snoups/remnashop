@@ -8,9 +8,8 @@ from typing import Any
 def sign_webhook(payload: dict[str, Any], secret: str) -> tuple[bytes, dict[str, str]]:
     """Builds the exact compact-JSON body bytes and headers a real Remnawave
     webhook delivery would send, signed with the given secret. The returned
-    body bytes are what must be sent as the raw request body -- re-serializing
-    the dict independently would risk a different byte sequence than what
-    was signed."""
+    body bytes must be sent as is: re-serializing the dict may change the
+    bytes that were signed."""
     body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     signature = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
     headers = {

@@ -30,9 +30,8 @@ class AddLocaleUseCase(UseCase[Locale, list[Locale]]):
             if data in locales:
                 return locales
             await self._translation_repository.add_active_locale(data)
-            # In the same transaction, not a worker task: the dashboard
-            # re-reads the translations right after this returns, and an
-            # async copy loses that race -- the new locale reads as empty.
+            # in the same transaction, not a worker task: the dashboard re-reads
+            # the translations right away and would find the new locale empty
             await self._translation_repository.copy_locale_from(Locale.EN, data)
             locales = await self._translation_repository.list_active_locales()
             await self._event_publisher.publish(LocaleActivatedEvent(actor=actor, locale=data))

@@ -263,7 +263,7 @@ async def test_promocode_activate_requires_session(client: httpx.AsyncClient) ->
 async def test_promocode_activate_rejects_api_token(
     client: httpx.AsyncClient, api_token_repository: ApiTokenRepository, uow: UnitOfWork
 ) -> None:
-    # a token has no customer row behind it -- get_current_user must refuse it
+    # a token has no customer row behind it, so get_current_user refuses it
     secret = "critical-routes-token-secret"
     async with uow:
         await api_token_repository.create(

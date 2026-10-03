@@ -17,9 +17,8 @@ def _parse_seed_file(path: Path) -> list[tuple[str, str, str]]:
     def pattern_text(source: str, pattern: object) -> str:
         assert isinstance(pattern, Pattern)
         assert pattern.span is not None
-        # Slice the original source rather than walk elements -- preserves
-        # placeables ({ $var }) and multi-line continuation exactly as
-        # authored, instead of reconstructing (and rejecting) them by hand.
+        # sliced from the source, not rebuilt from elements, so placeables and
+        # multi-line values stay exactly as authored
         raw = source[pattern.span.start : pattern.span.end]
         first, separator, rest = raw.partition("\n")
         # The slice carries the .ftl's own continuation indent; store the value

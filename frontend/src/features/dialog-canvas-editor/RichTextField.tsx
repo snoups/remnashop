@@ -82,7 +82,7 @@ export const RichTextField = forwardRef<RichTextFieldHandle, RichTextFieldProps>
   ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
-  // what the DOM already shows -- an echo of our own onChange must not rebuild it
+  // what the DOM already shows; an echo of our own onChange must not rebuild it
   const renderedRef = useRef<string | null>(null);
   const savedRangeRef = useRef<Range | null>(null);
 

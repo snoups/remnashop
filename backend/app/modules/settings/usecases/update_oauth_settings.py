@@ -35,9 +35,7 @@ class UpdateOAuthSettingsUseCase(UseCase[UpdateOAuthSettingsDto, OAuthSettingsDt
         async with self._uow:
             settings = await self._settings_repository.update_oauth_settings(data)
             if issuer_changed:
-                # A new issuer means `sub` claims from the old one are no
-                # longer trustworthy -- stale oauth_identities rows would let
-                # a `sub` collision on the new issuer log in as the old
-                # identity's user.
+                # a new issuer's `sub` could collide with an old identity's and
+                # log in as that user, so the old rows go
                 await self._event_publisher.publish(OidcIssuerChangedEvent(actor=actor))
         return settings

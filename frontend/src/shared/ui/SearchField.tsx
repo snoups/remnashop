@@ -41,7 +41,7 @@ export function SearchField({ id, label, hideLabel = false, placeholder, value, 
   return (
     <div className="flex min-w-40 flex-1 flex-col gap-1.5">
       {!hideLabel && <span className={EYEBROW_CLASS}>{label}</span>}
-      {/* border sits on the scaled element itself -- scaling a wrapper around a bordered <input> leaves seams in Firefox */}
+      {/* the border sits on the scaled element: a scaled wrapper around a bordered <input> leaves seams in Firefox */}
       <motion.label
         {...bounceTap(0.04)}
         className="group flex w-full items-center gap-2.5 rounded-full border border-glass-border bg-white/[0.03] px-3 py-2 backdrop-blur-md transition-colors not-focus-within:hover:bg-white/[0.06] focus-within:border-primary"

@@ -87,11 +87,10 @@ def validate_buttons(
             )
         seen.add(position)
         if not catalog.is_editable_text_key(button.text_key):
-            # A button's text_key is what dialog_text_keys() lets import write to
-            # in bot_translations. Deriving that allowlist from stored rows means
-            # an unvalidated text_key here authorizes a write to any translation
-            # row -- bot command descriptions, notifications -- so the bound
-            # belongs at the boundary every write path already passes through.
+            # dialog_text_keys() builds import's write allowlist from stored
+            # text_keys, so an unchecked one here would let import overwrite any
+            # translation (bot commands, notifications). Every write path passes
+            # through this check.
             raise ValidationError(
                 f"'{button.text_key}' is not an editable dialog text key",
                 code=ErrorCode.DIALOG_TEXT_KEY_NOT_EDITABLE,

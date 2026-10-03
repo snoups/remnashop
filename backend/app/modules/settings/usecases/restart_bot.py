@@ -13,10 +13,8 @@ class RestartBotUseCase(UseCase[None, None]):
         self._bot_signals = bot_signals
 
     async def _execute(self, actor: Actor, data: None) -> None:
-        # Fire-and-forget: if no telegram process is currently subscribed, this
-        # is silently dropped -- its next start reads bot_settings fresh anyway.
-        # The process doesn't hot-swap Bot/Dispatcher in place; it exits (SIGTERM)
-        # and relies on the process supervisor (Docker's restart policy in prod)
-        # to bring it back up with the new settings.
+        # Fire-and-forget: with no telegram process listening it's dropped, and
+        # the next start reads bot_settings anyway. The process exits on SIGTERM
+        # and the supervisor (Docker's restart policy) brings it back.
         logger.info(f"Bot restart requested by actor {actor.log}")
         await self._bot_signals.restart()

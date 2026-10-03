@@ -84,8 +84,7 @@ async def test_seed_removes_the_shadow_row_an_older_seed_left(
 async def test_seed_keeps_an_edited_shadow_row(
     dialog_repository: DialogRepository, translation_repository, settings_repository
 ) -> None:
-    # Same shape of row, but somebody typed into it -- dropping it would throw
-    # away their text, so it stays for a human to deal with.
+    # same row shape, but someone typed into it, so it stays
     if Locale.EN not in await translation_repository.list_active_locales():
         await translation_repository.add_active_locale(Locale.EN)
     await translation_repository.seed_missing(

@@ -39,7 +39,7 @@ async def _resolve_api_token_actor(
         await api_token_repository.touch_last_used(token.id)
 
     return SyntheticActor(
-        id=0,  # BaseDto's existing "not persisted" sentinel -- see core/dto.py
+        id=0,  # BaseDto's "not persisted" sentinel, see core/dto.py
         role=Role.USER,
         name=f"API Token: {token.name}",
         is_privileged=True,

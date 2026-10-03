@@ -23,10 +23,8 @@ from app.modules.subscriptions.dto import (
     UpdateSubscriptionSquadsDto,
 )
 
-# Arbitrary fixed namespace key for pg_advisory_xact_lock, paired with a
-# user_id as the second key -- matches the existing convention in
-# modules/plans/repository.py (_PLAN_ORDER_LOCK_KEY = 8221938,
-# _PLAN_DURATIONS_LOCK_KEY = 8221939).
+# pg_advisory_xact_lock namespace key, paired with a user_id (keys in
+# modules/plans/repository.py are 8221938/8221939).
 _SUBSCRIPTION_PURCHASE_CAP_LOCK_KEY: Final[int] = 8221940
 
 
@@ -293,7 +291,7 @@ class SubscriptionRepository:
         """Serializes concurrent purchase attempts for the same user via a
         Postgres advisory lock (auto-released at transaction end). Necessary
         because `SELECT ... FOR UPDATE` in get_active_by_user_for_update only
-        locks rows that already exist -- it cannot block a concurrent
+        locks rows that already exist; it cannot block a concurrent
         transaction from inserting a NEW row, so two concurrent purchases could
         both observe the same under-cap count and both proceed past it. This
         lock closes that gap: every purchase for a given user_id contends for
@@ -327,8 +325,7 @@ class SubscriptionRepository:
         return self._to_dto(row, [])
 
     async def update(self, data: UpdateSubscriptionDto) -> SubscriptionDto:
-        # Local DB row only -- pushing the new limits to the Remnawave panel
-        # is UpdateSubscriptionUseCase's job, after this commits.
+        # local row only; UpdateSubscriptionUseCase pushes it to the panel
         row = await self._get_or_raise(data.subscription_id)
 
         apply_partial_update(row, data, skip=frozenset({"subscription_id"}))
@@ -372,8 +369,7 @@ class SubscriptionRepository:
         return await self.get_by_id(subscription_id)
 
     async def update_squads(self, data: UpdateSubscriptionSquadsDto) -> SubscriptionDto:
-        # Local DB row only -- pushing the new squads to the Remnawave panel
-        # is UpdateSubscriptionSquadsUseCase's job, after this commits.
+        # local row only; UpdateSubscriptionSquadsUseCase pushes it to the panel
         row = await self._get_or_raise(data.subscription_id)
         row.internal_squads = data.internal_squads
         row.external_squad = data.external_squad
@@ -413,10 +409,8 @@ class SubscriptionRepository:
         row.status = state.status
         row.expire_at = state.expire_at
         row.plan_snapshot = state.plan_snapshot.to_json()
-        # apply_state is only reachable via SubscriptionLifecycleService's
-        # sync_status/reactivate_on_renew, neither of which changes these
-        # fields on the SubscriptionState they pass in -- always a no-op
-        # write of the row's existing values.
+        # only SubscriptionLifecycleService calls apply_state, and neither of
+        # its methods changes these fields, so this rewrites the same values
         row.traffic_limit = state.traffic_limit
         row.device_limit = state.device_limit
         row.traffic_limit_strategy = state.traffic_limit_strategy

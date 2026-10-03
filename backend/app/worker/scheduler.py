@@ -15,10 +15,8 @@ scheduler = TaskiqScheduler(
 
 
 # `taskiq scheduler` never imports app.worker.lifespan, and its broker.startup()
-# fires CLIENT_STARTUP (is_scheduler_process, not is_worker_process) -- so the
-# worker's WORKER_STARTUP hook never runs here. This process has no dishka
-# container either, hence a standalone Redis client (same idiom as
-# app/telegram/idle_app.py).
+# fires CLIENT_STARTUP, not WORKER_STARTUP. No dishka container here either,
+# hence a standalone Redis client.
 @broker.on_event(TaskiqEvents.CLIENT_STARTUP)
 async def _start_runtime_heartbeat(state: TaskiqState) -> None:
     redis = Redis.from_url(AppConfig.get().redis.dsn, decode_responses=True)

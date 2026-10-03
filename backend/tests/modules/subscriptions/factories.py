@@ -24,8 +24,8 @@ def make_eligibility(session: AsyncSession) -> PurchaseEligibility:
 
 
 def make_plan_snapshot(**overrides: Any) -> PlanSnapshot:
-    """Placeholder PlanSnapshot for tests that don't assert on its contents
-    -- override any field (e.g. plan_id=7) to assert on it."""
+    """Placeholder PlanSnapshot; override a field (e.g. plan_id=7) to assert
+    on it."""
     defaults: dict[str, Any] = {
         "plan_id": 1,
         "public_code": "basic",
@@ -46,7 +46,7 @@ def make_plan_snapshot(**overrides: Any) -> PlanSnapshot:
 
 def snapshot_from_plan(plan: PlanDto, **overrides: Any) -> PlanSnapshot:
     """Builds the PlanSnapshot a real checkout/promocode-redemption path would
-    build for a live plan -- for tests that purchase against a plan they just
+    build for a live plan, for tests that purchase against a plan they just
     created via PlanRepository and need the operational fields to match it."""
     defaults: dict[str, Any] = {
         "plan_id": plan.id,
@@ -79,8 +79,7 @@ async def create_subscription(
 ) -> SubscriptionDto:
     """Creates a user and a subscription for it in one call. `telegram_id`
     and `remnawave_user_id` must be unique per test (both columns are
-    unique) -- callers pick distinct literal values, matching this test
-    suite's existing convention of per-test literal IDs."""
+    unique)."""
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=telegram_id))
     return await subscription_repository.create(
         CreateSubscriptionDto(

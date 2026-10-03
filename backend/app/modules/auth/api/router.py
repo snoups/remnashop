@@ -37,8 +37,8 @@ def _clear_session_cookies(response: Response) -> None:
 
 
 def _verify_csrf(refresh_token: str, request: Request, jwt_secret: str) -> None:
-    # both must equal the signed value, not just each other -- see
-    # core/security/session_token.py's derive_csrf_token for why
+    # both must equal the signed value, not just each other (see
+    # derive_csrf_token in core/security/session_token.py)
     cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
     header_value = request.headers.get("x-csrf-token")
     expected = derive_csrf_token(refresh_token, jwt_secret)

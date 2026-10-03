@@ -87,11 +87,8 @@ class NewPurchase:
                 )
                 await self._finish(actor, data, subscription)
         except Exception:
-            # disable, not delete: the DB write failed, not the panel user
-            # itself -- disabling keeps a reversible, inspectable record on
-            # the panel side instead of erasing it outright. Unlike
-            # DeleteSubscriptionUseCase (a real, user-requested deletion),
-            # this is purely compensating for our own failure.
+            # disable, not delete: the DB write failed, not the panel user, and
+            # a disabled user can still be inspected and restored
             with suppress(Exception):
                 await self._remnawave_sdk.users.disable_user(panel_user.id)
             raise
@@ -104,8 +101,8 @@ class NewPurchase:
     async def _upgrade_trial_in_place(
         self, actor: Actor, data: PurchaseSubscriptionDto, trial: SubscriptionDto
     ) -> SubscriptionDto:
-        # Same panel identity, reconfigured for the purchased plan -- never
-        # create_user/delete_user here, the trial's own identity is reused.
+        # the trial's panel user, reconfigured for the purchased plan; no
+        # create_user/delete_user here
         plan = data.plan_snapshot
         expire_at = datetime_now() + timedelta(days=data.duration_days)
         panel_user = await self._remnawave_sdk.users.update_user(
@@ -129,8 +126,8 @@ class NewPurchase:
         except SupersededError:
             raise
         except Exception:
-            # Best-effort revert, never disable -- this panel identity still
-            # belongs to the (reverted) trial row, not an orphan.
+            # best-effort revert, never disable: the panel user still belongs to
+            # the reverted trial row
             with suppress(Exception):
                 await self._remnawave_sdk.users.update_user(restore(trial))
             raise

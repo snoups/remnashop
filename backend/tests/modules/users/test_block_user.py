@@ -23,10 +23,8 @@ def owner() -> UserDto:
 
 @pytest.fixture(autouse=True)
 async def _seed_actor_rows(session: AsyncSession) -> None:
-    # event_outbox.actor_id is a real FK into users -- the actor DTOs used
-    # here are bare, not inserted rows. Role.USER here (not the DTO's
-    # own role) matches the existing test_usecases.py pattern: the role
-    # check reads the in-memory actor DTO, never this row's DB column.
+    # event_outbox.actor_id is a real FK and the actor DTOs have no rows. The
+    # role check reads the in-memory DTO, so the row's role doesn't matter.
     for user_id, name, telegram_id in ((1, "o", 1), (2, "a", 2)):
         session.add(
             User(

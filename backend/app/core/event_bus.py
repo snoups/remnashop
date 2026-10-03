@@ -15,10 +15,8 @@ class EventBus:
         self._handlers.setdefault(event_type.__name__, []).append(handler)
 
     async def dispatch_stored(self, entry: StoredEvent) -> Optional[str]:
-        # Every handler still runs even if an earlier one fails (isolation
-        # between handlers); the last failure's message is returned so the
-        # outbox sweep can record it and retry the whole row -- retry is
-        # row-level, not per-handler.
+        # every handler runs even if an earlier one failed; the last failure is
+        # returned so the outbox sweep records it and retries the whole row
         error_message: Optional[str] = None
         for handler in self._handlers.get(entry.event_type, []):
             try:

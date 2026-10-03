@@ -22,7 +22,7 @@ async def test_seeding_writes_the_shipped_picture(
 async def test_seeding_leaves_an_uploaded_banner_alone(
     banner_repository: BannerRepository, config: AppConfig, tmp_path: Path
 ) -> None:
-    # Whatever the admin uploaded is theirs -- a restart must not overwrite it.
+    # an admin's upload survives a restart
     config = config.model_copy(update={"media_dir": tmp_path})
     await restore_default_banner(banner_repository, config)
     replaced = await banner_repository.upsert(

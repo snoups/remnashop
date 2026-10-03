@@ -27,10 +27,9 @@ class UpdatePromocodeUseCase(UseCase[UpdatePromocodeDto, PromocodeDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: UpdatePromocodeDto) -> PromocodeDto:
-        # Validate the merged result, not the patch on its own: a PATCH
-        # carrying only allowed_user_ids=[] leaves availability untouched, so
-        # checking the patch alone lets an already-ALLOWED promocode end up
-        # with an empty allowlist -- still active, but redeemable by nobody.
+        # validates the merged result: a PATCH with only allowed_user_ids=[]
+        # leaves availability alone, and checking just the patch would leave an
+        # ALLOWED promocode active but redeemable by nobody
         async with self._uow:
             current = await self._promocode_repository.get_by_id(data.promocode_id)
             availability = data.availability or current.availability

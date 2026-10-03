@@ -368,9 +368,8 @@ async def test_system_can_grant_devices_addon_without_clearing_traffic_limit(
 
     assert granted.effective_device_limit == 5  # 3 base + 2 addon
     assert granted.effective_traffic_limit == 100  # unchanged, base plan value
-    # Wire-level check: a DEVICES grant must never send an explicit null
-    # traffic_limit_bytes to the panel -- exclude_unset=True only drops a
-    # field that was never passed, not one explicitly passed as None.
+    # a DEVICES grant must not send traffic_limit_bytes=null: exclude_unset
+    # keeps a field passed as None
     panel_payload = remnawave_store[granted.remnawave_user_id]
     assert panel_payload["trafficLimitBytes"] == 100 * GB_TO_BYTES
     assert panel_payload["hwidDeviceLimit"] == 5

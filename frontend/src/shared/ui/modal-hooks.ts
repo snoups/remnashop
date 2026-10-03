@@ -3,7 +3,7 @@ import { type RefObject, createContext, useContext, useEffect, useRef } from "re
 const FOCUSABLE_SELECTOR =
   'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-// open panels, innermost last -- only it handles Esc/Tab when dialogs stack
+// open panels, innermost last; only it handles Esc/Tab when dialogs stack
 const openPanels: HTMLDivElement[] = [];
 
 export const ModalCloseContext = createContext<() => void>(() => {});

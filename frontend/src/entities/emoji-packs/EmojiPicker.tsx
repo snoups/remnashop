@@ -98,8 +98,8 @@ export function EmojiPicker({
     setIsOpen(true);
   };
 
-  // The popover is portalled, so the gap between trigger and popover is not a
-  // DOM ancestor of either -- a delay is what lets the pointer cross it.
+  // the popover is portalled, so the gap to the trigger belongs to neither;
+  // the delay lets the pointer cross it
   const closeSoon = () => {
     closeTimer.current = window.setTimeout(() => setIsOpen(false), 200);
   };

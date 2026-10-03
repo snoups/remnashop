@@ -12,8 +12,7 @@ from app.modules.users import UserStatsRepository
 
 _T = TypeVar("_T", int, Decimal)
 
-# day below this span, monthly above -- weekly granularity skipped
-# as a third code path nobody asked hard for.
+# daily below this span, monthly above; no weekly step
 _MONTHLY_THRESHOLD_DAYS: Final[int] = 90
 
 
@@ -73,10 +72,9 @@ async def resolve_period(user_stats: UserStatsRepository, days: int) -> Period:
         today_start=today_start,
         start_date=start_date,
         today=today,
-        # Calendar-aligned to match the frontend's fillDailySeries, which
-        # builds exactly `days` UTC calendar days ending today -- a rolling
-        # now - days cutoff would include a partial day at the start and
-        # the daily series wouldn't sum to the period-scoped card numbers.
+        # calendar days, like the frontend's fillDailySeries (`days` UTC days
+        # ending today); a rolling cutoff would add a partial first day and
+        # the daily series wouldn't sum to the card totals
         since=today_start - timedelta(days=span_days - 1),
         granularity="month" if span_days > _MONTHLY_THRESHOLD_DAYS else "day",
         dense=days == 0,

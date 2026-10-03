@@ -27,7 +27,7 @@ DOCS: Final[str] = "https://remnashop.dev"
 T_ME: Final[str] = "https://t.me/"
 API_V1: Final[str] = "/api/v1"
 BOT_WEBHOOK_PATH: Final[str] = "/telegram"
-# registered in every gateway's dashboard -- never rename
+# registered in every gateway's dashboard, never rename
 PAYMENTS_WEBHOOK_PATH: Final[str] = "/payments"
 REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
 
@@ -36,8 +36,8 @@ REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
 # window's own. The frontend mirrors both when it uploads or assigns one.
 DEFAULT_BANNER_NAME: Final[str] = "default"
 WINDOW_BANNER_PREFIX: Final[str] = "win."
-# The name lands in a filesystem path, so anything outside this alphabet -- a
-# slash, a leading dot, ".." -- would let a caller walk out of the media dir.
+# The name lands in a filesystem path; anything outside this alphabet (a slash,
+# a leading dot, "..") would let a caller walk out of the media dir.
 BANNER_NAME_PATTERN: Final[str] = r"^[a-z0-9][a-z0-9._-]*$"
 
 IMPORTED_TAG: Final[str] = "IMPORTED"
@@ -107,17 +107,16 @@ BATCH_SIZE_20: Final[int] = 20
 BATCH_DELAY: Final[int] = 1
 
 # Plan.traffic_limit / AddOn.amount are stored as whole GB (binary, matching
-# "give this plan 100 GB" as an admin would type it) -- Remnawave's own API
-# is byte-denominated (CreateUserRequestDto.traffic_limit_bytes). Convert at
-# the SDK-call boundary only; never store bytes anywhere in our own schema.
+# "give this plan 100 GB" as an admin would type it). Remnawave's API takes
+# bytes (CreateUserRequestDto.traffic_limit_bytes): convert at the SDK call
+# only, never store bytes in our own schema.
 GB_TO_BYTES: Final[int] = 1024**3
 
 # Cap on what a webhook handler will buffer. Both webhook routes are
-# unauthenticated and read the whole body before their signature check, and the
-# panel one is exempt from the global rate limiter, so without this the only
-# bound is whatever the operator's reverse proxy happens to impose -- the
-# in-repo traefik reference imposes none. Sized well above any real payload:
-# the largest is a Remnawave user event.
+# unauthenticated and read the whole body before the signature check, and the
+# panel one skips the global rate limiter; without this only the reverse proxy
+# bounds it, and the bundled traefik config sets no limit. Well above the
+# largest real payload, a Remnawave user event.
 MAX_WEBHOOK_BODY_BYTES: Final[int] = 1024 * 1024
 
 # asyncpg caps a statement at 32,767 bind parameters; an IN list chunked to this

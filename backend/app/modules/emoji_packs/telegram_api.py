@@ -9,8 +9,8 @@ from app.modules.emoji_packs.dto import EmojiPackItemDto, FetchedEmojiPack
 _TIMEOUT_S: Final[float] = 10.0
 _API_URL: Final[str] = "https://api.telegram.org/bot{token}/{method}"
 _FILE_URL: Final[str] = "https://api.telegram.org/file/bot{token}/{path}"
-# t.me/addemoji/<name>, with or without scheme, query or trailing slash -- or the
-# bare name, which is what an admin who already knows it will paste.
+# t.me/addemoji/<name>, with or without scheme, query or trailing slash, or
+# the bare name.
 _SET_NAME_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?:https?://)?(?:t\.me/addemoji/)?([A-Za-z0-9_]{1,64})/?(?:\?.*)?$"
 )
@@ -75,9 +75,9 @@ def parse_emoji_pack_payload(payload: dict, set_name: str) -> FetchedEmojiPack:
 async def _download_artwork(
     client: httpx.AsyncClient, token: str, stickers: list[dict[str, Any]]
 ) -> dict[str, dict[str, Any]]:
-    # Two files per emoji: the static .webp thumbnail every browser draws, and
-    # the animation itself -- a gzipped lottie (.tgs) or a .webm, both of which
-    # the dashboard plays and neither of which an <img> can.
+    # Two files per emoji: the static .webp thumbnail any browser draws, and
+    # the animation (gzipped lottie .tgs or .webm), which the dashboard plays
+    # and an <img> can't.
     semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
 
     async def download(file_id: Optional[str]) -> Optional[bytes]:

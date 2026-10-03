@@ -228,8 +228,7 @@ async def test_update_on_an_already_devices_plan_keeps_traffic_limit_zeroed(
         )
     )
 
-    # Unrelated field update -- type stays DEVICES, traffic_limit must stay
-    # zeroed even though this request never mentions either field.
+    # an unrelated update: type stays DEVICES, traffic_limit stays zeroed
     updated = await plan_repository.update(UpdatePlanDto(plan_id=created.id, name="Renamed"))
 
     assert updated.traffic_limit == 0

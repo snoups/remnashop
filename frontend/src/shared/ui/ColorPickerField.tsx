@@ -11,10 +11,8 @@ const POPOVER_MAX_HEIGHT = 230;
 interface ColorPickerFieldProps {
   value: string;
   onChange: (value: string) => void;
-  // What the closed swatch button shows, if different from the raw value
-  // being edited -- e.g. previewing a hue rotation applied on top of the
-  // stored color. The picker popover itself still edits `value` untouched,
-  // so opening it never shows a rotated color as if it were the real one.
+  // what the closed swatch shows when it differs from the edited value (a hue
+  // rotation preview); the popover still edits the untouched `value`
   displayValue?: string;
 }
 

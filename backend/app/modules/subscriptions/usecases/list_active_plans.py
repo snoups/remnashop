@@ -57,8 +57,7 @@ class ListActivePlansUseCase(UseCase[None, list[CatalogPlanDto], UserDto]):
     async def _execute(self, actor: UserDto, data: None) -> list[CatalogPlanDto]:
         async with self._uow:
             plans = await self._plan_repository.list_active()
-            # LINK plans are never listed in the catalog -- only reachable by
-            # direct code/link.
+            # LINK plans are reachable only by code or link
             plans = [plan for plan in plans if plan.availability != PlanAvailability.LINK]
             purchasable = await self._eligibility.purchasable(plans, actor)
             rates = await self._pricing_repository.get_rate_table()

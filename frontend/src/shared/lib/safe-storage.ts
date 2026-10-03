@@ -1,7 +1,6 @@
-// Touching localStorage/sessionStorage throws a SecurityError when the browser
-// blocks site data -- at import time that would take the whole bundle down
-// before React mounts. Every read and write goes through here instead; a blocked
-// store just means nothing is remembered between reloads.
+// localStorage/sessionStorage throw a SecurityError when site data is blocked,
+// which at import time would kill the bundle before React mounts. Blocked
+// storage here just means nothing is remembered.
 type StorageKind = "local" | "session";
 
 function storageOf(kind: StorageKind): Storage {

@@ -65,8 +65,7 @@ REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 @pytest.fixture(autouse=True)
 async def _seed_actor_rows(session: AsyncSession) -> None:
-    # event_outbox.actor_id is a real FK into users -- the actor DTOs above
-    # are bare, not inserted rows.
+    # event_outbox.actor_id is a real FK, and the actor DTOs above have no rows
     for user_id in (1, 2):
         session.add(
             User(
@@ -328,10 +327,8 @@ async def test_owner_can_view_and_update_oauth_settings(
     monkeypatch: pytest.MonkeyPatch,
     event_publisher: EventPublisher,
 ) -> None:
-    # oidc_issuer_url goes through assert_public_https_host's real DNS
-    # resolution (see test_update_oauth_settings_rejects_non_public_issuer_host
-    # for that check itself) -- stubbed here since this test is about the
-    # write path, not network-dependent hostname resolution.
+    # assert_public_https_host resolves real DNS, stubbed here (the check
+    # itself: test_update_oauth_settings_rejects_non_public_issuer_host)
     async def _fake_assert_public_https_host(url: str) -> None:
         return None
 
@@ -434,7 +431,7 @@ async def test_update_oauth_settings_does_not_publish_event_when_issuer_is_uncha
             )
         )
     ).all()
-    assert len(rows) == 1  # only the first call's event -- the second didn't add another
+    assert len(rows) == 1  # the second call added no event
 
 
 async def test_regular_user_cannot_view_oauth_settings(
@@ -661,7 +658,7 @@ async def test_update_bot_commands_reports_sync_failure_when_locale_file_missing
 ) -> None:
     await _seed_en(translation_repository)
     await translation_repository.add_active_locale(Locale.RU)
-    # No `ru` translation seeded at all -- an active locale with no row for the key.
+    # an active `ru` locale with no row for the key
 
     settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
     await settings_use_case(
@@ -707,8 +704,7 @@ async def test_update_bot_commands_excludes_disabled_from_telegram_push(
 
     pushed = _capture_command_pushes(monkeypatch)
 
-    # "help" is disabled, so its unresolved description_key ("command.missing")
-    # never gets looked up -- only "start" (enabled) is pushed.
+    # "help" is disabled, so its missing description_key is never looked up
     result = await update_use_case(OWNER, [("start", True), ("help", False)])
 
     assert result.telegram_sync_failed is False

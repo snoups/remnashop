@@ -12,8 +12,7 @@ class BaseDto(BaseModel):
     # 0 means "not persisted yet" (a DTO built for repository.create(),
     # excluded via SERVER_OWNED_FIELDS). Not Optional[int]: every DTO that
     # round-tripped through the DB always has a real id, and Postgres serial
-    # PKs never assign 0, so this stays a safe sentinel rather than a
-    # collidable one -- just don't treat `id` as falsy-checkable.
+    # PKs never assign 0, so it can't collide. Don't truth-test `id`.
     id: int = 0
 
 

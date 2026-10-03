@@ -637,8 +637,8 @@ async def test_change_applies_proration_credit_as_extra_days(
     )
     # Full 30 days remaining, price_paid=300/30days => daily_rate=10 => full
     # credit=300 => at new plan's daily_rate=10 (300/30) => 30 credit-days.
-    # base_price is left at its None default here -- the non-checkout callers'
-    # path, where the denominator falls back to price_paid.
+    # base_price stays None, as for non-checkout callers: the denominator
+    # falls back to price_paid
 
     changed = await use_case(
         buyer,
@@ -655,8 +655,8 @@ async def test_change_applies_proration_credit_as_extra_days(
         ),
     )
 
-    # CHANGE now creates a new row sharing the old one's panel identity --
-    # the old row is kept as DELETED history, not mutated.
+    # CHANGE makes a new row on the same panel user; the old row stays as
+    # DELETED history
     assert changed.id != old_subscription.id
     assert changed.remnawave_user_id == old_subscription.remnawave_user_id
     assert changed.status.value == "ACTIVE"
@@ -669,10 +669,8 @@ async def test_change_applies_proration_credit_as_extra_days(
     assert old_after.status.value == "DELETED"
 
     expected_days = 30 + 30  # duration_days + credit_days
-    # Two independent floor-truncation points -- the credit calculation's own
-    # (old_expire_at - now).days, then this assertion's (expire_at - now).days
-    # -- each can shave off a day for the real time elapsed during the test,
-    # so the reachable range is up to 2 short of the theoretical maximum.
+    # both the credit's (old_expire_at - now).days and this assertion's
+    # (expire_at - now).days floor, so up to 2 days can go
     assert (changed.expire_at - datetime_now()).days in (
         expected_days - 2,
         expected_days - 1,
@@ -729,7 +727,7 @@ async def test_change_converts_proration_credit_across_currencies(
     )
 
     # 300 RUB of credit at RUB=100 is 3 USD; the new plan costs 3 USD / 30 days,
-    # so the credit buys 30 days -- not 300 / 0.1 = 3000.
+    # so the credit buys 30 days, not 300 / 0.1 = 3000.
     changed = await use_case(
         buyer,
         PurchaseSubscriptionDto(
@@ -793,7 +791,7 @@ async def test_change_credit_converts_at_list_price_not_the_discounted_price(
 
     # 50%-off promo: list price 300 over 30d => daily rate 10 => credit 300
     # buys 30 days at list rate. At the discounted 150/30d = 5/day it would
-    # buy 60 -- twice what the user is owed.
+    # buy 60, twice what the user is owed.
     changed = await use_case(
         buyer,
         PurchaseSubscriptionDto(
@@ -810,8 +808,6 @@ async def test_change_credit_converts_at_list_price_not_the_discounted_price(
         ),
     )
 
-    # CHANGE now creates a new row sharing the old one's panel identity --
-    # the old row is kept as DELETED history, not mutated.
     assert changed.id != old_subscription.id
     assert changed.remnawave_user_id == old_subscription.remnawave_user_id
     assert changed.status.value == "ACTIVE"
@@ -943,8 +939,6 @@ async def test_change_from_trial_gives_no_credit(
         ),
     )
 
-    # CHANGE now creates a new row sharing the old one's panel identity --
-    # the old row is kept as DELETED history, not mutated.
     assert changed.id != trial_subscription.id
     assert changed.remnawave_user_id == trial_subscription.remnawave_user_id
     assert changed.status.value == "ACTIVE"
@@ -956,7 +950,7 @@ async def test_change_from_trial_gives_no_credit(
     old_after = await subscription_repository.get_by_id(trial_subscription.id)
     assert old_after.status.value == "DELETED"
 
-    # No credit -- expire_at is just now + 30 days, no bonus days.
+    # no credit: expire_at is now + 30 days
     assert (changed.expire_at - datetime_now()).days in (29, 30)
 
 
@@ -969,14 +963,10 @@ async def test_concurrent_new_purchases_never_exceed_the_cap(
     engine: AsyncEngine,
     remnawave_sdk: RemnawaveSDK,
 ) -> None:
-    # The isolated lock test proves acquire_purchase_cap_lock serializes; this
-    # proves the end-to-end property -- N genuinely concurrent
-    # PurchaseSubscriptionUseCase calls for one user settle at exactly the
-    # cap, the rest ValidationError. No shop_settings row is ever written in
-    # this test, so the cap is ShopSettingsDto's own default (3) -- needs
-    # independent connections (AsyncSession forbids concurrent use), the seed
-    # rows committed for real, and explicit cleanup since committed rows
-    # bypass the rollback-per-test fixture.
+    # N concurrent purchases for one user stop at exactly the cap (the
+    # ShopSettingsDto default, 3), the rest raise ValidationError. Separate
+    # connections, since an AsyncSession can't run concurrently, so the seed
+    # rows are committed and cleaned up by hand.
     test_cap = 3
     attempts = test_cap + 3
     buyer_id = 0
@@ -1486,13 +1476,13 @@ async def test_change_does_not_reparent_addon_entitlement_to_the_new_row(
         ),
     )
 
-    # The entitlement stays on the OLD (now DELETED) row -- never reparented.
+    # the entitlement stays on the old, now DELETED row
     old_after = await subscription_repository.get_by_id(old_subscription.id)
     assert old_after.status.value == "DELETED"
     assert len(old_after.addon_entitlements) == 1
     assert old_after.addon_entitlements[0].addon_id == addon.id
 
-    # The NEW row carries no bonus -- just the new plan's own base limits.
+    # the new row has only the new plan's limits
     assert changed.addon_entitlements == []
     assert changed.effective_traffic_limit == new_plan.traffic_limit
     assert changed.effective_device_limit == new_plan.device_limit
@@ -1640,7 +1630,7 @@ async def test_new_purchase_upgrades_an_active_trial_in_place(
 
     # New row, not a mutation of the trial's.
     assert paid.id != trial.id
-    # Same panel identity/URL -- the whole point.
+    # same panel user and URL
     assert paid.remnawave_user_id == trial.remnawave_user_id
     assert paid.url == trial.url
     assert paid.is_trial is False

@@ -14,12 +14,10 @@ from app.modules.users.dto import (
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases.list_blacklist_matches import identities_of
 
-# Staff accounts (ADMIN/OWNER) are listed via ListAdminsUseCase, gated by the
-# non-grantable ADMINS_MANAGE permission -- USERS_VIEW is grantable to a
-# regular admin and to API tokens, so it must never surface admin/owner logins
-# by default. `include_staff` re-opens that view (an ADMIN/OWNER can also be a
-# paying customer), but only for an actor who already holds ADMINS_MANAGE --
-# it must not widen what a regular USERS_VIEW grant alone can see.
+# Staff (ADMIN/OWNER) are listed by ListAdminsUseCase behind the non-grantable
+# ADMINS_MANAGE. USERS_VIEW can be granted to any admin or API token, so it
+# never shows staff; `include_staff` (staff can be customers too) needs
+# ADMINS_MANAGE.
 ALLOWED_ROLES: Final[list[Role]] = [Role.USER]
 STAFF_ROLES: Final[list[Role]] = [Role.USER, Role.ADMIN, Role.OWNER]
 

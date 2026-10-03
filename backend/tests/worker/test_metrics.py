@@ -1,7 +1,7 @@
 from taskiq.message import TaskiqMessage
 from taskiq.result import TaskiqResult
 
-import app.modules.event_log.tasks  # noqa: F401 -- forces module-level Gauge registration onto WORKER_METRICS_REGISTRY regardless of test collection order
+import app.modules.event_log.tasks  # noqa: F401 - registers the Gauge whatever the collection order
 from app.worker.metrics import (
     WORKER_METRICS_REGISTRY,
     TaskMetricsMiddleware,

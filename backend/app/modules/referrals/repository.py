@@ -397,8 +397,8 @@ class ReferralRepository:
         return self._reward_to_dto(row)
 
     async def list_rewards_by_referrer(self, referrer_id: int) -> list[ReferralRewardDto]:
-        # the buyer is the triggering subscription's owner -- the reward's own
-        # referral edge is this referrer's hop, not the purchase's
+        # the buyer is the subscription's owner; the reward's referral edge is
+        # this referrer's hop, not the purchase's
         stmt = (
             select(ReferralReward, Subscription.user_id)
             .outerjoin(Subscription, Subscription.id == ReferralReward.subscription_id)

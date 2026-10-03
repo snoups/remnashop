@@ -20,7 +20,7 @@ export interface UpdateAppearancePayload {
   shader_enabled?: boolean;
 }
 
-// Public endpoint, no auth required -- readable from the pre-login LoginPage too.
+// public endpoint, the pre-login LoginPage reads it too
 export function getAppearance(signal?: AbortSignal): Promise<AppearanceSettings> {
   return apiGet<AppearanceSettings>("/appearance", signal);
 }
@@ -29,16 +29,14 @@ export function updateAppearance(payload: UpdateAppearancePayload): Promise<Appe
   return apiPatch<AppearanceSettings, UpdateAppearancePayload>("/settings/appearance", payload);
 }
 
-// Clears every field back to unset -- unlike updateAppearance, which only
-// ever writes fields it's given (undefined means "don't touch"), this is the
-// only way to explicitly revert them to the default. Images are separate:
-// deleteAppearanceImage.
+// Clears every field back to the default; updateAppearance skips undefined
+// fields and can't. Images are separate: deleteAppearanceImage.
 export function resetAppearanceSettings(): Promise<AppearanceSettings> {
   return apiPost<AppearanceSettings, Record<string, never>>("/settings/appearance/actions/reset", {});
 }
 
-// Image URLs never change on their own, so a replaced logo/favicon would keep
-// rendering from the browser cache -- bumped on every upload/delete.
+// bumped on every upload/delete: the image URLs never change, so a replaced
+// logo/favicon would keep coming from the browser cache
 let imageVersion = Date.now();
 
 export async function uploadAppearanceImage(
@@ -58,8 +56,8 @@ export async function deleteAppearanceImage(kind: AppearanceImageKind): Promise<
   return result;
 }
 
-// Public image endpoints -- unlike banners, these need no Authorization header,
-// so a plain <img src> works directly (no blob-fetch dance).
+// public image endpoints: unlike banners no Authorization header, so a plain
+// <img src> works
 export function appearanceImageUrl(kind: AppearanceImageKind): string {
   return `${BASE_URL}/appearance/${kind}?v=${imageVersion}`;
 }

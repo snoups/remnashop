@@ -50,8 +50,8 @@ class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, Non
                     await self._transaction_repository.mark_fulfilled(order.id)
                 continue
 
-            # same idempotency_key as the original attempt -- safe even if that
-            # attempt is still in flight or already succeeded
+            # same idempotency_key as the original attempt, safe even if it's
+            # still running or already succeeded
             await dispatch_fulfillment(self._purchase_dispatch, order)
             redispatched += 1
 

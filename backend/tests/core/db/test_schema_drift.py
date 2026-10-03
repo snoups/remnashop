@@ -41,7 +41,7 @@ _MIGRATION: Final[Path] = (
 
 # Every native Postgres ENUM type the committed migration declares, mapped to
 # the Python enum it must stay in sync with. A persisted enum missing from
-# this map fails test_every_migration_enum_is_mapped -- add the entry.
+# this map fails test_every_migration_enum_is_mapped.
 _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
     "addontype": AddOnType,
     "adlinkchannel": AdLinkChannel,
@@ -81,9 +81,8 @@ def _migration_enums() -> dict[str, set[str]]:
 
 
 def test_migration_file_has_enum_declarations() -> None:
-    # Guards the regex itself -- if current_current.py's formatting changes
-    # such that nothing matches, every other assertion here would vacuously
-    # pass.
+    # if current_current.py's formatting changed and nothing matched, every
+    # other assertion here would pass vacuously
     assert len(_migration_enums()) >= 10
 
 

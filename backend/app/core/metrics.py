@@ -3,9 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 
 def register_db_pool_metrics(engine: AsyncEngine, *, registry: CollectorRegistry) -> None:
-    # engine.pool is typed as the base Pool class, which doesn't declare
-    # size()/checkedout() -- both exist on the AsyncAdaptedQueuePool SQLAlchemy
-    # actually constructs at runtime for an async engine.
+    # engine.pool is typed as the base Pool, which lacks size()/checkedout();
+    # the AsyncAdaptedQueuePool an async engine actually gets has both
     Gauge(
         "remnashop_db_pool_size",
         "Configured SQLAlchemy connection pool size",

@@ -85,8 +85,8 @@ async def test_update_settings_clears_a_field_to_null(session: AsyncSession) -> 
 
 
 async def test_get_rate_table_survives_concurrent_seeding(engine: AsyncEngine) -> None:
-    # Real connections, not the rolled-back `session` fixture -- the race only
-    # exists between separate transactions racing to insert the same seed rows.
+    # real connections, not the rolled-back `session`: the race needs two
+    # transactions inserting the same seed rows
     async def seed() -> None:
         async with AsyncSession(engine) as concurrent:
             await PricingRepository(concurrent).get_rate_table()

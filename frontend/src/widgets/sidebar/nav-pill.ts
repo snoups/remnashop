@@ -9,7 +9,6 @@ export const SIDEBAR_PILL_SHAPE_CLASSNAME =
 
 export const SIDEBAR_PILL_CLASSNAME = `${SIDEBAR_PILL_SHAPE_CLASSNAME} font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground`;
 
-// Below `xl` there's no room for text labels next to the icons — the sidebar
-// collapses to an icon rail instead; on `xl` and up only while the viewer
-// hasn't collapsed it (`data-expanded` on the Sidebar's aside).
+// Labels show from `xl` up, and only while the sidebar is expanded
+// (`data-expanded` on its aside); below that it's an icon rail.
 export const LABEL_CLASSNAME = "hidden whitespace-nowrap xl:group-data-expanded/sidebar:inline";

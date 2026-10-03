@@ -12,32 +12,23 @@ from app.worker.metrics import TaskMetricsMiddleware
 broker = ListQueueBroker(url=AppConfig.get().redis.dsn).with_serializer(
     ORJSONSerializer(default=json_default)
 )
-# Module-level singleton (constructed at import time) -- its Redis connection
-# binds to whichever asyncio event loop first touches it. pytest-asyncio gives
-# each test its own loop, so calling a real `.kiq()` in more than one test
-# across a full-suite run breaks with a cross-loop RuntimeError (fine in
-# isolation, since only one loop ever exists then). Every test that needs to
-# assert a real dispatch happened should monkeypatch the specific task's
-# `.kiq()` instead of calling through to this broker -- see
-# tests/core/test_event_bus.py's `_capture_kiq` for the shape. Production is
-# unaffected: one process, one loop, for the worker's whole lifetime.
+# Built at import time; its Redis connection binds to the first event loop that
+# uses it. pytest-asyncio gives each test its own loop, so tests monkeypatch a
+# task's `.kiq()` (tests/core/test_event_bus.py's `_capture_kiq`) instead of
+# going through the broker.
 
-# Used by SmartRetryMiddleware below (in this process, to schedule a delayed
-# retry) and by scheduler.py (in the scheduler process, to actually poll and
-# dispatch it at the right time) -- same Redis keys, two processes.
+# Shared Redis keys: SmartRetryMiddleware below schedules a delayed retry,
+# scheduler.py dispatches it when due.
 RETRY_SCHEDULE_PREFIX: Final[str] = "taskiq_retry_schedule"
 
 retry_schedule_source = ListRedisScheduleSource(
     url=AppConfig.get().redis.dsn, prefix=RETRY_SCHEDULE_PREFIX
 )
 
-# Must outlast resilient_transport's _RECOVERY_TIMEOUT_S (30s): the breaker's
-# open window is a fixed 30s from the trip and is NOT refreshed by fail-fast
-# rejections, so a retry landing inside it just burns budget while the breaker
-# is still open -- the exact failure this policy exists to prevent. taskiq's
-# make_delay is linear (delay * retries, capped at max_delay_exponent) despite
-# the "exponent" name; at 45s the retries land ~45s and ~105s after the first
-# failure, both clear of the window even with the scheduler's 60s poll.
+# Longer than resilient_transport's _RECOVERY_TIMEOUT_S (30s, counted from the
+# trip), or a retry would hit the still-open breaker and waste an attempt.
+# taskiq's make_delay is linear despite the "exponent" name: retries land at
+# ~45s and ~105s, clear of the window even with the scheduler's 60s poll.
 _RETRY_FIRST_DELAY_S: Final[float] = 45.0
 
 broker.add_middlewares(
@@ -52,13 +43,10 @@ broker.add_middlewares(
         use_jitter=True,
         max_delay_exponent=60.0,
         schedule_source=retry_schedule_source,
-        # Intentionally ONLY the fail-fast breaker-open case -- that error is
-        # raised before the request leaves the process, so a retry is provably
-        # safe. Real transport errors (httpx.HTTPError, remnapy ServerError)
-        # stay non-retryable: a POST/PATCH that landed but lost its response
-        # would double-apply -- orphan panel users from NewPurchase, and the
-        # keyless (promocode/referral) relative extend_user in RenewPurchase.
-        # Widening this needs those paths made idempotent first.
+        # Only the breaker-open error: it's raised before the request leaves,
+        # so a retry is safe. A real transport error may hide a POST/PATCH that
+        # landed, and retrying it would orphan panel users in NewPurchase and
+        # double the keyless extend_user in RenewPurchase.
         types_of_exceptions=(RemnawavePanelUnavailableError,),
     ),
     TaskMetricsMiddleware(),

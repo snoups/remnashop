@@ -19,5 +19,5 @@ async def require_admin(actor: Actor = Depends(get_current_actor)) -> Actor:
 
 async def require_admin_user(actor: Actor = Depends(require_admin)) -> UserDto:
     """Staff routes acting on the caller's own account (profile, passkeys,
-    sessions, notifications) -- an API token has none."""
+    sessions, notifications); an API token has none."""
     return await get_current_user(actor)

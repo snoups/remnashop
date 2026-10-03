@@ -76,8 +76,8 @@ def price_for(
 def convert_for_report(
     amount: Decimal, from_currency: Currency, to_currency: Currency, rates: CurrencyRateTable
 ) -> Decimal:
-    # display-only: no rounding mode/charm-ending, unlike resolve_price -- only
-    # cut to cents, the raw quotient carries ~28 digits into the API
+    # display only: no rounding mode or charm ending (unlike resolve_price),
+    # just cut to cents, or the raw quotient ships ~28 digits
     if from_currency == to_currency:
         return amount
     anchor_amount = amount / rates.for_currency(from_currency).rate

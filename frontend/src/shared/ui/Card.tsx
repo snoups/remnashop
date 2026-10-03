@@ -14,7 +14,7 @@ interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   icon?: ComponentType<{ className?: string }>;
   /** renders the title as a <label> for this input id */
   titleFor?: string;
-  /** layout only (flex, gap, w-full, relative...) -- no padding, it belongs to the variant */
+  /** layout only (flex, gap, w-full, relative...), no padding: it belongs to the variant */
   className?: string;
   children: ReactNode;
 }

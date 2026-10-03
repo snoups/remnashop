@@ -364,12 +364,8 @@ async def test_count_new_since_excludes_users_created_before_cutoff(
 ) -> None:
     old_user = await _create_user(user_repository, uow, telegram_id=810_101, role=Role.USER)
     new_user = await _create_user(user_repository, uow, telegram_id=810_102, role=Role.USER)
-    # created_at is a server default -- Postgres now() is frozen for the
-    # whole test transaction, so two rows created moments apart in the same
-    # test get an IDENTICAL created_at. Force the "old" row back in time
-    # (same idiom as tests/modules/subscriptions/test_repository.py's
-    # test_delete_stale_idempotency_keys_removes_only_old_rows) so the
-    # cutoff below has something real to exclude.
+    # now() is frozen for the test transaction, so both rows get the same
+    # created_at; the old one is backdated by hand
     now = datetime_now()
     await session.execute(
         update(User).where(User.id == old_user.id).values(created_at=now - timedelta(days=1))
@@ -511,7 +507,7 @@ async def test_list_filtered_counts_and_sorts_by_active_subscriptions(
     two = await _create_user(user_repository, uow, name="Two")
     one = await _create_user(user_repository, uow, name="One")
     await _create_user(user_repository, uow, name="None")
-    # created last (highest id) but registered earliest -- ties go by registration date
+    # created last (highest id) but registered earliest; ties go by registration date
     older = await _create_user(user_repository, uow, name="Older")
     await session.execute(
         update(User)

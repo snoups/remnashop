@@ -126,7 +126,7 @@ export function DebugBar() {
       .catch(() => toast.error(t("debugBar.snapshotFailed")));
   };
 
-  // Stateful switches -- the ones left on stay visible while the bar is collapsed.
+  // stateful switches: the ones left on stay visible while the bar is collapsed
   const toggles = [
     {
       key: "apiFailure",
@@ -222,8 +222,8 @@ export function DebugBar() {
       ];
 
   return (
-    // desktop only -- no way to open it on mobile anyway.
-    // borderRadius inline, not rounded-full -- motion only corrects layout distortion for style values.
+    // desktop only, there's no way to open it on mobile anyway.
+    // borderRadius inline, not rounded-full: motion corrects layout distortion only for style values.
     <motion.div
       layout
       transition={BAR_TRANSITION}

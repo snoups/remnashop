@@ -20,7 +20,7 @@ def get_dispatcher(config: AppConfig) -> Dispatcher:
         state_ttl=TTL_7D,
         data_ttl=TTL_7D,
         json_loads=decode,
-        json_dumps=encode,  # returns bytes, not str -- redis-py accepts them directly
+        json_dumps=encode,  # bytes, which redis-py accepts as is
     )
     dispatcher = Dispatcher(storage=storage, config=config)
     logger.info("Initialized Dispatcher with Redis storage")

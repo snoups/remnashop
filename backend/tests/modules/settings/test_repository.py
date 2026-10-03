@@ -71,9 +71,7 @@ async def test_stored_value_is_encrypted_at_rest(
         )
     )
 
-    # Raw SQL, not session.get(BotSettings, ...) -- the ORM path runs the
-    # EncryptedString type decorator and would transparently decrypt back to
-    # plaintext, which is exactly the behavior this test needs to see past.
+    # raw SQL: the ORM path would decrypt through EncryptedString
     row = (
         await session.execute(text("SELECT token, secret_token FROM bot_settings WHERE id = 1"))
     ).one()
@@ -278,10 +276,10 @@ async def test_oidc_settings_stored_value_is_encrypted_at_rest(
             )
         )
     ).one()
-    # issuer_url/display_name are plain columns -- not secrets, stored as-is.
+    # issuer_url/display_name aren't secrets and are stored as is
     assert row.oidc_issuer_url == "https://keycloak.example.com/realms/myrealm"
     assert row.oidc_display_name == "Keycloak"
-    # client_id/client_secret go through EncryptedString -- must not be plaintext at rest.
+    # client_id/client_secret go through EncryptedString
     assert row.oidc_client_id != "oidc-id"
     assert row.oidc_client_secret != "oidc-secret"
 

@@ -22,7 +22,7 @@ class RedisProvider(Provider):
 
         try:
             await client.ping()  # type: ignore[misc]
-            logger.debug("Successfully connected to Redis")
+            logger.debug("Connected to Redis")
         except Exception as e:
             logger.exception(f"Failed to connect to Redis: {e}")
             raise

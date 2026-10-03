@@ -27,8 +27,8 @@ ACTIVE_SUBSCRIPTIONS: Final[ColumnElement[int]] = (
 
 
 def identity_filter(telegram_ids: set[int], emails: set[str]) -> ColumnElement[bool]:
-    # one array bind each instead of IN (...) -- a blacklist source can exceed
-    # asyncpg's 32,767 bind-parameter cap. emails are expected lowercased.
+    # one array bind each, not IN (...): a blacklist source can exceed asyncpg's
+    # 32,767 bind-parameter cap. Emails are expected lowercased.
     return or_(
         User.telegram_id == any_(literal(list(telegram_ids), ARRAY(BigInteger)))
         if telegram_ids

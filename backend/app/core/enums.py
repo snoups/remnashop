@@ -183,8 +183,8 @@ class OAuthProvider(UpperStrEnum):
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["OAuthProvider"]:
-        # Path params arrive lowercase from the frontend ("github"), member values
-        # are uppercase. Scoped to this enum, not UpperStrEnum -- the others stay strict.
+        # path params arrive lowercase ("github"), values are uppercase; only
+        # this enum is lenient, the rest of UpperStrEnum stays strict
         return cls.__members__.get(value.upper()) if isinstance(value, str) else None
 
 

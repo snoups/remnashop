@@ -134,17 +134,16 @@ async def test_rotate_does_not_extend_grace_when_extend_grace_is_false(
     user = await _create_user(user_repository, uow, "owner")
     created = await _create_session(session_repository, user.id, "t0")
 
-    # First rotation: legitimate "current hash matched" case -- arms the grace
-    # window so a same-moment second tab holding "t0" can still succeed once.
+    # first rotation matches the current hash and arms the grace window for a
+    # second tab still holding "t0"
     await session_repository.rotate(created.id, hash_refresh_token("t1"), extend_grace=True)
     row_after_first = await session_repository.session.get(UserSession, created.id)
     assert row_after_first is not None
     first_grace_until = row_after_first.previous_hash_grace_until
     assert row_after_first.previous_refresh_token_hash == hash_refresh_token("t0")
 
-    # Second rotation happens via the grace-window branch (someone reused the
-    # stale "t0") -- must NOT re-arm the window or move the tracked stale hash
-    # forward, otherwise reuse detection never triggers.
+    # second rotation reuses "t0" via the grace branch and must not re-arm the
+    # window or move the stale hash, or reuse detection never fires
     await session_repository.rotate(created.id, hash_refresh_token("t2"), extend_grace=False)
     row_after_second = await session_repository.session.get(UserSession, created.id)
     assert row_after_second is not None
@@ -180,7 +179,7 @@ async def test_get_by_expired_previous_hash_matches_only_after_grace_elapses(
     created = await _create_session(session_repository, user.id, "old-token")
     await session_repository.rotate(created.id, hash_refresh_token("new-token"))
 
-    # Still within grace -- must NOT match yet.
+    # still within grace
     assert (
         await session_repository.get_by_expired_previous_hash(hash_refresh_token("old-token"))
         is None

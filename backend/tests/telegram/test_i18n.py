@@ -14,10 +14,8 @@ _MESSAGE_ID = "test_i18n_hub_check"
 
 
 async def test_read_translator_hub_builds_a_working_hub(config: AppConfig) -> None:
-    # read_translator_hub opens its own engine (app/telegram/i18n.py), so this
-    # seeds through a genuinely separate, really-committed connection -- the
-    # rolled-back `session` fixture would be invisible to it, same class of
-    # gap covered in tests/modules/blacklist/test_cross_process.py.
+    # read_translator_hub opens its own engine, so the seed goes through a
+    # separate committed connection; the rolled-back `session` is invisible to it
     locale = config.default_locale
     engine = create_async_engine(config.database.dsn)
     added_locale = False

@@ -6,7 +6,6 @@ from prometheus_client import REGISTRY
 from redis.asyncio import Redis as RedisClient
 
 from app.api.dependencies.rate_limit import (
-    RATE_LIMIT_HITS,  # noqa: F401 -- imported to assert the export exists (see RED step)
     _enforce,
     _resolve_rate_limit_identity,
     global_rate_limit,
@@ -52,7 +51,7 @@ async def test_global_rate_limit_allows_requests_under_the_limit(
 ) -> None:
     await redis.delete(
         "remnashop:ratelimit:global:ip:203.0.113.9"
-    )  # REDIS_KEY_PREFIX = "remnashop:" (app/core/constants.py) -- verified, use verbatim
+    )  # REDIS_KEY_PREFIX = "remnashop:" (app/core/constants.py)
     request = _make_request(client_host="203.0.113.9")
 
     await global_rate_limit.__dishka_orig_func__(request, redis, config)  # must not raise
@@ -94,7 +93,7 @@ async def test_global_rate_limit_skips_exempt_paths_entirely(
     for _ in range(301):
         await global_rate_limit.__dishka_orig_func__(
             request, redis, config
-        )  # must never raise -- exempt path
+        )  # exempt path, must not raise
 
     assert await redis.get(key) is None  # never touched
 

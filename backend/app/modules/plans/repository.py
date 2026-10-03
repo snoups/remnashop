@@ -27,8 +27,8 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 
-# Arbitrary fixed keys for pg_advisory_xact_lock -- serialize concurrent writes that a
-# plain read-then-write (or delete-then-insert) could otherwise interleave and corrupt.
+# Fixed pg_advisory_xact_lock keys that serialize writes a read-then-write (or
+# delete-then-insert) would otherwise interleave.
 _PLAN_ORDER_LOCK_KEY: Final[int] = 8221938
 _PLAN_DURATIONS_LOCK_KEY: Final[int] = 8221939
 
@@ -36,10 +36,9 @@ _PLAN_DURATIONS_LOCK_KEY: Final[int] = 8221939
 def _zero_irrelevant_limits(
     plan_type: PlanType, traffic_limit: int, device_limit: int
 ) -> tuple[int, int]:
-    """A plan's type dictates which limit actually applies -- the other is
-    force-zeroed (Remnawave panel convention: 0 = unlimited). Runs
-    unconditionally on every create/update, not just when type changes --
-    idempotent, so re-applying to an already-consistent plan is a no-op."""
+    """A plan's type decides which limit applies; the other is zeroed
+    (0 = unlimited on the panel). Idempotent, so it runs on every create and
+    update."""
     if plan_type == PlanType.DEVICES:
         return 0, device_limit
     if plan_type == PlanType.TRAFFIC:

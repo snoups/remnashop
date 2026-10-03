@@ -29,9 +29,8 @@ const FORM_ITEM_VARIANTS: Variants = {
   leave: { opacity: 0, y: 10, filter: "blur(4px)", transition: { duration: 0.28, ease: "easeIn" } },
 };
 
-// Regenerates on the rare miss instead of constructing a guaranteed-valid
-// string by position, so the output stays a uniform random draw over the
-// full charset -- at 32 characters the retry chance is astronomically low.
+// Retries on a miss instead of forcing characters into positions, so the draw
+// stays uniform; at 32 characters a retry almost never happens.
 function generatePassword(): string {
   let candidate: string;
   do {

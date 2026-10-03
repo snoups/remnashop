@@ -2,8 +2,8 @@ import type { ParseKeys, TFunction } from "i18next";
 
 import type { EventLogEntry } from "@entities/event-log/api";
 
-// Matches `ActorTargetEvent.target` (backend/app/core/events.py) -- `build_payload`
-// derives payload keys from that dataclass's field names, so this has to stay in sync by hand.
+// `ActorTargetEvent.target` (backend/app/core/events.py): `build_payload` takes
+// payload keys from the dataclass fields, so keep this in sync by hand.
 export const PAYLOAD_TARGET_KEY = "target";
 
 export function getTargetLogin(entry: EventLogEntry): string | undefined {
@@ -38,7 +38,7 @@ export function getInitiator(entry: EventLogEntry): UserSnapshot | undefined {
   return { id: entry.actor_id, login: entry.actor_login, name: entry.actor_name };
 }
 
-// Requests from someone not signed in -- no actor exists, only the request's IP.
+// requests from someone not signed in: no actor, only the request's IP
 export const ANONYMOUS_EVENT_TYPES: ReadonlySet<string> = new Set([
   "LoginFailedEvent",
   "OAuthLoginFailedEvent",

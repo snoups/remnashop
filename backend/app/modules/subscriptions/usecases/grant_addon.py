@@ -16,9 +16,8 @@ from app.modules.users import UserRepository
 
 
 class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
-    # System-invoked only, same shape as RegisterTelegramUserUseCase -- no
-    # real actor ever grants an add-on to themselves directly; grant_addon_task
-    # runs it .system()-bound for a promocode's TRAFFIC/DEVICES reward.
+    # system-only: grant_addon_task runs it for a promocode's TRAFFIC/DEVICES
+    # reward
     required_permission = None
 
     def __init__(
@@ -66,9 +65,8 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
             f"Granted addon '{addon.id}' ({addon.amount} {addon.type.value}) "
             f"to subscription '{subscription.id}'"
         )
-        # Retry-safe: update_user above is the only call that raises a retried
-        # exception, and it precedes this -- a failed attempt never reaches
-        # publish, so the event fires exactly once across all attempts.
+        # retry-safe: only update_user above raises a retried exception, so a
+        # failed attempt never gets here and the event fires once
         async with self._uow:
             recipient = await self._user_repository.get_by_id(subscription.user_id)
             await self._event_publisher.publish(

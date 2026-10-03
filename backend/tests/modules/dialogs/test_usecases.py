@@ -374,7 +374,7 @@ async def test_update_buttons_allows_added_url_button(
 @pytest.mark.parametrize(
     "url_value",
     [
-        "example.com",  # no scheme -- Telegram refuses the whole keyboard over it
+        "example.com",  # no scheme, Telegram refuses the whole keyboard
         "javascript:alert(1)",
         "${made_up_variable}",
     ],

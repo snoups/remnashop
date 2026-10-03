@@ -25,10 +25,8 @@ class UserMiddleware(EventTypedMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        # PrivateFilter is a root filter, evaluated *inside* aiogram's outer-
-        # middleware wrapping -- this middleware would otherwise run its DB
-        # write for group-chat senders before PrivateFilter ever rejects the
-        # event. Gate on event_chat here instead of relying on the filter.
+        # PrivateFilter runs inside the outer middlewares, so without this
+        # check group-chat senders would get a DB write before it rejects them
         chat = data.get("event_chat")
         if not isinstance(chat, Chat) or chat.type != ChatType.PRIVATE:
             return await handler(event, data)

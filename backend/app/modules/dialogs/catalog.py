@@ -7,24 +7,21 @@ from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow
 
 Resolver = Callable[..., object]
 
-# Fluent variable identifiers are plain identifiers -- no dots. The catalog's
-# dotted keys, if any are ever registered, are only usable by the render
-# engine's own ${var} substitution in url_value, which is unrelated to Fluent
-# and has no such restriction; this filters them out of what's offered for use
-# inside real Fluent `{ $var }` text.
+# Fluent identifiers can't contain dots. A dotted catalog key works only in
+# url_value's own ${var} substitution, so it's left out of what Fluent text
+# is offered.
 _FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
 # A url_value may interpolate catalog variables as ${name}; what's left after
-# stripping those tokens is the literal part of the URL, and Telegram only
-# accepts a keyboard whose button URLs carry one of these schemes -- it rejects
-# the whole keyboard otherwise, taking the window down with it.
+# stripping those tokens is the literal part of the URL. Telegram rejects the
+# whole keyboard, and the window with it, if a button URL has another scheme.
 URL_VARIABLE_RE: Final[re.Pattern[str]] = re.compile(r"\$\{([a-z0-9_.]+)\}")
 URL_SCHEMES: Final[tuple[str, ...]] = ("https://", "http://", "tg://")
 
 # The namespace for admin-authored dialog text that has no catalog registration
-# of its own: a custom window's body, or a freshly-added button's label. Must
-# stay dash-separated, not dot-separated -- a dot is read as a message
-# attribute, see translations.serializer.split_message_key.
+# of its own: a custom window's body, or a freshly-added button's label.
+# Dashes, not dots: a dot reads as a message attribute
+# (translations.serializer.split_message_key).
 CUSTOM_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-custom-"
 # The key becomes a Fluent message id verbatim, so anything outside this would
 # let one button's label define or shadow another message in the locale.
@@ -97,10 +94,9 @@ def register_action_key(key: str) -> None:
 
 
 def bind_action_handler(key: str, handler: Resolver) -> None:
-    # Requires the key to already be declared via register_action_key -- this is
-    # what lets an action be a deliberately-declared thing usable for validation
-    # (e.g. from the api process, which never binds a handler) rather than
-    # something that becomes valid merely because some window's button mentions it.
+    # the key must be declared via register_action_key first, so validation
+    # (also in the api process, which binds no handlers) knows every action,
+    # not just the ones some button happens to mention
     if key not in _ACTION_KEYS:
         raise ValueError(f"Cannot bind handler to unregistered action key: {key}")
     if key in _ACTIONS:
@@ -147,7 +143,7 @@ def window_text_keys(window_key: str) -> tuple[str, ...]:
 
 def window_key_for_text_key(text_key: str) -> Optional[str]:
     """The window whose body this key would be. For a custom-prefixed key that
-    is only a candidate -- a button label shares the prefix, so the caller
+    is only a candidate: a button label shares the prefix, so the caller
     confirms the window exists."""
     for window in _WINDOWS.values():
         if text_key in window.text_keys:

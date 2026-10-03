@@ -25,9 +25,8 @@ class PromocodeResponse(BaseModel):
 
 
 class PublicPromocodeResponse(BaseModel):
-    # Deliberately excludes allowed_user_ids (would leak other users' ids)
-    # and admin-only fields (max_activations, is_reusable) -- a customer
-    # only needs to know what they just got.
+    # no allowed_user_ids (other users' ids) and no admin-only fields
+    # (max_activations, is_reusable)
     code: str
     reward_type: PromocodeRewardType
     reward: Optional[int] = None

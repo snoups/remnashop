@@ -42,8 +42,7 @@ def _derive(peppered: str, salt: str) -> str:
 
 async def hash_password(password: str, secret: str) -> str:
     salt = secrets.token_hex(16)
-    # scrypt is CPU-bound (~tens of ms) -- offloaded to a thread so it doesn't
-    # stall the event loop for every other in-flight request.
+    # scrypt takes tens of ms of CPU; a thread keeps it off the event loop
     digest = await asyncio.to_thread(_derive, _pepper(password, secret), salt)
     return f"{salt}:{digest}"
 

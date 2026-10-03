@@ -20,9 +20,9 @@ class BotTranslation(BaseSql, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     locale: Mapped[Locale]
     message_id: Mapped[str] = mapped_column(String(64))
-    # "" -- the message's own value, not an attribute. Composite unique index
-    # with a NULL column wouldn't treat two such rows as duplicates in
-    # Postgres, and we need exactly one row per (locale, message_id, "").
+    # "" is the message's own value, not an attribute. Not NULL: Postgres
+    # wouldn't treat two NULL rows as duplicates in the composite unique index,
+    # and there must be exactly one row per (locale, message_id, "").
     attribute_id: Mapped[str] = mapped_column(String(64), default="", server_default="")
     value: Mapped[str] = mapped_column(Text())
     default_value: Mapped[str] = mapped_column(Text())

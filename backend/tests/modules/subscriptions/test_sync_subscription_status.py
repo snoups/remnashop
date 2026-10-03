@@ -221,10 +221,8 @@ async def test_concurrent_syncs_on_the_same_row_serialize_last_writer_wins(
             reloaded = await repo_a.get_by_id(created.id)
             assert reloaded.status in (SubscriptionStatus.LIMITED, SubscriptionStatus.DISABLED)
 
-            # The lock forces a genuine causal chain: whichever call ran
-            # second must have observed the FIRST call's committed write as
-            # its old_status, not the original seed status -- under the old
-            # unlocked code both could read the stale seed and this would fail.
+            # with the lock, the second call sees the first one's write as its
+            # old_status; without it both could read the seed status
             assert len(event_publisher.events) == 2
             by_new_status = {e.new_status: e for e in event_publisher.events}
             limited_event = by_new_status[SubscriptionStatus.LIMITED.value]

@@ -69,11 +69,9 @@ class BackupRepository:
         return self._to_run_dto(row)
 
     async def has_active(self, kind: BackupKind, *, exclude_run_id: Optional[int] = None) -> bool:
-        # PENDING counts too -- a just-created run sits there until the
-        # worker picks it up, and a second click in that window must not
-        # slip past a guard that only looks for RUNNING. exclude_run_id lets
-        # run_backup() ask "is some OTHER run active" without matching its
-        # own still-PENDING row.
+        # PENDING counts too: a new run waits there for the worker, and a
+        # second click meanwhile must not pass. exclude_run_id lets run_backup()
+        # skip its own PENDING row.
         conditions = [
             BackupRun.kind == kind,
             BackupRun.status.in_((BackupRunStatus.PENDING, BackupRunStatus.RUNNING)),
@@ -141,9 +139,8 @@ class BackupRepository:
         return [self._to_run_dto(r) for r in rows], int(total or 0)
 
     async def list_completed_for_rotation(self, kind: BackupKind) -> list[BackupRunDto]:
-        # created_at is Postgres transaction-time `now()` -- ties within one
-        # transaction (e.g. two runs completed back-to-back) need id as a
-        # stable secondary sort for "newest first" to actually hold.
+        # created_at is transaction-time `now()`, so runs from one transaction
+        # tie; id breaks the tie
         stmt = (
             select(BackupRun)
             .where(BackupRun.kind == kind, BackupRun.status == BackupRunStatus.COMPLETED)

@@ -4,8 +4,8 @@ from app.modules.dialogs import catalog
 
 
 def register_menu_metadata() -> None:
-    # Idempotent -- app.telegram.routers.menu.catalog.register_menu_catalog() calls
-    # this on every entry, so it must be safe to call more than once.
+    # idempotent: app.telegram.routers.menu.catalog.register_menu_catalog()
+    # calls it on every entry
     if catalog.has_window("menu.main"):
         return
 
@@ -22,7 +22,7 @@ def register_menu_metadata() -> None:
     )
     catalog.register_condition("has_devices", lambda data: bool(data.get("has_devices")))
 
-    # the first active subscription's -- a user with several gets that one
+    # the first active subscription's; a user with several gets that one
     catalog.register_variable(
         "subscription_url", lambda data: data.get("connect_url", ""), category="subscription"
     )

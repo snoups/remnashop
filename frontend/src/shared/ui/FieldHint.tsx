@@ -9,7 +9,7 @@ interface FieldHintProps {
   content?: ReactNode;
   side?: "top" | "bottom";
   /** "end" keeps the bubble inside the panel when the icon sits at its right
-   * edge -- centered, it would be clipped by the scroll container. */
+   * edge, where a centered one would be clipped by the scroll container. */
   align?: "center" | "end";
 }
 

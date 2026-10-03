@@ -83,8 +83,8 @@ async def test_process_outbox_entry_records_failure_when_a_handler_raises(
     assert row.processed_at is None
     assert row.attempts == 1
     assert row.last_error == "boom"
-    # audit row is durable even when the handler fails -- committed with record_failure,
-    # re-dispatched next sweep, idempotent on outbox_id
+    # the audit row commits with record_failure even when the handler fails;
+    # the next sweep re-dispatches, idempotent on outbox_id
     items, total = await event_log_repository.list()
     assert total == 1
     assert items[0].outbox_id == entry.id
@@ -113,7 +113,7 @@ async def test_process_outbox_entry_is_a_noop_when_already_processed(
     )
 
     items, _ = await event_log_repository.list()
-    assert items == []  # never persisted -- get_unprocessed_by_id returned None up front
+    assert items == []  # get_unprocessed_by_id returned None, nothing persisted
 
 
 async def test_sweep_processes_good_rows_even_when_a_sibling_row_fails(
@@ -239,7 +239,7 @@ async def test_process_outbox_entry_retry_succeeds_without_doubling_the_audit_ro
     )
 
     items, total = await event_log_repository.list()
-    assert total == 1  # idempotent on outbox_id -- not doubled by the retry
+    assert total == 1  # idempotent on outbox_id, the retry doesn't double it
     processed = await session.get(EventOutboxEntry, entry.id)
     await session.refresh(processed)
     assert processed.processed_at is not None

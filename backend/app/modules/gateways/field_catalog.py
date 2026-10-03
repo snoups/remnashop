@@ -28,13 +28,11 @@ class GatewayFieldSpec:
 
 
 GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ...]]] = {
-    # No settings of its own (the bot token is all it would need) -- which also
-    # means is_gateway_configured() is vacuously True, so this can be toggled
-    # active while nothing implements it: there's no adapter in
-    # GATEWAY_REGISTRY and no pre_checkout_query/successful_payment handler in
-    # app/telegram. Harmless today (no customer-facing gateway list exists yet,
-    # and create_checkout refuses this type outright); wire the bot side up
-    # before a storefront starts offering it.
+    # No settings (the bot token is enough), so is_gateway_configured() is
+    # always True and it can be enabled with nothing behind it: no adapter in
+    # GATEWAY_REGISTRY, no pre_checkout_query/successful_payment handler in
+    # app/telegram. create_checkout refuses it; wire the bot side up before a
+    # storefront offers it.
     PaymentGatewayType.TELEGRAM_STARS: (),
     PaymentGatewayType.YOOKASSA: (
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
@@ -163,8 +161,8 @@ def is_gateway_configured(gateway_type: PaymentGatewayType, values: dict[str, st
 
 
 def gateway_flags(gateway_type: PaymentGatewayType, values: dict[str, str]) -> dict[str, bool]:
-    # Unlike every other field these are not secrets, so their current state
-    # is readable -- the dashboard renders them as switches.
+    # unlike every other field these aren't secrets, so the dashboard reads
+    # them back and renders switches
     return {
         field_spec.key: (values.get(field_spec.key) or field_spec.default) == "true"
         for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]

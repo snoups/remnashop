@@ -59,8 +59,8 @@ async def test_reset_owner_access_resets_password_allowlist_and_sessions(
 async def test_reset_owner_access_removes_planted_passkeys_and_oauth_identities(
     session: AsyncSession, config: AppConfig, user_repository: UserRepository
 ) -> None:
-    # a party that held the owner session could have enrolled its own
-    # passkey or linked its own OAuth account -- both log in without the password
+    # whoever held the owner session could have added a passkey or an OAuth
+    # account, and both log in without the password
     owner = await user_repository.create(
         CreateUserDto(
             login="owner", password_hash="x:y", name="owner", role=Role.OWNER, language=Locale.EN

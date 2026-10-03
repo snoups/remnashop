@@ -31,7 +31,7 @@ interface TextEditorPanelProps {
   /** Text takes emoji inline, at the cursor. A premium one becomes the markup
    * the bot turns into a custom_emoji entity. */
   emojiInsert?: boolean;
-  /** Rendered inside the field, in the corner the text never reaches -- the
+  /** Rendered inside the field, in the corner the text never reaches; the
    * button label puts its icon picker there. */
   fieldAction?: ReactNode;
   /** Telegram rejects a button, or a message without a banner, with no text. */

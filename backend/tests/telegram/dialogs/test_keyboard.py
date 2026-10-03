@@ -64,11 +64,9 @@ class _BoundSession(Provider):
         super().__init__()
         self._session = session
 
-    # Overrides DatabaseProvider's own sessionmaker (bound to a fresh, unrelated
-    # engine) so DialogConfigCache reads through the same connection/transaction
-    # as the `session` fixture -- otherwise reload() sees none of this test's
-    # unflushed-to-a-second-connection seed data. Same join_transaction_mode
-    # trick as tests/telegram/dialogs/test_config_cache.py's _session_maker().
+    # DialogConfigCache reads through the `session` fixture's transaction, or
+    # reload() wouldn't see the seed data (join_transaction_mode, as in
+    # tests/telegram/dialogs/test_config_cache.py)
     @provide(scope=Scope.APP)
     def get_session_maker(self) -> async_sessionmaker[AsyncSession]:
         return async_sessionmaker(
@@ -249,8 +247,8 @@ async def test_render_keyboard_skips_button_with_an_empty_label() -> None:
 
 
 async def test_render_keyboard_skips_url_button_with_unusable_scheme() -> None:
-    # Telegram rejects the whole keyboard over one bad URL, taking the window
-    # down with it -- so the bad button drops instead.
+    # Telegram rejects the whole keyboard, and the window, over one bad URL,
+    # so the bad button is dropped
     widget = ConfigKeyboard(window_key="menu.main")
     data = {
         "buttons": [
@@ -346,8 +344,8 @@ async def test_process_item_callback_dispatches_navigate(
 async def test_process_item_callback_navigate_across_state_groups_starts_dialog(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    # switch_to() raises on a cross-group jump, which is exactly what a button
-    # pointing at a custom window does -- those live in their own states group.
+    # switch_to() raises on a cross-group jump, and custom windows live in
+    # their own states group
     class _Here(StatesGroup):
         MAIN = State()
 
@@ -390,10 +388,9 @@ async def test_process_item_callback_navigate_across_state_groups_starts_dialog(
 async def test_default_id_reaches_process_item_callback(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    # Regression: Keyboard.callback_prefix() is falsy without a widget id, so
-    # process_callback() never reaches _process_item_callback -- Task 8 constructs
-    # ConfigKeyboard with no id= for every migrated window, so this has to work
-    # with the default.
+    # Keyboard.callback_prefix() is falsy without a widget id, which would stop
+    # process_callback() short of _process_item_callback; every window builds
+    # ConfigKeyboard without id=.
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     trial_button = next(b for b in window.buttons if b.action_key == "get_trial")
@@ -454,10 +451,8 @@ async def test_process_item_callback_unregistered_action_returns_false(
 async def test_process_item_callback_declared_but_unbound_action_returns_false(
     config: AppConfig, session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    # register_action_key/bind_action_handler split hazard: a key declared in a
-    # flow's metadata (so it's in catalog.action_keys()) but never bound to a
-    # handler must not reach catalog.get_action() -- that would raise KeyError
-    # instead of returning False.
+    # a key declared in flow metadata but never bound to a handler must not
+    # reach catalog.get_action(), which raises KeyError
     await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     trial_button = next(b for b in window.buttons if b.action_key == "get_trial")

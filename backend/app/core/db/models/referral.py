@@ -15,8 +15,8 @@ class Referral(BaseSql, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # SET NULL, not CASCADE: a referrer being deleted shouldn't delete the
-    # referred user's own row -- only the "who invited them" link is lost.
+    # SET NULL, not CASCADE: deleting a referrer loses only the "who invited
+    # them" link, not the referred user
     referrer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     referred_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     level: Mapped[int] = mapped_column(SmallInteger())

@@ -16,9 +16,8 @@ def _patch_transport(monkeypatch: pytest.MonkeyPatch, handler: httpx.MockTranspo
         return original_client_cls(*args, **kwargs, transport=handler)  # type: ignore[arg-type]
 
     monkeypatch.setattr(oidc_module.httpx, "AsyncClient", patched_client)
-    # SSRF guard resolves real DNS -- covered by its own tests
-    # (tests/core/utils/test_http.py); stubbed here so MockTransport can
-    # actually intercept the request instead of it failing before dispatch.
+    # the SSRF guard resolves real DNS (tested in tests/core/utils/test_http.py);
+    # stubbed so the request reaches MockTransport
     monkeypatch.setattr(oidc_module, "assert_public_https_host", _fake_assert_public_https_host)
 
 

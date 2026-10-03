@@ -27,26 +27,18 @@ def _is_trusted_proxy(peer: str) -> bool:
 
 
 def resolve_client_ip(request: Request) -> str:
-    # Only trust X-Forwarded-For when the direct TCP peer is loopback or on
-    # an RFC1918 private range -- matches every docker-compose topology in
-    # this project, where `api` is bound to 127.0.0.1 only and never to a
-    # public interface, so the only things that can ever reach it directly
-    # are a reverse proxy on the same host (loopback) or another container
-    # on the same docker bridge network (private range, e.g. the local dev
-    # compose's Vite proxy). If `api` is ever exposed directly to a public
-    # interface, X-Forwarded-For is ignored rather than trusted.
+    # X-Forwarded-For is trusted only from a loopback or RFC1918 peer: every
+    # compose file binds `api` to 127.0.0.1, so only a same-host reverse proxy
+    # or a container on the docker bridge can reach it. Exposed publicly, the
+    # header is ignored.
     #
-    # Takes the LAST entry, not the first: this project has exactly one
-    # trusted hop (that reverse proxy). Whether it's configured to overwrite
-    # the header or append to it (nginx's `$proxy_add_x_forwarded_for`), the
-    # value it itself appends -- its own view of the real peer -- always
-    # lands last. A client can prepend arbitrary spoofed entries either way;
-    # only the rightmost one was written by something we trust.
+    # The LAST entry: there's exactly one trusted hop, and whether it
+    # overwrites or appends (nginx's `$proxy_add_x_forwarded_for`), its own
+    # view of the peer lands last. Anything before it may be spoofed.
     #
-    # getlist, not get: repeated field lines are one comma-joined list per
-    # HTTP field-order semantics, and a proxy that adds a line rather than
-    # merging (HAProxy's `option forwardfor` without `if-none`) would
-    # otherwise leave the client's own line as the one we read.
+    # getlist, not get: repeated header lines form one list, and a proxy that
+    # adds a line instead of merging (HAProxy's `option forwardfor` without
+    # `if-none`) would otherwise leave us reading the client's line.
     direct_peer = request.client.host if request.client else None
     if direct_peer is None or not _is_trusted_proxy(direct_peer):
         return direct_peer or "unknown"
@@ -84,16 +76,11 @@ async def read_bounded_body(request: Request, limit: int) -> bytes:
 
 
 async def assert_public_https_host(url: str) -> None:
-    # SSRF guard for admin-configured URLs the server itself later fetches
-    # (OIDC issuer discovery). Resolves the hostname and rejects anything
-    # pointing at a private/loopback/link-local/reserved address, so an
-    # admin-level account can't repoint a server-side request at internal
-    # infrastructure. checked once here (write-time) and again
-    # immediately before each request (call-site's responsibility) -- still
-    # leaves a DNS-rebinding TOCTOU window between that second check and the
-    # actual connect; closing it fully needs pinning the resolved IP through
-    # the request, not just re-checking, upgrade if this URL class ever
-    # becomes untrusted-user-configurable rather than admin-only.
+    # SSRF guard for admin-configured URLs the server fetches (OIDC discovery):
+    # rejects hosts resolving to private, loopback, link-local or reserved
+    # addresses. Checked on save and again by the caller before each request;
+    # DNS rebinding between that check and the connect stays open until the
+    # resolved IP is pinned, acceptable while only admins set these URLs.
     parsed = urlsplit(url)
     if parsed.scheme != "https" or not parsed.hostname:
         raise ValidationError(

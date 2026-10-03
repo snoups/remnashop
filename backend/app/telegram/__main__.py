@@ -68,17 +68,13 @@ if __name__ == "__main__":
 
     # Startup crashes go through loguru too, so they reach the dashboard log view.
     with logger.catch(onerror=lambda _: sys.exit(1)):
-        # Read once, before uvicorn starts its own event loop -- uvicorn calls a
-        # `factory=True` app callable synchronously from inside a loop it already
-        # owns, so an asyncio.run() in there would fail ("cannot be called from a
-        # running event loop"). Fetching the token here, then building a concrete
-        # app object, sidesteps that entirely (and matches the "read once at
-        # startup, no hot-reload" design -- see /CLAUDE.md).
+        # Read once, before uvicorn starts its loop: uvicorn calls a
+        # `factory=True` callable from inside a running loop, where asyncio.run()
+        # fails. Hence the token is fetched here and a concrete app is built.
+        # No hot-reload.
         _bot_settings = asyncio.run(read_bot_settings(_config))
-        # Only read the hub when the bot is actually configured -- an unset
-        # token means build_app takes the idle-app path below and never uses
-        # it, and read_translator_hub raises when no locale is active yet
-        # (exactly the state of a fresh, not-yet-configured deploy).
+        # without a token build_app serves the idle app, and on a fresh deploy
+        # read_translator_hub raises (no active locale yet)
         _translator_hub = (
             asyncio.run(read_translator_hub(_config))
             if _bot_settings.token is not None and _bot_settings.secret_token is not None

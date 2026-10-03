@@ -39,19 +39,15 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
                 )
 
         async with self._uow:
-            # OAuth identities (modules/oauth) are left untouched -- they're
-            # customer-adjacent identity, not admin credentials, same as
-            # telegram_id/email surviving demotion. Passkeys are the opposite:
-            # they only ever authenticate into the dashboard, and keeping them
-            # would silently restore access the moment this account is
-            # promoted again.
+            # OAuth identities stay, like telegram_id and email: they're the
+            # customer's identity, not admin credentials. Passkeys only open the
+            # dashboard and would quietly return access on a later promotion.
             updated = await self._user_repository.demote_from_admin(data.user_id)
             assert updated is not None
             await self._passkey_revoker.delete_all_by_user(data.user_id)
-            # demote_from_admin clears the login and the password, but a
-            # session outlives both -- its bearer keeps working as a plain
-            # USER (and without the ip_allowlist just dropped) until it
-            # expires on its own.
+            # demote_from_admin clears login and password, but a live session
+            # would keep working as a plain USER, without the dropped
+            # ip_allowlist, until it expired
             await self._session_revoker.revoke_all_by_user(data.user_id)
             await self._event_publisher.publish(
                 AdminDemotedEvent(actor=actor, target=target, ip_address=data.client_ip)

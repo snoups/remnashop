@@ -43,10 +43,8 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
         async with self._uow:
             active = set(await self._translation_repository.list_active_locales())
             for text in data.texts:
-                # A string the file has but this install doesn't -- a locale
-                # that was switched off, or a key from an older catalog -- is
-                # skipped rather than created: an unknown key would only ever
-                # sit in the DB unread.
+                # a string this install doesn't have (a disabled locale, a key
+                # from an older catalog) is skipped; nothing would ever read it
                 if text.locale not in active:
                     skipped += 1
                     continue

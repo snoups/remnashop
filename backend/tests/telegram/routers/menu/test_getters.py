@@ -14,7 +14,7 @@ from app.telegram.routers.menu.getters import device_confirm_delete_getter, menu
 
 
 def _echo_translator() -> MagicMock:
-    """Echoes the key back, the way the real runner would return a value -- but
+    """Echoes the key back, the way the real runner would return a value, but
     raises on the icon keys nothing seeded, which is what fluentogram does and
     what label_with_icon relies on to tell "no icon" from "an icon"."""
 
@@ -128,9 +128,8 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
 async def test_device_confirm_getter_routes_message_text_through_resolve_variable_kwargs(
     monkeypatch,
 ) -> None:
-    # An admin-saved { $name } in msg-menu-devices-confirm-delete must resolve to
-    # its default instead of crashing the window -- so the getter has to supply
-    # every registered catalog variable, not a bare runner.get().
+    # a saved { $name } in msg-menu-devices-confirm-delete must resolve to its
+    # default, so the getter supplies every registered catalog variable
     assert "user_name" in catalog.variable_keys()
 
     dialog_manager = MagicMock()

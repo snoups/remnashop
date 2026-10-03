@@ -112,7 +112,7 @@ function ButtonFace({
   const { label, isUnlabelled } = useButtonLabel(button, textByKey);
   const styleClassName = button.style ? STYLE_CLASSNAME[button.style] : "border-white/[0.12]";
   const icon = textByKey[iconTextKey(button.text_key)];
-  // a premium icon keeps its plain glyph as the fallback -- drawn if the thumbnail fails
+  // a premium icon keeps its plain glyph, drawn if the thumbnail fails
   const iconId = textByKey[iconIdTextKey(button.text_key)];
 
   return (

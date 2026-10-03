@@ -70,7 +70,7 @@ export function useUserActions({ onUpdated, onDeleted }: UserActionsOptions): Us
 
   const run = (action: UserAction, user: UserListItem) => {
     if (action === "unblock") void setBlocked(user, false);
-    // blocking an admin also demotes them and drops their sessions -- confirm first
+    // blocking an admin also demotes them and drops their sessions, so confirm first
     else if (action === "block") {
       if (user.role === "ADMIN") setPending({ action: "blockAdmin", user });
       else void setBlocked(user, true);

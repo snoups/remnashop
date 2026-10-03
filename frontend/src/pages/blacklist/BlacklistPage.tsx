@@ -38,9 +38,8 @@ import { formatDateTime } from "@shared/lib/relative-time";
 import { BlacklistCard, KindBadge } from "./BlacklistCard";
 import { BlacklistMatchesCard } from "./BlacklistMatchesCard";
 
-// Sync is fire-and-forget on the backend -- give it a moment to finish before
-// refetching the source list so entries_count/last_synced_at have a chance
-// to update. Not a guarantee of completion, just a reasonable delay.
+// Sync is fire-and-forget on the backend; refetching after a short delay
+// usually catches the new entries_count/last_synced_at.
 const SYNC_REFRESH_DELAY_MS = 1500;
 const ENTRIES_PREVIEW_LIMIT = 8;
 
@@ -67,7 +66,7 @@ function isValidEntry(value: string): boolean {
 export function BlacklistPage() {
   const currentUserState = useCurrentUser();
   if (currentUserState.kind !== "ready") return <Spinner size="page" />;
-  // mounted only once permissions are known -- the fetchers below are chosen by them once
+  // mounted once permissions are known, since they pick the fetchers below
   return <BlacklistContent permissions={currentUserState.data.effective_permissions} />;
 }
 

@@ -34,8 +34,7 @@ def test_decode_rejects_tampered_token() -> None:
 
 
 def test_decode_raises_key_error_on_pre_migration_token_missing_sid() -> None:
-    # Simulates a JWT issued before the `sid` claim existed -- get_current_actor
-    # relies on this raising KeyError when the caller reads payload["sid"].
+    # a JWT without `sid`; get_current_actor relies on payload["sid"] raising KeyError
     old_style_payload = {"sub": "1", "exp": int(time.time()) + 900}
     token = pyjwt.encode(old_style_payload, SECRET, algorithm="HS256")
 

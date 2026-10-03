@@ -10,8 +10,8 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const [state, reload] = useAsyncResource(getCurrentUser);
   const { noPermissions } = useDebugState();
 
-  // Debug-bar switch: the frontend gating only (Sidebar, page guards) -- the
-  // API still answers whatever the real account may see.
+  // debug-bar switch for frontend gating only (Sidebar, page guards); the API
+  // still answers what the real account may see
   const visible =
     noPermissions && state.kind === "ready"
       ? { ...state, data: { ...state.data, effective_permissions: [] } }

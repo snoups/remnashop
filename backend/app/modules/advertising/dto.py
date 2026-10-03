@@ -50,7 +50,7 @@ class DailyAttributionCountDto(BaseDto):
 
 class AdLinkStatsDto(BaseDto):
     attributions_count: int
-    # A fraction in [0, 1], not a percentage -- callers multiply by 100 to display.
+    # a fraction in [0, 1], not a percentage
     conversion_rate: Decimal
     attributions_by_channel: dict[AdLinkChannel, int] = Field(default_factory=dict)
     paid_count: int

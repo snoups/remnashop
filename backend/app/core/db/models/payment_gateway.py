@@ -16,7 +16,6 @@ class PaymentGateway(BaseSql, TimestampMixin):
     order_index: Mapped[int] = mapped_column(default=0, server_default="0")
     is_active: Mapped[bool] = mapped_column(default=False, server_default="false")
 
-    # JSON-serialized dict[str, str], encrypted as one opaque blob -- the
-    # field set is polymorphic per type (see modules/gateways/field_catalog.py),
-    # always read/written as one bundle through the admin form.
+    # JSON dict[str, str] encrypted as one blob: the field set differs per type
+    # (modules/gateways/field_catalog.py) and the admin form saves it whole
     settings: Mapped[Optional[str]] = mapped_column(EncryptedString())

@@ -70,9 +70,8 @@ class EventLogRepository:
                 # snapshots carry no telegram_id/username and go stale on rename
                 EventLogEntry.actor_id.in_(select(User.id).where(user_search_filter(search))),
             ]
-            # actor_id is a plain Integer FK (users.id), not BigInteger -- a longer
-            # digit string is a valid `search` value but out of range for the DB
-            # type, and would otherwise raise NumericValueOutOfRange from asyncpg.
+            # actor_id is Integer, not BigInteger: a longer digit string would
+            # make asyncpg raise NumericValueOutOfRange
             if search.isdigit() and int(search) <= INT32_MAX:
                 search_filters.append(EventLogEntry.actor_id == int(search))
             filters.append(or_(*search_filters))

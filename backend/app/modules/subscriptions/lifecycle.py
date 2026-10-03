@@ -25,11 +25,9 @@ def _dto_to_state(dto: SubscriptionDto) -> SubscriptionState:
 
 
 class SubscriptionLifecycleService:
-    """Single collaborator for every status/expire_at-mutating operation on
-    a Subscription -- PurchaseSubscriptionUseCase and
-    SyncSubscriptionStatusUseCase both call into this instead of writing
-    row.status/row.expire_at (or SubscriptionState) directly, so a future
-    third caller reuses the same rules instead of re-deriving them."""
+    """Every status/expire_at change to a Subscription goes through here;
+    PurchaseSubscriptionUseCase and SyncSubscriptionStatusUseCase never write
+    row.status/row.expire_at themselves."""
 
     def __init__(self, subscription_repository: SubscriptionRepository) -> None:
         self._subscription_repository = subscription_repository

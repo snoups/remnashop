@@ -42,8 +42,8 @@ async def test_update_settings_merges_without_dropping_existing_fields(
         PaymentGatewayType.CRYPTOMUS, {"api_key": "secret"}
     )
 
-    # is_configured requires both merchant_id and api_key -- true only if
-    # the second call didn't wipe out merchant_id from the first.
+    # is_configured needs merchant_id and api_key, so the second call must
+    # have kept the first one's merchant_id
     assert gateway.is_configured
 
 
@@ -54,9 +54,7 @@ async def test_settings_stored_encrypted_at_rest(
         PaymentGatewayType.CRYPTOMUS, {"merchant_id": "merchant-1", "api_key": "secret-value"}
     )
 
-    # Raw SQL, not session.get(PaymentGateway, ...) -- the ORM path runs the
-    # EncryptedString type decorator and would transparently decrypt back to
-    # plaintext, which is exactly the behavior this test needs to see past.
+    # raw SQL: the ORM path would decrypt through EncryptedString
     row = (
         await session.execute(
             text("SELECT settings FROM payment_gateways WHERE type = :type"),

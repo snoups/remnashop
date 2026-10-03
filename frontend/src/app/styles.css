@@ -1,20 +1,16 @@
 @import "tailwindcss";
 
-/* Sourced from remnashop.dev's live Fumadocs dark theme (.dark CSS vars, --color-fd-*),
-   not the Mintlify docs.json on the docs branch -- that file is stale, the deployed
-   site no longer uses it. See frontend/DESIGN.md for the mapping. */
+/* Colors from remnashop.dev's Fumadocs dark theme (.dark CSS vars, --color-fd-*). */
 @theme {
   --color-canvas: #111111;
-  /* Form input/select fields — split from --color-canvas so tweaking the page
-     background doesn't also repaint every input. Same value as canvas by
-     default; the two are free to diverge. */
+  /* Form input/select fields, separate from --color-canvas so changing the
+     page background doesn't repaint every input. */
   --color-input: #121212d6;
   --color-surface: #393c47;
   --color-popover: #393c47;
   --color-border: #e8ecfb17;
-  /* Edge for translucent panels sitting over ShaderBackground — near-white at
-     low opacity, distinct from --color-border which is for opaque UI (inputs,
-     popovers). Matches the mockup's --glass-border. */
+  /* Edge for translucent panels over ShaderBackground; --color-border is for
+     opaque UI (inputs, popovers). */
   --color-glass-border: #e8ecfb17;
   --color-foreground: #e8ecfb;
   --color-muted-foreground: #8b93b8;
@@ -34,17 +30,16 @@
   --radius-dialog: 24px;
 }
 
-/* Fallback paint behind ShaderBackground's canvas — before it mounts, and if
-   WebGL2 is unavailable and the canvas hides itself. */
+/* Fallback paint behind ShaderBackground's canvas: before it mounts, and when
+   the canvas hides itself without WebGL2. */
 html {
   background-color: var(--color-canvas);
 }
 
 /* Replaces the browser's default blue focus ring app-wide. `:focus-visible`
    only fires for keyboard navigation, not mouse clicks. Scoped to `@layer
-   base` (not left unlayered) so a `focus-visible:outline-none` utility --
-   itself in Tailwind's `@layer utilities` -- can still win per-element:
-   unlayered CSS always beats layered CSS regardless of specificity. */
+   base`, not unlayered, so a `focus-visible:outline-none` utility (in
+   `@layer utilities`) still wins: unlayered CSS beats any layer. */
 @layer base {
   :focus-visible {
     outline: 1px solid var(--color-primary);
@@ -89,7 +84,7 @@ html {
   height: 16px;
 }
 
-/* Native search-input "clear" (x) button -- hidden: SearchClearButton draws
+/* Native search-input "clear" (x) button, hidden: SearchClearButton draws
    one in every browser (Firefox has no native one). */
 input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
@@ -98,9 +93,8 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 /* Native textarea resize grip. `mask-image` isn't honored on this
-   pseudo-element (Chromium just fills the box with `background-color`,
-   which is why the mask attempt rendered as a solid square) -- the color
-   has to be baked into the SVG itself as a `background-image` instead. */
+   pseudo-element (Chromium fills the box with `background-color`), so the
+   color is baked into the SVG `background-image`. */
 textarea::-webkit-resizer {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238b93b8' stroke-width='1.4' stroke-linecap='round'%3E%3Cline x1='14' y1='2' x2='2' y2='14'/%3E%3Cline x1='14' y1='7' x2='7' y2='14'/%3E%3Cline x1='14' y1='12' x2='12' y2='14'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -156,9 +150,8 @@ textarea::-webkit-resizer {
 
 /* Fades scrolled content into the top edge of a container instead of a hard
    clip. Two mask layers: the fade gradient covers everything but the
-   rightmost 10px (matches the scrollbar width above), which gets a solid,
-   fully-opaque layer -- otherwise the scrollbar itself (painted as part of
-   the same box) fades along with the content. */
+   rightmost 10px (the scrollbar width above), which gets an opaque layer so
+   the scrollbar, painted in the same box, doesn't fade too. */
 .scroll-fade-top {
   -webkit-mask-image:
     linear-gradient(to bottom, transparent, black 24px),
@@ -178,8 +171,8 @@ textarea::-webkit-resizer {
   mask-repeat: no-repeat, no-repeat;
 }
 
-/* Scrolls without reserving the app-wide scrollbar's height/width -- for
-   compact strips (e.g. a pill tab bar) where that would visibly grow the box. */
+/* Scrolls without reserving the app-wide scrollbar's height/width, for
+   compact strips (a pill tab bar) the scrollbar would visibly grow. */
 .no-scrollbar {
   scrollbar-width: none;
 }

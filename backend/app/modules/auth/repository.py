@@ -66,10 +66,8 @@ class SessionRepository:
         return await self.get_by_previous_hash_in_grace(refresh_token_hash)
 
     async def get_by_expired_previous_hash(self, refresh_token_hash: str) -> Optional[SessionDto]:
-        # Distinguishes "this hash was the previous one, but its grace window
-        # already elapsed" (theft) from "this hash was never issued at all"
-        # (plain invalid token) -- get_by_current_hash/get_by_previous_hash_in_grace
-        # intentionally can't tell these apart, since both simply fail to match.
+        # tells "the previous hash, past its grace window" (theft) from "never
+        # issued" (invalid token); the current/in-grace lookups miss on both
         now = datetime_now()
         stmt = select(UserSession).where(
             UserSession.previous_refresh_token_hash == refresh_token_hash,
@@ -114,9 +112,8 @@ class SessionRepository:
     async def revoke_active_by_fingerprint(
         self, user_id: int, ip_address: str, user_agent: Optional[str]
     ) -> None:
-        # Matches Telegram-style "logging in again from the same device
-        # replaces the old session" -- login has no device id to key off of,
-        # so ip_address + user_agent is the closest available fingerprint.
+        # logging in again from the same device replaces the old session; with
+        # no device id, ip_address + user_agent is the fingerprint
         now = datetime_now()
         user_agent_clause = (
             UserSession.user_agent.is_(None)

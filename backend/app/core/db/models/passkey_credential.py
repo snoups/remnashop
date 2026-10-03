@@ -13,9 +13,8 @@ class PasskeyCredential(BaseSql, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    # WebAuthn-generated, base64url-encoded -- globally unique across all
-    # users, which is what lets authentication resolve its owner without a
-    # username (see modules/passkeys/usecases/verify_authentication.py).
+    # WebAuthn-generated, base64url; globally unique, so authentication finds
+    # the owner without a username (modules/passkeys/usecases/verify_authentication.py)
     credential_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     public_key: Mapped[bytes] = mapped_column(LargeBinary())
     sign_count: Mapped[int]

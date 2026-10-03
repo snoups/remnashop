@@ -43,9 +43,8 @@ function generateSecretToken(): string {
 
 function StatusBadge({ status }: { status: BotStatus }) {
   const { t } = useTranslation();
-  // Configured means a token is stored; running means Telegram has a webhook
-  // for it and isn't reporting a delivery error -- only the second one says
-  // the bot is actually answering.
+  // Configured: a token is stored. Running: Telegram has a webhook for it and
+  // reports no delivery error, the only sign the bot actually answers.
   const queued =
     status.pending_update_count > 0
       ? t("settings.bot.pendingUpdates", { total: status.pending_update_count })

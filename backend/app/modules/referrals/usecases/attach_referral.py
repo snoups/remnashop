@@ -74,8 +74,8 @@ class AttachReferralUseCase(UseCase[AttachReferralDto, UserDto, UserDto]):
 
     async def _is_in_own_downline(self, referrer_id: int, *, actor_id: int, max_level: int) -> bool:
         # Walking up from the referrer: meeting the actor means attaching would
-        # close a cycle, and the pair would then earn off each other forever.
-        # Bounded by max_level -- a longer chain can't reward across the loop.
+        # close a cycle, and the pair would earn off each other forever. Bounded
+        # by max_level, since a longer chain can't reward across the loop.
         async with self._uow:
             current_id = referrer_id
             for _ in range(max_level):

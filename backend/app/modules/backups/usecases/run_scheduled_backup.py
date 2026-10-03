@@ -33,8 +33,7 @@ class RunScheduledBackupUseCase(UseCase[None, None]):
             if datetime_now() - latest.finished_at < timedelta(hours=settings.interval_hours):
                 return
 
-        # triggered_by=None (create_run's default) marks the run as
-        # scheduler-started rather than admin-triggered -- see BackupRun.triggered_by
+        # triggered_by=None (create_run's default) marks a scheduler-started run
         async with self._uow:
             run = await self._backup_repository.create_run(
                 CreateBackupRunDto(kind=BackupKind.DATABASE)

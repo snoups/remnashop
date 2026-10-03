@@ -19,7 +19,7 @@ class AdLinkAttribution(BaseSql):
     ad_link_id: Mapped[int] = mapped_column(
         ForeignKey("ad_links.id", ondelete="CASCADE"), index=True
     )
-    # One ad link per user, ever -- first-touch wins, enforced at the DB level.
+    # one ad link per user, ever: first touch wins, enforced by the DB
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     channel: Mapped[AdLinkChannel] = mapped_column(default=AdLinkChannel.BOT, server_default="BOT")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=NOW_FUNC)

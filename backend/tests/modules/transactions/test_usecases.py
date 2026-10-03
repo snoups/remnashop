@@ -501,9 +501,8 @@ async def test_checkout_rejects_an_unimplemented_gateway(
     plan: PlanDto,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Every currently-defined PaymentGatewayType has an adapter -- remove
-    # one to exercise the miss. The checkout guard reads the real registry
-    # regardless of the fake factory this fixture injects.
+    # every PaymentGatewayType has an adapter, so one is removed to get a
+    # miss; the checkout guard reads the real registry, not the fake factory
     monkeypatch.delitem(GATEWAY_REGISTRY, PaymentGatewayType.YOOKASSA)
     with pytest.raises(ValidationError):
         await create_checkout_use_case(

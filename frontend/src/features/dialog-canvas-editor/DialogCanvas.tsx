@@ -31,7 +31,7 @@ export function DialogCanvas({
   return (
     <div className="w-full max-w-sm rounded-2xl border border-white/[0.08] bg-white/[0.03] p-2.5">
       <div className="flex flex-col gap-1.5">
-        {/* Preview only -- the banner is picked on the inspector's window tab.
+        {/* Preview only; the banner is picked on the inspector's window tab.
             No fixed height and no object-cover: whatever was uploaded shows
             whole, in its own ratio, the way Telegram sends it. */}
         {bannerUrl ? (

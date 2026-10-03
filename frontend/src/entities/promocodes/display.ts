@@ -95,7 +95,7 @@ export function limitsDraftOf(promo: Promocode): PromocodeLimitsDraft {
   };
 }
 
-/** undefined means the activation limit isn't a valid number -- reject the submit. */
+/** undefined means the activation limit isn't a valid number; reject the submit. */
 export function limitsToPayload(draft: PromocodeLimitsDraft): LimitsPayload | undefined {
   const maxActivations = parseOptionalInt(draft.maxActivations, 1);
   if (maxActivations === undefined) return undefined;

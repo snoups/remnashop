@@ -52,13 +52,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
 async def client(
     config: AppConfig, test_container: AsyncContainer
 ) -> AsyncIterator[httpx.AsyncClient]:
-    # httpx.AsyncClient + ASGITransport keeps the request on the same event
-    # loop as this test coroutine -- required because the endpoint's
-    # dishka-resolved AsyncSession is the same asyncpg connection the
-    # `session` fixture opened on this test's loop (asyncpg connections are
-    # loop-bound). See tests/modules/users/test_admin_router.py's own comment
-    # on this fixture for the full explanation; this file's copy must stay in
-    # sync with that one since they exercise the same container-wiring contract.
+    # same fixture as tests/modules/users/test_admin_router.py
     app = get_app(config)
     setup_dishka(test_container, app)
     transport = httpx.ASGITransport(app=app)
@@ -69,9 +63,7 @@ async def client(
 async def _issue_token(
     user_id: int, session_repository: SessionRepository, config: AppConfig
 ) -> str:
-    # get_current_actor requires the token's "sid" claim to reference a real,
-    # non-revoked session row -- a bare create_access_token(user_id, secret)
-    # call is no longer enough since the session/refresh-token rework.
+    # get_current_actor needs the "sid" claim to point at a live session row
     session = await session_repository.create(
         CreateSessionDto(
             user_id=user_id,

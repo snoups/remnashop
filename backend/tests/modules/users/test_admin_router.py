@@ -39,15 +39,10 @@ class _TestSessionProvider(Provider):
 
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncContainer:
-    # Mirrors create_api_container()'s own provider list (app/core/di/container.py)
-    # instead of extracting it from an already-built container -- dishka doesn't
-    # expose the original Provider list back off an AsyncContainer. dishka resolves
-    # providers in last-registered-wins order for a given type, so appending
-    # _TestSessionProvider after the real DatabaseProvider overrides just the
-    # AsyncSession factory (whose real version would open a second, independent
-    # connection/transaction outside this test's session/uow fixtures) while
-    # keeping every other provider (and the real UserRepository/usecase wiring)
-    # untouched.
+    # create_api_container()'s provider list (app/core/di/container.py), copied
+    # since dishka can't read it back off a container. The last provider for a
+    # type wins, so _TestSessionProvider replaces only the AsyncSession factory
+    # with the test's own session.
     providers = [
         *get_core_providers(),
         *get_module_providers(),
@@ -62,16 +57,10 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
 async def client(
     config: AppConfig, test_container: AsyncContainer
 ) -> AsyncIterator[httpx.AsyncClient]:
-    # httpx.AsyncClient + ASGITransport runs the app in-process on the same
-    # event loop as this test coroutine, unlike starlette.testclient.TestClient
-    # (used in tests/api/test_app.py), which drives the ASGI app from a
-    # background thread with its own anyio event loop via a blocking portal.
-    # That's fine for test_app.py's DB-free routes, but here the endpoint's
-    # dishka-resolved AsyncSession is the *same* asyncpg connection opened by
-    # the `session` fixture on this test's loop -- asyncpg connections are
-    # loop-bound, so touching them from the portal's separate loop raises
-    # "Future attached to a different loop". Keeping everything on one loop
-    # avoids that and keeps the request inside the same rolled-back transaction.
+    # httpx.AsyncClient + ASGITransport runs the app on this test's loop.
+    # TestClient (tests/api/test_app.py) uses a thread with its own loop, and
+    # the endpoint's session is the `session` fixture's asyncpg connection,
+    # which is loop-bound ("Future attached to a different loop").
     app = get_app(config)
     setup_dishka(test_container, app)
     transport = httpx.ASGITransport(app=app)
@@ -82,9 +71,7 @@ async def client(
 async def _issue_token(
     user_id: int, session_repository: SessionRepository, config: AppConfig
 ) -> str:
-    # get_current_actor requires the token's "sid" claim to reference a real,
-    # non-revoked session row -- a bare create_access_token(user_id, secret)
-    # call is no longer enough since the session/refresh-token rework.
+    # get_current_actor needs the "sid" claim to point at a live session row
     session = await session_repository.create(
         CreateSessionDto(
             user_id=user_id,
@@ -207,8 +194,7 @@ async def test_update_own_security_settings_rejects_self_lockout(
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    # ASGITransport's default client host is not "203.0.113.5" -- this must
-    # be rejected as a self-lockout.
+    # ASGITransport's client host isn't "203.0.113.5", so this is a self-lockout
     assert response.status_code == 400
 
 
@@ -235,8 +221,7 @@ async def test_actor_with_ip_allowlist_is_rejected_from_other_ip(
 
     response = await client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"})
 
-    # ASGITransport's default client host is not "203.0.113.5" -- get_current_actor
-    # must reject the request.
+    # ASGITransport's client host isn't "203.0.113.5", so get_current_actor rejects it
     assert response.status_code == 401
 
 

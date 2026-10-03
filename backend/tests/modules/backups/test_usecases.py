@@ -36,8 +36,7 @@ ADMIN_NO_GRANT = UserDto(id=2, login="admin", name="admin", role=Role.ADMIN, lan
 
 @pytest.fixture
 async def owner(user_repository: UserRepository, uow: UnitOfWork) -> UserDto:
-    # CreateBackupRunUseCase persists triggered_by, which has a real FK to
-    # users.id -- unlike OWNER above, this actor must exist in the DB.
+    # triggered_by is a real FK, so unlike OWNER this actor needs a row
     async with uow:
         user = await user_repository.create(
             CreateUserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -160,11 +159,8 @@ async def test_delete_backup_run_does_not_unlink_file_when_commit_fails(
         )
 
     use_case = DeleteBackupRunUseCase(backup_repository, uow)
-    # simulate a mid-transaction failure: the row delete flushes fine, but the
-    # commit itself blows up -- the old buggy code unlinked the file BEFORE even
-    # touching the DB, so it would have removed it here regardless; the fix only
-    # unlinks after `async with self._uow:` exits cleanly, so a failed commit
-    # must leave the file untouched
+    # the row delete flushes, the commit fails: the file is unlinked only after
+    # a clean commit, so it must survive
     with patch.object(uow, "commit", AsyncMock(side_effect=RuntimeError("commit failed"))):
         with pytest.raises(RuntimeError):
             await use_case(OWNER, created.id)

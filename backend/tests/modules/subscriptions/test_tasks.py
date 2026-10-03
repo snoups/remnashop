@@ -284,8 +284,7 @@ async def test_reconcile_marks_deleted_when_panel_identity_is_gone(
             plan_snapshot=make_plan_snapshot(),
         )
     )
-    # Deliberately not added to remnawave_store -- the fake transport 404s
-    # any user id it doesn't know about (see tests/fakes/remnawave.py).
+    # not in remnawave_store, so the fake transport 404s (tests/fakes/remnawave.py)
 
     await _reconcile_use_case(subscription_repository, remnawave_sdk, uow, event_publisher).system()
 
@@ -317,7 +316,7 @@ async def test_reconcile_skips_subscriptions_already_in_sync(
     )
     remnawave_store[91003] = _user_payload(
         user_id=91003, username="rs_test_91003", expire_at=datetime_now() + timedelta(days=30)
-    )  # _user_payload's own default status is already "ACTIVE" -- matches created's status
+    )  # _user_payload defaults to "ACTIVE", like created
 
     await _reconcile_use_case(subscription_repository, remnawave_sdk, uow, event_publisher).system()
 

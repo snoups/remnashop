@@ -21,12 +21,8 @@ async def test_ensure_dialogs_seeded_seeds_real_menu_windows(
     dialog_repository: DialogRepository, translation_repository, settings_repository
 ) -> None:
     register_menu_catalog()
-    # This test runs against a real, shared dev database (not necessarily empty --
-    # the real api/telegram services may have already activated 'en'), so check
-    # first rather than assuming a pristine locale table and catching the
-    # resulting ConflictError (which leaves the session needing an explicit
-    # rollback before it can be used again -- avoiding the conflict in the
-    # first place is simpler than recovering from it).
+    # the shared dev database may already have 'en' active; checking first is
+    # simpler than recovering the session after a ConflictError
     if Locale.EN not in await translation_repository.list_active_locales():
         await translation_repository.add_active_locale(Locale.EN)
 

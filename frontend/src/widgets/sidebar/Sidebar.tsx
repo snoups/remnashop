@@ -91,8 +91,7 @@ export function Sidebar() {
   const isCollapsed = useSidebarCollapsed();
   const permissions = usePermissions();
   const visibleItems = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission));
-  // Bounce via `scale` (transform), not width/height — transform is layout-inert,
-  // so a pressed row never pushes its neighbours.
+  // `scale`, not width/height, so a pressed row never pushes its neighbours
   const tapProps = bounceTap();
 
   return (
@@ -131,7 +130,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Icon rail only -- the expanded sidebar shows the labels already. Fixed,
+      {/* Icon rail only; the expanded sidebar shows the labels already. Fixed,
           not the shared Tooltip's absolute bubble: the aside scrolls, so an
           absolute one would be clipped at its edge. */}
       {lastHint && (

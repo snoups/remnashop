@@ -19,20 +19,16 @@ export interface TabBarItem {
   isActive: boolean;
 }
 
-// Re-navigating to the already-active tab still calls react-router's
-// navigate() (even though the URL doesn't change), which resets Framer
-// Motion's tap-gesture state on that link -- every tap after the first stops
-// bouncing. Skipping navigation when already active keeps whileTap working.
+// Navigating to the active tab still runs navigate(), which resets Motion's
+// tap state on that link and kills every later bounce, so it's skipped.
 function preventNavigationWhenActive(isActive: boolean) {
   return (event: MouseEvent) => {
     if (isActive) event.preventDefault();
   };
 }
 
-// The scale bounce lives on a separate background pill behind the icon/label,
-// not on the link itself -- scaling the text via `transform` blurs it (same
-// reasoning as BounceIcon avoiding transform for icons), so only the pill
-// grows on tap while the content stays crisp and fixed-size.
+// The bounce is on a pill behind the icon and label: scaling text with
+// `transform` blurs it.
 function Tab({ to, end, icon, label, isActive, pillId }: TabBarItem & { pillId: string }) {
   return (
     <MotionNavLink
@@ -83,14 +79,10 @@ export function TabBar({ items }: { items: TabBarItem[] }) {
 
   return (
     <nav ref={navRef} className="inline-flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
-      {/* No padding/margin of its own -- stays inset by the pill's `p-1`
-          evenly on all four sides, same as before scrolling was added, so
-          this box is a smaller *concentric* capsule and its `rounded-full`
-          clip boundary nests neatly inside the outer one instead of
-          fighting it. `overflow-x-auto` forces `overflow-y` to `auto` too
-          (CSS can't have one axis `auto` and the other `visible`), which
-          can clip a tiny sliver of the hover/tap bounce's overshoot -- a
-          fair trade for corners that actually line up. */}
+      {/* No padding of its own: inset by the pill's `p-1`, it's a concentric
+          capsule whose `rounded-full` clip nests in the outer one.
+          `overflow-x-auto` forces `overflow-y: auto`, which may clip a sliver
+          of the bounce's overshoot. */}
       <motion.div ref={tabsRef} layoutScroll className="no-scrollbar flex gap-1 overflow-x-auto rounded-full">
         {items.map(({ key, ...item }) => (
           <Tab key={key} {...item} pillId={pillId} />

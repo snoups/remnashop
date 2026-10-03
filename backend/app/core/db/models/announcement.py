@@ -17,7 +17,7 @@ class Announcement(BaseSql, TimestampMixin):
     roles: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(16)))
     versions: Mapped[Optional[str]] = mapped_column(String(200))
     auto_open: Mapped[bool]
-    # icon, severity, title, text, url, slides -- an external format passed through, never queried
+    # icon, severity, title, text, url, slides: an external format passed through, never queried
     content: Mapped[dict[str, Any]]
 
 

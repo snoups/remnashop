@@ -16,8 +16,8 @@ export interface DebugState {
   missingKeys: boolean;
 }
 
-// Debug-bar switches, per browser -- nothing here reaches the backend. The bar
-// itself is hidden behind a long press on the sidebar version pill (desktop only).
+// Debug-bar switches, per browser; nothing reaches the backend. The bar opens
+// on a long press of the sidebar version pill (desktop only).
 const STORAGE_KEY = "remnashop_debug";
 
 const DEFAULT_STATE: DebugState = {

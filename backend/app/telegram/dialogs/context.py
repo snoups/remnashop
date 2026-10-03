@@ -12,7 +12,7 @@ async def build_condition_data(
 ) -> dict[str, Any]:
     """What catalog conditions and variables resolve against, so a button an
     admin configures behaves the same whichever window they put it in. Device
-    data is not in here -- it costs a panel call, and only the devices window
+    data is not in here: it costs a panel call, and only the devices window
     itself needs it."""
     active = await list_own_active_subscriptions(user)
     subscription = active[0] if active else None

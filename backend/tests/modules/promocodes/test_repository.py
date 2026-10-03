@@ -194,16 +194,10 @@ async def test_claim_activation_raises_once_max_activations_reached(
 
 
 def _widen_locking_select_race_window(session: AsyncSession) -> None:
-    # Pauses right after claim_activation's locking SELECT returns, before
-    # its caller issues the follow-up max_activations count query. Without
-    # this, whichever of the two sessions happens to dispatch its query a
-    # few microseconds sooner reliably finishes its whole claim (and
-    # commits) before the other side's count query even runs -- on a local
-    # Postgres the round trip is fast enough that the two sides essentially
-    # never overlap on their own, silently defeating the race this test
-    # exists to catch. With the row lock in place, the losing side's SELECT
-    # blocks server-side until the winner commits, so this pause never
-    # actually applies to it -- it only ever widens the (buggy) unlocked case.
+    # Pauses between claim_activation's locking SELECT and the max_activations
+    # count. On a local Postgres one side otherwise finishes before the other
+    # starts and the race never happens. With the lock, the loser blocks in
+    # its SELECT, so the pause only widens an unlocked race.
     original_execute = session.execute
 
     async def _delayed_execute(statement: object, *args: object, **kwargs: object) -> object:
@@ -219,10 +213,8 @@ def _widen_locking_select_race_window(session: AsyncSession) -> None:
 async def test_claim_activation_concurrent_calls_against_cap_only_one_succeeds(
     engine: AsyncEngine,
 ) -> None:
-    # Two independent sessions/connections, not the shared savepoint-bound
-    # `session` fixture -- that one is single-connection and can't demonstrate
-    # cross-connection row locking. Each session commits for real, so this
-    # cleans up after itself in a try/finally instead of relying on rollback.
+    # two real connections (`session` is a single one); both commit, so the
+    # cleanup is a try/finally
     session_a = AsyncSession(bind=engine, expire_on_commit=False)
     session_b = AsyncSession(bind=engine, expire_on_commit=False)
     promocode_id = None
@@ -237,10 +229,8 @@ async def test_claim_activation_concurrent_calls_against_cap_only_one_succeeds(
         second_user_id = await _create_user(UserRepository(session_a), 9102)
         await session_a.commit()
 
-        # Warm both connections' plan cache with the exact query shape
-        # claim_activation's locking SELECT issues -- an unwarmed connection's
-        # first query is itself slow enough to reproduce the same false-pass
-        # the delay above guards against.
+        # warm both connections with claim_activation's query: a cold first
+        # query is slow enough to hide the race too
         locking_select = select(Promocode).where(Promocode.id == promocode_id)
         await session_a.execute(locking_select)
         await session_b.execute(locking_select)
@@ -369,8 +359,8 @@ async def test_claim_activation_refuses_a_repeat_after_reusable_was_turned_off(
     )
     await promocode_repository.update(UpdatePromocodeDto(promocode_id=promo.id, is_reusable=False))
 
-    # Two activations on record: asking for exactly one here used to raise
-    # MultipleResultsFound instead of refusing the claim.
+    # two activations on record: a scalar_one() lookup would raise
+    # MultipleResultsFound instead of refusing the claim
     with pytest.raises(ValidationError):
         await promocode_repository.claim_activation(
             promocode_id=promo.id, user_id=user_id, subscription_id=None

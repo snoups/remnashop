@@ -19,6 +19,6 @@ export function useClickOutside<T extends Element>(
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs/onOutside are stable across renders (ref objects, setState setters)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs/onOutside are stable (ref objects, setState setters)
   }, [active]);
 }

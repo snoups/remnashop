@@ -12,10 +12,9 @@ from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto, UserRepository
 
-# A syntactically-valid but unusable hash ("<32-hex salt>:<128-hex digest>", the
-# exact shape hash_password() produces) -- verified against on an unknown login
-# so scrypt always runs. Without this, a missing login returns before scrypt
-# even starts, and the timing gap reveals which logins exist.
+# A well-formed but unusable hash (hash_password()'s "<32-hex salt>:<128-hex
+# digest>" shape), checked for an unknown login so scrypt always runs and the
+# response time doesn't reveal which logins exist.
 _DUMMY_PASSWORD_HASH: Final[str] = ("0" * 32) + ":" + ("0" * 128)
 # Same bounds bootstrap enforces on a login. A value outside them can't belong
 # to any account, and would otherwise reach the audit payload and the log raw.
@@ -67,11 +66,9 @@ class LoginUseCase:
             )
         password_is_valid = await verify_password(password, stored_hash, password_pepper)
 
-        # Same generic error whether the login doesn't exist, the password is
-        # wrong, or the account is blocked -- distinguishing any of these would
-        # let a client enumerate logins or blocked-status. verify_password()
-        # above always ran (even against the dummy hash), so an unknown login
-        # doesn't respond measurably faster and leak via timing.
+        # one error for an unknown login, a wrong password and a blocked
+        # account, so none can be enumerated; verify_password() above always
+        # ran, so timing doesn't tell them apart either
         if user is None or user.password_hash is None or not password_is_valid or user.is_blocked:
             async with self._uow:
                 await self._event_publisher.publish(

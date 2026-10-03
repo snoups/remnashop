@@ -39,7 +39,7 @@ class BlockUserUseCase(UseCase[int, UserDto]):
             if not PermissionPolicy.can_manage(actor, target):
                 raise PermissionDeniedError
             is_admin = target.role == Role.ADMIN
-            # blocking an admin demotes them first -- same gate as demoting directly
+            # blocking an admin demotes them first, behind the same gate as a demotion
             if is_admin and not PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
                 raise PermissionDeniedError
 

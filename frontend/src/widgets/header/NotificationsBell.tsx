@@ -59,8 +59,8 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
 
   const [data, setData] = useState<Notifications | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  // how many of the newest items were unread when the popover opened -- they
-  // keep their dot while it stays open, even though the server now says 0
+  // how many of the newest items were unread when the popover opened; they
+  // keep their dot while it stays open, though the server now says 0
   const [highlighted, setHighlighted] = useState(0);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementsLoaded, setAnnouncementsLoaded] = useState(false);

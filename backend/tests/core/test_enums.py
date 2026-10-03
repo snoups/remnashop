@@ -20,8 +20,8 @@ def test_oauth_provider_accepts_any_case(value: str) -> None:
 
 
 def test_oauth_provider_keeps_uppercase_value() -> None:
-    # The Postgres enum labels are 'GITHUB'/'TELEGRAM' -- only construction is
-    # case-insensitive, the stored value must not drift.
+    # the Postgres labels are 'GITHUB'/'TELEGRAM': only construction is
+    # case-insensitive, the stored value isn't
     assert OAuthProvider.GITHUB.value == "GITHUB"
     assert OAuthProvider.TELEGRAM.value == "TELEGRAM"
 

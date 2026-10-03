@@ -133,9 +133,8 @@ class TransactionRepository:
     async def get_by_external_payment_id(
         self, external_id: str, *, gateway_type: Optional[PaymentGatewayType] = None
     ) -> Optional[TransactionDto]:
-        # external_payment_id is unique per gateway, not globally -- two
-        # providers can hand out the same id, so a caller that knows which
-        # gateway it is asking about passes it.
+        # external_payment_id is unique per gateway only; two providers can
+        # issue the same id
         filters = [Transaction.external_payment_id == external_id]
         if gateway_type is not None:
             filters.append(Transaction.gateway_type == gateway_type)
@@ -177,9 +176,7 @@ class TransactionRepository:
         return cast(CursorResult, result).rowcount > 0
 
     async def cancel_expired_pending(self, cutoff: datetime) -> list[TransactionDto]:
-        # A bulk Core update() bypasses the ORM's attribute-level onupdate
-        # hook, so updated_at (shown in the admin router) has to be set
-        # explicitly here -- it wouldn't otherwise bump on this path.
+        # a Core update() skips the ORM's onupdate, so updated_at is set by hand
         rows = await self.session.scalars(
             update(Transaction)
             .where(

@@ -49,8 +49,7 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncConta
 async def client(
     config: AppConfig, test_container: AsyncContainer
 ) -> AsyncIterator[httpx.AsyncClient]:
-    # See tests/modules/users/test_admin_router.py's comment on this same
-    # fixture shape -- keep in sync, same container-wiring contract.
+    # same fixture as tests/modules/users/test_admin_router.py
     app = get_app(config)
     setup_dishka(test_container, app)
     transport = httpx.ASGITransport(app=app)
@@ -161,8 +160,7 @@ async def test_api_tokens_router_rejects_admin_without_grant(
     uow: UnitOfWork,
     config: AppConfig,
 ) -> None:
-    # ADMIN's role default does not include API_TOKENS_MANAGE -- confirms the
-    # usecase-level permission gate, not just require_admin's role check.
+    # ADMIN lacks API_TOKENS_MANAGE: the usecase gate, not require_admin
     admin = await _create_user(user_repository, uow, config, Role.ADMIN, "plainadmin2")
     token = await _issue_token(admin.id, session_repository, config)
 

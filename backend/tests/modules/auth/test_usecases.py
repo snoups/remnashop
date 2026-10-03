@@ -154,9 +154,8 @@ async def test_bootstrap_rejects_second_owner(
 async def test_db_partial_index_blocks_second_owner_row(
     user_repository: UserRepository, uow: UnitOfWork, config: AppConfig
 ) -> None:
-    # Exercises the DB-level guard directly, bypassing the use case's own
-    # exists_with_role() check -- this is what actually closes the TOCTOU race
-    # between two concurrent bootstrap requests (see ux_users_single_owner).
+    # the DB guard itself (ux_users_single_owner), past exists_with_role(): it's
+    # what closes the race between two bootstrap requests
     async def create_owner(login: str) -> None:
         await user_repository.create(
             CreateUserDto(
@@ -464,11 +463,8 @@ async def test_refresh_rotates_and_returns_new_access_token(
         refresh_token=issued.refresh_token, ip_address=CLIENT_IP, user_agent=USER_AGENT
     )
 
-    # create_access_token has no jti/nonce -- it's deterministic on
-    # (user_id, session_id, exp-second), so a same-session reissue within the
-    # same wall-clock second legitimately produces a byte-identical access
-    # token. The refresh token is the actual, guaranteed-random signal that
-    # rotation happened.
+    # access tokens have no jti, so a reissue within the same second is
+    # identical; the random refresh token shows the rotation
     assert refreshed.access_token
     assert refreshed.refresh_token != issued.refresh_token
 
@@ -491,8 +487,7 @@ async def test_refresh_within_grace_window_after_rotation_succeeds(
     await use_case.execute(
         refresh_token=issued.refresh_token, ip_address=CLIENT_IP, user_agent=USER_AGENT
     )
-    # Second tab's request was already in flight with the now-superseded token
-    # -- within the grace window this must succeed, not be treated as theft.
+    # a second tab's request with the superseded token, inside the grace window
     second = await use_case.execute(
         refresh_token=issued.refresh_token, ip_address=CLIENT_IP, user_agent=USER_AGENT
     )
@@ -515,27 +510,22 @@ async def test_refresh_ping_pong_reuse_of_stale_token_eventually_fails(
     use_case = RefreshSessionUseCase(session_repository, issuer, uow, event_publisher)
 
     t0 = issued.refresh_token
-    # Attacker (holds a copy of T0) refreshes first -- succeeds, gets T1.
+    # attacker holds a copy of T0 and refreshes first, getting T1
     attacker = await use_case.execute(refresh_token=t0, ip_address=CLIENT_IP, user_agent=USER_AGENT)
     t1 = attacker.refresh_token
-    # Victim, unaware, refreshes with their own still-cached T0 shortly after
-    # -- this is the intended benign "second tab" race, must still succeed once.
+    # the victim's T0 refresh right after is the benign "second tab" race and
+    # must still succeed once
     victim = await use_case.execute(refresh_token=t0, ip_address=CLIENT_IP, user_agent=USER_AGENT)
     t2 = victim.refresh_token
     assert t1 != t2
 
-    # Before the fix, T1 (minted for the attacker via the fraudulent rotation)
-    # kept working indefinitely because every grace-branch rotation re-armed
-    # the window and shifted "previous" forward to whatever was briefly
-    # current. After the fix, T1 is neither the current hash (T2 is) nor the
-    # tracked previous hash (still T0's slot, untouched by the
-    # extend_grace=False rotation) -- it must now be rejected.
+    # T1 is neither the current hash (T2 is) nor the tracked previous one (still
+    # T0: the grace-branch rotation doesn't shift it), so it's dead. If each
+    # grace rotation re-armed the window, T1 would live forever.
     with pytest.raises(AuthenticationError):
         await use_case.execute(refresh_token=t1, ip_address=CLIENT_IP, user_agent=USER_AGENT)
 
-    # The legitimate current token must still work -- a fix that broke both
-    # tokens instead of just rejecting the attacker's stale one would also
-    # pass the assertion above; this proves only the attacker's path failed.
+    # rejecting every token would also pass the check above
     final = await use_case.execute(refresh_token=t2, ip_address=CLIENT_IP, user_agent=USER_AGENT)
     assert final.access_token
 
@@ -604,8 +594,7 @@ async def test_list_sessions_returns_only_actors_own(
     config: AppConfig,
     event_publisher: EventPublisher,
 ) -> None:
-    # _bootstrap_owner already issues one session for the owner as part of
-    # bootstrap -- no need to issue a second one here.
+    # _bootstrap_owner already issued the owner a session
     owner = await _bootstrap_owner(
         user_repository, uow, config, event_publisher, session_repository
     )
@@ -631,8 +620,7 @@ async def test_revoke_session_removes_it_from_active_list(
     config: AppConfig,
     event_publisher: EventPublisher,
 ) -> None:
-    # _bootstrap_owner already issues one session for the owner as part of
-    # bootstrap -- that's the session under test, no need to issue another.
+    # _bootstrap_owner's session is the one under test
     owner = await _bootstrap_owner(
         user_repository, uow, config, event_publisher, session_repository
     )
@@ -823,7 +811,6 @@ async def test_logout_revokes_the_session(
     use_case = LogoutUseCase(session_repository, uow)
     await use_case.execute(refresh_token=issued.refresh_token)
 
-    # Verify the issued session is revoked by checking it's no longer found by its hash
     assert (
         await session_repository.get_rotatable_by_hash(hash_refresh_token(issued.refresh_token))
         is None

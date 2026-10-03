@@ -19,7 +19,7 @@ _PANEL_USERNAME_PREFIX: Final[str] = "rs_"
 
 class SupersededError(ValidationError):
     """A concurrent purchase committed first and now owns the panel identity
-    this one reconfigured -- reverting it would overwrite the winner's config."""
+    this one reconfigured; reverting it would overwrite the winner's config."""
 
 
 def new_panel_user(user_id: int, plan: PlanSnapshot, expire_at: datetime) -> CreateUserRequestDto:

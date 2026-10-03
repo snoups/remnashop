@@ -574,9 +574,8 @@ async def test_update_admin_rejects_targeting_owner(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> None:
-    # OWNER in these tests is a plain in-memory UserDto (id=1), not a persisted
-    # row -- targeting it directly would raise NotFoundError, not the ConflictError
-    # this test means to check. Persist a real OWNER row and target that instead.
+    # OWNER here is an in-memory UserDto with no row, which would give
+    # NotFoundError instead of ConflictError, so a real OWNER row is created
     async with uow:
         owner_row = await user_repository.create(
             CreateUserDto(login="realowner", name="realowner", role=Role.OWNER, language=Locale.EN)
@@ -758,9 +757,8 @@ async def test_list_users_excludes_admins_and_owner(
     uow: UnitOfWork,
     blacklist_repository: BlacklistRepository,
 ) -> None:
-    # USERS_VIEW is grantable to a regular admin and to API tokens -- it must
-    # never surface admin/owner logins (that's ListAdminsUseCase's job, gated
-    # by the non-grantable ADMINS_MANAGE).
+    # USERS_VIEW can be granted to any admin or token, so it never lists staff
+    # (ListAdminsUseCase does, behind ADMINS_MANAGE)
     async with uow:
         await user_repository.create(
             CreateUserDto(login="owner10", name="owner10", role=Role.OWNER, language=Locale.EN)

@@ -272,7 +272,7 @@ export function HeaderSearch() {
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="w-80 p-1.5"
       >
-        {/* scroll lives inside the padding -- on the popover itself the
+        {/* scroll lives inside the padding: on the popover itself the
             scrollbar column paints over the rounded corners */}
         <div className="max-h-96 overflow-y-auto">
         {entries.length === 0 && (isFetching || query.trim() !== debounced) ? (

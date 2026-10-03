@@ -61,12 +61,9 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
             )
             candidate_text = serialize_to_fluent(candidate)
             assert_fluent_compiles(data.locale, candidate_text)
-            # Checked against just this one submitted value, not candidate_text
-            # (the whole locale) -- scoping to the whole locale would reject an
-            # edit to any OTHER key the moment one placeable-bearing value exists
-            # anywhere in it (e.g. seeded bot-menu content), which isn't what
-            # this restriction is meant to catch. contains_placeable needs a
-            # full "id = value" line to parse a Pattern at all, hence the
+            # only the submitted value, not candidate_text: any seeded value
+            # with a placeable would otherwise block edits to every other key.
+            # contains_placeable parses a full "id = value" line, hence the
             # throwaway id.
             if contains_placeable(f"placeholder-id = {data.value}"):
                 raise ValidationError(

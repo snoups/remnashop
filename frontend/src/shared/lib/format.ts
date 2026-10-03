@@ -40,7 +40,7 @@ export function formatPercent(fraction: string | number, language: string, signe
 
 const BYTE_UNITS = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte"] as const;
 
-/** "1,5 ГБ" / "1.5 GB" -- binary steps, unit names from Intl. */
+/** "1,5 ГБ" / "1.5 GB": binary steps, unit names from Intl. */
 export function formatBytes(bytes: number, language: string): string {
   let value = bytes;
   let unit = 0;

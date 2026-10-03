@@ -23,9 +23,8 @@ from app.modules.users import UserStatsRepository
 
 
 class GetOverviewUseCase(UseCase[None, OverviewDto]):
-    # Every admin may call this -- gating happens per-section below, not at
-    # the router/permission-check level, since no single Permission covers
-    # "can see the overview page".
+    # open to every admin: each section below checks its own permission, since
+    # no single Permission covers the overview page
     required_permission = Permission.PUBLIC
 
     def __init__(

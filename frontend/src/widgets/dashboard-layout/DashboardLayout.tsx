@@ -86,9 +86,8 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
       <EntityDialogHost>
       <motion.div
         // A collapsed sidebar gives its 176px (w-62 - 72px) back by narrowing the
-        // whole shell, not by widening the card -- same duration/easing as the
-        // sidebar's own width transition, so the card holds its width throughout
-        // (both ends written via min() so the interpolation stays linear on narrow screens).
+        // shell, not widening the card, on the sidebar's own timing, so the card
+        // keeps its width (both ends use min() to stay linear on narrow screens).
         className={`mx-auto flex h-dvh max-w-[min(1280px,100%)] flex-col text-foreground transition-[max-width] duration-200 ease-out md:h-screen md:flex-row ${
           isSidebarCollapsed ? "xl:max-w-[calc(min(1280px,100%)-11rem)]" : ""
         }`}
@@ -109,13 +108,7 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
           <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] pb-6 pl-4 pr-[calc(1rem-10px)] pt-2 md:pb-8 md:pl-8 md:pr-[calc(2rem-10px)] md:pt-4">
             <AnimatedOutlet />
           </main>
-          {/* Dialogs portal here, not into `main` -- `main`'s `mask-image`
-              (scroll-fade-top) makes it a containing block for `position:
-              fixed`, which would shrink a dialog's fixed backdrop down to
-              `main`'s own box and leave the header undimmed. This node sits
-              outside `main` but still inside this wrapper's `backdrop-blur`,
-              so dialogs keep the wrapper as their containing block instead --
-              same look as before the scroll fade was added. */}
+          {/* dialogs portal here, not into `main` (see DialogPortal) */}
           <div id="dialog-root" />
         </motion.div>
         <BottomNav />

@@ -62,7 +62,7 @@ class ActivateTrialSubscriptionUseCase(
             )
         except Exception:
             # NewPurchase disables the panel user it minted on failure, so
-            # nothing was granted -- give the trial back for a retry.
+            # nothing was granted; the trial goes back for a retry
             with suppress(Exception):
                 async with self._uow:
                     await self._user_repository.update_fields(

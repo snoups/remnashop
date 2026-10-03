@@ -91,10 +91,9 @@ class TelegramWebhookEndpoint:
             ) from error
 
         if len(self._feed_update_tasks) >= _MAX_CONCURRENT_UPDATES:
-            # Caps pending task creation itself, not just processing inside
-            # _feed_update's semaphore -- otherwise a client hitting this
-            # endpoint directly (bypassing Telegram's own delivery throttling)
-            # can pile up unbounded Task/Update objects ahead of the semaphore.
+            # caps task creation, not only the work under _feed_update's
+            # semaphore: a client calling this endpoint directly, past
+            # Telegram's throttling, could pile up tasks ahead of it
             logger.warning(f"Update queue full, rejecting update '{update.update_id}'")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Server busy"

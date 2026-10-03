@@ -7,15 +7,10 @@ import httpx
 
 from app.core.exceptions import RemnawavePanelUnavailableError
 
-# a two-state breaker (closed/open) with a cooldown-gated re-entry,
-# not a textbook three-state (closed/open/half-open) breaker with a
-# single-probe guarantee -- after the cooldown, every concurrent caller that
-# arrives before the first post-cooldown result is recorded gets to probe,
-# not just one. Acceptable: Remnawave calls are low-volume enough (a handful
-# of purchase/renew/change/grant/reconcile calls at a time, never a request
-# storm) that a few concurrent probes instead of exactly one costs nothing
-# real. Upgrade to an explicit HALF_OPEN state with a probe-token if this
-# SDK ever sits behind high-concurrency traffic.
+# Two states (closed/open), no half-open: after the cooldown every caller that
+# arrives before the first result probes, not just one. Remnawave traffic is a
+# handful of calls at a time, so that costs nothing; add HALF_OPEN with a probe
+# token if it ever gets heavy.
 _FAILURE_THRESHOLD: Final[int] = 5
 _RECOVERY_TIMEOUT_S: Final[float] = 30.0
 _MAX_RETRY_ATTEMPTS: Final[int] = 3
@@ -27,7 +22,7 @@ _RETRYABLE_METHODS: Final[frozenset[str]] = frozenset({"GET"})
 class ResilientTransport(httpx.AsyncBaseTransport):
     """Wraps another transport with a circuit breaker and retry-with-backoff
     for idempotent (GET) requests. A "failure" is a transport-level
-    exception or an HTTP 5xx -- a 4xx means the panel is responsive and
+    exception or an HTTP 5xx; a 4xx means the panel is responsive and
     rejecting this specific request, not unhealthy, so it doesn't count
     toward the breaker and is never retried."""
 
@@ -60,9 +55,9 @@ class ResilientTransport(httpx.AsyncBaseTransport):
             if response.status_code >= 500:
                 await self._record_failure()
                 if attempt < attempts - 1:
-                    await response.aclose()  # discarded -- release the connection
+                    await response.aclose()  # discarded, release the connection
                     continue
-                return response  # terminal attempt -- caller reads this one
+                return response  # terminal attempt, the caller reads this one
             await self._record_success()
             return response
 

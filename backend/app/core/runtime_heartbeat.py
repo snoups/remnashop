@@ -37,9 +37,8 @@ class HostMemory:
 
 
 def read_host_memory() -> Optional[HostMemory]:
-    # /proc/meminfo is a Linux-only interface -- inside a container it's the
-    # shared host/VM kernel's view (not cgroup-namespaced), which is exactly
-    # what we want to show. Unavailable outside Linux (e.g. local macOS dev).
+    # /proc/meminfo is Linux-only; in a container it shows the host/VM kernel's
+    # memory (not cgroup-scoped), which is what the card wants
     try:
         with open("/proc/meminfo") as f:
             values: dict[str, int] = {}
@@ -62,8 +61,8 @@ def _heartbeat_key(process: str) -> str:
 
 
 def _current_rss_bytes() -> int:
-    # ru_maxrss is KB on Linux, bytes on Darwin -- peak rather than current,
-    # but stdlib-only and close enough for a dashboard card.
+    # ru_maxrss is KB on Linux, bytes on Darwin; peak, not current, but close
+    # enough for a dashboard card
     raw = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return raw if sys.platform == "darwin" else raw * 1024
 
@@ -100,8 +99,7 @@ async def read_runtime_heartbeats(redis: Redis) -> list[RuntimeHeartbeat]:
                 pid=data["pid"],
                 started_at=data["started_at"],
                 rss_bytes=data["rss_bytes"],
-                # .get() with a default -- a heartbeat published by a process
-                # not yet running this code (mid-rollout) won't carry these.
+                # a heartbeat from an older process (mid-rollout) lacks these
                 event_loop_delay_ms=data.get("event_loop_delay_ms", 0.0),
                 event_loop_p99_ms=data.get("event_loop_p99_ms", 0.0),
             )

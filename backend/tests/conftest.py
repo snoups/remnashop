@@ -1,18 +1,12 @@
 import os
 
-# Tests run against the local Postgres/Redis containers used for local dev (see
-# CLAUDE.md) -- override the docker-service hostnames the real app expects.
-# Everything else (secrets, remnawave/bot tokens) comes from the repo-root
-# .env, same as any other local run.
+# Tests run against the local dev Postgres/Redis containers, so the
+# docker-service hostnames the real app expects are overridden here.
+# Everything else (secrets, remnawave/bot tokens) comes from the repo-root .env.
 #
-# This MUST run before any import below: app.modules.promocodes.repository
-# transitively imports app.worker.broker, which builds its ListQueueBroker
-# singleton at import time from AppConfig.get().redis.dsn. Import it after
-# the overrides and that singleton bakes in the docker-internal Redis
-# hostname for the rest of the pytest session -- every OutboxEventPublisher
-# .kiq() call then spends ~5s failing DNS resolution before the
-# contextlib.suppress in publish() swallows it, which is where a ~14min
-# full suite came from despite nothing being actually broken.
+# Must run before the imports below: app.worker.broker builds its broker at
+# import time from AppConfig.get().redis.dsn, and with the docker hostname
+# every .kiq() waits ~5s on DNS before publish() swallows the error.
 os.environ.setdefault("DATABASE_HOST", "localhost")
 os.environ.setdefault("DATABASE_PORT", "5432")
 os.environ.setdefault("REDIS_HOST", "localhost")
@@ -72,11 +66,9 @@ def config() -> AppConfig:
 
 @pytest.fixture(autouse=True)
 async def _clean_redis(config: AppConfig) -> AsyncIterator[None]:
-    # Unlike `session` (rolled back per test), Redis state from one test --
-    # rate-limit counters, oauth state, the webhook replay guard -- has no
-    # equivalent cleanup and would otherwise persist (by TTL) across tests
-    # and even separate pytest invocations. Dedicated test-only container
-    # (see the REDIS_HOST/REDIS_PORT override above), safe to flush wholesale.
+    # Redis state (rate-limit counters, oauth state, the webhook replay guard)
+    # isn't rolled back like `session` and would outlive the test; the
+    # container is test-only, so flushing it whole is safe.
     client = Redis.from_url(config.redis.dsn, decode_responses=True)
     await client.flushdb()
     try:

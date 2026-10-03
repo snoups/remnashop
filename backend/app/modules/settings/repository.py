@@ -24,11 +24,9 @@ from app.modules.settings.dto import (
 )
 
 _SINGLETON_ID: Final[int] = 1
-# Arbitrary fixed key for pg_advisory_xact_lock -- serializes concurrent
-# replace_bot_commands calls so a delete+insert pair can't interleave with
-# another one (plain DELETE FROM without WHERE re-evaluates its row set after
-# a lock wait, so two concurrent replacements could otherwise both insert
-# instead of the second cleanly replacing the first).
+# pg_advisory_xact_lock key serializing replace_bot_commands: DELETE without
+# WHERE re-evaluates its rows after a lock wait, so two concurrent
+# replacements would otherwise both insert.
 _BOT_COMMANDS_LOCK_KEY: Final[int] = 8221937
 
 _SingletonRow = TypeVar(

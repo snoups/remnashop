@@ -19,8 +19,7 @@ async def read_bot_settings(config: AppConfig) -> BotSettingsDto:
 
 
 async def enable_password_login(config: AppConfig) -> None:
-    # Same standalone-engine rationale as read_bot_settings() -- app/cli runs
-    # outside the normal dishka-managed process lifecycle entirely.
+    # a standalone engine like read_bot_settings(): app/cli has no dishka container
     engine = create_async_engine(config.database.dsn)
 
     try:

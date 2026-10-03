@@ -7,8 +7,7 @@ from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, UserEve
 @dataclass(frozen=True, kw_only=True)
 class TelegramUserRegisteredEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
-    # Pass-through only -- users never resolves or stores these; advertising
-    # and referrals do via EventBus subscribers (their events.py).
+    # passed through: advertising and referrals resolve these in their subscribers
     ad_link_code: Optional[str] = None
     referral_code: Optional[str] = None
 

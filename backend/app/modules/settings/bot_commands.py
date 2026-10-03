@@ -8,13 +8,12 @@ class BotCommand:
     description_key: str
 
 
-# Source of truth for which slash commands the bot actually handles -- keep in
-# sync by hand with app/telegram/routers/**/handlers.py's Command(...) filters
-# whenever one is added or removed.
+# The slash commands the bot handles; keep in sync by hand with the
+# Command(...) filters in app/telegram/routers/**/handlers.py.
 #
 # description_key resolves against backend/assets/translations/<locale>/commands.ftl
-# (Fluent message "command" with one attribute per slash command), via
-# the bot's translator hub (app/telegram/i18n.py) -- never admin-editable.
+# (message "command", one attribute per command) through the bot's translator
+# hub (app/telegram/i18n.py); not admin-editable.
 BOT_COMMANDS: Final[tuple[BotCommand, ...]] = (
     BotCommand(command="start", description_key="command.start"),
     # Telegram Stars terms require bots taking payments to answer /paysupport

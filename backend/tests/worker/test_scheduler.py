@@ -15,7 +15,7 @@ def test_scheduler_also_polls_the_retry_schedule_source() -> None:
 
 
 async def test_reconcile_task_schedule_is_discovered() -> None:
-    import app.modules.subscriptions.tasks  # noqa: F401, PLC0415  -- registers the task on the broker
+    import app.modules.subscriptions.tasks  # noqa: F401, PLC0415 - registers the task on the broker
 
     source = next(s for s in scheduler.sources if isinstance(s, LabelScheduleSource))
     await source.startup()

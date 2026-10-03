@@ -16,7 +16,7 @@ from app.modules.users.repository import UserRepository
 async def test_create_and_read_event_log_entry(
     session: AsyncSession, user_repository: UserRepository, uow: UnitOfWork
 ) -> None:
-    # actor_id has a real FK to users.id -- an actual row is needed to satisfy it.
+    # actor_id is a real FK to users.id
     async with uow:
         owner = await user_repository.create(
             CreateUserDto(name="owner", role=Role.OWNER, language=Locale.EN, login="owner")

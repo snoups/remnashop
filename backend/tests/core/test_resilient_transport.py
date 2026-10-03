@@ -41,7 +41,7 @@ async def test_a_4xx_response_is_not_retried_and_does_not_count_as_a_failure() -
         response = await client.get("/users/999")
 
     assert response.status_code == 404
-    assert calls == 1  # no retry -- a 4xx means the panel is responsive
+    assert calls == 1  # no retry, a 4xx means the panel is responsive
 
 
 async def test_a_get_request_retries_a_5xx_and_succeeds_on_the_second_attempt() -> None:
@@ -75,7 +75,7 @@ async def test_a_post_request_is_never_retried() -> None:
         response = await client.post("/users", json={})
 
     assert response.status_code == 503
-    assert calls == 1  # POST is not idempotent -- one attempt, no retry
+    assert calls == 1  # POST is not idempotent
 
 
 async def test_circuit_opens_after_the_failure_threshold_and_fails_fast() -> None:
@@ -153,11 +153,9 @@ async def _always_503(reader: asyncio.StreamReader, writer: asyncio.StreamWriter
 
 
 async def test_a_discarded_5xx_retry_response_releases_its_pooled_connection() -> None:
-    # Regression for a leak that httpx.MockTransport (every other test in this
-    # file) cannot see: MockTransport has no real connection pool, so a
-    # forgotten `response.aclose()` on a discarded retry is invisible to it.
-    # This uses a real httpcore-backed transport against a real local socket
-    # so the pool bookkeeping is real too.
+    # httpx.MockTransport has no connection pool, so a missing
+    # `response.aclose()` on a discarded retry is invisible to it; this needs a
+    # real transport against a real local socket.
     server = await asyncio.start_server(_always_503, "127.0.0.1", 0)
     host, port = server.sockets[0].getsockname()[:2]
 
@@ -174,11 +172,7 @@ async def test_a_discarded_5xx_retry_response_releases_its_pooled_connection() -
             response = await client.get("/users/1")
 
             assert response.status_code == 503
-            # _MAX_RETRY_ATTEMPTS attempts were made, all 503; only the
-            # terminal one is a live connection still held by the response --
-            # the other _MAX_RETRY_ATTEMPTS - 1 must have been released back
-            # to the pool by an explicit aclose(), not leaked. Before the fix
-            # this was `_MAX_RETRY_ATTEMPTS` (every discarded response leaked
-            # its connection, and this assertion sees `client` before its own
-            # teardown would otherwise close everything and mask the leak).
+            # only the terminal 503 still holds its connection; the discarded
+            # retries must have released theirs. Checked before the client's
+            # own teardown, which would close everything and hide a leak.
             assert len(pool._connections) == 1

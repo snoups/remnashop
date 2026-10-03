@@ -85,7 +85,6 @@ function PromoteAdminForm({
       <DialogHeader icon={ShieldPlus} title={t("admins.promote.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        {/* small form, nothing scrolls: the buttons sit under the fields, no footer */}
         <div className="flex flex-col gap-3 p-4">
           <p className="text-[13px] text-muted-foreground">{t("admins.promote.message", { name: user.name })}</p>
           {needsLogin && (

@@ -20,8 +20,7 @@ async def test_remnawave_client_transport_is_wrapped(config: AppConfig) -> None:
 
 async def test_get_engine_fails_fast_on_unreachable_database() -> None:
     config = AppConfig.get()
-    # Port 1 is never a real Postgres -- connection is refused immediately,
-    # exercising the fail-fast path without waiting on a real timeout.
+    # nothing listens on port 1, so the connection is refused at once
     config.database.host = "127.0.0.1"
     config.database.port = 1
 

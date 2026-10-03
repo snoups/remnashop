@@ -92,9 +92,8 @@ class OAuthLoginCallbackUseCase:
 
         async with self._uow:
             user = await self._user_repository.get_by_id(identity.user_id)
-        # Same message whether the user record is gone or the account is
-        # blocked -- distinguishing the two would leak blocked-status to an
-        # unauthenticated caller, same reasoning as LoginUseCase's own check.
+        # one message for a missing user and a blocked one, so an
+        # unauthenticated caller can't learn blocked-status (as in LoginUseCase)
         if user is None or user.is_blocked:
             async with self._uow:
                 await self._event_publisher.publish(

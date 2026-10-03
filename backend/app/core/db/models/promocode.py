@@ -19,17 +19,15 @@ class Promocode(BaseSql, TimestampMixin):
 
     reward_type: Mapped[PromocodeRewardType]
     reward: Mapped[Optional[int]]
-    # No ondelete: deleting an AddOn/Plan still referenced by a promocode is
-    # meant to fail (RESTRICT, the Postgres default) rather than silently
-    # null out a live reward reference -- unlike AddOnEntitlement.addon_id,
-    # these aren't snapshots, activation depends on them resolving.
+    # No ondelete: deleting an AddOn/Plan a promocode still references must fail
+    # (RESTRICT, the Postgres default). Unlike AddOnEntitlement.addon_id these
+    # aren't snapshots; activation needs them to resolve.
     reward_addon_id: Mapped[Optional[int]] = mapped_column(ForeignKey("addons.id"))
     reward_plan_id: Mapped[Optional[int]] = mapped_column(ForeignKey("plans.id"))
     reward_duration_days: Mapped[Optional[int]]
 
     availability: Mapped[PromocodeAvailability]
-    # Open, unqueried list -- ALLOWED-availability allowlist. Same shape as
-    # User.permission_grants, not a bundle of independently-queryable fields.
+    # the ALLOWED-availability allowlist, never queried (like User.permission_grants)
     allowed_user_ids: Mapped[Optional[list[int]]] = mapped_column(JSONB)
 
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

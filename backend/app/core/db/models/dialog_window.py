@@ -21,7 +21,7 @@ class DialogWindow(BaseSql, TimestampMixin):
     key: Mapped[str] = mapped_column(String(128))
     kind: Mapped[DialogWindowKind] = mapped_column(String(16))
     flow: Mapped[DialogFlow] = mapped_column(String(16))
-    # NULL -- no banner; DEFAULT_BANNER_NAME -- the shared one; anything else --
+    # NULL: no banner; DEFAULT_BANNER_NAME: the shared one; anything else:
     # this window's own, named after its key.
     banner_name: Mapped[Optional[str]] = mapped_column(String(160))
     # Editor-only label of a custom window; never shown to bot users.

@@ -25,7 +25,7 @@ interface SelectDropdownProps {
   onChange: (value: string) => void;
   icon: ComponentType<{ className?: string }>;
   disabled?: boolean;
-  // compact: the dialog editor's panels -- 36px, the height of its PillTabs
+  // compact: the dialog editor's panels, 36px like its PillTabs
   size?: "default" | "compact";
   // form: inside a form, the same dark surface as TextInput; glass is for filters
   variant?: "glass" | "form";
@@ -149,7 +149,7 @@ export function SelectDropdown({
         onKeyDown={(event) => event.key === "Escape" && setIsOpen(false)}
         className="min-w-40 p-1.5"
 >
-        {/* the scroll lives inside the padding -- on the popover itself
+        {/* the scroll lives inside the padding: on the popover itself
             the scrollbar column paints over the rounded corners */}
         <div className="max-h-72 overflow-y-auto">
           {options.map((option, index) => (

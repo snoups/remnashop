@@ -133,8 +133,7 @@ function RateRow({
   // mirrors the backend's rate > 0; the input's min="0" would let 0 through
   const isRateInvalid = form.rate.trim() !== "" && !(Number(form.rate) > 0);
 
-  // undefined means the charm-ending field holds something that isn't a
-  // valid optional integer -- callers reject the submit instead of sending it.
+  // undefined: the charm-ending field isn't a valid optional integer, reject the submit
   const buildBody = () => {
     const charmEnding = parseOptionalInt(form.charm_ending, 0);
     if (charmEnding === undefined) return undefined;

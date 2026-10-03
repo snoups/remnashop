@@ -86,8 +86,8 @@ async def test_update_buttons_accepts_a_real_action_from_metadata_alone(
     from app.modules.dialogs import register_all_flow_metadata  # noqa: PLC0415
 
     register_all_flow_metadata()
-    # UpdateDialogWindowButtonsUseCase reads the window from the database, not the
-    # in-process catalog -- it has to actually exist as a row first.
+    # UpdateDialogWindowButtonsUseCase reads the window from the database, not
+    # the in-process catalog
     await ensure_dialogs_seeded(dialog_repository, translation_repository)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     assert window.kind == DialogWindowKind.SEED

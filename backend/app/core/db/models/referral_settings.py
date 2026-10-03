@@ -12,7 +12,7 @@ from app.core.enums import ReferralAccrualStrategy, ReferralRewardStrategy, Refe
 class ReferralSettings(BaseSql, TimestampMixin):
     __tablename__ = "referral_settings"
 
-    # Single row, always id=1 -- core/db/singleton.py's get_or_create_singleton.
+    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
     enabled: Mapped[bool] = mapped_column(Boolean(), default=False, server_default="false")
@@ -24,6 +24,6 @@ class ReferralSettings(BaseSql, TimestampMixin):
     reward_strategy: Mapped[ReferralRewardStrategy] = mapped_column(
         default=ReferralRewardStrategy.AMOUNT
     )
-    # {"1": amount, "2": amount, ...} -- a percent under PERCENT -- an always-atomic settings bundle
-    # edited together as one unit, not independently queryable per level.
+    # {"1": amount, "2": amount, ...}, a percent under PERCENT; edited as one
+    # bundle, never queried per level
     reward_amounts: Mapped[dict[str, Any]] = mapped_column(JSONB(), default=dict)

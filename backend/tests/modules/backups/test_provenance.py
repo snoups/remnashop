@@ -5,10 +5,9 @@ import pytest
 
 from app.modules.backups.provenance import ProvenanceStatus, sign_backup_file, verify_backup_file
 
-# verify_backup_file() reads its crypt key from AppConfig, which validates
-# APP_CRYPT_KEY as a 44-char base64 string -- "key-a" alone can't stand in
-# for it, so tests that exercise the public (config-backed) verify path
-# monkeypatch the env var to this value and sign with the same value.
+# verify_backup_file() takes the key from AppConfig, which wants a 44-char
+# base64 APP_CRYPT_KEY; tests of that path set the env var to this and sign
+# with it.
 _TEST_CRYPT_KEY: Final[str] = "lfhmZb2Nh7z4nlUbOz/0log2/hhnbtpssDkmW3AKLUM="
 
 
@@ -41,17 +40,15 @@ def test_signed_with_different_key_is_foreign(
     result = verify_backup_file(path)
     assert result.status is ProvenanceStatus.NATIVE
 
-    # simulate verifying under a different deployment's key by re-deriving
-    # with a different crypt key -- verify_backup_file reads the trailer's
-    # own embedded signature and needs the SAME key passed in to match it.
-    from app.modules.backups.provenance import _verify_with_key  # noqa: PLC0415 -- reach-in
+    # another deployment's key: the embedded signature matches only the same key
+    from app.modules.backups.provenance import _verify_with_key  # noqa: PLC0415
 
     mismatched = _verify_with_key(path, "key-b")
     assert mismatched.status is ProvenanceStatus.FOREIGN
 
 
 def test_tampered_content_after_signing_is_malformed(tmp_path: Path) -> None:
-    from app.modules.backups.provenance import _MARKER  # noqa: PLC0415 -- test-only reach-in
+    from app.modules.backups.provenance import _MARKER  # noqa: PLC0415
 
     path = _write_dump(tmp_path)
     sign_backup_file(path, "key-a")

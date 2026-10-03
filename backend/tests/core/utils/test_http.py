@@ -72,10 +72,8 @@ def test_resolve_client_ip_honors_forwarded_for_from_docker_bridge_peer() -> Non
 
 
 def test_resolve_client_ip_uses_last_entry_when_proxy_appends() -> None:
-    # nginx's $proxy_add_x_forwarded_for appends its own view of the peer to
-    # whatever the client already sent -- a client can prepend an arbitrary
-    # spoofed IP, but only the last (rightmost) entry was written by the
-    # trusted proxy itself.
+    # nginx's $proxy_add_x_forwarded_for appends to what the client sent, so
+    # only the rightmost entry comes from the proxy
     request = _make_request("127.0.0.1", {"x-forwarded-for": "203.0.113.5, 198.51.100.20"})
     assert resolve_client_ip(request) == "198.51.100.20"
 
@@ -162,8 +160,7 @@ async def test_read_bounded_body_rejects_declared_oversize() -> None:
 
 
 async def test_read_bounded_body_rejects_oversize_without_content_length() -> None:
-    # A chunked request carries no Content-Length, so a header check alone
-    # would bound nothing -- the running total is what actually caps it.
+    # a chunked request has no Content-Length; the running total caps it
     request = _streaming_request([b"x" * 10, b"x" * 10])
     with pytest.raises(HTTPException) as error:
         await read_bounded_body(request, 16)

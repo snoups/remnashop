@@ -6,7 +6,7 @@ from typing import Literal, Optional
 from app.core.dto import BaseDto
 from app.core.enums import Currency
 
-# 0 means "all time" -- resolved to a since-date at the first registration.
+# 0 means "all time", resolved to the first registration
 OverviewDays = Literal[0, 7, 30, 90]
 Granularity = Literal["day", "month"]
 

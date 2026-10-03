@@ -16,8 +16,8 @@ class AddOnEntitlement(BaseSql, TimestampMixin):
     subscription_id: Mapped[int] = mapped_column(
         ForeignKey("subscriptions.id", ondelete="CASCADE"), index=True
     )
-    # SET NULL, not CASCADE: the entitlement (and its snapshot) survives the
-    # catalog entry being edited/removed later -- same reasoning as plan_snapshot.
+    # SET NULL, not CASCADE: the entitlement and its snapshot outlive the
+    # catalog entry, as plan_snapshot does
     addon_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("addons.id", ondelete="SET NULL"), nullable=True
     )

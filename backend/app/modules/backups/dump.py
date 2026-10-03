@@ -34,12 +34,9 @@ async def create_database_dump(config: AppConfig, dest: Path) -> None:
 def _build_assets_zip(media_dir: Path, final_path: Path) -> None:
     backups_dir = media_dir / "backups"
     prefix_root = media_dir.parent
-    # media/ is a separate volume from the system temp dir in every deployment
-    # (docker-compose mounts it as a named volume) -- os.replace() is rename(2)
-    # under the hood and raises EXDEV across devices, so the temp file has to be
-    # created inside backups_dir itself. Safe to do: backups_dir is pruned from
-    # the walk below, so a temp file sitting there can't end up inside its own
-    # archive.
+    # media/ is its own volume, and os.replace() (rename(2)) raises EXDEV
+    # across devices, so the temp file lives in backups_dir; the walk below
+    # skips that dir, so it never archives itself.
     backups_dir.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(dir=backups_dir, suffix=".zip")
     os.close(fd)

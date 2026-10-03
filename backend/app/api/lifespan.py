@@ -39,8 +39,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             register_all_flow_metadata()
             await ensure_translations_seeded(config, translation_repository)
 
-            # Fresh install only -- once an owner exists the list is the
-            # admin's to manage, and a source they removed must stay removed.
+            # fresh install only: once an owner exists the list is theirs, and
+            # a source they removed must stay removed
             user_repository = await startup_container.get(UserRepository)
             if not await user_repository.exists_with_role(Role.OWNER):
                 blacklist_repository = await startup_container.get(BlacklistRepository)

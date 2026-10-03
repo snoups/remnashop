@@ -27,12 +27,9 @@ class ReconcileSubscriptionsUseCase(UseCase[None, None]):
         self._sync_use_case = sync_use_case
 
     async def _execute(self, actor: Actor, data: None) -> None:
-        # no batching, no concurrency limit -- list_non_terminal() loads
-        # every non-terminal row into memory and each panel lookup runs
-        # sequentially (the task's cron_lock only guards against overlapping the
-        # *next* run, not this run's own latency). Fine at this project's current
-        # scale; upgrade to paginated batches with a bounded gather() (or a panel
-        # bulk-list endpoint) if this starts taking close to its 30-min interval.
+        # No batching: every non-terminal row is loaded and checked against the
+        # panel one by one. Fine at current scale; switch to paginated batches
+        # with a bounded gather() if a run nears its 30-minute interval.
         for subscription in await self._subscription_repository.list_non_terminal():
             try:
                 panel_user = await self._remnawave_sdk.users.get_user_by_id(

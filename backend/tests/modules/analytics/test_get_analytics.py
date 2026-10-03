@@ -152,7 +152,7 @@ async def test_mrr_is_rounded_to_cents(
     )
     analytics = await use_case(OWNER, GetAnalyticsDto(days=7))
 
-    # 100 / 90 * 30 = 33.333... -- unrounded, the API ships all ~28 digits
+    # 100 / 90 * 30 = 33.333...; unrounded, the API ships all ~28 digits
     assert analytics.kpi.mrr == Decimal("33.33")
 
 
@@ -190,7 +190,7 @@ async def test_churn_snapshot_matches_the_repository_formula(
         .where(Subscription.id == churned.id)
         .values(created_at=datetime_now() - timedelta(days=60))
     )
-    # created inside the window -- must be excluded entirely
+    # created inside the window, must be excluded
     await create_subscription(
         subscription_repository,
         user_repository,

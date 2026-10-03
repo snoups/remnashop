@@ -31,7 +31,7 @@ const SIZE_CLASS = { sm: "h-8", md: "h-9", field: "h-9.5" } as const;
 interface ButtonProps extends HTMLMotionProps<"button"> {
   variant: ButtonVariant;
   size?: keyof typeof SIZE_CLASS;
-  /** layout only (flex-1, w-full, mt-2...) -- no classes that fight the variant's */
+  /** layout only (flex-1, w-full, mt-2...), no classes that fight the variant's */
   className?: string;
 }
 

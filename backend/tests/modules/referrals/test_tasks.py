@@ -364,8 +364,7 @@ async def test_assign_referral_rewards_stops_walk_at_mutual_referral_cycle(
     )
     a = await _create_user(user_repository, 4015)
     b = await _create_user(user_repository, 4016)
-    # A refers B, then (separately) B refers A -- neither call violates
-    # "already has a referrer" since each checks only the other's own edge.
+    # A refers B, then B refers A: neither has a referrer yet when asked
     await referral_repository.create_referral(referrer_id=a, referred_id=b, level=1)
     await referral_repository.create_referral(referrer_id=b, referred_id=a, level=1)
     subscription_id = await _create_active_subscription(subscription_repository, b, 4016)

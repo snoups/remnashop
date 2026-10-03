@@ -136,7 +136,7 @@ async def test_mark_deleted_sets_deleted_status(
     deleted = await subscription_repository.mark_deleted(created.id)
 
     assert deleted.status == SubscriptionStatus.DELETED
-    # Soft delete -- the row survives for audit history, unlike PlanRepository.delete.
+    # soft delete: the row stays for history, unlike PlanRepository.delete
     subscriptions = await subscription_repository.list_all()
     assert [s.status for s in subscriptions] == [SubscriptionStatus.DELETED]
 
@@ -200,8 +200,7 @@ async def test_effective_limits_include_addon_entitlements(
     user_id = await _create_user(user_repository, 125)
     created = await subscription_repository.create(_create_dto(user_id, 5016))
 
-    # No GrantAddOnUseCase exists yet (that's the purchase plan) -- insert the
-    # entitlement directly, same as a repository-level fixture.
+    # repository-level test, so the entitlement is inserted directly
     session.add(
         AddOnEntitlement(
             subscription_id=created.id,
@@ -245,9 +244,7 @@ async def test_grant_entitlement_adds_row_and_recomputes_effective_limits(
 ) -> None:
     user_id = await _create_user(user_repository, 133)
     created = await subscription_repository.create(_create_dto(user_id, 5023))
-    # addon_entitlements.addon_id has a real FK to addons.id -- unlike the
-    # None-addon_id fixture above, a non-null value here must reference a row
-    # that actually exists.
+    # addon_id is a real FK, so unlike the fixture above it needs an addon row
     addon = await addon_repository.create(
         CreateAddOnDto(
             name="traffic-50gb-repo-test",
@@ -289,9 +286,7 @@ async def test_grant_entitlement_with_idempotency_key_is_not_applied_twice(
         amount=50,
         idempotency_key="grant-key-1",
     )
-    # Drop the identity map so the second call's idempotency-key lookup issues
-    # a real SELECT instead of hitting the in-session instance -- otherwise the
-    # guard "passes" without proving the row reached Postgres.
+    # cleared identity map, so the second lookup really hits Postgres
     subscription_repository.session.expunge_all()
     second = await subscription_repository.grant_entitlement(
         subscription_id=created.id,
@@ -451,9 +446,8 @@ async def test_for_update_reads_see_fresh_data_not_identity_map_stale(
     session: AsyncSession,
     uow: UnitOfWork,
 ) -> None:
-    # Regression test for Finding 2: ensure _for_update reads use
-    # populate_existing=True so they override identity-map-cached rows.
-    # Setup: load a subscription via plain get_by_id (caches it in identity map).
+    # _for_update reads need populate_existing=True, or a row already in the
+    # identity map shadows what the lock just read.
     user = await user_repository.create(CreateUserDto(name="stale_test", telegram_id=9999))
     created = await subscription_repository.create(
         CreateSubscriptionDto(
@@ -468,12 +462,10 @@ async def test_for_update_reads_see_fresh_data_not_identity_map_stale(
         )
     )
 
-    # Load it once to populate the session's identity map.
     cached = await subscription_repository.get_by_id(created.id)
     assert cached.status == SubscriptionStatus.ACTIVE
 
-    # Simulate a concurrent writer updating the status directly via raw SQL
-    # (outside the session).
+    # a Core UPDATE skips the identity map, like a write from another process
     await session.execute(
         update(Subscription)
         .where(Subscription.id == created.id)
@@ -481,8 +473,6 @@ async def test_for_update_reads_see_fresh_data_not_identity_map_stale(
     )
     await session.commit()
 
-    # Now do a _for_update read in a new UoW. It should see the fresh
-    # LIMITED status from the DB, not the cached ACTIVE from the identity map.
     async with uow:
         locked = await subscription_repository.get_by_id_for_update(created.id)
 
@@ -751,7 +741,7 @@ async def test_count_churn_window_counts_pre_window_subscriptions_only(
         .where(Subscription.id == churned.id)
         .values(created_at=window_start - timedelta(days=10))
     )
-    # created inside the window -- must be excluded from prev_active entirely
+    # created inside the window, so not in prev_active
     await create_subscription(
         subscription_repository,
         user_repository,

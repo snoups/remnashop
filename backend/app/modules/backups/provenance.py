@@ -5,9 +5,8 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Final, Optional
 
-# Cheap proof that a backup file was produced by THIS deployment, checked by
-# the CLI restore flow before piping the archive into pg_restore. Does NOT
-# encrypt or hide the archive's contents -- only proves origin.
+# Proof that a backup came from THIS deployment, checked by the CLI restore
+# before pg_restore. Proves origin only, nothing is encrypted.
 _MARKER: Final[bytes] = b"\n-- remnashop-backup-provenance v1 "
 _TRAILER_SCAN_BYTES: Final[int] = 4096
 _CHUNK_SIZE: Final[int] = 1024 * 1024
@@ -26,9 +25,8 @@ class ProvenanceResult:
 
 
 def _derive_key(crypt_key: str) -> bytes:
-    # Domain-separated from every other use of APP_CRYPT_KEY, same principle
-    # as the password pepper in core/security/password.py -- one key,
-    # per-use derivation, never reused raw.
+    # derived per use from APP_CRYPT_KEY, never the raw key (like the
+    # password pepper in core/security/password.py)
     return hashlib.sha256(f"remnashop:backup-provenance:{crypt_key}".encode()).digest()
 
 
@@ -77,7 +75,7 @@ def _parse_trailer(tail: bytes) -> _Trailer:
 
 
 def verify_backup_file(path: Path) -> ProvenanceResult:
-    from app.core.config import AppConfig  # noqa: PLC0415 -- avoid importing config at module load
+    from app.core.config import AppConfig  # noqa: PLC0415 - no config import at module load
 
     crypt_key = AppConfig.get().crypt_key.get_secret_value()
     return _verify_with_key(path, crypt_key)

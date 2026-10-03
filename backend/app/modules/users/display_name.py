@@ -15,7 +15,7 @@ _ALLOWED_SYMBOLS: Final[frozenset[str]] = frozenset("_-.'")
 
 
 def clean_display_name(name: Optional[str]) -> str:
-    """Empty when nothing survives -- the caller decides the fallback."""
+    """Empty when nothing survives; the caller decides the fallback."""
     text = unicodedata.normalize("NFKC", html.unescape(name or ""))
     text = _URL_RE.sub("", _HTML_TAG_RE.sub("", text))
     # letters, digits and combining marks (Indic/Thai vowels are marks);

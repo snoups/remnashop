@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 
-/** Neutral pill for counts and metadata (durations, scopes, channels) -- not a status. */
+/** Neutral pill for counts and metadata (durations, scopes, channels), not a status. */
 export function Tag({ className = "", ...props }: HTMLAttributes<HTMLSpanElement>) {
   return (
     <span

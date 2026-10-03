@@ -57,7 +57,7 @@ _SORT_COLUMNS: Final[dict[str, InstrumentedAttribute[Any] | ColumnElement[Any]]]
     "points": User.points,
     "discount": User.personal_discount,
     "name": func.lower(User.name),
-    # groups by channel type -- a count would tie nearly everyone at one channel
+    # groups by channel type; a count would tie nearly everyone at one channel
     "channels": case((User.telegram_id.is_not(None), 4), else_=0)
     + case((User.email.is_not(None), 2), else_=0)
     + case((User.login.is_not(None), 1), else_=0),
@@ -107,9 +107,8 @@ class UserRepository:
         return dto
 
     async def _generate_referral_code(self) -> str:
-        # Check-then-use, not atomic against a concurrent insert of the same
-        # code -- same accepted tradeoff as GeneratePromocodeCodeUseCase.
-        # 36^8 candidates makes a real collision astronomically unlikely.
+        # check-then-use, not atomic, as in GeneratePromocodeCodeUseCase; with
+        # 36^8 candidates a collision won't happen
         for _ in range(_REFERRAL_CODE_MAX_ATTEMPTS):
             code = "".join(
                 secrets.choice(_REFERRAL_CODE_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH)
@@ -162,11 +161,9 @@ class UserRepository:
         return self._convert_to_dto(db_user) if db_user else None
 
     async def credit_points(self, user_id: int, amount: Decimal) -> None:
-        # Atomic UPDATE, not read-modify-write -- concurrent grants (two
-        # referral rewards landing at once) can't clobber each other. The
-        # non-negative floor is part of the same predicate for the same
-        # reason: a caller checking `points + delta >= 0` first and updating
-        # after would let two concurrent debits both pass and overdraw.
+        # Atomic UPDATE, so two rewards landing at once can't clobber each
+        # other. The non-negative floor sits in the same predicate: checking
+        # first and updating after would let two debits both pass and overdraw.
         stmt = (
             update(User)
             .where(User.id == user_id, User.points + amount >= 0)
@@ -206,7 +203,7 @@ class UserRepository:
     async def restore_purchase_discount(
         self, user_id: int, percent: int, promocode_id: Optional[int]
     ) -> None:
-        # only into an empty slot -- never over a discount granted since
+        # only into an empty slot, never over a discount granted since
         await self.session.execute(
             update(User)
             .where(User.id == user_id, User.purchase_discount == 0)

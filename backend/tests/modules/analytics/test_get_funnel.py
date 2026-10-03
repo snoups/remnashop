@@ -141,6 +141,5 @@ async def test_funnel_counts_are_independent_within_the_registered_cohort(
     assert by_key["registered"].pct_of_start == pytest.approx(1.0)
     assert by_key["trial"].pct_of_start == pytest.approx(1 / 3)
     assert by_key["first_paid"].pct_of_start == pytest.approx(2 / 3)
-    # first_paid (2) exceeding trial (1) is expected -- direct-to-paid users
-    # count independently of the trial step, per the spec's confirmed semantics.
+    # first_paid (2) above trial (1): users who paid without a trial still count
     assert by_key["first_paid"].pct_of_prev == pytest.approx(2.0)

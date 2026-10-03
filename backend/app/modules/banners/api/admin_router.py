@@ -28,8 +28,7 @@ async def upload_banner(
     file: UploadFile = File(...),
     actor: Actor = Depends(require_admin),
 ) -> BannerMetaResponse:
-    # Bounded read -- don't buffer an arbitrarily large upload into memory
-    # just to reject it for being oversized a moment later.
+    # bounded read: an oversized upload is rejected before it's buffered
     data = await file.read(MAX_BANNER_SIZE_BYTES + 1)
     banner = await use_case(
         actor,

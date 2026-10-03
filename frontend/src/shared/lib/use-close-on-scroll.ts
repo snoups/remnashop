@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from "react";
 
 /** Closes a popover when the page (or a panel under it) scrolls away from its
- * trigger. `inside` is the popover's own box -- scrolling its list must not
+ * trigger. `inside` is the popover's own box: scrolling its list must not
  * close it; pass an array when there is more than one popover. */
 export function useCloseOnScroll<T extends Element>(
   active: boolean,

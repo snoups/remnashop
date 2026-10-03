@@ -11,7 +11,5 @@ def test_encrypt_and_decrypt_roundtrip() -> None:
 
 
 def test_encrypt_is_not_deterministic() -> None:
-    # Fernet includes a random IV, so encrypting the same value twice must not
-    # produce the same ciphertext -- otherwise equal ciphertexts would leak
-    # that two stored secrets are equal.
+    # random IV: equal ciphertexts would reveal equal secrets
     assert encrypt_value("same-value", KEY) != encrypt_value("same-value", KEY)

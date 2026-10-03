@@ -39,12 +39,9 @@ class _TestSessionProvider(Provider):
 async def webhook_container(
     session: AsyncSession, config: AppConfig
 ) -> AsyncIterator[AsyncContainer]:
-    # PurchaseSubscriptionUseCase (registered by get_subscriptions_providers())
-    # needs UserRepository to clear purchase_discount after a purchase -- a
-    # direct provider, not the full get_users_providers(), since that also
-    # registers admin usecases (e.g. UpdateAdminUseCase) needing SessionRevoker,
-    # which only the api/telegram containers wire up. Same pattern as
-    # app/worker/container.py's user_repository_provider.
+    # PurchaseSubscriptionUseCase needs UserRepository; get_users_providers()
+    # would also pull in admin usecases that need SessionRevoker (as in
+    # app/worker/container.py)
     user_repository_provider = Provider(scope=Scope.REQUEST)
     user_repository_provider.provide(UserRepository)
 
@@ -171,9 +168,8 @@ async def test_non_user_event_is_a_noop_200(
     webhook_client: httpx.AsyncClient, config: AppConfig
 ) -> None:
     secret = config.remnawave.webhook_secret.get_secret_value()  # type: ignore[union-attr]
-    # "node.created" would need a fully-populated WebhookNodeDto or from_dict
-    # raises a pydantic ValidationError -- "service.panel_started" is the one
-    # non-user event the SDK parses without requiring any data fields.
+    # "service.panel_started" is the one non-user event the SDK parses with no
+    # data fields ("node.created" needs a full WebhookNodeDto)
     body, headers = sign_webhook(
         {
             "event": "service.panel_started",
@@ -203,9 +199,8 @@ async def test_missing_signature_headers_returns_400(webhook_client: httpx.Async
 async def test_malformed_user_hwid_devices_event_returns_400(
     webhook_client: httpx.AsyncClient, config: AppConfig
 ) -> None:
-    # remnapy's WebhookPayloadDto.from_dict does data_raw["user"]/["hwidUserDevice"]
-    # for this event category -- a validly-signed event missing either key
-    # raises KeyError, not ValueError, inside parse_webhook itself.
+    # WebhookPayloadDto.from_dict indexes data_raw["user"]/["hwidUserDevice"]
+    # for this category, so a signed event without them raises KeyError
     secret = config.remnawave.webhook_secret.get_secret_value()  # type: ignore[union-attr]
     payload = {"event": "user_hwid_devices.added", "timestamp": "2026-01-01T00:00:00Z", "data": {}}
     body, headers = sign_webhook(payload, secret)
@@ -326,8 +321,7 @@ async def test_stale_signed_payload_is_rejected_despite_a_fresh_header(
     user_repository: UserRepository,
     config: AppConfig,
 ) -> None:
-    # The panel signs the body only, so a captured request replays with any
-    # header the attacker likes -- freshness has to come from the payload.
+    # the panel signs only the body, so freshness has to come from the payload
     user = await user_repository.create(CreateUserDto(name="webhook_stale", telegram_id=81009))
     await subscription_repository.create(
         CreateSubscriptionDto(

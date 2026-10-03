@@ -11,7 +11,7 @@ class Actor(Protocol):
     name: str
     permission_grants: Optional[list[str]]
     permission_revokes: Optional[list[str]]
-    # identity only, for the audit trail -- None for an API token
+    # identity only, for the audit trail; None for an API token
     login: Optional[str]
     email: Optional[str]
     telegram_id: Optional[int]

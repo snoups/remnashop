@@ -111,9 +111,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             await self._validate_gateway_availability(data.gateway_type)
 
         async with self._uow:
-            # The one-shot discount is spent with the order that quoted it, in
-            # the same transaction -- a second checkout racing this one finds
-            # it gone and has to re-quote.
+            # the one-shot discount is spent in the same transaction as the
+            # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
             order = await self._create_order(data, plan, quote, customer_email)
 
@@ -223,10 +222,10 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 )
 
     async def _validate_provisioning_preconditions(self, data: CreateCheckoutDto) -> None:
-        # Belt-and-braces: PurchaseSubscriptionUseCase re-checks the target
-        # subscription under its own lock. The concurrent-subscription cap is
-        # enforced only here -- a paid order is provisioned even if the cap
-        # filled up before the worker ran (enforce_subscription_cap=False).
+        # PurchaseSubscriptionUseCase re-checks the target subscription under
+        # its own lock. The subscription cap is enforced only here: a paid
+        # order is provisioned even if the cap filled up meanwhile
+        # (enforce_subscription_cap=False).
         async with self._uow:
             if data.purchase_type is PurchaseType.NEW:
                 if data.target_subscription_id is not None:

@@ -12,15 +12,13 @@ from app.core.enums import ReferralRewardType
 class ReferralReward(BaseSql, TimestampMixin):
     __tablename__ = "referral_rewards"
     __table_args__ = (
-        # one reward per paid order per chain hop -- a subscription's renewals
-        # are separate payments
+        # one reward per paid order per chain hop; each renewal is its own payment
         UniqueConstraint("payment_key", "referral_id", name="uq_referral_rewards_payment_referral"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # All SET NULL, not CASCADE: this is the money ledger -- deleting a
-    # referrer, the referral edge, or the triggering subscription later must
-    # not erase the historical record that an amount was already paid out.
+    # All SET NULL, not CASCADE: this is the money ledger, and deleting a
+    # referrer, the referral or the subscription must not erase a payout.
     referral_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("referrals.id", ondelete="SET NULL")
     )

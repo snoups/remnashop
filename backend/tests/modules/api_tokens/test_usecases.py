@@ -21,8 +21,7 @@ REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 @pytest.fixture
 async def owner(user_repository: UserRepository, uow: UnitOfWork) -> UserDto:
-    # CreateApiTokenUseCase persists created_by_user_id, which has a real FK
-    # to users.id -- unlike OWNER above, this actor must exist in the DB.
+    # created_by_user_id is a real FK, so unlike OWNER this actor needs a row
     async with uow:
         user = await user_repository.create(
             CreateUserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)

@@ -2,9 +2,8 @@ import { useSyncExternalStore } from "react";
 
 import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 
-// Per-viewer "turn the background shader off right now" switch, independent of
-// the admin-wide shader_enabled appearance setting -- nothing is sent to the
-// backend, it only persists for this browser.
+// Per-browser switch for the background shader, separate from the admin-wide
+// shader_enabled setting; nothing goes to the backend.
 const STORAGE_KEY = "remnashop_shader_muted";
 
 const listeners = new Set<() => void>();

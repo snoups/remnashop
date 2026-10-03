@@ -200,8 +200,8 @@ export function AppearanceSettingsForm() {
   const [isResetting, setIsResetting] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // Seeded per section, and only on load or that section's own reset -- never
-  // on a save or image change, which would wipe the other section's unsaved edits.
+  // seeded per section, on load or that section's reset only; a save or image
+  // change would wipe the other section's unsaved edits
   const seedBranding = (data: AppearanceSettings) => {
     setBrandName(data.brand_name ?? "");
   };

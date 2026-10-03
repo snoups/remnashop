@@ -12,6 +12,8 @@ backend/logs/*
 # AI
 docs
 notes.txt
+frontend/DESIGN.md
+frontend/README.md
 
 
 # Environment

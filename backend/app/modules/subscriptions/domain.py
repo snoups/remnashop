@@ -55,7 +55,7 @@ VALID_TRANSITIONS: Final[dict[SubscriptionStatus, frozenset[SubscriptionStatus]]
     SubscriptionStatus.EXPIRED: frozenset(
         {
             SubscriptionStatus.EXPIRED,
-            SubscriptionStatus.ACTIVE,  # renew reactivates -- see reactivate_on_renew()
+            SubscriptionStatus.ACTIVE,  # renew reactivates, see reactivate_on_renew()
             SubscriptionStatus.DELETED,
         }
     ),
@@ -73,7 +73,7 @@ def assert_transition(current: SubscriptionStatus, target: SubscriptionStatus) -
 
 @dataclass(frozen=True, kw_only=True)
 class SubscriptionState:
-    """Behavioural counterpart to SubscriptionDto -- the repository maps
+    """Behavioural counterpart to SubscriptionDto: the repository maps
     an ORM row to this before calling a method, and the (possibly changed)
     result back to a row afterwards. Immutable: every method returns a new
     instance rather than mutating self."""
@@ -93,7 +93,7 @@ class SubscriptionState:
         """Applies a panel-driven status sync. A no-op if target == current
         (redelivered webhook / overlapping reconcile pass) or if already
         DELETED (a locally-deleted subscription is never resurrected by a
-        stale panel event). The panel is authoritative -- any other target
+        stale panel event). The panel is authoritative: any other target
         status is accepted unconditionally."""
         if self.status is SubscriptionStatus.DELETED or target is self.status:
             return self
@@ -109,7 +109,7 @@ class SubscriptionState:
     def reactivate_on_renew(self, new_expire_at: datetime) -> SubscriptionState:
         """A successful renewal always extends expire_at, and reactivates
         an EXPIRED subscription back to ACTIVE (the natural "lapsed, paid
-        again" case). LIMITED/DISABLED are left untouched -- those reflect
+        again" case). LIMITED/DISABLED are left untouched: those reflect
         panel-side state (traffic exhaustion, admin action) that a renewal
         payment doesn't by itself resolve; the next sync/reconcile pass
         corrects them once the panel agrees."""
@@ -135,13 +135,9 @@ def calculate_proration_credit(
     is_trial: bool,
     now: datetime,
 ) -> Decimal:
-    """Pure proration math -- a function of the OLD subscription's own
-    fields only, with no dependency on what it's being changed to. Public
-    (not `_`-prefixed) so a caller can preview the credit BEFORE committing
-    a CHANGE (ChangePurchase) -- e.g. to compute the new subscription's
-    final expire_at (base days + credit days) before minting its panel
-    identity, so the panel is minted with the correct value up front
-    instead of a provisional one reconciled after the fact."""
+    """Proration credit from the OLD subscription's fields alone. Public so
+    ChangePurchase can compute the new expire_at (base days + credit days)
+    before touching the panel."""
     if is_trial or price_paid <= 0 or duration_days <= 0:
         return Decimal("0")
     remaining_days = max(0, (expire_at - now).days)

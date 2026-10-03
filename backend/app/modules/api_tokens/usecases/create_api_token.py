@@ -32,8 +32,7 @@ class CreateApiTokenUseCase(UseCase[IssueApiTokenDto, CreatedApiTokenDto]):
     async def _execute(self, actor: Actor, data: IssueApiTokenDto) -> CreatedApiTokenDto:
         assert_token_scopes(data.scopes)
 
-        # Same primitive as refresh tokens/CSRF tokens -- 256 bits of random
-        # entropy, unrelated purpose, no reason for separate crypto code.
+        # 256 random bits, the same primitive refresh and CSRF tokens use
         secret = generate_refresh_token()
 
         expires_at = datetime_now() + timedelta(days=data.expires_in_days)

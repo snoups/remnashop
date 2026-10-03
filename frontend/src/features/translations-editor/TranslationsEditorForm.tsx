@@ -76,9 +76,9 @@ export function TranslationsEditorForm() {
 
   const entries = entriesState.kind === "ready" ? entriesState.data : [];
   const activeLocales = localesState.kind === "ready" ? localesState.data.active : [];
-  // Everything a window puts on the canvas -- its text, its button labels and
-  // their emoji -- is edited there, so this panel holds the rest: the
-  // notifications, the dynamic lists and the flows that have no window yet.
+  // A window's text, button labels and emoji are edited on the canvas; this
+  // panel holds the rest: notifications, dynamic lists and flows with no
+  // window yet.
   const onCanvas = new Set<string>();
   if (windowsState.kind === "ready") {
     for (const window of windowsState.data) {
@@ -90,8 +90,8 @@ export function TranslationsEditorForm() {
     }
   }
   const groups = toGroups(entries, onCanvas);
-  // Nothing picked yet means the first of each -- derived, so a locale that is
-  // switched off or a key that leaves the list cannot stay selected.
+  // nothing picked means the first of each; derived, so a disabled locale or a
+  // key gone from the list can't stay selected
   const activeLocale = pickedLocale ?? activeLocales[0] ?? null;
   const selectedKey = pickedKey ?? groups[0]?.keys[0] ?? null;
 

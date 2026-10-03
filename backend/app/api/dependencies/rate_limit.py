@@ -20,7 +20,7 @@ _GLOBAL_RATE_LIMIT: Final[int] = 300
 _GLOBAL_RATE_LIMIT_WINDOW_S: Final[int] = 60
 # Payment-gateway callbacks (/payments/{gateway}) are deliberately NOT here:
 # one provider's calls share one IP bucket like the panel's do, but their
-# volume is one call per payment plus retries -- nowhere near 300/min -- and
+# volume is one call per payment plus retries (nowhere near 300/min), and
 # the route is unauthenticated, so the baseline is worth keeping.
 _RATE_LIMIT_EXEMPT_PATHS: Final[frozenset[str]] = frozenset(
     {"/health", "/readyz", "/metrics", f"{API_V1}{REMNAWAVE_WEBHOOK_PATH}"}
@@ -125,6 +125,6 @@ async def global_rate_limit(
             f"global by {identity}",
         )
     except HTTPException:
-        raise  # the actual 429 -- not a Redis failure, must propagate
+        raise  # the actual 429, not a Redis failure
     except Exception:  # fail open: Redis being down must not take the API down
         logger.warning("Global rate limiter failed open: Redis unavailable")

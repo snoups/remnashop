@@ -97,8 +97,8 @@ export function buttonKey(button: DialogButtonItem): string {
 }
 
 /** Mirrors modules/dialogs/catalog.py: a button's icon is a translation of its
- * own, so it can differ per locale. Exactly one of the two is ever filled -- a
- * plain glyph, or a premium custom emoji id. */
+ * own, so it can differ per locale. Exactly one of the two is filled: a plain
+ * glyph or a premium custom emoji id. */
 export function iconTextKey(textKey: string): string {
   return `${textKey}-icon`;
 }
@@ -185,7 +185,7 @@ export function variableOptions(
 
 export type TextPart = string | { glyph: string; customEmojiId: string };
 
-/** Plain runs and premium emoji, in order -- for showing the emoji themselves. */
+/** Plain runs and premium emoji, in order, for drawing the emoji themselves. */
 export function splitPremiumEmoji(value: string): TextPart[] {
   const parts: TextPart[] = [];
   let last = 0;

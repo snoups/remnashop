@@ -15,9 +15,8 @@ from app.modules.users.repository import UserRepository
 
 
 class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
-    # No permission gate: there is structurally no actor yet on a user's first
-    # Telegram contact. Only callable via `.system` -- _check_permissions()
-    # denies any other actor outright since required_permission is None.
+    # no actor exists yet on a user's first contact; required_permission=None
+    # makes it callable only via `.system`
     required_permission = None
 
     def __init__(
@@ -66,9 +65,8 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
         except ConflictError as error:
             if error.code is not ErrorCode.TELEGRAM_ID_TAKEN:
                 raise
-            # Lost a concurrent registration race (two updates from the same
-            # brand-new telegram_id in flight at once) -- the winner's row
-            # already exists, fetch it instead of dropping this update.
+            # lost a race with another update from the same new telegram_id;
+            # the winner's row exists, so use it
             logger.debug(f"Lost registration race for telegram_id={data.telegram_id}")
             async with self._uow:
                 winner = await self._user_repository.get_by_telegram_id(data.telegram_id)

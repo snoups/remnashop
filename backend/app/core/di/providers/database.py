@@ -55,7 +55,7 @@ class DatabaseProvider(Provider):
         except Exception as exc:
             logger.exception(f"Failed to connect to Postgres: {exc}")
             raise OperationalError(None, None, exc) from exc
-        logger.debug("Successfully connected to Postgres")
+        logger.debug("Connected to Postgres")
 
         yield engine
         logger.debug("Disposing AsyncEngine")

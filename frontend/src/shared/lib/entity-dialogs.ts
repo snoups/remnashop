@@ -46,7 +46,7 @@ export function notifyEntityChanged(kind: EntityKind): void {
   changeListeners.get(kind)?.forEach((listener) => listener());
 }
 
-/** Runs `onChange` when a host dialog changes an entity of this kind -- a page refetches its list. */
+/** Runs `onChange` when a host dialog changes an entity of this kind, so a page can refetch. */
 export function useEntityChanged(kind: EntityKind, onChange: () => void): void {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;

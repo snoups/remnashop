@@ -1,4 +1,4 @@
-/** The emoji packs panel on the bot settings page -- the picker's "+" scrolls
+/** The emoji packs panel on the bot settings page; the picker's "+" scrolls
  * to it, so both sides need the same id. */
 export const EMOJI_PACKS_ANCHOR_ID = "emoji-packs";
 

@@ -41,8 +41,7 @@ def plain_user() -> UserDto:
 
 @pytest.fixture(autouse=True)
 async def _seed_actor_rows(session: AsyncSession) -> None:
-    # event_outbox.actor_id is a real FK into users -- the actor DTOs above
-    # are bare, not inserted rows.
+    # event_outbox.actor_id is a real FK, and the actor DTOs above have no rows
     for user_id in (1, 2):
         session.add(
             User(

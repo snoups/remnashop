@@ -24,8 +24,8 @@ def matches_image_magic_bytes(data: bytes, extension: str) -> bool:
     return signature is not None and data.startswith(signature)
 
 
-# Reads only the header -- no pixel decode, so an oversized "bomb" is rejected
-# by the caller's dimension check before anything big is allocated.
+# Reads only the header, no pixel decode, so the caller's dimension check
+# rejects a decompression bomb before anything big is allocated.
 def read_image_size(data: bytes) -> Optional[tuple[int, int]]:
     try:
         with Image.open(BytesIO(data)) as image:

@@ -29,7 +29,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 class AnalyticsPeriodDays(IntEnum):
     # IntEnum, not Literal[0, 7, 30, 90]: a query string isn't coerced into an
-    # int Literal -- same as overview's OverviewPeriodDays
+    # int Literal (overview's OverviewPeriodDays does the same)
     ALL = 0
     SEVEN = 7
     THIRTY = 30

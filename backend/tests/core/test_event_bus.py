@@ -35,9 +35,8 @@ from app.worker.subscribers import register_all_subscribers
 _USER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 _TARGET = UserDto(id=2, login="target", name="target", role=Role.ADMIN, language=Locale.EN)
 
-# One realistic instance per event a real handler is registered for -- built
-# from the actual event classes so the payload shape matches what
-# OutboxEventPublisher really writes, not a hand-rolled guess.
+# One instance per event with a registered handler, built from the real event
+# classes so the payload matches what OutboxEventPublisher writes.
 _REGISTERED_EVENTS: dict[str, BaseEvent] = {
     event.event_type: event
     for event in [
@@ -159,13 +158,8 @@ def test_register_all_subscribers_registers_auth_handlers() -> None:
 async def test_registered_handler_reads_its_real_payload_shape(
     event_type: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Every migrated handler reads entry.payload[...] instead of an event
-    # attribute -- a wrong key would only surface as a caught, logged
-    # exception (EventBus.dispatch_stored) or, for a handler that kicks a
-    # task, as a task that silently never fires. This proves each one still
-    # matches what OutboxEventPublisher actually writes. Handlers that
-    # .kiq() a taskiq task are stubbed out here since actually reaching the
-    # broker is outside what this test is about.
+    # Handlers read entry.payload[...], and a wrong key would only show up as
+    # a logged exception or a task that never fires. .kiq() is stubbed.
     async def _noop_kiq(*args: Any, **kwargs: Any) -> None:
         return None
 
@@ -290,7 +284,7 @@ async def test_subscription_changed_handler_kicks_referral_rewards_task(
 async def test_unpaid_subscription_events_do_not_kick_referral_rewards_task(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # promocode / referral / trial grants carry no payment_key -- not a payment
+    # promocode, referral and trial grants carry no payment_key
     calls: list[dict[str, Any]] = []
 
     async def _capture_kiq(*args: Any, **kwargs: Any) -> None:

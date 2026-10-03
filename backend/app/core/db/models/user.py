@@ -22,9 +22,8 @@ class User(BaseSql, TimestampMixin):
             unique=True,
             postgresql_where=text(f"role = '{Role.OWNER.name}'"),
         ),
-        # Mirrors LOGIN_PATTERN (app/core/constants.py) -- Latin letters, digits, dots,
-        # underscores, hyphens only. The API-level check alone doesn't cover rows
-        # written any other way, so this is the actual guarantee.
+        # LOGIN_PATTERN (app/core/constants.py) at the DB level, which also
+        # covers rows the API didn't write
         CheckConstraint(
             "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'",
             name="ck_users_login_charset",
@@ -71,11 +70,9 @@ class User(BaseSql, TimestampMixin):
     # multiple NULLs are fine under a UNIQUE index.
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
     points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=Decimal(0), server_default="0")
-    # One-way latch: True until the user's first trial activation, then
-    # never re-derived from subscription history (a trial subscription can
-    # later become DELETED via a trial->paid conversion -- see
-    # NewPurchase._upgrade_trial_in_place -- so "has a trial row"
-    # would give the wrong answer post-conversion).
+    # One-way latch: True until the first trial activation. Not derived from
+    # history: a trial->paid conversion marks the trial row DELETED
+    # (NewPurchase._upgrade_trial_in_place).
     is_trial_available: Mapped[bool] = mapped_column(default=True, server_default="true")
     # dashboard bell: events up to this moment count as read
     notifications_seen_at: Mapped[Optional[datetime]]

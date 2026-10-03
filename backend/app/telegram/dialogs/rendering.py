@@ -12,11 +12,10 @@ from app.telegram.dialogs.config_cache import DialogConfigCache
 
 
 def render_window_text(runner: TranslatorRunner, key: str, **kwargs: Any) -> str:
-    # Premium emoji in window text needs the glyph in the message plus a
-    # custom_emoji entity over it, and aiogram-dialog's NewMessage carries no
-    # entities -- so the window renders as HTML and the markup becomes a
-    # <tg-emoji> tag. Everything else is escaped first, which is what keeps a
-    # variable resolving to "<b>" literal instead of turning into formatting.
+    # Premium emoji needs a custom_emoji entity, and aiogram-dialog's
+    # NewMessage carries no entities, so the window renders as HTML with a
+    # <tg-emoji> tag. Everything else is escaped first, so a variable holding
+    # "<b>" stays literal.
     escaped = html.escape(strip_serializer_escapes(runner.get(key, **kwargs)), quote=False)
     return catalog.PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', escaped)
 
@@ -47,7 +46,7 @@ def _optional_translation(runner: TranslatorRunner, key: str) -> Optional[str]:
 
 def resolve_variable_kwargs(getter_data: dict[str, Any]) -> dict[str, object]:
     """Resolve every registered catalog variable against this render's getter
-    data, for use as **kwargs into a fluentogram runner.get(...) call -- lets
+    data, for use as **kwargs into a fluentogram runner.get(...) call. Lets
     window text and button labels use real Fluent `{ $var }` syntax for any
     catalog-registered variable, the same set url_value's own ${var} token
     substitution already draws from.

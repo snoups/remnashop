@@ -68,10 +68,9 @@ class ChangePurchase:
             credit_days = await self._credit_days(old, data, now)
             final_expire_at = now + timedelta(days=data.duration_days + credit_days)
 
-        # Reuses old's own panel identity (same UUID, same subscription_url
-        # the client may already have) instead of minting a new one -- only
-        # the plan-driven config (limits/squads/expiry) changes on the panel
-        # side. The local row itself is replaced below, not mutated.
+        # keeps old's panel user (same id, same subscription_url the client
+        # already has) and changes only the plan config (limits, squads,
+        # expiry); the local row is replaced below
         plan = data.plan_snapshot
         panel_user = await self._remnawave_sdk.users.update_user(
             configure_for_plan(old.remnawave_user_id, plan, final_expire_at)
@@ -107,11 +106,9 @@ class ChangePurchase:
         except SupersededError:
             raise
         except Exception:
-            # There's no orphan to clean up -- update_user mutated old's own
-            # panel identity in place, no new one was minted. Best-effort
-            # revert it to what it had before this CHANGE, so a DB failure
-            # doesn't leave the still-ACTIVE `old` subscription pointing at
-            # a panel user configured for a plan it was never billed for.
+            # no orphan: update_user changed old's own panel user. Best-effort
+            # revert, so a DB failure doesn't leave the still-ACTIVE `old` on a
+            # plan config nobody paid for
             with suppress(Exception):
                 await self._remnawave_sdk.users.update_user(restore(old))
             raise
@@ -125,10 +122,8 @@ class ChangePurchase:
     async def _credit_days(
         self, old: SubscriptionDto, data: PurchaseSubscriptionDto, now: datetime
     ) -> int:
-        # Pure function of `old`'s own fields -- computable up front, before
-        # the panel is ever touched, so it gets the CORRECT final expire_at
-        # the first time. No provisional value, no post-hoc reconciliation,
-        # no panel/DB mismatch.
+        # depends on `old` alone, so the panel gets the final expire_at on the
+        # first call
         credit = calculate_proration_credit(
             price_paid=old.plan_snapshot.price_paid,
             duration_days=old.plan_snapshot.duration_days,
@@ -143,9 +138,8 @@ class ChangePurchase:
                 / rates.for_currency(old.plan_snapshot.currency).rate
                 * rates.for_currency(data.currency).rate
             )
-        # Denominator is the list price (data.base_price), so the credit
-        # converts at list rate -- at the promo-discounted rate a 90%-off
-        # checkout would buy 10x the credit days it's worth.
+        # divided by the list price (data.base_price): at the discounted rate a
+        # 90%-off checkout would buy 10x the credit days
         proration_denominator = data.base_price if data.base_price is not None else data.price_paid
         daily_rate_new = proration_denominator / Decimal(data.duration_days)
         return int(credit / daily_rate_new) if daily_rate_new > 0 else 0

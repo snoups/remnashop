@@ -51,8 +51,7 @@ class EventOutboxRepository:
             await self.session.flush()
 
     async def delete_processed_before(self, cutoff: datetime) -> int:
-        # event_log_entries.outbox_id is ondelete="SET NULL": this nulls the
-        # audit-row link but keeps the audit row -- audit history is never pruned here.
+        # event_log_entries.outbox_id is SET NULL, so the audit rows stay
         stmt = delete(EventOutboxEntry).where(
             EventOutboxEntry.processed_at.is_not(None),
             EventOutboxEntry.processed_at < cutoff,
@@ -79,9 +78,8 @@ class EventOutboxRepository:
             await self.session.flush()
 
     async def get_lag_stats(self) -> OutboxLagStats:
-        # Includes rows past _MAX_ATTEMPTS (poisoned) on purpose -- the whole
-        # backlog is what an operator needs to see, not just what the next
-        # sweep will retry. count_poisoned() already covers that breakdown.
+        # poisoned rows (past _MAX_ATTEMPTS) included: the operator wants the
+        # whole backlog; count_poisoned() gives the breakdown
         stmt = select(func.count(), func.min(EventOutboxEntry.occurred_at)).where(
             EventOutboxEntry.processed_at.is_(None)
         )

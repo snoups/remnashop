@@ -21,7 +21,7 @@ interface LocalesManagerProps {
   onChange: (locales: ActiveLocalesResult) => void;
 }
 
-/** The TranslatorHub's root locale -- the backend refuses to deactivate it. */
+/** The TranslatorHub's root locale; the backend refuses to deactivate it. */
 const DEFAULT_LOCALE = "en";
 
 export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
@@ -109,7 +109,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
         className="min-w-40 p-1.5"
 >
-        {/* the scroll lives inside the padding -- on the popover itself the
+        {/* the scroll lives inside the padding: on the popover itself the
             scrollbar column paints over the rounded right corners */}
         <div className="max-h-72 overflow-y-auto">
           {active.map((locale) => row(locale, true))}

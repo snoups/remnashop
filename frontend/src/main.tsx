@@ -12,9 +12,8 @@ const CHUNK_RELOAD_KEY = "remnashop_chunk_reload_at";
 // a second failure this soon after reloading is a real outage, not a stale tab
 const CHUNK_RELOAD_COOLDOWN_MS = 10_000;
 
-// A tab opened before a deploy still asks for the old hashed chunks, which are
-// gone now -- reloading picks up the new index.html. Left to throw, the error
-// reaches the route's errorElement instead.
+// A tab opened before a deploy asks for old hashed chunks that no longer
+// exist; a reload picks up the new index.html instead of the route's errorElement.
 window.addEventListener("vite:preloadError", (event) => {
   const lastReload = Number(readStorage(CHUNK_RELOAD_KEY, "session"));
   if (Date.now() - lastReload < CHUNK_RELOAD_COOLDOWN_MS) return;

@@ -44,7 +44,7 @@ async def test_revoke_all_by_user_deletes_the_users_live_panel_identities(
     )
 
     assert live.id not in remnawave_store
-    # an expired subscription still has a panel identity -- it goes too
+    # an expired subscription still has a panel user, it goes too
     assert expired.id not in remnawave_store
     assert other.id in remnawave_store
     # rows are kept as history but can't be reconciled back to life

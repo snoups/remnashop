@@ -37,11 +37,9 @@ def _requires_admin(route: APIRoute) -> bool:
 
 
 def test_every_admin_router_route_requires_admin() -> None:
-    # admin_router.py's entire reason to exist is "privileged only" (see
-    # docs/architecture/api-routers.md) -- a route landing here without
-    # require_admin is reachable by any authenticated actor, which is an
-    # auth-bypass, not just a style slip. Discovers admin_router.py modules
-    # dynamically so a future module can't silently skip this check.
+    # admin_router.py means "privileged only": a route there without
+    # require_admin is open to any authenticated actor. Modules are discovered
+    # dynamically so a new one can't skip the check.
     missing = [
         f"{module_name}: {sorted(route.methods or [])} {route.path}"
         for module_name, router in _discover_admin_routers()
@@ -52,9 +50,8 @@ def test_every_admin_router_route_requires_admin() -> None:
 
 
 def test_discovery_actually_found_the_known_admin_routers() -> None:
-    # Guards the guard: if discovery silently found zero routers (e.g. a package
-    # layout change breaks the app.modules.*.api.admin_router convention), the
-    # test above would trivially pass on an empty list -- assert real coverage.
+    # if discovery found no routers (a layout change), the test above would
+    # pass on an empty list
     discovered = {label for label, _ in _discover_admin_routers()}
     assert discovered == {
         "advertising.router",

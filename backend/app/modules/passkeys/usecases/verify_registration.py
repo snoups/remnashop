@@ -65,9 +65,9 @@ class VerifyPasskeyRegistrationUseCase(
                 credential=data.credential,
                 expected_challenge=challenge,
                 expected_rp_id=settings.passkey_rp_id,
-                # accepts the bare-https rp_id origin too -- admin-configured
-                # passkey_origin can drift from what the browser presents
-                # (trailing slash, proxy TLS termination)
+                # the bare-https rp_id origin too: the configured passkey_origin
+                # can differ from what the browser sends (trailing slash, TLS
+                # terminated at a proxy)
                 expected_origin=[settings.passkey_origin, f"https://{settings.passkey_rp_id}"],
                 require_user_verification=True,
             )

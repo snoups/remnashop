@@ -34,8 +34,7 @@ class TransactionResponse(BaseModel):
     id: int
     user_id: int
     user: Optional[TransactionUserResponse]
-    # None once the plan is deleted -- plan_snapshot is the durable record of
-    # what was actually ordered, always populated regardless of plan_id.
+    # None once the plan is deleted; plan_snapshot always records what was ordered
     plan_id: Optional[int]
     plan_snapshot: dict[str, Any]
     duration_days: int

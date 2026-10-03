@@ -5,7 +5,7 @@ _EMPTY_SKIP: Final[frozenset[str]] = frozenset()
 
 
 def apply_partial_update(row: Any, data: Any, *, skip: frozenset[str] = _EMPTY_SKIP) -> None:
-    """Copy every set (non-None) field of an Update-DTO onto an ORM row -- PATCH
+    """Copy every set (non-None) field of an Update-DTO onto an ORM row: PATCH
     semantics shared by the update() methods that would otherwise each spell out
     a dozen `if data.x is not None: row.x = data.x` lines (and trip C901).
 

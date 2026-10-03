@@ -18,9 +18,7 @@ def test_retry_schedule_source_is_a_list_redis_schedule_source() -> None:
 
 
 def test_first_retry_delay_outlasts_the_panel_breaker_window() -> None:
-    # resilient_transport's _RECOVERY_TIMEOUT_S is 30s and the breaker's open
-    # window is not refreshed by fail-fast rejections -- a retry landing inside
-    # it burns budget while the breaker is still open. Guards that coupling.
+    # a retry inside resilient_transport's 30s breaker window would be wasted
     middleware = next(m for m in broker.middlewares if isinstance(m, SmartRetryMiddleware))
     assert middleware.default_delay >= 30.0
 

@@ -35,10 +35,7 @@ def _discover_use_case_classes() -> list[type[UseCase]]:
 def test_required_permission_is_unique_per_use_case() -> None:
     # A shared required_permission across two usecases means an OWNER can't
     # grant one without the other, and an API token can't be scoped to less
-    # than the bundle -- docs/architecture/permissions-roles.md calls this a
-    # real capability leak, not a style nit. Two named exceptions stay
-    # deliberately bundled (see that doc's granularity rule); everything
-    # else must be 1:1, checked here instead of by hand.
+    # than the bundle. Only _BUNDLED_EXCEPTIONS share one on purpose.
     by_permission: dict[Permission, list[str]] = {}
     for cls in _discover_use_case_classes():
         permission = cls.required_permission
@@ -76,9 +73,7 @@ def test_public_permission_is_exempt_from_uniqueness() -> None:
         async def _execute(self, actor, data):  # type: ignore[no-untyped-def]
             return None
 
-    # Simulates what _discover_use_case_classes() would find if two real
-    # usecases both used PUBLIC -- the uniqueness check itself must not
-    # flag this pair, unlike a real shared capability permission.
+    # two usecases sharing PUBLIC aren't a shared capability and mustn't be flagged
     by_permission: dict[Permission, list[str]] = {}
     for cls in (_FakeUseCaseA, _FakeUseCaseB):
         permission = cls.required_permission

@@ -15,7 +15,7 @@ from app.modules.users import TelegramUserRegisteredEvent
 async def _kick_rewards(entry: StoredEvent, *, is_new_purchase: bool) -> None:
     payment_key = entry.payload.get("payment_key")
     if not payment_key:
-        return  # trial/promocode/referral grant -- only paid orders earn a reward
+        return  # trial/promocode/referral grant; only paid orders earn a reward
 
     await assign_referral_rewards_task.kiq(  # type: ignore[call-overload]
         user_id=entry.payload["user"]["id"],

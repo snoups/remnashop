@@ -197,9 +197,8 @@ export function EventLogPage() {
               <>
                 {/* overflow-y-hidden: overflow-x-auto alone makes y scrollable too, and the rows' rise-in (list-rows) would flash a scrollbar */}
                 <div className="-mx-2 overflow-x-auto overflow-y-hidden">
-                  {/* px-2 reserves headroom so the rows' whileTap scale (below) grows into
-                      padding, not past this track's own box -- keeps the scroll container's
-                      measured width stable and avoids a scrollbar flicker on tap. */}
+                  {/* px-2: the rows' whileTap scale grows into padding, so the scroll
+                      container's width holds and no scrollbar flickers on tap */}
                   <div className="min-w-[640px] px-2">
                     <div className="grid grid-cols-[1.2fr_170px_1fr_140px_16px] gap-4 border-b border-border px-3 pb-2.5">
                       <span className={EYEBROW_CLASS}>

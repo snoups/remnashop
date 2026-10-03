@@ -28,7 +28,7 @@ class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
     async def _execute(self, actor: Actor, data: None) -> int:
         async with self._uow:
             origins = await self._blacklist_repository.identity_origins()
-            # source-list entries can't be removed here -- the next reconcile re-blocks those users
+            # source-list entries can't be removed here; the next reconcile re-blocks those users
             manual_ids, manual_emails = await self._user_blacklist.matching_identities(
                 *identities_of(origins, "manual"), roles=_ROLES
             )

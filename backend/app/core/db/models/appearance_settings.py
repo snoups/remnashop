@@ -11,14 +11,13 @@ from app.core.db.timestamp import TimestampMixin
 class AppearanceSettings(BaseSql, TimestampMixin):
     __tablename__ = "appearance_settings"
 
-    # Single row, always id=1 -- core/db/singleton.py's get_or_create_singleton.
+    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
     brand_name: Mapped[Optional[str]] = mapped_column(String(64))
     primary_color: Mapped[Optional[str]] = mapped_column(String(7))
-    # 4 hex colors [base, amplitude, frequency, phase] -- the shader's
-    # cosine-gradient palette, always read/written as one unit, never
-    # queried column-by-column.
+    # 4 hex colors [base, amplitude, frequency, phase]: the shader's
+    # cosine-gradient palette, read and written as one unit
     shader_palette: Mapped[Optional[list[str]]] = mapped_column(JSONB)
     shader_enabled: Mapped[bool] = mapped_column(Boolean(), default=True, server_default="true")
 

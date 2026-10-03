@@ -1,4 +1,4 @@
-// lucide-react dropped brand marks — inlined from simple-icons (MIT).
+// lucide-react has no brand marks; these come from simple-icons (MIT).
 
 export function GithubIcon({ className }: { className?: string }) {
   return (

@@ -388,8 +388,7 @@ function formatUptime(t: TFunction, seconds: number): string {
   return t("dashboard.runtime.durationMinutes", { count: minutes });
 }
 
-// Process names are technical identifiers (matches docker-entrypoint.sh's
-// targets), not user-facing prose -- kept in English regardless of locale.
+// process names are docker-entrypoint.sh's targets, identifiers left untranslated
 const RUNTIME_PROCESS_LABELS: Record<string, string> = {
   api: "API",
   telegram: "Telegram bot",

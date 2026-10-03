@@ -122,9 +122,7 @@ async def test_rows_are_ordered(session, dialog_repository: DialogRepository) ->
 async def test_unknown_variable_token_resolves_to_empty_string(
     session, dialog_repository: DialogRepository
 ) -> None:
-    # An admin typo in a `${variable}` token must not crash the whole window for
-    # every user -- fall back to "" rather than propagating catalog.get_variable's
-    # KeyError.
+    # a typo in a `${variable}` token renders "" instead of crashing the window
     await dialog_repository.upsert_seed(
         "menu.main",
         DialogFlow.MENU,
@@ -173,9 +171,7 @@ def test_resolve_variable_kwargs_uses_resolver_default_for_missing_data() -> Non
 async def test_unknown_visibility_condition_hides_button(
     session, dialog_repository: DialogRepository
 ) -> None:
-    # Same failure mode as the unknown-variable-token bug: an admin typo in
-    # visibility_condition must not crash the whole window via catalog.get_condition's
-    # KeyError -- hide the button (fail-safe) instead.
+    # a typo in visibility_condition hides the button instead of crashing the window
     await dialog_repository.upsert_seed(
         "menu.main",
         DialogFlow.MENU,
@@ -227,8 +223,8 @@ def test_render_window_text_turns_markup_into_a_tg_emoji_tag() -> None:
 
 
 def test_render_window_text_escapes_everything_else() -> None:
-    # The window renders as HTML so <tg-emoji> works, which makes any unescaped
-    # text -- a user's own display name among it -- an injection point.
+    # the window renders as HTML for <tg-emoji>, so any unescaped text, a
+    # user's display name included, is an injection point
     runner = _StubRunner('<a href="http://evil">click</a> & <b>bold</b>')
     assert render_window_text(runner, "k") == (
         '&lt;a href="http://evil"&gt;click&lt;/a&gt; &amp; &lt;b&gt;bold&lt;/b&gt;'

@@ -24,8 +24,8 @@ class AdLink(BaseSql, TimestampMixin):
     allow_bot: Mapped[bool] = mapped_column(default=True, server_default="true")
     allow_webcabinet: Mapped[bool] = mapped_column(default=True, server_default="true")
     note: Mapped[Optional[str]] = mapped_column(Text)
-    # No ondelete cascade to a deleted admin's other data -- just detach the
-    # attribution, same treatment Promocode gives reward_addon_id/reward_plan_id.
+    # no cascade into a deleted admin's other data, the attribution is just
+    # detached (like Promocode's reward_addon_id/reward_plan_id)
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
     attributions: Mapped[list["AdLinkAttribution"]] = relationship(

@@ -175,9 +175,8 @@ async def test_days_window_excludes_orders_paid_before_the_cutoff(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="overview-old-1")
         )
     await transaction_repository.mark_status(old_order.id, TransactionStatus.PAID)
-    # updated_at is a server default -- backdate this order outside the
-    # usecase's own `days=7` window (same idiom as the Task 1/3 cutoff
-    # tests) so this genuinely proves exclusion, not just inclusion.
+    # updated_at is a server default, so the order is backdated past the
+    # usecase's `days=7` window by hand
     await session.execute(
         update(Transaction)
         .where(Transaction.id == old_order.id)
@@ -213,12 +212,9 @@ async def test_since_is_calendar_aligned_not_a_rolling_cutoff(
             _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="overview-today-1")
         )
     await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
-    # Backdate to 30 minutes into today (not yesterday) -- a rolling
-    # `now - 1 day` cutoff would still include this, so this alone doesn't
-    # distinguish the two window semantics. What does: with days=1, a
-    # calendar-aligned `since` is midnight today, so an order backdated to
-    # yesterday just before midnight must be excluded, while one backdated
-    # to just after midnight today must be included.
+    # With days=1 a calendar-aligned `since` is today's midnight: an order just
+    # before it is out, one 30 minutes after is in. A rolling `now - 1 day`
+    # cutoff would include both.
     today_start = datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
     await session.execute(
         update(Transaction)

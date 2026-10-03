@@ -58,8 +58,8 @@ class PricingRepository:
         return await get_or_create_singleton(self.session, PricingSettings, _SETTINGS_ID)
 
     async def _seed_missing_rates(self, missing: list[Currency]) -> None:
-        # ON CONFLICT DO NOTHING rather than session.add -- same fresh-database
-        # race as get_or_create_singleton guards against.
+        # ON CONFLICT DO NOTHING, not session.add: the same fresh-database race
+        # get_or_create_singleton guards against
         await self.session.execute(
             pg_insert(CurrencyRate)
             .values(

@@ -21,8 +21,7 @@ class DeleteBackupRunUseCase(UseCase[int, None]):
             run = await self._backup_repository.get_run(data)
         async with self._uow:
             await self._backup_repository.delete_run(data)
-        # unlink only after the row deletion has committed -- a rolled-back
-        # transaction must never leave the file already gone
+        # unlink only after the delete commits, so a rollback keeps the file
         if run.file_path:
             Path(run.file_path).unlink(missing_ok=True)
         logger.info(f"Backup run '{data}' deleted by actor {actor.log}")

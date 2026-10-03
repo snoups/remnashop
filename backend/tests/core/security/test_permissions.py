@@ -276,8 +276,7 @@ def test_user_sessions_revoke_is_distinct_from_view() -> None:
 
 
 def test_banner_permissions_are_independently_gateable() -> None:
-    # ADMIN's role default includes every banner permission -- revoke two
-    # to check BANNERS_UPLOAD survives on its own.
+    # ADMIN has every banner permission by default; revoke two, BANNERS_UPLOAD stays
     upload_only = ADMIN.model_copy(
         update={
             "permission_revokes": [
@@ -442,8 +441,8 @@ def test_token_grantable_is_a_subset_of_grantable() -> None:
 
 
 def test_backup_download_is_owner_only() -> None:
-    # a DATABASE dump holds every table, password hashes included -- holding it
-    # would subsume every other read permission, so it can't be delegated
+    # a DATABASE dump holds every table, password hashes included, so it
+    # subsumes every read permission and can't be delegated
     assert Permission.BACKUPS_RUN_DOWNLOAD not in GRANTABLE_PERMISSIONS
     assert Permission.BACKUPS_RUN_DOWNLOAD not in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.BACKUPS_RUN_DOWNLOAD not in ROLE_PERMISSIONS[Role.ADMIN]

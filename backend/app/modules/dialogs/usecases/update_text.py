@@ -48,10 +48,8 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextDto, TranslationEntryDto])
             if data.attribute_id:
                 full_key = f"{data.message_id}.{data.attribute_id}"
             if not catalog.is_editable_text_key(full_key):
-                # This endpoint's relaxed placeable rule is dialogs-scoped -- it must
-                # not become a back door for editing arbitrary translations rows
-                # (bot commands, notifications) that the general editor guards more
-                # strictly and repushes on change.
+                # the relaxed placeable rule is for dialog text only; bot commands
+                # and notifications go through the stricter general editor
                 raise ValidationError(
                     f"'{full_key}' is not an editable dialog text key",
                     code=ErrorCode.DIALOG_TEXT_KEY_NOT_EDITABLE,

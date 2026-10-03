@@ -18,7 +18,7 @@ interface ConfirmDialogProps {
   icon?: LucideIcon;
   /** false renders inline in the parent's own container instead of portaling to document.body */
   portal?: boolean;
-  /** extra content rendered between the message and the action buttons -- a diff table, a small form, etc. */
+  /** extra content between the message and the buttons: a diff table, a small form */
   children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;

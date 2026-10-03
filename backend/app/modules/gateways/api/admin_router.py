@@ -49,8 +49,8 @@ async def get_gateway_catalog(
     config: FromDishka[AppConfig],
     actor: Actor = Depends(require_admin_user),
 ) -> GatewayCatalogResponse:
-    # Static schema metadata, no secrets -- no usecase/Permission layer, so
-    # dashboard sessions only, same as GET /permissions/catalog.
+    # static schema metadata, no secrets: no usecase or Permission, dashboard
+    # sessions only (like GET /permissions/catalog)
     return GatewayCatalogResponse(
         entries=[
             GatewayCatalogEntryResponse(

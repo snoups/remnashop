@@ -13,8 +13,8 @@ def _escape_like(value: str) -> str:
 
 
 def user_search_filter(search: str, *, include_login: bool = True) -> ColumnElement[bool]:
-    # include_login=False where the response never shows the login -- a
-    # predicate on a field the caller can't read is an oracle for that field.
+    # include_login=False where the response never shows the login: filtering
+    # on a field the caller can't read is an oracle for it
     pattern = f"%{_escape_like(search)}%"
     username_pattern = f"%{_escape_like(search.removeprefix('@'))}%"
     search_filters: list[ColumnElement[bool]] = [

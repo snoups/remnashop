@@ -28,7 +28,7 @@ class RemnawaveProvider(Provider):
             headers["x-forwarded-for"] = "127.0.0.1"
 
         # with transport= given, AsyncClient ignores its own verify/limits/...
-        # kwargs -- TLS and pooling are configured on AsyncHTTPTransport(...)
+        # kwargs, so TLS and pooling go on AsyncHTTPTransport(...)
         transport = ResilientTransport(AsyncHTTPTransport())
         client = AsyncClient(
             base_url=f"{config.remnawave.url.get_secret_value()}/api",

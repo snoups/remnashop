@@ -29,7 +29,7 @@ async def test_translation_changed_skips_attribute_keys(redis) -> None:
 
     await RedisBotSignals(redis).translation_changed(Locale.RU, "btn-menu", "subscription", "Sub")
 
-    # fluentogram can only hot-patch message-level keys -- nothing is published.
+    # fluentogram hot-patches only message-level keys, so nothing is published
     assert await pubsub.get_message(timeout=0.5) is None
 
     await pubsub.unsubscribe(TRANSLATION_CHANGED_CHANNEL)

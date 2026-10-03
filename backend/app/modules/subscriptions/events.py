@@ -39,7 +39,7 @@ class SubscriptionChangedEvent(UserEvent):
 @dataclass(frozen=True, kw_only=True)
 class SubscriptionAddOnGrantedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
-    # the subscription's owner -- `user` is the system actor on the promocode path
+    # the subscription's owner; `user` is the system actor on the promocode path
     target: Optional[UserDto]
     subscription_id: int
     addon_id: int

@@ -6,8 +6,8 @@ from app.modules.plans.dto import PlanDto
 def is_plan_purchasable_by(
     plan: PlanDto, actor: Actor, *, has_purchase_history: bool, has_referrer: bool
 ) -> bool:
-    """Whether `actor` may purchase `plan` right now, given a specific plan_id
-    -- gates every provisioning entry point (checkout, promocode SUBSCRIPTION
+    """Whether `actor` may purchase `plan` right now. Gates every provisioning
+    entry point (checkout, promocode SUBSCRIPTION
     reward), so a plan's availability/allowlist can't be bypassed by calling a
     lower-level endpoint with a known plan_id. `has_purchase_history` = actor
     has ever purchased a non-trial subscription (any status, including

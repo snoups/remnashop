@@ -18,12 +18,10 @@ from app.modules.subscriptions.usecases.sync_subscription_status import (
     SyncSubscriptionStatusUseCase,
 )
 
-# How far a webhook's own timestamp may drift from "now" before it's rejected
-# as stale. Read from the signed body, not from X-Remnawave-Timestamp: the
-# panel's HMAC covers the body only, so anyone replaying a captured request
-# just sets a fresh header. The dedup key's longer TTL closes the gap the
-# other way -- inside the freshness window a replay hits the key, outside it
-# the body's own timestamp is already stale.
+# How far a webhook's timestamp may drift from "now" before it's stale. Read
+# from the signed body, not X-Remnawave-Timestamp: the HMAC covers only the
+# body, so a replay just sets a fresh header. Inside the window a replay hits
+# the dedup key (longer TTL), outside it the timestamp is stale.
 _FRESHNESS_WINDOW_S: Final[int] = TTL_5M
 _REPLAY_TTL_S: Final[int] = TTL_10M
 

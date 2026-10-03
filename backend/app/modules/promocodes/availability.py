@@ -48,7 +48,7 @@ async def assert_available_to(
     promo: PromocodeDto, actor: Actor, subscription_repository: SubscriptionRepository
 ) -> None:
     """Shared by ValidatePromocodeUseCase (the pre-activation preview) and
-    ActivatePromocodeUseCase (the real thing) -- the two must agree, or the
+    ActivatePromocodeUseCase (the real thing). The two must agree, or the
     preview says "available" on a code activation then refuses."""
     if promo.availability is PromocodeAvailability.ALL:
         return

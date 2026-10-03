@@ -35,8 +35,7 @@ async def test_record_attribution_unknown_code_is_a_no_op(
     async with uow:
         user = await user_repository.create(CreateUserDto(name="Unknown", telegram_id=950_002))
 
-    # No exception, no row -- nothing else to assert against directly since
-    # there's no ad_link id to query attributions for.
+    # no exception and no row; without an ad_link id there's nothing to query
     await RecordAdLinkAttributionUseCase(ad_link_repository, uow).system(
         RecordAdLinkAttributionDto(
             user_id=user.id, ad_link_code="does-not-exist", channel=AdLinkChannel.BOT

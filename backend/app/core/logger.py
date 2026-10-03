@@ -116,7 +116,7 @@ def setup_logger(config: AppConfig) -> None:
 
 def add_redis_sink(config: AppConfig, key: str) -> None:
     # Survives the process itself, so the dashboard can show why it failed to start.
-    # Sync client on loguru's enqueue thread -- never blocks the event loop.
+    # sync client on loguru's enqueue thread, never blocks the event loop
     redis = Redis.from_url(config.redis.dsn, socket_timeout=REDIS_LOG_TIMEOUT_S)
 
     def write(message: str) -> None:
@@ -136,5 +136,5 @@ def add_redis_sink(config: AppConfig, key: str) -> None:
         diagnose=False,
         enqueue=True,
     )
-    # otherwise a crash's last lines -- the ones worth seeing -- die in the queue
+    # otherwise a crash's last lines, the ones worth seeing, die in the queue
     atexit.register(logger.complete)

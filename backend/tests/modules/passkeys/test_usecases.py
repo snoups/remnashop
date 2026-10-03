@@ -38,11 +38,8 @@ ORIGIN = "https://example.com"
 async def _create_user(
     user_repository: UserRepository, uow: UnitOfWork, login: str, role: Role = Role.OWNER
 ) -> UserDto:
-    # OWNER is singular (a DB partial unique index enforces it) -- a test
-    # creating a second user (e.g. Task 6's "other") must pass role=Role.ADMIN
-    # explicitly. Unlike Task 2's repository-only tests, role matters here:
-    # these are usecase tests, and an actor needs a role that actually holds
-    # Permission.OWN_ACCOUNT_MANAGE (OWNER and ADMIN both do, USER does not).
+    # OWNER is unique (partial index), so a second user needs role=Role.ADMIN;
+    # USER would lack Permission.OWN_ACCOUNT_MANAGE.
     async with uow:
         user = await user_repository.create(
             CreateUserDto(login=login, name=login, role=role, language=Locale.EN)
@@ -58,14 +55,9 @@ async def _enable_passkeys(settings_repository: SettingsRepository) -> None:
 
 
 def _fake_registration_credential(challenge: bytes) -> dict[str, Any]:
-    # A syntactically valid RegistrationResponseJSON-shaped dict signed by a
-    # real, throwaway software authenticator would require an actual WebAuthn
-    # client -- out of reach in a unit test. Instead we exercise the
-    # usecase's error paths (disabled/unconfigured settings, missing/expired
-    # challenge) directly, and leave "does a real browser response verify"
-    # to the manual end-to-end check called out in the spec's Verification
-    # section, matching how WebAuthn signature verification itself is
-    # exercised in these tests via a deliberately-invalid credential.
+    # a correctly signed response needs a real WebAuthn client, so these tests
+    # cover the error paths with a deliberately invalid credential; a real
+    # browser response is checked by hand
     return {
         "id": "not-a-real-credential",
         "rawId": bytes_to_base64url(b"not-a-real-credential"),
@@ -162,9 +154,8 @@ async def test_verify_registration_rejects_invalid_response(
     with pytest.raises(AuthenticationError, match="verified"):
         await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
 
-    # The challenge is consumed even on a failed verification -- a second
-    # attempt against the same (now-expired) challenge must also fail as
-    # "expired", not silently retry.
+    # a failed verification still consumes the challenge, so a second attempt
+    # fails as "expired"
     with pytest.raises(AuthenticationError, match="challenge"):
         await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
 
@@ -394,9 +385,8 @@ async def test_verify_authentication_rejects_malformed_credential_structure(
         event_publisher,
     )
 
-    # rawId deliberately omitted -- webauthn's parse_authentication_credential_json
-    # raises InvalidJSONStructure here, a sibling of InvalidAuthenticationResponse
-    # the usecase must also catch.
+    # without rawId parse_authentication_credential_json raises
+    # InvalidJSONStructure, which the usecase must catch too
     credential = {
         "id": created.credential_id,
         "response": {

@@ -82,9 +82,8 @@ async def test_refresh_rejects_a_missing_csrf_header(auth_client: httpx.AsyncCli
 async def test_refresh_rejects_a_forged_cookie_mirrored_into_the_header(
     auth_client: httpx.AsyncClient,
 ) -> None:
-    # The core of the fix: a plain double-submit (cookie==header) would pass
-    # this, since both are set to the same attacker-chosen value. Only a
-    # correctly-signed value (HMAC of the real refresh token) is accepted.
+    # a plain double-submit check (cookie == header) would pass this; only an
+    # HMAC of the real refresh token is accepted
     assert (await _bootstrap(auth_client)).status_code == 201
     auth_client.cookies.set("csrf_token", "attacker-controlled-value")
 

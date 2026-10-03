@@ -2,9 +2,8 @@ import type { TFunction } from "i18next";
 
 import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 
-// Decimal fields are serialized as strings by the backend (pydantic v2's
-// JSON mode), not numbers -- keep them as strings end-to-end to avoid float
-// precision loss on round-trip through <input type="number">.
+// Decimals arrive as strings (pydantic v2's JSON mode) and stay strings, so
+// a round-trip through <input type="number"> loses no precision.
 
 export type Currency = "USD" | "XTR" | "RUB";
 export type RoundingMode = "INTEGER" | "DECIMAL_2";

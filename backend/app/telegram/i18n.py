@@ -33,9 +33,8 @@ def build_translator_hub(
 
 
 async def read_translator_hub(config: AppConfig) -> TranslatorHub:
-    # Standalone engine, not the DI-managed one -- same rationale as
-    # read_bot_settings() in app/modules/settings/bootstrap.py: this runs
-    # before the process's dishka container exists.
+    # standalone engine, like read_bot_settings(): this runs before the
+    # dishka container exists
     engine = create_async_engine(config.database.dsn)
     try:
         async with AsyncSession(engine) as session:

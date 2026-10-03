@@ -26,8 +26,8 @@ def test_gateway_currency_covers_telegram_stars() -> None:
 def test_gateway_currency_raises_for_an_unimplemented_type(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Every currently-defined PaymentGatewayType has an adapter or a
-    # NON_HTTP_GATEWAY_CURRENCIES entry -- remove one to exercise the miss.
+    # every PaymentGatewayType has an adapter or a NON_HTTP_GATEWAY_CURRENCIES
+    # entry, so one is removed to get a miss
     monkeypatch.delitem(GATEWAY_REGISTRY, PaymentGatewayType.YOOKASSA)
     with pytest.raises(KeyError):
         gateway_currency(PaymentGatewayType.YOOKASSA, {})

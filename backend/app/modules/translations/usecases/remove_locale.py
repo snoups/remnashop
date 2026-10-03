@@ -29,10 +29,8 @@ class RemoveLocaleUseCase(UseCase[Locale, list[Locale]]):
         self._config = config
 
     async def _execute(self, actor: Actor, data: Locale) -> list[Locale]:
-        # The default locale is the TranslatorHub's root_locale -- deactivating
-        # it leaves the hub with no root translator, and read_translator_hub()
-        # runs before uvicorn.run() in telegram/__main__.py, so the process
-        # would crash on every start instead of just losing one language.
+        # the default locale is the TranslatorHub's root_locale; without it
+        # read_translator_hub() fails and the telegram process crashes on start
         if data == self._config.default_locale:
             raise ValidationError(
                 f"The default locale ({data.value}) cannot be removed",

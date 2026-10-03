@@ -230,7 +230,7 @@ class AdLinkRepository:
         created_from: Optional[datetime] = None,
         created_to: Optional[datetime] = None,
     ) -> list[tuple[int, int, AdLinkChannel]]:
-        # (ad_link_id, user_id, channel) -- one row per attributed user.
+        # (ad_link_id, user_id, channel), one row per attributed user
         if not ad_link_ids:
             return []
         stmt = select(
