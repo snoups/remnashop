@@ -8,6 +8,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
 import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { toast } from "@shared/lib/toast";
+import { initials } from "@shared/lib/initials";
 import { useReloadCurrentUser } from "@entities/user/use-current-user";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
@@ -57,7 +58,6 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const initials = (login ?? "?").slice(0, 2).toUpperCase();
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -103,7 +103,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
         <div className="flex flex-col gap-3 p-4">
           <Card variant="form">
             <div className="flex size-14 items-center justify-center rounded-full bg-foreground text-[18px] font-bold text-canvas">
-              {initials}
+              {initials(login)}
             </div>
 
             <Field label={t("profile.edit.nameLabel")} htmlFor="edit-name">

@@ -27,7 +27,7 @@ DOCS: Final[str] = "https://remnashop.dev"
 T_ME: Final[str] = "https://t.me/"
 API_V1: Final[str] = "/api/v1"
 BOT_WEBHOOK_PATH: Final[str] = "/telegram"
-# registered in every gateway's dashboard
+# registered in every gateway's dashboard -- never rename
 PAYMENTS_WEBHOOK_PATH: Final[str] = "/payments"
 REMNAWAVE_WEBHOOK_PATH: Final[str] = "/remnawave"
 
@@ -65,6 +65,8 @@ CUSTOM_DIALOG_WINDOW_SLOTS: Final[int] = 50
 REFRESH_COOKIE_NAME: Final[str] = "refresh_token"
 CSRF_COOKIE_NAME: Final[str] = "csrf_token"
 REFRESH_COOKIE_PATH: Final[str] = "/api/v1/auth"
+DOCS_PATH: Final[str] = "/api/v1/docs"
+DOCS_COOKIE_NAME: Final[str] = "docs_access"
 
 MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"
@@ -91,6 +93,7 @@ TTL_10M: Final[int] = TIME_1M * 10
 TTL_15M: Final[int] = TIME_1M * 15
 TTL_30M: Final[int] = TIME_1M * 30
 TTL_1H: Final[int] = TIME_1H
+TTL_2H: Final[int] = TIME_1H * 2
 TTL_6H: Final[int] = TIME_1H * 6
 TTL_12H: Final[int] = TIME_1H * 12
 TTL_1D: Final[int] = TIME_1D

@@ -13,11 +13,8 @@ export function hexToRgbNormalized(hex: string): [number, number, number] {
   return [r / 255, g / 255, b / 255];
 }
 
-// The shader's default cosine-gradient palette (base/amplitude/frequency/
-// phase), in hex -- source of truth for both app/shaderState.ts's Vector3
-// uniforms and the Appearance settings form's default swatches. Lives here,
-// not in app/shaderState.ts, so features/entities-layer code can read it
-// without reaching upward into the app layer (FSD).
+// The shader's default cosine-gradient palette (base/amplitude/frequency/phase).
+// Here, not in app/shaderState.ts, so the settings form can read it (FSD).
 export const DEFAULT_SHADER_PALETTE_HEX: readonly [string, string, string, string] = [
   "#0f1629",
   "#050d0d",
@@ -65,14 +62,10 @@ function primaryForeground(primaryColor: string): string {
   return contrastRatio(primaryColor, "#ffffff") > tintContrast ? "#ffffff" : tint;
 }
 
-// The form's blank-state placeholder and the shader's reference color --
-// ShaderBackground rotates its native palette's hue by the delta between the
-// admin's picked accent and this value, so this is the anchor "no rotation"
-// point, not an arbitrary default.
+// the shader's "no rotation" point: its hue shifts by the picked accent's delta from this
 export const DEFAULT_ACCENT_COLOR = "#22d3ee";
 
-// Degrees, 0..360. Used to compute how far a picked accent color's hue sits
-// from DEFAULT_ACCENT_COLOR's, which becomes the shader's hue-rotation angle.
+// degrees, 0..360
 export function hexToHueDegrees(hex: string): number {
   const [r, g, b] = hexToRgbNormalized(hex);
   const max = Math.max(r, g, b);
@@ -89,11 +82,7 @@ export function hexToHueDegrees(hex: string): number {
   return hue < 0 ? hue + 360 : hue;
 }
 
-// Row-major coefficients of the hue-rotation matrix (same technique behind
-// CSS's filter: hue-rotate()) -- the one source of truth for both
-// app/shaderState.ts's buildHueRotationMatrix (a Float32Array for the GLSL
-// uniform) and hueRotateHex below (plain hex math, for previewing that same
-// rotation on a swatch outside the canvas).
+// Row-major hue-rotation matrix (as CSS's hue-rotate()), shared by the shader uniform and hueRotateHex.
 export function hueRotationCoefficients(
   angleRadians: number,
 ): [number, number, number, number, number, number, number, number, number] {
@@ -112,9 +101,7 @@ export function hueRotationCoefficients(
   ];
 }
 
-// Applies the same hue rotation the shader renders with to a plain hex
-// color -- lets the Appearance settings form preview what a shader palette
-// swatch will actually look like once the admin's accent color rotates it.
+// the shader's hue rotation applied to a hex color, for swatch previews
 export function hueRotateHex(hex: string, angleRadians: number): string {
   const [r, g, b] = hexToRgbNormalized(hex);
   const [m11, m12, m13, m21, m22, m23, m31, m32, m33] = hueRotationCoefficients(angleRadians);
@@ -134,9 +121,7 @@ export interface DerivedTheme {
   accentForeground: string;
 }
 
-// Admins pick one accent color; the other tokens styles.css already defines
-// (--color-primary-foreground/-hover, --color-accent/-foreground)
-// are derived from it so buttons/links/highlights stay coherent.
+// the other primary/accent tokens, derived from the one accent an admin picks
 export function deriveTheme(primaryColor: string): DerivedTheme {
   return {
     primary: primaryColor,

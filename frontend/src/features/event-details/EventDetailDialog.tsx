@@ -74,7 +74,6 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
           : undefined;
   // id 0 and below is a synthetic actor (API token / system), not a real row
   const userId = user?.id && user.id > 0 ? String(user.id) : undefined;
-  // the system actor carries telegram_id -1 (core/usecase.py's _system_actor)
   const telegramId = user?.telegram_id && user.telegram_id > 0 ? String(user.telegram_id) : undefined;
 
   return (

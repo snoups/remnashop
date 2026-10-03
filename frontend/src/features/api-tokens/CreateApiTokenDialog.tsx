@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createApiToken, type CreatedApiToken } from "@entities/api-tokens/api";
+import { toTokenScopes } from "@entities/api-tokens/scopes";
 import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
@@ -31,7 +32,6 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
 }
 
 const EXPIRY_OPTIONS = [
-  { value: "", labelKey: "apiTokens.neverExpires" },
   { value: "30", labelKey: "apiTokens.expiresIn30Days" },
   { value: "90", labelKey: "apiTokens.expiresIn90Days" },
   { value: "180", labelKey: "apiTokens.expiresIn180Days" },
@@ -70,26 +70,31 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
 
   const applyFullAccess = () => {
     if (catalogState.kind !== "ready") return;
-    const full = new Set(catalogState.data.map((entry) => entry.permission));
+    const full = new Set(
+      catalogState.data.filter((entry) => entry.token_grantable).map((entry) => entry.permission),
+    );
     setPermissions((prev) => (setsEqual(prev, full) ? new Set() : full));
   };
 
   const applyReadOnly = () => {
     if (catalogState.kind !== "ready") return;
     const readOnly = new Set(
-      catalogState.data.filter((entry) => entry.kind === "read").map((entry) => entry.permission),
+      catalogState.data
+        .filter((entry) => entry.token_grantable && entry.kind === "read")
+        .map((entry) => entry.permission),
     );
     setPermissions((prev) => (setsEqual(prev, readOnly) ? new Set() : readOnly));
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (catalogState.kind !== "ready") return;
     setIsSubmitting(true);
     try {
       const created = await createApiToken(
         name.trim(),
-        Array.from(permissions),
-        expiresInDays === "" ? null : Number(expiresInDays),
+        toTokenScopes(permissions, catalogState.data),
+        Number(expiresInDays),
       );
       onCreated(created);
     } catch (err) {
@@ -132,7 +137,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
                     value={expiresInDays}
                     onChange={setExpiresInDays}
                     icon={Clock}
-                    placeholder={t("apiTokens.neverExpires")}
+                    placeholder={t("apiTokens.expiresIn30Days")}
                     options={EXPIRY_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
                   />
                 </div>
@@ -154,7 +159,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
                 </Button>
               </div>
             </div>
-            <PermissionPicker selected={permissions} onToggle={togglePermission} />
+            <PermissionPicker selected={permissions} onToggle={togglePermission} tokenGrantableOnly />
           </Card>
         </div>
 
@@ -169,7 +174,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
           <Button
             variant="accent"
             type="submit"
-            disabled={isSubmitting || name.trim().length === 0}
+            disabled={isSubmitting || name.trim().length === 0 || permissions.size === 0}
           >
             {t("apiTokens.submit")}
           </Button>

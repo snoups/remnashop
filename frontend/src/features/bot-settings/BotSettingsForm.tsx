@@ -26,6 +26,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 // Telegram's secret_token requirement: 1-256 chars, only A-Z, a-z, 0-9, "_", "-".
 const SECRET_TOKEN_CHARSET =
@@ -141,9 +142,11 @@ export function BotSettingsForm() {
   const [isRemovingProxy, setIsRemovingProxy] = useState(false);
   const [dropPendingUpdates, setDropPendingUpdates] = useState(false);
   const [initialDropPendingUpdates, setInitialDropPendingUpdates] = useState(false);
-  const [state, , setData] = useAsyncResource(getBotSettings, (settings) => {
-    setDropPendingUpdates(settings.drop_pending_updates);
-    setInitialDropPendingUpdates(settings.drop_pending_updates);
+  const [state, , setData] = useAsyncResource(getBotSettings, {
+    onSuccess: (settings) => {
+      setDropPendingUpdates(settings.drop_pending_updates);
+      setInitialDropPendingUpdates(settings.drop_pending_updates);
+    },
   });
   // without the permission the status stays "loading" forever and its badge is hidden
   const [statusState, reloadStatus] = useAsyncResource((signal) =>
@@ -249,31 +252,27 @@ export function BotSettingsForm() {
 
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Bot className="size-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-foreground">{t("settings.bot.title")}</h2>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.bot.description")}</p>
-          </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            {permissions.includes("BOT_LOGS_VIEW") && (
-              <Button variant="outline" onClick={() => setIsLogsOpen(true)}>
-                {t("settings.bot.showLogs")}
-              </Button>
-            )}
-            {state.kind === "loading" && <Spinner />}
-            {statusState.kind === "ready" && <StatusBadge status={statusState.data} />}
-            {(state.kind === "error" || statusState.kind === "error") && (
-              <span className="flex h-9 shrink-0 items-center rounded-full border border-transparent bg-error/10 px-4 text-[13px] font-semibold text-error">
-                {t("settings.bot.loadErrorBadge")}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+        <CardHeader
+          icon={Bot}
+          title={t("settings.bot.title")}
+          description={t("settings.bot.description")}
+          aside={
+            <>
+              {permissions.includes("BOT_LOGS_VIEW") && (
+                <Button variant="outline" onClick={() => setIsLogsOpen(true)}>
+                  {t("settings.bot.showLogs")}
+                </Button>
+              )}
+              {state.kind === "loading" && <Spinner />}
+              {statusState.kind === "ready" && <StatusBadge status={statusState.data} />}
+              {(state.kind === "error" || statusState.kind === "error") && (
+                <span className="flex h-9 shrink-0 items-center rounded-full border border-transparent bg-error/10 px-4 text-[13px] font-semibold text-error">
+                  {t("settings.bot.loadErrorBadge")}
+                </span>
+              )}
+            </>
+          }
+        />
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
           <fieldset disabled={!canManage} className="contents">

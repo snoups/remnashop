@@ -40,11 +40,14 @@ async def test_owner_can_create_token_and_secret_is_returned_once(
     use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
 
     result = await use_case(
-        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+        owner,
+        IssueApiTokenDto(
+            name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+        ),
     )
 
     assert result.token.name == "ci-script"
-    assert result.token.permissions == [Permission.BANNERS_UPLOAD]
+    assert result.token.scopes == [Permission.BANNERS_UPLOAD.value]
     assert len(result.secret) > 20
 
 
@@ -54,7 +57,12 @@ async def test_create_token_rejects_manage_admins_permission(
     use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
-        await use_case(OWNER, IssueApiTokenDto(name="bad", permissions=[Permission.ADMINS_MANAGE]))
+        await use_case(
+            OWNER,
+            IssueApiTokenDto(
+                name="bad", scopes=[Permission.ADMINS_MANAGE.value], expires_in_days=30
+            ),
+        )
 
 
 async def test_create_token_rejects_manage_own_account_permission(
@@ -64,7 +72,10 @@ async def test_create_token_rejects_manage_own_account_permission(
 
     with pytest.raises(ValidationError):
         await use_case(
-            OWNER, IssueApiTokenDto(name="bad", permissions=[Permission.OWN_ACCOUNT_MANAGE])
+            OWNER,
+            IssueApiTokenDto(
+                name="bad", scopes=[Permission.OWN_ACCOUNT_MANAGE.value], expires_in_days=30
+            ),
         )
 
 
@@ -76,7 +87,9 @@ async def test_regular_user_cannot_create_token(
     with pytest.raises(PermissionDeniedError):
         await use_case(
             REGULAR_USER,
-            IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD]),
+            IssueApiTokenDto(
+                name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+            ),
         )
 
 
@@ -90,7 +103,10 @@ async def test_list_returns_created_tokens_without_secret(
     list_use_case = ListApiTokensUseCase(api_token_repository, uow)
 
     await create_use_case(
-        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+        owner,
+        IssueApiTokenDto(
+            name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+        ),
     )
 
     tokens = await list_use_case(OWNER)
@@ -109,7 +125,10 @@ async def test_revoke_removes_token_from_list(
     list_use_case = ListApiTokensUseCase(api_token_repository, uow)
 
     created = await create_use_case(
-        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_UPLOAD])
+        owner,
+        IssueApiTokenDto(
+            name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+        ),
     )
 
     await revoke_use_case(owner, created.token.id)
@@ -138,23 +157,18 @@ async def test_create_token_with_expires_in_days_computes_expiry(
     result = await use_case(
         owner,
         IssueApiTokenDto(
-            name="ci-script", permissions=[Permission.BANNERS_IMAGE_VIEW], expires_in_days=30
+            name="ci-script", scopes=[Permission.BANNERS_IMAGE_VIEW.value], expires_in_days=30
         ),
     )
 
     assert result.token.expires_at is not None
 
 
-async def test_create_token_without_expires_in_days_never_expires(
-    api_token_repository: ApiTokenRepository,
-    uow: UnitOfWork,
-    owner: UserDto,
-    event_publisher: EventPublisher,
+async def test_create_token_rejects_a_scope_granting_nothing(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     use_case = CreateApiTokenUseCase(api_token_repository, uow, event_publisher)
 
-    result = await use_case(
-        owner, IssueApiTokenDto(name="ci-script", permissions=[Permission.BANNERS_IMAGE_VIEW])
-    )
-
-    assert result.token.expires_at is None
+    for scope in ("users:delete", "nonexistent:*", "oauth_settings:write", "NOT_A_PERMISSION"):
+        with pytest.raises(ValidationError):
+            await use_case(OWNER, IssueApiTokenDto(name="bad", scopes=[scope], expires_in_days=30))

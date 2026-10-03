@@ -1,17 +1,16 @@
 import { AlertCircle, ChevronRight, Filter, Gift, Plus, Ticket } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { type AddOnListItem, listAddons } from "@entities/addons/api";
-import { type Plan, listPlans } from "@entities/plans/api";
+import { listAddons } from "@entities/addons/api";
+import { listPlans } from "@entities/plans/api";
 import {
   DEFAULT_PAGE_SIZE,
   getPromocodeSummary,
   listPromocodes,
   type Promocode,
-  type PromocodeSummary,
 } from "@entities/promocodes/api";
 import {
   describeReward,
@@ -24,6 +23,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { PromocodeCreateDialog } from "@features/promocode-create/PromocodeCreateDialog";
 import { PromocodeDetailsDialog } from "@features/promocode-details/PromocodeDetailsDialog";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
@@ -42,8 +42,10 @@ const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_120px_110px_100px
 
 export function PromocodesPage() {
   const { t, i18n } = useTranslation();
-  const [addons, setAddons] = useState<AddOnListItem[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [addonsState] = useAsyncResource(listAddons);
+  const [plansState] = useAsyncResource(listPlans);
+  const addons = addonsState.kind === "ready" ? addonsState.data : [];
+  const plans = plansState.kind === "ready" ? plansState.data : [];
   const [status, setStatus] = useState("");
   const [rewardType, setRewardType] = useState("");
   // set by the header search's deep link; no local search box
@@ -56,12 +58,9 @@ export function PromocodesPage() {
   );
   useEntityChanged("promocode", () => {
     reload();
-    setSummaryVersion((version) => version + 1);
+    reloadSummary();
   });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [summary, setSummary] = useState<PromocodeSummary | null>(null);
-  // bumped after create/edit/delete so the metrics catch up with the list
-  const [summaryVersion, setSummaryVersion] = useState(0);
   const [detailsPromocode, setDetailsPromocode] = useState<Promocode | null>(null);
 
   const permissions = usePermissions();
@@ -69,43 +68,16 @@ export function PromocodesPage() {
   const canGenerateCode = permissions.includes("PROMOCODES_GENERATE_CODE");
   const canViewSummary = permissions.includes("PROMOCODES_SUMMARY_VIEW");
 
-  useEffect(() => {
-    const controller = new AbortController();
-    listAddons(controller.signal)
-      .then((items) => {
-        if (!controller.signal.aborted) setAddons(items);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setAddons([]);
-      });
-    listPlans(controller.signal)
-      .then((items) => {
-        if (!controller.signal.aborted) setPlans(items);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setPlans([]);
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    if (!canViewSummary) return;
-    const controller = new AbortController();
-    getPromocodeSummary(controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setSummary(result);
-      })
-      .catch(() => {
-        // metrics are secondary; the list stays usable with dashes in their place
-      });
-    return () => controller.abort();
-  }, [canViewSummary, summaryVersion]);
+  const [summaryState, reloadSummary] = useAsyncResource((signal) =>
+    canViewSummary ? getPromocodeSummary(signal) : Promise.resolve(null),
+  );
+  const summary = summaryState.kind === "ready" ? summaryState.data : null;
 
   const visibleItems = state.kind === "ready" ? state.items : [];
   const hasFilters = Boolean(status || rewardType || search);
 
   const handleSaved = (promo: Promocode) => {
-    setSummaryVersion((version) => version + 1);
+    reloadSummary();
     setState((prev) => {
       if (prev.kind !== "ready") return prev;
       const exists = prev.items.some((item) => item.id === promo.id);
@@ -116,7 +88,7 @@ export function PromocodesPage() {
   };
 
   const handleDeleted = (promo: Promocode) => {
-    setSummaryVersion((version) => version + 1);
+    reloadSummary();
     setState((prev) =>
       prev.kind === "ready"
         ? { kind: "ready", items: prev.items.filter((item) => item.id !== promo.id), total: prev.total - 1 }

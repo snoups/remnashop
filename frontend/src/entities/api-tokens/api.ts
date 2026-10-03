@@ -1,11 +1,10 @@
 import { apiDelete, apiGet, apiPost } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
-import type { Permission } from "@shared/types/rbac";
 
 export interface ApiToken {
   id: number;
   name: string;
-  permissions: Permission[];
+  scopes: string[];
   last_used_at: string | null;
   created_at: string;
   expires_at: string | null;
@@ -20,17 +19,20 @@ export function listApiTokens(signal?: AbortSignal): Promise<ApiToken[]> {
   return apiGet<ListResponse<ApiToken>>("/api-tokens", signal).then((response) => response.items);
 }
 
-export function createApiToken(
-  name: string,
-  permissions: Permission[],
-  expiresInDays: number | null,
-): Promise<CreatedApiToken> {
-  return apiPost<CreatedApiToken, { name: string; permissions: Permission[]; expires_in_days: number | null }>(
-    "/api-tokens",
-    { name, permissions, expires_in_days: expiresInDays },
-  );
+export function createApiToken(name: string, scopes: string[], expiresInDays: number): Promise<CreatedApiToken> {
+  return apiPost<CreatedApiToken, { name: string; scopes: string[]; expires_in_days: number }>("/api-tokens", {
+    name,
+    scopes,
+    expires_in_days: expiresInDays,
+  });
 }
 
 export function revokeApiToken(id: number): Promise<void> {
   return apiDelete<void>(`/api-tokens/${id}`);
+}
+
+export function issueDocsOtt(): Promise<string> {
+  return apiPost<{ ott: string }, Record<string, never>>("/api-tokens/actions/issue-ott", {}).then(
+    (response) => response.ott,
+  );
 }

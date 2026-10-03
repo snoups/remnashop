@@ -10,10 +10,12 @@ from app.modules.api_tokens.api.schemas import (
     ApiTokenResponse,
     CreateApiTokenRequest,
     CreatedApiTokenResponse,
+    DocsOttResponse,
 )
 from app.modules.api_tokens.dto import IssueApiTokenDto
 from app.modules.api_tokens.usecases import (
     CreateApiTokenUseCase,
+    IssueDocsOttUseCase,
     ListApiTokensUseCase,
     RevokeApiTokenUseCase,
 )
@@ -48,7 +50,7 @@ async def create_api_token(
         actor,
         IssueApiTokenDto(
             name=payload.name,
-            permissions=payload.permissions,
+            scopes=payload.scopes,
             expires_in_days=payload.expires_in_days,
         ),
     )
@@ -56,6 +58,15 @@ async def create_api_token(
         token=ApiTokenResponse.model_validate(result.token, from_attributes=True),
         secret=result.secret,
     )
+
+
+@router.post("/actions/issue-ott", response_model=DocsOttResponse)
+@inject
+async def issue_docs_ott(
+    use_case: FromDishka[IssueDocsOttUseCase],
+    actor: Actor = Depends(require_admin),
+) -> DocsOttResponse:
+    return DocsOttResponse(ott=await use_case(actor))
 
 
 @router.delete(

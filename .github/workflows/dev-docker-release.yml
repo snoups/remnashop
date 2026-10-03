@@ -87,32 +87,6 @@ jobs:
       - name: 🧾 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🧱 Generate Build Metadata
-        run: |
-          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          BRANCH="${{ github.ref_name }}"
-          FULL_SHA="${{ github.sha }}"
-          COMMIT_URL="https://github.com/${{ github.repository }}/commit/$SHORT_SHA"
-
-          TAG_VALUE=$(grep -m1 '"version":' package.json | cut -d'"' -f4 || true)
-          if [ -z "$TAG_VALUE" ]; then
-            JSON_TAG="null"
-          else
-            JSON_TAG="\"$TAG_VALUE\""
-          fi
-
-          cat <<EOF > build.info.json
-          {
-            "buildTime": "$BUILD_TIME",
-            "commitFull": "$FULL_SHA",
-            "commit": "$SHORT_SHA",
-            "tag": $JSON_TAG,
-            "branch": "$BRANCH",
-            "commitUrl": "$COMMIT_URL"
-          }
-          EOF
-          echo "✅ Generated build.info.json"
-
       - name: 📁 Archive Project Files
         run: |
           zip -r remnashop-dev.zip . \

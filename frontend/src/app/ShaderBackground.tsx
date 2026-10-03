@@ -158,21 +158,11 @@ function compileProgram(gl: WebGL2RenderingContext): WebGLProgram | null {
   return null;
 }
 
-/**
- * App-wide animated background: a noise-based gradient rendered on a single
- * full-viewport canvas behind everything. Mounted once at the app root so it
- * survives route changes. Ported from remnashop-cabinet's ShaderBackground,
- * dropped down to a dark-only palette (no theme switching here) and without
- * its panel-clipping machinery (nothing in this app needs the shader
- * restricted to one panel's rect — sidebar and content card both show it as-is).
- */
+/** App-wide noise-gradient background on one full-viewport canvas, mounted once at the app root. */
 export function ShaderBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const uniformsRef = useRef<ShaderUniforms | null>(null);
-  // Checked inside the render loop below -- toggling this skips the actual
-  // draw call (saving the GPU/CPU work) without tearing down and recreating
-  // the WebGL context, which the mount-once setup effect below isn't set up
-  // to cheaply do.
+  // read by the render loop: skips drawing without recreating the WebGL context
   const enabledRef = useRef(true);
   const accentColor = useEffectiveAccentColor();
   const shaderPalette = useEffectiveShaderPalette();
@@ -262,17 +252,9 @@ export function ShaderBackground() {
     let frame = 0;
 
     function onContextLost() {
-      // Deliberately NOT calling event.preventDefault() -- doing so tells the
-      // browser "I will restore this context, wait for webglcontextrestored,"
-      // which this code never listens for or acts on. Left uncorrected, that
-      // mismatch is what caused Safari to keep cycling lost/restored forever:
-      // it kept trying to hand the context back to a page that never actually
-      // recovered. Omitting it makes the loss permanent and final -- Safari
-      // stops retrying, and this background is decorative enough that a
-      // one-time, permanent hide is a perfectly fine failure mode.
+      // No preventDefault(): it promises a restore this code never does, and Safari
+      // then cycles lost/restored forever. A permanent hide is fine for decoration.
       stop();
-      // `canvas` is a captured const guaranteed non-null by the early return above,
-      // but TS doesn't retain that narrowing across a nested function's closure.
       canvas!.style.display = "none";
     }
     canvas.addEventListener("webglcontextlost", onContextLost, false);
@@ -352,22 +334,12 @@ export function ShaderBackground() {
       window.removeEventListener("scroll", onScroll);
       canvas.removeEventListener("webglcontextlost", onContextLost);
       context.deleteProgram(program);
-      // Deliberately NOT calling gl.getExtension("WEBGL_lose_context")?.loseContext()
-      // here: it seemed like the correct cleanup, but this
-      // canvas element is reused across remounts -- both React StrictMode's
-      // deliberate dev-only mount/cleanup/remount dance on first render, and
-      // Vite HMR/Fast Refresh. Force-losing the context here poisoned the
-      // very next getContext("webgl2") call on the same canvas in Safari
-      // (getContextAttributes() returns null for a lost context). Letting the browser reclaim
-      // abandoned contexts on its own is the safe tradeoff here.
+      // No WEBGL_lose_context here: the canvas is reused across StrictMode/HMR
+      // remounts, and a force-lost context breaks the next getContext() in Safari.
     };
   }, []);
 
-  // Separate from the WebGL setup effect above (which only ever runs once) --
-  // this one re-fires whenever the effective accent color changes: the
-  // admin's saved/loaded setting, OR a live unsaved preview from the
-  // Appearance settings form. Mutates the already-running shader's uniforms
-  // directly rather than tearing down and recreating the whole WebGL context.
+  // saved accent or a live preview; updates the running shader's uniforms in place
   useEffect(() => {
     const uniforms = uniformsRef.current;
     if (!uniforms) return;
@@ -376,9 +348,7 @@ export function ShaderBackground() {
     uniforms.uHueRotationMatrix.value.set(buildHueRotationMatrix((hueDelta * Math.PI) / 180));
   }, [accentColor]);
 
-  // Overrides the gradient's 4 base cosine-gradient colours directly -- on
-  // top of whichever set is active, accent color's hue rotation above still
-  // applies, same as it does to the hardcoded default.
+  // the accent's hue rotation still applies on top of a custom palette
   useEffect(() => {
     const uniforms = uniformsRef.current;
     if (!uniforms) return;

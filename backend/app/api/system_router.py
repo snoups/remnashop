@@ -6,11 +6,17 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.__version__ import __version__
+from app.api.dependencies.admin import require_admin_user
 from app.api.dependencies.public import get_current_actor
 from app.core.config import AppConfig
 from app.core.constants import REPOSITORY
-from app.core.security.permissions import PERMISSION_METADATA, Permission
+from app.core.enums import Role
+from app.core.security.permissions import (
+    PERMISSION_METADATA,
+    ROLE_PERMISSIONS,
+    TOKEN_GRANTABLE_PERMISSIONS,
+    Permission,
+)
 from app.modules.users import UserDto
 
 router = APIRouter(tags=["system"])
@@ -33,6 +39,8 @@ class PermissionCatalogEntry(BaseModel):
     permission: Permission
     resource: str
     kind: Literal["read", "write"]
+    token_grantable: bool
+    admin_default: bool
 
 
 class PermissionCatalogResponse(BaseModel):
@@ -45,8 +53,7 @@ async def get_system_metadata(
     config: FromDishka[AppConfig],
     _: UserDto = Depends(get_current_actor),
 ) -> SystemMetadataResponse:
-    # BUILD_TAG (CI --build-arg) wins when present; __version__.py is the
-    # dev-without-CI fallback. is_official_build gates the update check --
+    # is_official_build gates the update check --
     # only a CI-baked artifact is safe to compare against GitHub releases.
     git = GitInfoResponse(
         commit_sha=config.build.commit,
@@ -54,18 +61,22 @@ async def get_system_metadata(
         branch=config.build.branch,
         is_official_build=config.build.is_set,
     )
-    return SystemMetadataResponse(
-        version=config.build.tag or __version__, repository_url=REPOSITORY, git=git
-    )
+    return SystemMetadataResponse(version=config.build.version, repository_url=REPOSITORY, git=git)
 
 
 @router.get("/permissions/catalog", response_model=PermissionCatalogResponse)
 async def get_permissions_catalog(
-    _: UserDto = Depends(get_current_actor),
+    _: UserDto = Depends(require_admin_user),
 ) -> PermissionCatalogResponse:
     return PermissionCatalogResponse(
         entries=[
-            PermissionCatalogEntry(permission=permission, resource=meta.resource, kind=meta.kind)
+            PermissionCatalogEntry(
+                permission=permission,
+                resource=meta.resource,
+                kind=meta.kind,
+                token_grantable=permission in TOKEN_GRANTABLE_PERMISSIONS,
+                admin_default=permission in ROLE_PERMISSIONS[Role.ADMIN],
+            )
             for permission, meta in PERMISSION_METADATA.items()
         ]
     )

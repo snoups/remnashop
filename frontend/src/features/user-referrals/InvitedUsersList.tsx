@@ -1,13 +1,11 @@
-import { motion } from "motion/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type InvitedUser, listInvitedUsers } from "@entities/referrals/api";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { PillTabs } from "@shared/ui/PillTabs";
-import { formatRewardAmounts, initials, userHandle } from "@features/user-referrals/format";
-import { bounceTap } from "@shared/lib/bounceState";
-import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { formatRewardAmounts, userHandle } from "@features/user-referrals/format";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
@@ -15,6 +13,7 @@ import { EmptyState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { Spinner } from "@shared/ui/Spinner";
+import { UserRow } from "@shared/ui/UserRow";
 import { formatDate } from "@shared/lib/relative-time";
 
 const PAGE_SIZE = 10;
@@ -59,24 +58,11 @@ export function InvitedUsersList({ userId }: { userId: number }) {
 function InvitedUsersPage({ userId, level, search }: { userId: number; level?: number; search: string }) {
   const { t, i18n } = useTranslation();
   const { openUser: openUserCard } = useOpenEntity();
-  const filters = { level, search: search || undefined, pageSize: PAGE_SIZE };
-  const [state, , setData] = useAsyncResource((signal) => listInvitedUsers(userId, filters, signal));
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  const handleLoadMore = async () => {
-    if (state.kind !== "ready") return;
-    setIsLoadingMore(true);
-    try {
-      const result = await listInvitedUsers(userId, { ...filters, page: page + 1 });
-      setData({ ...result, items: [...state.data.items, ...result.items] });
-      setPage(page + 1);
-    } catch {
-      // keep current items; the button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
+  const filters = useMemo(() => ({ level, search: search || undefined, pageSize: PAGE_SIZE }), [level, search]);
+  const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
+    (current: typeof filters, page, signal) => listInvitedUsers(userId, { ...current, page }, signal),
+    filters,
+  );
 
   const openUser = (item: InvitedUser) => {
     if (!item.user) return;
@@ -98,53 +84,43 @@ function InvitedUsersPage({ userId, level, search }: { userId: number; level?: n
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <p className="p-3 text-sm text-error">{t("referrals.dialog.invitedLoadError")}</p>}
-      {state.kind === "ready" && state.data.items.length === 0 && (
+      {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("referrals.dialog.invitedEmpty")} />
       )}
       {state.kind === "ready" &&
-        state.data.items.map((item, index) => {
+        state.items.map((item, index) => {
           const rewards = formatRewardAmounts(t, item.reward_amounts);
           return (
-            <motion.button
+            <UserRow
               key={item.user?.id ?? `deleted-${index}`}
-              type="button"
-              disabled={!item.user}
-              onClick={() => openUser(item)}
-              {...bounceTap(0.03)}
-              className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors enabled:hover:bg-white/[0.04]"
-            >
-              <span
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground"
-              >
-                {item.user?.name ? initials(item.user.name) : "?"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium leading-tight text-foreground/90">
-                  {item.user?.name || t("referrals.dialog.deletedUser")}
-                </p>
-                <p className="truncate text-[11.5px] leading-tight text-muted-foreground">{subtitle(item)}</p>
-              </div>
-              <Badge tone={item.level === 1 ? "accent" : "neutral"}>
-                {t("referrals.list.levelBadge", { level: item.level })}
-              </Badge>
-              <span className="flex w-24 shrink-0 flex-col items-end text-[12.5px] leading-tight tabular-nums">
-                {rewards.length === 0 && <span className="text-muted-foreground">{t("referrals.stats.none")}</span>}
-                {rewards.map((reward) => (
-                  <span key={reward} className="max-w-full truncate font-semibold text-foreground">
-                    {reward}
+              name={item.user?.name}
+              subtitle={subtitle(item)}
+              aside={
+                <>
+                  <Badge tone={item.level === 1 ? "accent" : "neutral"}>
+                    {t("referrals.list.levelBadge", { level: item.level })}
+                  </Badge>
+                  <span className="flex w-24 shrink-0 flex-col items-end text-[12.5px] leading-tight tabular-nums">
+                    {rewards.length === 0 && <span className="text-muted-foreground">{t("referrals.stats.none")}</span>}
+                    {rewards.map((reward) => (
+                      <span key={reward} className="max-w-full truncate font-semibold text-foreground">
+                        {reward}
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </span>
-            </motion.button>
+                </>
+              }
+              onClick={item.user ? () => openUser(item) : undefined}
+            />
           );
         })}
-      {state.kind === "ready" && state.data.items.length < state.data.total && (
+      {state.kind === "ready" && hasMore && (
         <div className="px-2.5 py-1">
           <LoadMoreButton
-            onClick={() => void handleLoadMore()}
+            onClick={() => void loadMore()}
             isLoading={isLoadingMore}
-            shown={state.data.items.length}
-            total={state.data.total}
+            shown={state.items.length}
+            total={state.total}
           />
         </div>
       )}

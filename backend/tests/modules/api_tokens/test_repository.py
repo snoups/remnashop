@@ -12,13 +12,13 @@ async def _create(
     *,
     name: str = "ci-script",
     token_hash: str = "hash-1",
-    permissions: list[Permission] = [Permission.BANNERS_UPLOAD],
+    scopes: list[str] = [Permission.BANNERS_UPLOAD.value],
 ) -> int:
     async with uow:
         token = await repository.create(
             CreateApiTokenDto(
                 name=name,
-                permissions=permissions,
+                scopes=scopes,
                 token_hash=token_hash,
                 created_by_user_id=None,
                 expires_at=None,
@@ -36,7 +36,7 @@ async def test_create_then_get_active_by_hash(
     found = await api_token_repository.get_active_by_hash("abc123")
     assert found is not None
     assert found.name == "ci-script"
-    assert found.permissions == [Permission.BANNERS_UPLOAD]
+    assert found.scopes == [Permission.BANNERS_UPLOAD.value]
 
 
 async def test_get_active_by_hash_returns_none_for_unknown_hash(
@@ -76,7 +76,7 @@ async def test_list_not_revoked_includes_expired(
         expired = await api_token_repository.create(
             CreateApiTokenDto(
                 name="expired",
-                permissions=[Permission.BANNERS_UPLOAD],
+                scopes=[Permission.BANNERS_UPLOAD.value],
                 token_hash="expired-hash",
                 created_by_user_id=None,
                 expires_at=datetime.now(timezone.utc) - timedelta(days=1),
@@ -112,7 +112,7 @@ async def test_get_active_by_hash_excludes_expired_token(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="expired",
-                permissions=[Permission.BANNERS_IMAGE_VIEW],
+                scopes=[Permission.BANNERS_IMAGE_VIEW.value],
                 token_hash="expired-hash",
                 created_by_user_id=None,
                 expires_at=datetime.now(timezone.utc) - timedelta(days=1),
@@ -131,7 +131,7 @@ async def test_get_active_by_hash_allows_token_with_no_expiry(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="forever",
-                permissions=[Permission.BANNERS_IMAGE_VIEW],
+                scopes=[Permission.BANNERS_IMAGE_VIEW.value],
                 token_hash="forever-hash",
                 created_by_user_id=None,
                 expires_at=None,

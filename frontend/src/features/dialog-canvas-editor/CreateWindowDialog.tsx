@@ -10,7 +10,7 @@ import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { TextInput } from "@shared/ui/TextInput";
 
-// the backend's CreateCustomDialogWindowRequest.name limit
+// the backend's CreateCustomWindowRequest.name limit
 const WINDOW_NAME_MAX_LENGTH = 128;
 
 interface CreateWindowDialogProps {

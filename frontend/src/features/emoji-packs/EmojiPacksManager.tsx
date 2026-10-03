@@ -24,6 +24,7 @@ import { Button } from "@shared/ui/Button";
 import { Tag } from "@shared/ui/Tag";
 import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 // mirrors backend emoji_packs/telegram_api.py's _SET_NAME_RE: a t.me/addemoji link or the bare set name
 const SET_LINK_RE = /^(?:https?:\/\/)?(?:t\.me\/addemoji\/)?[A-Za-z0-9_]{1,64}\/?(?:\?.*)?$/;
@@ -68,19 +69,7 @@ export function EmojiPacksManager() {
 
   return (
     <Card id={EMOJI_PACKS_ANCHOR_ID}>
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Smile className="size-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("dialogs.emojiPacks.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-            {t("dialogs.emojiPacks.description")}
-          </p>
-        </div>
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader icon={Smile} title={t("dialogs.emojiPacks.title")} description={t("dialogs.emojiPacks.description")} />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         {canImport && (

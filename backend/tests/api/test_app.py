@@ -12,7 +12,9 @@ import app.api.probes_router as probes_router_module
 from app.api.app import get_app
 from app.api.middlewares import BodySizeLimitMiddleware
 from app.core.config import AppConfig
+from app.core.constants import API_V1, DOCS_PATH
 from app.core.di.providers import get_core_providers
+from app.core.security import create_docs_token
 from app.modules.providers import get_module_providers
 
 
@@ -355,3 +357,38 @@ async def test_upload_route_allows_bodies_above_the_default_limit() -> None:
     assert upload.status_code == 200
     assert received == [2 * 1024 * 1024]
     assert other.status_code == 413
+
+
+def test_docs_refuse_a_request_without_a_ticket(
+    config: AppConfig, readyz_container: AsyncContainer
+) -> None:
+    app = get_app(config)
+    setup_dishka(readyz_container, app)
+    client = TestClient(app)
+
+    for path in (DOCS_PATH, f"{DOCS_PATH}/redoc", f"{DOCS_PATH}/openapi.json"):
+        assert client.get(path).status_code == 401
+    assert client.get(DOCS_PATH, params={"ott": "forged"}).status_code == 401
+
+
+def test_docs_trade_a_ticket_for_a_cookie(
+    config: AppConfig, readyz_container: AsyncContainer
+) -> None:
+    app = get_app(config)
+    setup_dishka(readyz_container, app)
+    client = TestClient(app, base_url="https://testserver")
+    secret = config.jwt_secret.get_secret_value()
+
+    # an access-scoped token is not a ticket
+    leaked_cookie = create_docs_token("access", 60, secret)
+    assert client.get(DOCS_PATH, params={"ott": leaked_cookie}).status_code == 401
+
+    ott = create_docs_token("ott", 30, secret)
+    redirect = client.get(DOCS_PATH, params={"ott": ott}, follow_redirects=False)
+    assert redirect.status_code == 303
+    assert redirect.headers["location"] == DOCS_PATH
+
+    assert client.get(DOCS_PATH).status_code == 200
+    schema = client.get(f"{DOCS_PATH}/openapi.json")
+    assert schema.status_code == 200
+    assert f"{API_V1}/api-tokens" in schema.json()["paths"]

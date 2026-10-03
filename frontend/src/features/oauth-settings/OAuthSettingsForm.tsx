@@ -22,6 +22,7 @@ import { PasswordInput } from "@shared/ui/PasswordInput";
 import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 import { GithubOAuthGuideDialog } from "./GithubOAuthGuideDialog";
 import { OidcOAuthGuideDialog } from "./OidcOAuthGuideDialog";
@@ -102,17 +103,11 @@ export function OAuthSettingsForm() {
 
   return (
     <Card>
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <KeyRound className="size-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("settings.oauth.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.oauth.description")}</p>
-        </div>
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader
+        icon={KeyRound}
+        title={t("settings.oauth.title")}
+        description={t("settings.oauth.description")}
+      />
 
       {state.kind === "loading" && (
         <Spinner size="card" />

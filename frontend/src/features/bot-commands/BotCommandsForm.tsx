@@ -13,6 +13,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 type Row = BotCommandItem & { id: number };
 
@@ -65,7 +66,7 @@ export function BotCommandsForm() {
   const nextRowId = useRef(0);
   const toRow = (item: BotCommandItem): Row => ({ ...item, id: nextRowId.current++ });
 
-  const [state] = useAsyncResource(getBotCommands, (items) => setRows(items.map(toRow)));
+  const [state] = useAsyncResource(getBotCommands, { onSuccess: (items) => setRows(items.map(toRow)) });
 
   const updateRow = (index: number, field: "enabled", value: boolean) => {
     setRows((current) =>
@@ -111,17 +112,11 @@ export function BotCommandsForm() {
 
   return (
     <Card>
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Terminal className="size-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("settings.botCommands.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.botCommands.description")}</p>
-        </div>
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader
+        icon={Terminal}
+        title={t("settings.botCommands.title")}
+        description={t("settings.botCommands.description")}
+      />
 
       <div className="mt-4 flex flex-col gap-4">
         {state.kind === "loading" && (

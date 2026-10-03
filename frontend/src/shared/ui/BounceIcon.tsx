@@ -20,13 +20,8 @@ interface BounceIconProps {
  * the REST size, so its growth never affects the parent row's layout — only
  * the icon itself visually grows from its own center.
  *
- * Centered via `top/left: 50%` + `translate(-50%, -50%)`, not `inset-0` +
- * `margin: auto` — once the grown size exceeds the placeholder, CSS2.1's
- * over-constrained horizontal-margin rule (10.3.7) forbids negative
- * horizontal auto-margins and collapses margin-left to 0 instead, so growth
- * anchors to the left edge instead of staying centered. The vertical rule
- * (10.6.4) has no such exception, which is why only the X axis drifted.
- * translate-based centering has no margin math to hit that exception.
+ * Centered via translate, not `inset-0` + `margin: auto`: past the placeholder's
+ * size, auto margins can't go negative (CSS2.1 10.3.7) and growth drifts left.
  *
  * Doesn't trigger its own hover: it reads the "hover"/"rest" variant from an
  * ancestor motion component (`initial="rest" whileHover="hover"`), so the

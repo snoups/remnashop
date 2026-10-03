@@ -10,6 +10,7 @@ import { SecurityForm } from "@features/account-security/SecurityForm";
 import { logout } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
+import { initials } from "@shared/lib/initials";
 import { Spinner } from "@shared/ui/Spinner";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { Button } from "@shared/ui/Button";
@@ -26,7 +27,6 @@ export function ProfilePage() {
     navigate("/", { replace: true });
   };
 
-  const initials = state.kind === "ready" ? (state.data.login ?? "?").slice(0, 2).toUpperCase() : "?";
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,7 +36,7 @@ export function ProfilePage() {
         {state.kind === "ready" && (
           <div className="flex items-center gap-4">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-foreground text-[18px] font-bold text-canvas">
-              {initials}
+              {initials(state.kind === "ready" ? state.data.login : null)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-base font-bold text-foreground">{state.data.name}</div>

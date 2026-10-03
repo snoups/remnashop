@@ -1,10 +1,9 @@
 from pathlib import Path
-from typing import Final
+from typing import Final, Optional
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from fastapi.openapi.utils import get_openapi
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
@@ -14,11 +13,11 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import Response
 from starlette.types import Scope
 
-from app.__version__ import __version__
 from app.api.dependencies.public import get_current_actor
 from app.api.dependencies.rate_limit import global_rate_limit
 from app.api.errors import (
     GLOBAL_ERROR_RESPONSES,
+    ApiError,
     document_auth_errors,
     register_error_handlers,
 )
@@ -28,7 +27,10 @@ from app.api.probes_router import router as probes_router
 from app.api.routers import ROUTERS
 from app.api.system_router import router as system_router
 from app.core.config import AppConfig
-from app.core.constants import API_V1
+from app.core.constants import API_V1, DOCS_COOKIE_NAME, DOCS_PATH, TTL_2H
+from app.core.error_codes import ErrorCode
+from app.core.security import create_docs_token, is_valid_docs_token
+from app.core.utils.http import resolve_client_ip
 
 FRONTEND_DIST: Final[Path] = Path("/opt/remnashop/frontend/dist")
 # Vite hashes every file name under assets/, so a URL never changes content
@@ -71,6 +73,62 @@ def _setup_spa_serving(app: FastAPI, frontend_dist: Path) -> None:
         return FileResponse(root / "index.html", headers={"Cache-Control": "no-cache"})
 
 
+def _setup_docs(app: FastAPI, config: AppConfig) -> None:
+    secret = config.jwt_secret.get_secret_value()
+    openapi_url = f"{DOCS_PATH}/openapi.json"
+
+    def _enter(request: Request, ott: Optional[str], page: HTMLResponse) -> Response:
+        if ott is not None:
+            if not is_valid_docs_token(ott, "ott", secret):
+                raise ApiError(
+                    status.HTTP_401_UNAUTHORIZED,
+                    "Docs ticket is invalid or expired",
+                    code=ErrorCode.TOKEN_INVALID,
+                )
+            logger.warning(f"Docs access granted to IP '{resolve_client_ip(request)}'")
+            response = RedirectResponse(request.url.path, status_code=status.HTTP_303_SEE_OTHER)
+            response.set_cookie(
+                DOCS_COOKIE_NAME,
+                create_docs_token("access", TTL_2H, secret),
+                max_age=TTL_2H,
+                path=DOCS_PATH,
+                httponly=True,
+                secure=config.secure_cookies,
+                samesite="lax",
+            )
+            return response
+        _require_docs_cookie(request)
+        return page
+
+    def _require_docs_cookie(request: Request) -> None:
+        token = request.cookies.get(DOCS_COOKIE_NAME)
+        if token is None or not is_valid_docs_token(token, "access", secret):
+            raise ApiError(
+                status.HTTP_401_UNAUTHORIZED,
+                "Open the API docs from the dashboard",
+                code=ErrorCode.NOT_AUTHENTICATED,
+            )
+
+    @app.get(DOCS_PATH, include_in_schema=False)
+    async def swagger_ui(request: Request, ott: Optional[str] = None) -> Response:
+        page = get_swagger_ui_html(
+            openapi_url=openapi_url,
+            title=f"{app.title} - Swagger UI",
+            swagger_ui_parameters={"persistAuthorization": True},
+        )
+        return _enter(request, ott, page)
+
+    @app.get(f"{DOCS_PATH}/redoc", include_in_schema=False)
+    async def redoc_ui(request: Request, ott: Optional[str] = None) -> Response:
+        page = get_redoc_html(openapi_url=openapi_url, title=f"{app.title} - ReDoc")
+        return _enter(request, ott, page)
+
+    @app.get(openapi_url, include_in_schema=False)
+    async def openapi_schema(request: Request) -> dict:
+        _require_docs_cookie(request)
+        return app.openapi()
+
+
 # handler names are unique across routers; keeps operationIds readable for generated clients
 def _operation_id(route: APIRoute) -> str:
     return route.name
@@ -80,7 +138,7 @@ def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
     app: FastAPI = FastAPI(
         lifespan=lifespan,
         title="Remnashop API",
-        version=__version__,
+        version=config.build.version,
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
@@ -106,27 +164,7 @@ def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
     register_error_handlers(app)
     document_auth_errors(app, get_current_actor)
 
-    if config.swagger_enabled:
-
-        @app.get("/docs", include_in_schema=False)
-        async def swagger_ui() -> HTMLResponse:
-            return get_swagger_ui_html(
-                openapi_url="/openapi.json",
-                title=f"{app.title} - Swagger UI",
-                swagger_ui_parameters={"persistAuthorization": True},
-            )
-
-        @app.get("/redoc", include_in_schema=False)
-        async def redoc_ui() -> HTMLResponse:
-            return get_redoc_html(
-                openapi_url="/openapi.json",
-                title=f"{app.title} - ReDoc",
-            )
-
-        @app.get("/openapi.json", include_in_schema=False)
-        async def openapi_schema() -> dict:
-            api_routes = [r for r in app.routes if getattr(r, "include_in_schema", True)]
-            return get_openapi(title=app.title, version=app.version, routes=api_routes)
+    _setup_docs(app, config)
 
     app.include_router(probes_router)
 

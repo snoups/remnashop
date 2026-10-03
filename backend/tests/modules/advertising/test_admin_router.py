@@ -171,7 +171,7 @@ async def test_create_ad_link_via_api_token_stores_null_created_by(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="ci",
-                permissions=[Permission.AD_LINKS_CREATE, Permission.AD_LINKS_VIEW],
+                scopes=[Permission.AD_LINKS_CREATE.value, Permission.AD_LINKS_VIEW.value],
                 token_hash=hash_refresh_token(secret),
                 created_by_user_id=None,
                 expires_at=None,

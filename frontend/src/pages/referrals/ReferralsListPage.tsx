@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronRight, Coins, CornerUpLeft, Gift, Layers, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -15,11 +15,16 @@ import {
 } from "@entities/referrals/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
+import { DAY_MS, previousWindow } from "@shared/lib/period";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useUrlSearch } from "@shared/lib/use-url-search";
+import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
+import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
+import { initials } from "@shared/lib/initials";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -33,9 +38,6 @@ import { Card } from "@shared/ui/Card";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
-const DAY_MS = 86_400_000;
-// "all time" has no previous window; show growth over the last month instead
-const ALL_TIME_TREND_DAYS = 30;
 const FILTER_DEBOUNCE_MS = 200;
 const LEVELS = [1, 2, 3];
 const REWARD_TYPES: ReferralRewardType[] = ["EXTRA_DAYS", "POINTS"];
@@ -49,35 +51,6 @@ const LEVEL_BADGE_TONE: Record<number, BadgeTone> = {
   3: "neutral",
 };
 
-interface DayGroup {
-  key: string;
-  date: Date;
-  items: ReferralListItem[];
-}
-
-// Items arrive sorted by created_at desc, so consecutive grouping is enough.
-function groupByDay(items: ReferralListItem[]): DayGroup[] {
-  const groups: DayGroup[] = [];
-  for (const item of items) {
-    const date = new Date(item.created_at);
-    const key = date.toDateString();
-    const last = groups[groups.length - 1];
-    if (last?.key === key) last.items.push(item);
-    else groups.push({ key, date, items: [item] });
-  }
-  return groups;
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 export function ReferralsListPage() {
   const { t, i18n } = useTranslation();
   const [level, setLevel] = useState("");
@@ -86,21 +59,10 @@ export function ReferralsListPage() {
   const [searchInput, setSearchInput] = useUrlSearch();
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
   const [period, setPeriod] = useState<PeriodDays>(0);
-  const [collapsedDays, setCollapsedDays] = useState<ReadonlySet<string>>(new Set());
   const [statsUser, setStatsUser] = useState<ReferralUser | null>(null);
-  const [summary, setSummary] = useState<ReferralSummary | null>(null);
-  // the same summary as it looked one period ago (30 days for "all time")
-  const [compareSummary, setCompareSummary] = useState<ReferralSummary | null>(null);
 
   const permissions = usePermissions();
   const canViewStats = permissions.includes("REFERRALS_VIEW");
-
-  const toggleDay = (key: string) =>
-    setCollapsedDays((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
 
   const baseFilters = useMemo<ReferralListFilters>(
     () => ({
@@ -118,52 +80,22 @@ export function ReferralsListPage() {
     baseFilters,
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getReferralSummary(baseFilters, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setSummary(result);
-      })
-      .catch(() => {
-        // metrics are secondary; the list stays usable with dashes in their place
-      });
-    return () => controller.abort();
-  }, [baseFilters]);
+  const [summaryState] = useAsyncResource((signal) => getReferralSummary(baseFilters, signal), {
+    deps: [baseFilters],
+    keepData: true,
+  });
+  const [compareState] = useAsyncResource(
+    (signal) => getReferralSummary({ ...baseFilters, ...previousWindow(period) }, signal),
+    { deps: [baseFilters, period] },
+  );
+  const summary = summaryState.kind === "ready" ? summaryState.data : null;
+  const compareSummary = compareState.kind === "ready" ? compareState.data : null;
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const now = Date.now();
-    const shift = (period || ALL_TIME_TREND_DAYS) * DAY_MS;
-    setCompareSummary(null);
-    getReferralSummary(
-      {
-        ...baseFilters,
-        createdFrom: period ? new Date(now - 2 * shift).toISOString() : undefined,
-        createdTo: new Date(now - shift).toISOString(),
-      },
-      controller.signal,
-    )
-      .then((result) => {
-        if (!controller.signal.aborted) setCompareSummary(result);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [baseFilters, period]);
-
-  const groups = useMemo(() => (state.kind === "ready" ? groupByDay(state.items) : []), [state]);
-
-  const formatDay = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    if (date.toDateString() === today.toDateString()) return t("transactions.today");
-    if (date.toDateString() === yesterday.toDateString()) return t("transactions.yesterday");
-    return date.toLocaleDateString(i18n.language, {
-      day: "numeric",
-      month: "long",
-      year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
-    });
-  };
+  const groups = useMemo(
+    () => (state.kind === "ready" ? groupByDay(state.items, (item) => item.created_at) : []),
+    [state],
+  );
+  const [collapsedDays, toggleDay] = useCollapsedSet();
 
   const formatRewards = (item: ReferralListItem): string | null => {
     const parts = REWARD_TYPES.flatMap((type) => {
@@ -322,7 +254,7 @@ export function ReferralsListPage() {
                     <GroupToggle
                       open={!collapsedDays.has(group.key)}
                       onToggle={() => toggleDay(group.key)}
-                      label={formatDay(group.date)}
+                      label={formatDayLabel(group.date, t, i18n.language)}
                       count={group.items.length}
                     />
                   </h3>
@@ -343,11 +275,11 @@ export function ReferralsListPage() {
                           <span
                             className="flex size-9 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-semibold text-foreground"
                           >
-                            {referred?.name ? initials(referred.name) : "?"}
+                            {initials(referred?.name)}
                           </span>
                           <span className="min-w-0">
                             <span className="block truncate text-[13.5px] font-medium text-foreground">
-                              {referred?.name || t("referrals.list.deletedUser")}
+                              {referred?.name || t("users.deleted.name")}
                             </span>
                             {referred && (
                               <span className="block truncate font-mono text-[12px] text-muted-foreground">
@@ -360,10 +292,10 @@ export function ReferralsListPage() {
                             <span
                               className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[10.5px] font-semibold text-foreground"
                             >
-                              {item.referrer?.name ? initials(item.referrer.name) : "?"}
+                              {initials(item.referrer?.name)}
                             </span>
                             <span className="truncate text-[13px] text-foreground">
-                              {item.referrer?.name || t("referrals.list.deletedUser")}
+                              {item.referrer?.name || t("users.deleted.name")}
                             </span>
                           </span>
                           <span>

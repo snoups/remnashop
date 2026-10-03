@@ -36,6 +36,7 @@ import { IconButton } from "@shared/ui/IconButton";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 const CURRENCIES: Currency[] = ["USD", "XTR", "RUB"];
 const BULK_SCOPES: BulkAdjustScope[] = ["ALL_PLANS", "ALL_ADDONS"];
@@ -104,23 +105,17 @@ export function PricingMatrix({ book, onChanged }: PricingMatrixProps) {
 
   return (
     <Card>
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Table2 className="size-4" />
-          </div>
-          <div>
-            <h2 className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-              {t("pricing.matrix.title")}
-              <FieldHint text={t("pricing.matrix.titleHint")} side="bottom" />
-            </h2>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.matrix.description")}</p>
-          </div>
-        </div>
-        {canBulkAdjust && <BulkAdjustButton onChanged={onChanged} />}
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader
+        icon={Table2}
+        title={
+          <>
+            {t("pricing.matrix.title")}
+            <FieldHint text={t("pricing.matrix.titleHint")} side="bottom" />
+          </>
+        }
+        description={t("pricing.matrix.description")}
+        aside={canBulkAdjust && <BulkAdjustButton onChanged={onChanged} />}
+      />
 
       {rows.length === 0 ? (
         <EmptyState text={t("pricing.matrix.empty")} />

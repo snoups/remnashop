@@ -27,6 +27,7 @@ import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { bounceTap } from "@shared/lib/bounceState";
 import { formatDateTime } from "@shared/lib/relative-time";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -175,33 +176,20 @@ export function SessionsTab({ userId }: { userId: number }) {
 export function EventsTab({ actorId }: { actorId: number }) {
   const { t, i18n } = useTranslation();
   const [openedEntry, setOpenedEntry] = useState<EventLogEntry | null>(null);
-  const [state, , setData] = useAsyncResource((signal) => listEventLog({ actorId, pageSize: EVENTS_PAGE_SIZE }, signal));
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  const handleLoadMore = async () => {
-    if (state.kind !== "ready") return;
-    setIsLoadingMore(true);
-    try {
-      const result = await listEventLog({ actorId, page: page + 1, pageSize: EVENTS_PAGE_SIZE });
-      setData({ items: [...state.data.items, ...result.items], total: result.total });
-      setPage(page + 1);
-    } catch {
-      // keep current items; the button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
+  const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
+    (id: number, page, signal) => listEventLog({ actorId: id, page, pageSize: EVENTS_PAGE_SIZE }, signal),
+    actorId,
+  );
 
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <p className="p-3 text-sm text-error">{t("eventLog.loadError")}</p>}
-      {state.kind === "ready" && state.data.items.length === 0 && (
+      {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("admins.details.eventsEmpty")} />
       )}
       {state.kind === "ready" &&
-        state.data.items.map((entry) => (
+        state.items.map((entry) => (
           <motion.button
             key={entry.id}
             type="button"
@@ -222,13 +210,13 @@ export function EventsTab({ actorId }: { actorId: number }) {
             </span>
           </motion.button>
         ))}
-      {state.kind === "ready" && state.data.items.length < state.data.total && (
+      {state.kind === "ready" && hasMore && (
         <div className="px-2.5 py-1">
           <LoadMoreButton
-            onClick={() => void handleLoadMore()}
+            onClick={() => void loadMore()}
             isLoading={isLoadingMore}
-            shown={state.data.items.length}
-            total={state.data.total}
+            shown={state.items.length}
+            total={state.total}
           />
         </div>
       )}

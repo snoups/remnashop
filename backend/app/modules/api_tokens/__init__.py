@@ -8,6 +8,7 @@ from app.modules.api_tokens.dto import (
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.api_tokens.usecases import (
     CreateApiTokenUseCase,
+    IssueDocsOttUseCase,
     ListApiTokensUseCase,
     RevokeApiTokenUseCase,
 )
@@ -19,6 +20,7 @@ __all__ = [
     "CreateApiTokenUseCase",
     "CreatedApiTokenDto",
     "IssueApiTokenDto",
+    "IssueDocsOttUseCase",
     "ListApiTokensUseCase",
     "RevokeApiTokenUseCase",
     "get_api_tokens_providers",

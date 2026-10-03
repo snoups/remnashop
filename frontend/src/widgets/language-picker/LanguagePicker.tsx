@@ -34,15 +34,8 @@ export function LanguagePicker() {
 
   return (
     <div ref={ref} className="relative shrink-0">
-      {/* Straight from the Motion for React gestures guide: whileHover/whileTap
-          scale directly on the interactive element, will-change for a GPU
-          layer. One deviation: the border lives on a static sibling instead
-          of the button itself -- a rounded border stretched via `transform`
-          rasterizes and visibly thickens at the curved ends in Chrome, with
-          no combination of transform/will-change tricks avoiding it (see git
-          log for what was tried). `inset-0` tracks the button's layout box,
-          which `scale` never changes (it only repaints, doesn't reflow), so
-          this stays put regardless of the button's hover/tap scale. */}
+      {/* the border lives on a static sibling: a rounded border scaled via
+          `transform` thickens at the curved ends in Chrome */}
       <motion.button
         type="button"
         onClick={() => setIsOpen((open) => !open)}

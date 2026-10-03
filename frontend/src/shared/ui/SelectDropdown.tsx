@@ -1,14 +1,12 @@
 import { Check, ChevronDown } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
-import { createPortal } from "react-dom";
 
 import { bounceTap } from "@shared/lib/bounceState";
-import { anchorFor, type PopoverAnchor } from "@shared/lib/popover-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { BounceIcon } from "@shared/ui/BounceIcon";
-import { POPOVER_CLASS } from "@shared/ui/classes";
+import { PortalPopover } from "@shared/ui/PortalPopover";
 import { FIELD_SURFACE_CLASS } from "@shared/ui/TextInput";
 
 const POPOVER_MAX_HEIGHT = 288;
@@ -49,10 +47,6 @@ export function SelectDropdown({
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  // Portalled to the body and positioned from the trigger's own rect: panels
-  // and dialogs clip their overflow, so an in-flow popover gets cut off.
-  // measured on open only -- reposition on scroll if that shows.
-  const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const baseId = useId();
   const optionId = (index: number) => `${baseId}-option-${index}`;
 
@@ -63,10 +57,7 @@ export function SelectDropdown({
   const selectedLabel = selectedOption?.label ?? placeholder;
   const TriggerIcon = selectedOption?.icon ?? Icon;
 
-  // measured on every open, keyboard included: the popover only renders with an anchor
   const openMenu = () => {
-    const trigger = triggerRef.current?.getBoundingClientRect();
-    if (trigger) setAnchor(anchorFor(trigger, POPOVER_MAX_HEIGHT));
     setActiveIndex(Math.max(options.findIndex((option) => option.value === value), 0));
     setIsOpen(true);
   };
@@ -144,51 +135,45 @@ export function SelectDropdown({
         />
       </motion.button>
 
-      {createPortal(
-        <AnimatePresence>
-          {isOpen && anchor && (
-            <motion.div
-              ref={popoverRef}
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              style={{ transformOrigin: "top" in anchor ? "top" : "bottom", ...anchor }}
-              id={`${baseId}-listbox`}
-              onKeyDown={(event) => event.key === "Escape" && setIsOpen(false)}
-              // z above Modal's own z-50: the popover lives in the body, so a
-              // select inside a dialog still draws over it.
-              className={`${POPOVER_CLASS} fixed z-[60] min-w-40 p-1.5`}
+      <PortalPopover
+        open={isOpen}
+        triggerRef={triggerRef}
+        popoverRef={popoverRef}
+        align="stretch"
+        maxHeight={POPOVER_MAX_HEIGHT}
+        initial={{ opacity: 0, scale: 0.96, y: -4 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: -4 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        id={`${baseId}-listbox`}
+        onKeyDown={(event) => event.key === "Escape" && setIsOpen(false)}
+        className="min-w-40 p-1.5"
+>
+        {/* the scroll lives inside the padding -- on the popover itself
+            the scrollbar column paints over the rounded corners */}
+        <div className="max-h-72 overflow-y-auto">
+          {options.map((option, index) => (
+            <motion.button
+              key={option.value}
+              id={optionId(index)}
+              type="button"
+              onClick={() => selectIndex(index)}
+              onMouseEnter={() => setActiveIndex(index)}
+              initial="rest"
+              animate={index === activeIndex ? "hover" : "rest"}
+              className={`flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
             >
-              {/* the scroll lives inside the padding -- on the popover itself
-                  the scrollbar column paints over the rounded corners */}
-              <div className="max-h-72 overflow-y-auto">
-                {options.map((option, index) => (
-                  <motion.button
-                    key={option.value}
-                    id={optionId(index)}
-                    type="button"
-                    onClick={() => selectIndex(index)}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    initial="rest"
-                    animate={index === activeIndex ? "hover" : "rest"}
-                    className={`flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      {option.icon && (
-                        <BounceIcon icon={option.icon} size={14} hoverSize={17} className="text-muted-foreground" />
-                      )}
-                      <span className="truncate">{option.label}</span>
-                    </span>
-                    {option.value === value && <Check className="size-3.5 shrink-0 text-primary" />}
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body,
-      )}
+              <span className="flex min-w-0 items-center gap-2">
+                {option.icon && (
+                  <BounceIcon icon={option.icon} size={14} hoverSize={17} className="text-muted-foreground" />
+                )}
+                <span className="truncate">{option.label}</span>
+              </span>
+              {option.value === value && <Check className="size-3.5 shrink-0 text-primary" />}
+            </motion.button>
+          ))}
+        </div>
+      </PortalPopover>
     </div>
   );
 }

@@ -31,6 +31,7 @@ class UserDto(BaseDto, TimestampMixin):
 
     is_blocked: bool = False
     is_trial_available: bool = True
+    password_change_required: bool = False
 
     permission_grants: Optional[list[str]] = None
     permission_revokes: Optional[list[str]] = None
@@ -106,6 +107,7 @@ class CreateUserDto:
     email: Optional[str] = None
     login: Optional[str] = None
     password_hash: Optional[str] = None
+    password_change_required: bool = False
     permission_grants: Optional[list[str]] = None
     permission_revokes: Optional[list[str]] = None
     ip_allowlist: Optional[list[str]] = None
@@ -116,6 +118,7 @@ class UpdateUserDto:
     # None = leave unchanged, matching the existing partial-update convention.
     name: Optional[str] = None
     password_hash: Optional[str] = None
+    password_change_required: Optional[bool] = None
     permission_grants: Optional[list[str]] = None
     permission_revokes: Optional[list[str]] = None
     ip_allowlist: Optional[list[str]] = None
@@ -131,6 +134,7 @@ class UpdateUserDto:
 class PromoteAdminDto:
     login: str
     password_hash: str
+    password_change_required: bool
     permission_grants: list[str]
     permission_revokes: list[str]
 

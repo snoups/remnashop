@@ -1,16 +1,13 @@
 import { Layers } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCohorts } from "@entities/analytics/api";
-import type { Cohorts } from "@entities/analytics/api";
-import { AnalyticsCardHeader } from "@pages/analytics/AnalyticsCardHeader";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
-
-type CohortsState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Cohorts };
+import { CardHeader } from "@shared/ui/CardHeader";
 
 const MONTH_COLUMNS = 12;
 // above this fill the cell is light enough to need dark text
@@ -27,19 +24,7 @@ function retentionCellStyle(value: number): { background: string; color?: string
 
 export function AnalyticsCohortsPage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<CohortsState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getCohorts(controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
+  const [state] = useAsyncResource((signal) => getCohorts(signal));
 
   if (state.kind === "loading") return <Spinner size="page" />;
   if (state.kind === "error") {
@@ -48,17 +33,18 @@ export function AnalyticsCohortsPage() {
 
   return (
     <Card>
-      <AnalyticsCardHeader
+      <CardHeader
         icon={Layers}
         title={t("analytics.cohorts.title")}
         description={t("analytics.cohorts.titleHint")}
-      >
-        <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
-          0%
-          <span className="h-2 w-28 rounded-full bg-gradient-to-r from-primary/5 to-primary/85" />
-          100%
-        </div>
-      </AnalyticsCardHeader>
+        aside={
+          <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+            0%
+            <span className="h-2 w-28 rounded-full bg-gradient-to-r from-primary/5 to-primary/85" />
+            100%
+          </div>
+        }
+      />
 
       {state.data.cohorts.every((row) => row.cohort_size === 0) ? (
         <EmptyState text={t("analytics.cohorts.empty")} size="page" />

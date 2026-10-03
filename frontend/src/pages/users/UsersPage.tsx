@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -36,12 +36,14 @@ import type { UserDetailsTab } from "@features/user-details/UserDetailsDialog";
 import { useUserActions } from "@features/user-details/use-user-actions";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { formatDate, formatRelative } from "@shared/lib/relative-time";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { initials } from "@shared/lib/initials";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
@@ -81,10 +83,6 @@ function getHandle(user: UserListItem): string {
     .filter(Boolean)
     .join(" · ");
   return telegram || user.email || user.login || "—";
-}
-
-function getInitials(user: UserListItem): string {
-  return (user.login ?? user.name).slice(0, 2).toUpperCase();
 }
 
 function getAvatarClassName(user: UserListItem, isSelf: boolean): string {
@@ -130,8 +128,6 @@ export function UsersPage() {
   const [subscription, setSubscription] = useState("");
   const [trial, setTrial] = useState("");
   const [sort, setSort] = useState<{ by: UserSort; descending: boolean }>({ by: "created_at", descending: true });
-  const [stats, setStats] = useState<UserListStats | null>(null);
-  const [statsToken, setStatsToken] = useState(0);
 
   const currentUserState = useCurrentUser();
   const permissions = usePermissions();
@@ -143,15 +139,11 @@ export function UsersPage() {
   const [referralsUser, setReferralsUser] = useState<UserListItem | null>(null);
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
-  const refreshStats = () => setStatsToken((token) => token + 1);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getUserListStats(includeStaff, controller.signal)
-      .then(setStats)
-      .catch(() => {});
-    return () => controller.abort();
-  }, [includeStaff, statsToken]);
+  const [statsState, refreshStats] = useAsyncResource((signal) => getUserListStats(includeStaff, signal), {
+    deps: [includeStaff],
+    keepData: true,
+  });
+  const stats = statsState.kind === "ready" ? statsState.data : null;
 
   const baseFilters = useMemo<Omit<UserListFilters, "page" | "pageSize">>(
     () => ({
@@ -406,7 +398,7 @@ export function UsersPage() {
                       <span
                         className={`flex size-9 items-center justify-center rounded-full text-[12.5px] font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
                       >
-                        {isDeleted ? <Trash2 className="size-4" /> : getInitials(user)}
+                        {isDeleted ? <Trash2 className="size-4" /> : initials(user.login ?? user.name)}
                       </span>
                       <span className="min-w-0">
                         <span className="flex min-w-0 items-center gap-2">

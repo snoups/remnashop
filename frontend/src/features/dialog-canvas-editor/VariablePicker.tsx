@@ -1,13 +1,11 @@
 import { Braces, Search } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import type { VariableOption } from "@entities/dialogs/api";
-import { rightAnchorFor, type RightPopoverAnchor } from "@shared/lib/popover-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
+import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SearchClearButton } from "@shared/ui/SearchField";
 
 const POPOVER_MAX_HEIGHT = 340;
@@ -32,7 +30,6 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [anchor, setAnchor] = useState<RightPopoverAnchor | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -49,8 +46,6 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
     .map((category) => ({ category, items: matching.filter((v) => v.category === category) }));
 
   const toggle = () => {
-    const trigger = triggerRef.current?.getBoundingClientRect();
-    if (!isOpen && trigger) setAnchor(rightAnchorFor(trigger, POPOVER_MAX_HEIGHT));
     setQuery("");
     setIsOpen(!isOpen);
   };
@@ -69,66 +64,61 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
         <Braces className="size-[16px]" />
       </button>
 
-      {createPortal(
-        <AnimatePresence>
-          {isOpen && anchor && (
-            <motion.div
-              ref={popoverRef}
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              style={{ transformOrigin: "top" in anchor ? "top right" : "bottom right", ...anchor }}
-              // z above Modal's z-50, same as SelectDropdown
-              className="fixed z-[60] w-60 rounded-popover border border-white/[0.14] bg-popover/60 p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150"
-            >
-              {variables.length > SEARCH_THRESHOLD && (
-                <label className="mb-1.5 flex h-8 items-center gap-2 rounded-full border border-glass-border bg-white/[0.03] px-3">
-                  <Search className="size-3.5 shrink-0 text-muted-foreground" />
-                  <input
-                    autoFocus
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder={t("dialogs.inspector.variableSearch")}
-                    className="w-full min-w-0 bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
-                  />
-                  {/* 20px in the 30px inner height: 5px inset (px-3 minus 7) */}
-                  {query && <SearchClearButton size="5" className="-mr-[7px]" onClear={() => setQuery("")} />}
-                </label>
-              )}
-              <div className="max-h-72 overflow-y-auto">
-                {groups.length === 0 && (
-                  <p className="px-2.5 py-2 text-[12.5px] text-muted-foreground">{t("dialogs.inspector.variableEmpty")}</p>
-                )}
-                {groups.map(({ category, items }) => (
-                  <div key={category} className="mb-1 last:mb-0">
-                    <span className="block px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {t(`dialogs.variableCategories.${category}`, { defaultValue: category })}
-                    </span>
-                    {items.map(({ name }) => (
-                      <button
-                        key={name}
-                        type="button"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => {
-                          onPick(format(name));
-                          setIsOpen(false);
-                        }}
-                        className="flex w-full flex-col items-start rounded-popover-item px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.07]"
-                      >
-                        <span className="text-[13px] font-medium text-foreground">{label(name)}</span>
-                        <span className="font-mono text-[11.5px] text-muted-foreground">{format(name)}</span>
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+      <PortalPopover
+        open={isOpen}
+        triggerRef={triggerRef}
+        popoverRef={popoverRef}
+        align="right"
+        maxHeight={POPOVER_MAX_HEIGHT}
+        initial={{ opacity: 0, scale: 0.96, y: -4 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: -4 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className="w-60 p-1.5"
+>
+        {variables.length > SEARCH_THRESHOLD && (
+          <label className="mb-1.5 flex h-8 items-center gap-2 rounded-full border border-glass-border bg-white/[0.03] px-3">
+            <Search className="size-3.5 shrink-0 text-muted-foreground" />
+            <input
+              autoFocus
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("dialogs.inspector.variableSearch")}
+              className="w-full min-w-0 bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
+            />
+            {/* 20px in the 30px inner height: 5px inset (px-3 minus 7) */}
+            {query && <SearchClearButton size="5" className="-mr-[7px]" onClear={() => setQuery("")} />}
+          </label>
+        )}
+        <div className="max-h-72 overflow-y-auto">
+          {groups.length === 0 && (
+            <p className="px-2.5 py-2 text-[12.5px] text-muted-foreground">{t("dialogs.inspector.variableEmpty")}</p>
           )}
-        </AnimatePresence>,
-        document.body,
-      )}
+          {groups.map(({ category, items }) => (
+            <div key={category} className="mb-1 last:mb-0">
+              <span className="block px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t(`dialogs.variableCategories.${category}`, { defaultValue: category })}
+              </span>
+              {items.map(({ name }) => (
+                <button
+                  key={name}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    onPick(format(name));
+                    setIsOpen(false);
+                  }}
+                  className="flex w-full flex-col items-start rounded-popover-item px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.07]"
+                >
+                  <span className="text-[13px] font-medium text-foreground">{label(name)}</span>
+                  <span className="font-mono text-[11.5px] text-muted-foreground">{format(name)}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </PortalPopover>
     </>
   );
 }

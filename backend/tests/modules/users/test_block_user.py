@@ -91,6 +91,7 @@ async def test_block_user_role_guard(
         PromoteAdminDto(
             login="target-admin",
             password_hash="hash",
+            password_change_required=False,
             permission_grants=[],
             permission_revokes=[],
         ),

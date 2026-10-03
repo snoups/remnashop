@@ -162,7 +162,7 @@ async def test_accepts_valid_api_token(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="ci-script",
-                permissions=[Permission.BANNERS_UPLOAD],
+                scopes=[Permission.BANNERS_UPLOAD.value],
                 token_hash=hash_refresh_token(secret),
                 created_by_user_id=None,
                 expires_at=None,
@@ -198,7 +198,7 @@ async def test_rejects_revoked_api_token(
         token = await api_token_repository.create(
             CreateApiTokenDto(
                 name="ci-script",
-                permissions=[Permission.BANNERS_UPLOAD],
+                scopes=[Permission.BANNERS_UPLOAD.value],
                 token_hash=hash_refresh_token(secret),
                 created_by_user_id=None,
                 expires_at=None,
@@ -252,7 +252,7 @@ async def test_require_admin_user_refuses_api_token(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="ci-script",
-                permissions=[Permission.BANNERS_UPLOAD],
+                scopes=[Permission.BANNERS_UPLOAD.value],
                 token_hash=hash_refresh_token(secret),
                 created_by_user_id=None,
                 expires_at=None,

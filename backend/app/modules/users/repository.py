@@ -91,6 +91,7 @@ class UserRepository:
             email=data.email,
             login=data.login,
             password_hash=data.password_hash,
+            password_change_required=data.password_change_required,
             permission_grants=data.permission_grants,
             permission_revokes=data.permission_revokes,
             ip_allowlist=data.ip_allowlist,
@@ -354,6 +355,7 @@ class UserRepository:
         db_user.role = Role.ADMIN
         db_user.login = data.login
         db_user.password_hash = data.password_hash
+        db_user.password_change_required = data.password_change_required
         db_user.permission_grants = data.permission_grants
         db_user.permission_revokes = data.permission_revokes
 

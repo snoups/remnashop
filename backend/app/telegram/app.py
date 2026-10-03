@@ -2,7 +2,6 @@ from aiogram import Bot, Dispatcher
 from fastapi import FastAPI
 from loguru import logger
 
-from app.__version__ import __version__
 from app.core.config import AppConfig
 from app.telegram.lifespan import lifespan
 from app.telegram.webhook import TelegramWebhookEndpoint
@@ -18,7 +17,7 @@ def get_app(
     app: FastAPI = FastAPI(
         lifespan=lifespan,
         title="Remnashop Telegram Webhook",
-        version=__version__,
+        version=config.build.version,
         docs_url=None,
         redoc_url=None,
         openapi_url=None,

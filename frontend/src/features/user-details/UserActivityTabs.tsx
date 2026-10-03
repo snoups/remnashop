@@ -18,6 +18,7 @@ import { ReferralKpis, ReferralProgramCard } from "@features/user-referrals/Refe
 import { ResetReferralCodeButton } from "@features/user-referrals/ResetReferralCodeButton";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
@@ -191,36 +192,21 @@ export function AnalyticsTab({ userId }: { userId: number }) {
 export function TransactionsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
   const canViewDetails = usePermissions().includes("TRANSACTIONS_DETAIL_VIEW");
-  const [state, , setData] = useAsyncResource((signal) =>
-    listTransactions({ userId, pageSize: TRANSACTIONS_PAGE_SIZE }, signal),
+  const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
+    (id: number, page, signal) => listTransactions({ userId: id, page, pageSize: TRANSACTIONS_PAGE_SIZE }, signal),
+    userId,
   );
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [openedOrder, setOpenedOrder] = useState<TransactionItem | null>(null);
-
-  const handleLoadMore = async () => {
-    if (state.kind !== "ready") return;
-    setIsLoadingMore(true);
-    try {
-      const result = await listTransactions({ userId, page: page + 1, pageSize: TRANSACTIONS_PAGE_SIZE });
-      setData({ items: [...state.data.items, ...result.items], total: result.total });
-      setPage(page + 1);
-    } catch {
-      // keep current items; the button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
 
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <LoadError text={t("transactions.loadError")} />}
-      {state.kind === "ready" && state.data.items.length === 0 && (
+      {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState icon={Receipt} text={t("users.details.empty.transactions")} />
       )}
       {state.kind === "ready" &&
-        state.data.items.map((order) => {
+        state.items.map((order) => {
           const symbol = currencySymbol(order.currency);
           return (
             <motion.button
@@ -254,13 +240,13 @@ export function TransactionsTab({ userId }: { userId: number }) {
             </motion.button>
           );
         })}
-      {state.kind === "ready" && state.data.items.length < state.data.total && (
+      {state.kind === "ready" && hasMore && (
         <div className="px-2.5 py-1">
           <LoadMoreButton
-            onClick={() => void handleLoadMore()}
+            onClick={() => void loadMore()}
             isLoading={isLoadingMore}
-            shown={state.data.items.length}
-            total={state.data.total}
+            shown={state.items.length}
+            total={state.total}
           />
         </div>
       )}

@@ -98,10 +98,7 @@ export function TextEditorPanel({
 
   useEffect(() => {
     setDraft(entry?.value ?? "");
-    // Re-syncs the draft whenever the selection or locale changes, or a save/reset
-    // brings back a new entry.value -- but not on every keystroke (entry.value only
-    // changes server-side).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // entry.value changes only server-side (save/reset), never on a keystroke
   }, [textKey, activeLocale, entry?.value]);
 
   const hasVariables = variables.length > 0;

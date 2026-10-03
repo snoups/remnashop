@@ -1,19 +1,18 @@
 import { ArrowDown, Filter } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatPercent } from "@shared/lib/format";
 import { getFunnel } from "@entities/analytics/api";
-import type { Funnel, AnalyticsPeriodDays, FunnelStep } from "@entities/analytics/api";
-import { AnalyticsCardHeader } from "@pages/analytics/AnalyticsCardHeader";
+import type { AnalyticsPeriodDays, FunnelStep } from "@entities/analytics/api";
 import { Badge } from "@shared/ui/Badge";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { PeriodPills } from "@shared/ui/PeriodPills";
 import { Spinner } from "@shared/ui/Spinner";
-
-type FunnelState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Funnel };
+import { CardHeader } from "@shared/ui/CardHeader";
 
 function FunnelStepRow({ step, index }: { step: FunnelStep; index: number }) {
   const { t, i18n } = useTranslation();
@@ -51,20 +50,7 @@ function FunnelStepRow({ step, index }: { step: FunnelStep; index: number }) {
 export function AnalyticsFunnelPage() {
   const { t, i18n } = useTranslation();
   const [days, setDays] = useState<AnalyticsPeriodDays>(7);
-  const [state, setState] = useState<FunnelState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    getFunnel(days, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [days]);
+  const [state] = useAsyncResource((signal) => getFunnel(days, signal), { deps: [days] });
 
   const steps = state.kind === "ready" ? state.data.steps : [];
   const firstPaid = steps.find((step) => step.key === "first_paid");
@@ -89,7 +75,7 @@ export function AnalyticsFunnelPage() {
       {state.kind === "ready" && (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <Card>
-            <AnalyticsCardHeader
+            <CardHeader
               icon={Filter}
               title={t("analytics.funnel.title")}
               description={t("analytics.funnel.description")}

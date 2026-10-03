@@ -1,4 +1,6 @@
 export function isNewerVersion(latest: string, current: string): boolean {
+  // non-numeric builds ("dev") have nothing to compare against releases
+  if (!/^v?\d+(\.\d+)*$/.test(current)) return false;
   const latestParts = latest.replace(/^v/, "").split(".").map(Number);
   const currentParts = current.replace(/^v/, "").split(".").map(Number);
 

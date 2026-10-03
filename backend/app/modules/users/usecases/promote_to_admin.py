@@ -72,6 +72,7 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
                 PromoteAdminDto(
                     login=login,
                     password_hash=password_hash,
+                    password_change_required=password is not None,
                     permission_grants=[p.value for p in data.permission_grants],
                     permission_revokes=[p.value for p in data.permission_revokes],
                 ),

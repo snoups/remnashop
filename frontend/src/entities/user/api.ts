@@ -7,6 +7,7 @@ export interface CurrentUser {
   name: string;
   role: Role;
   effective_permissions: Permission[];
+  password_change_required: boolean;
 }
 
 export interface UpdateOwnProfileRequest {

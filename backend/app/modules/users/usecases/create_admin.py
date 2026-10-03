@@ -37,6 +37,7 @@ class CreateAdminUseCase(UseCase[CreateAdminDto, tuple[UserDto, str]]):
                 CreateUserDto(
                     login=data.login,
                     password_hash=password_hash,
+                    password_change_required=True,
                     name=data.name,
                     role=Role.ADMIN,
                     language=Locale.EN,

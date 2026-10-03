@@ -82,6 +82,8 @@ export interface PermissionCatalogEntry {
   permission: Permission;
   resource: string;
   kind: "read" | "write";
+  token_grantable: boolean;
+  admin_default: boolean;
 }
 
 interface PermissionCatalogResponse {

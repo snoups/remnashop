@@ -31,7 +31,6 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     assets_dir: Path = ASSETS_DIR
     media_dir: Path = MEDIA_DIR
     origins: StringList = StringList("")
-    swagger_enabled: bool = False
     secure_cookies: bool = True
     web_cabinet_url: str = ""
 

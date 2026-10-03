@@ -15,8 +15,5 @@ export interface AppearancePreview {
   setPreviewShaderEnabled: (enabled: boolean | null) => void;
 }
 
-// Lets the Appearance settings form preview an accent color pick across the
-// whole dashboard (CSS tokens + shader hue) before it's saved -- separate
-// from AppearanceContext, which only ever reflects the last value confirmed
-// by the backend.
+// unsaved picks from the Appearance settings form; AppearanceContext holds only saved values
 export const AppearancePreviewContext = createContext<AppearancePreview | null>(null);

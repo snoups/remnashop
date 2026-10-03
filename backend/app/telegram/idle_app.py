@@ -6,7 +6,6 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
-from app.__version__ import __version__
 from app.core.config import AppConfig
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.telegram.bot_signals import listen_for_bot_signals, restart_handlers
@@ -31,7 +30,7 @@ def get_idle_app(config: AppConfig) -> FastAPI:
     app: FastAPI = FastAPI(
         lifespan=lifespan,
         title="Remnashop Telegram Webhook (idle)",
-        version=__version__,
+        version=config.build.version,
         docs_url=None,
         redoc_url=None,
         openapi_url=None,

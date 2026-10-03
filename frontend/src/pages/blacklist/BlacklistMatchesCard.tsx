@@ -18,6 +18,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { initials } from "@shared/lib/initials";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
@@ -183,7 +184,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2.5">
                         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground">
-                          {match.user.name.slice(0, 2).toUpperCase()}
+                          {initials(match.user.name)}
                         </div>
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">{match.user.name}</p>

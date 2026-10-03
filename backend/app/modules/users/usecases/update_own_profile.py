@@ -54,7 +54,12 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto, UserDto]):
 
         async with self._uow:
             updated = await self._user_repository.update_fields(
-                actor.id, UpdateUserDto(name=name, password_hash=password_hash)
+                actor.id,
+                UpdateUserDto(
+                    name=name,
+                    password_hash=password_hash,
+                    password_change_required=False if password_hash is not None else None,
+                ),
             )
             if password_hash is not None:
                 # A password change is a signal the account may have been

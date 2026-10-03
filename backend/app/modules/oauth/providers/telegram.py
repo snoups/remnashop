@@ -11,8 +11,7 @@ _TOKEN_ENDPOINT: Final[str] = "https://oauth.telegram.org/token"
 def _decode_id_token_payload(id_token: str) -> dict[str, Any]:
     # oauth.telegram.org's token response is fetched server-to-server over TLS
     # with client_secret already authenticating the exchange -- the payload is
-    # decoded, not signature-verified, the same choice Remnawave's own
-    # reference implementation makes for this same endpoint.
+    # decoded, not signature-verified.
     payload_segment = id_token.split(".")[1]
     padded = payload_segment + "=" * (-len(payload_segment) % 4)
     result: dict[str, Any] = json.loads(base64.urlsafe_b64decode(padded))

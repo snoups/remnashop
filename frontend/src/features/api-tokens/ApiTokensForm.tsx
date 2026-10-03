@@ -1,9 +1,9 @@
-import { Infinity as InfinityIcon, KeyRound, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { BookOpen, Infinity as InfinityIcon, KeyRound, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
-import { type ApiToken, type CreatedApiToken, listApiTokens, revokeApiToken } from "@entities/api-tokens/api";
+import { type ApiToken, type CreatedApiToken, issueDocsOtt, listApiTokens, revokeApiToken } from "@entities/api-tokens/api";
+import { SCOPE_WILDCARD, tokenScopeLabel } from "@entities/api-tokens/scopes";
 import { CreateApiTokenDialog } from "@features/api-tokens/CreateApiTokenDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
@@ -18,7 +18,6 @@ import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
 
 export function ApiTokensForm() {
   const { t } = useTranslation();
-  const catalogState = usePermissionCatalog();
   const [state, reload] = useAsyncResource(listApiTokens);
   const [isCreating, setIsCreating] = useState(false);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
@@ -28,6 +27,18 @@ export function ApiTokensForm() {
     setIsCreating(false);
     setRevealedSecret(created.secret);
     reload();
+  };
+
+  const openDocs = async () => {
+    // opened before the await: a window opened after it counts as a popup
+    const docsWindow = window.open("", "_blank");
+    try {
+      const ott = await issueDocsOtt();
+      if (docsWindow) docsWindow.location.href = `/api/v1/docs?ott=${encodeURIComponent(ott)}`;
+    } catch (err) {
+      docsWindow?.close();
+      toast.error(getErrorMessage(err, t("apiTokens.docsError")));
+    }
   };
 
   const handleRevoke = async (id: number) => {
@@ -51,12 +62,18 @@ export function ApiTokensForm() {
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("apiTokens.description")}</p>
           </div>
         </div>
-        {!(state.kind === "ready" && state.data.length === 0) && (
-          <Button variant="accent" className="ml-auto" onClick={() => setIsCreating(true)}>
-            <Plus className="size-3.5" />
-            {t("apiTokens.create")}
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" onClick={() => void openDocs()}>
+            <BookOpen className="size-3.5" />
+            {t("apiTokens.docs")}
           </Button>
-        )}
+          {!(state.kind === "ready" && state.data.length === 0) && (
+            <Button variant="accent" onClick={() => setIsCreating(true)}>
+              <Plus className="size-3.5" />
+              {t("apiTokens.create")}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
@@ -100,7 +117,7 @@ export function ApiTokensForm() {
             <ApiTokenRow
               key={token.id}
               token={token}
-              isFullAccess={catalogState.kind === "ready" && token.permissions.length === catalogState.data.length}
+              isFullAccess={token.scopes.includes(SCOPE_WILDCARD)}
               onRevoke={() => setPendingRevoke(token)}
             />
           ))}
@@ -163,8 +180,8 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
   const isExpiringSoon = !isExpired && daysLeft !== null && daysLeft <= EXPIRING_SOON_DAYS;
   const areaRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
-  const [visibleCount, setVisibleCount] = useState(token.permissions.length);
-  const hiddenCount = token.permissions.length - visibleCount;
+  const [visibleCount, setVisibleCount] = useState(token.scopes.length);
+  const hiddenCount = token.scopes.length - visibleCount;
   const canExpand = hiddenCount > 0;
   const toggleExpanded = () => setIsExpanded((prev) => !prev);
 
@@ -192,7 +209,7 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
     const observer = new ResizeObserver(fit);
     observer.observe(area);
     return () => observer.disconnect();
-  }, [token.permissions, i18n.language, isFullAccess]);
+  }, [token.scopes, i18n.language, isFullAccess]);
 
   return (
     <div
@@ -226,16 +243,16 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
               className={`relative mt-1.5 flex min-w-0 flex-1 gap-1 ${isExpanded ? "flex-wrap" : "overflow-hidden"}`}
             >
               <div ref={measureRef} className="invisible absolute flex gap-1">
-                {token.permissions.map((permission) => (
-                  <Tag key={permission}>
-                    {t(`permissions.${permission}`)}
+                {token.scopes.map((scope) => (
+                  <Tag key={scope}>
+                    {tokenScopeLabel(scope, t)}
                   </Tag>
                 ))}
-                <span className={MORE_CLASS}>+{token.permissions.length}</span>
+                <span className={MORE_CLASS}>+{token.scopes.length}</span>
               </div>
-              {(isExpanded ? token.permissions : token.permissions.slice(0, visibleCount)).map((permission) => (
-                <Tag key={permission}>
-                  {t(`permissions.${permission}`)}
+              {(isExpanded ? token.scopes : token.scopes.slice(0, visibleCount)).map((scope) => (
+                <Tag key={scope}>
+                  {tokenScopeLabel(scope, t)}
                 </Tag>
               ))}
               {hiddenCount > 0 && (

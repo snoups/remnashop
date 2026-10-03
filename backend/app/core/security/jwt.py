@@ -1,5 +1,5 @@
 import time
-from typing import TypedDict, cast
+from typing import Final, Literal, TypedDict, cast
 
 import jwt
 
@@ -23,3 +23,22 @@ def create_access_token(user_id: int, session_id: int, secret: str) -> str:
 
 def decode_access_token(token: str, secret: str) -> AccessTokenPayload:
     return cast(AccessTokenPayload, jwt.decode(token, secret, algorithms=["HS256"]))
+
+
+# A dashboard session trades for a seconds-long one-time ticket, the docs
+# page trades that for a cookie scoped to the docs path.
+_DOCS_TOKEN_ISSUER: Final[str] = "remnashop-docs"
+DocsTokenScope = Literal["ott", "access"]
+
+
+def create_docs_token(scope: DocsTokenScope, ttl: int, secret: str) -> str:
+    payload = {"scope": scope, "iss": _DOCS_TOKEN_ISSUER, "exp": int(time.time()) + ttl}
+    return jwt.encode(payload, secret, algorithm="HS256")
+
+
+def is_valid_docs_token(token: str, scope: DocsTokenScope, secret: str) -> bool:
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"], issuer=_DOCS_TOKEN_ISSUER)
+    except jwt.PyJWTError:
+        return False
+    return payload.get("scope") == scope

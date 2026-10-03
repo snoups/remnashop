@@ -236,7 +236,7 @@ async def test_catalog_refuses_an_api_token(
             CreateApiTokenDto(
                 name="script",
                 token_hash=hash_refresh_token(secret),
-                permissions=[Permission.PLANS_VIEW],
+                scopes=[Permission.PLANS_VIEW.value],
                 created_by_user_id=None,
                 expires_at=None,
             )

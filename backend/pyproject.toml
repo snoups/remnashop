@@ -1,6 +1,6 @@
 [project]
 name = "remnashop"
-version = "0.0.0"
+version = "1.0.0"
 description = "This is a Telegram bot for selling VPN subscriptions. It works with Remnawave"
 authors = [{ name = "snoups" }]
 license = "MIT"

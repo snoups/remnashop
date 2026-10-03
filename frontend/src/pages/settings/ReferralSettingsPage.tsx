@@ -12,7 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState, type ComponentType, type FormEvent, type ReactNode } from "react";
+import { useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -29,6 +29,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
@@ -38,8 +39,8 @@ import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { CardHeader } from "@shared/ui/CardHeader";
 
-type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready" };
 type IconType = ComponentType<{ className?: string }>;
 
 const LEVELS = [1, 2, 3];
@@ -61,34 +62,6 @@ const REWARD_STRATEGY_OPTIONS: { value: ReferralRewardStrategy; icon: IconType }
   { value: "AMOUNT", icon: Hash },
   { value: "PERCENT", icon: Percent },
 ];
-
-function CardHeader({
-  icon: Icon,
-  title,
-  description,
-  children,
-}: {
-  icon: IconType;
-  title: string;
-  description: string;
-  children?: ReactNode;
-}) {
-  return (
-    <>
-      <div className="flex flex-wrap items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Icon className="size-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-bold text-foreground">{title}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{description}</p>
-        </div>
-        {children}
-      </div>
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
-    </>
-  );
-}
 
 function OptionGroup<T extends string>({
   label,
@@ -147,7 +120,6 @@ function OptionGroup<T extends string>({
 
 export function ReferralSettingsPage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [isSaving, setIsSaving] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -181,19 +153,7 @@ export function ReferralSettingsPage() {
     setAnchorCurrency(settings.anchor_currency);
   };
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getReferralSettings(controller.signal)
-      .then((settings) => {
-        if (controller.signal.aborted) return;
-        applySettings(settings);
-        setState({ kind: "ready" });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
+  const [state] = useAsyncResource(getReferralSettings, { onSuccess: applySettings });
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -272,15 +232,16 @@ export function ReferralSettingsPage() {
           icon={Users}
           title={t("referrals.settings.programTitle")}
           description={t("referrals.settings.programDescription")}
-        >
-          <span
-            className={`flex h-9 shrink-0 items-center rounded-full px-4 text-[13px] font-semibold ${
-              savedEnabled ? "bg-success/10 text-success" : "bg-white/[0.05] text-muted-foreground"
-            }`}
-          >
-            {savedEnabled ? t("referrals.settings.status.enabled") : t("referrals.settings.status.disabled")}
-          </span>
-        </CardHeader>
+          aside={
+            <span
+              className={`flex h-9 shrink-0 items-center rounded-full px-4 text-[13px] font-semibold ${
+                savedEnabled ? "bg-success/10 text-success" : "bg-white/[0.05] text-muted-foreground"
+              }`}
+            >
+              {savedEnabled ? t("referrals.settings.status.enabled") : t("referrals.settings.status.disabled")}
+            </span>
+          }
+        />
 
         <div className="mt-4 flex items-center justify-between gap-3 py-1">
           <span className="flex items-center gap-1.5 text-sm text-foreground/80">

@@ -30,13 +30,15 @@ import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { Collapse } from "@shared/ui/Collapse";
 import { LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { CardHeader } from "@shared/ui/CardHeader";
 import { formatDate } from "@shared/lib/relative-time";
+import { DAY_MS } from "@shared/lib/period";
+import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 
 const STATUSES: SubscriptionStatus[] = ["ACTIVE", "LIMITED", "EXPIRED", "DISABLED", "DELETED"];
 const FILTER_DEBOUNCE_MS = 200;
 const ROW_GRID_CLASSNAME =
   "grid grid-cols-[36px_minmax(0,1fr)_130px_96px_150px_112px_32px] items-center gap-3";
-const DAY_MS = 86_400_000;
 const EXPIRING_SOON_DAYS = 7;
 const INACTIVE_STATUSES: ReadonlySet<SubscriptionStatus> = new Set(["EXPIRED", "DISABLED", "DELETED"]);
 
@@ -79,14 +81,7 @@ export function SubscriptionsPage() {
   const [searchInput, setSearchInput] = useUrlSearch();
   const [editingSubscription, setEditingSubscription] = useState<SubscriptionListItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SubscriptionListItem | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<ExpiryGroup>>(new Set());
-
-  const toggleGroup = (key: ExpiryGroup) =>
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
+  const [collapsedGroups, toggleGroup] = useCollapsedSet<ExpiryGroup>();
 
   const permissions = usePermissions();
   const canEdit = permissions.includes("SUBSCRIPTIONS_UPDATE");
@@ -169,22 +164,18 @@ export function SubscriptionsPage() {
         {state.kind === "ready" && isFetching && (
           <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
         )}
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Layers className="size-4" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
+        <CardHeader
+          icon={Layers}
+          title={
+            <>
               {t("subscriptions.title")}
               {state.kind === "ready" && (
                 <span className="text-[11.5px] font-normal tabular-nums text-muted-foreground">{state.total}</span>
               )}
-            </h2>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("subscriptions.description")}</p>
-          </div>
-        </div>
-
-        <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+            </>
+          }
+          description={t("subscriptions.description")}
+        />
 
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (

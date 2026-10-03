@@ -32,7 +32,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { usePermissionCatalog, groupCatalogByResource } from "@entities/admin/use-permission-catalog";
+import { usePermissionCatalog, groupCatalogByResource, resourceCategoryKey } from "@entities/admin/use-permission-catalog";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
@@ -45,6 +45,8 @@ interface PermissionPickerProps {
   /** Rows whose state differs from this set get a "changed" mark (an admin's role defaults). */
   baseline?: Set<Permission>;
   disabled?: boolean;
+  /** Only permissions an API token may carry. */
+  tokenGrantableOnly?: boolean;
 }
 
 const RESOURCE_ICONS: Record<string, LucideIcon> = {
@@ -108,7 +110,9 @@ export function PermissionPicker(props: PermissionPickerProps) {
     return <p className="text-sm text-error">{t("apiTokens.loadError")}</p>;
   }
 
-  const groups = groupCatalogByResource(catalogState.data);
+  const groups = groupCatalogByResource(
+    props.tokenGrantableOnly ? catalogState.data.filter((entry) => entry.token_grantable) : catalogState.data,
+  );
   const active = props.selected;
 
   const toggleExpand = (resource: string) => {
@@ -132,7 +136,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
         const ResourceIcon = getResourceIcon(group.resource);
         const readState = getKindState(group.read, active);
         const writeState = getKindState(group.write, active);
-        const categoryKey = group.resource.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+        const categoryKey = resourceCategoryKey(group.resource);
 
         return (
           <div key={group.resource} className="flex flex-col">

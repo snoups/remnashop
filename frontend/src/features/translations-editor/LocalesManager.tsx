@@ -1,7 +1,6 @@
 import { Check, ChevronDown, Globe } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { addLocale, type ActiveLocalesResult, removeLocale } from "@entities/translations/api";
@@ -12,7 +11,10 @@ import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
-import { POPOVER_CLASS } from "@shared/ui/classes";
+import { PortalPopover } from "@shared/ui/PortalPopover";
+
+// the list's max-h-72, same as SelectDropdown
+const POPOVER_MAX_HEIGHT = 288;
 
 interface LocalesManagerProps {
   locales: ActiveLocalesResult;
@@ -30,24 +32,11 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  // Portalled and fixed: the editor panel clips its overflow, so a popover
-  // positioned in place gets cut off at the panel's edge.
-  // measured on open only -- reposition on scroll/resize if the page
-  // ever scrolls out from under it.
-  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(
-    null,
-  );
 
   useClickOutside([ref, popoverRef], isOpen, () => setIsOpen(false));
   useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
 
-  const toggleOpen = () => {
-    const trigger = triggerRef.current?.getBoundingClientRect();
-    if (trigger) {
-      setAnchor({ top: trigger.bottom + 8, left: trigger.left, width: trigger.width });
-    }
-    setIsOpen((open) => !open);
-  };
+  const toggleOpen = () => setIsOpen((open) => !open);
 
   const byLabel = (a: string, b: string) => {
     if (a === DEFAULT_LOCALE || b === DEFAULT_LOCALE) return a === DEFAULT_LOCALE ? -1 : 1;
@@ -107,36 +96,29 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         />
       </motion.button>
 
-      {/* body, not #dialog-root: that node sits inside the shell's
-          backdrop-blur wrapper, which is a containing block for `fixed` and
-          would offset these viewport coordinates. */}
-      {createPortal(
-        <AnimatePresence>
-          {isOpen && anchor && (
-            <motion.div
-              ref={popoverRef}
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              style={{ transformOrigin: "top", ...anchor }}
-              onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
-              className={`${POPOVER_CLASS} fixed z-30 min-w-40 p-1.5`}
-            >
-              {/* the scroll lives inside the padding -- on the popover itself the
-                  scrollbar column paints over the rounded right corners */}
-              <div className="max-h-72 overflow-y-auto">
-                {active.map((locale) => row(locale, true))}
-                {active.length > 0 && available.length > 0 && (
-                  <div className="my-1 h-px bg-white/[0.08]" />
-                )}
-                {available.map((locale) => row(locale, false))}
-              </div>
-            </motion.div>
+      <PortalPopover
+        open={isOpen}
+        triggerRef={triggerRef}
+        popoverRef={popoverRef}
+        align="stretch"
+        maxHeight={POPOVER_MAX_HEIGHT}
+        initial={{ opacity: 0, scale: 0.96, y: -4 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: -4 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
+        className="min-w-40 p-1.5"
+>
+        {/* the scroll lives inside the padding -- on the popover itself the
+            scrollbar column paints over the rounded right corners */}
+        <div className="max-h-72 overflow-y-auto">
+          {active.map((locale) => row(locale, true))}
+          {active.length > 0 && available.length > 0 && (
+            <div className="my-1 h-px bg-white/[0.08]" />
           )}
-        </AnimatePresence>,
-        document.body,
-      )}
+          {available.map((locale) => row(locale, false))}
+        </div>
+      </PortalPopover>
     </div>
   );
 }

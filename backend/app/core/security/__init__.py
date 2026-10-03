@@ -1,5 +1,11 @@
 from app.core.security.crypt import decrypt_value, encrypt_value
-from app.core.security.jwt import AccessTokenPayload, create_access_token, decode_access_token
+from app.core.security.jwt import (
+    AccessTokenPayload,
+    create_access_token,
+    create_docs_token,
+    decode_access_token,
+    is_valid_docs_token,
+)
 from app.core.security.password import (
     PASSWORD_MIN_LENGTH,
     PASSWORD_PATTERN,
@@ -18,6 +24,7 @@ __all__ = [
     "PASSWORD_PATTERN",
     "AccessTokenPayload",
     "create_access_token",
+    "create_docs_token",
     "decode_access_token",
     "decrypt_value",
     "derive_csrf_token",
@@ -26,5 +33,6 @@ __all__ = [
     "generate_refresh_token",
     "hash_password",
     "hash_refresh_token",
+    "is_valid_docs_token",
     "verify_password",
 ]

@@ -127,6 +127,7 @@ async def get_me(
         effective_permissions=sorted(
             p.value for p in PermissionPolicy.effective_permissions(current_user)
         ),
+        password_change_required=current_user.password_change_required,
     )
 
 
@@ -153,6 +154,7 @@ async def update_me(
         effective_permissions=sorted(
             p.value for p in PermissionPolicy.effective_permissions(updated)
         ),
+        password_change_required=updated.password_change_required,
     )
 
 

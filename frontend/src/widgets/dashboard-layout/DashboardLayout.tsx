@@ -5,6 +5,7 @@ import { matchPath, Navigate, useLocation, useNavigate, useOutlet } from "react-
 
 import { logout } from "@shared/api/http";
 import { CurrentUserProvider } from "@entities/user/CurrentUserProvider";
+import { PasswordChangeRequired } from "@features/password-change-required/PasswordChangeRequired";
 import type { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
 import { useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { toast } from "@shared/lib/toast";
@@ -75,6 +76,9 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
   // none, fetch with the wrong filters and flash their buttons in a beat later.
   if (userState.kind === "loading") {
     return <Spinner className="h-dvh" />;
+  }
+  if (userState.data.password_change_required) {
+    return <PasswordChangeRequired />;
   }
 
   return (

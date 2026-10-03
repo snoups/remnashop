@@ -10,8 +10,8 @@ from app.modules.settings.dto import BotCommandDto
 from app.modules.settings.telegram_status import TELEGRAM_API_URL
 
 _TIMEOUT_SECONDS: Final[float] = 10.0
-# outranks the default scope in private chats, so the pre-rebuild bot's
-# commands set there would otherwise shadow ours
+# outranks the default scope in private chats, so commands set there earlier
+# would otherwise shadow ours
 _PRIVATE_CHATS_SCOPE: Final[dict[str, str]] = {"type": "all_private_chats"}
 
 

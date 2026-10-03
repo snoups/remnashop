@@ -20,17 +20,18 @@ import {
   Smartphone,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { deletePlan, listPlans, type Plan, type PlanAvailability, reorderPlans, updatePlan } from "@entities/plans/api";
-import { getPriceBook } from "@entities/pricing/api";
+import { useAnchorCurrency } from "@entities/pricing/use-anchor-currency";
 import { usePermissions } from "@entities/user/use-current-user";
 import { PlanAccessDialog } from "@features/plan-access/PlanAccessDialog";
 import { PlanEditDialog } from "@features/plan-edit/PlanEditDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { formatMoney } from "@shared/lib/format";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
@@ -43,7 +44,6 @@ import { Badge } from "@shared/ui/Badge";
 import { Tag } from "@shared/ui/Tag";
 import { IconButton } from "@shared/ui/IconButton";
 
-type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: Plan[] };
 type Filter = "all" | "active" | "inactive";
 
 const RESTRICTED_AVAILABILITIES: ReadonlySet<PlanAvailability> = new Set(["INVITED", "ALLOWED", "LINK"]);
@@ -51,8 +51,6 @@ const CARD_HEIGHT_CLASSNAME = "min-h-[318px]";
 
 export function PlansPage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [anchorCurrency, setAnchorCurrency] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [editingPlan, setEditingPlan] = useState<Plan | null | "new">(null);
   const [accessPlan, setAccessPlan] = useState<Plan | null>(null);
@@ -68,73 +66,41 @@ export function PlansPage() {
   const canDelete = permissions.includes("PLANS_DELETE");
   const canManageAccess = permissions.includes("PLANS_ACCESS_MANAGE");
   const canReorder = permissions.includes("PLANS_ORDER_MANAGE");
-  const canViewPricing = permissions.includes("PRICING_VIEW");
 
-  const [reloadToken, setReloadToken] = useState(0);
-  useEntityChanged("plan", () => setReloadToken((token) => token + 1));
-
-  useEffect(() => {
-    const controller = new AbortController();
-    // a refetch keeps the current rows on screen instead of flashing the spinner
-    setState((prev) => (prev.kind === "ready" ? prev : { kind: "loading" }));
-    listPlans(controller.signal)
-      .then((items) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", items });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [reloadToken]);
-
-  // base_price is in the anchor currency, which only the price book knows
-  useEffect(() => {
-    if (!canViewPricing) return;
-    const controller = new AbortController();
-    getPriceBook(controller.signal)
-      .then((book) => {
-        if (!controller.signal.aborted) setAnchorCurrency(book.settings.anchor_currency);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [canViewPricing]);
+  const [state, reload, setPlans] = useAsyncResource(listPlans);
+  useEntityChanged("plan", reload);
+  const anchorCurrency = useAnchorCurrency();
 
   const handleSaved = (plan: Plan) => {
     if (state.kind !== "ready") return;
-    const exists = state.items.some((item) => item.id === plan.id);
-    setState({
-      kind: "ready",
-      items: exists ? state.items.map((item) => (item.id === plan.id ? plan : item)) : [...state.items, plan],
-    });
+    const exists = state.data.some((item) => item.id === plan.id);
+    setPlans(exists ? state.data.map((item) => (item.id === plan.id ? plan : item)) : [...state.data, plan]);
   };
 
   const handleToggleActive = async (plan: Plan) => {
     if (state.kind !== "ready") return;
-    const previous = state.items;
-    setState({
-      kind: "ready",
-      items: state.items.map((item) => (item.id === plan.id ? { ...item, is_active: !item.is_active } : item)),
-    });
+    const previous = state.data;
+    setPlans(state.data.map((item) => (item.id === plan.id ? { ...item, is_active: !item.is_active } : item)));
     try {
       await updatePlan(plan.id, { is_active: !plan.is_active });
     } catch (err) {
-      setState({ kind: "ready", items: previous });
+      setPlans(previous);
       toast.error(getErrorMessage(err, t("plans.edit.error")));
     }
   };
 
   const handleDragEnd = async ({ active, over }: DragEndEvent) => {
     if (state.kind !== "ready" || !over || active.id === over.id) return;
-    const from = state.items.findIndex((plan) => plan.id === active.id);
-    const to = state.items.findIndex((plan) => plan.id === over.id);
-    const previous = state.items;
-    const reordered = arrayMove(state.items, from, to);
-    setState({ kind: "ready", items: reordered });
+    const from = state.data.findIndex((plan) => plan.id === active.id);
+    const to = state.data.findIndex((plan) => plan.id === over.id);
+    const previous = state.data;
+    const reordered = arrayMove(state.data, from, to);
+    setPlans(reordered);
     try {
       const result = await reorderPlans(reordered.map((plan) => plan.id));
-      setState({ kind: "ready", items: result });
+      setPlans(result);
     } catch (err) {
-      setState({ kind: "ready", items: previous });
+      setPlans(previous);
       toast.error(getErrorMessage(err, t("plans.reorderError")));
     }
   };
@@ -143,7 +109,7 @@ export function PlansPage() {
     try {
       await deletePlan(plan.id);
       if (state.kind === "ready") {
-        setState({ kind: "ready", items: state.items.filter((item) => item.id !== plan.id) });
+        setPlans(state.data.filter((item) => item.id !== plan.id));
       }
     } catch (err) {
       toast.error(getErrorMessage(err, t("plans.delete.error")));
@@ -152,7 +118,7 @@ export function PlansPage() {
 
   const visibleItems =
     state.kind === "ready"
-      ? state.items.filter((plan) => filter === "all" || plan.is_active === (filter === "active"))
+      ? state.data.filter((plan) => filter === "all" || plan.is_active === (filter === "active"))
       : [];
   // reordering a filtered subset has no well-defined position in the full list
   const isSortable = canReorder && filter === "all";
@@ -169,8 +135,8 @@ export function PlansPage() {
               {t("plans.title")}
               {state.kind === "ready" && (
                 <span className="text-[11.5px] font-normal tabular-nums text-muted-foreground">
-                  {state.items.length} &middot;{" "}
-                  {t("plans.activeCount", { count: state.items.filter((plan) => plan.is_active).length })}
+                  {state.data.length} &middot;{" "}
+                  {t("plans.activeCount", { count: state.data.filter((plan) => plan.is_active).length })}
                 </span>
               )}
             </h2>
@@ -208,7 +174,7 @@ export function PlansPage() {
         </div>
       )}
       {state.kind === "ready" && visibleItems.length === 0 && !canCreate && (
-        <EmptyState text={t(state.items.length === 0 ? "plans.empty" : "plans.noMatches")} size="page" />
+        <EmptyState text={t(state.data.length === 0 ? "plans.empty" : "plans.noMatches")} size="page" />
       )}
       {state.kind === "ready" && (visibleItems.length > 0 || canCreate) && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void handleDragEnd(e)}>

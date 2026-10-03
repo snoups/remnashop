@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type AddOnListItem, listAddons } from "@entities/addons/api";
+import { listAddons } from "@entities/addons/api";
 import { type Plan, getPlan, listPlans } from "@entities/plans/api";
-import { getPriceBook } from "@entities/pricing/api";
+import { useAnchorCurrency } from "@entities/pricing/use-anchor-currency";
 import { type Promocode, getPromocode } from "@entities/promocodes/api";
 import { type SubscriptionListItem, getSubscription } from "@entities/subscriptions/api";
 import { type TransactionItem, getTransaction } from "@entities/transactions/api";
 import { type UserListItem, getUser } from "@entities/user/api";
-import { usePermissions } from "@entities/user/use-current-user";
 import { PlanEditDialog } from "@features/plan-edit/PlanEditDialog";
 import { PromocodeDetailsDialog } from "@features/promocode-details/PromocodeDetailsDialog";
 import { SubscriptionEditDialog } from "@features/subscription-edit/SubscriptionEditDialog";
@@ -22,6 +21,7 @@ import {
   notifyEntityChanged,
 } from "@shared/lib/entity-dialogs";
 import { toast } from "@shared/lib/toast";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ParentPanelContext } from "@shared/ui/modal-hooks";
 
 const FETCHERS: Record<EntityKind, (id: number, signal: AbortSignal) => Promise<unknown>> = {
@@ -130,20 +130,14 @@ function PromocodeDialog({
   onChanged?: () => void;
   onClose: () => void;
 }) {
-  const [catalog, setCatalog] = useState<{ addons: AddOnListItem[]; plans: Plan[] } | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
+  const [state] = useAsyncResource(async (signal) => {
     const orEmpty = <T,>(promise: Promise<T[]>) => promise.catch(() => [] as T[]);
-    void Promise.all([orEmpty(listAddons(controller.signal)), orEmpty(listPlans(controller.signal))]).then(
-      ([addons, plans]) => {
-        if (!controller.signal.aborted) setCatalog({ addons, plans });
-      },
-    );
-    return () => controller.abort();
-  }, []);
+    const [addons, plans] = await Promise.all([orEmpty(listAddons(signal)), orEmpty(listPlans(signal))]);
+    return { addons, plans };
+  });
 
-  if (catalog === null) return null;
+  if (state.kind !== "ready") return null;
+  const catalog = state.data;
   return (
     <PromocodeDetailsDialog
       promocode={promocode}
@@ -156,19 +150,7 @@ function PromocodeDialog({
   );
 }
 
-// base prices are in the anchor currency, which only the price book knows
 function PlanDialog({ plan, onChanged, onClose }: { plan: Plan; onChanged?: () => void; onClose: () => void }) {
-  const canViewPricing = usePermissions().includes("PRICING_VIEW");
-  const [anchorCurrency, setAnchorCurrency] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!canViewPricing) return;
-    const controller = new AbortController();
-    getPriceBook(controller.signal)
-      .then((book) => setAnchorCurrency(book.settings.anchor_currency))
-      .catch(() => {});
-    return () => controller.abort();
-  }, [canViewPricing]);
-
+  const anchorCurrency = useAnchorCurrency();
   return <PlanEditDialog plan={plan} anchorCurrency={anchorCurrency} onSaved={() => onChanged?.()} onClose={onClose} />;
 }

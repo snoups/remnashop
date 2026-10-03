@@ -10,16 +10,20 @@ import {
   Wallet,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
 import { DEFAULT_PAGE_SIZE, getTransactionSummary, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactions, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { ALL_TIME_TREND_DAYS, DAY_MS } from "@shared/lib/period";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { currencySymbol, formatMoney, formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
+import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
+import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -35,9 +39,6 @@ import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
 const STATUSES: TransactionStatus[] = ["PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED"];
-const DAY_MS = 86_400_000;
-// "all time" has no previous window; show growth over the last month instead
-const ALL_TIME_TREND_DAYS = 30;
 
 const STATUS_DOT_ICONS = Object.fromEntries(
   STATUSES.map((value) => [value, dotIcon(PAYMENT_STATUS_DOT_CLASSNAME[value])]),
@@ -50,25 +51,6 @@ const PURCHASE_TYPE_ICONS: Record<PurchaseType, ComponentType<{ className?: stri
 
 const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_150px_80px_112px_16px] items-center gap-3";
 
-interface DayGroup {
-  key: string;
-  date: Date;
-  orders: TransactionItem[];
-}
-
-// Orders arrive sorted by created_at desc, so consecutive grouping is enough.
-function groupByDay(orders: TransactionItem[]): DayGroup[] {
-  const groups: DayGroup[] = [];
-  for (const order of orders) {
-    const date = new Date(order.created_at);
-    const key = date.toDateString();
-    const last = groups[groups.length - 1];
-    if (last?.key === key) last.orders.push(order);
-    else groups.push({ key, date, orders: [order] });
-  }
-  return groups;
-}
-
 export function TransactionsPage() {
   const { t, i18n } = useTranslation();
   const [status, setStatus] = useState("");
@@ -79,31 +61,14 @@ export function TransactionsPage() {
   const [searchParams] = useSearchParams();
   const search = searchParams.get("search") ?? "";
   const [detailsOrder, setDetailsOrder] = useState<TransactionItem | null>(null);
-  const [summary, setSummary] = useState<TransactionSummary | null>(null);
-  // the previous window of the same length, or the last 30 days for "all time"
-  const [compareSummary, setCompareSummary] = useState<TransactionSummary | null>(null);
-  const [collapsedDays, setCollapsedDays] = useState<ReadonlySet<string>>(new Set());
-
-  const toggleDay = (key: string) =>
-    setCollapsedDays((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
-
   const permissions = usePermissions();
   const canViewDetails = permissions.includes("TRANSACTIONS_DETAIL_VIEW");
   const canFilterByGateway = permissions.includes("TRANSACTIONS_GATEWAYS_VIEW");
-  const [gatewayOptions, setGatewayOptions] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!canFilterByGateway) return;
-    const controller = new AbortController();
-    listTransactionGateways(controller.signal)
-      .then(setGatewayOptions)
-      .catch(() => {});
-    return () => controller.abort();
-  }, [canFilterByGateway]);
+  const [gatewaysState] = useAsyncResource(
+    (signal) => (canFilterByGateway ? listTransactionGateways(signal) : Promise.resolve([])),
+    { deps: [canFilterByGateway], keepData: true },
+  );
+  const gatewayOptions = gatewaysState.kind === "ready" ? gatewaysState.data : [];
 
   const baseFilters = useMemo<TransactionListFilters>(
     () => ({
@@ -121,40 +86,35 @@ export function TransactionsPage() {
     baseFilters,
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getTransactionSummary(baseFilters, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setSummary(result);
-      })
-      .catch(() => {
-        // metrics are secondary; the list stays usable with dashes in their place
-      });
-    return () => controller.abort();
-  }, [baseFilters]);
+  const [summaryState] = useAsyncResource((signal) => getTransactionSummary(baseFilters, signal), {
+    deps: [baseFilters],
+    keepData: true,
+  });
+  // the previous window of the same length; for "all time", the last ALL_TIME_TREND_DAYS days
+  const [compareState] = useAsyncResource(
+    (signal) => {
+      const now = Date.now();
+      return getTransactionSummary(
+        period
+          ? {
+              ...baseFilters,
+              createdFrom: new Date(now - 2 * period * DAY_MS).toISOString(),
+              createdTo: new Date(now - period * DAY_MS).toISOString(),
+            }
+          : { ...baseFilters, createdFrom: new Date(now - ALL_TIME_TREND_DAYS * DAY_MS).toISOString() },
+        signal,
+      );
+    },
+    { deps: [baseFilters, period] },
+  );
+  const summary = summaryState.kind === "ready" ? summaryState.data : null;
+  const compareSummary = compareState.kind === "ready" ? compareState.data : null;
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const now = Date.now();
-    setCompareSummary(null);
-    getTransactionSummary(
-      period
-        ? {
-            ...baseFilters,
-            createdFrom: new Date(now - 2 * period * DAY_MS).toISOString(),
-            createdTo: new Date(now - period * DAY_MS).toISOString(),
-          }
-        : { ...baseFilters, createdFrom: new Date(now - ALL_TIME_TREND_DAYS * DAY_MS).toISOString() },
-      controller.signal,
-    )
-      .then((result) => {
-        if (!controller.signal.aborted) setCompareSummary(result);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [baseFilters, period]);
-
-  const groups = useMemo(() => (state.kind === "ready" ? groupByDay(state.items) : []), [state]);
+  const groups = useMemo(
+    () => (state.kind === "ready" ? groupByDay(state.items, (item) => item.created_at) : []),
+    [state],
+  );
+  const [collapsedDays, toggleDay] = useCollapsedSet();
 
   const none = t("transactions.stats.none");
   const money = (amount: string) => formatMoney(amount, summary?.report_currency ?? "", i18n.language);
@@ -187,19 +147,6 @@ export function TransactionsPage() {
               (summary.paid_count - compareSummary.paid_count),
           )
       : undefined;
-
-  const formatDay = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    if (date.toDateString() === today.toDateString()) return t("transactions.today");
-    if (date.toDateString() === yesterday.toDateString()) return t("transactions.yesterday");
-    return date.toLocaleDateString(i18n.language, {
-      day: "numeric",
-      month: "long",
-      year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
-    });
-  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -346,12 +293,12 @@ export function TransactionsPage() {
                         <GroupToggle
                           open={!collapsedDays.has(group.key)}
                           onToggle={() => toggleDay(group.key)}
-                          label={formatDay(group.date)}
-                          count={group.orders.length}
+                          label={formatDayLabel(group.date, t, i18n.language)}
+                          count={group.items.length}
                         />
                       </h3>
                       <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
-                        {group.orders.map((order) => {
+                        {group.items.map((order) => {
                           const symbol = currencySymbol(order.currency);
                           const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}`);
 

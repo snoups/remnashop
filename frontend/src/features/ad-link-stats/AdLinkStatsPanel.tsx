@@ -8,9 +8,9 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { Card } from "@shared/ui/Card";
 import { KpiTile } from "@shared/ui/KpiTile";
+import { DAY_MS } from "@shared/lib/period";
 
 const CHART_FALLBACK_DAYS = 30;
-const DAY_MS = 86_400_000;
 
 interface AdLinkStatsPanelProps {
   adLink: AdLink;
@@ -23,7 +23,6 @@ function lastDays(count: number): string[] {
   const today = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
   return Array.from({ length: count }, (_, i) => new Date(today - (count - 1 - i) * DAY_MS).toISOString().slice(0, 10));
 }
-
 
 export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStatsPanelProps) {
   const { t, i18n } = useTranslation();

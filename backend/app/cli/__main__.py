@@ -9,8 +9,7 @@ from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
 from app.modules.settings import enable_password_login
 
-# Break-glass tool, run via `docker exec -it <api-container> python -m app.cli` --
-# mirrors Remnawave's own built-in rescue CLI.
+# Break-glass tool, run via `docker exec -it <api-container> python -m app.cli`.
 _MENU: Final[str] = """Remnashop Rescue CLI
     1. Enable password authentication
     2. Restore backup

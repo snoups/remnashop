@@ -34,6 +34,8 @@ import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
+import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { DatePickerField } from "@shared/ui/DatePickerField";
@@ -83,25 +85,6 @@ const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], string> = {
   PAYMENT: "eventLog.filters.categoryPayment",
 };
 const FILTER_DEBOUNCE_MS = 200;
-interface DayGroup {
-  key: string;
-  date: Date;
-  entries: EventLogEntry[];
-}
-
-// Entries arrive sorted by occurred_at desc, so consecutive grouping is enough.
-function groupByDay(entries: EventLogEntry[]): DayGroup[] {
-  const groups: DayGroup[] = [];
-  for (const entry of entries) {
-    const date = new Date(entry.occurred_at);
-    const key = date.toDateString();
-    const last = groups[groups.length - 1];
-    if (last?.key === key) last.entries.push(entry);
-    else groups.push({ key, date, entries: [entry] });
-  }
-  return groups;
-}
-
 export function EventLogPage() {
   const { t, i18n } = useTranslation();
   const [category, setCategory] = useState("");
@@ -134,27 +117,11 @@ export function EventLogPage() {
     baseFilters,
   );
 
-  const groups = useMemo(() => (state.kind === "ready" ? groupByDay(state.items) : []), [state]);
-  const [collapsedDays, setCollapsedDays] = useState<ReadonlySet<string>>(new Set());
-  const toggleDay = (key: string) =>
-    setCollapsedDays((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
-
-  const formatDay = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    if (date.toDateString() === today.toDateString()) return t("transactions.today");
-    if (date.toDateString() === yesterday.toDateString()) return t("transactions.yesterday");
-    return date.toLocaleDateString(i18n.language, {
-      day: "numeric",
-      month: "long",
-      year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
-    });
-  };
+  const groups = useMemo(
+    () => (state.kind === "ready" ? groupByDay(state.items, (item) => item.occurred_at) : []),
+    [state],
+  );
+  const [collapsedDays, toggleDay] = useCollapsedSet();
 
   return (
     <div className="flex flex-col gap-4">
@@ -250,12 +217,12 @@ export function EventLogPage() {
                             <GroupToggle
                               open={!collapsedDays.has(group.key)}
                               onToggle={() => toggleDay(group.key)}
-                              label={formatDay(group.date)}
-                              count={group.entries.length}
+                              label={formatDayLabel(group.date, t, i18n.language)}
+                              count={group.items.length}
                             />
                           </h3>
                           <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
-                          {group.entries.map((entry) => (
+                          {group.items.map((entry) => (
                             <motion.div
                               key={entry.id}
                               tabIndex={0}

@@ -1,5 +1,5 @@
 import { AlertCircle, Cpu, Loader2, Users } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
@@ -20,7 +20,6 @@ import type { EventLogEntry } from "@entities/event-log/api";
 import { getOnlineChart, getOverview, getRegistrationsChart, getRevenueChart } from "@entities/overview/api";
 import type {
   HostMemory,
-  Overview,
   OverviewGranularity,
   OverviewPeriodDays,
   OverviewSubscriptions,
@@ -28,34 +27,20 @@ import type {
 } from "@entities/overview/api";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { formatBytes, formatMoney } from "@shared/lib/format";
-import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { PeriodPills } from "@shared/ui/PeriodPills";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LIST_BODY_CLASS } from "@shared/ui/classes";
 import { formatDateTime } from "@shared/lib/relative-time";
 
-type LoadState<T> = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: T };
-
 // each chart card owns its period: refetches on its own pill switch or a global refresh
 function useChart<T>(
   fetchChart: (days: OverviewPeriodDays, signal: AbortSignal) => Promise<T>,
   days: OverviewPeriodDays,
   refreshKey: number,
-): LoadState<T> {
-  const [state, setState] = useState<LoadState<T>>({ kind: "loading" });
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    fetchChart(days, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [fetchChart, days, refreshKey]);
+): AsyncState<T> {
+  const [state] = useAsyncResource((signal) => fetchChart(days, signal), { deps: [fetchChart, days, refreshKey] });
   return state;
 }
 
@@ -161,12 +146,10 @@ function TrendChart({
 
 function RecentEventsCard({ refreshKey }: { refreshKey: number }) {
   const { t, i18n } = useTranslation();
-  const [state, reload] = useAsyncResource((signal) => listEventLog({ pageSize: 8 }, signal));
-
-  useEffect(() => {
-    if (refreshKey > 0) reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
+  const [state] = useAsyncResource((signal) => listEventLog({ pageSize: 8 }, signal), {
+    deps: [refreshKey],
+    keepData: true,
+  });
 
   return (
     <div className="rounded-2xl border border-border bg-surface/40 p-4">
@@ -515,20 +498,8 @@ export function DashboardPage() {
   const userState = useCurrentUser();
   const permissions = usePermissions();
 
-  const [kpiState, setKpiState] = useState<LoadState<Overview>>({ kind: "loading" });
   const { token: refreshKey } = useRefreshSignal();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getOverview(controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setKpiState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setKpiState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [refreshKey]);
+  const [kpiState] = useAsyncResource(getOverview, { deps: [refreshKey], keepData: true });
 
   return (
     <div className="flex flex-col gap-4 pb-2">

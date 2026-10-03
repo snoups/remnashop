@@ -26,6 +26,7 @@ import { Badge } from "@shared/ui/Badge";
 import { SuffixInput, TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 const CURRENCIES: Currency[] = ["USD", "RUB", "XTR"];
 const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
@@ -47,17 +48,11 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
     <>
       {(canManageRates || canSwitchAnchor) && (
       <Card>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-            <Coins className="size-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-foreground">{t("pricing.rates.title")}</h2>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.rates.description")}</p>
-          </div>
-        </div>
-
-        <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+        <CardHeader
+          icon={Coins}
+          title={t("pricing.rates.title")}
+          description={t("pricing.rates.description")}
+        />
 
         {canSwitchAnchor && (
           <div className="mt-4 grid items-center gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -394,17 +389,11 @@ function GlobalSettings({
 
   return (
     <Card>
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Gauge className="size-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("pricing.settings.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.settings.description")}</p>
-        </div>
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader
+        icon={Gauge}
+        title={t("pricing.settings.title")}
+        description={t("pricing.settings.description")}
+      />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
         <fieldset disabled={!canManage} className="grid gap-3 sm:grid-cols-2">

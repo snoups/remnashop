@@ -15,7 +15,12 @@ from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
 from app.core.security import create_access_token, hash_password, hash_refresh_token
-from app.core.security.permissions import PERMISSION_METADATA, ROLE_PERMISSIONS, Permission
+from app.core.security.permissions import (
+    PERMISSION_METADATA,
+    ROLE_PERMISSIONS,
+    TOKEN_GRANTABLE_PERMISSIONS,
+    Permission,
+)
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.providers import get_module_providers
@@ -108,6 +113,9 @@ async def test_permissions_catalog_returns_every_metadata_entry(
     for permission, meta in PERMISSION_METADATA.items():
         assert by_permission[permission.value]["resource"] == meta.resource
         assert by_permission[permission.value]["kind"] == meta.kind
+        assert by_permission[permission.value]["token_grantable"] == (
+            permission in TOKEN_GRANTABLE_PERMISSIONS
+        )
 
 
 def test_dialogs_permissions_registered() -> None:

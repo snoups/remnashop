@@ -9,9 +9,9 @@ import { OpenUserFooter } from "@features/open-user/OpenUserFooter";
 import { InvitedUsersList } from "@features/user-referrals/InvitedUsersList";
 import { ReferralOverview } from "@features/user-referrals/ReferralOverview";
 import { ReferralRewardsList } from "@features/user-referrals/ReferralRewardsList";
-import { initials } from "@features/user-referrals/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
+import { initials } from "@shared/lib/initials";
 import { Badge } from "@shared/ui/Badge";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
@@ -65,7 +65,7 @@ function UserReferralsDialogBody({
           stats?.referrer && (
             <Badge tone="accent">
               <UserPlus className="size-3" />
-              {stats.referrer.name || t("referrals.dialog.deletedUser")}
+              {stats.referrer.name || t("users.deleted.name")}
             </Badge>
           )
         }

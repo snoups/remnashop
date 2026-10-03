@@ -30,6 +30,11 @@ export function usePermissionCatalog(): AsyncState<PermissionCatalogEntry[]> {
   return cachedCatalog ? { kind: "ready", data: cachedCatalog } : state;
 }
 
+/** `bot_settings` → `botSettings`, the `permissionCategories.*` locale key. */
+export function resourceCategoryKey(resource: string): string {
+  return resource.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
 export interface PermissionCategoryGroup {
   resource: string;
   read: Permission[];

@@ -37,8 +37,7 @@ def _zero_irrelevant_limits(
     plan_type: PlanType, traffic_limit: int, device_limit: int
 ) -> tuple[int, int]:
     """A plan's type dictates which limit actually applies -- the other is
-    force-zeroed (Remnawave panel convention: 0 = unlimited), same as the
-    pre-rebuild codebase's CommitPlan._validate_and_prepare_plan. Runs
+    force-zeroed (Remnawave panel convention: 0 = unlimited). Runs
     unconditionally on every create/update, not just when type changes --
     idempotent, so re-applying to an already-consistent plan is a no-op."""
     if plan_type == PlanType.DEVICES:

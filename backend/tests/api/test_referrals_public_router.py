@@ -238,7 +238,7 @@ async def test_api_token_cannot_use_customer_endpoints(
             CreateApiTokenDto(
                 name="script",
                 token_hash=hash_refresh_token(secret),
-                permissions=[Permission.USERS_VIEW],
+                scopes=[Permission.USERS_VIEW.value],
                 created_by_user_id=None,
                 expires_at=None,
             )

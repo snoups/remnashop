@@ -22,6 +22,7 @@ import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
+import { initials } from "@shared/lib/initials";
 
 const TOOLTIP_SIDES = ["right", "bottom", "top", "top-start", "top-end"] as const;
 const MENU_ITEM =
@@ -47,10 +48,6 @@ function DemoModalBody() {
 export function DialogsSection() {
   const k = useKit();
   const { t } = useTranslation();
-  const initials = k("s.person")
-    .split(" ")
-    .map((word) => word[0])
-    .join("");
   const [modalSize, setModalSize] = useState<"sm" | "lg" | null>(null);
   const [confirm, setConfirm] = useState<"accent" | "danger" | null>(null);
   const frame = "overflow-hidden rounded-dialog border border-white/[0.14] bg-popover/60";
@@ -64,7 +61,7 @@ export function DialogsSection() {
           </div>
           <div className={frame}>
             <DialogHeader
-              glyph={<span className="text-[11px] font-bold">{initials}</span>}
+              glyph={<span className="text-[11px] font-bold">{initials(k("s.person"))}</span>}
               title={k("s.person")}
               badges={<Badge tone="accent">{t("roles.OWNER")}</Badge>}
               subtitle={<span className="font-mono">anna</span>}

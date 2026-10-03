@@ -22,13 +22,3 @@ export function userHandle(user: ReferralUser): string {
   if (user.email) return user.email;
   return user.telegram_id !== null ? `ID ${user.telegram_id}` : `#${user.id}`;
 }
-
-export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}

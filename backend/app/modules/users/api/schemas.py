@@ -25,6 +25,7 @@ class CurrentUserResponse(BaseModel):
     name: str
     role: str
     effective_permissions: list[Permission]
+    password_change_required: bool
 
 
 class AdminResponse(BaseModel):

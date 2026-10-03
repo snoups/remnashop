@@ -28,12 +28,7 @@ export interface NavItem {
   to: string;
   icon: ComponentType<{ className?: string }>;
   end?: boolean;
-  // Omitted means always visible (overview, settings) -- everything else is
-  // gated behind the matching permission. ADMINS_MANAGE is never
-  // grantable/revocable per-user (see GRANTABLE_PERMISSIONS on the backend),
-  // always exactly "role is OWNER or SYSTEM", but checking the permission
-  // here keeps this in step with the rest of the list and doesn't quietly
-  // drop SYSTEM.
+  // omitted: always visible (overview, settings)
   permission?: Permission;
 }
 

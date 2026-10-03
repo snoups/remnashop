@@ -156,12 +156,7 @@ function PlanEditDialogBody({
         toast.success(t("plans.edit.saved"));
         onSaved(created);
       } else {
-        // Two separate PUTs, not one transaction -- if setPlanDurations below
-        // fails after this succeeds, the plan's own fields are saved but its
-        // durations aren't. Accepted: both calls hit the same plan.id in the
-        // same session milliseconds apart, so a failure here is realistically
-        // a network blip, not an independent validation failure -- and
-        // there's no backend transaction to front with real atomicity anyway.
+        // two PUTs, not atomic: a failed second one leaves the fields saved without the durations
         let updated = await updatePlan(plan.id, {
           name: name.trim(),
           description: description.trim() || null,

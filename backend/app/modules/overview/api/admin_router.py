@@ -5,7 +5,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies.admin import require_admin
+from app.api.dependencies.admin import require_admin_user
 from app.core.actor import Actor
 from app.modules.overview.api.schemas import (
     OnlineChartResponse,
@@ -41,7 +41,7 @@ def _chart_dto(days: OverviewPeriodDays) -> GetOverviewChartDto:
 @inject
 async def get_overview(
     use_case: FromDishka[GetOverviewUseCase],
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(require_admin_user),
 ) -> OverviewResponse:
     overview = await use_case(actor)
     return OverviewResponse.model_validate(overview, from_attributes=True)
@@ -51,7 +51,7 @@ async def get_overview(
 @inject
 async def get_overview_revenue(
     use_case: FromDishka[GetRevenueChartUseCase],
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(require_admin_user),
     days: OverviewPeriodDays = OverviewPeriodDays.SEVEN,
 ) -> RevenueChartResponse:
     chart = await use_case(actor, _chart_dto(days))
@@ -62,7 +62,7 @@ async def get_overview_revenue(
 @inject
 async def get_overview_registrations(
     use_case: FromDishka[GetRegistrationsChartUseCase],
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(require_admin_user),
     days: OverviewPeriodDays = OverviewPeriodDays.SEVEN,
 ) -> RegistrationsChartResponse:
     chart = await use_case(actor, _chart_dto(days))
@@ -73,7 +73,7 @@ async def get_overview_registrations(
 @inject
 async def get_overview_online(
     use_case: FromDishka[GetOnlineChartUseCase],
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(require_admin_user),
     days: OverviewPeriodDays = OverviewPeriodDays.SEVEN,
 ) -> OnlineChartResponse:
     chart = await use_case(actor, _chart_dto(days))

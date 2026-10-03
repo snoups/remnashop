@@ -1,36 +1,22 @@
 import { CreditCard, PieChart, RefreshCw, ShoppingCart, TrendingUp, UserCheck, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { getAnalytics } from "@entities/analytics/api";
 import type { Analytics, AnalyticsPeriodDays } from "@entities/analytics/api";
-import { AnalyticsCardHeader } from "@pages/analytics/AnalyticsCardHeader";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { PeriodPills } from "@shared/ui/PeriodPills";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
-
-type AnalyticsState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Analytics };
+import { CardHeader } from "@shared/ui/CardHeader";
 
 export function AnalyticsMetricsPage() {
   const { t } = useTranslation();
   const [days, setDays] = useState<AnalyticsPeriodDays>(7);
-  const [state, setState] = useState<AnalyticsState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    getAnalytics(days, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [days]);
+  const [state] = useAsyncResource((signal) => getAnalytics(days, signal), { deps: [days] });
 
   return (
     <div className="flex flex-col gap-4 pb-2">
@@ -116,7 +102,7 @@ function Overview({ data }: { data: Analytics }) {
       </div>
 
       <Card>
-        <AnalyticsCardHeader
+        <CardHeader
           icon={RefreshCw}
           title={t("analytics.churn.title")}
           description={t("analytics.churn.titleHint")}

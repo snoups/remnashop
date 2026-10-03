@@ -15,7 +15,7 @@ class ApiToken(BaseSql, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(64))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    permissions: Mapped[list[str]] = mapped_column(JSONB)
+    scopes: Mapped[list[str]] = mapped_column(JSONB)
     created_by_user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL")
     )

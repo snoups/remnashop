@@ -4,7 +4,6 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.api_token import ApiToken
-from app.core.security.permissions import Permission
 from app.core.utils.time import datetime_now
 from app.modules.api_tokens.dto import ApiTokenDto, CreateApiTokenDto
 
@@ -17,7 +16,7 @@ class ApiTokenRepository:
         return ApiTokenDto(
             id=row.id,
             name=row.name,
-            permissions=[Permission(p) for p in row.permissions if p in Permission],
+            scopes=row.scopes,
             created_by_user_id=row.created_by_user_id,
             last_used_at=row.last_used_at,
             revoked_at=row.revoked_at,
@@ -30,7 +29,7 @@ class ApiTokenRepository:
         row = ApiToken(
             name=data.name,
             token_hash=data.token_hash,
-            permissions=[p.value for p in data.permissions],
+            scopes=data.scopes,
             created_by_user_id=data.created_by_user_id,
             expires_at=data.expires_at,
         )

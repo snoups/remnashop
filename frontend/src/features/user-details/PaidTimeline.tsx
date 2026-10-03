@@ -8,8 +8,8 @@ import { Card } from "@shared/ui/Card";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
+import { DAY_MS } from "@shared/lib/period";
 
-const DAY_MS = 86_400_000;
 // narrower segments/gaps drop their text label, it would overlap the neighbour
 const MIN_LABEL_PCT = 10;
 const MAX_MONTH_TICKS = 8;

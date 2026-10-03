@@ -11,6 +11,7 @@ from app.core.security.permissions import (
     Permission,
     PermissionPolicy,
     assert_grantable,
+    expand_token_scopes,
 )
 from app.modules.users.dto import UserDto
 
@@ -399,6 +400,45 @@ def test_backups_permissions_are_grantable_but_not_default_admin() -> None:
         assert permission in GRANTABLE_PERMISSIONS
         assert permission not in admin_default
         assert permission in owner_default
+
+
+def test_token_cannot_take_over_login_bot_or_payments() -> None:
+    # still delegable to an admin, never to a bearer string in a script
+    for permission in (
+        Permission.OAUTH_SETTINGS_MANAGE,
+        Permission.BOT_SETTINGS_MANAGE,
+        Permission.BOT_PROXY_SET,
+        Permission.GATEWAYS_UPDATE,
+        Permission.GATEWAYS_ACTIVE_SET,
+        Permission.USERS_DELETE,
+        Permission.BACKUPS_RUN_DELETE,
+    ):
+        assert permission in GRANTABLE_PERMISSIONS
+        assert permission not in TOKEN_GRANTABLE_PERMISSIONS
+
+
+def test_token_scope_wildcard_expands_to_every_token_grantable_permission() -> None:
+    assert expand_token_scopes(["*"]) == set(TOKEN_GRANTABLE_PERMISSIONS)
+
+
+def test_token_resource_scopes_follow_resource_and_kind() -> None:
+    reads = expand_token_scopes(["users:read"])
+    assert Permission.USERS_VIEW in reads
+    assert Permission.USERS_BLOCK not in reads
+    everything = expand_token_scopes(["users:*"])
+    assert {Permission.USERS_VIEW, Permission.USERS_BLOCK} <= everything
+    # excluded permissions never come back through a broader scope
+    assert Permission.USERS_DELETE not in everything
+    assert Permission.OAUTH_SETTINGS_MANAGE not in expand_token_scopes(["*"])
+
+
+def test_token_leaf_scope_is_a_single_permission() -> None:
+    assert expand_token_scopes(["PLANS_VIEW"]) == {Permission.PLANS_VIEW}
+    assert expand_token_scopes(["USERS_DELETE", "bogus", "users:delete"]) == set()
+
+
+def test_token_grantable_is_a_subset_of_grantable() -> None:
+    assert TOKEN_GRANTABLE_PERMISSIONS < GRANTABLE_PERMISSIONS
 
 
 def test_backup_download_is_owner_only() -> None:

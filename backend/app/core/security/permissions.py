@@ -329,7 +329,67 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA)
 
-TOKEN_GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA)
+# A token is a bearer string living in a script: it can't take over a login,
+# the bot or the payment flow, and can't wipe data in bulk.
+_TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
+    {
+        # login methods: an issuer of one's own logs in as any linked identity
+        Permission.OAUTH_SETTINGS_MANAGE,
+        # bot token and the proxy every Telegram call (token in its URL) goes through
+        Permission.BOT_SETTINGS_MANAGE,
+        Permission.BOT_PROXY_SET,
+        # merchant credentials: payments land in another account
+        Permission.GATEWAYS_UPDATE,
+        Permission.GATEWAYS_ACTIVE_SET,
+        # irreversible or bulk
+        Permission.BACKUPS_SETTINGS_MANAGE,
+        Permission.BACKUPS_RUN_DELETE,
+        Permission.USERS_DELETE,
+        Permission.TRANSLATIONS_IMPORT,
+        Permission.TRANSLATIONS_RESET_ALL,
+        Permission.DIALOGS_IMPORT,
+        Permission.DIALOGS_WINDOWS_RESET_ALL,
+    }
+)
+
+TOKEN_GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = (
+    GRANTABLE_PERMISSIONS - _TOKEN_EXCLUDED_PERMISSIONS
+)
+
+TOKEN_SCOPE_WILDCARD: Final[str] = "*"
+
+
+def expand_token_scopes(scopes: list[str]) -> set[Permission]:
+    """Scopes: `*`, `<resource>:*`, `<resource>:read|write`, or a
+    single permission. Expanded on every request, so a permission added to a
+    resource later reaches tokens scoped to it, and an exclusion reaches every
+    token at once."""
+    granted: set[Permission] = set()
+    for scope in scopes:
+        if scope == TOKEN_SCOPE_WILDCARD:
+            return set(TOKEN_GRANTABLE_PERMISSIONS)
+        resource, separator, action = scope.partition(":")
+        if separator:
+            granted |= {
+                permission
+                for permission in TOKEN_GRANTABLE_PERMISSIONS
+                if PERMISSION_METADATA[permission].resource == resource
+                and action in (TOKEN_SCOPE_WILDCARD, PERMISSION_METADATA[permission].kind)
+            }
+        elif scope in Permission and Permission(scope) in TOKEN_GRANTABLE_PERMISSIONS:
+            granted.add(Permission(scope))
+    return granted
+
+
+def assert_token_scopes(scopes: list[str]) -> None:
+    # a scope granting nothing is a typo or an excluded permission
+    invalid = [scope for scope in scopes if not expand_token_scopes([scope])]
+    if invalid:
+        raise ValidationError(
+            f"Not grantable to an API token: {', '.join(sorted(invalid))}",
+            code=ErrorCode.PERMISSION_NOT_GRANTABLE,
+        )
+
 
 ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
     Role.SYSTEM: set(Permission),

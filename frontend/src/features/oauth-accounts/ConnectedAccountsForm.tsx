@@ -36,6 +36,7 @@ import { formatDate } from "@shared/lib/relative-time";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Field } from "@shared/ui/Field";
 import { TextInput } from "@shared/ui/TextInput";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 const PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
@@ -105,17 +106,11 @@ export function ConnectedAccountsForm() {
 
   return (
     <Card>
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Link2 className="size-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("profile.oauthAccounts.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("profile.oauthAccounts.description")}</p>
-        </div>
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader
+        icon={Link2}
+        title={t("profile.oauthAccounts.title")}
+        description={t("profile.oauthAccounts.description")}
+      />
 
       <div className="mt-4 flex flex-col divide-y divide-border/50">
         {state.kind === "loading" && (

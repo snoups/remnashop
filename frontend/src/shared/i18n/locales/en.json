@@ -5,6 +5,10 @@
     "done": "Done",
     "copyFailed": "Couldn't copy — the browser blocked clipboard access."
   },
+  "common": {
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
   "errors": {
     "notFoundTitle": "Page not found",
     "notFoundDescription": "The page you're looking for doesn't exist or was moved.",
@@ -44,6 +48,13 @@
     "copiedToClipboard": "Copied to clipboard!",
     "createOwnerAccount": "Create owner account",
     "signIn": "Sign in",
+    "passwordChange": {
+      "title": "Set a new password",
+      "description": "Your password was issued by an administrator. Choose your own to continue.",
+      "currentPasswordLabel": "Temporary password",
+      "submit": "Change password",
+      "done": "Password changed. Sign in with the new one."
+    },
     "errors": {
       "loginTooShort": "Login must be at least 3 characters long.",
       "loginInvalidChars": "Login may only contain Latin letters, digits, dots, underscores, and hyphens",
@@ -131,9 +142,7 @@
       "title": "Churn & retention",
       "titleHint": "How many subscribers who were active at the start of the period stayed active by the end of it.",
       "rate": "Churn rate",
-      "rateHint": "Share of subscribers active at the start of the period who are no longer active by the end.",
       "retention": "Retention rate",
-      "retentionHint": "Share of subscribers active at the start of the period who are still active at the end.",
       "prevActive": "Active at window start",
       "stillActive": "Still active",
       "churned": "Churned"
@@ -153,7 +162,6 @@
         "first_paid": "First paid purchase",
         "repeat_paid": "Repeat paid purchase"
       },
-      "ofStart": "of registered",
       "ofPrevious": "of previous step",
       "description": "From sign-up to repeat payment",
       "conversion": "Sign-up → first payment",
@@ -216,7 +224,6 @@
       "role": "Role",
       "target": "Target",
       "ip": "IP address",
-      "payload": "Payload",
       "tabs": {
         "details": "Details",
         "payload": "Payload"
@@ -312,7 +319,8 @@
       "button": "Create admin",
       "title": "Create administrator",
       "loginLabel": "Login",
-      "nameLabel": "Name",
+      "nameLabel": "Display name",
+      "permissionsLabel": "Permissions",
       "submit": "Create",
       "error": "Failed to create admin."
     },
@@ -486,11 +494,6 @@
       "channels": "Channels",
       "subscriptions": "Subscriptions",
       "registered": "Registered"
-    },
-    "channels": {
-      "telegram": "TG",
-      "email": "Email",
-      "login": "Login"
     },
     "status": {
       "blocked": "Blocked"
@@ -933,7 +936,9 @@
     "revoke": "Revoke",
     "revokeTitle": "Revoke API token?",
     "revokeConfirm": "Any script or integration using this token will lose access immediately.",
-    "revokeError": "Failed to revoke token."
+    "revokeError": "Failed to revoke token.",
+    "docs": "API docs",
+    "docsError": "Could not open the API docs."
   },
   "profile": {
     "title": "Profile",
@@ -941,7 +946,6 @@
     "edit": {
       "button": "Edit",
       "title": "Edit profile",
-      "close": "Close",
       "nameLabel": "Display name",
       "changePassword": "Change password",
       "currentPasswordLabel": "Current password",
@@ -1519,7 +1523,6 @@
       "codeInvalid": "Only Latin letters, digits, \"_\" and \"-\"."
     },
     "edit": {
-      "button": "Edit",
       "nameLabel": "Name",
       "costLabel": "Cost",
       "currencyLabel": "Currency",
@@ -1553,7 +1556,6 @@
       "notPaid": "No purchase",
       "daily": "Sign-ups per day",
       "peak": "peak {{count}} · {{day}}",
-      "economics": "Economics",
       "channelSplit": "Bot {{bot}} · Web {{web}}",
       "totalTrend": "last 30 days",
       "periodTrend": "vs. prior {{days}} days"
@@ -1751,7 +1753,6 @@
       "variableSearch": "Search variables",
       "variableEmpty": "Nothing found",
       "emojiClear": "Remove the emoji",
-      "emojiStandard": "Standard",
       "emojiGroup": {
         "smileys": "Smileys",
         "people": "People",
@@ -1776,7 +1777,6 @@
   },
   "referrals": {
     "title": "Referrals",
-    "subtitle": "Who invited whom and what they earned for it.",
     "loadError": "Failed to load referral settings.",
     "settings": {
       "enabledLabel": "Invites and rewards",
@@ -1876,14 +1876,11 @@
       "levelAll": "All",
       "via": "via {{name}}",
       "invitedEmpty": "Hasn't invited anyone yet.",
-      "invitedLoadError": "Failed to load invited users.",
-      "deletedUser": "Deleted user"
+      "invitedLoadError": "Failed to load invited users."
     },
     "stats": {
       "button": "Referral stats",
       "referralCodeLabel": "Referral code",
-      "botLinkLabel": "Bot link",
-      "webLinkLabel": "Web cabinet link",
       "resetCode": "Reset code",
       "resetConfirmTitle": "Reset the referral code?",
       "resetConfirmText": "Old links will stop working. Users already invited stay attached.",
@@ -1895,8 +1892,6 @@
       "toUser": "To user",
       "pointsLabel": "Points",
       "none": "—",
-      "levelCountLabel": "Level {{level}}",
-      "rewardsTitle": "Reward history",
       "rewardsEmpty": "No rewards yet.",
       "adjustLabel": "Adjust points",
       "adjustPlaceholder": "e.g. 10 or -5",
@@ -1929,7 +1924,6 @@
       "rewardCount_one": "{{count}} payout",
       "rewardCount_other": "{{count}} payouts",
       "noRewards": "no payouts yet",
-      "deletedUser": "Deleted user",
       "empty": "No referrals yet.",
       "loadError": "Failed to load referrals.",
       "noPermission": "You don't have permission to view the referral list."
@@ -1975,7 +1969,6 @@
     "create": {
       "button": "New promocode",
       "title": "New promocode",
-      "codeLabel": "Code",
       "codePlaceholder": "e.g. WELCOME30",
       "generate": "Generate",
       "rewardDaysLabel": "Days to add",
@@ -2126,17 +2119,11 @@
         "MONTH": "Monthly",
         "MONTH_ROLLING": "Monthly (rolling)"
       },
-      "trafficLabel": "Traffic limit (GB)",
-      "trafficHint": "0 = unlimited",
-      "deviceLabel": "Device limit",
-      "deviceHint": "0 = unlimited",
       "isTrialLabel": "Trial plan",
       "isActiveLabel": "Active",
-      "durationsTitle": "Durations",
       "durationsHint": "Per-currency price overrides are managed on the Pricing page.",
       "daysLabel": "Days",
       "basePriceLabel": "Base price",
-      "addDuration": "Add duration",
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving…",
@@ -2241,8 +2228,6 @@
       "created": "Created",
       "status": "Status"
     },
-    "today": "Today",
-    "yesterday": "Yesterday",
     "purchaseType": {
       "NEW": "New",
       "RENEW": "Renewal",
@@ -2294,7 +2279,6 @@
     "filters": {
       "search": "Search",
       "searchPlaceholder": "Subscription ID, user ID, tag, or plan",
-      "statusAll": "All statuses",
       "all": "All"
     },
     "status": {
@@ -2460,7 +2444,9 @@
         "segmentedStretch": "Full-width switch inside a form field, e.g. ad link channels.",
         "kpiTrend": "Change next to the value: green up, red down, grey no change. The period is in the popup.",
         "passwordInput": "Login, bootstrap, profile passwords and OAuth client secrets",
-        "chipsInput": "Promocode and plan access lists: IDs and emails; a bad token stays in the field, red"
+        "chipsInput": "Promocode and plan access lists: IDs and emails; a bad token stays in the field, red",
+        "cardHeader": "Page and settings card header: icon, title, description, right-side block, divider",
+        "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards"
       },
       "s": {
         "save": "Save",
@@ -2539,7 +2525,8 @@
         "qrWeb": "Download web cabinet QR",
         "webUnavailable": "APP_WEB_CABINET_URL is not set",
         "trendMonth": "last 30 days",
-        "trendWeek": "vs. prior 7 days"
+        "trendWeek": "vs. prior 7 days",
+        "cardHeaderDescription": "Scheduled database dumps, kept on the server and rotated by the file limit."
       },
       "sections": {
         "buttons": {
@@ -2570,7 +2557,7 @@
         "cards": {
           "nav": "Cards",
           "title": "Cards",
-          "meta": "Card · KpiTile · InfoRow"
+          "meta": "Card · CardHeader · KpiTile · InfoRow · UserRow"
         },
         "tables": {
           "nav": "Tables",

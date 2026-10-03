@@ -37,31 +37,21 @@ export function useAppearancePreview(): AppearancePreview {
   return value;
 }
 
-// The color to actually render with right now: a live, unsaved preview from
-// the settings form if one is set, otherwise whatever the backend last
-// confirmed. Anything that paints the accent color (the shader, in
-// particular) should read this instead of useAppearance()'s raw fetched
-// value, so a preview-in-progress shows up everywhere consistently.
+// The live preview if any, otherwise the saved value: what anything painting the accent reads.
 export function useEffectiveAccentColor(): string | null {
   const state = useAppearance();
   const { previewColor } = useAppearancePreview();
   return previewColor ?? (state.kind === "ready" ? state.data.primary_color : null);
 }
 
-// Same idea as useEffectiveAccentColor, for the shader's raw palette override.
-// null means "no admin override, no live preview" -- callers fall back to
-// the shader's own hardcoded default (app/shaderState.ts's
-// DEFAULT_SHADER_PALETTE_HEX), which this entities-layer hook doesn't know
-// about.
+// null: no override, the caller falls back to DEFAULT_SHADER_PALETTE_HEX
 export function useEffectiveShaderPalette(): string[] | null {
   const state = useAppearance();
   const { previewPalette } = useAppearancePreview();
   return previewPalette ?? (state.kind === "ready" ? state.data.shader_palette : null);
 }
 
-// Same idea, for the shader's on/off toggle. Defaults to true while loading
-// or unset, matching the backend's own default. The per-viewer mute (the
-// header's quick toggle) wins over both -- it's the local escape hatch.
+// on while loading, as on the backend; the per-viewer mute wins over both
 export function useEffectiveShaderEnabled(): boolean {
   const state = useAppearance();
   const { previewShaderEnabled } = useAppearancePreview();

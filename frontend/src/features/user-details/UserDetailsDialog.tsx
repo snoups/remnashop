@@ -29,6 +29,7 @@ import {
 import { EventsTab, ProfileTab, SessionsTab } from "@features/user-details/UserDetailsTabs";
 import { useUserActions } from "@features/user-details/use-user-actions";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
+import { initials } from "@shared/lib/initials";
 import type { Permission } from "@shared/types/rbac";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
@@ -55,10 +56,6 @@ interface UserDetailsDialogProps {
   /** the account was deleted from the footer; the dialog closes itself */
   onDeleted?: (user: UserListItem) => void;
   onClose: () => void;
-}
-
-function getInitials(user: UserListItem): string {
-  return (user.login ?? user.name).slice(0, 2).toUpperCase();
 }
 
 function getHandle(user: UserListItem): string | null {
@@ -136,7 +133,7 @@ function UserDetailsDialogBody({
           isDeleted ? (
             <Trash2 className="size-4" />
           ) : (
-            <span className="text-[11px] font-bold">{getInitials(user)}</span>
+            <span className="text-[11px] font-bold">{initials(user.login ?? user.name)}</span>
           )
         }
         tone={user.is_blocked && !isDeleted ? "danger" : "glass"}

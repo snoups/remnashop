@@ -269,7 +269,7 @@ async def test_promocode_activate_rejects_api_token(
         await api_token_repository.create(
             CreateApiTokenDto(
                 name="critical-routes",
-                permissions=[Permission.PROMOCODES_VIEW],
+                scopes=[Permission.PROMOCODES_VIEW.value],
                 token_hash=hash_refresh_token(secret),
                 created_by_user_id=None,
                 expires_at=None,

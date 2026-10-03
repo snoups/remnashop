@@ -1,7 +1,6 @@
 import { Plus, Smile, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { listEmojiPacks } from "@entities/emoji-packs/api";
@@ -14,6 +13,7 @@ import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scrol
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 import { IconButton } from "@shared/ui/IconButton";
+import { PortalPopover } from "@shared/ui/PortalPopover";
 
 /** A standard emoji is a glyph the bot puts in the button's own label; a premium
  * one is an id Telegram renders itself, and only for a bot whose owner has
@@ -29,17 +29,6 @@ interface EmojiPickerProps {
 }
 
 const POPOVER_MAX_HEIGHT = 360;
-const POPOVER_GAP = 8;
-
-type PopoverAnchor = { right: number } & ({ top: number } | { bottom: number });
-
-function anchorFor(trigger: DOMRect): PopoverAnchor {
-  const right = window.innerWidth - trigger.right;
-  return window.innerHeight - trigger.bottom < POPOVER_MAX_HEIGHT && trigger.top > POPOVER_MAX_HEIGHT
-    ? { right, bottom: window.innerHeight - trigger.top + POPOVER_GAP }
-    : { right, top: trigger.bottom + POPOVER_GAP };
-}
-
 const POPOVER_MOTION = {
   initial: { opacity: 0, scale: 0.96, y: -4 },
   animate: { opacity: 1, scale: 1, y: 0 },
@@ -95,12 +84,6 @@ export function EmojiPicker({
   const popoverRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
   const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
-  // Portalled and fixed: the inspector pane scrolls, and the shell's backdrop-blur
-  // wrapper is both a containing block for fixed children and an overflow-hidden
-  // box, so a popover positioned in place gets clipped either way.
-  // measured on open only, so it stays put if the pane scrolls under it --
-  // reposition on scroll/resize if that ever reads as broken.
-  const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const [packsState] = useAsyncResource(listEmojiPacks);
   const packs = packsState.kind === "ready" ? packsState.data : [];
 
@@ -110,8 +93,6 @@ export function EmojiPicker({
   const activePack = packs.find((pack) => pack.set_name === activeTab);
 
   const open = () => {
-    const trigger = triggerRef.current?.getBoundingClientRect();
-    if (trigger) setAnchor(anchorFor(trigger));
     setActiveTab("standard");
     setIsOpen(true);
   };
@@ -150,118 +131,112 @@ export function EmojiPicker({
         {current ?? <Smile className="size-[18px] text-muted-foreground" />}
       </button>
 
-      {createPortal(
-        <AnimatePresence>
-          {isOpen && anchor && (
-            <motion.div
-              ref={popoverRef}
-              onMouseEnter={cancelClose}
-              onMouseLeave={closeSoon}
-              {...POPOVER_MOTION}
-              style={{ transformOrigin: "top" in anchor ? "top right" : "bottom right", ...anchor }}
-              // Opaque, unlike every other popover: a backdrop-filter over the
-              // WebGL background is re-blurred on every change inside the
-              // layer, and a grid of animating emoji changes ~60 times a
-              // second. Measured 60% -> 40% GPU on dropping the blur alone.
-              className="fixed z-30 w-72 rounded-popover border border-white/[0.14] bg-popover p-1.5 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)]"
-            >
-              {/* TabBar's capsule, scaled down for the popover: the scroller is
-                  inset by the capsule's own p-1, so its clip box lines up with
-                  the outer radius instead of cutting into a pill. */}
-              <nav className="mb-2 flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
-                <div
-                  ref={tabsRef}
-                  className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto rounded-full"
+      <PortalPopover
+        open={isOpen}
+        triggerRef={triggerRef}
+        popoverRef={popoverRef}
+        align="right"
+        maxHeight={POPOVER_MAX_HEIGHT}
+        onMouseEnter={cancelClose}
+        onMouseLeave={closeSoon}
+        {...POPOVER_MOTION}
+        // a blur over animating emoji re-renders every frame: measured 60% -> 40% GPU without it
+        solid
+        className="w-72 p-1.5"
+>
+        {/* TabBar's capsule, scaled down for the popover: the scroller is
+            inset by the capsule's own p-1, so its clip box lines up with
+            the outer radius instead of cutting into a pill. */}
+        <nav className="mb-2 flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
+          <div
+            ref={tabsRef}
+            className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto rounded-full"
+          >
+            <PackTab
+              isActive={activeTab === "standard"}
+              glyph={<Smile className="size-[18px]" />}
+              onSelect={() => setActiveTab("standard")}
+            />
+            {packs.map((pack) => (
+              <PackTab
+                key={pack.set_name}
+                isActive={activeTab === pack.set_name}
+                glyph={<PremiumEmoji item={pack.items[0]} size={20} />}
+                onSelect={() => setActiveTab(pack.set_name)}
+              />
+            ))}
+          </div>
+          <IconButton size="26px" className="ml-auto"
+            onClick={() => {
+              setIsOpen(false);
+              scrollToEmojiPacks();
+            }}
+          >
+            <Plus className="size-[18px]" />
+          </IconButton>
+        </nav>
+
+        {/* x-hidden, not x-auto: a glyph the font renders wider than its
+            cell would otherwise add a scrollbar to a grid that is already
+            as wide as the popover. */}
+        {/* py matches the fade: at either end of the scroll the gradient
+            sits over padding, never over a row of emoji. */}
+        <div className="max-h-56 overflow-y-auto overflow-x-hidden py-2 [mask-composite:add] [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent),linear-gradient(to_right,transparent_calc(100%-14px),black_calc(100%-14px))]">
+          {activePack ? (
+            <div className="grid grid-cols-8 gap-1">
+              {activePack.items.map((item) => (
+                <button
+                  key={item.custom_emoji_id}
+                  type="button"
+                  onClick={() =>
+                    pick({
+                      customEmojiId: item.custom_emoji_id,
+                      fallback: item.fallback_emoji,
+                    })
+                  }
+                  className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
                 >
-                  <PackTab
-                    isActive={activeTab === "standard"}
-                    glyph={<Smile className="size-[18px]" />}
-                    onSelect={() => setActiveTab("standard")}
-                  />
-                  {packs.map((pack) => (
-                    <PackTab
-                      key={pack.set_name}
-                      isActive={activeTab === pack.set_name}
-                      glyph={<PremiumEmoji item={pack.items[0]} size={20} />}
-                      onSelect={() => setActiveTab(pack.set_name)}
-                    />
+                  <PremiumEmoji item={item} size={22} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            STANDARD_EMOJI.map((group) => (
+              <div key={group.key} className="mb-2">
+                <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t(`dialogs.inspector.emojiGroup.${group.key}`)}
+                </span>
+                <div className="grid grid-cols-8 gap-1">
+                  {group.items.map((emoji) => (
+                    <button
+                      key={emoji.g}
+                      type="button"
+                      onClick={() => pick({ glyph: emoji.g })}
+                      className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
+                    >
+                      {emoji.g}
+                    </button>
                   ))}
                 </div>
-                <IconButton size="26px" className="ml-auto"
-                  onClick={() => {
-                    setIsOpen(false);
-                    scrollToEmojiPacks();
-                  }}
-                >
-                  <Plus className="size-[18px]" />
-                </IconButton>
-              </nav>
-
-              {/* x-hidden, not x-auto: a glyph the font renders wider than its
-                  cell would otherwise add a scrollbar to a grid that is already
-                  as wide as the popover. */}
-              {/* py matches the fade: at either end of the scroll the gradient
-                  sits over padding, never over a row of emoji. */}
-              <div className="max-h-56 overflow-y-auto overflow-x-hidden py-2 [mask-composite:add] [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent),linear-gradient(to_right,transparent_calc(100%-14px),black_calc(100%-14px))]">
-                {activePack ? (
-                  <div className="grid grid-cols-8 gap-1">
-                    {activePack.items.map((item) => (
-                      <button
-                        key={item.custom_emoji_id}
-                        type="button"
-                        onClick={() =>
-                          pick({
-                            customEmojiId: item.custom_emoji_id,
-                            fallback: item.fallback_emoji,
-                          })
-                        }
-                        className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
-                      >
-                        <PremiumEmoji item={item} size={22} />
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  STANDARD_EMOJI.map((group) => (
-                    <div key={group.key} className="mb-2">
-                      <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {t(`dialogs.inspector.emojiGroup.${group.key}`)}
-                      </span>
-                      <div className="grid grid-cols-8 gap-1">
-                        {group.items.map((emoji) => (
-                          <button
-                            key={emoji.g}
-                            type="button"
-                            onClick={() => pick({ glyph: emoji.g })}
-                            className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
-                          >
-                            {emoji.g}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
               </div>
-
-              {current !== null && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClear();
-                    setIsOpen(false);
-                  }}
-                  className="mt-1 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border text-[11.5px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
-                >
-                  <X className="size-3" />
-                  {t("dialogs.inspector.emojiClear")}
-                </button>
-              )}
-            </motion.div>
+            ))
           )}
-        </AnimatePresence>,
-        document.body,
-      )}
+        </div>
+
+        {current !== null && (
+          <button
+            type="button"
+            onClick={() => {
+              onClear();
+              setIsOpen(false);
+            }}
+            className="mt-1 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border text-[11.5px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+          >
+            <X className="size-3" />
+            {t("dialogs.inspector.emojiClear")}
+          </button>
+        )}
+      </PortalPopover>
     </div>
   );
 }

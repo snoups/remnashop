@@ -14,6 +14,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token, hash_refresh_token
+from app.core.security.permissions import expand_token_scopes
 from app.core.utils.http import is_ip_allowed, resolve_client_ip
 from app.modules.api_tokens import ApiTokenRepository
 from app.modules.auth import SessionRepository
@@ -43,7 +44,7 @@ async def _resolve_api_token_actor(
         name=f"API Token: {token.name}",
         is_privileged=True,
         log=f"[api_token:{token.name}]",
-        permission_grants=[p.value for p in token.permissions],
+        permission_grants=[p.value for p in expand_token_scopes(token.scopes)],
     )
 
 

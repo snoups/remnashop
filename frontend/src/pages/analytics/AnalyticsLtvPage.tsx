@@ -1,35 +1,20 @@
 import { TrendingUp } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { currencySymbol } from "@shared/lib/format";
 import { getLtvDistribution } from "@entities/analytics/api";
-import type { LtvDistribution } from "@entities/analytics/api";
-import { AnalyticsCardHeader } from "@pages/analytics/AnalyticsCardHeader";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
-
-type LtvState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: LtvDistribution };
+import { CardHeader } from "@shared/ui/CardHeader";
 
 const BAR_AREA_HEIGHT_PX = 280;
 
 export function AnalyticsLtvPage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<LtvState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getLtvDistribution(controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, []);
+  const [state] = useAsyncResource((signal) => getLtvDistribution(signal));
 
   if (state.kind === "loading") return <Spinner size="page" />;
   if (state.kind === "error") {
@@ -41,7 +26,7 @@ export function AnalyticsLtvPage() {
   const total = buckets.reduce((sum, bucket) => sum + bucket.users, 0);
   const max = Math.max(1, ...buckets.map((bucket) => bucket.users));
   const header = (
-    <AnalyticsCardHeader
+    <CardHeader
       icon={TrendingUp}
       title={t("analytics.ltv.title")}
       description={`${t("analytics.ltv.titleHint")} (${currency})`}

@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronRight, Link2, Loader2, Plus } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -14,6 +14,8 @@ import { roiClassName } from "@entities/advertising/format";
 import { usePermissions } from "@entities/user/use-current-user";
 import { AdLinkCreateDialog } from "@features/ad-link-create/AdLinkCreateDialog";
 import { AdLinkDetailsDialog } from "@features/ad-link-details/AdLinkDetailsDialog";
+import { DAY_MS, previousWindow } from "@shared/lib/period";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
@@ -27,10 +29,6 @@ import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
-
-const DAY_MS = 86_400_000;
-// "all time" has no previous window; show growth over the last month instead
-const ALL_TIME_TREND_DAYS = 30;
 
 const STATS_GRID_CLASSNAME =
   "grid grid-cols-[36px_minmax(0,1fr)_88px_80px_104px_104px_80px_104px_16px] items-center gap-3";
@@ -50,11 +48,6 @@ export function AdvertisingPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [period, setPeriod] = useState<PeriodDays>(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [summary, setSummary] = useState<AdvertisingSummary | null>(null);
-  // the same summary as it looked one period ago (30 days for "all time")
-  const [compareSummary, setCompareSummary] = useState<AdvertisingSummary | null>(null);
-  // bumped after create/edit/delete so the metrics catch up with the list
-  const [summaryVersion, setSummaryVersion] = useState(0);
   // an id, not the row: the dialog then follows edits/pause made from inside it
   const [detailsId, setDetailsId] = useState<number | null>(null);
 
@@ -79,39 +72,22 @@ export function AdvertisingPage() {
     isActive,
   );
 
-  useEffect(() => {
-    if (!canViewSummary) return;
-    const controller = new AbortController();
-    getAdvertisingSummary({ isActive, createdFrom }, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setSummary(result);
-      })
-      .catch(() => {
-        // metrics are secondary; the list stays usable with dashes in their place
-      });
-    return () => controller.abort();
-  }, [canViewSummary, isActive, createdFrom, summaryVersion]);
-
-  useEffect(() => {
-    if (!canViewSummary) return;
-    const controller = new AbortController();
-    const now = Date.now();
-    const shift = (period || ALL_TIME_TREND_DAYS) * DAY_MS;
-    setCompareSummary(null);
-    getAdvertisingSummary(
-      {
-        isActive,
-        createdFrom: period ? new Date(now - 2 * shift).toISOString() : undefined,
-        createdTo: new Date(now - shift).toISOString(),
-      },
-      controller.signal,
-    )
-      .then((result) => {
-        if (!controller.signal.aborted) setCompareSummary(result);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [canViewSummary, isActive, period, summaryVersion]);
+  const [summaryState, reloadSummary] = useAsyncResource(
+    (signal) => (canViewSummary ? getAdvertisingSummary({ isActive, createdFrom }, signal) : Promise.resolve(null)),
+    { deps: [canViewSummary, isActive, createdFrom], keepData: true },
+  );
+  const [compareState, reloadCompare] = useAsyncResource(
+    (signal) =>
+      canViewSummary ? getAdvertisingSummary({ isActive, ...previousWindow(period) }, signal) : Promise.resolve(null),
+    { deps: [canViewSummary, isActive, period] },
+  );
+  const summary = summaryState.kind === "ready" ? summaryState.data : null;
+  const compareSummary = compareState.kind === "ready" ? compareState.data : null;
+  // after create/edit/delete, so the metrics catch up with the list
+  const reloadSummaries = () => {
+    reloadSummary();
+    reloadCompare();
+  };
 
   const metricsById = useMemo(
     () => new Map(summary?.links.map((link) => [link.ad_link_id, link]) ?? []),
@@ -119,7 +95,7 @@ export function AdvertisingPage() {
   );
 
   const handleSaved = (link: AdLink) => {
-    setSummaryVersion((version) => version + 1);
+    reloadSummaries();
     setState((prev) => {
       if (prev.kind !== "ready") return prev;
       const exists = prev.items.some((item) => item.id === link.id);
@@ -133,7 +109,7 @@ export function AdvertisingPage() {
   };
 
   const handleDeleted = (link: AdLink) => {
-    setSummaryVersion((version) => version + 1);
+    reloadSummaries();
     setState((prev) =>
       prev.kind === "ready"
         ? { kind: "ready", items: prev.items.filter((item) => item.id !== link.id), total: prev.total - 1 }

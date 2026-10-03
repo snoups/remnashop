@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type Admin, listAdmins } from "@entities/admin/api";
-import { ROLE_BADGE_TONE, getAdminInitials } from "@entities/admin/display";
+import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import { prefetchPermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { AdminCreateForm } from "@features/admin-create/AdminCreateForm";
 import type { AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
 import { AdminDetailsFlow, DemoteAdminConfirm } from "@features/admin-details/AdminDetailsFlow";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { initials } from "@shared/lib/initials";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Spinner } from "@shared/ui/Spinner";
@@ -103,7 +104,7 @@ export function AdminsPage() {
                       admin.id === currentUserId ? "bg-accent text-primary" : "bg-white/[0.06] text-foreground"
                     }`}
                   >
-                    {getAdminInitials(admin)}
+                    {initials(admin.login ?? admin.name)}
                   </div>
                   <p className="min-w-0 truncate text-[13.5px] font-medium text-foreground">{admin.name}</p>
                   <div className="flex items-center gap-2">

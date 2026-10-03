@@ -52,6 +52,8 @@ class User(BaseSql, TimestampMixin):
     language: Mapped[Locale]
 
     is_blocked: Mapped[bool]
+    # set when someone else generated the password; cleared by the user's own change
+    password_change_required: Mapped[bool] = mapped_column(default=False, server_default="false")
 
     permission_grants: Mapped[Optional[list[str]]] = mapped_column(JSONB)
     permission_revokes: Mapped[Optional[list[str]]] = mapped_column(JSONB)

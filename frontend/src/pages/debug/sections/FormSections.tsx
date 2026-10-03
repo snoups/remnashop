@@ -1,10 +1,11 @@
-import { Globe, Hash, Layers, Receipt, TrendingUp, User } from "lucide-react";
+import { Database, Globe, Hash, Layers, Receipt, TrendingUp, User } from "lucide-react";
 import { useState } from "react";
 
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
+import { CardHeader } from "@shared/ui/CardHeader";
 import { normalizeEmail } from "@shared/lib/chip-normalizers";
 import { ChipsInput } from "@shared/ui/ChipsInput";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
@@ -19,6 +20,7 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
 import { Tag } from "@shared/ui/Tag";
 import { SuffixInput, TextArea, TextInput } from "@shared/ui/TextInput";
+import { UserRow } from "@shared/ui/UserRow";
 
 const ROWS = [
   { days: 30, rub: "199", usd: "2.49", share: "30%" },
@@ -148,6 +150,17 @@ export function CardsSection() {
           <p className="mt-2 text-[12.5px] text-muted-foreground">{k("s.body")}</p>
         </Card>
       </Specimen>
+      <Specimen name="Card · CardHeader aside" usage={k("u.cardHeader")} stage="stretch">
+        <Card>
+          <CardHeader
+            icon={Database}
+            title={k("s.sectionTitle")}
+            description={k("s.cardHeaderDescription")}
+            aside={<Button variant="outline">{k("s.botLogs")}</Button>}
+          />
+          <p className="mt-4 text-[12.5px] text-muted-foreground">{k("s.body")}</p>
+        </Card>
+      </Specimen>
       <Specimen name='Card variant="form" title' usage={k("u.cardForm")} stage="stretch">
         <Card variant="form" title={k("s.sectionTitle")}>
           <Field label={k("s.name")} htmlFor="kit-card-name">
@@ -158,6 +171,13 @@ export function CardsSection() {
       <Specimen name='Card variant="list" title icon · InfoRow' usage={k("u.cardList")} stage="stretch">
         <Card variant="list" title={k("s.sectionTitle")} icon={Layers}>
           {rows}
+        </Card>
+      </Specimen>
+      <Specimen name='Card variant="list" · UserRow' usage={k("u.userRow")} stage="stretch">
+        <Card variant="list">
+          <UserRow name={k("s.person")} subtitle="@anna · 03.10.2026" aside={<Tag>#1042</Tag>} onClick={() => {}} />
+          <UserRow name="" subtitle="03.10.2026" onClick={() => {}} />
+          <UserRow name={null} subtitle="03.10.2026" />
         </Card>
       </Specimen>
       <Specimen name='Card variant="bare"' usage={k("u.cardBare")} stage="stretch">

@@ -103,13 +103,13 @@ async def test_create_and_list_api_tokens(
 
     create_response = await client.post(
         "/api/v1/api-tokens",
-        json={"name": "ci-bot", "permissions": ["EVENT_LOG_VIEW"]},
+        json={"name": "ci-bot", "scopes": ["EVENT_LOG_VIEW"], "expires_in_days": 30},
         headers=headers,
     )
     assert create_response.status_code == 201
     body = create_response.json()
     assert body["token"]["name"] == "ci-bot"
-    assert body["token"]["permissions"] == ["EVENT_LOG_VIEW"]
+    assert body["token"]["scopes"] == ["EVENT_LOG_VIEW"]
     assert body["secret"]
 
     list_response = await client.get("/api/v1/api-tokens", headers=headers)
@@ -130,7 +130,7 @@ async def test_create_api_token_rejects_non_grantable_permission(
 
     response = await client.post(
         "/api/v1/api-tokens",
-        json={"name": "bad-scope", "permissions": ["OWN_ACCOUNT_MANAGE"]},
+        json={"name": "bad-scope", "scopes": ["OWN_ACCOUNT_MANAGE"], "expires_in_days": 30},
         headers={"Authorization": f"Bearer {token}"},
     )
 

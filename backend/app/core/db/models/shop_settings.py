@@ -22,10 +22,9 @@ class ShopSettings(BaseSql, TimestampMixin):
     # column-level default is never actually exercised.
     max_active_subscriptions: Mapped[Optional[int]] = mapped_column()
 
-    # Self-service device/link reset cooldowns -- ported from `main`'s
-    # settings.extra.device_single_reset/device_all_reset/link_reset.
-    # Boolean-off means "feature disabled", not "no cooldown" -- checked
-    # before the cooldown_hours comparison in every usecase that uses these.
+    # Self-service device/link reset cooldowns. Boolean-off means "feature
+    # disabled", not "no cooldown" -- checked before the cooldown_hours
+    # comparison in every usecase that uses these.
     device_single_reset_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")
     device_single_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")
     device_all_reset_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")

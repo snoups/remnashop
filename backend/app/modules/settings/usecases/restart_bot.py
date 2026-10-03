@@ -17,7 +17,6 @@ class RestartBotUseCase(UseCase[None, None]):
         # is silently dropped -- its next start reads bot_settings fresh anyway.
         # The process doesn't hot-swap Bot/Dispatcher in place; it exits (SIGTERM)
         # and relies on the process supervisor (Docker's restart policy in prod)
-        # to bring it back up with the new settings, matching how Remnawave
-        # restarts an Xray node on config change rather than hot-reloading it.
+        # to bring it back up with the new settings.
         logger.info(f"Bot restart requested by actor {actor.log}")
         await self._bot_signals.restart()

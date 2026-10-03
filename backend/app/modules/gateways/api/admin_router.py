@@ -2,7 +2,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies.admin import require_admin
+from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.config import AppConfig
@@ -47,10 +47,10 @@ async def list_gateways(
 @inject
 async def get_gateway_catalog(
     config: FromDishka[AppConfig],
-    actor: Actor = Depends(require_admin),
+    actor: Actor = Depends(require_admin_user),
 ) -> GatewayCatalogResponse:
-    # Static schema metadata, no secrets -- no usecase/Permission layer,
-    # same precedent as GET /permissions/catalog in app/api/app.py.
+    # Static schema metadata, no secrets -- no usecase/Permission layer, so
+    # dashboard sessions only, same as GET /permissions/catalog.
     return GatewayCatalogResponse(
         entries=[
             GatewayCatalogEntryResponse(

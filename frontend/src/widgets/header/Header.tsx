@@ -11,6 +11,7 @@ import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { usePageTitle } from "@shared/lib/use-page-title";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
+import { initials } from "@shared/lib/initials";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { HeaderSearch } from "@widgets/header/HeaderSearch";
 import { NotificationsBell } from "@widgets/header/NotificationsBell";
@@ -62,7 +63,6 @@ export function Header({ onLogout }: HeaderProps) {
   );
   useCloseOnScroll(openPopover !== null, [menuPopoverRef, notifPopoverRef], () => setOpenPopover(null));
 
-  const initials = (login ?? "?").slice(0, 2).toUpperCase();
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:gap-5 md:px-8 md:py-5">
@@ -107,7 +107,7 @@ export function Header({ onLogout }: HeaderProps) {
               className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.05]"
             />
             <div className="relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas">
-              {login ? initials : <UserIcon className="size-4" />}
+              {login ? initials(login) : <UserIcon className="size-4" />}
             </div>
             <div className="relative z-10 hidden text-left leading-tight sm:block">
               <span className="block text-[13px] font-semibold text-foreground">{login ?? t("header.account")}</span>

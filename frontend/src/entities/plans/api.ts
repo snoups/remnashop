@@ -93,10 +93,7 @@ export interface SetPlanDurationsItem {
   base_price: string;
 }
 
-// The backend accepts (and ignores) an `overrides` field here -- per-currency
-// price overrides live exclusively on the Pricing page's endpoints, this one
-// only ever touches days/order/base_price. See admin_router.py's
-// set_plan_durations, which rebuilds the usecase DTO without `overrides`.
+// per-currency overrides are set on the Pricing page; this endpoint ignores them
 export function setPlanDurations(planId: number, durations: SetPlanDurationsItem[]): Promise<Plan> {
   return apiPut<Plan, { durations: SetPlanDurationsItem[] }>(`/plans/${planId}/durations`, { durations });
 }

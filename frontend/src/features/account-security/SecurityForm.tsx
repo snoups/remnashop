@@ -10,6 +10,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { TextArea } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 const IPV4_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
 
@@ -40,9 +41,9 @@ export function SecurityForm() {
   const { t } = useTranslation();
   const [text, setText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [state, , setSettings] = useAsyncResource(getOwnSecurity, (settings) =>
-    setText(settings.ip_allowlist.join("\n")),
-  );
+  const [state, , setSettings] = useAsyncResource(getOwnSecurity, {
+    onSuccess: (settings) => setText(settings.ip_allowlist.join("\n")),
+  });
 
   const entries = parseEntries(text);
   const invalidEntries = entries.filter((entry) => !isIpOrNetwork(entry));
@@ -65,17 +66,11 @@ export function SecurityForm() {
 
   return (
     <Card>
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Lock className="size-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("profile.accountSecurity.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("profile.accountSecurity.description")}</p>
-        </div>
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader
+        icon={Lock}
+        title={t("profile.accountSecurity.title")}
+        description={t("profile.accountSecurity.description")}
+      />
 
       {state.kind === "loading" && (
         <Spinner size="card" />

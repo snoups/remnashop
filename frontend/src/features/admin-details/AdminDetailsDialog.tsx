@@ -4,10 +4,14 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Admin } from "@entities/admin/api";
-import { ROLE_BADGE_TONE, getAdminInitials } from "@entities/admin/display";
-import { AdminPermissionsEditor } from "@features/admin-update-permissions/AdminPermissionsEditor";
+import { ROLE_BADGE_TONE } from "@entities/admin/display";
+import {
+  ADMIN_PERMISSIONS_FORM_ID,
+  AdminPermissionsEditor,
+} from "@features/admin-update-permissions/AdminPermissionsEditor";
 import { EventsTab, ProfileTab, SessionsTab } from "@features/user-details/UserDetailsTabs";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
+import { initials } from "@shared/lib/initials";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
@@ -80,6 +84,9 @@ function AdminDetailsDialogBody({
   const close = useModalClose();
   const [tab, setTab] = useState<AdminDetailsTab>(initialTab);
   const [contentRef, contentHeight] = useMeasuredHeight();
+  // bumping it remounts the permissions editor: reset drops unsaved toggles, save re-seeds from the response
+  const [permissionsRevision, setPermissionsRevision] = useState(0);
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const isAdmin = admin.role === "ADMIN";
 
   const tabs: DialogTabItem<AdminDetailsTab>[] = [
@@ -101,7 +108,7 @@ function AdminDetailsDialogBody({
   return (
     <>
       <DialogHeader
-        glyph={<span className="text-[11px] font-bold">{getAdminInitials(admin)}</span>}
+        glyph={<span className="text-[11px] font-bold">{initials(admin.login ?? admin.name)}</span>}
         title={admin.name}
         badges={
           <Badge tone={ROLE_BADGE_TONE[admin.role]}>
@@ -126,13 +133,18 @@ function AdminDetailsDialogBody({
           <div ref={contentRef}>
             {tab === "profile" && <ProfileTab user={admin} />}
             {tab === "permissions" && (
-              <PermissionsTab
-                admin={admin}
-                onSaved={(updated) => {
-                  setAdmin(updated);
-                  onUpdated();
-                }}
-              />
+              <Card variant="form">
+                <AdminPermissionsEditor
+                  key={permissionsRevision}
+                  admin={admin}
+                  onSaved={(updated) => {
+                    setAdmin(updated);
+                    setPermissionsRevision((value) => value + 1);
+                    onUpdated();
+                  }}
+                  onSubmittingChange={setIsSavingPermissions}
+                />
+              </Card>
             )}
             {tab === "sessions" && <SessionsTab userId={admin.id} />}
             {tab === "events" && <EventsTab actorId={admin.id} />}
@@ -150,27 +162,18 @@ function AdminDetailsDialogBody({
             <UserMinus className="size-3.5" />
             {t("admins.demote.button")}
           </Button>
+          {tab === "permissions" && (
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" type="button" onClick={() => setPermissionsRevision((value) => value + 1)}>
+                {t("admins.permissionsForm.reset")}
+              </Button>
+              <Button variant="accent" type="submit" form={ADMIN_PERMISSIONS_FORM_ID} disabled={isSavingPermissions}>
+                {t("admins.permissionsForm.submit")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </>
-  );
-}
-
-function PermissionsTab({ admin, onSaved }: { admin: Admin; onSaved: (admin: Admin) => void }) {
-  // bumping the key remounts the editor: cancel drops unsaved toggles, save re-seeds from the response
-  const [revision, setRevision] = useState(0);
-
-  return (
-    <Card variant="form">
-      <AdminPermissionsEditor
-        key={revision}
-        admin={admin}
-        onSaved={(updated) => {
-          onSaved(updated);
-          setRevision((value) => value + 1);
-        }}
-        onCancel={() => setRevision((value) => value + 1)}
-      />
-    </Card>
   );
 }

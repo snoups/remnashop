@@ -1,15 +1,13 @@
 import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { bounceTap } from "@shared/lib/bounceState";
-import { anchorFor, type PopoverAnchor } from "@shared/lib/popover-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { IconButton } from "@shared/ui/IconButton";
-import { POPOVER_CLASS } from "@shared/ui/classes";
+import { PortalPopover } from "@shared/ui/PortalPopover";
 import { FIELD_SURFACE_CLASS } from "@shared/ui/TextInput";
 
 // header + weekday row + 6 week rows, with padding
@@ -53,9 +51,6 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  // portalled like SelectDropdown's popover: nested in the layout panel, its
-  // backdrop-blur would only see that panel, not the page behind it
-  const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const selected = parseIsoDate(value);
   const [viewDate, setViewDate] = useState(selected ?? new Date());
 
@@ -66,11 +61,7 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
   useClickOutside([ref, popoverRef], isOpen, () => setIsOpen(false));
   useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
 
-  const toggleOpen = () => {
-    const trigger = triggerRef.current?.getBoundingClientRect();
-    if (!isOpen && trigger) setAnchor(anchorFor(trigger, CALENDAR_MAX_HEIGHT));
-    setIsOpen(!isOpen);
-  };
+  const toggleOpen = () => setIsOpen(!isOpen);
 
   const today = new Date();
   const days = getMonthGrid(viewDate.getFullYear(), viewDate.getMonth());
@@ -112,76 +103,70 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
         )}
       </motion.div>
 
-      {createPortal(
-        <AnimatePresence>
-          {isOpen && anchor && (
-            <motion.div
-              ref={popoverRef}
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              // calendar keeps its own w-64, not the trigger's width
-              style={{ transformOrigin: "top" in anchor ? "top" : "bottom", ...anchor, width: undefined }}
-              // z above Modal's z-50, same as SelectDropdown
-              className={`${POPOVER_CLASS} fixed z-[60] w-64 p-3`}
+      <PortalPopover
+        open={isOpen}
+        triggerRef={triggerRef}
+        popoverRef={popoverRef}
+        align="left"
+        maxHeight={CALENDAR_MAX_HEIGHT}
+        initial={{ opacity: 0, scale: 0.96, y: -4 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: -4 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className="w-64 p-3"
+>
+        <div className="flex items-center justify-between">
+          <IconButton
+            size="7"
+            onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
+          >
+            <ChevronLeft className="size-4" />
+          </IconButton>
+          <span className="text-[13px] font-semibold capitalize text-foreground">{monthLabel}</span>
+          <IconButton
+            size="7"
+            onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
+          >
+            <ChevronRight className="size-4" />
+          </IconButton>
+        </div>
+
+        <div className="mt-2 grid grid-cols-7 place-items-center gap-y-1">
+          {weekdayLabels.map((label, index) => (
+            <span
+              key={`${label}-${index}`}
+              className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
             >
-              <div className="flex items-center justify-between">
-                <IconButton
-                  size="7"
-                  onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-                >
-                  <ChevronLeft className="size-4" />
-                </IconButton>
-                <span className="text-[13px] font-semibold capitalize text-foreground">{monthLabel}</span>
-                <IconButton
-                  size="7"
-                  onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-                >
-                  <ChevronRight className="size-4" />
-                </IconButton>
-              </div>
+              {label}
+            </span>
+          ))}
+          {days.map((day) => {
+            const isCurrentMonth = day.getMonth() === viewDate.getMonth();
+            const isSelected = selected !== null && toIsoDate(day) === toIsoDate(selected);
+            const isToday = toIsoDate(day) === toIsoDate(today);
 
-              <div className="mt-2 grid grid-cols-7 place-items-center gap-y-1">
-                {weekdayLabels.map((label, index) => (
-                  <span
-                    key={`${label}-${index}`}
-                    className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-                  >
-                    {label}
-                  </span>
-                ))}
-                {days.map((day) => {
-                  const isCurrentMonth = day.getMonth() === viewDate.getMonth();
-                  const isSelected = selected !== null && toIsoDate(day) === toIsoDate(selected);
-                  const isToday = toIsoDate(day) === toIsoDate(today);
-
-                  return (
-                    <button
-                      key={toIsoDate(day)}
-                      type="button"
-                      onClick={() => {
-                        onChange(toIsoDate(day));
-                        setIsOpen(false);
-                      }}
-                      className={`flex size-8 items-center justify-center rounded-full text-[12.5px] transition-colors ${
-                        isSelected
-                          ? "bg-accent font-semibold text-primary"
-                          : isCurrentMonth
-                            ? "text-foreground hover:bg-white/[0.08]"
-                            : "text-muted-foreground/50 hover:bg-white/[0.06]"
-                      } ${isToday && !isSelected ? "border-2 border-primary/40" : ""}`}
-                    >
-                      {day.getDate()}
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body,
-      )}
+            return (
+              <button
+                key={toIsoDate(day)}
+                type="button"
+                onClick={() => {
+                  onChange(toIsoDate(day));
+                  setIsOpen(false);
+                }}
+                className={`flex size-8 items-center justify-center rounded-full text-[12.5px] transition-colors ${
+                  isSelected
+                    ? "bg-accent font-semibold text-primary"
+                    : isCurrentMonth
+                      ? "text-foreground hover:bg-white/[0.08]"
+                      : "text-muted-foreground/50 hover:bg-white/[0.06]"
+                } ${isToday && !isSelected ? "border-2 border-primary/40" : ""}`}
+              >
+                {day.getDate()}
+              </button>
+            );
+          })}
+        </div>
+      </PortalPopover>
     </div>
   );
 }

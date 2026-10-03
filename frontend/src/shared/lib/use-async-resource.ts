@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { NetworkError } from "@shared/api/http";
 
@@ -7,15 +7,28 @@ export type AsyncState<T> =
   | { kind: "error"; isNetworkError: boolean }
   | { kind: "ready"; data: T };
 
+interface AsyncResourceOptions<T> {
+  onSuccess?: (data: T) => void;
+  /** refetches when these change, like an effect's dependencies */
+  deps?: readonly unknown[];
+  /** a deps change keeps the current data on screen instead of going back to loading */
+  keepData?: boolean;
+}
+
 export function useAsyncResource<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
-  onSuccess?: (data: T) => void,
+  { onSuccess, deps = [], keepData = false }: AsyncResourceOptions<T> = {},
 ): [AsyncState<T>, () => void, (data: T | ((prev: T) => T)) => void] {
   const [state, setState] = useState<AsyncState<T>>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
+  const lastReloadTokenRef = useRef(reloadToken);
 
   useEffect(() => {
     const controller = new AbortController();
+    // reload() keeps what's on screen; a deps change starts over unless keepData
+    const isReload = lastReloadTokenRef.current !== reloadToken;
+    lastReloadTokenRef.current = reloadToken;
+    if (!isReload && !keepData) setState((prev) => (prev.kind === "loading" ? prev : { kind: "loading" }));
 
     fetcher(controller.signal)
       .then((data) => {
@@ -29,12 +42,9 @@ export function useAsyncResource<T>(
       });
 
     return () => controller.abort();
-    // fetcher/onSuccess are read once per effect run (mount, or an explicit
-    // reload()) rather than tracked as dependencies -- every call site fetches
-    // once and only refetches on demand via the returned reload(), matching
-    // the hand-written effects this hook replaces.
+    // fetcher/onSuccess are read per run, not tracked: callers refetch through deps or reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadToken]);
+  }, [reloadToken, ...deps]);
 
   // stable identities, so a caller can list them as effect dependencies
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);

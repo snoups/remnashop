@@ -72,7 +72,7 @@ export function ReferralProgramCard({ stats, showCode = true }: { stats: Referra
       <InfoRow icon={UserPlus} label={t("referrals.stats.referrerLabel")}>
         {stats.referrer ? (
           <span className="truncate">
-            {stats.referrer.name || t("referrals.dialog.deletedUser")}{" "}
+            {stats.referrer.name || t("users.deleted.name")}{" "}
             <span className="font-mono font-medium text-muted-foreground">{userHandle(stats.referrer)}</span>
           </span>
         ) : stats.referrer_id !== null ? (

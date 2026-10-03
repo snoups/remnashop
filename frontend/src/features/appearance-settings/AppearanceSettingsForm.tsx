@@ -30,21 +30,18 @@ import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { CardHeader } from "@shared/ui/CardHeader";
 
 const SVG_MIME_TYPE = "image/svg+xml";
 const ACCEPTED_FILE_TYPES = `image/jpeg,image/png,image/webp,${SVG_MIME_TYPE}`;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
-// Mirrors the backend's per-kind limits (upload_appearance_image.py) so a bad
-// file is rejected before the upload, with a localized message.
+// mirrors the backend's per-kind limits (upload_appearance_image.py)
 const IMAGE_LIMITS: Record<AppearanceImageKind, { minSide: number; maxSide: number; maxKb: number }> = {
   logo: { minSide: 128, maxSide: 1024, maxKb: 1024 },
   favicon: { minSide: 32, maxSide: 512, maxKb: 256 },
 };
 
-// A handful of common, high-contrast accent choices -- a shortcut for admins
-// who don't want to fiddle with the picker. The picker itself still covers
-// anything else.
 const ACCENT_COLOR_PRESETS: readonly string[] = [
   "#22d3ee",
   "#3b82f6",
@@ -58,8 +55,7 @@ const ACCENT_COLOR_PRESETS: readonly string[] = [
   "#14b8a6",
 ];
 
-// The 4 cosine-gradient coefficients ShaderBackground's uColourPalette
-// uniform expects, in order -- see app/shaderState.ts.
+// uColourPalette's cosine-gradient coefficients, in uniform order
 const SHADER_PALETTE_KEYS = ["base", "amplitude", "frequency", "phase"] as const;
 
 
@@ -193,10 +189,7 @@ export function AppearanceSettingsForm() {
   const permissions = usePermissions();
   const [brandName, setBrandName] = useState("");
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT_COLOR);
-  // The last custom (non-preset) color picked -- mirrors accentColor live
-  // the moment it's a custom value, and stays put when a preset is picked
-  // afterwards so you can jump back to it. Rendered as an extra swatch next
-  // to the fixed presets.
+  // last non-preset pick, kept as an extra swatch after a preset replaces it
   const [previousColor, setPreviousColor] = useState<string | null>(null);
   const [hexInput, setHexInput] = useState(DEFAULT_ACCENT_COLOR);
   const [colorTouched, setColorTouched] = useState(false);
@@ -223,41 +216,33 @@ export function AppearanceSettingsForm() {
     setShaderEnabled(data.shader_enabled);
   };
 
-  const [state, , setData] = useAsyncResource(getAppearance, (data) => {
-    seedBranding(data);
-    seedColors(data);
+  const [state, , setData] = useAsyncResource(getAppearance, {
+    onSuccess: (data) => {
+      seedBranding(data);
+      seedColors(data);
+    },
   });
 
-  // Keeps the free-typed hex field in sync whenever accentColor changes for
-  // any other reason (picker, a preset swatch, or a fresh load) -- and,
-  // since it's the same setter, re-syncing after this field's own valid
-  // commit is a harmless no-op, not a loop.
+  // picker, preset or load changed the color: the hex field follows
   useEffect(() => {
     setHexInput(accentColor);
   }, [accentColor]);
 
-  // Previews the picked color across the whole dashboard (CSS tokens, shader
-  // hue) without saving it -- clears back to the real, saved color once
-  // colorTouched resets (a successful save or reset settles colorTouched
-  // back to false).
+  // live preview across the dashboard until a save or reset clears colorTouched
   useEffect(() => {
     setPreviewColor(colorTouched ? accentColor : null);
   }, [accentColor, colorTouched, setPreviewColor]);
 
-  // Same live-preview idea as accent color, for the shader's raw palette.
   useEffect(() => {
     setPreviewPalette(paletteTouched ? shaderPalette : null);
   }, [shaderPalette, paletteTouched, setPreviewPalette]);
 
-  // Same idea, for the on/off toggle -- always mirrored (no "touched" gate)
-  // since a boolean has no ambiguous "unset" state the way a color does.
+  // a boolean has no "unset" state, so no touched gate
   useEffect(() => {
     setPreviewShaderEnabled(shaderEnabled);
   }, [shaderEnabled, setPreviewShaderEnabled]);
 
-  // Leaving the page without saving must not leave the rest of the dashboard
-  // stuck showing an unsaved preview -- AppearanceProvider outlives this
-  // component, so nothing else would ever clear it.
+  // AppearanceProvider outlives this form: leaving unsaved must drop the preview
   useEffect(() => {
     return () => {
       setPreviewColor(null);
@@ -273,12 +258,8 @@ export function AppearanceSettingsForm() {
     setAccentColor(value);
     setColorTouched(true);
 
-    // A manually-edited shader palette doesn't survive picking a new accent
-    // color -- it resets to the defaults, live-previewed (and, if saved,
-    // persisted) rotated to match the newly picked accent by the exact same
-    // mechanism an untouched palette always goes through. Stays "touched" so
-    // this reset actually overrides whatever custom palette might already be
-    // saved on the backend, instead of silently falling back to it.
+    // a new accent resets a custom palette to the defaults; stays touched so the
+    // reset overrides a palette already saved on the backend
     if (paletteTouched) {
       setShaderPalette([...DEFAULT_SHADER_PALETTE_HEX]);
     }
@@ -289,10 +270,7 @@ export function AppearanceSettingsForm() {
     setPaletteTouched(true);
   };
 
-  // How far the shader's rendered palette sits from these swatches' raw hex
-  // right now -- the same rotation ShaderBackground applies at render time
-  // (see app/shaderState.ts). Lets each swatch preview its actual on-canvas
-  // color instead of always showing its unrotated stored value.
+  // the hue rotation the shader renders with, so swatches show their on-canvas color
   const shaderHueRadians = ((hexToHueDegrees(accentColor) - hexToHueDegrees(DEFAULT_ACCENT_COLOR)) * Math.PI) / 180;
 
   const handleHexInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -362,17 +340,11 @@ export function AppearanceSettingsForm() {
 
   return (
     <Card>
-      <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
-          <Palette className="size-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-foreground">{t("settings.appearance.dashboardTitle")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.appearance.dashboardDescription")}</p>
-        </div>
-      </div>
-
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <CardHeader
+        icon={Palette}
+        title={t("settings.appearance.dashboardTitle")}
+        description={t("settings.appearance.dashboardDescription")}
+      />
 
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <p className="mt-4 text-sm text-error">{t("settings.appearance.loadError")}</p>}

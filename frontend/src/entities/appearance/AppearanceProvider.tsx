@@ -14,10 +14,7 @@ const THEME_CSS_PROPERTIES = [
   "--color-accent-foreground",
 ] as const;
 
-// Reverting an admin's chosen accent color has to actively clear the inline
-// override, not just skip setting a new one -- these are set via inline
-// style, which wins the cascade over styles.css's @theme defaults until
-// explicitly removed.
+// inline styles beat styles.css's @theme defaults, so a revert has to remove them
 function applyTheme(primaryColor: string | null) {
   const root = document.documentElement.style;
   if (!primaryColor) {
@@ -47,17 +44,10 @@ async function defaultFaviconHref(color: string | null): Promise<string> {
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [state, reload] = useAsyncResource(getAppearance);
-  // Set by the Appearance settings form while the admin is trying out a
-  // color, before saving. Takes priority over the fetched value everywhere
-  // this provider applies color -- null means "no live preview," fall back
-  // to whatever the backend last confirmed.
+  // unsaved picks from the Appearance settings form; null falls back to the fetched value
   const [previewColor, setPreviewColor] = useState<string | null>(null);
   const effectiveColor = previewColor ?? (state.kind === "ready" ? state.data.primary_color : null);
-  // Same live-preview mechanism as previewColor, but for the shader's raw
-  // palette -- only ShaderBackground reads this (via useEffectiveShaderPalette),
-  // not applyTheme, so no CSS side effect here.
   const [previewPalette, setPreviewPalette] = useState<string[] | null>(null);
-  // Same idea, for the shader on/off toggle.
   const [previewShaderEnabled, setPreviewShaderEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
