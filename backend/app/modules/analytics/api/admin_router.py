@@ -28,9 +28,8 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 class AnalyticsPeriodDays(IntEnum):
-    # Same FastAPI/Pydantic int-Literal query-param coercion issue as
-    # overview/api/admin_router.py's OverviewPeriodDays -- see that file's
-    # inline comment for the full explanation.
+    # IntEnum, not Literal[0, 7, 30, 90]: a query string isn't coerced into an
+    # int Literal -- same as overview's OverviewPeriodDays
     ALL = 0
     SEVEN = 7
     THIRTY = 30

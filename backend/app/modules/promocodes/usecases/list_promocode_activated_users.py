@@ -26,7 +26,7 @@ class ListPromocodeActivatedUsersUseCase(
         self, actor: Actor, data: ListPromocodeActivatedUsersDto
     ) -> tuple[list[PromocodeActivatedUserDto], int]:
         async with self._uow:
-            # NotFoundError for an unknown id; the router maps it to 404
+            # NotFoundError (404) for an unknown id, not an empty page
             await self._promocode_repository.get_by_id(data.promocode_id)
             activations, total = await self._promocode_repository.list_activations_paginated(
                 data.promocode_id, page=data.page, page_size=data.page_size

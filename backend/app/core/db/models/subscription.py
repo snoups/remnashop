@@ -30,7 +30,7 @@ class Subscription(BaseSql, TimestampMixin):
     # UserResponseDto.id/UpdateUserRequestDto.id are both `int`. Two LIVE
     # rows must never point at the same panel
     # identity -- enforced below as a partial unique index, not a plain
-    # `unique=True`, because a trial->paid conversion or a plan CHANGE now
+    # `unique=True`, because a trial->paid conversion or a plan CHANGE
     # replaces a row (marks it DELETED, inserts a new one reusing the same
     # remnawave_user_id) instead of mutating it in place.
     remnawave_user_id: Mapped[int] = mapped_column(index=True)
@@ -49,7 +49,7 @@ class Subscription(BaseSql, TimestampMixin):
     expire_at: Mapped[datetime] = mapped_column(index=True)
     url: Mapped[str]
     # Read/written as one unit (a frozen snapshot of what was purchased),
-    # never filtered/joined on a field inside it -- db-models.md's JSON exception.
+    # never filtered/joined on a field inside it.
     plan_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
 
     device_single_reset_at: Mapped[Optional[datetime]]

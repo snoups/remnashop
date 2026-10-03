@@ -27,18 +27,13 @@ class RemnawaveProvider(Provider):
             headers["x-forwarded-proto"] = "https"
             headers["x-forwarded-for"] = "127.0.0.1"
 
-        # AsyncClient ignores verify/cert/http1/http2/limits/trust_env entirely
-        # once transport= is given explicitly -- it returns the transport
-        # object as-is instead of building one from those kwargs. verify=True
-        # below is AsyncHTTPTransport()'s own default anyway (kept for
-        # readability), but changing it here would silently do nothing; the
-        # actual knob is the AsyncHTTPTransport(...) constructor above.
+        # with transport= given, AsyncClient ignores its own verify/limits/...
+        # kwargs -- TLS and pooling are configured on AsyncHTTPTransport(...)
         transport = ResilientTransport(AsyncHTTPTransport())
         client = AsyncClient(
             base_url=f"{config.remnawave.url.get_secret_value()}/api",
             headers=headers,
             cookies=config.remnawave.cookies,
-            verify=True,
             timeout=Timeout(connect=5.0, read=15.0, write=10.0, pool=5.0),
             transport=transport,
         )

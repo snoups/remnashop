@@ -22,7 +22,7 @@ class User(BaseSql, TimestampMixin):
             unique=True,
             postgresql_where=text(f"role = '{Role.OWNER.name}'"),
         ),
-        # Mirrors LOGIN_PATTERN (app/core/constants.py) — Latin letters, digits, dots,
+        # Mirrors LOGIN_PATTERN (app/core/constants.py) -- Latin letters, digits, dots,
         # underscores, hyphens only. The API-level check alone doesn't cover rows
         # written any other way, so this is the actual guarantee.
         CheckConstraint(
@@ -67,9 +67,8 @@ class User(BaseSql, TimestampMixin):
     purchase_discount_promocode_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("promocodes.id", ondelete="SET NULL")
     )
-    # Nullable: generated on every new create(), pre-existing rows may lack
-    # one (see the plan's Global Constraints) -- multiple NULLs are fine
-    # under a UNIQUE index.
+    # Nullable: create() always generates one, a soft delete wipes it --
+    # multiple NULLs are fine under a UNIQUE index.
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
     points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=Decimal(0), server_default="0")
     # One-way latch: True until the user's first trial activation, then

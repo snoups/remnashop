@@ -37,12 +37,8 @@ def _clear_session_cookies(response: Response) -> None:
 
 
 def _verify_csrf(refresh_token: str, request: Request, jwt_secret: str) -> None:
-    # Signed double-submit cookie (core/security/session_token.py's
-    # derive_csrf_token): both the cookie and the header must equal
-    # HMAC(secret, refresh_token), not just equal each other -- a plain
-    # cookie==header check alone is only safe if an attacker can never plant
-    # a cookie for this domain on the victim (sibling-subdomain cookie
-    # tossing, a misconfigured related app, ...); signing closes that gap.
+    # both must equal the signed value, not just each other -- see
+    # core/security/session_token.py's derive_csrf_token for why
     cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
     header_value = request.headers.get("x-csrf-token")
     expected = derive_csrf_token(refresh_token, jwt_secret)

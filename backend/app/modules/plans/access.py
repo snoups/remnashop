@@ -11,12 +11,12 @@ def is_plan_purchasable_by(
     reward), so a plan's availability/allowlist can't be bypassed by calling a
     lower-level endpoint with a known plan_id. `has_purchase_history` = actor
     has ever purchased a non-trial subscription (any status, including
-    DELETED/EXPIRED) -- matches main's UserDao.has_any_subscription.
+    DELETED/EXPIRED).
 
     LINK plans pass here unconditionally: their access control is the random
-    public_code, which checkout requires on top of this check (as in the earlier
-    GetAvailablePlanByCode). ListActivePlansUseCase excludes them from the
-    catalog before this is ever called for one."""
+    public_code, which checkout requires on top of this check.
+    ListActivePlansUseCase excludes them from the catalog before this is ever
+    called for one."""
     if not plan.is_active:
         return False
     if plan.availability == PlanAvailability.ALL:

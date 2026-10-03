@@ -12,8 +12,7 @@ from app.core.enums import Currency
 class PricingSettings(BaseSql, TimestampMixin):
     __tablename__ = "pricing_settings"
 
-    # Single row, always id=1 -- get-or-create in modules/pricing/repository.py,
-    # same pattern as shop_settings.
+    # Single row, always id=1 -- core/db/singleton.py's get_or_create_singleton.
     id: Mapped[int] = mapped_column(primary_key=True)
     anchor_currency: Mapped[Currency] = mapped_column(default=Currency.USD, server_default="USD")
     price_per_day: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))

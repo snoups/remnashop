@@ -8,7 +8,7 @@ from app.core.db.timestamp import TimestampMixin
 class BackupSettings(BaseSql, TimestampMixin):
     __tablename__ = "backup_settings"
 
-    # Single row, always id=1 -- same pattern as BotSettings.
+    # Single row, always id=1 -- core/db/singleton.py's get_or_create_singleton.
     id: Mapped[int] = mapped_column(primary_key=True)
 
     enabled: Mapped[bool] = mapped_column(Boolean(), default=False, server_default="false")

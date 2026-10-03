@@ -155,9 +155,7 @@ class PromocodeRepository:
         # concurrent claim on the same promocode serializes behind this one --
         # max_activations/already-activated below are read from this locked
         # row, not from a value the caller read before locking, so the check
-        # is atomic against concurrent claims. main's own migration history
-        # (0036) dropped a unique constraint here and left this exact race
-        # "guarded in application logic" with no lock -- this closes it.
+        # is atomic against concurrent claims.
         locked = await self.session.execute(
             select(Promocode).where(Promocode.id == promocode_id).with_for_update()
         )

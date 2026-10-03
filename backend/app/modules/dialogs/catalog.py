@@ -23,8 +23,8 @@ URL_SCHEMES: Final[tuple[str, ...]] = ("https://", "http://", "tg://")
 
 # The namespace for admin-authored dialog text that has no catalog registration
 # of its own: a custom window's body, or a freshly-added button's label. Must
-# stay dash-separated, not dot-separated -- see create_custom_window.py's key
-# generation for why a dot here fails Fluent's identifier grammar.
+# stay dash-separated, not dot-separated -- a dot is read as a message
+# attribute, see translations.serializer.split_message_key.
 CUSTOM_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-custom-"
 # The key becomes a Fluent message id verbatim, so anything outside this would
 # let one button's label define or shadow another message in the locale.

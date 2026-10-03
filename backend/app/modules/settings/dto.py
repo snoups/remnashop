@@ -45,10 +45,8 @@ class UpdateBotSettingsDto:
 
 
 class ShopSettingsDto(BaseDto, TimestampMixin):
-    # None = unlimited. Default of 3 matches the hardcoded cap this setting
-    # replaced (MAX_ACTIVE_SUBSCRIPTIONS_PER_USER) -- the column itself has no
-    # DB-level default (see core/db/models/shop_settings.py), so this is what
-    # covers the row-doesn't-exist-yet case.
+    # None = unlimited. The column has no default (see
+    # core/db/models/shop_settings.py), so this covers a row that doesn't exist yet.
     max_active_subscriptions: Optional[int] = 3
     device_single_reset_enabled: bool = True
     device_single_reset_cooldown_hours: int = 0
@@ -60,8 +58,8 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateShopSettingsDto:
-    # Full replace, not a partial patch -- matches max_active_subscriptions'
-    # existing convention on this DTO.
+    # Full replace, not a partial patch: None in max_active_subscriptions means
+    # unlimited, not "leave unchanged".
     max_active_subscriptions: Optional[int]
     device_single_reset_enabled: bool
     device_single_reset_cooldown_hours: int

@@ -54,7 +54,7 @@ async def assert_available_to(
         return
     if promo.availability in (PromocodeAvailability.NEW, PromocodeAvailability.EXISTING):
         # "New" = never purchased a non-trial subscription, not "has none
-        # active right now" -- matches main's UserDao.has_any_subscription.
+        # active right now".
         has_sub = await subscription_repository.has_any_subscription(actor.id, include_trial=False)
         if promo.availability is PromocodeAvailability.NEW and has_sub:
             raise ValidationError(
@@ -74,10 +74,8 @@ async def assert_available_to(
                 code=ErrorCode.PROMOCODE_NOT_AVAILABLE,
             )
         return
-    # PromocodeAvailability.INVITED (promocode redemption eligibility) is
-    # intentionally out of scope for the referrals module -- see
-    # docs/superpowers/specs/2026-08-31-referrals-design.md §10; always deny
-    # for now.
+    # PromocodeAvailability.INVITED isn't implemented for promocodes yet --
+    # always denied.
     raise ValidationError(
         f"Promocode '{promo.code}' is not available to this user",
         code=ErrorCode.PROMOCODE_NOT_AVAILABLE,

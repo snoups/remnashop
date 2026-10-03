@@ -119,6 +119,6 @@ async def resolve_state(window_key: str, cache: _SlotResolver) -> Optional[State
 
 
 def _reset_for_tests() -> None:
-    # test-only: catalog_*.py modules register seed states at import time and are never
+    # test-only: routers/*/catalog.py modules register seed states at import time and are never
     # unregistered in prod, same rationale as app.modules.dialogs.catalog._reset_for_tests
     _SEED_STATES.clear()

@@ -57,8 +57,6 @@ class BootstrapOwnerUseCase:
             )
 
         issued = await self._session_issuer.issue(owner.id, client_ip, user_agent)
-        # A failure here surfaces as a request failure by design -- durable
-        # delivery means this write can't be silently swallowed.
         async with self._uow:
             await self._event_publisher.publish(
                 OwnerBootstrappedEvent(user=owner, ip_address=client_ip)

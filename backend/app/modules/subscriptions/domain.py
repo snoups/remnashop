@@ -23,8 +23,7 @@ OWNED_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
 # Every status maps to the set of statuses it may transition into,
 # including itself (a same-status write, e.g. a redelivered sync webhook,
 # is always legal and a no-op). DELETED is terminal: once set, no further
-# transition is legal from it, matching the existing DELETE semantics
-# every usecase already assumes.
+# transition is legal from it.
 VALID_TRANSITIONS: Final[dict[SubscriptionStatus, frozenset[SubscriptionStatus]]] = {
     SubscriptionStatus.ACTIVE: frozenset(
         {
@@ -77,8 +76,7 @@ class SubscriptionState:
     """Behavioural counterpart to SubscriptionDto -- the repository maps
     an ORM row to this before calling a method, and the (possibly changed)
     result back to a row afterwards. Immutable: every method returns a new
-    instance rather than mutating self, matching this codebase's existing
-    frozen-dataclass DTO style (dto.py's Create/Update DTOs)."""
+    instance rather than mutating self."""
 
     id: int
     status: SubscriptionStatus
@@ -95,7 +93,7 @@ class SubscriptionState:
         """Applies a panel-driven status sync. A no-op if target == current
         (redelivered webhook / overlapping reconcile pass) or if already
         DELETED (a locally-deleted subscription is never resurrected by a
-        stale panel event). The panel is authoritative — any other target
+        stale panel event). The panel is authoritative -- any other target
         status is accepted unconditionally."""
         if self.status is SubscriptionStatus.DELETED or target is self.status:
             return self
@@ -140,7 +138,7 @@ def calculate_proration_credit(
     """Pure proration math -- a function of the OLD subscription's own
     fields only, with no dependency on what it's being changed to. Public
     (not `_`-prefixed) so a caller can preview the credit BEFORE committing
-    a change_plan() transition -- e.g. to compute the new subscription's
+    a CHANGE (ChangePurchase) -- e.g. to compute the new subscription's
     final expire_at (base days + credit days) before minting its panel
     identity, so the panel is minted with the correct value up front
     instead of a provisional one reconciled after the fact."""

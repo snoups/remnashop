@@ -134,9 +134,8 @@ class SubscriptionRepository:
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[SubscriptionDto], int]:
         # status=None means "the live subscriptions", not "every row ever" --
-        # DELETED rows are now routine history (trial->paid conversions,
-        # plan CHANGEs), not just the rare explicit-delete case this default
-        # was written around. Pass status=DELETED explicitly to see them.
+        # DELETED rows are routine history (trial->paid conversions, plan
+        # CHANGEs). Pass status=DELETED explicitly to see them.
         filters: list[ColumnElement[bool]] = []
         if status is None:
             filters.append(Subscription.status != SubscriptionStatus.DELETED)
@@ -211,8 +210,7 @@ class SubscriptionRepository:
         # Any row ever, regardless of status (including DELETED/EXPIRED) --
         # this answers "has this user ever purchased", not "does one still
         # work". Backs PlanAvailability.NEW/EXISTING and
-        # PromocodeAvailability.NEW/EXISTING alike (matches main's own
-        # UserDao.has_any_subscription).
+        # PromocodeAvailability.NEW/EXISTING alike.
         stmt = select(func.count()).select_from(Subscription).where(Subscription.user_id == user_id)
         if not include_trial:
             stmt = stmt.where(Subscription.is_trial.is_(False))

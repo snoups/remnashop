@@ -8,7 +8,7 @@ from app.core.db.timestamp import TimestampMixin
 class Blacklist(BaseSql, TimestampMixin):
     __tablename__ = "blacklist"
 
-    # Single row, always id=1 -- same pattern as BotSettings/BackupSettings.
+    # Single row, always id=1 -- core/db/singleton.py's get_or_create_singleton.
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # Manual + CASCADE blocks. Normalised on write (digits-only ids, lowercased

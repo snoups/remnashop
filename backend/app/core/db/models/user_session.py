@@ -16,7 +16,7 @@ class UserSession(BaseSql, TimestampMixin):
     refresh_token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     # The hash rotation just replaced -- kept briefly so a same-moment refresh
     # from another browser tab can be recognized as a benign race, not theft.
-    # See RefreshSessionUseCase (Task 8) and the design spec's grace-window section.
+    # See RefreshSessionUseCase.
     previous_refresh_token_hash: Mapped[Optional[str]] = mapped_column(String(64), index=True)
     previous_hash_grace_until: Mapped[Optional[datetime]]
     ip_address: Mapped[str] = mapped_column(String(45))  # IPv6-safe length

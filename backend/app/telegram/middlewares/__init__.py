@@ -10,9 +10,9 @@ __all__ = [
     "setup_middlewares",
 ]
 
-# Access, Rules, Channel, Throttling, Garbage aren't here yet -- they depend on
-# modules/settings (access mode, mandatory channel, rules URL) and Redis-backed
-# cache/state tracking, neither of which exist yet. Add them back once those do.
+# Not ported yet: Access, Rules and Channel need settings that don't exist
+# (access mode, rules URL, mandatory channel); Throttling and Garbage need nothing
+# new, they just haven't been carried over.
 
 
 def setup_middlewares(router: Router) -> None:

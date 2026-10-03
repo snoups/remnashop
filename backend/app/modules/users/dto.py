@@ -115,7 +115,7 @@ class CreateUserDto:
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateUserDto:
-    # None = leave unchanged, matching the existing partial-update convention.
+    # None = leave unchanged.
     name: Optional[str] = None
     password_hash: Optional[str] = None
     password_change_required: Optional[bool] = None

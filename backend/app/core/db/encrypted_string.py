@@ -14,10 +14,9 @@ def _crypt_key() -> str:
 
 
 class EncryptedString(TypeDecorator[str]):
-    # Transparent Fernet encryption at the column level -- see
-    # docs/architecture/db-models.md. Mapped attributes always read/write
-    # plaintext; ciphertext exists only in the DB and in the raw bind/result
-    # values passed through process_bind_param/process_result_value.
+    # Transparent Fernet encryption at the column level. Mapped attributes
+    # always read/write plaintext; ciphertext exists only in the DB and in the
+    # raw bind/result values passed through process_bind_param/process_result_value.
     impl = String
     cache_ok = True
 

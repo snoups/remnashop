@@ -108,8 +108,7 @@ class SubscriptionDto(BaseDto, TimestampMixin):
     is_trial: bool = False
     traffic_limit: int
     device_limit: int
-    # Computed at read time from traffic_limit/device_limit + addon_entitlements
-    # (spec §4.2: "effective limits are computed, not stored") -- never a DB column.
+    # traffic_limit/device_limit plus addon_entitlements, computed at read time
     effective_traffic_limit: int
     effective_device_limit: int
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET

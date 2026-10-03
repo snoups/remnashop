@@ -16,9 +16,7 @@ def register_menu_metadata() -> None:
 
     catalog.register_condition("trial_available", lambda data: bool(data.get("trial_available")))
     catalog.register_condition("has_device_limit", lambda data: bool(data.get("has_device_limit")))
-    # The original Url widget's `when=F["connectable"] & F["connect_url"]` ANDs two
-    # conditions; this schema allows one visibility_condition per button, so both checks
-    # fold into this single condition to keep behavior identical.
+    # one visibility_condition per button, so both checks fold into this one
     catalog.register_condition(
         "connectable", lambda data: bool(data.get("connectable")) and bool(data.get("connect_url"))
     )

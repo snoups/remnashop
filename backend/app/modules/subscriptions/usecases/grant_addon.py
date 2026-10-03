@@ -17,8 +17,8 @@ from app.modules.users import UserRepository
 
 class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
     # System-invoked only, same shape as RegisterTelegramUserUseCase -- no
-    # real actor ever grants an add-on to themselves directly; this always
-    # runs .system()-bound from the future payment-confirmation task.
+    # real actor ever grants an add-on to themselves directly; grant_addon_task
+    # runs it .system()-bound for a promocode's TRAFFIC/DEVICES reward.
     required_permission = None
 
     def __init__(

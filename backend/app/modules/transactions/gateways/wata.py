@@ -37,8 +37,6 @@ _DECLINED_STATUS: Final[str] = "Declined"
 _REFUND_KIND: Final[str] = "Refund"
 
 
-# Keyed by api_key, not per instance: the factory builds a fresh gateway for
-# every request, so an instance-level cache would never be reused.
 def _reported_status(data: dict[str, Any]) -> Optional[TransactionStatus]:
     status = data.get("transactionStatus")
     if data.get("kind") == _PAYMENT_KIND and status == _DECLINED_STATUS:
@@ -48,6 +46,8 @@ def _reported_status(data: dict[str, Any]) -> Optional[TransactionStatus]:
     return None
 
 
+# Keyed by api_key, not per instance: the factory builds a fresh gateway for
+# every request, so an instance-level cache would never be reused.
 _public_key_cache: Final[dict[str, tuple[float, RSAPublicKey]]] = {}
 
 

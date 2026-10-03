@@ -138,8 +138,8 @@ class AdLinkRepository:
         # implicit FOR KEY SHARE lock on it for any concurrent
         # create_attribution INSERT (FK reference), so that insert blocks
         # until this transaction commits/rolls back instead of racing the
-        # count-then-delete below (was a TOCTOU -- see PromocodeRepository's
-        # claim_activation for the same pattern).
+        # count-then-delete below (same pattern as PromocodeRepository's
+        # claim_activation).
         locked = await self.session.execute(
             select(AdLink).where(AdLink.id == ad_link_id).with_for_update()
         )

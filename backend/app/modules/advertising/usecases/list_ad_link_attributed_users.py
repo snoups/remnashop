@@ -28,8 +28,7 @@ class ListAdLinkAttributedUsersUseCase(
     async def _execute(
         self, actor: Actor, data: ListAdLinkAttributedUsersDto
     ) -> tuple[list[AttributedUserDto], int]:
-        # Raises NotFoundError for an unknown ad_link_id -- the router maps
-        # that to 404, same as an unknown id would for get_ad_link_stats.
+        # NotFoundError (404) for an unknown ad_link_id, same as get_ad_link_stats
         async with self._uow:
             await self._ad_link_repository.get_by_id(data.ad_link_id)
 

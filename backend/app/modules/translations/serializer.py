@@ -145,16 +145,13 @@ def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> O
 
     # If parsing produced Junk, check if text contains placeable-like syntax
     if parsed.body and isinstance(parsed.body[0], Junk):
-        # Text with braces might be a malformed placeable (e.g. select expression).
-        # Fluent's select-expression grammar requires each variant to start its own
-        # indented line, so a single-line inline attempt (as the original brief's code
-        # would have produced) fails to parse as a clean SelectExpression node and
-        # instead produces Junk -- this multi-line wrapping approach and the
-        # Junk-handling below exist specifically to catch that case rather than
-        # silently letting it through as "no placeables found."
+        # Braces in Junk are most likely an inline select expression: Fluent wants
+        # each variant on its own indented line, so a one-line attempt parses as
+        # Junk instead of a SelectExpression and would otherwise pass as "no
+        # placeables found".
         if "{" in text and "}" in text:
             return "Disallowed Fluent expression: malformed or complex expression"
-        # Note: text with an unmatched brace (e.g. "{ unterminated") falls through
+        # Text with an unmatched brace (e.g. "{ unterminated") falls through
         # to None here rather than being flagged -- this function's job is the
         # placeable-kind allowlist, not full Fluent syntax validity; a genuinely
         # malformed value is still caught by the separate FluentBundle.check_messages()

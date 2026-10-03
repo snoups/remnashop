@@ -12,7 +12,7 @@ from app.core.enums import ReferralAccrualStrategy, ReferralRewardStrategy, Refe
 class ReferralSettings(BaseSql, TimestampMixin):
     __tablename__ = "referral_settings"
 
-    # Single row, always id=1 -- same get-or-create pattern as BotSettings.
+    # Single row, always id=1 -- core/db/singleton.py's get_or_create_singleton.
     id: Mapped[int] = mapped_column(primary_key=True)
 
     enabled: Mapped[bool] = mapped_column(Boolean(), default=False, server_default="false")

@@ -54,8 +54,7 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
             if expire_at_drifted and subscription.status is not SubscriptionStatus.DELETED:
                 # Panel is the source of truth for expire_at -- pulls a
                 # renewal that landed on the panel but never made it into our
-                # own commit back in sync (see reissue_subscription's
-                # analogous incident class). Status stays whatever the panel
+                # own commit back in sync. Status stays whatever the panel
                 # reported alongside -- a renewal arrives as ACTIVE on its own.
                 assert data.expire_at is not None
                 subscription = await self._lifecycle_service.sync_expire_at(

@@ -101,7 +101,6 @@ class SettingsRepository:
         return self._to_oauth_dto(row)
 
     async def update_oauth_settings(self, data: UpdateOAuthSettingsDto) -> OAuthSettingsDto:
-        # Same deliberate low-stakes tradeoff as update_bot_settings() above.
         row = await self._get_or_create_singleton(OAuthSettings)
 
         apply_partial_update(row, data)
