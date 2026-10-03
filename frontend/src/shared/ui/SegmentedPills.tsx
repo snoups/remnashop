@@ -7,6 +7,8 @@ import { ActivePill } from "@shared/ui/ActivePill";
 export interface SegmentedPillsOption<T extends string | number> {
   value: T;
   label: string;
+  /** red unread dot in the corner, like the notifications bell's */
+  dot?: boolean;
 }
 
 export function SegmentedPills<T extends string | number>({
@@ -56,6 +58,9 @@ export function SegmentedPills<T extends string | number>({
           >
             {option.label}
           </span>
+          {option.dot && (
+            <span className="absolute right-2.5 top-1.5 z-10 size-1.5 rounded-full bg-error" aria-hidden />
+          )}
         </motion.button>
       ))}
     </motion.div>

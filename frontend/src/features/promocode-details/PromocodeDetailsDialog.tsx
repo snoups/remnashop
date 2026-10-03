@@ -84,7 +84,7 @@ function PromocodeDetailsDialogBody({
 
   const status = getPromocodeStatus(promocode);
   const RewardIcon = REWARD_TYPE_ICON[promocode.reward_type];
-  const none = t("promocodes.stats.none");
+  const none = t("common.none");
 
   const tabs: DialogTabItem<PromocodeDetailsTab>[] = [
     { key: "overview", label: t("promocodes.details.tabs.overview"), icon: BarChart3 },
@@ -203,7 +203,7 @@ function PromocodeDetailsDialogBody({
                     <span className="truncate">{expires}</span>
                   </InfoRow>
                   <InfoRow icon={Repeat} label={t("promocodes.details.reusable")}>
-                    {promocode.is_reusable ? t("promocodes.details.yes") : t("promocodes.details.no")}
+                    {promocode.is_reusable ? t("common.yes") : t("common.no")}
                   </InfoRow>
                 </Card>
               </div>
@@ -228,7 +228,7 @@ function PromocodeDetailsDialogBody({
                 onClick={() => setIsConfirmingDelete(true)}
               >
                 <Trash2 className="size-3.5" />
-                {t("promocodes.delete.button")}
+                {t("common.delete")}
               </Button>
             )}
             <Button variant="outline" onClick={() => void handleToggleActive()} disabled={isToggling}>
@@ -237,7 +237,7 @@ function PromocodeDetailsDialogBody({
             </Button>
           </div>
           <Button variant="accent" type="submit" form={FORM_ID} disabled={isSubmitting}>
-            {isSubmitting ? t("promocodes.edit.saving") : t("promocodes.edit.save")}
+            {isSubmitting ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       )}
@@ -245,8 +245,8 @@ function PromocodeDetailsDialogBody({
         <ConfirmDialog
           title={t("promocodes.delete.title")}
           message={t("promocodes.delete.confirm", { code: promocode.code })}
-          confirmLabel={t("promocodes.delete.confirmButton")}
-          cancelLabel={t("promocodes.delete.cancelButton")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             setIsConfirmingDelete(false);

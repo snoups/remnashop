@@ -115,7 +115,7 @@ export function ReferralsListPage() {
       .filter(Boolean)
       .join(" · ");
 
-  const none = t("referrals.summary.none");
+  const none = t("common.none");
   const rewardAmount = (source: ReferralSummary, type: ReferralRewardType): number =>
     Math.trunc(Number(source.reward_amounts[type] ?? 0));
   const rewardTotal = (type: ReferralRewardType): string =>

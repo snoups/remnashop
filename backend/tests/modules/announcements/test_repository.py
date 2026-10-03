@@ -97,3 +97,35 @@ async def test_removing_from_feed_drops_views(
 
     [row] = await announcement_repository.list_for_user(admin.id, notify_from=LONG_AGO, now=NOW)
     assert not row.seen
+
+
+async def test_dismiss_keeps_the_first_seen_at_and_hides(
+    announcement_repository: AnnouncementRepository, admin: UserDto
+) -> None:
+    await announcement_repository.replace_all(_items({"id": "a"}, {"id": "b"}))
+    await announcement_repository.mark_seen(admin.id, ["a"], NOW - timedelta(hours=2))
+    await announcement_repository.dismiss(admin.id, ["a", "b", "gone"], NOW)
+
+    rows = await announcement_repository.list_for_user(admin.id, notify_from=LONG_AGO, now=NOW)
+    by_id = {r.id: r for r in rows}
+    assert by_id["a"].seen_at == NOW - timedelta(hours=2)
+    assert by_id["a"].dismissed_at == NOW
+    assert by_id["b"].seen_at == NOW and by_id["b"].dismissed_at == NOW
+
+
+async def test_url_label_round_trips(
+    announcement_repository: AnnouncementRepository, admin: UserDto
+) -> None:
+    await announcement_repository.replace_all(
+        _items(
+            {
+                "id": "a",
+                "url": "https://t.me/remna_shop",
+                "url_label": {"en": "Join"},
+                "slides": [{"text": {"en": "x"}, "url_label": {"en": "Go"}}],
+            }
+        )
+    )
+    [row] = await announcement_repository.list_for_user(admin.id, notify_from=LONG_AGO, now=NOW)
+    assert row.url_label == {"en": "Join"}
+    assert row.slides[0].url_label == {"en": "Go"}

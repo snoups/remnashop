@@ -180,7 +180,7 @@ function SubscriptionEditDialogBody({ subscription, onSaved, onDeleted }: Omit<S
               onClick={() => setIsConfirmingDelete(true)}
             >
               <Trash2 className="size-3.5" />
-              {t("subscriptions.delete.confirmButton")}
+              {t("common.delete")}
             </Button>
           )}
           <span className="flex-1" />
@@ -189,7 +189,7 @@ function SubscriptionEditDialogBody({ subscription, onSaved, onDeleted }: Omit<S
             type="button"
             onClick={close}
           >
-            {t("subscriptions.edit.cancel")}
+            {t("common.cancel")}
           </Button>
           {canEdit && (
             <Button
@@ -197,7 +197,7 @@ function SubscriptionEditDialogBody({ subscription, onSaved, onDeleted }: Omit<S
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? t("subscriptions.edit.saving") : t("subscriptions.edit.save")}
+              {isSubmitting ? t("common.saving") : t("common.save")}
             </Button>
           )}
         </div>
@@ -207,8 +207,8 @@ function SubscriptionEditDialogBody({ subscription, onSaved, onDeleted }: Omit<S
         <ConfirmDialog
           title={t("subscriptions.delete.confirmTitle")}
           message={t("subscriptions.delete.confirm", { id: subscription.id })}
-          confirmLabel={t("subscriptions.delete.confirmButton")}
-          cancelLabel={t("subscriptions.delete.cancelButton")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             setIsConfirmingDelete(false);

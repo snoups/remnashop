@@ -251,7 +251,7 @@ function RateRow({
             type="submit"
             disabled={isSubmitting || !isDirty || isRateInvalid}
           >
-            {isSubmitting ? t("pricing.rates.saving") : t("pricing.rates.save")}
+            {isSubmitting ? t("common.saving") : t("common.save")}
           </Button>
           {isDirty && <span className="text-xs text-warning">{t("pricing.rates.unsaved")}</span>}
         </div>
@@ -263,7 +263,7 @@ function RateRow({
           icon={Coins}
           message={t("pricing.rates.confirmMessage", { currency: t(`pricing.currencyIn.${rate.currency}`) })}
           confirmLabel={t("pricing.rates.confirmButton")}
-          cancelLabel={t("pricing.rates.cancelButton")}
+          cancelLabel={t("common.cancel")}
           onConfirm={() => void handleConfirm()}
           onCancel={() => setDiff(null)}
         >
@@ -333,7 +333,7 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
           title={t("pricing.anchor.confirmTitle")}
           message={t("pricing.anchor.confirmMessage", { currency: t(`pricing.currencyTo.${selected}`) })}
           confirmLabel={t("pricing.anchor.confirmButton")}
-          cancelLabel={t("pricing.anchor.cancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleConfirm()}
           onCancel={() => {
@@ -429,7 +429,7 @@ function GlobalSettings({
             type="submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? t("pricing.settings.saving") : t("pricing.settings.save")}
+            {isSubmitting ? t("common.saving") : t("common.save")}
           </Button>
         )}
       </form>

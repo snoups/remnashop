@@ -110,7 +110,7 @@ export function ButtonInspector({
         await writeIcon(iconTextKey(button.text_key), picked.fallback);
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 

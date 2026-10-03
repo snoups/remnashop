@@ -93,9 +93,9 @@ export function OAuthSettingsForm() {
       setOidcClientSecret("");
       setPasskeyRpId("");
       setPasskeyOrigin("");
-      toast.success(t("settings.oauth.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
     }
@@ -224,7 +224,7 @@ export function OAuthSettingsForm() {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? t("settings.oauth.saving") : t("settings.oauth.save")}
+              {isSubmitting ? t("common.saving") : t("common.save")}
             </Button>
           )}
         </form>
@@ -278,7 +278,7 @@ function ProviderPanel({
       const settings = await updateOAuthSettings(payload);
       onToggled(settings);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsToggling(false);
     }
@@ -398,7 +398,7 @@ function PasskeyPanel({
       const settings = await updateOAuthSettings({ passkey_enabled: next });
       onToggled(settings);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsToggling(false);
     }
@@ -501,7 +501,7 @@ function PasswordLoginToggle({ isEnabled, onToggled }: PasswordLoginToggleProps)
       const settings = await updateOAuthSettings({ password_login_enabled: next });
       onToggled(settings);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsToggling(false);
     }

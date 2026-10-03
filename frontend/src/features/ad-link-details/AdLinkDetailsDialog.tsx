@@ -117,7 +117,7 @@ function AdLinkDetailsDialogBody({
   const deleteButton = canDelete && (
     <Button variant="danger" type="button" onClick={() => setIsConfirmingDelete(true)}>
       <Trash2 className="size-3.5" />
-      {t("advertising.delete.button")}
+      {t("common.delete")}
     </Button>
   );
 
@@ -183,7 +183,7 @@ function AdLinkDetailsDialogBody({
             </Button>
           </div>
           <Button variant="accent" type="submit" form={AD_LINK_EDIT_FORM_ID} disabled={!editForm.canSubmit}>
-            {editForm.isSubmitting ? t("advertising.edit.saving") : t("advertising.edit.save")}
+            {editForm.isSubmitting ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       ) : (
@@ -197,8 +197,8 @@ function AdLinkDetailsDialogBody({
         <ConfirmDialog
           title={t("advertising.delete.title")}
           message={t("advertising.delete.confirm", { name: adLink.name })}
-          confirmLabel={t("advertising.delete.confirmButton")}
-          cancelLabel={t("advertising.delete.cancelButton")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             setIsConfirmingDelete(false);

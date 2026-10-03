@@ -1,3 +1,4 @@
+import type { ParseKeys, TFunction } from "i18next";
 import { AlertCircle, Cpu, Loader2, Users } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -177,7 +178,7 @@ function RecentEventsCard({ refreshKey }: { refreshKey: number }) {
           )}
           {state.data.items.map((entry: EventLogEntry) => (
             <div key={entry.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-              <span className="truncate text-foreground">{t(`eventLog.events.${entry.event_type}`)}</span>
+              <span className="truncate text-foreground">{t(`eventLog.events.${entry.event_type}` as ParseKeys)}</span>
               <span className="shrink-0 text-[11px] text-muted-foreground">
                 {formatDateTime(entry.occurred_at, i18n.language)}
               </span>
@@ -370,7 +371,7 @@ function SubscriptionsDonut({ subscriptions }: { subscriptions: OverviewSubscrip
   );
 }
 
-function formatUptime(t: ReturnType<typeof useTranslation>["t"], seconds: number): string {
+function formatUptime(t: TFunction, seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

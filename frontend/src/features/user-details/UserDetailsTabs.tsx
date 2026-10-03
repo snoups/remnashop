@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import {
   AtSign,
   Ban,
@@ -57,7 +58,7 @@ const sectionTitleClassName =
 export function ProfileTab({ user }: { user: UserListItem }) {
   const { t, i18n } = useTranslation();
   const dash = "—";
-  const yesNo = (value: boolean) => (value ? t("users.details.yes") : t("users.details.no"));
+  const yesNo = (value: boolean) => (value ? t("common.yes") : t("common.no"));
   const blocked = yesNo(user.is_blocked);
   const trialAvailable = user.is_trial_available ? t("users.details.trialYes") : t("users.details.trialNo");
   const createdAt = user.created_at ? formatDateTime(user.created_at, i18n.language) : undefined;
@@ -203,7 +204,7 @@ export function EventsTab({ actorId }: { actorId: number }) {
               <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
-              {t(`eventLog.events.${entry.event_type}`)}
+              {t(`eventLog.events.${entry.event_type}` as ParseKeys)}
             </span>
             <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
               {formatDateTime(entry.occurred_at, i18n.language)}

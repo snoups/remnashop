@@ -104,7 +104,7 @@ export function SecurityForm() {
                   onClick={() => setText(entries.concat(clientIp).join("\n"))}
                 >
                   <Plus className="size-3.5" />
-                  {t("profile.accountSecurity.addCurrentIp")}
+                  {t("common.add")}
                 </Button>
               )}
             </div>
@@ -115,7 +115,7 @@ export function SecurityForm() {
             type="submit"
             disabled={isSaving || invalidEntries.length > 0}
           >
-            {t("profile.accountSecurity.submit")}
+            {t("common.save")}
           </Button>
         </form>
       )}

@@ -116,9 +116,9 @@ export function TextEditorPanel({
         value: updated.value,
         default_value: updated.default_value,
       });
-      toast.success(t("dialogs.inspector.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -131,7 +131,7 @@ export function TextEditorPanel({
       onSaved(reset);
       toast.success(t("dialogs.inspector.resetDone"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsResetting(false);
     }
@@ -198,7 +198,7 @@ export function TextEditorPanel({
             {...bounceTap()}
             className="h-9 flex-1 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/80 hover:bg-white/[0.06] disabled:opacity-30"
           >
-            {t(canShowReset ? "dialogs.inspector.textSaveShort" : "dialogs.inspector.textSave")}
+            {t(canShowReset ? "common.save" : "dialogs.inspector.textSave")}
           </motion.button>
         )}
         {canShowReset && (
@@ -210,7 +210,7 @@ export function TextEditorPanel({
             className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isResetting && <Loader2 className="size-3.5 animate-spin" />}
-            {t("dialogs.inspector.textReset")}
+            {t("common.reset")}
           </motion.button>
         )}
       </div>

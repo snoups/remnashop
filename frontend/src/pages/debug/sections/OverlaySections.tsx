@@ -39,16 +39,18 @@ const SAMPLE_STORIES: Announcement[] = [
     title: { en: "Sample announcement", ru: "Пример объявления" },
     text: { en: "Sample announcement", ru: "Пример объявления" },
     url: null,
+    url_label: {},
     notify_at: "2026-01-01T00:00:00Z",
     auto_open: false,
     seen: false,
     slides: [
-      { image_url: null, text: { en: "First slide of a sample announcement", ru: "Первый слайд примера объявления" }, url: null },
-      { image_url: null, text: { en: "Second slide of a sample announcement", ru: "Второй слайд примера объявления" }, url: null },
+      { image_url: null, text: { en: "First slide of a sample announcement", ru: "Первый слайд примера объявления" }, url: null, url_label: {} },
+      { image_url: null, text: { en: "Second slide of a sample announcement", ru: "Второй слайд примера объявления" }, url: null, url_label: {} },
       {
         image_url: null,
         text: { en: "Last slide with a link", ru: "Последний слайд со ссылкой" },
         url: "https://github.com/remnashop/remnashop/releases",
+        url_label: {},
       },
     ],
   },
@@ -59,10 +61,11 @@ const SAMPLE_STORIES: Announcement[] = [
     title: { en: "Sample critical announcement", ru: "Пример важного объявления" },
     text: { en: "Sample critical announcement", ru: "Пример важного объявления" },
     url: null,
+    url_label: {},
     notify_at: "2026-01-02T00:00:00Z",
     auto_open: false,
     seen: false,
-    slides: [{ image_url: null, text: { en: "Something needs your attention", ru: "Нужно ваше внимание" }, url: null }],
+    slides: [{ image_url: null, text: { en: "Something needs your attention", ru: "Нужно ваше внимание" }, url: null, url_label: {} }],
   },
 ];
 

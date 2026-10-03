@@ -206,7 +206,7 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
               disabled={isAddingEntry || !trimmedEntry || isEntryInvalid}
             >
               <Plus className="size-3.5" />
-              {t("blacklist.manual.add")}
+              {t("common.add")}
             </Button>
           </div>
           {isEntryInvalid && (
@@ -488,7 +488,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
             name: pendingRemoveSource.name ?? pendingRemoveSource.url,
           })}
           confirmLabel={t("blacklist.sources.removeConfirmButton")}
-          cancelLabel={t("blacklist.sources.removeCancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             void handleRemoveSource(pendingRemoveSource);

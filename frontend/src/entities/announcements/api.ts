@@ -5,6 +5,7 @@ export interface AnnouncementSlide {
   image_url: string | null;
   text: Record<string, string>;
   url: string | null;
+  url_label: Record<string, string>;
 }
 
 export interface Announcement {
@@ -14,6 +15,7 @@ export interface Announcement {
   title: Record<string, string>;
   text: Record<string, string>;
   url: string | null;
+  url_label: Record<string, string>;
   notify_at: string;
   auto_open: boolean;
   slides: AnnouncementSlide[];
@@ -26,6 +28,10 @@ export function listAnnouncements(signal?: AbortSignal): Promise<ListResponse<An
 
 export function markAnnouncementsSeen(ids: string[]): Promise<void> {
   return apiPost<void, { ids: string[] }>("/announcements/actions/mark-seen", { ids });
+}
+
+export function dismissAnnouncements(ids: string[]): Promise<void> {
+  return apiPost<void, { ids: string[] }>("/announcements/actions/dismiss", { ids });
 }
 
 /** The maintainer writes each text per locale; fall back to English, then to whatever exists. */

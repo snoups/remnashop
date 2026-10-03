@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { ArrowDown, Filter } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,7 +30,7 @@ function FunnelStepRow({ step, index }: { step: FunnelStep; index: number }) {
         <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-bold text-foreground">
           {index + 1}
         </span>
-        <span className="truncate text-[13.5px] font-medium text-foreground">{t(`analytics.funnel.steps.${step.key}`)}</span>
+        <span className="truncate text-[13.5px] font-medium text-foreground">{t(`analytics.funnel.steps.${step.key}` as ParseKeys)}</span>
         <span className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
           <span
             className="block h-full rounded-full bg-primary transition-all"
@@ -99,7 +100,7 @@ export function AnalyticsFunnelPage() {
               <Card className="flex flex-col gap-2">
                 <span className={EYEBROW_CLASS}>{t("analytics.funnel.biggestDrop")}</span>
                 <span className="text-[15px] font-semibold text-foreground">
-                  {t(`analytics.funnel.steps.${biggestDrop.prev.key}`)} → {t(`analytics.funnel.steps.${biggestDrop.step.key}`)}
+                  {t(`analytics.funnel.steps.${biggestDrop.prev.key}` as ParseKeys)} → {t(`analytics.funnel.steps.${biggestDrop.step.key}` as ParseKeys)}
                 </span>
                 <Badge tone="warning" className="self-start">
                   {t("analytics.funnel.dropBadge", { pct: formatPercent(1 - biggestDrop.step.pct_of_prev, i18n.language) })}

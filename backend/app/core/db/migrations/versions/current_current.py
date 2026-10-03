@@ -782,6 +782,7 @@ def upgrade() -> None:
         sa.Column("is_trial_available", sa.Boolean(), server_default="true", nullable=False),
         sa.Column("password_change_required", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("notifications_seen_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("notifications_cleared_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("notification_groups", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
@@ -859,6 +860,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("announcement_id", sa.String(length=100), nullable=False),
         sa.Column("seen_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("dismissed_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["announcement_id"], ["announcements.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("user_id", "announcement_id"),

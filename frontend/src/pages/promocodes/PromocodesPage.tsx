@@ -96,7 +96,7 @@ export function PromocodesPage() {
     );
   };
 
-  const none = t("promocodes.stats.none");
+  const none = t("common.none");
   const usedCount = (promo: Promocode): number | undefined =>
     summary ? (summary.activations_by_promocode[promo.id] ?? 0) : undefined;
 

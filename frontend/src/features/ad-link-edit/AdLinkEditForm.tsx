@@ -10,7 +10,7 @@ import { Card } from "@shared/ui/Card";
 import { TextInput, TextArea } from "@shared/ui/TextInput";
 import { Field } from "@shared/ui/Field";
 
-const CURRENCIES = ["USD", "XTR", "RUB"];
+const CURRENCIES = ["USD", "XTR", "RUB"] as const;
 
 export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
   const { t } = useTranslation();

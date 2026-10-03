@@ -43,7 +43,7 @@ import { CardHeader } from "@shared/ui/CardHeader";
 
 type IconType = ComponentType<{ className?: string }>;
 
-const LEVELS = [1, 2, 3];
+const LEVELS = [1, 2, 3] as const;
 const MAX_PERCENT = 100;
 // a level without a stored reward starts at the smallest allowed one
 const MIN_REWARD = "1";
@@ -293,7 +293,7 @@ export function ReferralSettingsPage() {
           <div className="mt-4 flex items-center gap-2">
             {canManage && (
               <Button variant="accent" className="w-fit" type="submit" disabled={isSaving || hasInvalidLevel}>
-                {isSaving ? t("referrals.settings.saving") : t("referrals.settings.save")}
+                {isSaving ? t("common.saving") : t("common.save")}
               </Button>
             )}
             {canReset && (
@@ -304,7 +304,7 @@ export function ReferralSettingsPage() {
                 onClick={() => setIsResetConfirmOpen(true)}
                 disabled={isResetting}
               >
-                {t("referrals.settings.reset")}
+                {t("common.reset")}
               </Button>
             )}
           </div>
@@ -337,7 +337,7 @@ export function ReferralSettingsPage() {
               <p className="text-[13px] font-semibold text-foreground">{t("referrals.settings.preview.trigger")}</p>
               <p className="text-[12px] text-accent-foreground">
                 {t(
-                  `referrals.settings.preview.triggerText.${accrualStrategy}.${isPercent ? `PERCENT_${rewardType}` : "AMOUNT"}`,
+                  `referrals.settings.preview.triggerText.${accrualStrategy}.${isPercent ? (`PERCENT_${rewardType}` as const) : "AMOUNT"}`,
                 )}
               </p>
             </div>
@@ -427,8 +427,8 @@ export function ReferralSettingsPage() {
         <ConfirmDialog
           title={t("referrals.settings.resetConfirmTitle")}
           message={t("referrals.settings.resetConfirmText")}
-          confirmLabel={t("referrals.settings.reset")}
-          cancelLabel={t("referrals.settings.resetCancel")}
+          confirmLabel={t("common.reset")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleReset()}
           onCancel={() => setIsResetConfirmOpen(false)}

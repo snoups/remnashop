@@ -86,7 +86,7 @@ export function BotCommandsForm() {
         [...current].sort((a, b) => (rank.get(a.command) ?? 0) - (rank.get(b.command) ?? 0)),
       );
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsResettingOrder(false);
     }
@@ -101,10 +101,10 @@ export function BotCommandsForm() {
       if (result.telegram_sync_failed) {
         toast.warning(t("settings.botCommands.savedTelegramSyncFailed"));
       } else {
-        toast.success(t("settings.botCommands.saved"));
+        toast.success(t("common.saved"));
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +147,7 @@ export function BotCommandsForm() {
                 onClick={() => void handleSave()}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? t("settings.botCommands.saving") : t("settings.botCommands.save")}
+                {isSubmitting ? t("common.saving") : t("common.save")}
               </Button>
               <motion.button
                 type="button"

@@ -1,13 +1,14 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SlideDto(BaseModel):
     image_url: Optional[str] = None
     text: dict[str, str]
     url: Optional[str] = None
+    url_label: dict[str, str] = Field(default_factory=dict)
 
 
 class AnnouncementDto(BaseModel):
@@ -17,6 +18,7 @@ class AnnouncementDto(BaseModel):
     title: dict[str, str]
     text: dict[str, str]
     url: Optional[str] = None
+    url_label: dict[str, str] = Field(default_factory=dict)
     notify_at: datetime
     auto_open: bool
     slides: list[SlideDto]
@@ -24,6 +26,8 @@ class AnnouncementDto(BaseModel):
     versions: Optional[str] = None
     # this actor's first view; None while unseen
     seen_at: Optional[datetime] = None
+    # cleared from the bell by this actor
+    dismissed_at: Optional[datetime] = None
 
     @property
     def seen(self) -> bool:

@@ -56,7 +56,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
     new Date(`${day}T00:00:00Z`).toLocaleDateString(i18n.language, { day: "numeric", month: "short", timeZone: "UTC" });
   const formatLongDay = (day: string) =>
     new Date(`${day}T00:00:00Z`).toLocaleDateString(i18n.language, { day: "numeric", month: "long", timeZone: "UTC" });
-  const none = t("advertising.stats.none");
+  const none = t("common.none");
 
   return (
     <div className="flex flex-col gap-3">

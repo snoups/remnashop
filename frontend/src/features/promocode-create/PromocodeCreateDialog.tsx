@@ -343,10 +343,10 @@ function PromocodeCreateDialogBody({
             type="button"
             onClick={close}
           >
-            {t("promocodes.create.cancel")}
+            {t("common.cancel")}
           </Button>
           <Button variant="accent" type="submit" disabled={isSubmitting || !canSubmit}>
-            {isSubmitting ? t("promocodes.create.saving") : t("promocodes.create.save")}
+            {isSubmitting ? t("promocodes.create.saving") : t("common.create")}
           </Button>
         </div>
       </form>

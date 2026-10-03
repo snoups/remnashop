@@ -76,7 +76,7 @@ function EntityDialog({ request, onClose }: { request: OpenDialog; onClose: () =
         toast.error(
           err instanceof ApiError && err.status === 404
             ? t("header.entityNotFound")
-            : getErrorMessage(err, t("auth.errors.genericError")),
+            : getErrorMessage(err, t("common.errors.generic")),
         );
         onClose();
       });

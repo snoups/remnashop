@@ -51,7 +51,7 @@ export function EmojiPacksManager() {
       setLink("");
       toast.success(t("dialogs.emojiPacks.imported", { title: pack.set_name }));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsImporting(false);
     }
@@ -63,7 +63,7 @@ export function EmojiPacksManager() {
       await deleteEmojiPack(pack.set_name);
       reloadPacks();
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -95,7 +95,7 @@ export function EmojiPacksManager() {
                 ) : (
                   <Plus className="size-3.5" />
                 )}
-                {isImporting ? t("dialogs.emojiPacks.adding") : t("dialogs.emojiPacks.add")}
+                {isImporting ? t("dialogs.emojiPacks.adding") : t("common.add")}
               </Button>
             </div>
             {isLinkInvalid && (
@@ -164,7 +164,7 @@ export function EmojiPacksManager() {
           title={t("dialogs.emojiPacks.deleteTitle")}
           message={t("dialogs.emojiPacks.deleteConfirm", { title: pendingDelete.set_name })}
           confirmLabel={t("dialogs.emojiPacks.deleteConfirmButton")}
-          cancelLabel={t("dialogs.windowList.deleteWindowCancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleDelete(pendingDelete)}
           onCancel={() => setPendingDelete(null)}

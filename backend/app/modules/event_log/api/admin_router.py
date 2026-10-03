@@ -24,6 +24,7 @@ from app.modules.event_log.dto import (
     ListEventLogDto,
 )
 from app.modules.event_log.usecases import (
+    ClearNotificationsUseCase,
     GetNotificationGroupsUseCase,
     GetNotificationsUseCase,
     ListEventLogUseCase,
@@ -86,6 +87,15 @@ async def get_notifications(
 @inject
 async def mark_notifications_read(
     use_case: FromDishka[MarkNotificationsReadUseCase],
+    actor: UserDto = Depends(require_admin_user),
+) -> None:
+    await use_case(actor)
+
+
+@router.post("/notifications/actions/clear", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def clear_notifications(
+    use_case: FromDishka[ClearNotificationsUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
     await use_case(actor)

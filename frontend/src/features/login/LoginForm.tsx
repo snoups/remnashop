@@ -30,7 +30,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       saveAccessToken(result.access_token);
       onSuccess();
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
     }

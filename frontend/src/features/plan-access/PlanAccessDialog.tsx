@@ -155,14 +155,14 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
             type="button"
             onClick={close}
           >
-            {t("plans.access.cancel")}
+            {t("common.cancel")}
           </Button>
           <Button
             variant="accent"
             type="submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? t("plans.access.saving") : t("plans.access.save")}
+            {isSubmitting ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </form>

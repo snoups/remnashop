@@ -286,7 +286,7 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
                     type="submit"
                     disabled={isSavingSettings}
                   >
-                    {isSavingSettings ? t("backups.schedule.saving") : t("backups.schedule.save")}
+                    {isSavingSettings ? t("common.saving") : t("common.save")}
                   </Button>
                 )}
                 {canResetSettings && (
@@ -297,7 +297,7 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
                     onClick={() => setIsResetConfirmOpen(true)}
                     disabled={isResettingSettings}
                   >
-                    {t("backups.schedule.reset")}
+                    {t("common.reset")}
                   </Button>
                 )}
               </div>
@@ -310,8 +310,8 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
         <ConfirmDialog
           title={t("backups.schedule.resetConfirmTitle")}
           message={t("backups.schedule.resetConfirmMessage")}
-          confirmLabel={t("backups.schedule.reset")}
-          cancelLabel={t("backups.runs.deleteCancelButton")}
+          confirmLabel={t("common.reset")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             setIsResetConfirmOpen(false);

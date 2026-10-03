@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 
 // Decimal fields are serialized as strings by the backend (pydantic v2's
@@ -140,7 +142,7 @@ export function setAddonBasePrice(addonId: number, basePrice: string): Promise<v
 /** "Стандарт · 30 дн." for a plan duration, just the name for an add-on. */
 export function pricingRowLabel(
   row: { name: string; days: number | null },
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ): string {
   return row.days === null ? row.name : `${row.name} · ${t("plans.daysShort", { count: row.days })}`;
 }

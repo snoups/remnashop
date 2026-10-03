@@ -57,7 +57,7 @@ export function SessionsPanel({ userId }: { userId?: number }) {
           title={t("sessions.revokeTitle")}
           message={isRevokingCurrent ? t("sessions.revokeConfirmCurrent") : t("sessions.revokeConfirm")}
           confirmLabel={t("sessions.revoke")}
-          cancelLabel={t("sessions.cancel")}
+          cancelLabel={t("common.cancel")}
           danger
           portal={!isOwn || isRevokingCurrent}
           onConfirm={() => {

@@ -23,7 +23,7 @@ import { DialogHeader } from "@shared/ui/DialogHeader";
 import { TextInput, TextArea } from "@shared/ui/TextInput";
 import { Field } from "@shared/ui/Field";
 
-const CURRENCIES = ["USD", "XTR", "RUB"];
+const CURRENCIES = ["USD", "XTR", "RUB"] as const;
 const FORM_ID = "adlink-create-form";
 
 interface AdLinkCreateDialogProps {
@@ -188,10 +188,10 @@ function AdLinkCreateDialogBody({
 
       <div className="flex justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
         <Button variant="outline" onClick={close}>
-          {t("advertising.create.cancel")}
+          {t("common.cancel")}
         </Button>
         <Button variant="accent" type="submit" form={FORM_ID} disabled={isSubmitting || !canSubmit}>
-          {isSubmitting ? t("advertising.create.saving") : t("advertising.create.save")}
+          {isSubmitting ? t("advertising.create.saving") : t("common.create")}
         </Button>
       </div>
     </>

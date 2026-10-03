@@ -279,7 +279,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
           title={t("blacklist.matches.unblockAll.title")}
           message={t("blacklist.matches.unblockAll.confirm")}
           confirmLabel={t("blacklist.matches.unblockAll.button")}
-          cancelLabel={t("blacklist.matches.unblockAll.cancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           size="md"
           onConfirm={() => {

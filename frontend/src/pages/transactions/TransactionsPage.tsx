@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -116,7 +117,7 @@ export function TransactionsPage() {
   );
   const [collapsedDays, toggleDay] = useCollapsedSet();
 
-  const none = t("transactions.stats.none");
+  const none = t("common.none");
   const money = (amount: string) => formatMoney(amount, summary?.report_currency ?? "", i18n.language);
 
   const trendHint = period ? t("transactions.stats.periodTrend", { days: period }) : t("transactions.stats.totalTrend");
@@ -225,7 +226,7 @@ export function TransactionsPage() {
                 options={[
                   { value: "", label: t("transactions.filters.gatewayAll") },
                   ...gatewayOptions.map((type) => {
-                    const label = t(`settings.gateways.types.${type}`);
+                    const label = t(`settings.gateways.types.${type}` as ParseKeys);
                     return { value: type, label, icon: letterIcon(label) };
                   }),
                 ]}
@@ -300,7 +301,7 @@ export function TransactionsPage() {
                       <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
                         {group.items.map((order) => {
                           const symbol = currencySymbol(order.currency);
-                          const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}`);
+                          const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
 
                           return (
                             <motion.button

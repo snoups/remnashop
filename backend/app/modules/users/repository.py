@@ -405,6 +405,14 @@ class UserRepository:
         db_user.notifications_seen_at = seen_at
         await self.session.flush()
 
+    async def clear_notifications(self, user_id: int, cleared_at: datetime) -> None:
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            return
+        db_user.notifications_seen_at = cleared_at
+        db_user.notifications_cleared_at = cleared_at
+        await self.session.flush()
+
     async def set_notification_groups(self, user_id: int, groups: list[str]) -> None:
         db_user = await self.session.get(User, user_id)
         if db_user is None:

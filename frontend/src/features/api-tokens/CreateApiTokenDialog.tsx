@@ -169,14 +169,14 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
             type="button"
             onClick={close}
           >
-            {t("apiTokens.cancel")}
+            {t("common.cancel")}
           </Button>
           <Button
             variant="accent"
             type="submit"
             disabled={isSubmitting || name.trim().length === 0 || permissions.size === 0}
           >
-            {t("apiTokens.submit")}
+            {t("common.create")}
           </Button>
         </div>
       </form>

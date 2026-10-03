@@ -354,14 +354,14 @@ function PlanEditDialogBody({
             type="button"
             onClick={close}
           >
-            {t("plans.edit.cancel")}
+            {t("common.cancel")}
           </Button>
           <Button
             variant="accent"
             type="submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? t("plans.edit.saving") : t("plans.edit.save")}
+            {isSubmitting ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </form>

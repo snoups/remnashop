@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import {
   Activity,
   AtSign,
@@ -70,7 +71,7 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
       : isApiToken(user)
         ? t("eventLog.detail.apiToken")
         : user.role
-          ? t(`roles.${user.role}`)
+          ? t(`roles.${user.role}` as ParseKeys)
           : undefined;
   // id 0 and below is a synthetic actor (API token / system), not a real row
   const userId = user?.id && user.id > 0 ? String(user.id) : undefined;
@@ -171,7 +172,7 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
     <>
       <DialogHeader
         glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />}
-        title={t(`eventLog.events.${entry.event_type}`)}
+        title={t(`eventLog.events.${entry.event_type}` as ParseKeys)}
       />
 
       {tabs.length > 1 && (

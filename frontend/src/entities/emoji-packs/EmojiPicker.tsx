@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { Plus, Smile, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
@@ -204,7 +205,7 @@ export function EmojiPicker({
             STANDARD_EMOJI.map((group) => (
               <div key={group.key} className="mb-2">
                 <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t(`dialogs.inspector.emojiGroup.${group.key}`)}
+                  {t(`dialogs.inspector.emojiGroup.${group.key}` as ParseKeys)}
                 </span>
                 <div className="grid grid-cols-8 gap-1">
                   {group.items.map((emoji) => (

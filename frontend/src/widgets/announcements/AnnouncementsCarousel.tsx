@@ -1,24 +1,26 @@
-import { ChevronLeft, ChevronRight, ExternalLink, Pause, Play, X } from "lucide-react";
+import { ExternalLink, Pause, Play, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { localized } from "@entities/announcements/api";
 import type { Announcement } from "@entities/announcements/api";
-import { DialogPortal } from "@shared/ui/DialogPortal";
+import { BrandLogo } from "@shared/ui/BrandLogo";
 import { IconButton } from "@shared/ui/IconButton";
 
 const SLIDE_MS = 6000;
-const TICK_MS = 100;
 
 interface AnnouncementsCarouselProps {
   /** stories with at least one slide, newest first */
   stories: Announcement[];
   startIndex: number;
+  /** fires for every story the viewer lands on */
+  onView?: (id: string) => void;
   onClose: () => void;
 }
 
-export function AnnouncementsCarousel({ stories, startIndex, onClose }: AnnouncementsCarouselProps) {
+export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: AnnouncementsCarouselProps) {
   const { t, i18n } = useTranslation();
   const [storyIndex, setStoryIndex] = useState(startIndex);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -61,15 +63,32 @@ export function AnnouncementsCarousel({ stories, startIndex, onClose }: Announce
     }
   }, [slideIndex, storyIndex, goToStory]);
 
+  // a ref, so a new callback identity each render doesn't re-report the same story
+  const onViewRef = useRef(onView);
+  onViewRef.current = onView;
+  const storyId = story?.id;
+  useEffect(() => {
+    if (storyId) onViewRef.current?.(storyId);
+  }, [storyId]);
+
   // a story switch can unmount or disable the clicked control, which drops focus to <body>
   useEffect(() => {
     rootRef.current?.focus();
   }, [storyIndex]);
 
+  // per frame, so the progress bar moves smoothly; capped so a held last slide stops re-rendering
   useEffect(() => {
     if (paused) return;
-    const timer = setInterval(() => setElapsed((value) => value + TICK_MS), TICK_MS);
-    return () => clearInterval(timer);
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const delta = now - last;
+      last = now;
+      setElapsed((value) => Math.min(SLIDE_MS, value + delta));
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   }, [paused]);
 
   // the last slide of the last story holds at full progress instead of looping
@@ -108,8 +127,8 @@ export function AnnouncementsCarousel({ stories, startIndex, onClose }: Announce
     );
   };
 
-  return (
-    <DialogPortal>
+  // straight to <body>, not DialogPortal: shorts cover the whole viewport, like the donate dialog
+  return createPortal(
       <div
         ref={rootRef}
         tabIndex={-1}
@@ -117,14 +136,12 @@ export function AnnouncementsCarousel({ stories, startIndex, onClose }: Announce
         aria-modal="true"
         aria-label={title}
         onKeyDown={onKeyDown}
-        className="fixed inset-0 z-50 flex items-center justify-center gap-10 bg-black/85 outline-none"
+        className="fixed inset-0 z-50 flex items-center justify-center gap-10 bg-black/55 outline-none backdrop-blur-3xl"
       >
         <div className="absolute left-6 top-5 hidden items-center gap-3 sm:flex">
-          <span className="flex size-9 items-center justify-center rounded-full bg-primary text-[13px] font-extrabold text-primary-foreground">
-            rs
-          </span>
+          <BrandLogo className="size-9 text-primary" />
           <span className="flex flex-col">
-            <span className="text-[15px] font-bold text-foreground">{t("announcements.from")}</span>
+            <span className="text-[15px] font-bold text-foreground">{t("announcements.heading")}</span>
             <span className="text-[12.5px] text-muted-foreground">
               {t("announcements.counter", { current: storyIndex + 1, total: stories.length })}
             </span>
@@ -173,15 +190,6 @@ export function AnnouncementsCarousel({ stories, startIndex, onClose }: Announce
               >
                 {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
               </IconButton>
-              <IconButton
-                size="9"
-                tone="glass"
-                className="pointer-events-auto"
-                onClick={onClose}
-                aria-label={t("announcements.close")}
-              >
-                <X className="size-4" />
-              </IconButton>
             </div>
           </div>
 
@@ -197,7 +205,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onClose }: Announce
                 rel="noopener noreferrer"
                 className="pointer-events-auto mt-2 flex h-11 items-center justify-center gap-2 rounded-full bg-primary text-[14px] font-semibold text-primary-foreground"
               >
-                {t("announcements.openLink")}
+                {localized(slide.url_label, i18n.language) || t("announcements.openLink")}
                 <ExternalLink className="size-4" />
               </a>
             )}
@@ -206,27 +214,16 @@ export function AnnouncementsCarousel({ stories, startIndex, onClose }: Announce
 
         {side(storyIndex + 1)}
 
-        <div className="absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col gap-3 lg:flex">
-          <IconButton
-            size="9.5"
-            tone="glass"
-            onClick={() => goToStory(storyIndex - 1)}
-            disabled={storyIndex === 0}
-            aria-label={t("announcements.prevStory")}
-          >
-            <ChevronLeft className="size-5" />
-          </IconButton>
-          <IconButton
-            size="9.5"
-            tone="glass"
-            onClick={() => goToStory(storyIndex + 1)}
-            disabled={storyIndex === stories.length - 1}
-            aria-label={t("announcements.nextStory")}
-          >
-            <ChevronRight className="size-5" />
-          </IconButton>
-        </div>
-      </div>
-    </DialogPortal>
+        <IconButton
+          size="9.5"
+          tone="glass"
+          className="absolute right-4 top-4 z-10"
+          onClick={onClose}
+          aria-label={t("announcements.close")}
+        >
+          <X className="size-5" />
+        </IconButton>
+      </div>,
+    document.body,
   );
 }

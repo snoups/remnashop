@@ -51,7 +51,7 @@ export function OAuthLoginButtons({ oauthProviders, oidcDisplayName, compact = f
       setOAuthFlow("login");
       window.location.href = authorization_url;
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
       setPending(null);
     }
   };

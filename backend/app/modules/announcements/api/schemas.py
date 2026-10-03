@@ -8,6 +8,7 @@ class SlideResponse(BaseModel):
     image_url: Optional[str]
     text: dict[str, str]
     url: Optional[str]
+    url_label: dict[str, str]
 
 
 class AnnouncementResponse(BaseModel):
@@ -17,6 +18,7 @@ class AnnouncementResponse(BaseModel):
     title: dict[str, str]
     text: dict[str, str]
     url: Optional[str]
+    url_label: dict[str, str]
     notify_at: datetime
     auto_open: bool
     slides: list[SlideResponse]
@@ -28,5 +30,5 @@ class AnnouncementListResponse(BaseModel):
     total: int
 
 
-class MarkAnnouncementsSeenRequest(BaseModel):
+class AnnouncementIdsRequest(BaseModel):
     ids: list[str] = Field(min_length=1, max_length=100)

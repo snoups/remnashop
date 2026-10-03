@@ -2,7 +2,7 @@ import { AlertCircle, CreditCard, Receipt, Ticket } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { TFunction } from "i18next";
+import type { ParseKeys, TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, listTransactions, type TransactionItem } from "@entities/transactions/api";
@@ -119,7 +119,7 @@ function PurchaseKpis({ orders, total, saved }: { orders: TransactionItem[]; tot
       )}
       <KpiTile
         label={t("users.details.analytics.gateway")}
-        value={topGateway ? t(`settings.gateways.types.${topGateway}`) : "—"}
+        value={topGateway ? t(`settings.gateways.types.${topGateway}` as ParseKeys) : "—"}
         hint={topGateway ? t("users.details.analytics.gatewayHint", { count: topGatewayCount, total: paid.length }) : undefined}
       />
     </>

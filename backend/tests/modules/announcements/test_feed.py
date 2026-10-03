@@ -111,3 +111,20 @@ def test_malformed_feed_raises(body: bytes) -> None:
 
 def test_empty_items_is_a_valid_empty_feed() -> None:
     assert parse_feed(b'{"items": []}') == []
+
+
+def test_url_label_is_localized_and_capped() -> None:
+    items = parse_feed(
+        _feed(
+            _item(id="ok", url_label={"ru": "Поддержать", "en": "Support"}),
+            _item(id="long", url_label={"en": "x" * 41}),
+            _item(
+                id="slide",
+                auto_open=True,
+                slides=[{"text": {"en": "a"}, "url_label": {"en": "Go"}}],
+            ),
+        )
+    )
+    assert [i.id for i in items] == ["ok", "slide"]
+    assert items[0].url_label == {"ru": "Поддержать", "en": "Support"}
+    assert items[1].slides[0].url_label == {"en": "Go"}

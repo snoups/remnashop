@@ -49,7 +49,7 @@ export function ResetReferralCodeButton({ userId, onReset, className }: ResetRef
           title={t("referrals.stats.resetConfirmTitle")}
           message={t("referrals.stats.resetConfirmText")}
           confirmLabel={t("referrals.stats.resetCode")}
-          cancelLabel={t("referrals.stats.resetCancel")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleReset()}
           onCancel={() => setIsConfirming(false)}

@@ -32,7 +32,7 @@ export function PasskeyLoginButton({ onSuccess, compact = false }: PasskeyLoginB
       } else if (err instanceof Error && err.name === "NotSupportedError") {
         toast.error(t("auth.oauth.passkeyNotSupported"));
       } else {
-        toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+        toast.error(getErrorMessage(err, t("common.errors.generic")));
       }
     } finally {
       setIsLoading(false);

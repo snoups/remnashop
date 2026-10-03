@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { BookOpen, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -55,7 +56,7 @@ export function GatewaySettingsCard({
   const [testOrderId, setTestOrderId] = useState<number | null>(null);
   const [testStatus, setTestStatus] = useState<TestPaymentStatus | null>(null);
 
-  const label = t(`settings.gateways.types.${gateway.type}`);
+  const label = t(`settings.gateways.types.${gateway.type}` as ParseKeys);
   const flagFields = fields.filter((field) => field.kind === "boolean");
   const valueFields = fields.filter((field) => field.kind !== "boolean");
   const docsUrl = GATEWAY_DOCS_URLS[gateway.type];
@@ -82,9 +83,9 @@ export function GatewaySettingsCard({
     try {
       onChanged(await updateGatewaySettings(gateway.type, changed));
       setValues({});
-      toast.success(t("settings.gateways.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +96,7 @@ export function GatewaySettingsCard({
     try {
       onChanged(await updateGatewaySettings(gateway.type, { [key]: String(enabled) }));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setSavingFlag(null);
     }
@@ -224,10 +225,10 @@ export function GatewaySettingsCard({
                 <div key={field.key} className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium text-foreground">
-                      {t(`settings.gateways.fields.${gateway.type}.${field.key}`)}
+                      {t(`settings.gateways.fields.${field.key}` as ParseKeys)}
                     </p>
                     <p className="text-[12px] text-muted-foreground">
-                      {t(`settings.gateways.flagHints.${field.key}`)}
+                      {t(`settings.gateways.flagHints.${field.key}` as ParseKeys)}
                     </p>
                   </div>
                   <div className="mr-1 flex">
@@ -245,7 +246,7 @@ export function GatewaySettingsCard({
                 return (
                   <Field
                     key={field.key}
-                    label={t(`settings.gateways.fields.${gateway.type}.${field.key}`)}
+                    label={t(`settings.gateways.fields.${field.key}` as ParseKeys)}
                     htmlFor={`gateway-${gateway.type}-${field.key}`}
                     aside={mustFill ? <span className="text-error">*</span> : undefined}
                   >
@@ -277,7 +278,7 @@ export function GatewaySettingsCard({
                       type="submit"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? t("settings.gateways.saving") : t("settings.gateways.save")}
+                      {isSubmitting ? t("common.saving") : t("common.save")}
                     </Button>
                   )}
                   {canTest && (

@@ -24,6 +24,7 @@ class GetNotificationsUseCase(UseCase[None, NotificationsDto, UserDto]):
                 event_types=event_types,
                 exclude_actor_id=actor.id,
                 limit=NOTIFICATIONS_LIMIT,
+                after=actor.notifications_cleared_at,
             )
             unread_count = await self._event_log_repository.count_notifications_since(
                 event_types=event_types,

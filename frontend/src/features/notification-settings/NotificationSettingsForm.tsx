@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { Bell, CircleAlert, HandCoins, ShieldAlert, ShoppingCart, UserCog, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -71,10 +72,10 @@ export function NotificationSettingsForm() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium text-foreground">
-                    {t(`profile.notifications.groups.${group}.title`)}
+                    {t(`profile.notifications.groups.${group}.title` as ParseKeys)}
                   </p>
                   <p className="text-[12px] text-muted-foreground">
-                    {t(`profile.notifications.groups.${group}.description`)}
+                    {t(`profile.notifications.groups.${group}.description` as ParseKeys)}
                   </p>
                 </div>
                 <div className="mr-1 flex">

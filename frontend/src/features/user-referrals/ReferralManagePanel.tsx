@@ -106,7 +106,7 @@ export function ReferralManagePanel({ userId, stats, canAdjustPoints, onChanged 
       <Card variant="form" title={t("referrals.stats.referralCodeLabel")} icon={Hash}>
         <div className="flex items-center justify-between gap-3">
           <span className="font-mono text-xl font-semibold tracking-wider text-foreground">
-            {stats.referral_code ?? t("referrals.stats.none")}
+            {stats.referral_code ?? t("common.none")}
           </span>
           <span className="text-[12px] text-muted-foreground">{t("referrals.dialog.invitedByCode", { count: invited })}</span>
         </div>

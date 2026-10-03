@@ -1,3 +1,5 @@
+import type { ParseKeys } from "i18next";
+
 import i18n from "@shared/i18n";
 import { getDebugState } from "@shared/lib/debug-bar";
 import { clearAccessToken, getAccessToken, saveAccessToken } from "@shared/lib/token-storage";
@@ -105,7 +107,7 @@ const GATEWAY_ERROR_STATUSES = new Set([502, 503, 504]);
 export function getErrorMessage(err: unknown, fallback: string): string {
   if (!(err instanceof ApiError)) return fallback;
   const key = `apiErrors.${err.code}`;
-  return err.code && i18n.exists(key) ? i18n.t(key) : err.message;
+  return err.code && i18n.exists(key) ? i18n.t(key as ParseKeys) : err.message;
 }
 
 function extractErrorCode(body: unknown): string | null {

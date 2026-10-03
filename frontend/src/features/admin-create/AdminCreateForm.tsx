@@ -143,14 +143,14 @@ function AdminCreateFormBody({ onCreated }: AdminCreateFormProps) {
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
           <Button variant="outline" type="button" onClick={close}>
-            {t("admins.permissionsForm.cancel")}
+            {t("common.cancel")}
           </Button>
           <Button
             variant="accent"
             type="submit"
             disabled={isSubmitting || isLoginInvalid || catalogState.kind !== "ready"}
           >
-            {t("admins.create.submit")}
+            {t("common.create")}
           </Button>
         </div>
       </form>

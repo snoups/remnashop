@@ -96,11 +96,19 @@ class EventLogRepository:
         return [self._convert_to_dto(row) for row in rows], int(total or 0)
 
     async def list_notifications(
-        self, *, event_types: frozenset[str], exclude_actor_id: int, limit: int
+        self,
+        *,
+        event_types: frozenset[str],
+        exclude_actor_id: int,
+        limit: int,
+        after: Optional[datetime] = None,
     ) -> builtins.list[EventLogEntryDto]:
+        filters = _notification_filters(event_types, exclude_actor_id)
+        if after is not None:
+            filters.append(EventLogEntry.occurred_at > after)
         stmt = (
             select(EventLogEntry)
-            .where(*_notification_filters(event_types, exclude_actor_id))
+            .where(*filters)
             .order_by(EventLogEntry.occurred_at.desc(), EventLogEntry.id.desc())
             .limit(limit)
         )

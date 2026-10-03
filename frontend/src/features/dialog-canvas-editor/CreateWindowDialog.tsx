@@ -70,11 +70,11 @@ function CreateWindowDialogBody({ onCreate }: Pick<CreateWindowDialogProps, "onC
           </Card>
           <div className="flex justify-end gap-2">
             <Button variant="outline" type="button" onClick={close}>
-              {t("dialogs.windowList.addWindowCancel")}
+              {t("common.cancel")}
             </Button>
             <Button variant="accent" type="submit" disabled={isSubmitting || !trimmed}>
               {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
-              {t("dialogs.windowList.addWindowConfirm")}
+              {t("common.create")}
             </Button>
           </div>
         </div>

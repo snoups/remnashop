@@ -181,3 +181,29 @@ async def test_mark_seen_rejects_an_empty_list(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 422
+
+
+async def test_dismissed_announcement_leaves_the_list(
+    client: httpx.AsyncClient,
+    announcement_repository: AnnouncementRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = await _staff_token(Role.OWNER, user_repository, session_repository, uow, config)
+    await _seed(announcement_repository, uow)
+    monkeypatch.setattr(
+        "app.modules.announcements.usecases.list_announcements.datetime_now",
+        lambda: datetime.datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = await client.post(
+        "/api/v1/announcements/actions/dismiss", json={"ids": ["all"]}, headers=headers
+    )
+    assert response.status_code == 204
+
+    listed = await client.get("/api/v1/announcements", headers=headers)
+    assert [item["id"] for item in listed.json()["items"]] == ["owners"]

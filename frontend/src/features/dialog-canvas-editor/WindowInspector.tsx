@@ -64,7 +64,7 @@ export function WindowInspector({
       });
       onWindowUpdated(updated);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -78,10 +78,10 @@ export function WindowInspector({
     try {
       const updated = await updateWindow(window.key, { name: next });
       onWindowUpdated(updated);
-      toast.success(t("dialogs.inspector.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
       setNameDraft(window.name ?? "");
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -89,9 +89,9 @@ export function WindowInspector({
     try {
       const updated = await updateWindow(window.key, { is_enabled: value });
       onWindowUpdated(updated);
-      toast.success(t("dialogs.inspector.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -130,7 +130,7 @@ export function WindowInspector({
       await restoreDefaultBanner();
       onBannerChanged();
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsBusy(false);
     }
@@ -143,7 +143,7 @@ export function WindowInspector({
       onWindowUpdated(updated);
       toast.success(t("dialogs.inspector.resetDone"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -295,8 +295,8 @@ export function WindowInspector({
         <ConfirmDialog
           title={t("dialogs.inspector.resetWindowTitle")}
           message={t("dialogs.inspector.resetWindowConfirm", { name: label })}
-          confirmLabel={t("dialogs.inspector.resetWindowConfirmButton")}
-          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          confirmLabel={t("common.reset")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleResetWindow()}
           onCancel={() => setIsResetConfirmOpen(false)}

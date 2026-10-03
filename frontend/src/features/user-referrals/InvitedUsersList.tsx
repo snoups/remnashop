@@ -101,7 +101,7 @@ function InvitedUsersPage({ userId, level, search }: { userId: number; level?: n
                     {t("referrals.list.levelBadge", { level: item.level })}
                   </Badge>
                   <span className="flex w-24 shrink-0 flex-col items-end text-[12.5px] leading-tight tabular-nums">
-                    {rewards.length === 0 && <span className="text-muted-foreground">{t("referrals.stats.none")}</span>}
+                    {rewards.length === 0 && <span className="text-muted-foreground">{t("common.none")}</span>}
                     {rewards.map((reward) => (
                       <span key={reward} className="max-w-full truncate font-semibold text-foreground">
                         {reward}

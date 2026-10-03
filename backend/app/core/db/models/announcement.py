@@ -31,3 +31,5 @@ class AnnouncementView(BaseSql):
         ForeignKey("announcements.id", ondelete="CASCADE"), primary_key=True
     )
     seen_at: Mapped[datetime]
+    # cleared from the bell before the 24h window ran out
+    dismissed_at: Mapped[Optional[datetime]]

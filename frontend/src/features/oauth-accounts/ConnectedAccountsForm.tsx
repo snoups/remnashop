@@ -79,7 +79,7 @@ export function ConnectedAccountsForm() {
       setOAuthFlow("connect");
       window.location.href = authorization_url;
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
       setPendingProvider(null);
     }
   };
@@ -90,7 +90,7 @@ export function ConnectedAccountsForm() {
       await disconnectOAuth(provider);
       reload();
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setPendingProvider(null);
     }
@@ -342,8 +342,8 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
         <ConfirmDialog
           title={t("profile.passkeys.deleteTitle")}
           message={t("profile.passkeys.deleteConfirm")}
-          confirmLabel={t("profile.passkeys.delete")}
-          cancelLabel={t("profile.passkeys.cancel")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             void handleDelete(deleteTarget);
@@ -407,11 +407,11 @@ function PasskeyRenameDialogBody({ name, onRename }: Omit<PasskeyRenameDialogPro
           </Card>
           <div className="flex justify-end gap-2">
             <Button variant="outline" type="button" onClick={close}>
-              {t("profile.passkeys.cancel")}
+              {t("common.cancel")}
             </Button>
             <Button variant="accent" type="submit" disabled={isSubmitting || !trimmed}>
               {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
-              {t("profile.passkeys.save")}
+              {t("common.save")}
             </Button>
           </div>
         </div>

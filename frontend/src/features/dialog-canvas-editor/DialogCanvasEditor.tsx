@@ -288,9 +288,9 @@ export function DialogCanvasEditor() {
       setWindowsData(windows.map((w) => (w.key === updated.key ? updated : w)));
       setPendingButtons(null);
       reloadEntries();
-      toast.success(t("dialogs.inspector.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -313,10 +313,10 @@ export function DialogCanvasEditor() {
       const created = await createCustomWindow(name);
       setWindowsData([...windows, created]);
       setSelectedKey(created.key);
-      toast.success(t("dialogs.inspector.saved"));
+      toast.success(t("common.saved"));
       return true;
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
       return false;
     }
   };
@@ -328,7 +328,7 @@ export function DialogCanvasEditor() {
       if (selectedKey === key) setSelectedKey(null);
       toast.success(t("dialogs.windowList.deleted"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -339,7 +339,7 @@ export function DialogCanvasEditor() {
       reloadWindows();
       toast.success(t("dialogs.inspector.resetDone"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -436,7 +436,7 @@ export function DialogCanvasEditor() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -467,7 +467,7 @@ export function DialogCanvasEditor() {
       setSelection(null);
       toast.success(t("dialogs.toolbar.imported"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -648,7 +648,7 @@ export function DialogCanvasEditor() {
                     disabled={brokenUrlButton !== null || limitProblem !== null}
                     onClick={() => void handleSaveButtons()}
                   >
-                    {t("dialogs.inspector.buttonsSave")}
+                    {t("common.save")}
                   </Button>
                 </div>
               </div>
@@ -662,7 +662,7 @@ export function DialogCanvasEditor() {
           title={t("dialogs.inspector.buttonsDiscardTitle")}
           message={t("dialogs.inspector.discardSwitchConfirm")}
           confirmLabel={t("dialogs.inspector.discardSwitchConfirmButton")}
-          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             setSelectedKey(pendingWindowSwitch);
@@ -676,7 +676,7 @@ export function DialogCanvasEditor() {
           title={t("dialogs.toolbar.import")}
           message={t("dialogs.toolbar.importConfirm")}
           confirmLabel={t("dialogs.toolbar.importConfirmButton")}
-          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleImportConfirmed()}
           onCancel={() => setPendingImport(null)}
@@ -687,7 +687,7 @@ export function DialogCanvasEditor() {
           title={t("dialogs.inspector.resetAllTitle")}
           message={t("dialogs.inspector.resetAllConfirm")}
           confirmLabel={t("dialogs.inspector.resetAllConfirmButton")}
-          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleResetAll()}
           onCancel={() => setIsResetAllConfirmOpen(false)}

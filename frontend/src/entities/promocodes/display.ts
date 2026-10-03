@@ -1,3 +1,4 @@
+import type { ParseKeys, TFunction } from "i18next";
 import { ArrowDownUp, BadgePercent, CalendarPlus, Crown, Percent, Smartphone } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -25,7 +26,6 @@ export interface PromocodeLimitsDraft {
   isReusable: boolean;
 }
 type LimitsPayload = Required<Omit<UpdatePromocodeRequest, "is_active">>;
-type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 export const PROMOCODE_STATUSES: PromocodeStatus[] = ["ACTIVE", "INACTIVE", "EXPIRED"];
 export const REWARD_TYPES: PromocodeRewardType[] = [
@@ -62,7 +62,7 @@ export function describeReward(
   promo: PromocodeReward,
   addons: AddOnListItem[],
   plans: Plan[],
-  t: TranslateFn,
+  t: TFunction,
 ): string {
   switch (promo.reward_type) {
     case "DURATION":
@@ -81,7 +81,7 @@ export function describeReward(
     case "PURCHASE_DISCOUNT":
       return `-${promo.reward ?? 0}%`;
     default:
-      return t(`promocodes.rewardType.${promo.reward_type}`);
+      return t(`promocodes.rewardType.${promo.reward_type}` as ParseKeys);
   }
 }
 

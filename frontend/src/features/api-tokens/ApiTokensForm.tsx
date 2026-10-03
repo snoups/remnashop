@@ -70,7 +70,7 @@ export function ApiTokensForm() {
           {!(state.kind === "ready" && state.data.length === 0) && (
             <Button variant="accent" onClick={() => setIsCreating(true)}>
               <Plus className="size-3.5" />
-              {t("apiTokens.create")}
+              {t("common.create")}
             </Button>
           )}
         </div>
@@ -141,7 +141,7 @@ export function ApiTokensForm() {
           title={t("apiTokens.revokeTitle")}
           message={t("apiTokens.revokeConfirm")}
           confirmLabel={t("apiTokens.revoke")}
-          cancelLabel={t("apiTokens.cancel")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             void handleRevoke(pendingRevoke.id);

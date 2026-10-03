@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import { ServerCrash, Unplug, type LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -7,8 +8,8 @@ import { FULL_SCREEN_ACTION_CLASS, FullScreenMessage } from "@widgets/full-scree
 
 interface FullScreenErrorProps {
   icon: LucideIcon;
-  titleKey: string;
-  descriptionKey: string;
+  titleKey: ParseKeys;
+  descriptionKey: ParseKeys;
 }
 
 function FullScreenError({ icon, titleKey, descriptionKey }: FullScreenErrorProps) {

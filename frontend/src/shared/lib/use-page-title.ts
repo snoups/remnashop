@@ -1,10 +1,11 @@
+import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
 import { useDocumentTitle } from "@shared/lib/use-document-title";
 
 // Longest-prefix match against location.pathname, most specific first.
-const PAGE_TITLE_BY_PATH: { prefix: string; key: string }[] = [
+const PAGE_TITLE_BY_PATH: { prefix: string; key: ParseKeys }[] = [
   { prefix: "/dashboard/settings", key: "settings.title" },
   { prefix: "/dashboard/profile", key: "profile.title" },
   { prefix: "/dashboard/admins", key: "admins.title" },

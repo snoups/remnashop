@@ -39,7 +39,7 @@ export function PasswordChangeRequired() {
       toast.success(t("auth.passwordChange.done"));
       navigate("/", { replace: true });
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
       setIsSubmitting(false);
     }
   };

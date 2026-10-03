@@ -35,7 +35,7 @@ export function EditProfileDialog({ name, login }: EditProfileDialogProps) {
         onClick={() => setIsOpen(true)}
       >
         <Pencil className="size-3.5" />
-        {t("profile.edit.button")}
+        {t("common.edit")}
       </Button>
 
       {isOpen && (
@@ -88,7 +88,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
       toast.success(t("profile.edit.saved"));
       close();
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
     }
@@ -175,10 +175,10 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
           </Card>
           <div className="flex justify-end gap-2">
             <Button variant="outline" type="button" onClick={close}>
-              {t("profile.edit.cancel")}
+              {t("common.cancel")}
             </Button>
             <Button variant="accent" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t("profile.edit.saving") : t("profile.edit.save")}
+              {isSubmitting ? t("common.saving") : t("common.save")}
             </Button>
           </div>
         </div>

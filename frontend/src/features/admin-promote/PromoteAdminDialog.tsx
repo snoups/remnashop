@@ -110,7 +110,7 @@ function PromoteAdminForm({
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" type="button" onClick={close}>
-              {t("admins.promote.cancel")}
+              {t("common.cancel")}
             </Button>
             <Button variant="accent" type="submit" disabled={isSubmitting || isLoginInvalid}>
               {t("admins.promote.submit")}

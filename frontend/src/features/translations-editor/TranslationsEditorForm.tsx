@@ -142,7 +142,7 @@ export function TranslationsEditorForm() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -169,7 +169,7 @@ export function TranslationsEditorForm() {
         t("dialogs.texts.imported", { applied: result.applied, skipped: result.skipped }),
       );
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -180,7 +180,7 @@ export function TranslationsEditorForm() {
       reloadEntries();
       toast.success(t("dialogs.texts.resetAllDone"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     }
   };
 
@@ -394,7 +394,7 @@ export function TranslationsEditorForm() {
           icon={Upload}
           message={t("dialogs.texts.importConfirm")}
           confirmLabel={t("dialogs.toolbar.importConfirmButton")}
-          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          cancelLabel={t("common.cancel")}
           onConfirm={() => void handleImportConfirmed()}
           onCancel={() => setPendingImport(null)}
         />
@@ -404,7 +404,7 @@ export function TranslationsEditorForm() {
           title={t("dialogs.inspector.resetAllTitle")}
           message={t("dialogs.texts.resetAllConfirm")}
           confirmLabel={t("dialogs.inspector.resetAllConfirmButton")}
-          cancelLabel={t("dialogs.inspector.resetWindowCancelButton")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleResetAll()}
           onCancel={() => setIsResetAllConfirmOpen(false)}

@@ -79,6 +79,8 @@ class User(BaseSql, TimestampMixin):
     is_trial_available: Mapped[bool] = mapped_column(default=True, server_default="true")
     # dashboard bell: events up to this moment count as read
     notifications_seen_at: Mapped[Optional[datetime]]
+    # dashboard bell: events up to this moment are hidden from it (the event log keeps them)
+    notifications_cleared_at: Mapped[Optional[datetime]]
     # NULL = the default (critical) groups; see NOTIFICATION_GROUPS
     notification_groups: Mapped[Optional[list[str]]] = mapped_column(JSONB)
     # soft delete: the row stays for payment/referral history, personal data is wiped

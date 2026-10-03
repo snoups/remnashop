@@ -165,10 +165,10 @@ function AdminDetailsDialogBody({
           {tab === "permissions" && (
             <div className="ml-auto flex gap-2">
               <Button variant="outline" type="button" onClick={() => setPermissionsRevision((value) => value + 1)}>
-                {t("admins.permissionsForm.reset")}
+                {t("common.reset")}
               </Button>
               <Button variant="accent" type="submit" form={ADMIN_PERMISSIONS_FORM_ID} disabled={isSavingPermissions}>
-                {t("admins.permissionsForm.submit")}
+                {t("common.save")}
               </Button>
             </div>
           )}

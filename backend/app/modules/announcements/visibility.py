@@ -26,6 +26,8 @@ def is_visible(
 ) -> bool:
     if announcement.roles is not None and role.name not in announcement.roles:
         return False
+    if announcement.dismissed_at is not None:
+        return False
     if announcement.seen_at is not None and now - announcement.seen_at >= STALE_AFTER:
         return False
     if announcement.versions is None:

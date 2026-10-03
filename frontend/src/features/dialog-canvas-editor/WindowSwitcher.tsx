@@ -203,8 +203,8 @@ export function WindowSwitcher({
         <ConfirmDialog
           title={t("dialogs.windowList.deleteWindowTitle")}
           message={t("dialogs.windowList.deleteWindowConfirm", { name: labelOf(deleteTarget) })}
-          confirmLabel={t("dialogs.windowList.deleteWindowConfirmButton")}
-          cancelLabel={t("dialogs.windowList.deleteWindowCancelButton")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             onDelete(deleteTarget.key);

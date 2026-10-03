@@ -500,7 +500,7 @@ export function AppearanceSettingsForm() {
                   type="submit"
                   disabled={isSaving}
                 >
-                  {t("settings.appearance.save")}
+                  {t("common.save")}
                 </Button>
               )}
               {canReset && (
@@ -511,7 +511,7 @@ export function AppearanceSettingsForm() {
                   onClick={() => setIsResetConfirmOpen(true)}
                   disabled={isResetting}
                 >
-                  {t("settings.appearance.reset")}
+                  {t("common.reset")}
                 </Button>
               )}
             </div>
@@ -523,8 +523,8 @@ export function AppearanceSettingsForm() {
         <ConfirmDialog
           title={t("settings.appearance.resetConfirmTitle")}
           message={t("settings.appearance.resetConfirmMessage")}
-          confirmLabel={t("settings.appearance.reset")}
-          cancelLabel={t("settings.appearance.cancel")}
+          confirmLabel={t("common.reset")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             setIsResetConfirmOpen(false);

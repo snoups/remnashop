@@ -63,6 +63,10 @@ export function markNotificationsRead(): Promise<void> {
   return apiPost<void, Record<string, never>>("/event-log/notifications/actions/mark-read", {});
 }
 
+export function clearNotifications(): Promise<void> {
+  return apiPost<void, Record<string, never>>("/event-log/notifications/actions/clear", {});
+}
+
 export interface NotificationGroups {
   groups: string[];
   available: string[];

@@ -74,9 +74,9 @@ export function ShopSettingsForm() {
         link_reset_cooldown_hours: parsedLinkCooldown,
       });
       setData(settings);
-      toast.success(t("settings.shop.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
     }
@@ -155,7 +155,7 @@ export function ShopSettingsForm() {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? t("settings.shop.saving") : t("settings.shop.save")}
+              {isSubmitting ? t("common.saving") : t("common.save")}
             </Button>
           )}
         </form>

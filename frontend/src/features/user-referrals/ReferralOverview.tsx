@@ -26,7 +26,7 @@ export function ReferralKpis({ userId, stats }: { userId: number; stats: Referra
     canViewRevenue ? getUserReferralRevenue(userId, signal) : Promise.resolve(null),
   );
   const revenue = revenueState.kind === "ready" ? revenueState.data : null;
-  const none = t("referrals.stats.none");
+  const none = t("common.none");
 
   const levels = Object.entries(stats.counts_by_level).sort(([a], [b]) => Number(a) - Number(b));
   const invited = levels.reduce((sum, [, count]) => sum + count, 0);
@@ -60,7 +60,7 @@ export function ReferralKpis({ userId, stats }: { userId: number; stats: Referra
 
 export function ReferralProgramCard({ stats, showCode = true }: { stats: ReferralStats; showCode?: boolean }) {
   const { t } = useTranslation();
-  const none = t("referrals.stats.none");
+  const none = t("common.none");
 
   return (
     <Card variant="list" title={t("referrals.dialog.program")} icon={Gift}>

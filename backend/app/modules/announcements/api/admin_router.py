@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies.admin import require_admin_user
 from app.modules.announcements.api.schemas import (
+    AnnouncementIdsRequest,
     AnnouncementListResponse,
     AnnouncementResponse,
-    MarkAnnouncementsSeenRequest,
 )
 from app.modules.announcements.usecases import (
+    DismissAnnouncementsUseCase,
     ListAnnouncementsUseCase,
     MarkAnnouncementsSeenUseCase,
 )
@@ -33,8 +34,18 @@ async def list_announcements(
 @router.post("/actions/mark-seen", status_code=status.HTTP_204_NO_CONTENT)
 @inject
 async def mark_announcements_seen(
-    body: MarkAnnouncementsSeenRequest,
+    body: AnnouncementIdsRequest,
     use_case: FromDishka[MarkAnnouncementsSeenUseCase],
+    actor: UserDto = Depends(require_admin_user),
+) -> None:
+    await use_case(actor, body.ids)
+
+
+@router.post("/actions/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def dismiss_announcements(
+    body: AnnouncementIdsRequest,
+    use_case: FromDishka[DismissAnnouncementsUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
     await use_case(actor, body.ids)

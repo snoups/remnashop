@@ -118,7 +118,7 @@ export function AdvertisingPage() {
   };
 
   const gridClassName = canViewSummary ? STATS_GRID_CLASSNAME : PLAIN_GRID_CLASSNAME;
-  const none = t("advertising.stats.none");
+  const none = t("common.none");
   const money = (amount: string) => formatMoney(amount, summary?.report_currency ?? "", i18n.language);
   const trendHint = period ? t("advertising.stats.periodTrend", { days: period }) : t("advertising.stats.totalTrend");
   const countTrend = (pick: (s: AdvertisingSummary) => number): KpiTrend | undefined =>

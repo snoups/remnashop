@@ -211,9 +211,9 @@ export function BotSettingsForm() {
       }
       if (settings !== null) setData(settings);
       reloadStatus();
-      toast.success(t("settings.bot.saved"));
+      toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
     }
@@ -227,7 +227,7 @@ export function BotSettingsForm() {
       setProxyUrl("");
       toast.success(t("settings.bot.proxyRemoved"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsRemovingProxy(false);
     }
@@ -244,7 +244,7 @@ export function BotSettingsForm() {
       reloadStatus();
       toast.success(t("settings.bot.restartRequested"));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsRestarting(false);
     }
@@ -383,7 +383,7 @@ export function BotSettingsForm() {
                 type="submit"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? t("settings.bot.saving") : t("settings.bot.save")}
+                {isSubmitting ? t("common.saving") : t("common.save")}
               </Button>
             )}
 

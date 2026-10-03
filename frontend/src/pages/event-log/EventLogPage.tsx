@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import {
   AlertCircle,
   ChevronRight,
@@ -72,7 +73,7 @@ const CATEGORY_ICONS: Record<(typeof CATEGORIES)[number], LucideIcon> = {
   PLANS: Package,
   PAYMENT: CreditCard,
 };
-const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], string> = {
+const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], ParseKeys> = {
   AUTH: "eventLog.filters.categoryAuth",
   ADMIN_MANAGEMENT: "eventLog.filters.categoryAdminManagement",
   USER: "eventLog.filters.categoryUser",
@@ -242,7 +243,7 @@ export function EventLogPage() {
                                 >
                                   <EventTypeIcon eventType={entry.event_type} className="size-4" />
                                 </span>
-                                <span className="truncate">{t(`eventLog.events.${entry.event_type}`)}</span>
+                                <span className="truncate">{t(`eventLog.events.${entry.event_type}` as ParseKeys)}</span>
                               </span>
                               <span className="text-[13px] tabular-nums text-foreground">
                                 {new Date(entry.occurred_at).toLocaleTimeString(i18n.language, {

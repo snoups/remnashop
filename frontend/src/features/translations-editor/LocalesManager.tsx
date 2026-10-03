@@ -50,7 +50,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
     try {
       onChange(isActive ? await removeLocale(locale) : await addLocale(locale));
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsPending(false);
     }

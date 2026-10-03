@@ -404,7 +404,7 @@ function BulkAdjustButton({ onChanged }: { onChanged: () => void }) {
           size="md"
           message={t("pricing.matrix.confirmMessage", { count: diff.affected_count })}
           confirmLabel={t("pricing.matrix.apply")}
-          cancelLabel={t("pricing.matrix.cancel")}
+          cancelLabel={t("common.cancel")}
           onConfirm={() => void handleConfirm()}
           onCancel={() => {
             setStep("closed");
@@ -484,7 +484,7 @@ function BulkAdjustFormBody({ scope, factor, isLoading, onScopeChange, onFactorC
           </Card>
           <div className="flex justify-end gap-2">
             <Button variant="outline" type="button" onClick={close}>
-              {t("pricing.matrix.cancel")}
+              {t("common.cancel")}
             </Button>
             <Button variant="accent" type="submit" disabled={isLoading || !isFactorValid}>
               {isLoading ? t("pricing.matrix.previewing") : t("pricing.matrix.preview")}

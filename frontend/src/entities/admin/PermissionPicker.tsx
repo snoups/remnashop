@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import {
   Ban,
   BarChart3,
@@ -151,7 +152,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
                 />
                 <ResourceIcon className="size-4 shrink-0 text-muted-foreground" />
                 <span className="truncate text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t(`permissionCategories.${categoryKey}`)}
+                  {t(`permissionCategories.${categoryKey}` as ParseKeys)}
                 </span>
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
                   {selectedCount}/{allKeys.length}

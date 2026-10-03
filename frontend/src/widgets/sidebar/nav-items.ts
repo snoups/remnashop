@@ -21,10 +21,11 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 
+import type en from "@shared/i18n/locales/en.json";
 import type { Permission } from "@shared/types/rbac";
 
 export interface NavItem {
-  key: string;
+  key: keyof typeof en.sidebar;
   to: string;
   icon: ComponentType<{ className?: string }>;
   end?: boolean;
@@ -49,7 +50,7 @@ export const NAV_ITEMS: NavItem[] = [
 
 // Settings page tabs; the header search lists the same ones.
 export interface SettingsTab {
-  key: string;
+  key: keyof typeof en.settings.tabs;
   /** relative to /dashboard/settings */
   to: string;
   icon: ComponentType<{ className?: string }>;

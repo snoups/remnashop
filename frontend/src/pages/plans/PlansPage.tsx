@@ -183,7 +183,7 @@ export function PlansPage() {
               {visibleItems.map((plan) => {
                 const menuItems: ActionMenuItem[] = [];
                 if (canUpdate) {
-                  menuItems.push({ label: t("plans.edit.button"), icon: Pencil, onClick: () => setEditingPlan(plan) });
+                  menuItems.push({ label: t("common.edit"), icon: Pencil, onClick: () => setEditingPlan(plan) });
                 }
                 if (canManageAccess) {
                   menuItems.push({
@@ -245,8 +245,8 @@ export function PlansPage() {
         <ConfirmDialog
           title={t("plans.delete.confirmTitle")}
           message={t("plans.delete.confirm", { name: pendingDelete.name })}
-          confirmLabel={t("plans.delete.confirmButton")}
-          cancelLabel={t("plans.delete.cancelButton")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             void handleDelete(pendingDelete);

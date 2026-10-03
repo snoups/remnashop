@@ -23,6 +23,7 @@ ICONS: Final[frozenset[str]] = frozenset(
 _LINK_HOSTS: Final[frozenset[str]] = frozenset({"github.com", "t.me", "boosty.to", "remnashop.dev"})
 _TITLE_MAX: Final[int] = 120
 _TEXT_MAX: Final[int] = 1000
+_URL_LABEL_MAX: Final[int] = 40
 _SLIDES_MAX: Final[int] = 10
 # segments start with [a-z0-9], so ".." and absolute paths can't match
 _IMAGE_PATTERN: Final[str] = r"^[a-z0-9][a-z0-9_-]*(/[a-z0-9][a-z0-9_.-]*)*\.(webp|png|jpe?g)$"
@@ -67,6 +68,7 @@ class FeedSlide(BaseModel):
     image: Optional[str] = Field(default=None, pattern=_IMAGE_PATTERN)
     text: dict[str, str]
     url: Optional[str] = None
+    url_label: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("text")
     @classmethod
@@ -78,6 +80,11 @@ class FeedSlide(BaseModel):
     def _url(cls, value: Optional[str]) -> Optional[str]:
         return _check_link(value)
 
+    @field_validator("url_label")
+    @classmethod
+    def _url_label(cls, value: dict[str, str]) -> dict[str, str]:
+        return _check_localized(value, _URL_LABEL_MAX, required=False)
+
 
 class FeedItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -88,6 +95,7 @@ class FeedItem(BaseModel):
     title: dict[str, str]
     text: dict[str, str] = Field(default_factory=dict)
     url: Optional[str] = None
+    url_label: dict[str, str] = Field(default_factory=dict)
     roles: Optional[list[Literal["OWNER", "ADMIN"]]] = Field(default=None, min_length=1)
     versions: Optional[str] = Field(default=None, max_length=200)
     notify_at: AwareDatetime
@@ -113,6 +121,11 @@ class FeedItem(BaseModel):
     @classmethod
     def _url(cls, value: Optional[str]) -> Optional[str]:
         return _check_link(value)
+
+    @field_validator("url_label")
+    @classmethod
+    def _url_label(cls, value: dict[str, str]) -> dict[str, str]:
+        return _check_localized(value, _URL_LABEL_MAX, required=False)
 
     @field_validator("versions")
     @classmethod

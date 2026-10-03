@@ -178,7 +178,7 @@ function UserDetailsDialogBody({
           {available.includes("delete") && (
             <Button variant="danger" onClick={() => actions.run("delete", user)}>
               <Trash2 className="size-3.5" />
-              {t("users.delete.action")}
+              {t("common.delete")}
             </Button>
           )}
           <div className="ml-auto flex gap-2">

@@ -217,8 +217,8 @@ export function RunsCard({
         <ConfirmDialog
           title={t("backups.runs.deleteConfirmTitle")}
           message={t("backups.runs.deleteConfirm")}
-          confirmLabel={t("backups.runs.deleteConfirmButton")}
-          cancelLabel={t("backups.runs.deleteCancelButton")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             void handleDelete(pendingDelete);

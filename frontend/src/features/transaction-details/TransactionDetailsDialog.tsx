@@ -1,3 +1,4 @@
+import type { ParseKeys } from "i18next";
 import {
   AtSign,
   CalendarDays,
@@ -51,9 +52,9 @@ function TransactionDetailsDialogBody({ order }: { order: TransactionItem }) {
   const { t, i18n } = useTranslation();
   const money = (amount: string) => formatMoney(amount, order.currency, i18n.language, true);
   const symbol = currencySymbol(order.currency);
-  const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}`);
+  const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
   const statusLabel = t(`transactions.status.${order.status}`);
-  const none = t("transactions.details.none");
+  const none = t("common.none");
 
   const plan = `${order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? none} · ${t("plans.daysShort", { count: order.duration_days })}`;
   const purchaseType = t(`transactions.purchaseType.${order.purchase_type}`);

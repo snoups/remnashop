@@ -74,3 +74,8 @@ def test_unseen_never_expires() -> None:
 def test_seen_stays_for_24_hours_then_hides() -> None:
     assert _visible(_dto(seen_at=NOW - timedelta(hours=23)))
     assert not _visible(_dto(seen_at=NOW - timedelta(hours=24)))
+
+
+def test_dismissed_hides_right_away() -> None:
+    assert not _visible(_dto(seen_at=NOW - timedelta(minutes=1), dismissed_at=NOW))
+    assert not _visible(_dto(dismissed_at=NOW))

@@ -220,7 +220,7 @@ export function SubscriptionsPage() {
                       const menuItems: ActionMenuItem[] = [];
                       if (canEdit) {
                         menuItems.push({
-                          label: t("subscriptions.edit.button"),
+                          label: t("common.edit"),
                           icon: Pencil,
                           onClick: () => setEditingSubscription(subscription),
                         });
@@ -329,8 +329,8 @@ export function SubscriptionsPage() {
         <ConfirmDialog
           title={t("subscriptions.delete.confirmTitle")}
           message={t("subscriptions.delete.confirm", { id: pendingDelete.id })}
-          confirmLabel={t("subscriptions.delete.confirmButton")}
-          cancelLabel={t("subscriptions.delete.cancelButton")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => {
             void handleDelete(pendingDelete);

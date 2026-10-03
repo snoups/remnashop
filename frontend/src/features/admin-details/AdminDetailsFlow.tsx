@@ -34,7 +34,7 @@ export function DemoteAdminConfirm({ admin, onDemoted, onClose, onCancel = onClo
       title={t("admins.demote.title")}
       message={t("admins.demote.confirm")}
       confirmLabel={t("admins.demote.button")}
-      cancelLabel={t("admins.demote.cancel")}
+      cancelLabel={t("common.cancel")}
       danger
       onConfirm={() => void handleConfirm()}
       onCancel={onCancel}

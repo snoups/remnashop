@@ -7,6 +7,7 @@ from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.event_log.tasks import process_outbox_entry_task
 from app.modules.event_log.usecases import (
+    ClearNotificationsUseCase,
     GetNotificationGroupsUseCase,
     GetNotificationsUseCase,
     ListEventLogUseCase,
@@ -28,6 +29,7 @@ class EventLogProvider(Provider):
     use_cases = provide_all(
         ListEventLogUseCase,
         GetNotificationsUseCase,
+        ClearNotificationsUseCase,
         MarkNotificationsReadUseCase,
         GetNotificationGroupsUseCase,
         UpdateNotificationGroupsUseCase,

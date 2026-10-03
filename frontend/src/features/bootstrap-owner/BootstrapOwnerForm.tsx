@@ -93,7 +93,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
       saveAccessToken(result.access_token);
       setIsLeaving(true);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("auth.errors.genericError")));
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
       setIsSubmitting(false);
     }
   };

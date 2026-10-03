@@ -1,6 +1,6 @@
 import { resourceCategoryKey } from "@entities/admin/use-permission-catalog";
 import type { PermissionCatalogEntry } from "@entities/admin/api";
-import type { TFunction } from "i18next";
+import type { ParseKeys, TFunction } from "i18next";
 import type { Permission } from "@shared/types/rbac";
 
 export const SCOPE_WILDCARD = "*";
@@ -36,7 +36,7 @@ export function toTokenScopes(selected: Set<Permission>, catalog: PermissionCata
 
 export function tokenScopeLabel(scope: string, t: TFunction): string {
   const [resource, action] = scope.split(":");
-  if (action === undefined) return t(`permissions.${scope}`);
-  const category = t(`permissionCategories.${resourceCategoryKey(resource)}`);
-  return action === SCOPE_WILDCARD ? category : `${category} · ${t(`permissionPicker.${action}`)}`;
+  if (action === undefined) return t(`permissions.${scope}` as ParseKeys);
+  const category = t(`permissionCategories.${resourceCategoryKey(resource)}` as ParseKeys);
+  return action === SCOPE_WILDCARD ? category : `${category} · ${t(`permissionPicker.${action}` as ParseKeys)}`;
 }

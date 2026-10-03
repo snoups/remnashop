@@ -1,22 +1,25 @@
-import { Bell, Play } from "lucide-react";
+import type { ParseKeys } from "i18next";
+import { Bell, Play, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { listAnnouncements, localized, markAnnouncementsSeen } from "@entities/announcements/api";
+import { dismissAnnouncements, listAnnouncements, localized, markAnnouncementsSeen } from "@entities/announcements/api";
 import type { Announcement } from "@entities/announcements/api";
 import { AnnouncementIcon } from "@entities/announcements/AnnouncementIcon";
-import { getNotifications, markNotificationsRead } from "@entities/event-log/api";
-import type { EventLogEntry, EventLogLocationState, Notifications } from "@entities/event-log/api";
+import { clearNotifications, getNotifications, markNotificationsRead } from "@entities/event-log/api";
+import type { EventLogLocationState, Notifications } from "@entities/event-log/api";
 import { describeEntry } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { usePermissions } from "@entities/user/use-current-user";
 import { formatRelative } from "@shared/lib/relative-time";
 import { EmptyState } from "@shared/ui/EmptyState";
+import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
 import { IconButton } from "@shared/ui/IconButton";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { AnnouncementDialog } from "@widgets/announcements/AnnouncementDialog";
 import { AnnouncementsCarousel } from "@widgets/announcements/AnnouncementsCarousel";
 
 // plain polling, move to SSE/websocket if the bell needs to be instant
@@ -25,9 +28,11 @@ const MAX_BADGE = 9;
 const POPOVER_MAX_HEIGHT = 420;
 const MAX_SEEN_IDS = 100;
 
-type Row =
-  | { kind: "announcement"; at: string; item: Announcement }
-  | { kind: "event"; at: string; item: EventLogEntry; index: number };
+type Tab = "news" | "events";
+
+// a popover item: corners follow the popover radius, so tall rows hover cleanly too
+const ROW_CLASS =
+  "flex w-full items-start gap-2.5 rounded-popover-item px-2.5 py-2 text-left transition-colors";
 
 const POPOVER_MOTION = {
   initial: { opacity: 0, scale: 0.85 },
@@ -60,9 +65,10 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementsLoaded, setAnnouncementsLoaded] = useState(false);
   const [announcementsFailed, setAnnouncementsFailed] = useState(false);
-  const [highlightedAnnouncements, setHighlightedAnnouncements] = useState<Set<string>>(new Set());
   const [carousel, setCarousel] = useState<{ stories: Announcement[]; index: number } | null>(null);
   const autoOpened = useRef(false);
+  const [tab, setTab] = useState<Tab>("news");
+  const [details, setDetails] = useState<Announcement | null>(null);
 
   useEffect(() => {
     if (!canView) return;
@@ -85,12 +91,24 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
     };
   }, [canView]);
 
+  // open on whatever is new (news wins a tie); declared before the mark-read effects so it
+  // still sees unread state, and only on the open itself so later polls don't yank the tab
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (!isOpen || !data || data.unread_count === 0) return;
-    setHighlighted(data.unread_count);
-    setData({ ...data, unread_count: 0 });
-    void markNotificationsRead().catch(() => {});
-  }, [isOpen, data]);
+    if (isOpen && !wasOpen.current) {
+      const newsUnread = announcements.some((a) => !a.seen);
+      const eventsUnread = canView && (data?.unread_count ?? 0) > 0;
+      setTab(!canView || newsUnread || !eventsUnread ? "news" : "events");
+    }
+    wasOpen.current = isOpen;
+  }, [isOpen, announcements, data, canView]);
+
+  // dots mark what was new when the popover opened; once it closes everything is read
+  useEffect(() => {
+    if (isOpen) return;
+    setHighlighted(0);
+  }, [isOpen]);
+
 
   useEffect(() => {
     const controller = new AbortController();
@@ -116,6 +134,12 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
   // the server sorts newest first
   const stories = useMemo(() => announcements.filter((a) => a.slides.length > 0), [announcements]);
 
+  // news counts as read only once it is opened, not when the bell is
+  const markSeen = useCallback((id: string) => {
+    setAnnouncements((items) => items.map((a) => (a.id === id ? { ...a, seen: true } : a)));
+    void markAnnouncementsSeen([id]).catch(() => {});
+  }, []);
+
   const openStory = useCallback(
     (id: string) => {
       const index = stories.findIndex((a) => a.id === id);
@@ -132,36 +156,41 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
     const target = stories.find((a) => a.auto_open && !a.seen);
     if (!target) return;
     openStory(target.id);
-    setAnnouncements((items) => items.map((a) => (a.id === target.id ? { ...a, seen: true } : a)));
-    void markAnnouncementsSeen([target.id]).catch(() => {});
   }, [announcementsLoaded, carousel, stories, openStory]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const unseen = announcements.filter((a) => !a.seen).map((a) => a.id);
-    if (unseen.length === 0) return;
-    setHighlightedAnnouncements(new Set(unseen));
-    setAnnouncements((items) => items.map((a) => ({ ...a, seen: true })));
-    // the rest are marked on the next open
-    void markAnnouncementsSeen(unseen.slice(0, MAX_SEEN_IDS)).catch(() => {});
-  }, [isOpen, announcements]);
-
   const unread = (data?.unread_count ?? 0) + announcements.filter((a) => !a.seen).length;
-  const rows: Row[] = [
-    ...announcements.map((item) => ({ kind: "announcement" as const, at: item.notify_at, item })),
-    ...(canView ? (data?.items ?? []) : []).map((item, index) => ({
-      kind: "event" as const,
-      at: item.occurred_at,
-      item,
-      index,
-    })),
-  ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  const loading = !announcementsLoaded && (canView ? data === null && !loadFailed : !announcementsFailed);
+  const events = canView ? (data?.items ?? []) : [];
+  // no news, no news tab: the bell is just the event list then
+  const showTabs = canView && announcements.length > 0;
+  const activeTab: Tab = showTabs ? tab : canView ? "events" : "news";
+  const activeCount = activeTab === "news" ? announcements.length : events.length;
+  // events count as read only once their tab is actually on screen
+  useEffect(() => {
+    if (!isOpen || activeTab !== "events" || !data || data.unread_count === 0) return;
+    setHighlighted(data.unread_count);
+    setData({ ...data, unread_count: 0 });
+    void markNotificationsRead().catch(() => {});
+  }, [isOpen, activeTab, data]);
+
+  const loading =
+    activeTab === "news" ? !announcementsLoaded && !announcementsFailed : data === null && !loadFailed;
+  const failed = activeTab === "news" ? announcementsFailed && !announcementsLoaded : loadFailed && data === null;
+
+  const clearActive = () => {
+    if (activeTab === "news") {
+      const ids = announcements.map((a) => a.id);
+      setAnnouncements([]);
+        void dismissAnnouncements(ids.slice(0, MAX_SEEN_IDS)).catch(() => {});
+      return;
+    }
+    setData((current) => (current ? { items: [], unread_count: 0 } : current));
+    setHighlighted(0);
+    void clearNotifications().catch(() => {});
+  };
 
   const openEntry = (state?: EventLogLocationState) => {
     onClose();
     setHighlighted(0);
-    setHighlightedAnnouncements(new Set());
     navigate("/dashboard/event-log", { state });
   };
 
@@ -191,43 +220,69 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         {...POPOVER_MOTION}
         className="flex max-h-[420px] w-80 flex-col p-1.5"
       >
+        {(showTabs || activeCount > 0) && (
+        <div className="flex shrink-0 items-center gap-1.5 pb-1.5">
+          {showTabs ? (
+            <div className="min-w-0 flex-1">
+              <SegmentedPills<Tab>
+                stretch
+                value={activeTab}
+                onChange={setTab}
+                options={[
+                  { value: "news", label: t("header.tabNews"), dot: announcements.some((a) => !a.seen) },
+                  { value: "events", label: t("header.tabEvents"), dot: (data?.unread_count ?? 0) > 0 },
+                ]}
+              />
+            </div>
+          ) : (
+            <span className="min-w-0 flex-1 px-2.5 text-[13px] font-semibold text-foreground">
+              {t(activeTab === "news" ? "header.tabNews" : "header.tabEvents")}
+            </span>
+          )}
+          {activeCount > 0 && (
+            <button
+              type="button"
+              onClick={clearActive}
+              className="flex h-[38px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-accent-foreground transition-colors hover:bg-white/[0.07]"
+            >
+              <Trash2 className="size-3.5" />
+              {t("header.clear")}
+            </button>
+          )}
+        </div>
+        )}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <Spinner size="card" />
-          ) : rows.length === 0 ? (
-            announcementsFailed && (!canView || loadFailed) ? (
-              <p className="px-2.5 py-8 text-center text-[12.5px] text-error">{t("header.notificationsLoadError")}</p>
-            ) : (
-              <EmptyState text={t("header.notificationsEmpty")} icon={Bell} />
-            )
+          ) : failed ? (
+            <p className="px-2.5 py-8 text-center text-[12.5px] text-error">{t("header.notificationsLoadError")}</p>
+          ) : activeCount === 0 ? (
+            <EmptyState text={t("header.notificationsEmpty")} icon={Bell} />
+          ) : activeTab === "events" ? (
+            events.map((entry, index) => (
+              <button
+                key={entry.id}
+                type="button"
+                disabled={!canOpenLog}
+                onClick={() => openEntry({ entry })}
+                className={`${ROW_CLASS} enabled:hover:bg-white/[0.05] disabled:cursor-default`}
+              >
+                <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
+                  <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12.5px] font-medium text-foreground/90">
+                    {t(`eventLog.events.${entry.event_type}` as ParseKeys)}
+                  </span>
+                  <span className="block truncate text-[11.5px] text-muted-foreground">
+                    {describeEntry(entry, t)} · {formatRelative(entry.occurred_at, i18n.language)}
+                  </span>
+                </span>
+                {index < highlighted && <span className="size-1.5 shrink-0 self-center rounded-full bg-primary" />}
+              </button>
+            ))
           ) : (
-            rows.map((row) => {
-              if (row.kind === "event") {
-                const entry = row.item;
-                return (
-                  <button
-                    key={`event-${entry.id}`}
-                    type="button"
-                    disabled={!canOpenLog}
-                    onClick={() => openEntry({ entry })}
-                    className="flex w-full items-center gap-2.5 rounded-full px-2.5 py-1.5 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
-                  >
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                      <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12.5px] font-medium text-foreground/90">
-                        {t(`eventLog.events.${entry.event_type}`)}
-                      </span>
-                      <span className="block truncate text-[11.5px] text-muted-foreground">
-                        {describeEntry(entry, t)} · {formatRelative(entry.occurred_at, i18n.language)}
-                      </span>
-                    </span>
-                    {row.index < highlighted && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
-                  </button>
-                );
-              }
-              const a = row.item;
+            announcements.map((a) => {
               const critical = a.severity === "critical";
               const hasSlides = a.slides.length > 0;
               const text = localized(a.text, i18n.language);
@@ -235,7 +290,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
               const content = (
                 <>
                   <span
-                    className={`flex size-6 shrink-0 items-center justify-center rounded-full ${
+                    className={`mt-px flex size-6 shrink-0 items-center justify-center rounded-full ${
                       critical ? "bg-warning/15 text-warning" : "bg-white/[0.06] text-foreground"
                     }`}
                   >
@@ -245,64 +300,45 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                     <span className="block truncate text-[12.5px] font-medium text-foreground/90">
                       {localized(a.title, i18n.language)}
                     </span>
-                    {text && (
-                      <span className="line-clamp-2 text-[11.5px] text-muted-foreground">{text}</span>
-                    )}
+                    {text && <span className="line-clamp-2 text-[11.5px] text-muted-foreground">{text}</span>}
                     <span className="block truncate text-[11.5px] text-muted-foreground">
                       {critical && `${t("announcements.critical")} · `}
                       {formatRelative(a.notify_at, i18n.language)}
                     </span>
                   </span>
-                  {highlightedAnnouncements.has(a.id) && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
+                  {!a.seen && <span className="size-1.5 shrink-0 self-center rounded-full bg-primary" />}
                   {hasSlides && (
                     <span
-                      className="relative flex h-[44px] w-[26px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/[0.08] bg-cover bg-center"
-                      style={cover ? { backgroundImage: `url(${cover})` } : undefined}
+                      className="relative flex h-[44px] w-[26px] shrink-0 self-center items-center justify-center overflow-hidden rounded-md bg-white/[0.08] bg-cover bg-center"
+                      style={cover ? { backgroundImage: `url("${cover}")` } : undefined}
                     >
                       <Play className="size-3 fill-white text-white drop-shadow" />
                     </span>
                   )}
                 </>
               );
-              const rowClass = "flex w-full items-center gap-2.5 rounded-full px-2.5 py-1.5 text-left transition-colors";
-              if (hasSlides) {
-                return (
-                  <button
-                    key={`announcement-${a.id}`}
-                    type="button"
-                    aria-label={t("announcements.openStory")}
-                    onClick={() => {
-                      onClose();
-                      openStory(a.id);
-                    }}
-                    className={`${rowClass} hover:bg-white/[0.04]`}
-                  >
-                    {content}
-                  </button>
-                );
-              }
-              if (a.url) {
-                return (
-                  <a
-                    key={`announcement-${a.id}`}
-                    href={a.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`${rowClass} hover:bg-white/[0.04]`}
-                  >
-                    {content}
-                  </a>
-                );
-              }
               return (
-                <div key={`announcement-${a.id}`} className={rowClass}>
+                <button
+                  key={a.id}
+                  type="button"
+                  aria-label={hasSlides ? t("announcements.openStory") : undefined}
+                  onClick={() => {
+                    onClose();
+                    if (hasSlides) openStory(a.id);
+                    else {
+                      setDetails(a);
+                      markSeen(a.id);
+                    }
+                  }}
+                  className={`${ROW_CLASS} hover:bg-white/[0.05]`}
+                >
                   {content}
-                </div>
+                </button>
               );
             })
           )}
         </div>
-        {canOpenLog && (
+        {canOpenLog && activeTab === "events" && (
           <button
             type="button"
             onClick={() => openEntry()}
@@ -313,8 +349,15 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         )}
       </PortalPopover>
 
+      {details && <AnnouncementDialog announcement={details} onClose={() => setDetails(null)} />}
+
       {carousel && (
-        <AnnouncementsCarousel stories={carousel.stories} startIndex={carousel.index} onClose={() => setCarousel(null)} />
+        <AnnouncementsCarousel
+          stories={carousel.stories}
+          startIndex={carousel.index}
+          onView={markSeen}
+          onClose={() => setCarousel(null)}
+        />
       )}
     </>
   );

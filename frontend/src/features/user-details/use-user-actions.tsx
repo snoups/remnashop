@@ -91,7 +91,7 @@ export function useUserActions({ onUpdated, onDeleted }: UserActionsOptions): Us
         title={t("users.blockAdmin.title")}
         message={t("users.blockAdmin.confirm", { name: pending.user.name })}
         confirmLabel={t("users.blockAdmin.confirmButton")}
-        cancelLabel={t("users.blockAdmin.cancelButton")}
+        cancelLabel={t("common.cancel")}
         danger
         onConfirm={() => {
           void setBlocked(pending.user, true);
@@ -103,8 +103,8 @@ export function useUserActions({ onUpdated, onDeleted }: UserActionsOptions): Us
       <ConfirmDialog
         title={t("users.delete.confirmTitle")}
         message={t("users.delete.confirm", { name: pending.user.name })}
-        confirmLabel={t("users.delete.confirmButton")}
-        cancelLabel={t("users.delete.cancelButton")}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
         danger
         onConfirm={() => {
           void remove(pending.user);

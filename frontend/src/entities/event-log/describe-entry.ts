@@ -1,4 +1,4 @@
-import type { TFunction } from "i18next";
+import type { ParseKeys, TFunction } from "i18next";
 
 import type { EventLogEntry } from "@entities/event-log/api";
 
@@ -56,7 +56,7 @@ export function isSystemActor(user: UserSnapshot): boolean {
   return user.role === "SYSTEM";
 }
 
-export function getMissingInitiatorKey(entry: EventLogEntry): string {
+export function getMissingInitiatorKey(entry: EventLogEntry): ParseKeys {
   return ANONYMOUS_EVENT_TYPES.has(entry.event_type) ? "eventLog.detail.anonymous" : "eventLog.detail.system";
 }
 
