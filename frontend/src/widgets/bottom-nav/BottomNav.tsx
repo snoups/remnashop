@@ -1,15 +1,14 @@
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { TabBar } from "@shared/ui/TabBar";
 import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
 
 export function BottomNav() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const userState = useCurrentUser();
-  const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const items = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission)).map((item) => ({
     key: item.key,
     to: item.to,

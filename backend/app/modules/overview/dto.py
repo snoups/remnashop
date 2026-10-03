@@ -12,7 +12,7 @@ Granularity = Literal["day", "month"]
 
 
 @dataclass(frozen=True, kw_only=True)
-class GetOverviewDto:
+class GetOverviewChartDto:
     days: OverviewDays = 7
 
 
@@ -29,7 +29,6 @@ class DailyAmountDto(BaseDto):
 class OverviewUsersDto(BaseDto):
     total: int
     new_today: int
-    daily_registrations: list[DailyCountDto]
 
 
 class OverviewSubscriptionsDto(BaseDto):
@@ -39,13 +38,6 @@ class OverviewSubscriptionsDto(BaseDto):
     expired: int
     disabled: int
     expiring_soon: int
-
-
-class OverviewTransactionsDto(BaseDto):
-    paid_orders_count: int
-    revenue_by_currency: dict[Currency, Decimal]
-    report_currency: Currency
-    daily_revenue: list[DailyAmountDto]
 
 
 class RuntimeProcessDto(BaseDto):
@@ -62,17 +54,30 @@ class HostMemoryDto(BaseDto):
     used_bytes: int
 
 
-class OverviewOnlineDto(BaseDto):
-    current: int
-    daily_peak: list[DailyCountDto]
-
-
 class OverviewDto(BaseDto):
-    days: int
-    granularity: Granularity
     users: Optional[OverviewUsersDto] = None
     subscriptions: Optional[OverviewSubscriptionsDto] = None
-    transactions: Optional[OverviewTransactionsDto] = None
     runtime: list[RuntimeProcessDto]
     host_memory: Optional[HostMemoryDto] = None
-    online: OverviewOnlineDto
+
+
+class RevenueChartDto(BaseDto):
+    days: int
+    granularity: Granularity
+    paid_orders_count: int
+    revenue_by_currency: dict[Currency, Decimal]
+    report_currency: Currency
+    daily: list[DailyAmountDto]
+
+
+class RegistrationsChartDto(BaseDto):
+    days: int
+    granularity: Granularity
+    daily: list[DailyCountDto]
+
+
+class OnlineChartDto(BaseDto):
+    days: int
+    granularity: Granularity
+    current: int
+    daily_peak: list[DailyCountDto]

@@ -24,7 +24,7 @@ import {
   type ReferralSettings,
   updateReferralSettings,
 } from "@entities/referrals/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
@@ -163,9 +163,7 @@ export function ReferralSettingsPage() {
   const [anchorCurrency, setAnchorCurrency] = useState<string | null>(null);
   const [exampleBase, setExampleBase] = useState(DEFAULT_EXAMPLE_BASE);
 
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canManage = permissions.includes("REFERRALS_SETTINGS_MANAGE");
   const canReset = permissions.includes("REFERRALS_SETTINGS_RESET");
   const isLocked = !canManage || isSaving;

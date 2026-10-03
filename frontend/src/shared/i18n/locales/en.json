@@ -345,10 +345,20 @@
       },
       "blocked": "Blocked",
       "eventsEmpty": "No events yet."
+    },
+    "promote": {
+      "button": "Make admin",
+      "title": "Make admin",
+      "message": "{{name}} gets access to the dashboard with the default admin permissions.",
+      "loginLabel": "Login",
+      "loginHint": "The user has no login yet -- they will sign in with this one.",
+      "submit": "Make admin",
+      "cancel": "Cancel",
+      "success": "{{name}} is now an admin.",
+      "error": "Could not make the user an admin."
     }
   },
   "users": {
-    "openUserNotFound": "User not found.",
     "openUser": "Go to user",
     "title": "Users",
     "loadError": "Failed to load users.",
@@ -507,7 +517,8 @@
     "notificationsEmpty": "No notifications",
     "openEventLog": "Open the event log",
     "searching": "Searching…",
-    "notificationsLoadError": "Failed to load notifications."
+    "notificationsLoadError": "Failed to load notifications.",
+    "entityNotFound": "Not found -- it may have been deleted."
   },
   "settings": {
     "title": "Settings",
@@ -983,7 +994,11 @@
       "placeholder": "e.g. 203.0.113.5 or 203.0.113.0/24, one per line",
       "submit": "Save",
       "loadError": "Failed to load.",
-      "saveError": "Failed to save."
+      "saveError": "Failed to save.",
+      "currentIp": "Your current IP: {{ip}}",
+      "addCurrentIp": "Add",
+      "invalidEntries": "Not an IP address or CIDR range: {{entries}}",
+      "saved": "IP allowlist saved."
     },
     "notifications": {
       "title": "Notifications",
@@ -2156,9 +2171,7 @@
         "LINK": "Via link only"
       },
       "telegramIdsLabel": "Allowed Telegram IDs",
-      "telegramIdsHint": "One per line",
       "emailsLabel": "Allowed emails",
-      "emailsHint": "One per line",
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving…",
@@ -2175,7 +2188,9 @@
         "LINK": "Hidden from the catalog, bought via a direct link"
       },
       "recipients_one": "Access: {{count}} recipient",
-      "recipients_other": "Access: {{count}} recipients"
+      "recipients_other": "Access: {{count}} recipients",
+      "telegramIdsPlaceholder": "Telegram ID, Enter to add",
+      "emailsPlaceholder": "email, Enter to add"
     },
     "delete": {
       "button": "Delete plan",
@@ -2412,7 +2427,7 @@
         "fieldInfo": "info — hint icon, aside — required star or a count.",
         "fieldError": "error replaces hint; the button beside it — secondary field.",
         "textarea": "Multi-line field with a count by the label.",
-        "textInput": "A disabled field and a field with a trailing button (pr-10).",
+        "textInput": "Inactive field.",
         "search": "Glass field — filters and search only.",
         "select": "Dropdown select; compact — 36px, in the editor.",
         "switch": "Switch: on, off, disabled.",
@@ -2443,7 +2458,9 @@
         "groupToggle": "Collapsible group header: chevron, label, count; leading takes a status dot. Transactions, event log, referrals, subscriptions, pricing matrix.",
         "actionMenuTrigger": "Menu behind a labelled button, e.g. \"Share\" in a dialog footer. A disabled item explains why on hover.",
         "segmentedStretch": "Full-width switch inside a form field, e.g. ad link channels.",
-        "kpiTrend": "Change next to the value: green up, red down, grey no change. The period is in the popup."
+        "kpiTrend": "Change next to the value: green up, red down, grey no change. The period is in the popup.",
+        "passwordInput": "Login, bootstrap, profile passwords and OAuth client secrets",
+        "chipsInput": "Promocode and plan access lists: IDs and emails; a bad token stays in the field, red"
       },
       "s": {
         "save": "Save",

@@ -10,7 +10,7 @@ import { bounceTap } from "@shared/lib/bounceState";
 import { resetTranslation } from "@entities/translations/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
-import { EmojiPicker, type PickedEmoji } from "@shared/ui/EmojiPicker";
+import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
 import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { RichTextField, type RichTextFieldHandle } from "@features/dialog-canvas-editor/RichTextField";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";

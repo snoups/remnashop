@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { EmojiPack } from "@entities/emoji-packs/api";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { Modal } from "@shared/ui/Modal";
-import { PremiumEmoji } from "@shared/ui/PremiumEmoji";
+import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Tag } from "@shared/ui/Tag";
 

@@ -6,18 +6,19 @@ import {
   Lock,
   MonitorSmartphone,
   Receipt,
+  ShieldPlus,
   Ticket,
   Trash2,
   Unlock,
   User,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import type { UserListItem } from "@entities/user/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import {
   AnalyticsTab,
   PromocodesTab,
@@ -26,6 +27,7 @@ import {
   TransactionsTab,
 } from "@features/user-details/UserActivityTabs";
 import { EventsTab, ProfileTab, SessionsTab } from "@features/user-details/UserDetailsTabs";
+import { useUserActions } from "@features/user-details/use-user-actions";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import type { Permission } from "@shared/types/rbac";
 import { Badge } from "@shared/ui/Badge";
@@ -35,9 +37,7 @@ import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 
-export type UserDetailsFollowUp = "block" | "unblock" | "delete";
-
-type UserDetailsTab =
+export type UserDetailsTab =
   | "profile"
   | "analytics"
   | "transactions"
@@ -49,10 +49,12 @@ type UserDetailsTab =
 
 interface UserDetailsDialogProps {
   user: UserListItem;
-  /** footer actions the caller allows; none renders no footer */
-  followUps?: UserDetailsFollowUp[];
-  /** Fires after the exit animation; `followUp` is the action picked in the footer, if any. */
-  onClose: (followUp?: UserDetailsFollowUp) => void;
+  initialTab?: UserDetailsTab;
+  /** the account after an action from the footer */
+  onChanged?: (user: UserListItem) => void;
+  /** the account was deleted from the footer; the dialog closes itself */
+  onDeleted?: (user: UserListItem) => void;
+  onClose: () => void;
 }
 
 function getInitials(user: UserListItem): string {
@@ -64,39 +66,39 @@ function getHandle(user: UserListItem): string | null {
   return user.login ?? user.email;
 }
 
-export function UserDetailsDialog({ user, followUps = [], onClose }: UserDetailsDialogProps) {
-  // the footer action opens its own modal only once this one has animated out
-  const followUpRef = useRef<UserDetailsFollowUp | undefined>(undefined);
-
+export function UserDetailsDialog({ onClose, ...props }: UserDetailsDialogProps) {
   return (
-    <Modal onClose={() => onClose(followUpRef.current)} size="lg" scrollable>
-      <UserDetailsDialogBody
-        user={user}
-        followUps={followUps}
-        onFollowUp={(followUp) => {
-          followUpRef.current = followUp;
-        }}
-      />
+    <Modal onClose={onClose} size="lg" scrollable>
+      <UserDetailsDialogBody {...props} />
     </Modal>
   );
 }
 
 function UserDetailsDialogBody({
-  user,
-  followUps,
-  onFollowUp,
-}: {
-  user: UserListItem;
-  followUps: UserDetailsFollowUp[];
-  onFollowUp: (followUp: UserDetailsFollowUp) => void;
-}) {
+  user: initialUser,
+  initialTab = "profile",
+  onChanged,
+  onDeleted,
+}: Omit<UserDetailsDialogProps, "onClose">) {
   const { t } = useTranslation();
   const close = useModalClose();
-  const [tab, setTab] = useState<UserDetailsTab>("profile");
+  const [user, setUser] = useState(initialUser);
+  const actions = useUserActions({
+    onUpdated: (updated) => {
+      setUser(updated);
+      onChanged?.(updated);
+    },
+    onDeleted: (deleted) => {
+      onDeleted?.(deleted);
+      close();
+    },
+  });
+  const available = actions.available(user);
+  const [tab, setTab] = useState<UserDetailsTab>(initialTab);
   const [contentRef, contentHeight] = useMeasuredHeight();
   const currentUserState = useCurrentUser();
-  const permissions = currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
-  // the per-user session endpoints reject yourself (see UserSessionsDialog)
+  const permissions = usePermissions();
+  // the per-user session endpoints reject yourself
   const isSelf = currentUserState.kind === "ready" && currentUserState.data.id === user.id;
   const isDeleted = Boolean(user.deleted_at);
   const handle = isDeleted ? `#${user.id}` : getHandle(user);
@@ -126,11 +128,6 @@ function UserDetailsDialogBody({
       ? [{ key: "events" as const, label: t("admins.details.tabs.events"), icon: History }]
       : []),
   ];
-
-  const closeWith = (followUp: UserDetailsFollowUp) => {
-    onFollowUp(followUp);
-    close();
-  };
 
   return (
     <>
@@ -179,29 +176,37 @@ function UserDetailsDialogBody({
         </motion.div>
       </div>
 
-      {/* a deleted account is read-only */}
-      {followUps.length > 0 && !isDeleted && (
+      {available.length > 0 && (
         <div className="flex items-center gap-2 border-t border-white/[0.07] px-5 py-4">
-          {followUps.includes("delete") && (
-            <Button variant="danger" onClick={() => closeWith("delete")}>
+          {available.includes("delete") && (
+            <Button variant="danger" onClick={() => actions.run("delete", user)}>
               <Trash2 className="size-3.5" />
               {t("users.delete.action")}
             </Button>
           )}
-          {followUps.includes("block") && (
-            <Button variant="secondary" className="ml-auto" onClick={() => closeWith("block")}>
-              <Lock className="size-3.5" />
-              {t("users.block.action")}
-            </Button>
-          )}
-          {followUps.includes("unblock") && (
-            <Button variant="secondary" className="ml-auto" onClick={() => closeWith("unblock")}>
-              <Unlock className="size-3.5" />
-              {t("users.unblock.action")}
-            </Button>
-          )}
+          <div className="ml-auto flex gap-2">
+            {available.includes("promote") && (
+              <Button variant="secondary" onClick={() => actions.run("promote", user)}>
+                <ShieldPlus className="size-3.5" />
+                {t("admins.promote.button")}
+              </Button>
+            )}
+            {available.includes("block") && (
+              <Button variant="secondary" onClick={() => actions.run("block", user)}>
+                <Lock className="size-3.5" />
+                {t("users.block.action")}
+              </Button>
+            )}
+            {available.includes("unblock") && (
+              <Button variant="secondary" onClick={() => actions.run("unblock", user)}>
+                <Unlock className="size-3.5" />
+                {t("users.unblock.action")}
+              </Button>
+            )}
+          </div>
         </div>
       )}
+      {actions.dialogs}
     </>
   );
 }

@@ -37,7 +37,9 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
             assert_grantable(data.permission_grants)
 
             target = None
-            if data.email:
+            if data.user_id is not None:
+                target = await self._user_repository.get_by_id(data.user_id)
+            elif data.email:
                 target = await self._user_repository.get_by_email(data.email)
             elif data.telegram_username:
                 target = await self._user_repository.get_by_username(data.telegram_username)

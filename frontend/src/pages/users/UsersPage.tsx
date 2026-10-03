@@ -12,47 +12,40 @@ import {
   Loader2,
   Mail,
   Send,
+  ShieldPlus,
   Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   DEFAULT_PAGE_SIZE,
-  blockUser,
-  deleteUser,
   getUserListStats,
-  getUser,
   listUsers,
-  unblockUser,
   type UserListFilters,
   type UserListItem,
   type BlockedBy,
-  type DeletedFilter,
   type UserListStats,
   type UserSort,
-  type UsersLocationState,
 } from "@entities/user/api";
-import { deleteAdmin } from "@entities/admin/api";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
-import { UserDetailsDialog, type UserDetailsFollowUp } from "@features/user-details/UserDetailsDialog";
+import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
+import type { UserDetailsTab } from "@features/user-details/UserDetailsDialog";
+import { useUserActions } from "@features/user-details/use-user-actions";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
-import { UserSessionsDialog } from "@features/user-sessions/UserSessionsDialog";
-import { getErrorMessage } from "@shared/api/http";
+import { useEntityChanged } from "@shared/lib/entity-dialogs";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { formatDate, formatRelative } from "@shared/lib/relative-time";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
-import { toast } from "@shared/lib/toast";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
@@ -62,19 +55,10 @@ import { dotIcon } from "@shared/ui/optionIcons";
 import { Spinner } from "@shared/ui/Spinner";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
-type LoadState =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "ready"; items: UserListItem[]; total: number };
-
 type Kpi = "all" | "new" | "subscribed" | "blocked";
 
 const KPIS: Kpi[] = ["all", "new", "subscribed", "blocked"];
 const FILTER_DEBOUNCE_MS = 200;
-// Only surface the dimmed-loading state once a refetch has been in flight
-// this long -- most requests resolve well under it, so typing quickly no
-// longer flashes the list dim/opaque on every keystroke pause.
-const FETCH_INDICATOR_DELAY_MS = 150;
 
 const ROW_GRID_CLASSNAME =
   "grid grid-cols-[36px_minmax(0,1fr)_100px_90px_130px_32px] items-center gap-3";
@@ -141,61 +125,24 @@ function FilterSelect({
 
 export function UsersPage() {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [isFetching, setIsFetching] = useState(false);
   const [searchInput, setSearchInput] = useUrlSearch();
-  const location = useLocation();
   const [blockedBy, setBlockedBy] = useState<BlockedBy | "">("");
-  // deleted accounts stay hidden, except for a handoff to one's card, which has to find it
-  const [deleted] = useState<DeletedFilter | undefined>(() =>
-    (location.state as UsersLocationState | null)?.deleted ? "include" : undefined,
-  );
   const [subscription, setSubscription] = useState("");
   const [trial, setTrial] = useState("");
   const [sort, setSort] = useState<{ by: UserSort; descending: boolean }>({ by: "created_at", descending: true });
   const [stats, setStats] = useState<UserListStats | null>(null);
   const [statsToken, setStatsToken] = useState(0);
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // Bumped on every primary load (mount, filter change); a
-  // load-more that started under an older value discards its result rather
-  // than appending stale rows to a list the effect has already replaced.
-  const loadGenRef = useRef(0);
 
   const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const currentUserId = currentUserState.kind === "ready" ? currentUserState.data.id : null;
   // staff rows are only listable with ADMINS_MANAGE (see ListUsersUseCase)
   const includeStaff = permissions.includes("ADMINS_MANAGE");
-  const [sessionsUser, setSessionsUser] = useState<UserListItem | null>(null);
   const [detailsUser, setDetailsUser] = useState<UserListItem | null>(null);
+  const [detailsTab, setDetailsTab] = useState<UserDetailsTab>();
   const [referralsUser, setReferralsUser] = useState<UserListItem | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<UserListItem | null>(null);
-  const [pendingBlockAdmin, setPendingBlockAdmin] = useState<UserListItem | null>(null);
-  // cancelling a delete/admin block started from the details dialog reopens it
-  const [confirmFromDetails, setConfirmFromDetails] = useState(false);
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
-  const navigate = useNavigate();
-  const openUserIdRef = useRef((location.state as UsersLocationState | null)?.userId);
-
-  // drop the handoff once consumed so a reload or back doesn't reopen the dialog
-  useEffect(() => {
-    if (detailsUser && location.state) navigate({ search: location.search }, { replace: true, state: null });
-  }, [detailsUser, location.state, location.search, navigate]);
-
-  useEffect(() => {
-    const userId = openUserIdRef.current;
-    if (userId === undefined) return;
-    openUserIdRef.current = undefined;
-    const controller = new AbortController();
-    getUser(userId, controller.signal)
-      .then(setDetailsUser)
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
-
   const refreshStats = () => setStatsToken((token) => token + 1);
 
   useEffect(() => {
@@ -211,161 +158,57 @@ export function UsersPage() {
       search: debouncedSearch || undefined,
       includeStaff,
       blockedBy: blockedBy || undefined,
-      deleted,
       hasSubscription: parseTriState(subscription),
       isTrialAvailable: parseTriState(trial),
       sort: sort.by,
       descending: sort.descending,
     }),
-    [debouncedSearch, includeStaff, blockedBy, subscription, trial, deleted, sort],
+    [debouncedSearch, includeStaff, blockedBy, subscription, trial, sort],
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const showFetchingTimeout = setTimeout(() => {
-      if (!controller.signal.aborted) setIsFetching(true);
-    }, FETCH_INDICATOR_DELAY_MS);
-    loadGenRef.current += 1;
-    setPage(1);
-    listUsers({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) {
-          setState({ kind: "ready", items: result.items, total: result.total });
-        }
-      })
-      .catch(() => {
-        // keep showing whatever's already on screen; only surface the error
-        // state when there's nothing else to show
-        if (!controller.signal.aborted) {
-          setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
-        }
-      })
-      .finally(() => {
-        clearTimeout(showFetchingTimeout);
-        if (!controller.signal.aborted) setIsFetching(false);
-      });
-    return () => {
-      controller.abort();
-      clearTimeout(showFetchingTimeout);
-    };
-  }, [baseFilters]);
+  const { state, setState, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore, reload } = usePaginatedList(
+    (filters, page, signal) => listUsers({ ...filters, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+    baseFilters,
+  );
+  // a card opened from the header search changed or deleted someone
+  useEntityChanged("user", () => {
+    reload();
+    refreshStats();
+  });
 
-  // Offset pagination + local optimistic edits (block/delete below) can drift
-  // a row at a page boundary; acceptable for an admin list with infrequent
-  // deletes. offset drift on boundary, switch to keyset if it bites.
-  const handleLoadMore = async () => {
-    const gen = loadGenRef.current;
-    const nextPage = page + 1;
-    setIsLoadingMore(true);
-    try {
-      const result = await listUsers({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
-      if (gen !== loadGenRef.current) return;
-      setState((prev) =>
-        prev.kind === "ready"
-          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
-          : prev,
-      );
-      setPage(nextPage);
-    } catch {
-      // keep current items on failure; the load-more button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
-  const handleDeleted = (userId: number) => {
-    if (state.kind !== "ready") return;
-    setState({
-      kind: "ready",
-      items: state.items.filter((u) => u.id !== userId),
-      total: state.total - 1,
-    });
-  };
-
-  const handleDelete = async (user: UserListItem) => {
-    try {
-      if (user.role === "ADMIN") {
-        await deleteAdmin(user.id);
-      } else {
-        await deleteUser(user.id);
-      }
-      handleDeleted(user.id);
-      refreshStats();
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("users.delete.error")));
-    }
-  };
+  const handleDeleted = (userId: number) =>
+    setState((prev) =>
+      prev.kind === "ready"
+        ? { kind: "ready", items: prev.items.filter((u) => u.id !== userId), total: prev.total - 1 }
+        : prev,
+    );
 
   const handleUserUpdated = (updated: UserListItem) => {
-    if (state.kind !== "ready") return;
-    setState({
-      kind: "ready",
-      // block/unblock responses carry no subscription count
-      items: state.items.map((u) =>
-        u.id === updated.id ? { ...updated, active_subscriptions: u.active_subscriptions } : u,
-      ),
-      total: state.total,
-    });
+    setState((prev) =>
+      prev.kind === "ready"
+        ? {
+            kind: "ready",
+            // block/unblock responses carry no subscription count
+            items: prev.items.map((u) =>
+              u.id === updated.id ? { ...updated, active_subscriptions: u.active_subscriptions } : u,
+            ),
+            total: prev.total,
+          }
+        : prev,
+    );
     refreshStats();
   };
 
-  const handleBlock = async (user: UserListItem) => {
-    try {
-      const updated = await blockUser(user.id);
-      handleUserUpdated(updated);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("users.block.error")));
-    }
-  };
-
-  const handleUnblock = async (user: UserListItem) => {
-    try {
-      const updated = await unblockUser(user.id);
-      handleUserUpdated(updated);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("users.unblock.error")));
-    }
-  };
-
-  const canDelete = (user: UserListItem) =>
-    user.id !== currentUserId &&
-    ((user.role === "ADMIN" && permissions.includes("ADMINS_MANAGE")) ||
-      (user.role === "USER" && permissions.includes("USERS_DELETE")));
-
-  const getFollowUps = (user: UserListItem): UserDetailsFollowUp[] => {
-    // a deleted account is read-only
-    if (user.deleted_at) return [];
-    return [
-      ...(permissions.includes(user.is_blocked ? "USERS_UNBLOCK" : "USERS_BLOCK")
-        ? [user.is_blocked ? ("unblock" as const) : ("block" as const)]
-        : []),
-      ...(canDelete(user) ? ["delete" as const] : []),
-    ];
-  };
-
-  // blocking an admin also demotes them and drops their sessions -- confirm first
-  const requestBlock = (user: UserListItem, fromDetails: boolean) => {
-    if (user.role !== "ADMIN") {
-      void handleBlock(user);
-      return;
-    }
-    setConfirmFromDetails(fromDetails);
-    setPendingBlockAdmin(user);
-  };
-
-  const handleFollowUp = (user: UserListItem, followUp?: UserDetailsFollowUp) => {
-    if (followUp === "block") requestBlock(user, true);
-    if (followUp === "unblock") void handleUnblock(user);
-    if (followUp === "delete") {
-      setConfirmFromDetails(true);
-      setPendingDelete(user);
-    }
-  };
+  const actions = useUserActions({
+    onUpdated: handleUserUpdated,
+    onDeleted: (user) => {
+      handleDeleted(user.id);
+      refreshStats();
+    },
+  });
 
   const toggleSort = (by: UserSort) =>
     setSort((prev) => ({ by, descending: prev.by === by ? !prev.descending : by !== "name" }));
-
-  const hasMore = state.kind === "ready" && state.items.length < state.total;
 
   const sortHeader = (by: UserSort, label: string) => {
     const isActive = sort.by === by;
@@ -496,7 +339,9 @@ export function UsersPage() {
                 {state.items.map((user) => {
                   const isDeleted = Boolean(user.deleted_at);
                   const displayName = isDeleted ? t("users.deleted.name") : user.name;
-                  const canViewSessions = !isDeleted && permissions.includes("USER_SESSIONS_VIEW");
+                  // the per-user session endpoints reject yourself
+                  const canViewSessions =
+                    !isDeleted && user.id !== currentUserId && permissions.includes("USER_SESSIONS_VIEW");
 
                   const menuItems: ActionMenuItem[] = [
                     {
@@ -509,7 +354,10 @@ export function UsersPage() {
                     menuItems.push({
                       label: t("admins.details.tabs.sessions"),
                       icon: LaptopMinimal,
-                      onClick: () => setSessionsUser(user),
+                      onClick: () => {
+                        setDetailsTab("sessions");
+                        setDetailsUser(user);
+                      },
                     });
                   }
                   if (!isDeleted && permissions.includes("REFERRALS_VIEW")) {
@@ -519,22 +367,27 @@ export function UsersPage() {
                       onClick: () => setReferralsUser(user),
                     });
                   }
-                  if (!isDeleted && permissions.includes(user.is_blocked ? "USERS_UNBLOCK" : "USERS_BLOCK")) {
+                  const available = actions.available(user);
+                  if (available.includes("promote")) {
+                    menuItems.push({
+                      label: t("admins.promote.button"),
+                      icon: ShieldPlus,
+                      onClick: () => actions.run("promote", user),
+                    });
+                  }
+                  if (available.includes("block") || available.includes("unblock")) {
                     menuItems.push({
                       label: user.is_blocked ? t("users.unblock.button") : t("users.block.button"),
                       icon: user.is_blocked ? CircleCheck : Ban,
-                      onClick: () => (user.is_blocked ? void handleUnblock(user) : requestBlock(user, false)),
+                      onClick: () => actions.run(user.is_blocked ? "unblock" : "block", user),
                     });
                   }
-                  if (!isDeleted && canDelete(user)) {
+                  if (available.includes("delete")) {
                     menuItems.push({
                       label: t("users.delete.button"),
                       icon: Trash2,
                       variant: "danger",
-                      onClick: () => {
-                        setConfirmFromDetails(false);
-                        setPendingDelete(user);
-                      },
+                      onClick: () => actions.run("delete", user),
                     });
                   }
 
@@ -625,21 +478,18 @@ export function UsersPage() {
         )}
       </Card>
 
-      {sessionsUser && (
-        <UserSessionsDialog
-          userId={sessionsUser.id}
-          userName={sessionsUser.name}
-          onClose={() => setSessionsUser(null)}
-        />
-      )}
-
       {detailsUser && (
         <UserDetailsDialog
           user={detailsUser}
-          followUps={getFollowUps(detailsUser)}
-          onClose={(followUp) => {
-            handleFollowUp(detailsUser, followUp);
+          initialTab={detailsTab}
+          onChanged={handleUserUpdated}
+          onDeleted={(user) => {
+            handleDeleted(user.id);
+            refreshStats();
+          }}
+          onClose={() => {
             setDetailsUser(null);
+            setDetailsTab(undefined);
           }}
         />
       )}
@@ -653,42 +503,7 @@ export function UsersPage() {
         />
       )}
 
-      {pendingDelete && (
-        <ConfirmDialog
-          title={t("users.delete.confirmTitle")}
-          message={t("users.delete.confirm", { name: pendingDelete.name })}
-          confirmLabel={t("users.delete.confirmButton")}
-          cancelLabel={t("users.delete.cancelButton")}
-          danger
-          onConfirm={() => {
-            void handleDelete(pendingDelete);
-            setPendingDelete(null);
-          }}
-          onCancel={() => {
-            if (confirmFromDetails) setDetailsUser(pendingDelete);
-            setPendingDelete(null);
-          }}
-        />
-      )}
-
-      {pendingBlockAdmin && (
-        <ConfirmDialog
-          title={t("users.blockAdmin.title")}
-          message={t("users.blockAdmin.confirm", { name: pendingBlockAdmin.name })}
-          confirmLabel={t("users.blockAdmin.confirmButton")}
-          cancelLabel={t("users.blockAdmin.cancelButton")}
-          danger
-          onConfirm={() => {
-            void handleBlock(pendingBlockAdmin);
-            setPendingBlockAdmin(null);
-          }}
-          onCancel={() => {
-            if (confirmFromDetails) setDetailsUser(pendingBlockAdmin);
-            setPendingBlockAdmin(null);
-          }}
-        />
-      )}
-
+      {actions.dialogs}
     </div>
   );
 }

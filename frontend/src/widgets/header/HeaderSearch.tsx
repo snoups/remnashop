@@ -19,12 +19,13 @@ import { listPlans, type Plan } from "@entities/plans/api";
 import { listPromocodes, type Promocode } from "@entities/promocodes/api";
 import { listSubscriptions, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { listUsers, type UserListItem } from "@entities/user/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { BounceIcon } from "@shared/ui/BounceIcon";
-import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
+import { NAV_ITEMS, SETTINGS_TABS } from "@widgets/sidebar/nav-items";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SearchClearButton } from "@shared/ui/SearchField";
 
@@ -33,23 +34,14 @@ const USER_LIMIT = 5;
 const RESULT_LIMIT = 3;
 // max-h-96 list plus the popover padding
 const POPOVER_MAX_HEIGHT = 400;
-const SETTINGS_TABS = [
-  ["general", ""],
-  ["bot", "/bot"],
-  ["apiTokens", "/api-tokens"],
-  ["appearance", "/appearance"],
-  ["gateways", "/gateways"],
-  ["backups", "/backups"],
-  ["blacklist", "/blacklist"],
-  ["pricing", "/pricing"],
-] as const;
-
 interface Entry {
   id: string;
   label: string;
   hint?: string;
-  to: string;
   icon: ComponentType<{ className?: string }>;
+  /** a page to go to, or a dialog to open on top of the current one */
+  to?: string;
+  open?: () => void;
 }
 
 const matches = (haystack: string, tokens: string[]) => {
@@ -60,8 +52,9 @@ const matches = (haystack: string, tokens: string[]) => {
 export function HeaderSearch() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { openUser, openOrder, openSubscription, openPromocode, openPlan } = useOpenEntity();
   const userState = useCurrentUser();
-  const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canViewUsers = permissions.includes("USERS_VIEW");
 
   const [query, setQuery] = useState("");
@@ -132,13 +125,15 @@ export function HeaderSearch() {
     );
     const settings = NAV_ITEMS.find((item) => item.key === "settings");
     const tabs = settings
-      ? SETTINGS_TABS.map(([key, suffix]) => ({
-          id: `settings:${key}`,
-          label: t(`settings.tabs.${key}`),
-          hint: t("sidebar.settings"),
-          to: `${settings.to}${suffix}`,
-          icon: settings.icon,
-        }))
+      ? SETTINGS_TABS.filter((tab) => tab.anyOf.some((permission) => permissions.includes(permission))).map(
+          (tab) => ({
+            id: `settings:${tab.key}`,
+            label: t(`settings.tabs.${tab.key}`),
+            hint: t("sidebar.settings"),
+            to: tab.to ? `${settings.to}/${tab.to}` : settings.to,
+            icon: tab.icon,
+          }),
+        )
       : [];
     return [...nav, ...tabs];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
@@ -154,7 +149,7 @@ export function HeaderSearch() {
       hint: [user.username && `@${user.username}`, user.login, user.email, user.telegram_id]
         .filter(Boolean)
         .join(" · "),
-      to: `/dashboard/users?search=${encodeURIComponent(debounced)}`,
+      open: () => openUser(user.id, { data: user }),
       icon: UserIcon,
     }));
     const link = (path: string) => `${path}?search=${encodeURIComponent(debounced)}`;
@@ -162,14 +157,14 @@ export function HeaderSearch() {
       id: `order:${order.id}`,
       label: `${t("header.searchOrders")} #${order.id}`,
       hint: [order.plan_snapshot.name, order.status].filter(Boolean).join(" · "),
-      to: link("/dashboard/transactions"),
+      open: () => openOrder(order.id, { data: order }),
       icon: CreditCard,
     }));
     const subscriptionEntries = subscriptions.map((sub) => ({
       id: `subscription:${sub.id}`,
       label: `${t("header.searchSubscriptions")} #${sub.id}`,
       hint: [sub.tag, `user ${sub.user_id}`].filter(Boolean).join(" · "),
-      to: link("/dashboard/subscriptions"),
+      open: () => openSubscription(sub.id, { data: sub }),
       icon: Layers,
     }));
     const planEntries = plans
@@ -179,14 +174,17 @@ export function HeaderSearch() {
         id: `plan:${plan.id}`,
         label: plan.name,
         hint: t("header.searchPlan"),
-        to: "/dashboard/plans",
+        // the plan dialog is an edit form; without the right the plans page is the read-only view
+        ...(permissions.includes("PLANS_UPDATE")
+          ? { open: () => openPlan(plan.id, { data: plan }) }
+          : { to: "/dashboard/plans" }),
         icon: Package,
       }));
     const promocodeEntries = promocodes.map((promocode) => ({
       id: `promocode:${promocode.id}`,
       label: promocode.code,
       hint: t("header.searchPromocode"),
-      to: `/dashboard/promocodes?search=${encodeURIComponent(promocode.code)}`,
+      open: () => openPromocode(promocode.id, { data: promocode }),
       icon: Ticket,
     }));
     const eventEntries = permissions.includes("EVENT_LOG_VIEW")
@@ -215,7 +213,8 @@ export function HeaderSearch() {
   useEffect(() => setActive(0), [entries]);
 
   const go = (entry: Entry) => {
-    navigate(entry.to);
+    if (entry.open) entry.open();
+    else if (entry.to) navigate(entry.to);
     setOpen(false);
     setQuery("");
   };

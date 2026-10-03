@@ -20,7 +20,6 @@ class DailyAmountResponse(BaseModel):
 class OverviewUsersResponse(BaseModel):
     total: int
     new_today: int
-    daily_registrations: list[DailyCountResponse]
 
 
 class OverviewSubscriptionsResponse(BaseModel):
@@ -28,14 +27,8 @@ class OverviewSubscriptionsResponse(BaseModel):
     active: int
     limited: int
     expired: int
+    disabled: int
     expiring_soon: int
-
-
-class OverviewTransactionsResponse(BaseModel):
-    paid_orders_count: int
-    revenue_by_currency: dict[Currency, Decimal]
-    report_currency: Currency
-    daily_revenue: list[DailyAmountResponse]
 
 
 class RuntimeProcessResponse(BaseModel):
@@ -52,17 +45,30 @@ class HostMemoryResponse(BaseModel):
     used_bytes: int
 
 
-class OverviewOnlineResponse(BaseModel):
-    current: int
-    daily_peak: list[DailyCountResponse]
-
-
 class OverviewResponse(BaseModel):
-    days: int
-    granularity: Literal["day", "month"]
     users: Optional[OverviewUsersResponse] = None
     subscriptions: Optional[OverviewSubscriptionsResponse] = None
-    transactions: Optional[OverviewTransactionsResponse] = None
     runtime: list[RuntimeProcessResponse]
     host_memory: Optional[HostMemoryResponse] = None
-    online: OverviewOnlineResponse
+
+
+class RevenueChartResponse(BaseModel):
+    days: int
+    granularity: Literal["day", "month"]
+    paid_orders_count: int
+    revenue_by_currency: dict[Currency, Decimal]
+    report_currency: Currency
+    daily: list[DailyAmountResponse]
+
+
+class RegistrationsChartResponse(BaseModel):
+    days: int
+    granularity: Literal["day", "month"]
+    daily: list[DailyCountResponse]
+
+
+class OnlineChartResponse(BaseModel):
+    days: int
+    granularity: Literal["day", "month"]
+    current: int
+    daily_peak: list[DailyCountResponse]

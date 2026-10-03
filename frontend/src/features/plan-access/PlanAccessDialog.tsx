@@ -10,7 +10,8 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
-import { TextArea } from "@shared/ui/TextInput";
+import { normalizeEmail, normalizePositiveInt } from "@shared/lib/chip-normalizers";
+import { ChipsInput } from "@shared/ui/ChipsInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import { Tag } from "@shared/ui/Tag";
@@ -25,13 +26,6 @@ interface PlanAccessDialogProps {
 }
 
 
-function parseLines(value: string): string[] {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-}
-
 export function PlanAccessDialog({ plan, onClose, onSaved }: PlanAccessDialogProps) {
   return (
     <Modal onClose={onClose} size="lg" scrollable>
@@ -45,8 +39,8 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
   const close = useModalClose();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availability, setAvailability] = useState<PlanAvailability>(plan.availability);
-  const [telegramIds, setTelegramIds] = useState(plan.allowed_telegram_ids.join("\n"));
-  const [emails, setEmails] = useState(plan.allowed_emails.join("\n"));
+  const [telegramIds, setTelegramIds] = useState(plan.allowed_telegram_ids.map(String));
+  const [emails, setEmails] = useState(plan.allowed_emails);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -54,10 +48,9 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
     try {
       const updated = await updatePlanAccess(plan.id, {
         availability,
-        allowed_telegram_ids: parseLines(telegramIds)
-          .map((id) => Number(id))
-          .filter((id) => Number.isFinite(id)),
-        allowed_emails: parseLines(emails),
+        // the lists only mean something for ALLOWED; switching away drops them
+        allowed_telegram_ids: availability === "ALLOWED" ? telegramIds.map(Number) : [],
+        allowed_emails: availability === "ALLOWED" ? emails : [],
       });
       toast.success(t("plans.access.saved"));
       onSaved(updated);
@@ -69,8 +62,8 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
     }
   };
 
-  const telegramIdCount = parseLines(telegramIds).length;
-  const emailCount = parseLines(emails).length;
+  const telegramIdCount = telegramIds.length;
+  const emailCount = emails.length;
 
   return (
     <>
@@ -123,24 +116,24 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
 
           {availability === "ALLOWED" && (
             <Card variant="form">
-              <Field label={t("plans.access.telegramIdsLabel")} htmlFor="plan-access-telegram-ids" aside={<Tag>{telegramIdCount}</Tag>} hint={t("plans.access.telegramIdsHint")}>
-                <TextArea
+              <Field label={t("plans.access.telegramIdsLabel")} htmlFor="plan-access-telegram-ids" aside={<Tag>{telegramIdCount}</Tag>}>
+                <ChipsInput
                   id="plan-access-telegram-ids"
-                  spellCheck={false}
-                  value={telegramIds}
-                  onChange={(event) => setTelegramIds(event.target.value)}
-                  rows={3}
-                  className="font-mono"
+                  values={telegramIds}
+                  onChange={setTelegramIds}
+                  normalize={normalizePositiveInt}
+                  inputMode="numeric"
+                  placeholder={t("plans.access.telegramIdsPlaceholder")}
                 />
               </Field>
-              <Field label={t("plans.access.emailsLabel")} htmlFor="plan-access-emails" aside={<Tag>{emailCount}</Tag>} hint={t("plans.access.emailsHint")}>
-                <TextArea
+              <Field label={t("plans.access.emailsLabel")} htmlFor="plan-access-emails" aside={<Tag>{emailCount}</Tag>}>
+                <ChipsInput
                   id="plan-access-emails"
-                  spellCheck={false}
-                  value={emails}
-                  onChange={(event) => setEmails(event.target.value)}
-                  rows={3}
-                  className="font-mono"
+                  values={emails}
+                  onChange={setEmails}
+                  normalize={normalizeEmail}
+                  inputMode="email"
+                  placeholder={t("plans.access.emailsPlaceholder")}
                 />
               </Field>
             </Card>

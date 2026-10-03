@@ -9,7 +9,7 @@ import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, listT
 import { listUserPromocodeActivations, type UserPromocodeActivation } from "@entities/promocodes/api";
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { PaidTimeline } from "@features/user-details/PaidTimeline";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
@@ -19,7 +19,6 @@ import { ResetReferralCodeButton } from "@features/user-referrals/ResetReferralC
 import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
-import type { Permission } from "@shared/types/rbac";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -41,11 +40,6 @@ const ANALYTICS_ORDERS_LIMIT = 200;
 const ROW_CLASSNAME = "flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left";
 const ROW_ICON_CLASSNAME =
   "flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-semibold text-foreground";
-
-function usePermissions(): Permission[] {
-  const currentUserState = useCurrentUser();
-  return currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
-}
 
 function LoadError({ text }: { text: string }) {
   return (

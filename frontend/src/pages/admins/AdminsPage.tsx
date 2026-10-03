@@ -11,7 +11,7 @@ import type { AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog
 import { AdminDetailsFlow, DemoteAdminConfirm } from "@features/admin-details/AdminDetailsFlow";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
@@ -29,11 +29,9 @@ export function AdminsPage() {
 
   // warm the catalog so the details dialog's Permissions tab opens without a spinner
   useEffect(prefetchPermissionCatalog, []);
-  const canViewSessions =
-    currentUserState.kind === "ready" &&
-    currentUserState.data.effective_permissions.includes("USER_SESSIONS_VIEW");
-  const canViewEvents =
-    currentUserState.kind === "ready" && currentUserState.data.effective_permissions.includes("EVENT_LOG_VIEW");
+  const permissions = usePermissions();
+  const canViewSessions = permissions.includes("USER_SESSIONS_VIEW");
+  const canViewEvents = permissions.includes("EVENT_LOG_VIEW");
   const currentUserId = currentUserState.kind === "ready" ? currentUserState.data.id : null;
 
   return (

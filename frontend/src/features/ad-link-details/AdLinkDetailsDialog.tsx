@@ -3,13 +3,13 @@ import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type AdLink, updateAdLink } from "@entities/advertising/api";
+import { type AdLink, deleteAdLink, updateAdLink } from "@entities/advertising/api";
 import { AdLinkEditForm } from "@features/ad-link-edit/AdLinkEditForm";
 import { AD_LINK_EDIT_FORM_ID, useAdLinkEditForm } from "@features/ad-link-edit/use-ad-link-edit-form";
 import { AdLinkShareMenu } from "@features/ad-link-share/AdLinkShareMenu";
 import { AdLinkStatsPanel } from "@features/ad-link-stats/AdLinkStatsPanel";
 import { AdLinkUsersList } from "@features/ad-link-stats/AdLinkUsersList";
-import { getErrorMessage } from "@shared/api/http";
+import { ApiError, getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
@@ -19,8 +19,7 @@ import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
-
-export type AdLinkDetailsFollowUp = "delete";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 type AdLinkDetailsTab = "overview" | "users" | "settings";
 
@@ -35,20 +34,28 @@ interface AdLinkDetailsDialogProps {
   canUpdate: boolean;
   canDelete: boolean;
   onSaved: (adLink: AdLink) => void;
-  /** Fires after the exit animation; `followUp` is the action picked in the footer, if any. */
-  onClose: (followUp?: AdLinkDetailsFollowUp) => void;
+  /** deleted from the footer; fires once the dialog has animated out */
+  onDeleted: (adLink: AdLink) => void;
+  onClose: () => void;
 }
 
-export function AdLinkDetailsDialog({ onClose, ...props }: AdLinkDetailsDialogProps) {
-  // the delete confirmation opens only once this modal has animated out
-  const followUpRef = useRef<AdLinkDetailsFollowUp | undefined>(undefined);
+export function AdLinkDetailsDialog({ onClose, onDeleted, ...props }: AdLinkDetailsDialogProps) {
+  // the page drops the row only after the exit animation, or the dialog would vanish mid-close
+  const deletedRef = useRef(false);
 
   return (
-    <Modal onClose={() => onClose(followUpRef.current)} size="lg" scrollable>
+    <Modal
+      onClose={() => {
+        if (deletedRef.current) onDeleted(props.adLink);
+        onClose();
+      }}
+      size="lg"
+      scrollable
+    >
       <AdLinkDetailsDialogBody
         {...props}
-        onFollowUp={(followUp) => {
-          followUpRef.current = followUp;
+        onDeleted={() => {
+          deletedRef.current = true;
         }}
       />
     </Modal>
@@ -65,10 +72,11 @@ function AdLinkDetailsDialogBody({
   canUpdate,
   canDelete,
   onSaved,
-  onFollowUp,
-}: Omit<AdLinkDetailsDialogProps, "onClose"> & { onFollowUp: (followUp: AdLinkDetailsFollowUp) => void }) {
+  onDeleted,
+}: Omit<AdLinkDetailsDialogProps, "onClose" | "onDeleted"> & { onDeleted: () => void }) {
   const { t } = useTranslation();
   const close = useModalClose();
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [tab, setTab] = useState<AdLinkDetailsTab>("overview");
   const [contentRef, contentHeight] = useMeasuredHeight();
   const [isToggling, setIsToggling] = useState(false);
@@ -91,15 +99,23 @@ function AdLinkDetailsDialogBody({
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await deleteAdLink(adLink.id);
+      onDeleted();
+      close();
+    } catch (err) {
+      // 400 here only means the link already has attributed users
+      toast.error(
+        err instanceof ApiError && err.status === 400
+          ? t("advertising.delete.hasUsers")
+          : getErrorMessage(err, t("advertising.delete.error")),
+      );
+    }
+  };
+
   const deleteButton = canDelete && (
-    <Button
-      variant="danger"
-      type="button"
-      onClick={() => {
-        onFollowUp("delete");
-        close();
-      }}
-    >
+    <Button variant="danger" type="button" onClick={() => setIsConfirmingDelete(true)}>
       <Trash2 className="size-3.5" />
       {t("advertising.delete.button")}
     </Button>
@@ -176,6 +192,20 @@ function AdLinkDetailsDialogBody({
             <AdLinkShareMenu key={`${adLink.id}-${adLink.allow_bot}-${adLink.allow_webcabinet}`} adLink={adLink} />
           </div>
         )
+      )}
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t("advertising.delete.title")}
+          message={t("advertising.delete.confirm", { name: adLink.name })}
+          confirmLabel={t("advertising.delete.confirmButton")}
+          cancelLabel={t("advertising.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            setIsConfirmingDelete(false);
+            void handleDelete();
+          }}
+          onCancel={() => setIsConfirmingDelete(false)}
+        />
       )}
     </>
   );

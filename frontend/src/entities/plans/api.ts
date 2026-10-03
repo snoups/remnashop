@@ -38,6 +38,10 @@ export interface Plan {
   durations: PlanDuration[];
 }
 
+export function getPlan(planId: number, signal?: AbortSignal): Promise<Plan> {
+  return apiGet<Plan>(`/plans/${planId}`, signal);
+}
+
 export function listPlans(signal?: AbortSignal): Promise<Plan[]> {
   return apiGet<ListResponse<Plan>>("/plans", signal).then((response) => response.items);
 }

@@ -18,7 +18,7 @@ import { useAppearancePreview, useReloadAppearance } from "@entities/appearance/
 import { bounceTap } from "@shared/lib/bounceState";
 import { DEFAULT_ACCENT_COLOR, DEFAULT_SHADER_PALETTE_HEX, hexToHueDegrees, hueRotateHex } from "@shared/lib/color";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { toast } from "@shared/lib/toast";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
@@ -190,8 +190,7 @@ export function AppearanceSettingsForm() {
   const { t } = useTranslation();
   const reloadAppearance = useReloadAppearance();
   const { setPreviewColor, setPreviewPalette, setPreviewShaderEnabled } = useAppearancePreview();
-  const userState = useCurrentUser();
-  const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const [brandName, setBrandName] = useState("");
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT_COLOR);
   // The last custom (non-preset) color picked -- mirrors accentColor live

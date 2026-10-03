@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getShopSettings, updateShopSettings } from "@entities/settings/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { blockNonIntegerKeys, parseOptionalInt, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
@@ -19,6 +20,7 @@ const rowIconClassName =
 
 export function ShopSettingsForm() {
   const { t } = useTranslation();
+  const canManage = usePermissions().includes("SHOP_SETTINGS_MANAGE");
   const [state, , setData] = useAsyncResource(getShopSettings);
   const [maxActiveSubscriptions, setMaxActiveSubscriptions] = useState("");
   const [deviceSingleResetEnabled, setDeviceSingleResetEnabled] = useState(true);
@@ -101,6 +103,7 @@ export function ShopSettingsForm() {
       )}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
+          <fieldset disabled={!canManage} className="contents">
           <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
             <div className={rowIconClassName}>
               <Layers className="size-4" />
@@ -148,15 +151,18 @@ export function ShopSettingsForm() {
               onCooldownChange={setLinkResetCooldownHours}
             />
           </div>
+          </fieldset>
 
-          <Button
-            variant="accent"
-            className="mt-4 w-fit"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? t("settings.shop.saving") : t("settings.shop.save")}
-          </Button>
+          {canManage && (
+            <Button
+              variant="accent"
+              className="mt-4 w-fit"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? t("settings.shop.saving") : t("settings.shop.save")}
+            </Button>
+          )}
         </form>
       )}
     </Card>

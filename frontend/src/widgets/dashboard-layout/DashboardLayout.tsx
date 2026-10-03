@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Suspense, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate, useOutlet } from "react-router-dom";
+import { matchPath, Navigate, useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 import { logout } from "@shared/api/http";
 import { CurrentUserProvider } from "@entities/user/CurrentUserProvider";
@@ -10,10 +10,12 @@ import { useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { RefreshSignalContext } from "@shared/lib/refresh-signal";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { BottomNav } from "@widgets/bottom-nav/BottomNav";
+import { EntityDialogHost } from "@widgets/entity-dialog-host/EntityDialogHost";
 import { Header } from "@widgets/header/Header";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
+import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
 import { Sidebar } from "@widgets/sidebar/Sidebar";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -23,7 +25,16 @@ import { Spinner } from "@shared/ui/Spinner";
 function AnimatedOutlet() {
   const location = useLocation();
   const outlet = useOutlet();
+  const permissions = usePermissions();
   const section = location.pathname.split("/")[2] ?? "";
+
+  // a page whose sidebar link is hidden is off limits by URL too
+  const gate = NAV_ITEMS.find(
+    (item) => item.permission && matchPath({ path: item.to, end: false }, location.pathname),
+  )?.permission;
+  if (gate && !permissions.includes(gate)) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -68,6 +79,7 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
 
   return (
     <RefreshSignalContext.Provider value={refreshSignal}>
+      <EntityDialogHost>
       <motion.div
         // A collapsed sidebar gives its 176px (w-62 - 72px) back by narrowing the
         // whole shell, not by widening the card -- same duration/easing as the
@@ -104,6 +116,7 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
         </motion.div>
         <BottomNav />
       </motion.div>
+      </EntityDialogHost>
     </RefreshSignalContext.Provider>
   );
 }

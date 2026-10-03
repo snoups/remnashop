@@ -9,6 +9,45 @@
     "import/first": "error",
     "import/newline-after-import": "error",
     "import/no-relative-parent-imports": "error",
+    "import/no-cycle": "error",
     "typescript/consistent-type-imports": ["error", { "prefer": "type-imports" }]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/shared/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          { "patterns": [{ "group": ["@entities/**", "@features/**", "@widgets/**", "@pages/**", "@app/**"], "message": "shared sits below every other layer" }] }
+        ]
+      }
+    },
+    {
+      "files": ["src/entities/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          { "patterns": [{ "group": ["@features/**", "@widgets/**", "@pages/**", "@app/**"], "message": "entities may import only entities and shared" }] }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          { "patterns": [{ "group": ["@widgets/**", "@pages/**", "@app/**"], "message": "features may import only features, entities and shared" }] }
+        ]
+      }
+    },
+    {
+      "files": ["src/widgets/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          { "patterns": [{ "group": ["@pages/**", "@app/**"], "message": "widgets may not import pages or app" }] }
+        ]
+      }
+    }
+  ]
 }

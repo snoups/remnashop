@@ -223,6 +223,28 @@ async def test_owner_can_promote_existing_user_by_email(
     assert len(password) == PASSWORD_MIN_LENGTH
 
 
+async def test_owner_can_promote_existing_user_by_id(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="Client", role=Role.USER, language=Locale.EN, telegram_id=840_001)
+        )
+        await uow.commit()
+
+    use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
+    admin, password = await use_case(
+        OWNER, PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id, login="byid-admin")
+    )
+
+    assert admin.id == target.id
+    assert admin.role == Role.ADMIN
+    assert password is not None
+
+
 async def test_promote_reuses_existing_password_hash_when_already_set(
     user_repository: UserRepository,
     uow: UnitOfWork,

@@ -92,7 +92,7 @@ async def test_get_overview_requires_admin(client: httpx.AsyncClient) -> None:
     assert response.status_code == 401
 
 
-async def test_owner_can_get_overview_with_valid_days(
+async def test_owner_can_get_a_chart_with_valid_days(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -101,13 +101,14 @@ async def test_owner_can_get_overview_with_valid_days(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.get(f"{API_V1}/overview?days=30", headers=headers)
+    for chart in ("revenue", "registrations", "online"):
+        response = await client.get(f"{API_V1}/overview/{chart}?days=30", headers=headers)
 
-    assert response.status_code == 200
-    assert response.json()["days"] == 30
+        assert response.status_code == 200
+        assert response.json()["days"] == 30
 
 
-async def test_get_overview_default_days_is_seven(
+async def test_get_overview_summary(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -119,11 +120,11 @@ async def test_get_overview_default_days_is_seven(
     response = await client.get(f"{API_V1}/overview", headers=headers)
 
     assert response.status_code == 200
-    assert response.json()["days"] == 7
     assert response.json()["runtime"] == []
+    assert "disabled" in response.json()["subscriptions"]
 
 
-async def test_get_overview_rejects_an_invalid_days_value(
+async def test_get_overview_chart_rejects_an_invalid_days_value(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -132,6 +133,6 @@ async def test_get_overview_rejects_an_invalid_days_value(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.get(f"{API_V1}/overview?days=5", headers=headers)
+    response = await client.get(f"{API_V1}/overview/online?days=5", headers=headers)
 
     assert response.status_code == 422

@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronRight, Filter, Gift, Plus, Ticket } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
@@ -8,7 +8,6 @@ import { type AddOnListItem, listAddons } from "@entities/addons/api";
 import { type Plan, listPlans } from "@entities/plans/api";
 import {
   DEFAULT_PAGE_SIZE,
-  deletePromocode,
   getPromocodeSummary,
   listPromocodes,
   type Promocode,
@@ -21,14 +20,13 @@ import {
   PROMOCODE_STATUSES,
   REWARD_TYPES,
 } from "@entities/promocodes/display";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { PromocodeCreateDialog } from "@features/promocode-create/PromocodeCreateDialog";
 import { PromocodeDetailsDialog } from "@features/promocode-details/PromocodeDetailsDialog";
-import { getErrorMessage } from "@shared/api/http";
+import { useEntityChanged } from "@shared/lib/entity-dialogs";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
-import { toast } from "@shared/lib/toast";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
@@ -40,13 +38,10 @@ import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
 
-type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: Promocode[]; total: number };
-
 const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_120px_110px_100px_16px] items-center gap-3";
 
 export function PromocodesPage() {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [addons, setAddons] = useState<AddOnListItem[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [status, setStatus] = useState("");
@@ -54,27 +49,25 @@ export function PromocodesPage() {
   // set by the header search's deep link; no local search box
   const [searchParams] = useSearchParams();
   const search = (searchParams.get("search") ?? "").trim();
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // a load-more started before a filter change must not append to the new list
-  const loadGenRef = useRef(0);
+  const filters = useMemo(() => ({ status, rewardType, search }), [status, rewardType, search]);
+  const { state, setState, isLoadingMore, hasMore, loadMore: handleLoadMore, reload } = usePaginatedList(
+    (current, page, signal) => listPromocodes({ ...current, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+    filters,
+  );
+  useEntityChanged("promocode", () => {
+    reload();
+    setSummaryVersion((version) => version + 1);
+  });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [summary, setSummary] = useState<PromocodeSummary | null>(null);
   // bumped after create/edit/delete so the metrics catch up with the list
   const [summaryVersion, setSummaryVersion] = useState(0);
-  // an id, not the row: the dialog then follows edits/toggles made from inside it
-  const [detailsId, setDetailsId] = useState<number | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<Promocode | null>(null);
+  const [detailsPromocode, setDetailsPromocode] = useState<Promocode | null>(null);
 
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canCreate = permissions.includes("PROMOCODES_CREATE");
-  const canUpdate = permissions.includes("PROMOCODES_UPDATE");
-  const canDelete = permissions.includes("PROMOCODES_DELETE");
   const canGenerateCode = permissions.includes("PROMOCODES_GENERATE_CODE");
   const canViewSummary = permissions.includes("PROMOCODES_SUMMARY_VIEW");
-  const canViewUsers = permissions.includes("PROMOCODES_USERS_VIEW");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -108,39 +101,6 @@ export function PromocodesPage() {
     return () => controller.abort();
   }, [canViewSummary, summaryVersion]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    loadGenRef.current += 1;
-    setPage(1);
-    listPromocodes({ status, rewardType, search, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", items: result.items, total: result.total });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
-      });
-    return () => controller.abort();
-  }, [status, rewardType, search]);
-
-  // offset drift on a page boundary after create/delete, switch to keyset if it bites.
-  const handleLoadMore = async () => {
-    const gen = loadGenRef.current;
-    const nextPage = page + 1;
-    setIsLoadingMore(true);
-    try {
-      const result = await listPromocodes({ status, rewardType, search, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
-      if (gen !== loadGenRef.current) return;
-      setState((prev) =>
-        prev.kind === "ready" ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total } : prev,
-      );
-      setPage(nextPage);
-    } catch {
-      // keep current items; the button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
   const visibleItems = state.kind === "ready" ? state.items : [];
   const hasFilters = Boolean(status || rewardType || search);
 
@@ -155,24 +115,18 @@ export function PromocodesPage() {
     });
   };
 
-  const handleDelete = async (promo: Promocode) => {
-    try {
-      await deletePromocode(promo.id);
-      setSummaryVersion((version) => version + 1);
-      setState((prev) =>
-        prev.kind === "ready"
-          ? { kind: "ready", items: prev.items.filter((item) => item.id !== promo.id), total: prev.total - 1 }
-          : prev,
-      );
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("promocodes.delete.error")));
-    }
+  const handleDeleted = (promo: Promocode) => {
+    setSummaryVersion((version) => version + 1);
+    setState((prev) =>
+      prev.kind === "ready"
+        ? { kind: "ready", items: prev.items.filter((item) => item.id !== promo.id), total: prev.total - 1 }
+        : prev,
+    );
   };
 
   const none = t("promocodes.stats.none");
   const usedCount = (promo: Promocode): number | undefined =>
     summary ? (summary.activations_by_promocode[promo.id] ?? 0) : undefined;
-  const detailsPromocode = state.kind === "ready" ? state.items.find((item) => item.id === detailsId) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -270,7 +224,7 @@ export function PromocodesPage() {
                   <motion.button
                     key={promo.id}
                     type="button"
-                    onClick={() => setDetailsId(promo.id)}
+                    onClick={() => setDetailsPromocode(promo)}
                     {...bounceTap(0.03)}
                     className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
                   >
@@ -313,7 +267,7 @@ export function PromocodesPage() {
               })}
             </div>
 
-            {state.kind === "ready" && state.items.length < state.total && (
+            {state.kind === "ready" && hasMore && (
               <div className="mx-3 mt-4">
                 <LoadMoreButton
                   onClick={() => void handleLoadMore()}
@@ -343,31 +297,12 @@ export function PromocodesPage() {
           usedCount={usedCount(detailsPromocode)}
           addons={addons}
           plans={plans}
-          canViewUsers={canViewUsers}
-          canUpdate={canUpdate}
-          canDelete={canDelete}
           onSaved={handleSaved}
-          onClose={(followUp) => {
-            if (followUp === "delete") setPendingDelete(detailsPromocode);
-            setDetailsId(null);
-          }}
+          onDeleted={handleDeleted}
+          onClose={() => setDetailsPromocode(null)}
         />
       )}
 
-      {pendingDelete && (
-        <ConfirmDialog
-          title={t("promocodes.delete.title")}
-          message={t("promocodes.delete.confirm", { code: pendingDelete.code })}
-          confirmLabel={t("promocodes.delete.confirmButton")}
-          cancelLabel={t("promocodes.delete.cancelButton")}
-          danger
-          onConfirm={() => {
-            void handleDelete(pendingDelete);
-            setPendingDelete(null);
-          }}
-          onCancel={() => setPendingDelete(null)}
-        />
-      )}
     </div>
   );
 }

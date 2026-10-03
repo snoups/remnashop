@@ -1,16 +1,19 @@
-import { Eye, Globe, Hash, Layers, Receipt, TrendingUp, User } from "lucide-react";
+import { Globe, Hash, Layers, Receipt, TrendingUp, User } from "lucide-react";
 import { useState } from "react";
 
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
+import { normalizeEmail } from "@shared/lib/chip-normalizers";
+import { ChipsInput } from "@shared/ui/ChipsInput";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
 import { Field } from "@shared/ui/Field";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { KpiTile } from "@shared/ui/KpiTile";
+import { PasswordInput } from "@shared/ui/PasswordInput";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
@@ -31,6 +34,7 @@ export function FieldsSection() {
   const [select, setSelect] = useState("ru");
   const [isOn, setIsOn] = useState(true);
   const [color, setColor] = useState("#22d3ee");
+  const [chips, setChips] = useState(["user@example.com"]);
   const options = [
     { value: "ru", label: "Русский", icon: Globe },
     { value: "en", label: "English", icon: Globe },
@@ -73,12 +77,14 @@ export function FieldsSection() {
           <TextArea id="kit-ids" rows={2} defaultValue={"123456789\n987654321"} className="font-mono" />
         </Field>
       </Specimen>
-      <Specimen name="TextInput · disabled · pr-10" usage={k("u.textInput")} stage="stretch">
+      <Specimen name="TextInput · disabled" usage={k("u.textInput")} stage="stretch">
         <TextInput disabled defaultValue="42" />
-        <div className="relative">
-          <TextInput type="password" defaultValue="secret-pass" className="w-full pr-10" />
-          <Eye className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        </div>
+      </Specimen>
+      <Specimen name="PasswordInput" usage={k("u.passwordInput")} stage="stretch">
+        <PasswordInput defaultValue="secret-pass" />
+      </Specimen>
+      <Specimen name="ChipsInput" usage={k("u.chipsInput")} stage="stretch">
+        <ChipsInput values={chips} onChange={setChips} normalize={normalizeEmail} inputMode="email" />
       </Specimen>
       <Specimen name="SuffixInput · aria-invalid · disabled" usage={k("u.suffixInput")} stage="stretch">
         <SuffixInput type="number" defaultValue="30" suffix={k("s.days")} />

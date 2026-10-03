@@ -16,7 +16,7 @@ import {
   type BlacklistSource,
 } from "@entities/blacklist/api";
 import { useCurrentUser } from "@entities/user/use-current-user";
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";

@@ -6,7 +6,7 @@ import { Link, NavLink } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { bounceTap } from "@shared/lib/bounceState";
 import { toggleSidebarCollapsed, useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { BounceIcon } from "@shared/ui/BounceIcon";
@@ -89,8 +89,7 @@ export function Sidebar() {
     if (next) setLastHint(next);
   };
   const isCollapsed = useSidebarCollapsed();
-  const userState = useCurrentUser();
-  const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const visibleItems = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission));
   // Bounce via `scale` (transform), not width/height — transform is layout-inert,
   // so a pressed row never pushes its neighbours.

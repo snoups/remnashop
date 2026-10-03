@@ -1,4 +1,4 @@
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 
 export interface OpenableUser {
   id?: number | null;
@@ -11,6 +11,5 @@ export function isOpenableUser(user: OpenableUser | null | undefined): user is O
 }
 
 export function useCanOpenUsers(): boolean {
-  const currentUser = useCurrentUser();
-  return currentUser.kind === "ready" && currentUser.data.effective_permissions.includes("USERS_DETAIL_VIEW");
+  return usePermissions().includes("USERS_DETAIL_VIEW");
 }

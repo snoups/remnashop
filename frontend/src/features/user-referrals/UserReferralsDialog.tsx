@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getUserReferralStats } from "@entities/referrals/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { OpenUserFooter } from "@features/open-user/OpenUserFooter";
 import { InvitedUsersList } from "@features/user-referrals/InvitedUsersList";
 import { ReferralOverview } from "@features/user-referrals/ReferralOverview";
@@ -41,8 +41,7 @@ function UserReferralsDialogBody({
   username,
 }: Omit<UserReferralsDialogProps, "onClose">) {
   const { t } = useTranslation();
-  const currentUser = useCurrentUser();
-  const permissions = currentUser.kind === "ready" ? currentUser.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canViewInvited = permissions.includes("REFERRALS_INVITED_VIEW");
   const [state] = useAsyncResource((signal) => getUserReferralStats(userId, signal));
   const [tab, setTab] = useState<ReferralsTab>("overview");

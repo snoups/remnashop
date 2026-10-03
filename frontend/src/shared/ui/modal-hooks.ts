@@ -8,6 +8,12 @@ const openPanels: HTMLDivElement[] = [];
 
 export const ModalCloseContext = createContext<() => void>(() => {});
 
+// the enclosing modal's panel, if any: a nested modal renders into its backdrop and morphs
+// out of it, instead of stacking a second backdrop (which would also re-root backdrop-blur
+// and make the nested panel read lighter than its parent). Exported so a dialog opened through
+// the entity dialog host still nests in the dialog it was opened from.
+export const ParentPanelContext = createContext<RefObject<HTMLDivElement | null> | null>(null);
+
 /** Runs the modal's exit animation, then its `onClose`. Call from anywhere inside a `<Modal>`. */
 export function useModalClose(): () => void {
   return useContext(ModalCloseContext);

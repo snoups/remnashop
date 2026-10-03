@@ -11,7 +11,7 @@ import {
 } from "@entities/event-log/api";
 import { describeEntry } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { formatRelative } from "@shared/lib/relative-time";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
@@ -42,8 +42,7 @@ interface NotificationsBellProps {
 export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onClose }: NotificationsBellProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const userState = useCurrentUser();
-  const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canView = permissions.includes("NOTIFICATIONS_VIEW");
   const canOpenLog = permissions.includes("EVENT_LOG_VIEW");
 

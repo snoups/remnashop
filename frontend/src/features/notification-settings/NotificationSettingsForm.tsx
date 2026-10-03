@@ -7,7 +7,7 @@ import {
   updateNotificationGroups,
   type NotificationGroups,
 } from "@entities/event-log/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -27,9 +27,7 @@ const GROUP_ICONS: Record<string, LucideIcon> = {
 
 export function NotificationSettingsForm() {
   const { t } = useTranslation();
-  const userState = useCurrentUser();
-  const canView =
-    userState.kind === "ready" && userState.data.effective_permissions.includes("NOTIFICATIONS_VIEW");
+  const canView = usePermissions().includes("NOTIFICATIONS_VIEW");
   const [state, , setData] = useAsyncResource(getNotificationGroups);
   // one save at a time: each sends the whole list, so overlapping answers could land out of order
   const [isSaving, setIsSaving] = useState(false);

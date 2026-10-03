@@ -242,6 +242,7 @@ class ListUsersDto:
 @dataclass(frozen=True, kw_only=True)
 class PromoteToAdminDto:
     client_ip: str
+    user_id: Optional[int] = None
     email: Optional[str] = None
     telegram_username: Optional[str] = None
     login: Optional[str] = None

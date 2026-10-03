@@ -28,8 +28,8 @@ import {
   resetBackupSettings,
   updateBackupSettings,
 } from "@entities/backups/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { usePermissions } from "@entities/user/use-current-user";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { getErrorMessage } from "@shared/api/http";
 import { formatBytes } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
@@ -189,9 +189,7 @@ export function BackupsPage() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isResettingSettings, setIsResettingSettings] = useState(false);
 
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canManageSettings = permissions.includes("BACKUPS_SETTINGS_MANAGE");
   const canResetSettings = permissions.includes("BACKUPS_SETTINGS_RESET");
   const canCreateRun = permissions.includes("BACKUPS_RUN_CREATE");

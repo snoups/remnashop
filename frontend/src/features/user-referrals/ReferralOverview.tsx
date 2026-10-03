@@ -2,7 +2,7 @@ import { Gift, Hash, UserPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { getUserReferralRevenue, type ReferralStats } from "@entities/referrals/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { REWARD_TYPES, formatReward, userHandle } from "@features/user-referrals/format";
 import { formatMoney } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -21,9 +21,7 @@ export function ReferralOverview({ userId, stats }: { userId: number; stats: Ref
 
 export function ReferralKpis({ userId, stats }: { userId: number; stats: ReferralStats }) {
   const { t, i18n } = useTranslation();
-  const currentUser = useCurrentUser();
-  const canViewRevenue =
-    currentUser.kind === "ready" && currentUser.data.effective_permissions.includes("REFERRALS_REVENUE_VIEW");
+  const canViewRevenue = usePermissions().includes("REFERRALS_REVENUE_VIEW");
   const [revenueState] = useAsyncResource((signal) =>
     canViewRevenue ? getUserReferralRevenue(userId, signal) : Promise.resolve(null),
   );

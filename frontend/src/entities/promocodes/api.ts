@@ -104,6 +104,10 @@ export function updatePromocode(promocodeId: number, payload: UpdatePromocodeReq
   return apiPatch<Promocode, UpdatePromocodeRequest>(`/promocodes/${promocodeId}`, payload);
 }
 
+export function getPromocode(promocodeId: number, signal?: AbortSignal): Promise<Promocode> {
+  return apiGet<Promocode>(`/promocodes/${promocodeId}`, signal);
+}
+
 export function deletePromocode(promocodeId: number): Promise<void> {
   return apiDelete<void>(`/promocodes/${promocodeId}`);
 }

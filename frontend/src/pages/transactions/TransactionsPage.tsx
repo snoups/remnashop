@@ -10,13 +10,14 @@ import {
   Wallet,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
 import { DEFAULT_PAGE_SIZE, getTransactionSummary, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactions, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { currencySymbol, formatMoney, formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { GroupToggle } from "@shared/ui/GroupToggle";
@@ -33,13 +34,7 @@ import { Tag } from "@shared/ui/Tag";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
-type LoadState =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "ready"; items: TransactionItem[]; total: number };
-
 const STATUSES: TransactionStatus[] = ["PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED"];
-const FETCH_INDICATOR_DELAY_MS = 150;
 const DAY_MS = 86_400_000;
 // "all time" has no previous window; show growth over the last month instead
 const ALL_TIME_TREND_DAYS = 30;
@@ -76,8 +71,6 @@ function groupByDay(orders: TransactionItem[]): DayGroup[] {
 
 export function TransactionsPage() {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [isFetching, setIsFetching] = useState(false);
   const [status, setStatus] = useState("");
   const [gatewayType, setGatewayType] = useState("");
   const [purchaseType, setPurchaseType] = useState("");
@@ -85,8 +78,6 @@ export function TransactionsPage() {
   // set by the header search's deep link; no local search box
   const [searchParams] = useSearchParams();
   const search = searchParams.get("search") ?? "";
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [detailsOrder, setDetailsOrder] = useState<TransactionItem | null>(null);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   // the previous window of the same length, or the last 30 days for "all time"
@@ -99,13 +90,8 @@ export function TransactionsPage() {
       if (!next.delete(key)) next.add(key);
       return next;
     });
-  // Bumped on every primary load; a load-more from before a filter change
-  // discards its result instead of appending to an already-replaced list.
-  const loadGenRef = useRef(0);
 
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canViewDetails = permissions.includes("TRANSACTIONS_DETAIL_VIEW");
   const canFilterByGateway = permissions.includes("TRANSACTIONS_GATEWAYS_VIEW");
   const [gatewayOptions, setGatewayOptions] = useState<string[]>([]);
@@ -130,33 +116,10 @@ export function TransactionsPage() {
     [status, gatewayType, purchaseType, period, search],
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const showFetchingTimeout = setTimeout(() => {
-      if (!controller.signal.aborted) setIsFetching(true);
-    }, FETCH_INDICATOR_DELAY_MS);
-    loadGenRef.current += 1;
-    setPage(1);
-    listTransactions({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) {
-          setState({ kind: "ready", items: result.items, total: result.total });
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
-        }
-      })
-      .finally(() => {
-        clearTimeout(showFetchingTimeout);
-        if (!controller.signal.aborted) setIsFetching(false);
-      });
-    return () => {
-      controller.abort();
-      clearTimeout(showFetchingTimeout);
-    };
-  }, [baseFilters]);
+  const { state, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore } = usePaginatedList(
+    (filters, page, signal) => listTransactions({ ...filters, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+    baseFilters,
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -191,27 +154,6 @@ export function TransactionsPage() {
     return () => controller.abort();
   }, [baseFilters, period]);
 
-  const handleLoadMore = async () => {
-    const gen = loadGenRef.current;
-    const nextPage = page + 1;
-    setIsLoadingMore(true);
-    try {
-      const result = await listTransactions({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
-      if (gen !== loadGenRef.current) return;
-      setState((prev) =>
-        prev.kind === "ready"
-          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
-          : prev,
-      );
-      setPage(nextPage);
-    } catch {
-      // keep current items on failure; the load-more button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
-  const hasMore = state.kind === "ready" && state.items.length < state.total;
   const groups = useMemo(() => (state.kind === "ready" ? groupByDay(state.items) : []), [state]);
 
   const none = t("transactions.stats.none");

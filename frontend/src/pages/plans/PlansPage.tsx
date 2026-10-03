@@ -25,10 +25,11 @@ import { useTranslation } from "react-i18next";
 
 import { deletePlan, listPlans, type Plan, type PlanAvailability, reorderPlans, updatePlan } from "@entities/plans/api";
 import { getPriceBook } from "@entities/pricing/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { PlanAccessDialog } from "@features/plan-access/PlanAccessDialog";
 import { PlanEditDialog } from "@features/plan-edit/PlanEditDialog";
 import { getErrorMessage } from "@shared/api/http";
+import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { formatMoney } from "@shared/lib/format";
 import { toast } from "@shared/lib/toast";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
@@ -61,9 +62,7 @@ export function PlansPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canCreate = permissions.includes("PLANS_CREATE");
   const canUpdate = permissions.includes("PLANS_UPDATE");
   const canDelete = permissions.includes("PLANS_DELETE");
@@ -71,9 +70,13 @@ export function PlansPage() {
   const canReorder = permissions.includes("PLANS_ORDER_MANAGE");
   const canViewPricing = permissions.includes("PRICING_VIEW");
 
+  const [reloadToken, setReloadToken] = useState(0);
+  useEntityChanged("plan", () => setReloadToken((token) => token + 1));
+
   useEffect(() => {
     const controller = new AbortController();
-    setState({ kind: "loading" });
+    // a refetch keeps the current rows on screen instead of flashing the spinner
+    setState((prev) => (prev.kind === "ready" ? prev : { kind: "loading" }));
     listPlans(controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) setState({ kind: "ready", items });
@@ -82,7 +85,7 @@ export function PlansPage() {
         if (!controller.signal.aborted) setState({ kind: "error" });
       });
     return () => controller.abort();
-  }, []);
+  }, [reloadToken]);
 
   // base_price is in the anchor currency, which only the price book knows
   useEffect(() => {

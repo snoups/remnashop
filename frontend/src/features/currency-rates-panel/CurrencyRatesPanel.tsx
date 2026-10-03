@@ -14,7 +14,7 @@ import {
   type RoundingMode,
 } from "@entities/pricing/api";
 import { PricingDiffList } from "@entities/pricing/PricingDiffList";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
 import { blockNonDecimalKeys, blockNonIntegerKeys, parseOptionalInt, toTwoDecimals } from "@shared/lib/number-input";
@@ -39,12 +39,13 @@ interface CurrencyRatesPanelProps {
 
 export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps) {
   const { t } = useTranslation();
-  const userState = useCurrentUser();
-  const canManageRates =
-    userState.kind === "ready" && userState.data.effective_permissions.includes("PRICING_RATES_MANAGE");
+  const permissions = usePermissions();
+  const canManageRates = permissions.includes("PRICING_RATES_MANAGE");
+  const canSwitchAnchor = permissions.includes("PRICING_ANCHOR_MANAGE");
 
   return (
     <>
+      {(canManageRates || canSwitchAnchor) && (
       <Card>
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground backdrop-blur-md">
@@ -58,7 +59,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
 
         <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
-        {canManageRates && (
+        {canSwitchAnchor && (
           <div className="mt-4 grid items-center gap-3 md:grid-cols-2 xl:grid-cols-3">
             <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground xl:col-span-2">
               <Info className="size-3.5 shrink-0" />
@@ -86,6 +87,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
         )}
 
       </Card>
+      )}
 
       <GlobalSettings
         anchorCurrency={book.settings.anchor_currency}
@@ -363,6 +365,7 @@ function GlobalSettings({
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
+  const canManage = usePermissions().includes("PRICING_SETTINGS_MANAGE");
   const [perDay, setPerDay] = useState(toTwoDecimals(pricePerDay ?? ""));
   const [perGb, setPerGb] = useState(toTwoDecimals(pricePerGb ?? ""));
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -404,7 +407,7 @@ function GlobalSettings({
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <fieldset disabled={!canManage} className="grid gap-3 sm:grid-cols-2">
           <Field label={t("pricing.settings.pricePerDayLabel")} htmlFor="pricing-per-day">
             <SuffixInput
               id="pricing-per-day"
@@ -429,15 +432,17 @@ function GlobalSettings({
               suffix={anchorCurrency}
             />
           </Field>
-        </div>
-        <Button
-          variant="accent"
-          className="w-fit"
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? t("pricing.settings.saving") : t("pricing.settings.save")}
-        </Button>
+        </fieldset>
+        {canManage && (
+          <Button
+            variant="accent"
+            className="w-fit"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? t("pricing.settings.saving") : t("pricing.settings.save")}
+          </Button>
+        )}
       </form>
     </Card>
   );

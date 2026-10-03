@@ -1,11 +1,10 @@
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
-import { useNavigate } from "react-router-dom";
 
 import type { ReferralReward } from "@entities/referrals/api";
-import { userCardLink } from "@entities/user/api";
 import { formatReward, initials, userHandle } from "@features/user-referrals/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { Badge } from "@shared/ui/Badge";
@@ -17,14 +16,13 @@ const PAGE_SIZE = 10;
 
 export function ReferralRewardsList({ rewards }: { rewards: ReferralReward[] }) {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
+  const { openUser: openUserCard } = useOpenEntity();
   // the whole history arrives with the stats; paged here only to keep the list short
   const [shown, setShown] = useState(PAGE_SIZE);
 
   const openBuyer = (reward: ReferralReward) => {
     if (!reward.buyer) return;
-    const link = userCardLink(reward.buyer);
-    navigate(link.to, { state: link.state });
+    openUserCard(reward.buyer.id);
   };
 
   const subtitle = (reward: ReferralReward): string =>

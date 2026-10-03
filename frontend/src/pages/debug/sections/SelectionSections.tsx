@@ -3,13 +3,13 @@ import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { DialogTabs } from "@shared/ui/DialogTabs";
-import { PackTab } from "@shared/ui/EmojiPicker";
+import { PackTab } from "@entities/emoji-packs/EmojiPicker";
 import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { TabBar } from "@shared/ui/TabBar";

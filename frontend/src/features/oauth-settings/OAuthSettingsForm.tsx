@@ -9,6 +9,7 @@ import {
   type OAuthSettings,
   type UpdateOAuthSettingsPayload,
 } from "@entities/settings/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
@@ -17,6 +18,7 @@ import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
+import { PasswordInput } from "@shared/ui/PasswordInput";
 import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
@@ -32,6 +34,7 @@ type Provider = "github" | "telegram" | "oidc";
 
 export function OAuthSettingsForm() {
   const { t } = useTranslation();
+  const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
   const [state, , setData] = useAsyncResource(getOAuthSettings);
   const [githubClientId, setGithubClientId] = useState("");
   const [githubClientSecret, setGithubClientSecret] = useState("");
@@ -219,14 +222,16 @@ export function OAuthSettingsForm() {
             />
           </div>
 
-          <Button
-            variant="accent"
-            className="mt-4 w-fit"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? t("settings.oauth.saving") : t("settings.oauth.save")}
-          </Button>
+          {canManage && (
+            <Button
+              variant="accent"
+              className="mt-4 w-fit"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? t("settings.oauth.saving") : t("settings.oauth.save")}
+            </Button>
+          )}
         </form>
       )}
     </Card>
@@ -262,6 +267,7 @@ function ProviderPanel({
   fields,
 }: ProviderPanelProps) {
   const { t } = useTranslation();
+  const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
   const [isOpen, setIsOpen] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -319,7 +325,7 @@ function ProviderPanel({
           <Switch
             checked={isEnabled}
             onChange={(value) => void handleToggle(value)}
-            disabled={isToggling || !isConfigured}
+            disabled={!canManage || isToggling || !isConfigured}
           />
         </div>
       </motion.div>
@@ -336,14 +342,27 @@ function ProviderPanel({
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
               {fields.map((field) => (
                 <Field key={field.key} label={field.label} htmlFor={`oauth-${field.key}`}>
-                  <TextInput
-                    id={`oauth-${field.key}`}
-                    type="text"
-                    value={field.value}
-                    onChange={(event) => field.onChange(event.target.value)}
-                    placeholder={t("settings.oauth.placeholder")}
-                    autoComplete="off"
-                  />
+                  {field.key.endsWith("_client_secret") ? (
+                    <PasswordInput
+                      id={`oauth-${field.key}`}
+                      value={field.value}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      placeholder={t("settings.oauth.placeholder")}
+                      disabled={!canManage}
+                      // "off" is ignored on password fields: the browser would offer the admin's saved password
+                      autoComplete="new-password"
+                    />
+                  ) : (
+                    <TextInput
+                      id={`oauth-${field.key}`}
+                      type="text"
+                      value={field.value}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      placeholder={t("settings.oauth.placeholder")}
+                      disabled={!canManage}
+                      autoComplete="off"
+                    />
+                  )}
                 </Field>
               ))}
             </div>
@@ -374,6 +393,7 @@ function PasskeyPanel({
   onToggled,
 }: PasskeyPanelProps) {
   const { t } = useTranslation();
+  const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
   const [isOpen, setIsOpen] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -427,7 +447,7 @@ function PasskeyPanel({
           <Switch
             checked={isEnabled}
             onChange={(value) => void handleToggle(value)}
-            disabled={isToggling || !isConfigured}
+            disabled={!canManage || isToggling || !isConfigured}
           />
         </div>
       </motion.div>
@@ -448,6 +468,7 @@ function PasskeyPanel({
                   value={rpId}
                   onChange={(event) => onRpIdChange(event.target.value)}
                   placeholder={t("settings.oauth.placeholder")}
+                  disabled={!canManage}
                   autoComplete="off"
                 />
               </Field>
@@ -457,6 +478,7 @@ function PasskeyPanel({
                   value={origin}
                   onChange={(event) => onOriginChange(event.target.value)}
                   placeholder={t("settings.oauth.placeholder")}
+                  disabled={!canManage}
                   autoComplete="off"
                 />
               </Field>
@@ -475,6 +497,7 @@ interface PasswordLoginToggleProps {
 
 function PasswordLoginToggle({ isEnabled, onToggled }: PasswordLoginToggleProps) {
   const { t } = useTranslation();
+  const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
   const [isToggling, setIsToggling] = useState(false);
 
   const handleToggle = async (next: boolean) => {
@@ -507,7 +530,7 @@ function PasswordLoginToggle({ isEnabled, onToggled }: PasswordLoginToggleProps)
         <Switch
           checked={isEnabled}
           onChange={(value) => void handleToggle(value)}
-          disabled={isToggling}
+          disabled={!canManage || isToggling}
         />
       </div>
     </div>

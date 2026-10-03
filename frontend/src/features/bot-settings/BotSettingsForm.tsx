@@ -14,6 +14,7 @@ import {
   updateBotSettings,
 } from "@entities/settings/api";
 import type { BotSettings, BotStatus } from "@entities/settings/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { bounceTap } from "@shared/lib/bounceState";
 import { randomString } from "@shared/lib/random-string";
@@ -130,6 +131,10 @@ function BotLogsDialogBody() {
 
 export function BotSettingsForm() {
   const { t } = useTranslation();
+  const permissions = usePermissions();
+  const canManage = permissions.includes("BOT_SETTINGS_MANAGE");
+  const canSetProxy = permissions.includes("BOT_PROXY_SET");
+  const canViewStatus = permissions.includes("BOT_STATUS_VIEW");
   const [token, setToken] = useState("");
   const [secretToken, setSecretToken] = useState("");
   const [proxyUrl, setProxyUrl] = useState("");
@@ -140,7 +145,10 @@ export function BotSettingsForm() {
     setDropPendingUpdates(settings.drop_pending_updates);
     setInitialDropPendingUpdates(settings.drop_pending_updates);
   });
-  const [statusState, reloadStatus] = useAsyncResource(getBotStatus);
+  // without the permission the status stays "loading" forever and its badge is hidden
+  const [statusState, reloadStatus] = useAsyncResource((signal) =>
+    canViewStatus ? getBotStatus(signal) : new Promise<BotStatus>(() => {}),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [restartCooldown, setRestartCooldown] = useState(0);
@@ -250,9 +258,11 @@ export function BotSettingsForm() {
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("settings.bot.description")}</p>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <Button variant="outline" onClick={() => setIsLogsOpen(true)}>
-              {t("settings.bot.showLogs")}
-            </Button>
+            {permissions.includes("BOT_LOGS_VIEW") && (
+              <Button variant="outline" onClick={() => setIsLogsOpen(true)}>
+                {t("settings.bot.showLogs")}
+              </Button>
+            )}
             {state.kind === "loading" && <Spinner />}
             {statusState.kind === "ready" && <StatusBadge status={statusState.data} />}
             {(state.kind === "error" || statusState.kind === "error") && (
@@ -266,6 +276,7 @@ export function BotSettingsForm() {
         <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
+          <fieldset disabled={!canManage} className="contents">
           <div className="flex flex-col gap-1">
             <label
               htmlFor="bot-token"
@@ -281,7 +292,7 @@ export function BotSettingsForm() {
               onChange={(event) => setToken(event.target.value)}
               placeholder={t("settings.bot.placeholder")}
               autoComplete="off"
-              className="min-w-0 rounded-full border border-border bg-input/60 h-9 px-3 text-sm text-foreground outline-none focus:border-primary"
+              className="min-w-0 rounded-full border border-border bg-input/60 h-9 px-3 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
@@ -301,7 +312,7 @@ export function BotSettingsForm() {
                 onChange={(event) => setSecretToken(event.target.value)}
                 placeholder={t("settings.bot.placeholder")}
                 autoComplete="off"
-                className="min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 pr-24 text-sm text-foreground outline-none focus:border-primary"
+                className="min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 pr-24 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
               />
               <motion.button
                 type="button"
@@ -313,6 +324,8 @@ export function BotSettingsForm() {
               </motion.button>
             </div>
           </div>
+
+          </fieldset>
 
           <div className="flex flex-col gap-1">
             <label
@@ -334,9 +347,10 @@ export function BotSettingsForm() {
                     : t("settings.bot.proxyPlaceholder")
                 }
                 autoComplete="off"
-                className={`min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary ${isProxyConfigured ? "pr-24" : ""}`}
+                disabled={!canSetProxy}
+                className={`min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 ${isProxyConfigured ? "pr-24" : ""}`}
               />
-              {isProxyConfigured && (
+              {isProxyConfigured && permissions.includes("BOT_PROXY_REMOVE") && (
                 <motion.button
                   type="button"
                   onClick={() => void handleRemoveProxy()}
@@ -350,7 +364,7 @@ export function BotSettingsForm() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 py-2">
+          <fieldset disabled={!canManage} className="flex items-center justify-between gap-3 py-2">
             <span className="flex items-center gap-1.5 text-sm text-foreground/80">
               {t("settings.bot.dropPendingUpdatesLabel")}
               <FieldHint text={t("settings.bot.dropPendingUpdatesHint")} />
@@ -359,19 +373,22 @@ export function BotSettingsForm() {
               checked={dropPendingUpdates}
               onChange={setDropPendingUpdates}
             />
-          </div>
+          </fieldset>
 
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="accent"
-              className="w-fit"
-              type="submit"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? t("settings.bot.saving") : t("settings.bot.save")}
-            </Button>
+            {(canManage || canSetProxy) && (
+              <Button
+                variant="accent"
+                className="w-fit"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? t("settings.bot.saving") : t("settings.bot.save")}
+              </Button>
+            )}
 
+            {permissions.includes("BOT_RESTART") && (
             <Button
               variant="outline"
               className="w-fit"
@@ -385,6 +402,7 @@ export function BotSettingsForm() {
                   ? t("settings.bot.restartCooldown", { seconds: restartCooldown })
                   : t("settings.bot.restartBot")}
             </Button>
+            )}
 
             <FieldHint text={t("settings.bot.applyChangesDescription")} />
           </div>

@@ -41,6 +41,7 @@ export interface CreateAdminPayload {
 }
 
 export interface PromoteAdminPayload {
+  user_id?: number;
   email?: string;
   telegram_username?: string;
   login?: string;

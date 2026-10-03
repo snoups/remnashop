@@ -3,6 +3,7 @@ import time
 from datetime import timedelta
 from decimal import Decimal
 
+import pytest
 from redis.asyncio import Redis
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,10 +21,16 @@ from app.core.enums import (
     SubscriptionStatus,
     TransactionStatus,
 )
+from app.core.exceptions import PermissionDeniedError
 from app.core.runtime_heartbeat import publish_runtime_heartbeat
 from app.core.utils.time import datetime_now
-from app.modules.overview.dto import GetOverviewDto
-from app.modules.overview.usecases import GetOverviewUseCase
+from app.modules.overview.dto import GetOverviewChartDto
+from app.modules.overview.usecases import (
+    GetOnlineChartUseCase,
+    GetOverviewUseCase,
+    GetRegistrationsChartUseCase,
+    GetRevenueChartUseCase,
+)
 from app.modules.pricing.repository import PricingRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
@@ -101,12 +108,19 @@ async def test_owner_sees_all_sections_with_correct_counts(
     use_case = GetOverviewUseCase(
         UserStatsRepository(user_repository.session),
         subscription_stats_repository,
-        transaction_repository,
-        pricing_repository,
         redis,
         uow,
     )
-    overview = await use_case(OWNER, GetOverviewDto(days=7))
+    overview = await use_case(OWNER)
+    revenue = await GetRevenueChartUseCase(
+        UserStatsRepository(user_repository.session),
+        transaction_repository,
+        pricing_repository,
+        uow,
+    )(OWNER, GetOverviewChartDto(days=7))
+    online = await GetOnlineChartUseCase(UserStatsRepository(user_repository.session), redis, uow)(
+        OWNER, GetOverviewChartDto(days=7)
+    )
 
     assert overview.users is not None
     assert overview.users.total >= 1
@@ -116,14 +130,14 @@ async def test_owner_sees_all_sections_with_correct_counts(
     assert overview.subscriptions.expired == 1
     assert overview.subscriptions.total == 3
     assert overview.subscriptions.expiring_soon == 1
-    assert overview.transactions is not None
-    assert overview.transactions.paid_orders_count >= 1
-    assert overview.transactions.revenue_by_currency.get(Currency.RUB, Decimal(0)) >= Decimal("500")
-    assert overview.online.current == 0
-    assert overview.online.daily_peak == []
+    assert overview.subscriptions.disabled == 0
+    assert revenue.paid_orders_count >= 1
+    assert revenue.revenue_by_currency.get(Currency.RUB, Decimal(0)) >= Decimal("500")
+    assert online.current == 0
+    assert online.daily_peak == []
 
 
-async def test_actor_missing_transactions_view_gets_transactions_none_but_keeps_other_sections(
+async def test_actor_missing_transactions_view_is_denied_the_revenue_chart(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
     transaction_repository: TransactionRepository,
@@ -134,19 +148,14 @@ async def test_actor_missing_transactions_view_gets_transactions_none_but_keeps_
 ) -> None:
     actor = OWNER.model_copy(update={"permission_revokes": ["TRANSACTIONS_VIEW"]})
 
-    use_case = GetOverviewUseCase(
+    use_case = GetRevenueChartUseCase(
         UserStatsRepository(user_repository.session),
-        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
-        redis,
         uow,
     )
-    overview = await use_case(actor, GetOverviewDto(days=7))
-
-    assert overview.transactions is None
-    assert overview.users is not None
-    assert overview.subscriptions is not None
+    with pytest.raises(PermissionDeniedError):
+        await use_case(actor, GetOverviewChartDto(days=7))
 
 
 async def test_days_window_excludes_orders_paid_before_the_cutoff(
@@ -175,19 +184,16 @@ async def test_days_window_excludes_orders_paid_before_the_cutoff(
         .values(updated_at=datetime_now() - timedelta(days=10))
     )
 
-    use_case = GetOverviewUseCase(
+    use_case = GetRevenueChartUseCase(
         UserStatsRepository(user_repository.session),
-        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
-        redis,
         uow,
     )
-    overview = await use_case(OWNER, GetOverviewDto(days=7))
+    revenue = await use_case(OWNER, GetOverviewChartDto(days=7))
 
-    assert overview.transactions is not None
-    assert overview.transactions.paid_orders_count == 0
-    assert overview.transactions.revenue_by_currency == {}
+    assert revenue.paid_orders_count == 0
+    assert revenue.revenue_by_currency == {}
 
 
 async def test_since_is_calendar_aligned_not_a_rolling_cutoff(
@@ -233,18 +239,15 @@ async def test_since_is_calendar_aligned_not_a_rolling_cutoff(
         .values(updated_at=today_start - timedelta(minutes=30))
     )
 
-    use_case = GetOverviewUseCase(
+    use_case = GetRevenueChartUseCase(
         UserStatsRepository(user_repository.session),
-        subscription_stats_repository,
         transaction_repository,
         pricing_repository,
-        redis,
         uow,
     )
-    overview = await use_case(OWNER, GetOverviewDto(days=1))
+    revenue = await use_case(OWNER, GetOverviewChartDto(days=1))
 
-    assert overview.transactions is not None
-    assert overview.transactions.paid_orders_count == 1
+    assert revenue.paid_orders_count == 1
 
 
 async def test_all_time_period_starts_at_first_registration_and_buckets_by_month(
@@ -264,25 +267,17 @@ async def test_all_time_period_starts_at_first_registration_and_buckets_by_month
         .values(created_at=datetime_now() - timedelta(days=200))
     )
 
-    use_case = GetOverviewUseCase(
-        UserStatsRepository(user_repository.session),
-        subscription_stats_repository,
-        transaction_repository,
-        pricing_repository,
-        redis,
-        uow,
-    )
-    overview = await use_case(OWNER, GetOverviewDto(days=0))
+    use_case = GetRegistrationsChartUseCase(UserStatsRepository(user_repository.session), uow)
+    chart = await use_case(OWNER, GetOverviewChartDto(days=0))
 
-    assert overview.granularity == "month"
-    assert overview.users is not None
-    month_starts = [entry.day for entry in overview.users.daily_registrations]
+    assert chart.granularity == "month"
+    month_starts = [entry.day for entry in chart.daily]
     assert all(m.day == 1 for m in month_starts)
     assert (datetime_now().date() - month_starts[0]).days >= 199
     # dense: every bucket is the first of the month after the previous one
     for earlier, later in zip(month_starts, month_starts[1:]):
         assert later == (earlier.replace(day=28) + timedelta(days=4)).replace(day=1)
-    assert sum(entry.count for entry in overview.users.daily_registrations) >= 1
+    assert sum(entry.count for entry in chart.daily) >= 1
 
 
 async def test_runtime_lists_only_processes_with_a_live_heartbeat(
@@ -313,12 +308,10 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
     use_case = GetOverviewUseCase(
         UserStatsRepository(user_repository.session),
         subscription_stats_repository,
-        transaction_repository,
-        pricing_repository,
         redis,
         uow,
     )
-    overview = await use_case(OWNER, GetOverviewDto(days=7))
+    overview = await use_case(OWNER)
 
     assert len(overview.runtime) == 1
     process = overview.runtime[0]
@@ -344,12 +337,10 @@ async def test_overview_includes_host_memory_when_available(
     use_case = GetOverviewUseCase(
         UserStatsRepository(user_repository.session),
         subscription_stats_repository,
-        transaction_repository,
-        pricing_repository,
         redis,
         uow,
     )
-    overview = await use_case(OWNER, GetOverviewDto(days=7))
+    overview = await use_case(OWNER)
 
     if overview.host_memory is not None:
         assert overview.host_memory.total_bytes > 0

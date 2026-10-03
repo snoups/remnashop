@@ -5,6 +5,7 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
@@ -19,6 +20,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
 from app.modules.providers import get_module_providers
+from app.modules.users.api.schemas import PromoteAdminRequest
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
@@ -330,6 +332,7 @@ async def test_get_own_security_returns_current_allowlist(
 
     assert response.status_code == 200
     assert response.json()["ip_allowlist"] == ["10.0.0.1"]
+    assert response.json()["client_ip"] == "10.0.0.1"
 
 
 async def test_get_me_includes_effective_permissions(
@@ -728,3 +731,20 @@ async def test_users_me_is_not_shadowed_by_user_id_route(
 
     assert response.status_code == 200
     assert response.json()["id"] == owner.id
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"user_id": 1, "email": "a@example.com"},
+        {"email": "a@example.com", "telegram_username": "a"},
+    ],
+)
+def test_promote_request_needs_exactly_one_identifier(payload: dict[str, object]) -> None:
+    with pytest.raises(PydanticValidationError):
+        PromoteAdminRequest.model_validate(payload)
+
+
+def test_promote_request_accepts_user_id_alone() -> None:
+    assert PromoteAdminRequest.model_validate({"user_id": 7}).user_id == 7

@@ -1,4 +1,3 @@
-import { Eye, EyeOff } from "lucide-react";
 import { motion, type Variants } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,13 +5,13 @@ import { useTranslation } from "react-i18next";
 import { bootstrapOwner } from "@entities/auth/api";
 import { getErrorMessage } from "@shared/api/http";
 import { copyToClipboard } from "@shared/lib/clipboard";
-import { bounceTap } from "@shared/lib/bounceState";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
 import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
+import { PasswordInput } from "@shared/ui/PasswordInput";
 import { TextInput } from "@shared/ui/TextInput";
 import { Field } from "@shared/ui/Field";
 
@@ -52,8 +51,6 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
   const handleGeneratePassword = () => {
@@ -130,55 +127,29 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
 
       <motion.div variants={FORM_ITEM_VARIANTS} className="flex flex-col">
         <Field label={t("auth.password")} htmlFor="password" info={t("auth.passwordHint")} aside={<span className="text-error">*</span>}>
-          <div className="relative">
-            <TextInput
-              id="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
-              minLength={24}
-              // Safari's "Suggest Strong Password" reads this to generate a password
-              // that already satisfies our rules (see PASSWORD_PATTERN above).
-              passwordrules="minlength: 24; required: lower; required: upper; required: digit;"
-              placeholder={t("auth.passwordPlaceholder")}
-              className="w-full pr-10"
-            />
-            <motion.button
-              type="button"
-              onClick={() => setShowPassword((value) => !value)}
-              tabIndex={-1}
-              {...bounceTap(0.12)}
-              className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </motion.button>
-          </div>
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
+            minLength={24}
+            // Safari's "Suggest Strong Password" reads this to generate a password
+            // that already satisfies our rules (see PASSWORD_PATTERN above).
+            passwordrules="minlength: 24; required: lower; required: upper; required: digit;"
+            placeholder={t("auth.passwordPlaceholder")}
+          />
         </Field>
       </motion.div>
 
       <motion.div variants={FORM_ITEM_VARIANTS} className="flex flex-col">
         <Field label={t("auth.confirmPassword")} htmlFor="confirm-password" aside={<span className="text-error">*</span>}>
-          <div className="relative">
-            <TextInput
-              id="confirm-password"
-              type={showConfirmPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              autoComplete="new-password"
-              placeholder={t("auth.confirmPasswordPlaceholder")}
-              className="w-full pr-10"
-            />
-            <motion.button
-              type="button"
-              onClick={() => setShowConfirmPassword((value) => !value)}
-              tabIndex={-1}
-              {...bounceTap(0.12)}
-              className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
-            >
-              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </motion.button>
-          </div>
+          <PasswordInput
+            id="confirm-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            autoComplete="new-password"
+            placeholder={t("auth.confirmPasswordPlaceholder")}
+          />
         </Field>
       </motion.div>
 

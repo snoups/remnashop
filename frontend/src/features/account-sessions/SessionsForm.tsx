@@ -1,39 +1,11 @@
 import { LaptopMinimal } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
-import { SessionList } from "@entities/auth/SessionList";
-import { type Session, listOwnSessions, revokeOwnSession } from "@entities/auth/sessions";
-import { getErrorMessage, logout } from "@shared/api/http";
-import { clearAccessToken, getSessionId } from "@shared/lib/token-storage";
-import { toast } from "@shared/lib/toast";
-import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { Spinner } from "@shared/ui/Spinner";
+import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
 import { Card } from "@shared/ui/Card";
 
 export function SessionsForm() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [state, reload] = useAsyncResource(listOwnSessions);
-  const currentSessionId = getSessionId();
-  const [pendingRevoke, setPendingRevoke] = useState<Session | null>(null);
-
-  const handleRevoke = async (sessionId: number) => {
-    try {
-      await revokeOwnSession(sessionId);
-      if (sessionId === currentSessionId) {
-        if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
-        clearAccessToken();
-        navigate("/", { replace: true });
-        return;
-      }
-      reload();
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("sessions.revokeError")));
-    }
-  };
 
   return (
     <Card>
@@ -50,36 +22,8 @@ export function SessionsForm() {
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
 
       <div className="mt-4">
-        {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <p className="text-sm text-error">{t("sessions.loadError")}</p>}
-        {state.kind === "ready" && (
-          <SessionList
-            sessions={state.data}
-            currentSessionId={currentSessionId}
-            onRequestRevoke={setPendingRevoke}
-          />
-        )}
+        <SessionsPanel />
       </div>
-
-      {pendingRevoke && (
-        <ConfirmDialog
-          title={t("sessions.revokeTitle")}
-          message={
-            pendingRevoke.id === currentSessionId
-              ? t("sessions.revokeConfirmCurrent")
-              : t("sessions.revokeConfirm")
-          }
-          confirmLabel={t("sessions.revoke")}
-          cancelLabel={t("sessions.cancel")}
-          danger
-          portal={pendingRevoke.id === currentSessionId}
-          onConfirm={() => {
-            void handleRevoke(pendingRevoke.id);
-            setPendingRevoke(null);
-          }}
-          onCancel={() => setPendingRevoke(null)}
-        />
-      )}
     </Card>
   );
 }

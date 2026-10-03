@@ -1,8 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import {
   type ReactNode,
-  type RefObject,
-  createContext,
   useCallback,
   useContext,
   useLayoutEffect,
@@ -13,7 +11,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { DialogPortal } from "@shared/ui/DialogPortal";
-import { ModalCloseContext, useDialogFocus } from "@shared/ui/modal-hooks";
+import { ModalCloseContext, ParentPanelContext, useDialogFocus } from "@shared/ui/modal-hooks";
 
 const SIZE_CLASS = {
   sm: "max-w-sm",
@@ -22,10 +20,6 @@ const SIZE_CLASS = {
   xl: "max-w-3xl",
 } as const;
 
-// the enclosing modal's panel, if any: a nested modal renders into its backdrop and morphs
-// out of it, instead of stacking a second backdrop (which would also re-root backdrop-blur
-// and make the nested panel read lighter than its parent)
-const ParentPanelContext = createContext<RefObject<HTMLDivElement | null> | null>(null);
 const INSTANT = { duration: 0 };
 const MORPH_OPTIONS: KeyframeAnimationOptions = { duration: 200, easing: "ease-out", fill: "forwards" };
 const PANEL_CLIP_RADIUS = "round var(--radius-dialog)";

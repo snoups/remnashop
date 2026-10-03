@@ -23,20 +23,6 @@ export function updateOwnProfile(payload: UpdateOwnProfileRequest): Promise<Curr
   return apiPatch<CurrentUser, UpdateOwnProfileRequest>("/users/me", payload);
 }
 
-// opened from elsewhere (ad link users) with a user whose details to show
-export interface UsersLocationState {
-  userId: number;
-  /** the user is soft-deleted: the Users page has to list deleted accounts to find them */
-  deleted?: boolean;
-}
-
-/** Users-page link that opens this user's card; a deleted user's name is wiped, so they're found by id. */
-export function userCardLink(user: { id: number; name: string }): { to: string; state: UsersLocationState } {
-  const deleted = !user.name;
-  const params = new URLSearchParams({ search: deleted ? String(user.id) : user.name });
-  return { to: `/dashboard/users?${params.toString()}`, state: { userId: user.id, deleted } };
-}
-
 export interface UserListItem {
   id: number;
   name: string;

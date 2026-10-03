@@ -135,6 +135,7 @@ class CreateAdminRequest(BaseModel):
 
 
 class PromoteAdminRequest(BaseModel):
+    user_id: Optional[int] = None
     email: Optional[str] = None
     telegram_username: Optional[str] = None
     login: Optional[str] = Field(default=None, min_length=1, max_length=64)
@@ -148,8 +149,9 @@ class PromoteAdminRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_exactly_one_identifier(self) -> "PromoteAdminRequest":
-        if bool(self.email) == bool(self.telegram_username):
-            raise ValueError("Provide exactly one of email or telegram_username")
+        identifiers = (self.user_id is not None, bool(self.email), bool(self.telegram_username))
+        if sum(identifiers) != 1:
+            raise ValueError("Provide exactly one of user_id, email or telegram_username")
         return self
 
 
@@ -202,6 +204,8 @@ class SetPersonalDiscountRequest(BaseModel):
 
 class SecurityResponse(BaseModel):
     ip_allowlist: list[str]
+    # the address this request came from, as the allowlist check sees it
+    client_ip: str
 
 
 class UnblockAllResponse(BaseModel):

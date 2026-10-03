@@ -12,6 +12,7 @@ import {
   type GatewayFieldSpec,
   type TestPaymentStatus,
 } from "@entities/gateways/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
 import { isHttpsUrl } from "@shared/lib/external-links";
@@ -60,7 +61,10 @@ export function GatewaySettingsCard({
   const docsUrl = GATEWAY_DOCS_URLS[gateway.type];
   const canExpand = fields.length > 0 || webhookUrl !== null;
   // Stars pays inside the bot, there is no provider page to open
-  const canTest = gateway.is_configured && gateway.type !== "TELEGRAM_STARS";
+  const permissions = usePermissions();
+  const canUpdate = permissions.includes("GATEWAYS_UPDATE");
+  const canTest =
+    gateway.is_configured && gateway.type !== "TELEGRAM_STARS" && permissions.includes("GATEWAYS_TEST");
 
   const toggleOpen = () => {
     if (canExpand) setIsOpen((open) => !open);
@@ -193,7 +197,7 @@ export function GatewaySettingsCard({
           <Switch
             checked={gateway.is_active}
             onChange={() => void handleToggle()}
-            disabled={isToggling || !gateway.is_configured}
+            disabled={!permissions.includes("GATEWAYS_ACTIVE_SET") || isToggling || !gateway.is_configured}
           />
         </div>
       </motion.div>
@@ -230,7 +234,7 @@ export function GatewaySettingsCard({
                     <Switch
                       checked={gateway.flags[field.key] ?? false}
                       onChange={(enabled) => void handleFlag(field.key, enabled)}
-                      disabled={savingFlag === field.key}
+                      disabled={!canUpdate || savingFlag === field.key}
                     />
                   </div>
                 </div>
@@ -259,13 +263,14 @@ export function GatewaySettingsCard({
                       }
                       placeholder={t("settings.gateways.placeholder")}
                       autoComplete="off"
+                      disabled={!canUpdate}
                     />
                   </Field>
                 );
               })}
-              {(valueFields.length > 0 || canTest) && (
+              {((valueFields.length > 0 && canUpdate) || canTest) && (
                 <div className="flex flex-wrap gap-2">
-                  {valueFields.length > 0 && (
+                  {valueFields.length > 0 && canUpdate && (
                     <Button
                       variant="accent"
                       className="w-fit"

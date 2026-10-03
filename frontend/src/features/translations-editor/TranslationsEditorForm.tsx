@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 
 import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
-import { ToolbarButton } from "@features/dialog-canvas-editor/DialogCanvasEditor";
+import { Button } from "@shared/ui/Button";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import {
   exportTranslations,
@@ -18,7 +18,7 @@ import {
   type TranslationsExportPayload,
   updateTranslation,
 } from "@entities/translations/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Collapse } from "@shared/ui/Collapse";
@@ -72,9 +72,7 @@ export function TranslationsEditorForm() {
   const [pendingImport, setPendingImport] = useState<TranslationsExportPayload | null>(null);
   const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
 
   const entries = entriesState.kind === "ready" ? entriesState.data : [];
   const activeLocales = localesState.kind === "ready" ? localesState.data.active : [];
@@ -214,26 +212,22 @@ export function TranslationsEditorForm() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           {permissions.includes("TRANSLATIONS_EXPORT") && (
-            <ToolbarButton
-              icon={Download}
-              label={t("dialogs.toolbar.export")}
-              onClick={() => void handleExport()}
-            />
+            <Button variant="outline" onClick={() => void handleExport()}>
+              <Download className="size-3.5" />
+              {t("dialogs.toolbar.export")}
+            </Button>
           )}
           {permissions.includes("TRANSLATIONS_IMPORT") && (
-            <ToolbarButton
-              icon={Upload}
-              label={t("dialogs.toolbar.import")}
-              onClick={() => fileInputRef.current?.click()}
-            />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="size-3.5" />
+              {t("dialogs.toolbar.import")}
+            </Button>
           )}
           {permissions.includes("TRANSLATIONS_RESET_ALL") && (
-            <ToolbarButton
-              icon={RotateCcw}
-              label={t("dialogs.inspector.resetAll")}
-              danger
-              onClick={() => setIsResetAllConfirmOpen(true)}
-            />
+            <Button variant="danger" onClick={() => setIsResetAllConfirmOpen(true)}>
+              <RotateCcw className="size-3.5" />
+              {t("dialogs.inspector.resetAll")}
+            </Button>
           )}
           <input
             ref={fileInputRef}
@@ -352,8 +346,8 @@ export function TranslationsEditorForm() {
                 variables={[]}
                 multiline
                 emojiInsert
-                canUpdate
-                canReset
+                canUpdate={permissions.includes("TRANSLATIONS_UPDATE")}
+                canReset={permissions.includes("TRANSLATIONS_RESET")}
                 save={updateTranslation}
                 onSaved={handleEntrySaved}
               />

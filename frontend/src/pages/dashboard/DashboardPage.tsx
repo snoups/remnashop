@@ -17,7 +17,7 @@ import {
 
 import { listEventLog } from "@entities/event-log/api";
 import type { EventLogEntry } from "@entities/event-log/api";
-import { getOverview } from "@entities/overview/api";
+import { getOnlineChart, getOverview, getRegistrationsChart, getRevenueChart } from "@entities/overview/api";
 import type {
   HostMemory,
   Overview,
@@ -26,7 +26,7 @@ import type {
   OverviewSubscriptions,
   RuntimeProcess,
 } from "@entities/overview/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { formatBytes, formatMoney } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
@@ -35,7 +35,29 @@ import { KpiTile } from "@shared/ui/KpiTile";
 import { LIST_BODY_CLASS } from "@shared/ui/classes";
 import { formatDateTime } from "@shared/lib/relative-time";
 
-type OverviewState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: Overview };
+type LoadState<T> = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: T };
+
+// each chart card owns its period: refetches on its own pill switch or a global refresh
+function useChart<T>(
+  fetchChart: (days: OverviewPeriodDays, signal: AbortSignal) => Promise<T>,
+  days: OverviewPeriodDays,
+  refreshKey: number,
+): LoadState<T> {
+  const [state, setState] = useState<LoadState<T>>({ kind: "loading" });
+  useEffect(() => {
+    const controller = new AbortController();
+    setState({ kind: "loading" });
+    fetchChart(days, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setState({ kind: "ready", data });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setState({ kind: "error" });
+      });
+    return () => controller.abort();
+  }, [fetchChart, days, refreshKey]);
+  return state;
+}
 
 function fillDailySeries<T extends { day: string }>(
   sparse: T[],
@@ -203,24 +225,10 @@ function ChartCardMessage({ kind }: { kind: "loading" | "error" }) {
 function RevenueCard({ refreshKey }: { refreshKey: number }) {
   const { t, i18n } = useTranslation();
   const [days, setDays] = useState<OverviewPeriodDays>(7);
-  const [state, setState] = useState<OverviewState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    getOverview(days, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [days, refreshKey]);
+  const state = useChart(getRevenueChart, days, refreshKey);
 
   if (state.kind !== "ready") return <ChartCardMessage kind={state.kind} />;
-  const { transactions } = state.data;
-  if (!transactions) return null;
+  const transactions = state.data;
 
   const revenueTotal =
     Object.entries(transactions.revenue_by_currency)
@@ -228,8 +236,8 @@ function RevenueCard({ refreshKey }: { refreshKey: number }) {
       .join(", ") || "—";
   const revenueSeries =
     days === 0
-      ? transactions.daily_revenue
-      : fillDailySeries(transactions.daily_revenue, days, (day) => ({ day, amount: "0" }));
+      ? transactions.daily
+      : fillDailySeries(transactions.daily, days, (day) => ({ day, amount: "0" }));
   const revenueChartData = revenueSeries.map((d) => ({ day: d.day, value: Number(d.amount) }));
 
   return (
@@ -250,29 +258,13 @@ function RevenueCard({ refreshKey }: { refreshKey: number }) {
 function RegistrationsCard({ refreshKey }: { refreshKey: number }) {
   const { t } = useTranslation();
   const [days, setDays] = useState<OverviewPeriodDays>(7);
-  const [state, setState] = useState<OverviewState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    getOverview(days, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [days, refreshKey]);
+  const state = useChart(getRegistrationsChart, days, refreshKey);
 
   if (state.kind !== "ready") return <ChartCardMessage kind={state.kind} />;
-  const { users } = state.data;
-  if (!users) return null;
-
   const registrationSeries =
     days === 0
-      ? users.daily_registrations
-      : fillDailySeries(users.daily_registrations, days, (day) => ({ day, count: 0 }));
+      ? state.data.daily
+      : fillDailySeries(state.data.daily, days, (day) => ({ day, count: 0 }));
   const registrationChartData = registrationSeries.map((d) => ({ day: d.day, value: d.count }));
   const registrationsTotal = registrationChartData.reduce((sum, d) => sum + d.value, 0);
 
@@ -293,23 +285,10 @@ function RegistrationsCard({ refreshKey }: { refreshKey: number }) {
 function OnlineCard({ refreshKey }: { refreshKey: number }) {
   const { t } = useTranslation();
   const [days, setDays] = useState<OverviewPeriodDays>(7);
-  const [state, setState] = useState<OverviewState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    getOverview(days, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [days, refreshKey]);
+  const state = useChart(getOnlineChart, days, refreshKey);
 
   if (state.kind !== "ready") return <ChartCardMessage kind={state.kind} />;
-  const { online } = state.data;
+  const online = state.data;
 
   const peakSeries =
     days === 0 ? online.daily_peak : fillDailySeries(online.daily_peak, days, (day) => ({ day, count: 0 }));
@@ -534,17 +513,14 @@ function SystemStatusSection({
 export function DashboardPage() {
   const { t } = useTranslation();
   const userState = useCurrentUser();
-  const permissions = userState.kind === "ready" ? userState.data.effective_permissions : [];
+  const permissions = usePermissions();
 
-  // total/new_today/active are point-in-time, not period-scoped -- the `days`
-  // argument only matters to the daily series the two chart cards fetch
-  // independently, so any value works here.
-  const [kpiState, setKpiState] = useState<OverviewState>({ kind: "loading" });
+  const [kpiState, setKpiState] = useState<LoadState<Overview>>({ kind: "loading" });
   const { token: refreshKey } = useRefreshSignal();
 
   useEffect(() => {
     const controller = new AbortController();
-    getOverview(7, controller.signal)
+    getOverview(controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) setKpiState({ kind: "ready", data });
       })
@@ -583,8 +559,8 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <RevenueCard refreshKey={refreshKey} />
-        <RegistrationsCard refreshKey={refreshKey} />
+        {permissions.includes("TRANSACTIONS_VIEW") && <RevenueCard refreshKey={refreshKey} />}
+        {permissions.includes("USERS_VIEW") && <RegistrationsCard refreshKey={refreshKey} />}
       </div>
 
       {kpiState.kind === "ready" && (

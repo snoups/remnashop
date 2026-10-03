@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { addLocale, type ActiveLocalesResult, removeLocale } from "@entities/translations/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { localeLabel } from "@shared/i18n/locale-label";
 import { bounceTap } from "@shared/lib/bounceState";
@@ -23,6 +24,7 @@ const DEFAULT_LOCALE = "en";
 
 export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
   const { t, i18n } = useTranslation();
+  const permissions = usePermissions();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -69,7 +71,9 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
     <button
       key={locale}
       type="button"
-      disabled={locale === DEFAULT_LOCALE || isPending}
+      disabled={
+        locale === DEFAULT_LOCALE || isPending || !permissions.includes(isActive ? "LOCALES_REMOVE" : "LOCALES_ADD")
+      }
       onClick={() => void toggle(locale, isActive)}
       className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
     >

@@ -11,7 +11,7 @@ import { scrollToEmojiPacks } from "@shared/lib/emoji-packs-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
-import { PremiumEmoji } from "@shared/ui/PremiumEmoji";
+import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 import { IconButton } from "@shared/ui/IconButton";
 

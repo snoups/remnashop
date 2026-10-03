@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -30,6 +30,7 @@ import {
 import { describeEntry } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
@@ -43,11 +44,6 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Spinner } from "@shared/ui/Spinner";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
-
-type LoadState =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "ready"; items: EventLogEntry[]; total: number };
 
 // Mirrors `EventCategory` (backend/app/core/events.py), in sidebar order.
 const CATEGORIES = [
@@ -87,10 +83,6 @@ const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], string> = {
   PAYMENT: "eventLog.filters.categoryPayment",
 };
 const FILTER_DEBOUNCE_MS = 200;
-// Only surface the dimmed-loading state once a refetch has been in flight
-// this long -- most requests resolve well under it, so typing quickly no
-// longer flashes the list dim/opaque on every keystroke pause.
-const FETCH_INDICATOR_DELAY_MS = 150;
 interface DayGroup {
   key: string;
   date: Date;
@@ -112,23 +104,16 @@ function groupByDay(entries: EventLogEntry[]): DayGroup[] {
 
 export function EventLogPage() {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [isFetching, setIsFetching] = useState(false);
   const [category, setCategory] = useState("");
   const [searchInput, setSearchInput] = useUrlSearch();
   const [dateFromInput, setDateFromInput] = useState("");
   const [dateToInput, setDateToInput] = useState("");
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   // opened from elsewhere (notifications bell) with a specific event to show
   const [selectedEntry, setSelectedEntry] = useState<EventLogEntry | null>(
     () => (location.state as EventLogLocationState | null)?.entry ?? null,
   );
-  // Bumped on every primary load; a load-more from before a filter change
-  // discards its result instead of appending to an already-replaced list.
-  const loadGenRef = useRef(0);
 
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
   const debouncedDateFrom = useDebouncedValue(dateFromInput, FILTER_DEBOUNCE_MS);
@@ -144,57 +129,11 @@ export function EventLogPage() {
     [category, debouncedSearch, debouncedDateFrom, debouncedDateTo],
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const showFetchingTimeout = setTimeout(() => {
-      if (!controller.signal.aborted) setIsFetching(true);
-    }, FETCH_INDICATOR_DELAY_MS);
-    loadGenRef.current += 1;
-    setPage(1);
-    listEventLog({ ...baseFilters, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) {
-          setState({ kind: "ready", items: result.items, total: result.total });
-        }
-      })
-      .catch(() => {
-        // keep showing whatever's already on screen; only surface the error
-        // state when there's nothing else to show
-        if (!controller.signal.aborted) {
-          setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
-        }
-      })
-      .finally(() => {
-        clearTimeout(showFetchingTimeout);
-        if (!controller.signal.aborted) setIsFetching(false);
-      });
-    return () => {
-      controller.abort();
-      clearTimeout(showFetchingTimeout);
-    };
-  }, [baseFilters]);
+  const { state, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore } = usePaginatedList(
+    (filters, page, signal) => listEventLog({ ...filters, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+    baseFilters,
+  );
 
-  const handleLoadMore = async () => {
-    const gen = loadGenRef.current;
-    const nextPage = page + 1;
-    setIsLoadingMore(true);
-    try {
-      const result = await listEventLog({ ...baseFilters, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
-      if (gen !== loadGenRef.current) return;
-      setState((prev) =>
-        prev.kind === "ready"
-          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
-          : prev,
-      );
-      setPage(nextPage);
-    } catch {
-      // keep current items on failure; the load-more button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
-  const hasMore = state.kind === "ready" && state.items.length < state.total;
   const groups = useMemo(() => (state.kind === "ready" ? groupByDay(state.items) : []), [state]);
   const [collapsedDays, setCollapsedDays] = useState<ReadonlySet<string>>(new Set());
   const toggleDay = (key: string) =>

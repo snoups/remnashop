@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { getErrorMessage } from "@shared/api/http";
 import { type BotCommandItem, getBotCommands, updateBotCommands } from "@entities/settings/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -23,9 +24,10 @@ const toBotCommandItem = ({ command, enabled }: Row): BotCommandItem => ({
 interface CommandRowProps {
   row: Row;
   onChange: (field: "enabled", value: boolean) => void;
+  readOnly: boolean;
 }
 
-function CommandRow({ row, onChange }: CommandRowProps) {
+function CommandRow({ row, onChange, readOnly }: CommandRowProps) {
   const dragControls = useDragControls();
 
   return (
@@ -36,17 +38,20 @@ function CommandRow({ row, onChange }: CommandRowProps) {
       dragControls={dragControls}
       className="flex items-center gap-2 rounded-full border border-border bg-input/60 py-2 pl-2 pr-2.5"
     >
-      <button
-        type="button"
-        onPointerDown={(event) => dragControls.start(event)}
-        className="flex cursor-grab items-center justify-center rounded-full p-1.5 text-foreground/60 transition-colors hover:bg-white/5 active:cursor-grabbing"
-      >
-        <MoreVertical className="size-4" />
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          onPointerDown={(event) => dragControls.start(event)}
+          className="flex cursor-grab items-center justify-center rounded-full p-1.5 text-foreground/60 transition-colors hover:bg-white/5 active:cursor-grabbing"
+        >
+          <MoreVertical className="size-4" />
+        </button>
+      )}
       <span className="flex-1 truncate font-mono text-sm text-foreground/80">/{row.command}</span>
       <Switch
         checked={row.enabled}
         onChange={(checked) => onChange("enabled", checked)}
+        disabled={readOnly}
       />
     </Reorder.Item>
   );
@@ -54,6 +59,7 @@ function CommandRow({ row, onChange }: CommandRowProps) {
 
 export function BotCommandsForm() {
   const { t } = useTranslation();
+  const canManage = usePermissions().includes("BOT_COMMANDS_MANAGE");
   const [rows, setRows] = useState<Row[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const nextRowId = useRef(0);
@@ -132,10 +138,12 @@ export function BotCommandsForm() {
                   key={row.id}
                   row={row}
                   onChange={(field, value) => updateRow(index, field, value)}
+                  readOnly={!canManage}
                 />
               ))}
             </Reorder.Group>
 
+            {canManage && (
             <div className="flex gap-2">
               <Button
                 variant="accent"
@@ -157,6 +165,7 @@ export function BotCommandsForm() {
                 {t("settings.botCommands.resetOrder")}
               </motion.button>
             </div>
+            )}
           </>
         )}
       </div>

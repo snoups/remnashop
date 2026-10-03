@@ -110,6 +110,10 @@ export function getTransactionSummary(
 }
 
 /** Gateway types that appear in at least one (non-test) order. */
+export function getTransaction(transactionId: number, signal?: AbortSignal): Promise<TransactionItem> {
+  return apiGet<TransactionItem>(`/transactions/${transactionId}`, signal);
+}
+
 export function listTransactionGateways(signal?: AbortSignal): Promise<string[]> {
   return apiGet<ListResponse<string>>("/transactions/gateways", signal).then((response) => response.items);
 }

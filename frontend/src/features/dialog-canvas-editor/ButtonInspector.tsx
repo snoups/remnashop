@@ -17,7 +17,7 @@ import type { TranslationEntry } from "@entities/translations/api";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
-import { EmojiPicker, type PickedEmoji } from "@shared/ui/EmojiPicker";
+import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
 import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";

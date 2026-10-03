@@ -17,23 +17,18 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { SessionList } from "@entities/auth/SessionList";
-import type { Session } from "@entities/auth/sessions";
-import { listUserSessions, revokeUserSession } from "@entities/auth/sessions";
 import { getUserAdAttribution } from "@entities/advertising/api";
 import { listEventLog } from "@entities/event-log/api";
 import type { EventLogEntry } from "@entities/event-log/api";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import type { UserListItem } from "@entities/user/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
+import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
-import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
-import { toast } from "@shared/lib/toast";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { KpiTile } from "@shared/ui/KpiTile";
@@ -60,16 +55,13 @@ const sectionTitleClassName =
 
 export function ProfileTab({ user }: { user: UserListItem }) {
   const { t, i18n } = useTranslation();
-  const currentUserState = useCurrentUser();
   const dash = "—";
   const yesNo = (value: boolean) => (value ? t("users.details.yes") : t("users.details.no"));
   const blocked = yesNo(user.is_blocked);
   const trialAvailable = user.is_trial_available ? t("users.details.trialYes") : t("users.details.trialNo");
   const createdAt = user.created_at ? formatDateTime(user.created_at, i18n.language) : undefined;
   const language = languageName(user.language, i18n.language);
-  const canViewAdSource =
-    currentUserState.kind === "ready" &&
-    currentUserState.data.effective_permissions.includes("AD_LINKS_USER_ATTRIBUTION_VIEW");
+  const canViewAdSource = usePermissions().includes("AD_LINKS_USER_ATTRIBUTION_VIEW");
   const [adSource] = useAsyncResource((signal) =>
     canViewAdSource ? getUserAdAttribution(user.id, signal) : Promise.resolve(null),
   );
@@ -173,38 +165,9 @@ export function ProfileTab({ user }: { user: UserListItem }) {
 }
 
 export function SessionsTab({ userId }: { userId: number }) {
-  const { t } = useTranslation();
-  const [state, reload] = useAsyncResource((signal) => listUserSessions(userId, signal));
-  const [pendingRevoke, setPendingRevoke] = useState<Session | null>(null);
-
-  const handleRevoke = async (sessionId: number) => {
-    try {
-      await revokeUserSession(userId, sessionId);
-      reload();
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("sessions.revokeError")));
-    }
-  };
-
   return (
     <Card variant="list">
-      {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <p className="p-3 text-sm text-error">{t("sessions.loadError")}</p>}
-      {state.kind === "ready" && <SessionList sessions={state.data} onRequestRevoke={setPendingRevoke} />}
-      {pendingRevoke && (
-        <ConfirmDialog
-          title={t("sessions.revokeTitle")}
-          message={t("sessions.revokeConfirm")}
-          confirmLabel={t("sessions.revoke")}
-          cancelLabel={t("sessions.cancel")}
-          danger
-          onConfirm={() => {
-            void handleRevoke(pendingRevoke.id);
-            setPendingRevoke(null);
-          }}
-          onCancel={() => setPendingRevoke(null)}
-        />
-      )}
+      <SessionsPanel userId={userId} />
     </Card>
   );
 }

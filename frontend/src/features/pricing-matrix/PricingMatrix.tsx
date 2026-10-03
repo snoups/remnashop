@@ -18,6 +18,7 @@ import {
   type PricingDiff,
 } from "@entities/pricing/api";
 import { PricingDiffList } from "@entities/pricing/PricingDiffList";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { blockNonDecimalKeys } from "@shared/lib/number-input";
@@ -40,7 +41,7 @@ const CURRENCIES: Currency[] = ["USD", "XTR", "RUB"];
 const BULK_SCOPES: BulkAdjustScope[] = ["ALL_PLANS", "ALL_ADDONS"];
 
 const cellInputClassName =
-  "w-24 rounded-full border px-3 py-2 text-right text-sm tabular-nums outline-none focus:border-primary";
+  "w-24 rounded-full border px-3 py-2 text-right text-sm tabular-nums outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 interface PricingMatrixProps {
   book: PriceBook;
@@ -49,6 +50,10 @@ interface PricingMatrixProps {
 
 export function PricingMatrix({ book, onChanged }: PricingMatrixProps) {
   const { t } = useTranslation();
+  const permissions = usePermissions();
+  // the dialog previews the change before applying it
+  const canBulkAdjust =
+    permissions.includes("PRICING_BASE_ADJUST_MANAGE") && permissions.includes("PRICING_PREVIEW_VIEW");
 
   const saveOverride = async (row: PriceBookRow, currency: Currency, price: string | null) => {
     try {
@@ -112,7 +117,7 @@ export function PricingMatrix({ book, onChanged }: PricingMatrixProps) {
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("pricing.matrix.description")}</p>
           </div>
         </div>
-        <BulkAdjustButton onChanged={onChanged} />
+        {canBulkAdjust && <BulkAdjustButton onChanged={onChanged} />}
       </div>
 
       <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
@@ -240,6 +245,10 @@ function MatrixRow({
   onSaveBasePrice: (row: PriceBookRow, newBasePrice: string) => void;
 }) {
   const { t } = useTranslation();
+  const permissions = usePermissions();
+  const isAddon = row.kind === "addon";
+  const canEditBase = permissions.includes(isAddon ? "ADDONS_PRICES_MANAGE" : "PLANS_DURATION_BASE_PRICE_MANAGE");
+  const canOverride = permissions.includes(isAddon ? "ADDONS_PRICE_OVERRIDE_MANAGE" : "PLANS_PRICE_OVERRIDE_MANAGE");
   return (
     <tr
       // border on every row but the section's last, same as divide-y (which borders the bottom)
@@ -260,6 +269,7 @@ function MatrixRow({
             if (event.target.value === "" || event.target.value === row.base_price) return;
             onSaveBasePrice(row, event.target.value);
           }}
+          disabled={!canEditBase}
           className={`${cellInputClassName} border-border bg-input/60`}
         />
       </Cell>
@@ -296,6 +306,7 @@ function MatrixRow({
                   if (event.target.value === "" || event.target.value === cell.amount) return;
                   onSaveOverride(row, currency, event.target.value);
                 }}
+                disabled={!canOverride}
                 className={`${cellInputClassName} ${
                   cell.is_pinned
                     ? "border-primary/40 bg-accent font-semibold text-primary"
@@ -306,6 +317,7 @@ function MatrixRow({
                 <IconButton
                   size="6"
                   onClick={() => onSaveOverride(row, currency, null)}
+                  disabled={!canOverride}
                 >
                   <Pin className="size-4 text-primary" />
                 </IconButton>
@@ -313,6 +325,7 @@ function MatrixRow({
                 <IconButton
                   size="6"
                   onClick={() => onSaveOverride(row, currency, cell.amount)}
+                  disabled={!canOverride}
                 >
                   <PinOff className="size-4" />
                 </IconButton>

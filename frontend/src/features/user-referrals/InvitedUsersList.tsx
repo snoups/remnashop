@@ -1,11 +1,10 @@
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import { type InvitedUser, listInvitedUsers } from "@entities/referrals/api";
-import { userCardLink } from "@entities/user/api";
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { useOpenEntity } from "@shared/lib/entity-dialogs";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { formatRewardAmounts, initials, userHandle } from "@features/user-referrals/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -59,7 +58,7 @@ export function InvitedUsersList({ userId }: { userId: number }) {
 
 function InvitedUsersPage({ userId, level, search }: { userId: number; level?: number; search: string }) {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
+  const { openUser: openUserCard } = useOpenEntity();
   const filters = { level, search: search || undefined, pageSize: PAGE_SIZE };
   const [state, , setData] = useAsyncResource((signal) => listInvitedUsers(userId, filters, signal));
   const [page, setPage] = useState(1);
@@ -81,8 +80,7 @@ function InvitedUsersPage({ userId, level, search }: { userId: number; level?: n
 
   const openUser = (item: InvitedUser) => {
     if (!item.user) return;
-    const link = userCardLink(item.user);
-    navigate(link.to, { state: link.state });
+    openUserCard(item.user.id);
   };
 
   const subtitle = (item: InvitedUser): string =>

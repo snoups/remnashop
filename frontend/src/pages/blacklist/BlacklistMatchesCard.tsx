@@ -12,7 +12,7 @@ import {
   type BlacklistOrigin,
   unblockBlacklistMatches,
 } from "@entities/blacklist/api";
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";

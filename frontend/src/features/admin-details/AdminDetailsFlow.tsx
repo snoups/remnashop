@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type Admin, demoteAdmin } from "@entities/admin/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { AdminDetailsDialog, type AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
@@ -54,7 +54,7 @@ interface AdminDetailsFlowProps {
 export function AdminDetailsFlow({ admin, initialTab, onChanged, onClose }: AdminDetailsFlowProps) {
   const currentUser = useCurrentUser();
   const [isDemoting, setIsDemoting] = useState(false);
-  const permissions = currentUser.kind === "ready" ? currentUser.data.effective_permissions : [];
+  const permissions = usePermissions();
   const isSelf = currentUser.kind === "ready" && currentUser.data.id === admin.id;
 
   // cancelling the confirm goes back to the details dialog, not out of the flow

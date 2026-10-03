@@ -1,6 +1,12 @@
 from dishka import Provider, Scope, provide_all
 
-from app.modules.overview.usecases import GetOverviewUseCase, SampleRemnawaveOnlineUseCase
+from app.modules.overview.usecases import (
+    GetOnlineChartUseCase,
+    GetOverviewUseCase,
+    GetRegistrationsChartUseCase,
+    GetRevenueChartUseCase,
+    SampleRemnawaveOnlineUseCase,
+)
 
 
 class OverviewProvider(Provider):
@@ -8,6 +14,9 @@ class OverviewProvider(Provider):
 
     use_cases = provide_all(
         GetOverviewUseCase,
+        GetRevenueChartUseCase,
+        GetRegistrationsChartUseCase,
+        GetOnlineChartUseCase,
         SampleRemnawaveOnlineUseCase,
     )
 

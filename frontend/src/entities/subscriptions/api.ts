@@ -71,6 +71,10 @@ export function updateSubscription(
   return apiPatch<SubscriptionListItem, UpdateSubscriptionRequest>(`/subscriptions/${subscriptionId}`, payload);
 }
 
+export function getSubscription(subscriptionId: number, signal?: AbortSignal): Promise<SubscriptionListItem> {
+  return apiGet<SubscriptionListItem>(`/subscriptions/${subscriptionId}`, signal);
+}
+
 export function deleteSubscription(subscriptionId: number): Promise<void> {
   return apiDelete<void>(`/subscriptions/${subscriptionId}`);
 }

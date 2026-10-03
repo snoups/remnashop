@@ -1,15 +1,14 @@
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
-import { useNavigate } from "react-router-dom";
 
 import {
   listPromocodeActivatedUsers,
   type Promocode,
   type PromocodeActivatedUser,
 } from "@entities/promocodes/api";
-import { userCardLink } from "@entities/user/api";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -22,7 +21,7 @@ const USERS_PAGE_SIZE = 10;
 
 export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
+  const { openUser: openUserCard } = useOpenEntity();
   const [state, , setData] = useAsyncResource((signal) =>
     listPromocodeActivatedUsers(promocode.id, 1, USERS_PAGE_SIZE, signal),
   );
@@ -44,8 +43,7 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
   };
 
   const openUser = (user: PromocodeActivatedUser) => {
-    const link = userCardLink({ id: user.user_id, name: user.name });
-    navigate(link.to, { state: link.state });
+    openUserCard(user.user_id);
   };
 
   return (

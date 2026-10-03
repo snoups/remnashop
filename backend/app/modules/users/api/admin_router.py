@@ -157,8 +157,12 @@ async def update_me(
 
 
 @router.get("/me/security", response_model=SecurityResponse)
-async def get_own_security(actor: UserDto = Depends(require_admin_user)) -> SecurityResponse:
-    return SecurityResponse(ip_allowlist=actor.ip_allowlist or [])
+async def get_own_security(
+    request: Request, actor: UserDto = Depends(require_admin_user)
+) -> SecurityResponse:
+    return SecurityResponse(
+        ip_allowlist=actor.ip_allowlist or [], client_ip=resolve_client_ip(request)
+    )
 
 
 @router.put("/me/security", response_model=SecurityResponse, responses=error_responses(400))
@@ -176,7 +180,9 @@ async def update_own_security(
             client_ip=resolve_client_ip(request),
         ),
     )
-    return SecurityResponse(ip_allowlist=updated.ip_allowlist or [])
+    return SecurityResponse(
+        ip_allowlist=updated.ip_allowlist or [], client_ip=resolve_client_ip(request)
+    )
 
 
 @router.get("", response_model=UserPageResponse)
@@ -395,6 +401,7 @@ async def promote_admin(
     admin, password = await use_case(
         actor,
         PromoteToAdminDto(
+            user_id=payload.user_id,
             email=payload.email,
             telegram_username=payload.telegram_username,
             login=payload.login,

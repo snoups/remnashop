@@ -9,7 +9,7 @@ import {
   listEmojiPacks,
   type EmojiPack,
 } from "@entities/emoji-packs/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
 import { EMOJI_PACKS_ANCHOR_ID } from "@shared/lib/emoji-packs-anchor";
@@ -18,7 +18,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { EmojiPackDialog } from "@features/emoji-packs/EmojiPackDialog";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
-import { PremiumEmoji } from "@shared/ui/PremiumEmoji";
+import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Tag } from "@shared/ui/Tag";
@@ -36,9 +36,7 @@ export function EmojiPacksManager() {
   const [pendingDelete, setPendingDelete] = useState<EmojiPack | null>(null);
   const [openPack, setOpenPack] = useState<EmojiPack | null>(null);
 
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canImport = permissions.includes("EMOJI_PACKS_IMPORT");
   const canDelete = permissions.includes("EMOJI_PACKS_DELETE");
 

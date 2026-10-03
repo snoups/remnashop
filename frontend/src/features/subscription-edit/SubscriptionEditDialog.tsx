@@ -6,8 +6,10 @@ import {
   SUBSCRIPTION_STATUS_BADGE_TONE,
   type SubscriptionListItem,
   type TrafficLimitStrategy,
+  deleteSubscription,
   updateSubscription,
 } from "@entities/subscriptions/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { OpenUserButton } from "@features/open-user/OpenUserButton";
 import { getErrorMessage } from "@shared/api/http";
 import { blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
@@ -20,6 +22,7 @@ import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
 import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Field } from "@shared/ui/Field";
 
 const STRATEGIES: TrafficLimitStrategy[] = ["NO_RESET", "DAY", "WEEK", "MONTH", "MONTH_ROLLING"];
@@ -27,10 +30,10 @@ const STRATEGIES: TrafficLimitStrategy[] = ["NO_RESET", "DAY", "WEEK", "MONTH", 
 
 interface SubscriptionEditDialogProps {
   subscription: SubscriptionListItem;
-  /** omitted when the actor can't delete; the page owns the confirmation */
-  onDelete?: () => void;
+  onSaved?: (updated: SubscriptionListItem) => void;
+  /** deleted from the footer; the dialog closes itself */
+  onDeleted?: (subscription: SubscriptionListItem) => void;
   onClose: () => void;
-  onSaved: (updated: SubscriptionListItem) => void;
 }
 
 export function SubscriptionEditDialog({ onClose, ...props }: SubscriptionEditDialogProps) {
@@ -41,9 +44,13 @@ export function SubscriptionEditDialog({ onClose, ...props }: SubscriptionEditDi
   );
 }
 
-function SubscriptionEditDialogBody({ subscription, onDelete, onSaved }: Omit<SubscriptionEditDialogProps, "onClose">) {
+function SubscriptionEditDialogBody({ subscription, onSaved, onDeleted }: Omit<SubscriptionEditDialogProps, "onClose">) {
   const { t } = useTranslation();
   const close = useModalClose();
+  const permissions = usePermissions();
+  const canEdit = permissions.includes("SUBSCRIPTIONS_UPDATE");
+  const canDelete = permissions.includes("SUBSCRIPTIONS_DELETE");
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tag, setTag] = useState(subscription.tag ?? "");
   const [trafficGb, setTrafficGb] = useState(String(subscription.traffic_limit));
@@ -69,7 +76,7 @@ function SubscriptionEditDialogBody({ subscription, onDelete, onSaved }: Omit<Su
         traffic_limit_strategy: strategy,
       });
       toast.success(t("subscriptions.edit.saved"));
-      onSaved(updated);
+      onSaved?.(updated);
       close();
     } catch (err) {
       toast.error(getErrorMessage(err, t("subscriptions.edit.error")));
@@ -78,6 +85,16 @@ function SubscriptionEditDialogBody({ subscription, onDelete, onSaved }: Omit<Su
     }
   };
 
+
+  const handleDelete = async () => {
+    try {
+      await deleteSubscription(subscription.id);
+      onDeleted?.(subscription);
+      close();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("subscriptions.delete.error")));
+    }
+  };
 
   return (
     <>
@@ -104,7 +121,7 @@ function SubscriptionEditDialogBody({ subscription, onDelete, onSaved }: Omit<Su
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <fieldset disabled={!canEdit} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           <Card variant="form">
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("subscriptions.edit.trafficLabel")} htmlFor="sub-edit-traffic" hint={t("subscriptions.edit.trafficHint")}>
@@ -153,14 +170,14 @@ function SubscriptionEditDialogBody({ subscription, onDelete, onSaved }: Omit<Su
               />
             </Field>
           </Card>
-        </div>
+        </fieldset>
 
         <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-3.5">
-          {onDelete && (
+          {canDelete && (
             <Button
               variant="danger"
               type="button"
-              onClick={onDelete}
+              onClick={() => setIsConfirmingDelete(true)}
             >
               <Trash2 className="size-3.5" />
               {t("subscriptions.delete.confirmButton")}
@@ -174,15 +191,32 @@ function SubscriptionEditDialogBody({ subscription, onDelete, onSaved }: Omit<Su
           >
             {t("subscriptions.edit.cancel")}
           </Button>
-          <Button
-            variant="accent"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? t("subscriptions.edit.saving") : t("subscriptions.edit.save")}
-          </Button>
+          {canEdit && (
+            <Button
+              variant="accent"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? t("subscriptions.edit.saving") : t("subscriptions.edit.save")}
+            </Button>
+          )}
         </div>
       </form>
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t("subscriptions.delete.confirmTitle")}
+          message={t("subscriptions.delete.confirm", { id: subscription.id })}
+          confirmLabel={t("subscriptions.delete.confirmButton")}
+          cancelLabel={t("subscriptions.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            setIsConfirmingDelete(false);
+            void handleDelete();
+          }}
+          onCancel={() => setIsConfirmingDelete(false)}
+        />
+      )}
     </>
   );
 }

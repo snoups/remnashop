@@ -1,25 +1,22 @@
 import { AlertCircle, ChevronRight, Link2, Loader2, Plus } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   type AdLink,
   type AdvertisingSummary,
   DEFAULT_PAGE_SIZE,
-  deleteAdLink,
   getAdvertisingSummary,
   listAdLinks,
 } from "@entities/advertising/api";
 import { roiClassName } from "@entities/advertising/format";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { AdLinkCreateDialog } from "@features/ad-link-create/AdLinkCreateDialog";
 import { AdLinkDetailsDialog } from "@features/ad-link-details/AdLinkDetailsDialog";
-import { ApiError, getErrorMessage } from "@shared/api/http";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
-import { toast } from "@shared/lib/toast";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
@@ -31,9 +28,6 @@ import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
-type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: AdLink[]; total: number };
-
-const FETCH_INDICATOR_DELAY_MS = 150;
 const DAY_MS = 86_400_000;
 // "all time" has no previous window; show growth over the last month instead
 const ALL_TIME_TREND_DAYS = 30;
@@ -41,7 +35,6 @@ const ALL_TIME_TREND_DAYS = 30;
 const STATS_GRID_CLASSNAME =
   "grid grid-cols-[36px_minmax(0,1fr)_88px_80px_104px_104px_80px_104px_16px] items-center gap-3";
 const PLAIN_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_104px_104px_16px] items-center gap-3";
-
 
 // mirrors AdLinkRepository.list_paginated: active first, then newest
 function compareAdLinks(a: AdLink, b: AdLink): number {
@@ -54,16 +47,9 @@ function compareAdLinks(a: AdLink, b: AdLink): number {
 
 export function AdvertisingPage() {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [isFetching, setIsFetching] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [period, setPeriod] = useState<PeriodDays>(0);
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  // Bumped on every primary load; a load-more from before a filter change
-  // discards its result instead of appending to an already-replaced list.
-  const loadGenRef = useRef(0);
   const [summary, setSummary] = useState<AdvertisingSummary | null>(null);
   // the same summary as it looked one period ago (30 days for "all time")
   const [compareSummary, setCompareSummary] = useState<AdvertisingSummary | null>(null);
@@ -71,11 +57,8 @@ export function AdvertisingPage() {
   const [summaryVersion, setSummaryVersion] = useState(0);
   // an id, not the row: the dialog then follows edits/pause made from inside it
   const [detailsId, setDetailsId] = useState<number | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<AdLink | null>(null);
 
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canCreate = permissions.includes("AD_LINKS_CREATE");
   const canUpdate = permissions.includes("AD_LINKS_UPDATE");
   const canDelete = permissions.includes("AD_LINKS_DELETE");
@@ -91,29 +74,10 @@ export function AdvertisingPage() {
     [period],
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const showFetchingTimeout = setTimeout(() => {
-      if (!controller.signal.aborted) setIsFetching(true);
-    }, FETCH_INDICATOR_DELAY_MS);
-    loadGenRef.current += 1;
-    setPage(1);
-    listAdLinks({ isActive, page: 1, pageSize: DEFAULT_PAGE_SIZE }, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setState({ kind: "ready", items: result.items, total: result.total });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
-      })
-      .finally(() => {
-        clearTimeout(showFetchingTimeout);
-        if (!controller.signal.aborted) setIsFetching(false);
-      });
-    return () => {
-      controller.abort();
-      clearTimeout(showFetchingTimeout);
-    };
-  }, [isActive]);
+  const { state, setState, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore } = usePaginatedList(
+    (active, page, signal) => listAdLinks({ isActive: active, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+    isActive,
+  );
 
   useEffect(() => {
     if (!canViewSummary) return;
@@ -154,29 +118,6 @@ export function AdvertisingPage() {
     [summary],
   );
 
-  // Offset pagination + local optimistic edits (delete below) can drift a row
-  // at a page boundary; acceptable for an admin list with infrequent deletes.
-  // offset drift on boundary, switch to keyset if it bites.
-  const handleLoadMore = async () => {
-    const gen = loadGenRef.current;
-    const nextPage = page + 1;
-    setIsLoadingMore(true);
-    try {
-      const result = await listAdLinks({ isActive, page: nextPage, pageSize: DEFAULT_PAGE_SIZE });
-      if (gen !== loadGenRef.current) return;
-      setState((prev) =>
-        prev.kind === "ready"
-          ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total }
-          : prev,
-      );
-      setPage(nextPage);
-    } catch {
-      // keep current items on failure; the load-more button stays available to retry
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
   const handleSaved = (link: AdLink) => {
     setSummaryVersion((version) => version + 1);
     setState((prev) => {
@@ -191,26 +132,15 @@ export function AdvertisingPage() {
     });
   };
 
-  const handleDelete = async (link: AdLink) => {
-    try {
-      await deleteAdLink(link.id);
-      setSummaryVersion((version) => version + 1);
-      setState((prev) =>
-        prev.kind === "ready"
-          ? { kind: "ready", items: prev.items.filter((item) => item.id !== link.id), total: prev.total - 1 }
-          : prev,
-      );
-    } catch (err) {
-      // 400 here only means the link already has attributed users
-      toast.error(
-        err instanceof ApiError && err.status === 400
-          ? t("advertising.delete.hasUsers")
-          : getErrorMessage(err, t("advertising.delete.error")),
-      );
-    }
+  const handleDeleted = (link: AdLink) => {
+    setSummaryVersion((version) => version + 1);
+    setState((prev) =>
+      prev.kind === "ready"
+        ? { kind: "ready", items: prev.items.filter((item) => item.id !== link.id), total: prev.total - 1 }
+        : prev,
+    );
   };
 
-  const hasMore = state.kind === "ready" && state.items.length < state.total;
   const gridClassName = canViewSummary ? STATS_GRID_CLASSNAME : PLAIN_GRID_CLASSNAME;
   const none = t("advertising.stats.none");
   const money = (amount: string) => formatMoney(amount, summary?.report_currency ?? "", i18n.language);
@@ -445,27 +375,11 @@ export function AdvertisingPage() {
           canUpdate={canUpdate}
           canDelete={canDelete}
           onSaved={handleSaved}
-          onClose={(followUp) => {
-            if (followUp === "delete") setPendingDelete(detailsLink);
-            setDetailsId(null);
-          }}
+          onDeleted={handleDeleted}
+          onClose={() => setDetailsId(null)}
         />
       )}
 
-      {pendingDelete && (
-        <ConfirmDialog
-          title={t("advertising.delete.title")}
-          message={t("advertising.delete.confirm", { name: pendingDelete.name })}
-          confirmLabel={t("advertising.delete.confirmButton")}
-          cancelLabel={t("advertising.delete.cancelButton")}
-          danger
-          onConfirm={() => {
-            void handleDelete(pendingDelete);
-            setPendingDelete(null);
-          }}
-          onCancel={() => setPendingDelete(null)}
-        />
-      )}
     </div>
   );
 }

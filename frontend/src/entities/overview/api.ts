@@ -17,7 +17,6 @@ export interface OverviewDailyAmount {
 export interface OverviewUsers {
   total: number;
   new_today: number;
-  daily_registrations: OverviewDailyCount[];
 }
 
 export interface OverviewSubscriptions {
@@ -27,13 +26,6 @@ export interface OverviewSubscriptions {
   expired: number;
   disabled: number;
   expiring_soon: number;
-}
-
-export interface OverviewTransactions {
-  paid_orders_count: number;
-  revenue_by_currency: Record<string, string>;
-  report_currency: string;
-  daily_revenue: OverviewDailyAmount[];
 }
 
 export interface RuntimeProcess {
@@ -50,22 +42,46 @@ export interface HostMemory {
   used_bytes: number;
 }
 
-export interface OverviewOnline {
+export interface Overview {
+  users: OverviewUsers | null;
+  subscriptions: OverviewSubscriptions | null;
+  runtime: RuntimeProcess[];
+  host_memory: HostMemory | null;
+}
+
+interface OverviewChart {
+  days: OverviewPeriodDays;
+  granularity: OverviewGranularity;
+}
+
+export interface RevenueChart extends OverviewChart {
+  paid_orders_count: number;
+  revenue_by_currency: Record<string, string>;
+  report_currency: string;
+  daily: OverviewDailyAmount[];
+}
+
+export interface RegistrationsChart extends OverviewChart {
+  daily: OverviewDailyCount[];
+}
+
+export interface OnlineChart extends OverviewChart {
   current: number;
   daily_peak: OverviewDailyCount[];
 }
 
-export interface Overview {
-  days: OverviewPeriodDays;
-  granularity: OverviewGranularity;
-  users: OverviewUsers | null;
-  subscriptions: OverviewSubscriptions | null;
-  transactions: OverviewTransactions | null;
-  runtime: RuntimeProcess[];
-  host_memory: HostMemory | null;
-  online: OverviewOnline;
+export function getOverview(signal?: AbortSignal): Promise<Overview> {
+  return apiGet<Overview>("/overview", signal);
 }
 
-export function getOverview(days: OverviewPeriodDays, signal?: AbortSignal): Promise<Overview> {
-  return apiGet<Overview>(`/overview?days=${days}`, signal);
+export function getRevenueChart(days: OverviewPeriodDays, signal?: AbortSignal): Promise<RevenueChart> {
+  return apiGet<RevenueChart>(`/overview/revenue?days=${days}`, signal);
+}
+
+export function getRegistrationsChart(days: OverviewPeriodDays, signal?: AbortSignal): Promise<RegistrationsChart> {
+  return apiGet<RegistrationsChart>(`/overview/registrations?days=${days}`, signal);
+}
+
+export function getOnlineChart(days: OverviewPeriodDays, signal?: AbortSignal): Promise<OnlineChart> {
+  return apiGet<OnlineChart>(`/overview/online?days=${days}`, signal);
 }

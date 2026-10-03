@@ -1,14 +1,13 @@
-import { Eye, EyeOff, LogIn } from "lucide-react";
-import { motion } from "motion/react";
+import { LogIn } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { login } from "@entities/auth/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
+import { PasswordInput } from "@shared/ui/PasswordInput";
 import { TextInput } from "@shared/ui/TextInput";
 import { Field } from "@shared/ui/Field";
 
@@ -21,7 +20,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,26 +49,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       </Field>
 
       <Field label={t("auth.password")} htmlFor="password" aside={<span className="text-error">*</span>}>
-        <div className="relative">
-          <TextInput
-            id="password"
-            type={showPassword ? "text" : "password"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            placeholder={t("auth.passwordPlaceholder")}
-            className="w-full pr-10"
-          />
-          <motion.button
-            type="button"
-            onClick={() => setShowPassword((value) => !value)}
-            tabIndex={-1}
-            {...bounceTap(0.12)}
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
-          >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-          </motion.button>
-        </div>
+        <PasswordInput
+          id="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          placeholder={t("auth.passwordPlaceholder")}
+        />
       </Field>
 
       <Button

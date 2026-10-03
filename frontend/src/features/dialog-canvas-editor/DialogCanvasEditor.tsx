@@ -7,7 +7,6 @@ import {
   Plus,
   RotateCcw,
   Upload,
-  type LucideIcon,
 } from "lucide-react";
 
 import { fetchBannerImageBlob } from "@entities/banners/api";
@@ -41,10 +40,10 @@ import {
   type TranslationEntry,
 } from "@entities/translations/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { ButtonInspector } from "@features/dialog-canvas-editor/ButtonInspector";
 import { DialogCanvas } from "@features/dialog-canvas-editor/DialogCanvas";
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import { WindowInspector } from "@features/dialog-canvas-editor/WindowInspector";
 import { WindowSwitcher } from "@features/dialog-canvas-editor/WindowSwitcher";
@@ -75,41 +74,9 @@ function useSelectedWindow(
   return windows.find((window) => window.key === selectedKey) ?? null;
 }
 
-export function ToolbarButton({
-  icon: Icon,
-  label,
-  danger,
-  onClick,
-}: {
-  icon: LucideIcon;
-  label: string;
-  danger?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      {...bounceTap()}
-      className={`flex h-9 cursor-pointer items-center rounded-full border border-border transition-colors ${
-        danger
-          ? "gap-2 px-3 text-[12.5px] font-semibold text-error hover:bg-error/10"
-          : "gap-1.5 px-4 text-sm font-medium text-foreground/80 hover:bg-white/5"
-      }`}
-    >
-      <Icon className="size-3.5" />
-      {label}
-    </motion.button>
-  );
-}
-
 export function DialogCanvasEditor() {
   const { t, i18n } = useTranslation();
-  const currentUserState = useCurrentUser();
-  const permissions =
-    currentUserState.kind === "ready"
-      ? currentUserState.data.effective_permissions
-      : [];
+  const permissions = usePermissions();
   const [windowsState, reloadWindows, setWindowsData] =
     useAsyncResource(listWindows);
   const [localesState] = useAsyncResource(listActiveLocales);
@@ -519,26 +486,22 @@ export function DialogCanvasEditor() {
           {heading}
           <div className="ml-auto flex items-center gap-2">
             {permissions.includes("DIALOGS_EXPORT") && (
-              <ToolbarButton
-                icon={Download}
-                label={t("dialogs.toolbar.export")}
-                onClick={() => void handleExport()}
-              />
+              <Button variant="outline" onClick={() => void handleExport()}>
+                <Download className="size-3.5" />
+                {t("dialogs.toolbar.export")}
+              </Button>
             )}
             {permissions.includes("DIALOGS_IMPORT") && (
-              <ToolbarButton
-                icon={Upload}
-                label={t("dialogs.toolbar.import")}
-                onClick={() => fileInputRef.current?.click()}
-              />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="size-3.5" />
+                {t("dialogs.toolbar.import")}
+              </Button>
             )}
             {canResetAll && (
-              <ToolbarButton
-                icon={RotateCcw}
-                label={t("dialogs.inspector.resetAll")}
-                danger
-                onClick={() => setIsResetAllConfirmOpen(true)}
-              />
+              <Button variant="danger" onClick={() => setIsResetAllConfirmOpen(true)}>
+                <RotateCcw className="size-3.5" />
+                {t("dialogs.inspector.resetAll")}
+              </Button>
             )}
             <input
               ref={fileInputRef}

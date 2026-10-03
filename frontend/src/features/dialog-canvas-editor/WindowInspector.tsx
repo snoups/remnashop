@@ -5,11 +5,11 @@ import { useTranslation } from "react-i18next";
 import { deleteBanner, restoreDefaultBanner, uploadBanner } from "@entities/banners/api";
 import type { BannerMode, DialogWindow } from "@entities/dialogs/api";
 import { bannerMode, bannerNameForMode, resetWindow, updateWindow } from "@entities/dialogs/api";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { toast } from "@shared/lib/toast";
-import { PillTabs } from "@features/dialog-canvas-editor/PillTabs";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
@@ -39,8 +39,7 @@ export function WindowInspector({
   onBannerChanged,
 }: WindowInspectorProps) {
   const { t } = useTranslation();
-  const currentUserState = useCurrentUser();
-  const permissions = currentUserState.kind === "ready" ? currentUserState.data.effective_permissions : [];
+  const permissions = usePermissions();
   const canUpdate = permissions.includes("DIALOGS_WINDOWS_UPDATE");
   const canUpload = permissions.includes("BANNERS_UPLOAD");
   const canDeleteBanner = permissions.includes("BANNERS_DELETE");

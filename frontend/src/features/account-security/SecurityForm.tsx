@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,23 +11,55 @@ import { Button } from "@shared/ui/Button";
 import { TextArea } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 
+const IPV4_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
+
+/** Mirrors the backend's ipaddress.ip_network(entry, strict=False): an address, optionally with a prefix. */
+function isIpOrNetwork(entry: string): boolean {
+  const [address, prefix, ...rest] = entry.split("/");
+  if (rest.length > 0) return false;
+  const isV6 = address.includes(":");
+  if (prefix !== undefined && !(/^\d{1,3}$/.test(prefix) && Number(prefix) <= (isV6 ? 128 : 32))) return false;
+  try {
+    // the URL parser validates IPv6 and rejects octets over 255; a hostname that
+    // comes back changed means leading zeros or a shorthand like "10.1"
+    if (isV6) return Boolean(new URL(`http://[${address}]`).hostname);
+    return IPV4_PATTERN.test(address) && new URL(`http://${address}`).hostname === address;
+  } catch {
+    return false;
+  }
+}
+
+function parseEntries(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 export function SecurityForm() {
   const { t } = useTranslation();
   const [text, setText] = useState("");
-  const [state] = useAsyncResource(getOwnSecurity, (settings) =>
+  const [isSaving, setIsSaving] = useState(false);
+  const [state, , setSettings] = useAsyncResource(getOwnSecurity, (settings) =>
     setText(settings.ip_allowlist.join("\n")),
   );
 
+  const entries = parseEntries(text);
+  const invalidEntries = entries.filter((entry) => !isIpOrNetwork(entry));
+  const clientIp = state.kind === "ready" ? state.data.client_ip : null;
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const entries = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
+    setIsSaving(true);
     try {
-      await updateOwnSecurity(entries);
+      const updated = await updateOwnSecurity(entries);
+      setSettings(updated);
+      setText(updated.ip_allowlist.join("\n"));
+      toast.success(t("profile.accountSecurity.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("profile.accountSecurity.saveError")));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -60,11 +92,33 @@ export function SecurityForm() {
             spellCheck={false}
             rows={4}
             className="w-full"
+            aria-invalid={invalidEntries.length > 0}
           />
+          {invalidEntries.length > 0 && (
+            <p className="mt-1.5 text-[12px] text-error">
+              {t("profile.accountSecurity.invalidEntries", { entries: invalidEntries.join(", ") })}
+            </p>
+          )}
+          {clientIp && (
+            <div className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
+              <span>{t("profile.accountSecurity.currentIp", { ip: clientIp })}</span>
+              {!entries.includes(clientIp) && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setText(entries.concat(clientIp).join("\n"))}
+                >
+                  <Plus className="size-3.5" />
+                  {t("profile.accountSecurity.addCurrentIp")}
+                </Button>
+              )}
+            </div>
+          )}
           <Button
             variant="outline"
-            className="mt-2"
+            className="mt-3"
             type="submit"
+            disabled={isSaving || invalidEntries.length > 0}
           >
             {t("profile.accountSecurity.submit")}
           </Button>

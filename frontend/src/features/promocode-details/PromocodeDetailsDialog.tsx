@@ -1,11 +1,11 @@
 import { BarChart3, CalendarClock, Check, Copy, Hash, Pause, Pencil, Play, Repeat, ShieldCheck, Ticket, Trash2, Users } from "lucide-react";
 import { motion } from "motion/react";
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AddOnListItem } from "@entities/addons/api";
 import type { Plan } from "@entities/plans/api";
-import { type Promocode, updatePromocode } from "@entities/promocodes/api";
+import { type Promocode, deletePromocode, updatePromocode } from "@entities/promocodes/api";
 import {
   describeReward,
   getPromocodeStatus,
@@ -15,6 +15,7 @@ import {
   REWARD_TYPE_ICON,
 } from "@entities/promocodes/display";
 import { PromocodeLimitsFields } from "@entities/promocodes/PromocodeLimitsFields";
+import { usePermissions } from "@entities/user/use-current-user";
 import { PromocodeUsersList } from "@features/promocode-details/PromocodeUsersList";
 import { getErrorMessage } from "@shared/api/http";
 import { copyToClipboard } from "@shared/lib/clipboard";
@@ -29,10 +30,9 @@ import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { IconButton } from "@shared/ui/IconButton";
 import { formatDate } from "@shared/lib/relative-time";
-
-export type PromocodeDetailsFollowUp = "delete";
 
 type PromocodeDetailsTab = "overview" | "users" | "settings";
 
@@ -45,43 +45,36 @@ interface PromocodeDetailsDialogProps {
   usedCount?: number;
   addons: AddOnListItem[];
   plans: Plan[];
-  canViewUsers: boolean;
-  canUpdate: boolean;
-  canDelete: boolean;
-  onSaved: (promocode: Promocode) => void;
-  /** Fires after the exit animation; `followUp` is the action picked in the footer, if any. */
-  onClose: (followUp?: PromocodeDetailsFollowUp) => void;
+  onSaved?: (promocode: Promocode) => void;
+  /** deleted from the footer; the dialog closes itself */
+  onDeleted?: (promocode: Promocode) => void;
+  onClose: () => void;
 }
 
 export function PromocodeDetailsDialog({ onClose, ...props }: PromocodeDetailsDialogProps) {
-  // the delete confirmation opens only once this modal has animated out
-  const followUpRef = useRef<PromocodeDetailsFollowUp | undefined>(undefined);
-
   return (
-    <Modal onClose={() => onClose(followUpRef.current)} size="lg" scrollable>
-      <PromocodeDetailsDialogBody
-        {...props}
-        onFollowUp={(followUp) => {
-          followUpRef.current = followUp;
-        }}
-      />
+    <Modal onClose={onClose} size="lg" scrollable>
+      <PromocodeDetailsDialogBody {...props} />
     </Modal>
   );
 }
 
 function PromocodeDetailsDialogBody({
-  promocode,
+  promocode: initialPromocode,
   usedCount,
   addons,
   plans,
-  canViewUsers,
-  canUpdate,
-  canDelete,
   onSaved,
-  onFollowUp,
-}: Omit<PromocodeDetailsDialogProps, "onClose"> & { onFollowUp: (followUp: PromocodeDetailsFollowUp) => void }) {
+  onDeleted,
+}: Omit<PromocodeDetailsDialogProps, "onClose">) {
   const { t, i18n } = useTranslation();
   const close = useModalClose();
+  const permissions = usePermissions();
+  const canViewUsers = permissions.includes("PROMOCODES_USERS_VIEW");
+  const canUpdate = permissions.includes("PROMOCODES_UPDATE");
+  const canDelete = permissions.includes("PROMOCODES_DELETE");
+  const [promocode, setPromocode] = useState(initialPromocode);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [tab, setTab] = useState<PromocodeDetailsTab>("overview");
   const [contentRef, contentHeight] = useMeasuredHeight();
   const [isCopied, setIsCopied] = useState(false);
@@ -107,10 +100,25 @@ function PromocodeDetailsDialogBody({
     });
   };
 
+  const saved = (updated: Promocode) => {
+    setPromocode(updated);
+    onSaved?.(updated);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deletePromocode(promocode.id);
+      onDeleted?.(promocode);
+      close();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("promocodes.delete.error")));
+    }
+  };
+
   const handleToggleActive = async () => {
     setIsToggling(true);
     try {
-      onSaved(await updatePromocode(promocode.id, { is_active: !promocode.is_active }));
+      saved(await updatePromocode(promocode.id, { is_active: !promocode.is_active }));
     } catch (err) {
       toast.error(getErrorMessage(err, t("promocodes.edit.error")));
     } finally {
@@ -127,7 +135,7 @@ function PromocodeDetailsDialogBody({
     }
     setIsSubmitting(true);
     try {
-      onSaved(await updatePromocode(promocode.id, limitsPayload));
+      saved(await updatePromocode(promocode.id, limitsPayload));
       toast.success(t("promocodes.edit.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("promocodes.edit.error")));
@@ -217,10 +225,7 @@ function PromocodeDetailsDialogBody({
               <Button
                 variant="danger"
                 type="button"
-                onClick={() => {
-                  onFollowUp("delete");
-                  close();
-                }}
+                onClick={() => setIsConfirmingDelete(true)}
               >
                 <Trash2 className="size-3.5" />
                 {t("promocodes.delete.button")}
@@ -235,6 +240,20 @@ function PromocodeDetailsDialogBody({
             {isSubmitting ? t("promocodes.edit.saving") : t("promocodes.edit.save")}
           </Button>
         </div>
+      )}
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t("promocodes.delete.title")}
+          message={t("promocodes.delete.confirm", { code: promocode.code })}
+          confirmLabel={t("promocodes.delete.confirmButton")}
+          cancelLabel={t("promocodes.delete.cancelButton")}
+          danger
+          onConfirm={() => {
+            setIsConfirmingDelete(false);
+            void handleDelete();
+          }}
+          onCancel={() => setIsConfirmingDelete(false)}
+        />
       )}
     </>
   );

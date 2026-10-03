@@ -1,4 +1,4 @@
-import { ChevronDown, Eye, EyeOff, Pencil } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
+import { PasswordInput } from "@shared/ui/PasswordInput";
 import { TextInput } from "@shared/ui/TextInput";
 import { Field } from "@shared/ui/Field";
 import { Card } from "@shared/ui/Card";
@@ -55,9 +56,6 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const initials = (login ?? "?").slice(0, 2).toUpperCase();
 
@@ -141,72 +139,33 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
                   >
                     <div className="flex flex-col gap-4 pt-3">
                       <Field label={t("profile.edit.currentPasswordLabel")} htmlFor="edit-current-password">
-                        <div className="relative">
-                          <TextInput
-                            id="edit-current-password"
-                            type={showCurrentPassword ? "text" : "password"}
-                            value={currentPassword}
-                            onChange={(event) => setCurrentPassword(event.target.value)}
-                            autoComplete="current-password"
-                            placeholder={t("profile.edit.currentPasswordPlaceholder")}
-                            className="w-full pr-10"
-                          />
-                          <motion.button
-                            type="button"
-                            onClick={() => setShowCurrentPassword((value) => !value)}
-                            tabIndex={-1}
-                            {...bounceTap(0.12)}
-                            className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
-                          >
-                            {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </motion.button>
-                        </div>
+                        <PasswordInput
+                          id="edit-current-password"
+                          value={currentPassword}
+                          onChange={(event) => setCurrentPassword(event.target.value)}
+                          autoComplete="current-password"
+                          placeholder={t("profile.edit.currentPasswordPlaceholder")}
+                        />
                       </Field>
 
                       <Field label={t("profile.edit.newPasswordLabel")} htmlFor="edit-new-password" info={t("auth.passwordHint")}>
-                        <div className="relative">
-                          <TextInput
-                            id="edit-new-password"
-                            type={showNewPassword ? "text" : "password"}
-                            value={newPassword}
-                            onChange={(event) => setNewPassword(event.target.value)}
-                            autoComplete="new-password"
-                            placeholder={t("profile.edit.newPasswordPlaceholder")}
-                            className="w-full pr-10"
-                          />
-                          <motion.button
-                            type="button"
-                            onClick={() => setShowNewPassword((value) => !value)}
-                            tabIndex={-1}
-                            {...bounceTap(0.12)}
-                            className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
-                          >
-                            {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </motion.button>
-                        </div>
+                        <PasswordInput
+                          id="edit-new-password"
+                          value={newPassword}
+                          onChange={(event) => setNewPassword(event.target.value)}
+                          autoComplete="new-password"
+                          placeholder={t("profile.edit.newPasswordPlaceholder")}
+                        />
                       </Field>
 
                       <Field label={t("auth.confirmPassword")} htmlFor="edit-confirm-password">
-                        <div className="relative">
-                          <TextInput
-                            id="edit-confirm-password"
-                            type={showConfirmPassword ? "text" : "password"}
-                            value={confirmPassword}
-                            onChange={(event) => setConfirmPassword(event.target.value)}
-                            autoComplete="new-password"
-                            placeholder={t("auth.confirmPasswordPlaceholder")}
-                            className="w-full pr-10"
-                          />
-                          <motion.button
-                            type="button"
-                            onClick={() => setShowConfirmPassword((value) => !value)}
-                            tabIndex={-1}
-                            {...bounceTap(0.12)}
-                            className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
-                          >
-                            {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </motion.button>
-                        </div>
+                        <PasswordInput
+                          id="edit-confirm-password"
+                          value={confirmPassword}
+                          onChange={(event) => setConfirmPassword(event.target.value)}
+                          autoComplete="new-password"
+                          placeholder={t("auth.confirmPasswordPlaceholder")}
+                        />
                       </Field>
                     </div>
                   </motion.div>
