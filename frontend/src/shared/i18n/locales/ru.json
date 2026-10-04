@@ -329,6 +329,7 @@
     "advertising": "Рекламные ссылки",
     "transactions": "Транзакции",
     "analytics": "Аналитика",
+    "remnawave": "Remnawave",
     "admins": "Администраторы",
     "eventLog": "Журнал событий"
   },
@@ -1126,6 +1127,8 @@
     "ANALYTICS_RETENTION_VIEW": "Просмотр аналитики удержания",
     "ANALYTICS_SOURCES_VIEW": "Просмотр источников привлечения",
     "ANALYTICS_PROMOCODES_VIEW": "Просмотр аналитики промокодов",
+    "REMNAWAVE_NODES_VIEW": "Просмотр нод Remnawave",
+    "REMNAWAVE_CLIENT_APPS_VIEW": "Просмотр приложений клиентов",
     "BOT_STATUS_VIEW": "Просмотр статуса бота",
     "BOT_LOGS_VIEW": "Просмотр логов бота",
     "BANNERS_RESTORE_DEFAULT": "Восстановление баннера по умолчанию",

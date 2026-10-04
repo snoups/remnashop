@@ -5,6 +5,7 @@ from app.modules.settings.dto import (
     AppearanceSettingsDto,
     BotCommandDto,
     BotSettingsDto,
+    BotStatusDto,
     OAuthSettingsDto,
     ShopSettingsDto,
     UpdateAppearanceSettingsDto,
@@ -15,7 +16,7 @@ from app.modules.settings.dto import (
 )
 from app.modules.settings.events import OidcIssuerChangedEvent
 from app.modules.settings.repository import SettingsRepository
-from app.modules.settings.telegram_status import fetch_bot_username
+from app.modules.settings.telegram_status import fetch_bot_status, fetch_bot_username
 from app.modules.settings.usecases import (
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
@@ -46,6 +47,7 @@ __all__ = [
     "BotCommand",
     "BotCommandDto",
     "BotSettingsDto",
+    "BotStatusDto",
     "DeleteAppearanceFaviconUseCase",
     "DeleteAppearanceLogoUseCase",
     "GetBotCommandsUseCase",
@@ -77,6 +79,7 @@ __all__ = [
     "UploadAppearanceImageDto",
     "UploadAppearanceLogoUseCase",
     "enable_password_login",
+    "fetch_bot_status",
     "fetch_bot_username",
     "get_settings_providers",
     "read_bot_settings",

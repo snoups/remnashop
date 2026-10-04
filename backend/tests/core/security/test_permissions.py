@@ -271,6 +271,8 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.ANALYTICS_RETENTION_VIEW,
         Permission.ANALYTICS_SOURCES_VIEW,
         Permission.ANALYTICS_PROMOCODES_VIEW,
+        Permission.REMNAWAVE_NODES_VIEW,
+        Permission.REMNAWAVE_CLIENT_APPS_VIEW,
     }
 
 

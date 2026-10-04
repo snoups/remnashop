@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Any, Final, Optional
 
-from sqlalchemy import ColumnElement, Select, select
+from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import MAX_SQL_IN_PARAMS
 from app.core.db.models.transaction import Transaction
-from app.core.enums import TransactionStatus
+from app.core.enums import PaymentGatewayType, TransactionStatus
 from app.modules.transactions.dto import PaidTransactionDto, PaymentAttemptDto
 
 _PAID: Final[tuple[ColumnElement[bool], ...]] = (
@@ -62,6 +62,14 @@ class TransactionStatsRepository:
         rows = await self.session.execute(stmt.order_by(Transaction.updated_at, Transaction.id))
         return [self._to_paid(row) for row in rows.all()]
 
+    async def list_recent_paid(self, limit: int) -> list[PaidTransactionDto]:
+        stmt = (
+            self._paid_select()
+            .order_by(Transaction.updated_at.desc(), Transaction.id.desc())
+            .limit(limit)
+        )
+        return [self._to_paid(row) for row in (await self.session.execute(stmt)).all()]
+
     async def list_paid_by_users(
         self, user_ids: list[int], end: datetime
     ) -> list[PaidTransactionDto]:
@@ -91,3 +99,30 @@ class TransactionStatsRepository:
             PaymentAttemptDto(gateway_type=g, status=s, currency=c, final_price=p)
             for g, s, c, p in (await self.session.execute(stmt)).tuples().all()
         ]
+
+    async def count_failed_by_gateway(self, since: datetime) -> dict[PaymentGatewayType, int]:
+        stmt = (
+            select(Transaction.gateway_type, func.count())
+            .where(
+                Transaction.status == TransactionStatus.FAILED,
+                Transaction.is_test.is_(False),
+                Transaction.updated_at >= since,
+            )
+            .group_by(Transaction.gateway_type)
+        )
+        return dict((await self.session.execute(stmt)).tuples().all())
+
+    async def count_stale_pending(self, created_before: datetime, now: datetime) -> int:
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(Transaction)
+                .where(
+                    Transaction.status == TransactionStatus.PENDING,
+                    Transaction.is_test.is_(False),
+                    Transaction.created_at < created_before,
+                    Transaction.expires_at > now,
+                )
+            )
+            or 0
+        )

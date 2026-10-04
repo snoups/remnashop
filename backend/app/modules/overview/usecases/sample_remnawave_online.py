@@ -16,6 +16,4 @@ class SampleRemnawaveOnlineUseCase(UseCase[None, None]):
 
     async def _execute(self, actor: Actor, data: None) -> None:
         stats = await self._remnawave_sdk.system.get_stats()
-        await record_online_sample(
-            self._redis, datetime_now().date(), int(stats.online_stats.online_now)
-        )
+        await record_online_sample(self._redis, datetime_now(), int(stats.online_stats.online_now))

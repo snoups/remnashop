@@ -22,6 +22,8 @@ class Permission(UpperStrEnum):
     ANALYTICS_RETENTION_VIEW = auto()
     ANALYTICS_SOURCES_VIEW = auto()
     ANALYTICS_PROMOCODES_VIEW = auto()
+    REMNAWAVE_NODES_VIEW = auto()
+    REMNAWAVE_CLIENT_APPS_VIEW = auto()
     BOT_SETTINGS_VIEW = auto()
     BOT_STATUS_VIEW = auto()
     BOT_LOGS_VIEW = auto()
@@ -339,6 +341,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ANALYTICS_RETENTION_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_SOURCES_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_PROMOCODES_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.REMNAWAVE_NODES_VIEW: PermissionMeta(resource="remnawave", kind="read"),
+    Permission.REMNAWAVE_CLIENT_APPS_VIEW: PermissionMeta(resource="remnawave", kind="read"),
 }
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA)
@@ -529,6 +533,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.ANALYTICS_RETENTION_VIEW,
         Permission.ANALYTICS_SOURCES_VIEW,
         Permission.ANALYTICS_PROMOCODES_VIEW,
+        Permission.REMNAWAVE_NODES_VIEW,
+        Permission.REMNAWAVE_CLIENT_APPS_VIEW,
     },
     Role.USER: set(),
 }

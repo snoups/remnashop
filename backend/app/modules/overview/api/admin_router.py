@@ -8,6 +8,10 @@ from fastapi import APIRouter, Depends
 from app.api.dependencies.admin import require_admin_user
 from app.core.actor import Actor
 from app.modules.overview.api.schemas import (
+    AttentionResponse,
+    ClientAppsResponse,
+    HourlyOnlineResponse,
+    NodesOverviewResponse,
     OnlineChartResponse,
     OverviewResponse,
     RegistrationsChartResponse,
@@ -15,6 +19,10 @@ from app.modules.overview.api.schemas import (
 )
 from app.modules.overview.dto import GetOverviewChartDto, OverviewDays
 from app.modules.overview.usecases import (
+    GetAttentionUseCase,
+    GetClientAppsUseCase,
+    GetHourlyOnlineUseCase,
+    GetNodesOverviewUseCase,
     GetOnlineChartUseCase,
     GetOverviewUseCase,
     GetRegistrationsChartUseCase,
@@ -78,3 +86,43 @@ async def get_overview_online(
 ) -> OnlineChartResponse:
     chart = await use_case(actor, _chart_dto(days))
     return OnlineChartResponse.model_validate(chart, from_attributes=True)
+
+
+@router.get("/online/hourly", response_model=HourlyOnlineResponse)
+@inject
+async def get_overview_online_hourly(
+    use_case: FromDishka[GetHourlyOnlineUseCase],
+    actor: Actor = Depends(require_admin_user),
+) -> HourlyOnlineResponse:
+    chart = await use_case(actor)
+    return HourlyOnlineResponse.model_validate(chart, from_attributes=True)
+
+
+@router.get("/nodes", response_model=NodesOverviewResponse)
+@inject
+async def get_overview_nodes(
+    use_case: FromDishka[GetNodesOverviewUseCase],
+    actor: Actor = Depends(require_admin_user),
+) -> NodesOverviewResponse:
+    nodes = await use_case(actor)
+    return NodesOverviewResponse.model_validate(nodes, from_attributes=True)
+
+
+@router.get("/client-apps", response_model=ClientAppsResponse)
+@inject
+async def get_overview_client_apps(
+    use_case: FromDishka[GetClientAppsUseCase],
+    actor: Actor = Depends(require_admin_user),
+) -> ClientAppsResponse:
+    apps = await use_case(actor)
+    return ClientAppsResponse.model_validate(apps, from_attributes=True)
+
+
+@router.get("/attention", response_model=AttentionResponse)
+@inject
+async def get_overview_attention(
+    use_case: FromDishka[GetAttentionUseCase],
+    actor: Actor = Depends(require_admin_user),
+) -> AttentionResponse:
+    attention = await use_case(actor)
+    return AttentionResponse.model_validate(attention, from_attributes=True)

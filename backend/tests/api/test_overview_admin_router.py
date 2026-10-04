@@ -1,11 +1,13 @@
 import datetime
 from datetime import timedelta, timezone
-from typing import AsyncIterator
+from types import SimpleNamespace
+from typing import AsyncIterator, cast
 
 import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from remnapy import RemnawaveSDK
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
@@ -14,6 +16,7 @@ from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role
+from app.core.exceptions import RemnawavePanelUnavailableError
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
@@ -34,12 +37,30 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
+class _DownNodes:
+    async def get_all_nodes(self) -> list[object]:
+        raise RemnawavePanelUnavailableError("down")
+
+    async def get_hwid_stats(self) -> object:
+        raise RemnawavePanelUnavailableError("down")
+
+
+class _StubSdkProvider(Provider):
+    # keeps the router tests off a real panel
+    scope = Scope.REQUEST
+
+    @provide(override=True)
+    def get_sdk(self) -> RemnawaveSDK:
+        return cast(RemnawaveSDK, SimpleNamespace(nodes=_DownNodes(), hwid=_DownNodes()))
+
+
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
         *get_module_providers(),
         _TestSessionProvider(session),
+        _StubSdkProvider(),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
     yield container
@@ -136,3 +157,110 @@ async def test_get_overview_chart_rejects_an_invalid_days_value(
     response = await client.get(f"{API_V1}/overview/online?days=5", headers=headers)
 
     assert response.status_code == 422
+
+
+async def test_owner_can_get_hourly_online(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/overview/online/hourly", headers=headers)
+
+    assert response.status_code == 200
+    assert len(response.json()["points"]) == 24
+
+
+async def test_nodes_and_client_apps_require_a_session(client: httpx.AsyncClient) -> None:
+    for path in ("nodes", "client-apps", "attention"):
+        assert (await client.get(f"{API_V1}/overview/{path}")).status_code == 401
+
+
+async def _admin_without_permission_headers(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    permission: str,
+) -> dict[str, str]:
+    login = f"overview-{permission.lower()}"
+    async with uow:
+        user = await user_repository.create(
+            CreateUserDto(
+                login=login,
+                password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
+                name=login,
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_revokes=[permission],
+            )
+        )
+        await uow.commit()
+    session = await session_repository.create(
+        CreateSessionDto(
+            user_id=user.id,
+            refresh_token_hash=hash_refresh_token(f"test-refresh-token-{login}"),
+            ip_address="127.0.0.1",
+            user_agent=None,
+            expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+        )
+    )
+    token = create_access_token(user.id, session.id, config.jwt_secret.get_secret_value())
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.parametrize(
+    ("path", "permission"),
+    [("nodes", "REMNAWAVE_NODES_VIEW"), ("client-apps", "REMNAWAVE_CLIENT_APPS_VIEW")],
+)
+async def test_remnawave_cards_require_their_permission(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    path: str,
+    permission: str,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, permission
+    )
+
+    response = await client.get(f"{API_V1}/overview/{path}", headers=headers)
+
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize("path", ["nodes", "client-apps"])
+async def test_owner_gets_an_unavailable_card_when_the_panel_is_down(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    path: str,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/overview/{path}", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["available"] is False
+
+
+async def test_owner_can_get_attention(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/overview/attention", headers=headers)
+
+    assert response.status_code == 200
+    assert isinstance(response.json()["items"], list)

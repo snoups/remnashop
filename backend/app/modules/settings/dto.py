@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, SecretStr
@@ -31,6 +32,7 @@ class BotStatusDto:
     webhook_url: Optional[str] = None
     pending_update_count: int = 0
     error: Optional[str] = None
+    last_error_at: Optional[datetime] = None
 
     @property
     def is_running(self) -> bool:

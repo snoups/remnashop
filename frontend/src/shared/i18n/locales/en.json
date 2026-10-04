@@ -329,6 +329,7 @@
     "advertising": "Advertising links",
     "transactions": "Transactions",
     "analytics": "Analytics",
+    "remnawave": "Remnawave",
     "admins": "Admins",
     "eventLog": "Event log"
   },
@@ -1118,6 +1119,8 @@
     "ANALYTICS_RETENTION_VIEW": "View retention analytics",
     "ANALYTICS_SOURCES_VIEW": "View acquisition sources",
     "ANALYTICS_PROMOCODES_VIEW": "View promocode analytics",
+    "REMNAWAVE_NODES_VIEW": "View Remnawave nodes",
+    "REMNAWAVE_CLIENT_APPS_VIEW": "View client apps",
     "BOT_STATUS_VIEW": "View bot status",
     "BOT_LOGS_VIEW": "View bot logs",
     "BANNERS_RESTORE_DEFAULT": "Restore default banner",

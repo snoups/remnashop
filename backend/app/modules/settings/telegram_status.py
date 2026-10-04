@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, Final, Optional
 
 import httpx
@@ -17,19 +18,23 @@ async def fetch_bot_status(token: str, proxy: Optional[str]) -> BotStatusDto:
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy) as client:
             response = await client.get(f"{TELEGRAM_API_URL}/bot{token}/getWebhookInfo")
-    except httpx.HTTPError as error:
+        payload: dict[str, Any] = response.json()
+    except (httpx.HTTPError, ValueError) as error:
         return BotStatusDto(is_configured=True, error=str(error) or type(error).__name__)
 
-    payload: dict[str, Any] = response.json()
     if not payload.get("ok"):
         return BotStatusDto(is_configured=True, error=payload.get("description", "Unknown error"))
 
     info: dict[str, Any] = payload["result"]
+    last_error_date = info.get("last_error_date")
     return BotStatusDto(
         is_configured=True,
         webhook_url=info.get("url") or None,
         pending_update_count=info.get("pending_update_count", 0),
         error=info.get("last_error_message"),
+        last_error_at=(
+            datetime.fromtimestamp(last_error_date, tz=timezone.utc) if last_error_date else None
+        ),
     )
 
 
