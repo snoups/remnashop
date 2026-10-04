@@ -329,7 +329,6 @@
     "advertising": "Рекламные ссылки",
     "transactions": "Транзакции",
     "analytics": "Аналитика",
-    "remnawave": "Remnawave",
     "admins": "Администраторы",
     "eventLog": "Журнал событий"
   },
@@ -1174,6 +1173,7 @@
     "blacklist": "Чёрный список",
     "adLinks": "Рекламные ссылки",
     "analytics": "Аналитика",
+    "remnawave": "Remnawave",
     "dialogs": "Окна бота",
     "emojiPacks": "Наборы эмодзи"
   },

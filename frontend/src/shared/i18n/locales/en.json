@@ -329,7 +329,6 @@
     "advertising": "Advertising links",
     "transactions": "Transactions",
     "analytics": "Analytics",
-    "remnawave": "Remnawave",
     "admins": "Admins",
     "eventLog": "Event log"
   },
@@ -1166,6 +1165,7 @@
     "blacklist": "Blacklist",
     "adLinks": "Advertising links",
     "analytics": "Analytics",
+    "remnawave": "Remnawave",
     "dialogs": "Bot windows",
     "emojiPacks": "Emoji packs"
   },

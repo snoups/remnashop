@@ -8,7 +8,7 @@ _USER_ENDPOINT: Final[str] = "https://api.github.com/user"
 
 
 class GitHubOAuthClient:
-    requires_pkce = False
+    requires_pkce = True
 
     def __init__(self, client_id: str, client_secret: str) -> None:
         self._client_id = client_id
@@ -18,9 +18,15 @@ class GitHubOAuthClient:
         self, redirect_uri: str, state: str, code_verifier: Optional[str]
     ) -> str:
         client = AsyncOAuth2Client(
-            self._client_id, self._client_secret, redirect_uri=redirect_uri, scope="read:user"
+            self._client_id,
+            self._client_secret,
+            redirect_uri=redirect_uri,
+            scope="read:user",
+            code_challenge_method="S256",
         )
-        url, _ = client.create_authorization_url(_AUTHORIZE_ENDPOINT, state=state)
+        url, _ = client.create_authorization_url(
+            _AUTHORIZE_ENDPOINT, state=state, code_verifier=code_verifier
+        )
         return cast(str, url)
 
     async def fetch_identity(
@@ -31,7 +37,7 @@ class GitHubOAuthClient:
             self._client_secret,
             redirect_uri=redirect_uri,
         ) as client:
-            await client.fetch_token(_TOKEN_ENDPOINT, code=code)
+            await client.fetch_token(_TOKEN_ENDPOINT, code=code, code_verifier=code_verifier)
             response = await client.get(_USER_ENDPOINT)
             response.raise_for_status()
             data = response.json()
