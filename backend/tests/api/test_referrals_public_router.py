@@ -251,3 +251,40 @@ async def test_api_token_cannot_use_customer_endpoints(
     )
 
     assert response.status_code == 403
+
+
+async def test_redeem_bonus_days_rejects_a_subscription_that_is_not_yours(
+    client: httpx.AsyncClient, actor: tuple[UserDto, dict[str, str]]
+) -> None:
+    _, headers = actor
+    response = await client.post(
+        f"{API_V1}/referrals/me/actions/redeem-days",
+        json={"subscription_id": 999_999_999, "days": 1},
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "TARGET_SUBSCRIPTION_NOT_OWNED"
+
+
+async def test_redeem_bonus_days_rejects_zero_days(
+    client: httpx.AsyncClient, actor: tuple[UserDto, dict[str, str]]
+) -> None:
+    _, headers = actor
+    response = await client.post(
+        f"{API_V1}/referrals/me/actions/redeem-days",
+        json={"subscription_id": 1, "days": 0},
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+async def test_redeem_bonus_days_rejects_an_absurd_amount(
+    client: httpx.AsyncClient, actor: tuple[UserDto, dict[str, str]]
+) -> None:
+    _, headers = actor
+    response = await client.post(
+        f"{API_V1}/referrals/me/actions/redeem-days",
+        json={"subscription_id": 1, "days": 3651},
+        headers=headers,
+    )
+    assert response.status_code == 422

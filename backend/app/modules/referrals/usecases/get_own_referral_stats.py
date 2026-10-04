@@ -22,6 +22,7 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
                 referral_code=actor.referral_code,
                 referrer_id=edge.referrer_id if edge is not None else None,
                 points=actor.points,
+                bonus_days=actor.bonus_days,
                 counts_by_level=counts,
                 rewards=[
                     ReferralStatsRewardDto(type=r.type, amount=r.amount, created_at=r.created_at)

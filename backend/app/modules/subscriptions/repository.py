@@ -216,22 +216,22 @@ class SubscriptionRepository:
         count = await self.session.scalar(stmt)
         return bool(count)
 
-    async def has_paid_subscription_before(self, user_id: int, subscription_id: int) -> bool:
-        """Whether a paid subscription other than this one already exists --
+    async def has_paid_subscription_before(
+        self, user_id: int, subscription_id: Optional[int] = None
+    ) -> bool:
+        """Whether the user has a paid subscription, other than subscription_id when given --
         "is this the user's first paid subscription", where has_any_subscription
         would also count the one just created. A free one (100% discount,
         promocode grant) doesn't count as paid."""
         price_paid = Subscription.plan_snapshot["price_paid"].astext.cast(Numeric)
-        stmt = (
-            select(func.count())
-            .select_from(Subscription)
-            .where(
-                Subscription.user_id == user_id,
-                Subscription.id != subscription_id,
-                Subscription.is_trial.is_(False),
-                price_paid > 0,
-            )
-        )
+        conditions = [
+            Subscription.user_id == user_id,
+            Subscription.is_trial.is_(False),
+            price_paid > 0,
+        ]
+        if subscription_id is not None:
+            conditions.append(Subscription.id != subscription_id)
+        stmt = select(func.count()).select_from(Subscription).where(*conditions)
         return bool(await self.session.scalar(stmt))
 
     async def list_non_terminal(self) -> list[SubscriptionDto]:

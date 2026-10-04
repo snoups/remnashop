@@ -3,6 +3,7 @@ from dishka import Provider, Scope, alias, provide, provide_all
 from app.core.ports import ReferrerLookup
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.referrals.usecases import (
+    AdjustUserBonusDaysUseCase,
     AdjustUserPointsUseCase,
     AssignReferralRewardsUseCase,
     AttachReferralOnRegistrationUseCase,
@@ -15,6 +16,7 @@ from app.modules.referrals.usecases import (
     GetUserReferralStatsUseCase,
     ListInvitedUsersUseCase,
     ListReferralsUseCase,
+    RedeemBonusDaysUseCase,
     RequestPointsWithdrawalUseCase,
     ResetReferralCodeUseCase,
     ResetReferralSettingsUseCase,
@@ -30,6 +32,7 @@ class ReferralsProvider(Provider):
         AttachReferralUseCase,
         RequestPointsWithdrawalUseCase,
         AdjustUserPointsUseCase,
+        AdjustUserBonusDaysUseCase,
         GetReferralSettingsUseCase,
         UpdateReferralSettingsUseCase,
         GetOwnReferralStatsUseCase,
@@ -43,6 +46,7 @@ class ReferralsProvider(Provider):
         AttachReferralOnRegistrationUseCase,
         AssignReferralRewardsUseCase,
         GetUserReferralRevenueUseCase,
+        RedeemBonusDaysUseCase,
     )
     referrer_lookup = alias(source=ReferralRepository, provides=ReferrerLookup)
 

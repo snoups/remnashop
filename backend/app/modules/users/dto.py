@@ -43,6 +43,7 @@ class UserDto(BaseDto, TimestampMixin):
 
     referral_code: Optional[str] = None
     points: Decimal = Decimal(0)
+    bonus_days: int = 0
     notifications_seen_at: Optional[datetime] = None
     notifications_cleared_at: Optional[datetime] = None
     notification_groups: Optional[list[str]] = None

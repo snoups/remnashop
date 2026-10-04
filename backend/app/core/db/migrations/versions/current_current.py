@@ -670,6 +670,9 @@ def upgrade() -> None:
         ),
         sa.Column("reward_amounts", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column(
+            "days_require_paid_subscription", sa.Boolean(), server_default="true", nullable=False
+        ),
+        sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),
@@ -779,6 +782,7 @@ def upgrade() -> None:
         sa.Column("purchase_discount_promocode_id", sa.Integer(), nullable=True),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
         sa.Column("points", sa.Numeric(precision=12, scale=0), server_default="0", nullable=False),
+        sa.Column("bonus_days", sa.Integer(), server_default="0", nullable=False),
         sa.Column("is_trial_available", sa.Boolean(), server_default="true", nullable=False),
         sa.Column("password_change_required", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("notifications_seen_at", sa.DateTime(timezone=True), nullable=True),
@@ -804,6 +808,7 @@ def upgrade() -> None:
             "personal_discount BETWEEN 0 AND 100", name="ck_users_personal_discount_range"
         ),
         sa.CheckConstraint("points >= 0", name="ck_users_points_non_negative"),
+        sa.CheckConstraint("bonus_days >= 0", name="ck_users_bonus_days_non_negative"),
         sa.CheckConstraint(
             "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
         ),

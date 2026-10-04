@@ -597,3 +597,37 @@ async def test_list_filtered_search_treats_like_wildcards_literally(
 
     items, _ = await user_repository.list_filtered(roles=[Role.USER], search="%")
     assert items == []
+
+
+async def test_credit_bonus_days_adds_and_subtracts(user_repository: UserRepository) -> None:
+    user = await user_repository.create(CreateUserDto(name="u", telegram_id=930_001))
+
+    await user_repository.credit_bonus_days(user.id, 7)
+    await user_repository.credit_bonus_days(user.id, -3)
+
+    updated = await user_repository.get_by_id(user.id)
+    assert updated is not None
+    assert updated.bonus_days == 4
+
+
+async def test_credit_bonus_days_refuses_to_go_below_zero(user_repository: UserRepository) -> None:
+    user = await user_repository.create(CreateUserDto(name="u", telegram_id=930_002))
+    await user_repository.credit_bonus_days(user.id, 2)
+
+    with pytest.raises(ValidationError) as error:
+        await user_repository.credit_bonus_days(user.id, -3)
+
+    assert error.value.code is ErrorCode.BONUS_DAYS_BELOW_ZERO
+    updated = await user_repository.get_by_id(user.id)
+    assert updated is not None
+    assert updated.bonus_days == 2
+
+
+async def test_anonymize_zeroes_bonus_days(user_repository: UserRepository) -> None:
+    user = await user_repository.create(CreateUserDto(name="u", telegram_id=930_003))
+    await user_repository.credit_bonus_days(user.id, 5)
+
+    anonymized = await user_repository.anonymize(user.id)
+
+    assert anonymized is not None
+    assert anonymized.bonus_days == 0

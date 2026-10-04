@@ -8,12 +8,19 @@ from app.api.errors import error_responses
 from app.core.constants import TIME_1H
 from app.modules.referrals.api.schemas import (
     AttachReferralRequest,
+    RedeemBonusDaysRequest,
+    RedeemBonusDaysResponse,
     ReferralStatsResponse,
     WithdrawPointsRequest,
 )
-from app.modules.referrals.dto import AttachReferralDto, RequestPointsWithdrawalDto
+from app.modules.referrals.dto import (
+    AttachReferralDto,
+    RedeemBonusDaysDto,
+    RequestPointsWithdrawalDto,
+)
 from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
+from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
 from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
 from app.modules.users import UserDto
 
@@ -55,3 +62,20 @@ async def withdraw_points(
     actor: UserDto = Depends(get_current_user),
 ) -> None:
     await use_case(actor, RequestPointsWithdrawalDto(amount=payload.amount))
+
+
+@router.post(
+    "/me/actions/redeem-days",
+    response_model=RedeemBonusDaysResponse,
+    responses=error_responses(400),
+)
+@inject
+async def redeem_bonus_days(
+    payload: RedeemBonusDaysRequest,
+    use_case: FromDishka[RedeemBonusDaysUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> RedeemBonusDaysResponse:
+    result = await use_case(
+        actor, RedeemBonusDaysDto(subscription_id=payload.subscription_id, days=payload.days)
+    )
+    return RedeemBonusDaysResponse.model_validate(result, from_attributes=True)

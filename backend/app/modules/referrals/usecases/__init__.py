@@ -1,3 +1,4 @@
+from app.modules.referrals.usecases.adjust_user_bonus_days import AdjustUserBonusDaysUseCase
 from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
 from app.modules.referrals.usecases.assign_referral_rewards import AssignReferralRewardsUseCase
 from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
@@ -12,12 +13,14 @@ from app.modules.referrals.usecases.get_user_referral_revenue import GetUserRefe
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
 from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
 from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
+from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
 from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
 from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
 
 __all__ = [
+    "AdjustUserBonusDaysUseCase",
     "AdjustUserPointsUseCase",
     "AssignReferralRewardsUseCase",
     "AttachReferralOnRegistrationUseCase",
@@ -30,6 +33,7 @@ __all__ = [
     "GetUserReferralStatsUseCase",
     "ListInvitedUsersUseCase",
     "ListReferralsUseCase",
+    "RedeemBonusDaysUseCase",
     "RequestPointsWithdrawalUseCase",
     "ResetReferralCodeUseCase",
     "ResetReferralSettingsUseCase",

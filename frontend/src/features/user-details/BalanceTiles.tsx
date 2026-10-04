@@ -3,7 +3,7 @@ import { useRef, useState, type ChangeEvent, type FocusEvent, type FormEvent, ty
 import { useTranslation } from "react-i18next";
 
 import { listEventLog, type EventLogEntry } from "@entities/event-log/api";
-import { adjustUserPoints } from "@entities/referrals/api";
+import { adjustUserBonusDays, adjustUserPoints } from "@entities/referrals/api";
 import { setUserDiscount, type UserListItem } from "@entities/user/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
@@ -19,9 +19,10 @@ import { KpiTile } from "@shared/ui/KpiTile";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SuffixInput, TextInput } from "@shared/ui/TextInput";
 
-// Points and discount tiles of the user profile; each opens its own editor.
+// Points, bonus days and discount tiles of the user profile; each opens its own editor.
 
 const POINT_DELTAS = [-50, -10, 10, 50];
+const DAY_DELTAS = [-7, -1, 1, 7];
 const DISCOUNT_PRESETS = [0, 5, 10, 15, 20];
 const POPOVER_HEIGHT = 240;
 
@@ -37,6 +38,7 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
   const permissions = usePermissions();
   const [openedEntry, setOpenedEntry] = useState<EventLogEntry | null>(null);
   const canEditPoints = Boolean(onChanged) && permissions.includes("REFERRALS_POINTS_MANAGE");
+  const canEditBonusDays = Boolean(onChanged) && permissions.includes("REFERRALS_BONUS_DAYS_MANAGE");
   // the backend refuses a staff account's discount without ADMINS_MANAGE
   const canEditDiscount =
     Boolean(onChanged) &&
@@ -87,7 +89,7 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
   const points = Math.trunc(Number(user.points));
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {canEditPoints ? (
         <EditableKpi label={t("users.details.points")} value={String(user.points)}>
           {(close) => (
@@ -117,6 +119,36 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
         </EditableKpi>
       ) : (
         <KpiTile label={t("users.details.points")} value={String(user.points)} />
+      )}
+      {canEditBonusDays ? (
+        <EditableKpi label={t("users.details.bonusDays")} value={String(user.bonus_days)}>
+          {(close) => (
+            <>
+              <ValueEditor
+                current={user.bonus_days}
+                hint={t("users.details.balance.bonusDaysHint")}
+                chips={DAY_DELTAS.map((delta) => ({
+                  label: delta > 0 ? `+${delta}` : `−${-delta}`,
+                  apply: (value) => value + delta,
+                }))}
+                onApply={async (next) => {
+                  try {
+                    // the endpoint takes a change, not a value
+                    const stats = await adjustUserBonusDays(user.id, next - user.bonus_days);
+                    onChanged?.({ ...user, bonus_days: stats.bonus_days });
+                    toast.success(t("users.details.balance.saved"));
+                    close();
+                  } catch (err) {
+                    toast.error(getErrorMessage(err, t("users.details.balance.bonusDaysError")));
+                  }
+                }}
+              />
+              {lastChange("UserBonusDaysAdjustedEvent", close)}
+            </>
+          )}
+        </EditableKpi>
+      ) : (
+        <KpiTile label={t("users.details.bonusDays")} value={String(user.bonus_days)} />
       )}
       {discountTile("personal_discount", t("users.details.personalDiscount"))}
       {discountTile("purchase_discount", t("users.details.purchaseDiscount"))}

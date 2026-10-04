@@ -200,3 +200,58 @@ async def test_list_referrals_rejects_out_of_range_level(
         f"{API_V1}/referrals", params={"level": 4}, headers=admin_auth_headers
     )
     assert response.status_code == 422
+
+
+async def test_days_require_paid_subscription_defaults_on_and_roundtrips(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str]
+) -> None:
+    initial = await client.get(f"{API_V1}/referrals/settings", headers=admin_auth_headers)
+    assert initial.json()["days_require_paid_subscription"] is True
+
+    patched = await client.patch(
+        f"{API_V1}/referrals/settings",
+        json={"days_require_paid_subscription": False},
+        headers=admin_auth_headers,
+    )
+    assert patched.status_code == 200
+    assert patched.json()["days_require_paid_subscription"] is False
+
+    reset = await client.post(
+        f"{API_V1}/referrals/settings/actions/reset", json={}, headers=admin_auth_headers
+    )
+    assert reset.json()["days_require_paid_subscription"] is True
+
+
+async def test_adjust_user_bonus_days_updates_the_stats(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
+) -> None:
+    response = await client.post(
+        f"{API_V1}/users/{user_id}/actions/adjust-bonus-days",
+        json={"delta": 9},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["bonus_days"] == 9
+
+
+async def test_adjust_user_bonus_days_refuses_to_go_below_zero(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
+) -> None:
+    response = await client.post(
+        f"{API_V1}/users/{user_id}/actions/adjust-bonus-days",
+        json={"delta": -1},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "BONUS_DAYS_BELOW_ZERO"
+
+
+async def test_adjust_user_bonus_days_rejects_an_absurd_delta(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
+) -> None:
+    response = await client.post(
+        f"{API_V1}/users/{user_id}/actions/adjust-bonus-days",
+        json={"delta": 3_000_000_000},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 422

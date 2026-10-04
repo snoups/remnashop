@@ -142,6 +142,7 @@ class Permission(UpperStrEnum):
     REFERRALS_SETTINGS_MANAGE = auto()
     REFERRALS_SETTINGS_RESET = auto()
     REFERRALS_POINTS_MANAGE = auto()
+    REFERRALS_BONUS_DAYS_MANAGE = auto()
     REFERRALS_CODE_RESET = auto()
     BACKUPS_VIEW = auto()
     BACKUPS_SETTINGS_VIEW = auto()
@@ -299,6 +300,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.REFERRALS_SETTINGS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_SETTINGS_RESET: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_POINTS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
+    Permission.REFERRALS_BONUS_DAYS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_CODE_RESET: PermissionMeta(resource="referrals", kind="write"),
     Permission.BACKUPS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_SETTINGS_VIEW: PermissionMeta(resource="backups", kind="read"),
@@ -511,6 +513,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.REFERRALS_SETTINGS_MANAGE,
         Permission.REFERRALS_SETTINGS_RESET,
         Permission.REFERRALS_POINTS_MANAGE,
+        Permission.REFERRALS_BONUS_DAYS_MANAGE,
         Permission.REFERRALS_CODE_RESET,
         Permission.AD_LINKS_VIEW,
         Permission.AD_LINKS_DETAIL_VIEW,

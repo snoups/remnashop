@@ -120,6 +120,7 @@ class UserRepository:
             ip_allowlist=data.ip_allowlist,
             referral_code=await self._generate_referral_code(),
             points=Decimal(0),
+            bonus_days=0,
         )
 
         self.session.add(db_user)
@@ -198,6 +199,21 @@ class UserRepository:
             raise ValidationError(
                 f"Adjustment would take user '{user_id}' points below zero",
                 code=ErrorCode.POINTS_BELOW_ZERO,
+            )
+
+    async def credit_bonus_days(self, user_id: int, delta: int) -> None:
+        # same atomic floor as credit_points: two debits can't both pass a prior check
+        stmt = (
+            update(User)
+            .where(User.id == user_id, User.bonus_days + delta >= 0)
+            .values(bonus_days=User.bonus_days + delta)
+        )
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+        if cast(CursorResult, result).rowcount == 0:
+            raise ValidationError(
+                f"Adjustment would take user '{user_id}' bonus days below zero",
+                code=ErrorCode.BONUS_DAYS_BELOW_ZERO,
             )
 
     async def spend_trial(self, user_id: int) -> bool:
@@ -458,6 +474,7 @@ class UserRepository:
         db_user.personal_discount_promocode_id = None
         db_user.purchase_discount_promocode_id = None
         db_user.points = Decimal(0)
+        db_user.bonus_days = 0
         db_user.permission_grants = None
         db_user.permission_revokes = None
         db_user.ip_allowlist = None

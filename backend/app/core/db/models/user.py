@@ -35,6 +35,7 @@ class User(BaseSql, TimestampMixin):
             "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
         ),
         CheckConstraint("points >= 0", name="ck_users_points_non_negative"),
+        CheckConstraint("bonus_days >= 0", name="ck_users_bonus_days_non_negative"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -70,6 +71,7 @@ class User(BaseSql, TimestampMixin):
     # multiple NULLs are fine under a UNIQUE index.
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
     points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=Decimal(0), server_default="0")
+    bonus_days: Mapped[int] = mapped_column(default=0, server_default="0")
     # One-way latch: True until the first trial activation. Not derived from
     # history: a trial->paid conversion marks the trial row DELETED
     # (NewPurchase._upgrade_trial_in_place).

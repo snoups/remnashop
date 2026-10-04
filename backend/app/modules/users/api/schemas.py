@@ -41,6 +41,7 @@ class AdminResponse(BaseModel):
     personal_discount: int
     purchase_discount: int
     points: Decimal
+    bonus_days: int
     is_trial_available: bool
     created_at: Optional[datetime]
     permission_grants: list[Permission]
@@ -73,6 +74,7 @@ class UserResponse(BaseModel):
     purchase_discount: int
     referral_code: Optional[str]
     points: Decimal
+    bonus_days: int
     is_trial_available: bool
     created_at: Optional[datetime]
     deleted_at: Optional[datetime] = None

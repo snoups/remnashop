@@ -13,6 +13,7 @@ export interface ReferralSettings {
   // Level (1..max_level) -> reward amount. JSON object keys are always
   // strings on the wire even though the backend's dict is keyed by int.
   reward_amounts: Record<string, string>;
+  days_require_paid_subscription: boolean;
   // pricing's anchor: a PERCENT points reward is counted from the payment in it
   anchor_currency: string | null;
 }
@@ -28,6 +29,7 @@ export interface UpdateReferralSettingsRequest {
   reward_type?: ReferralRewardType;
   reward_strategy?: ReferralRewardStrategy;
   reward_amounts?: Record<string, string>;
+  days_require_paid_subscription?: boolean;
 }
 
 export function updateReferralSettings(payload: UpdateReferralSettingsRequest): Promise<ReferralSettings> {
@@ -52,6 +54,7 @@ export interface ReferralStats {
   referral_code: string | null;
   referrer_id: number | null;
   points: string;
+  bonus_days: number;
   counts_by_level: Record<string, number>;
   rewards: ReferralReward[];
   /** admin endpoints only */
@@ -75,6 +78,10 @@ export function getUserReferralStats(userId: number, signal?: AbortSignal): Prom
 
 export function adjustUserPoints(userId: number, delta: string): Promise<ReferralStats> {
   return apiPost<ReferralStats, { delta: string }>(`/users/${userId}/actions/adjust-points`, { delta });
+}
+
+export function adjustUserBonusDays(userId: number, delta: number): Promise<ReferralStats> {
+  return apiPost<ReferralStats, { delta: number }>(`/users/${userId}/actions/adjust-bonus-days`, { delta });
 }
 
 export function resetUserReferralCode(userId: number): Promise<ReferralStats> {

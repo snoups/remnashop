@@ -27,3 +27,6 @@ class ReferralSettings(BaseSql, TimestampMixin):
     # {"1": amount, "2": amount, ...}, a percent under PERCENT; edited as one
     # bundle, never queried per level
     reward_amounts: Mapped[dict[str, Any]] = mapped_column(JSONB(), default=dict)
+    days_require_paid_subscription: Mapped[bool] = mapped_column(
+        Boolean(), default=True, server_default="true"
+    )

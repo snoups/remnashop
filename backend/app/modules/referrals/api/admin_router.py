@@ -10,6 +10,7 @@ from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import ReferralRewardType
 from app.modules.referrals.api.schemas import (
+    AdjustBonusDaysRequest,
     AdjustPointsRequest,
     InvitedUserPageResponse,
     InvitedUserResponse,
@@ -26,6 +27,7 @@ from app.modules.referrals.api.schemas import (
 from app.modules.referrals.dto import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
+    AdjustUserBonusDaysDto,
     AdjustUserPointsDto,
     GetReferralSummaryDto,
     ListInvitedUsersDto,
@@ -34,6 +36,7 @@ from app.modules.referrals.dto import (
     ReferralSettingsDto,
     UpdateReferralSettingsDto,
 )
+from app.modules.referrals.usecases.adjust_user_bonus_days import AdjustUserBonusDaysUseCase
 from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
 from app.modules.referrals.usecases.get_referral_summary import GetReferralSummaryUseCase
@@ -155,6 +158,7 @@ async def update_referral_settings(
             reward_type=payload.reward_type,
             reward_strategy=payload.reward_strategy,
             reward_amounts=payload.reward_amounts,
+            days_require_paid_subscription=payload.days_require_paid_subscription,
         ),
     )
     return _settings_to_response(updated)
@@ -198,6 +202,24 @@ async def adjust_user_points(
     actor: Actor = Depends(require_admin),
 ) -> ReferralStatsResponse:
     await adjust_use_case(actor, AdjustUserPointsDto(user_id=user_id, delta=payload.delta))
+    stats = await stats_use_case(actor, user_id)
+    return ReferralStatsResponse.model_validate(stats, from_attributes=True)
+
+
+@router.post(
+    "/users/{user_id}/actions/adjust-bonus-days",
+    response_model=ReferralStatsResponse,
+    responses=error_responses(400, 404),
+)
+@inject
+async def adjust_user_bonus_days(
+    user_id: int,
+    payload: AdjustBonusDaysRequest,
+    adjust_use_case: FromDishka[AdjustUserBonusDaysUseCase],
+    stats_use_case: FromDishka[GetUserReferralStatsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> ReferralStatsResponse:
+    await adjust_use_case(actor, AdjustUserBonusDaysDto(user_id=user_id, delta=payload.delta))
     stats = await stats_use_case(actor, user_id)
     return ReferralStatsResponse.model_validate(stats, from_attributes=True)
 

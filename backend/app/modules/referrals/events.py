@@ -40,3 +40,16 @@ class ReferralSettingsChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     action: str
     changed_fields: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class BonusDaysRedeemedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.REFERRAL
+    subscription_id: int
+    days: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserBonusDaysAdjustedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.REFERRAL
+    delta: int

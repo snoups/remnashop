@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.referral_reward import ReferralReward
 from app.core.db.uow import UnitOfWork
@@ -34,7 +35,6 @@ from app.modules.referrals.usecases.assign_referral_rewards import (
 from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
@@ -47,7 +47,6 @@ def assign_rewards(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
-    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> AssignReferralRewardsUseCase:
@@ -58,9 +57,31 @@ def assign_rewards(
         PricingRepository(session),
         user_repository,
         subscription_repository,
-        purchase_subscription_use_case,
         uow,
         event_publisher,
+    )
+
+
+async def _paid_order(session: AsyncSession, buyer: int, idempotency_key: str) -> None:
+    anchor = (await PricingRepository(session).get_rate_table()).anchor
+    await TransactionRepository(session).create(
+        CreateTransactionDto(
+            user_id=buyer,
+            plan_id=None,
+            plan_snapshot=make_plan_snapshot(plan_id=1),
+            duration_days=30,
+            currency=anchor,
+            purchase_type=PurchaseType.NEW,
+            target_subscription_id=None,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+            base_price=Decimal("250"),
+            discount_percent=0,
+            discount_source=DiscountSource.NONE,
+            final_price=Decimal("250"),
+            customer_email=None,
+            idempotency_key=idempotency_key,
+            expires_at=datetime_now() + timedelta(minutes=30),
+        )
     )
 
 
@@ -103,6 +124,7 @@ async def test_assign_referral_rewards_skips_when_system_disabled(
     )
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4002)
 
+    await _paid_order(referral_repository.session, buyer_id, "order-1")
     await assign_rewards.system(
         AssignReferralRewardsDto(
             user_id=buyer_id,
@@ -142,6 +164,7 @@ async def test_assign_referral_rewards_credits_points_up_the_chain(
     )
     subscription_id = await _create_active_subscription(subscription_repository, buyer, 4005)
 
+    await _paid_order(referral_repository.session, buyer, "order-1")
     await assign_rewards.system(
         AssignReferralRewardsDto(
             user_id=buyer,
@@ -200,6 +223,7 @@ async def test_assign_referral_rewards_skips_trial_purchase(
         )
     )
 
+    await _paid_order(referral_repository.session, buyer_id, "order-1")
     await assign_rewards.system(
         AssignReferralRewardsDto(
             user_id=buyer_id,
@@ -234,6 +258,7 @@ async def test_assign_referral_rewards_first_payment_strategy_skips_renewal(
     )
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4009)
 
+    await _paid_order(referral_repository.session, buyer_id, "order-1")
     await assign_rewards.system(
         AssignReferralRewardsDto(
             user_id=buyer_id,
@@ -284,6 +309,7 @@ async def test_assign_referral_rewards_one_level_failure_does_not_block_the_next
 
     monkeypatch.setattr(user_repository, "credit_points", _failing_credit_points)
 
+    await _paid_order(referral_repository.session, buyer, "order-1")
     with pytest.raises(RuntimeError):
         await assign_rewards.system(
             AssignReferralRewardsDto(
@@ -325,6 +351,7 @@ async def test_assign_referral_rewards_is_idempotent_against_duplicate_delivery(
     )
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4014)
 
+    await _paid_order(referral_repository.session, buyer_id, "order-1")
     for _ in range(2):
         await assign_rewards.system(
             AssignReferralRewardsDto(
@@ -369,6 +396,7 @@ async def test_assign_referral_rewards_stops_walk_at_mutual_referral_cycle(
     await referral_repository.create_referral(referrer_id=b, referred_id=a, level=1)
     subscription_id = await _create_active_subscription(subscription_repository, b, 4016)
 
+    await _paid_order(referral_repository.session, b, "order-1")
     await assign_rewards.system(
         AssignReferralRewardsDto(
             user_id=b,
@@ -407,6 +435,7 @@ async def test_assign_referral_rewards_every_payment_strategy_rewards_each_renew
     subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4021)
 
     for payment_key, is_new_purchase in (("order-1", True), ("order-2", False), ("order-3", False)):
+        await _paid_order(referral_repository.session, buyer_id, payment_key)
         await assign_rewards.system(
             AssignReferralRewardsDto(
                 user_id=buyer_id,
@@ -446,6 +475,7 @@ async def test_first_payment_strategy_skips_a_second_paid_subscription(
         subscription_repository, buyer_id, 4022
     )
 
+    await _paid_order(referral_repository.session, buyer_id, "order-2")
     await assign_rewards.system(
         AssignReferralRewardsDto(
             user_id=buyer_id,
@@ -485,6 +515,7 @@ async def test_points_reward_is_not_recorded_when_the_credit_fails(
             referrer_id=referrer_id, referred_id=buyer_id, level=1
         )
         subscription_id = await _create_active_subscription(subscription_repository, buyer_id, 4031)
+        await _paid_order(referral_repository.session, buyer_id, "order-3")
 
     real_credit_points = user_repository.credit_points
     failing = True
@@ -705,6 +736,7 @@ async def test_first_payment_strategy_ignores_an_earlier_free_subscription(
     await _create_active_subscription(subscription_repository, buyer, 4312, price_paid=Decimal("0"))
     paid_subscription_id = await _create_active_subscription(subscription_repository, buyer, 4313)
 
+    await _paid_order(referral_repository.session, buyer, "order-first-paid")
     await assign_rewards.system(
         AssignReferralRewardsDto(
             user_id=buyer,
@@ -715,3 +747,210 @@ async def test_first_payment_strategy_ignores_an_earlier_free_subscription(
     )
 
     assert (await user_repository.get_by_id(referrer)).points == Decimal("10")
+
+
+async def _enable_day_rewards(
+    referral_repository: ReferralRepository, *, require_paid: bool
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(
+            enabled=True,
+            max_level=1,
+            accrual_strategy=ReferralAccrualStrategy.FIRST_PAYMENT,
+            reward_type=ReferralRewardType.EXTRA_DAYS,
+            reward_amounts={1: Decimal("7")},
+            days_require_paid_subscription=require_paid,
+        )
+    )
+
+
+async def test_day_reward_goes_to_the_balance_not_a_subscription(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await _enable_day_rewards(referral_repository, require_paid=True)
+    referrer = await _create_user(user_repository, 4101)
+    buyer = await _create_user(user_repository, 4102)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    referrer_sub = await _create_active_subscription(subscription_repository, referrer, 4101)
+    before = await subscription_repository.get_by_id(referrer_sub)
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4102)
+
+    await _paid_order(referral_repository.session, buyer, "d-1")
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer, subscription_id=buyer_sub, is_new_purchase=True, payment_key="d-1"
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 7
+    after = await subscription_repository.get_by_id(referrer_sub)
+    assert after.expire_at == before.expire_at
+    reward = await referral_repository.session.scalar(
+        select(ReferralReward).where(ReferralReward.referrer_id == referrer)
+    )
+    assert reward.type is ReferralRewardType.EXTRA_DAYS
+    assert reward.amount == Decimal("7")
+
+
+async def test_day_reward_skipped_for_a_referrer_who_never_paid(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await _enable_day_rewards(referral_repository, require_paid=True)
+    referrer = await _create_user(user_repository, 4103)
+    buyer = await _create_user(user_repository, 4104)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    # a free subscription doesn't make the referrer a paying one
+    await _create_active_subscription(
+        subscription_repository, referrer, 4103, price_paid=Decimal(0)
+    )
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4104)
+
+    await _paid_order(referral_repository.session, buyer, "d-2")
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer, subscription_id=buyer_sub, is_new_purchase=True, payment_key="d-2"
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    rows = (
+        await referral_repository.session.scalars(
+            select(ReferralReward).where(ReferralReward.referrer_id == referrer)
+        )
+    ).all()
+    assert rows == []
+
+
+async def test_day_reward_credited_without_any_subscription_when_not_required(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await _enable_day_rewards(referral_repository, require_paid=False)
+    referrer = await _create_user(user_repository, 4105)
+    buyer = await _create_user(user_repository, 4106)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4106)
+
+    await _paid_order(referral_repository.session, buyer, "d-3")
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer, subscription_id=buyer_sub, is_new_purchase=True, payment_key="d-3"
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 7
+
+
+async def test_day_reward_is_not_credited_twice_for_one_payment(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await _enable_day_rewards(referral_repository, require_paid=False)
+    referrer = await _create_user(user_repository, 4107)
+    buyer = await _create_user(user_repository, 4108)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4108)
+
+    await _paid_order(referral_repository.session, buyer, "d-4")
+    for _ in range(2):
+        await assign_rewards.system(
+            AssignReferralRewardsDto(
+                user_id=buyer, subscription_id=buyer_sub, is_new_purchase=True, payment_key="d-4"
+            )
+        )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 7
+
+
+async def test_renewal_without_an_order_earns_no_reward(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    # a bonus-day redemption renews with a key but no paid order behind it
+    await _enable_day_rewards(referral_repository, require_paid=False)
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(accrual_strategy=ReferralAccrualStrategy.EVERY_PAYMENT)
+    )
+    referrer = await _create_user(user_repository, 4109)
+    buyer = await _create_user(user_repository, 4110)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4110)
+
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer, subscription_id=buyer_sub, is_new_purchase=False, payment_key="no-order"
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+
+
+async def test_day_reward_skipped_for_a_referrer_with_only_a_trial(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await _enable_day_rewards(referral_repository, require_paid=True)
+    referrer = await _create_user(user_repository, 4111)
+    buyer = await _create_user(user_repository, 4112)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=referrer,
+            remnawave_user_id=4111,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=0,
+            device_limit=0,
+            expire_at=datetime_now(),
+            url="https://example.test/sub",
+            plan_snapshot=make_plan_snapshot(plan_id=1, price_paid=Decimal("100")),
+            is_trial=True,
+        )
+    )
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4112)
+    await _paid_order(referral_repository.session, buyer, "d-5")
+
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer, subscription_id=buyer_sub, is_new_purchase=True, payment_key="d-5"
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+
+
+async def test_deleted_referrer_earns_nothing(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await _enable_day_rewards(referral_repository, require_paid=False)
+    referrer = await _create_user(user_repository, 4113)
+    buyer = await _create_user(user_repository, 4114)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    await user_repository.anonymize(referrer)
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4114)
+    await _paid_order(referral_repository.session, buyer, "d-6")
+
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer, subscription_id=buyer_sub, is_new_purchase=True, payment_key="d-6"
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert await referral_repository.list_rewards_by_referrer(referrer) == []

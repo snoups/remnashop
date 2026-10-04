@@ -249,6 +249,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.REFERRALS_SETTINGS_MANAGE,
         Permission.REFERRALS_SETTINGS_RESET,
         Permission.REFERRALS_POINTS_MANAGE,
+        Permission.REFERRALS_BONUS_DAYS_MANAGE,
         Permission.REFERRALS_CODE_RESET,
         Permission.AD_LINKS_VIEW,
         Permission.AD_LINKS_DETAIL_VIEW,
@@ -389,6 +390,7 @@ def test_admin_role_has_all_referrals_permissions() -> None:
     assert Permission.REFERRALS_SETTINGS_MANAGE in admin_perms
     assert Permission.REFERRALS_SETTINGS_RESET in admin_perms
     assert Permission.REFERRALS_POINTS_MANAGE in admin_perms
+    assert Permission.REFERRALS_BONUS_DAYS_MANAGE in admin_perms
     assert Permission.REFERRALS_CODE_RESET in admin_perms
 
 

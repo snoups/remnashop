@@ -40,6 +40,7 @@ class GetUserReferralStatsUseCase(UseCase[int, ReferralStatsDto]):
             referral_code=target.referral_code,
             referrer_id=referrer_id,
             points=target.points,
+            bonus_days=target.bonus_days,
             counts_by_level=counts,
             rewards=[
                 ReferralStatsRewardDto(

@@ -1,15 +1,12 @@
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal
 from typing import Final, Optional
-from uuid import UUID, uuid5
 
 from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
-    Currency,
-    PurchaseType,
     ReferralAccrualStrategy,
     ReferralRewardStrategy,
     ReferralRewardType,
@@ -21,20 +18,13 @@ from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import AssignReferralRewardsDto, ReferralSettingsDto
 from app.modules.referrals.events import ReferralRewardIssuedEvent
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.subscriptions import (
-    PurchaseSubscriptionDto,
-    PurchaseSubscriptionUseCase,
-    SubscriptionRepository,
-)
-from app.modules.transactions import TransactionRepository
+from app.modules.subscriptions import SubscriptionRepository
+from app.modules.transactions import TransactionDto, TransactionRepository
 from app.modules.users import UserRepository
 
 _MAX_LEVEL: Final[int] = 3
 _HUNDRED: Final[Decimal] = Decimal(100)
 _MIN_PERCENT_REWARD: Final[Decimal] = Decimal(1)
-# Namespace for the per-hop renewal key; any fixed UUID works, it only has to
-# stay the same so a redispatch derives the key the first attempt used.
-_REWARD_KEY_NAMESPACE: Final[UUID] = UUID("2f9f0b7a-6b1e-4a3f-9a21-6c6f4a1c7f10")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -42,10 +32,6 @@ class _Hop:
     level: int
     referrer_id: int
     referral_id: int
-
-
-def _reward_idempotency_key(payment_key: str, referral_id: int) -> str:
-    return str(uuid5(_REWARD_KEY_NAMESPACE, f"{payment_key}:{referral_id}"))
 
 
 def _level_amounts(
@@ -75,7 +61,6 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         pricing_repository: PricingRepository,
         user_repository: UserRepository,
         subscription_repository: SubscriptionRepository,
-        purchase_subscription_use_case: PurchaseSubscriptionUseCase,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
@@ -84,7 +69,6 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         self._pricing_repository = pricing_repository
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
-        self._purchase_subscription_use_case = purchase_subscription_use_case
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -93,7 +77,11 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         if not settings.enabled:
             return
         order = await self._transaction_repository.get_by_idempotency_key(data.payment_key)
-        if order is not None and order.final_price <= 0:
+        # a bonus-day redemption carries a payment_key too, with no order behind it
+        if order is None:
+            logger.info(f"Referral reward skipped: no order for payment '{data.payment_key}'")
+            return
+        if order.final_price <= 0:
             # a 100%-discount checkout carries a payment_key too, but no money
             logger.info(f"Referral reward skipped: order for payment '{data.payment_key}' was free")
             return
@@ -105,7 +93,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             return
 
         percent_base = (
-            await self._percent_base(data.payment_key, settings.reward_type)
+            await self._percent_base(order, settings.reward_type)
             if settings.reward_strategy is ReferralRewardStrategy.PERCENT
             else None
         )
@@ -120,7 +108,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             if not amount or amount <= 0:
                 continue
             try:
-                await self._grant_one_level(hop, data, settings.reward_type, amount)
+                await self._grant_one_level(hop, data, settings, amount)
             except Exception as error:  # re-raised below, after every hop has run
                 logger.exception(
                     f"Referral reward failed at level '{hop.level}' for referrer "
@@ -179,12 +167,8 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         return True
 
     async def _percent_base(
-        self, payment_key: str, reward_type: ReferralRewardType
-    ) -> Optional[Decimal]:
-        order = await self._transaction_repository.get_by_idempotency_key(payment_key)
-        if order is None:
-            logger.warning(f"Percent referral reward skipped: no order for payment '{payment_key}'")
-            return None
+        self, order: TransactionDto, reward_type: ReferralRewardType
+    ) -> Decimal:
         if reward_type is ReferralRewardType.EXTRA_DAYS:
             return Decimal(order.duration_days)
         # points are anchor-currency units, whatever the buyer paid in
@@ -195,44 +179,29 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         self,
         hop: _Hop,
         data: AssignReferralRewardsDto,
-        reward_type: ReferralRewardType,
+        settings: ReferralSettingsDto,
         amount: Decimal,
     ) -> None:
         referrer = await self._user_repository.get_by_id(hop.referrer_id)
-        if referrer is None:
+        if referrer is None or referrer.deleted_at is not None:
             return
 
-        if reward_type is ReferralRewardType.EXTRA_DAYS:
-            active = await self._subscription_repository.get_active_by_user(hop.referrer_id)
-            if not active:
-                logger.warning(
-                    f"No active subscription for referrer '{hop.referrer_id}', skipping grant"
+        reward_type = settings.reward_type
+        if reward_type is ReferralRewardType.EXTRA_DAYS and settings.days_require_paid_subscription:
+            async with self._uow:
+                has_paid = await self._subscription_repository.has_paid_subscription_before(
+                    hop.referrer_id
+                )
+            if not has_paid:
+                logger.info(
+                    f"Day reward skipped: referrer '{hop.referrer_id}' never paid for a plan"
                 )
                 return
-            target = active[0]
-            # Granted before the ledger row: the renewal is a panel call that may
-            # fail, and its idempotency key makes a redispatch land once. A ledger
-            # row committed ahead of a failed grant would make every retry skip
-            # with ConflictError, recording a reward never given.
-            await self._purchase_subscription_use_case.system(
-                PurchaseSubscriptionDto(
-                    user_id=hop.referrer_id,
-                    plan_snapshot=target.plan_snapshot,
-                    duration_days=int(amount),
-                    price_paid=Decimal(0),
-                    currency=Currency.USD,
-                    purchase_type=PurchaseType.RENEW,
-                    target_subscription_id=target.id,
-                    idempotency_key=_reward_idempotency_key(data.payment_key, hop.referral_id),
-                )
-            )
-            if not await self._record_reward(hop, data, reward_type, amount):
-                return
-        else:
-            # ledger row and credit commit together: the row is the idempotency
-            # guard, and a crash between them would record a reward never given
-            if not await self._record_reward(hop, data, reward_type, amount, credit_points=True):
-                return
+
+        # ledger row and credit commit together: the row is the idempotency
+        # guard, and a crash between them would record a reward never given
+        if not await self._record_reward(hop, data, reward_type, amount):
+            return
 
         async with self._uow:
             await self._event_publisher.publish(
@@ -250,8 +219,6 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         data: AssignReferralRewardsDto,
         reward_type: ReferralRewardType,
         amount: Decimal,
-        *,
-        credit_points: bool = False,
     ) -> bool:
         try:
             async with self._uow:
@@ -263,7 +230,9 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
                     type=reward_type,
                     amount=amount,
                 )
-                if credit_points:
+                if reward_type is ReferralRewardType.EXTRA_DAYS:
+                    await self._user_repository.credit_bonus_days(hop.referrer_id, int(amount))
+                else:
                     await self._user_repository.credit_points(hop.referrer_id, amount)
         except ConflictError:
             logger.info(

@@ -39,6 +39,8 @@ class ReferralSettingsDto(BaseDto, TimestampMixin):
     reward_type: ReferralRewardType = ReferralRewardType.EXTRA_DAYS
     reward_strategy: ReferralRewardStrategy = ReferralRewardStrategy.AMOUNT
     reward_amounts: dict[int, Decimal] = field(default_factory=dict)
+    # EXTRA_DAYS only: no days for someone who never paid for a subscription
+    days_require_paid_subscription: bool = True
     # not stored here: pricing's anchor, what a PERCENT points reward is counted in
     anchor_currency: Optional[Currency] = None
 
@@ -66,6 +68,7 @@ class ReferralStatsDto:
     referral_code: Optional[str]
     referrer_id: Optional[int]
     points: Decimal
+    bonus_days: int
     counts_by_level: dict[int, int]
     rewards: list[ReferralStatsRewardDto]
     # admin view only
@@ -81,6 +84,7 @@ class UpdateReferralSettingsDto:
     reward_type: Optional[ReferralRewardType] = None
     reward_strategy: Optional[ReferralRewardStrategy] = None
     reward_amounts: Optional[dict[int, Decimal]] = None
+    days_require_paid_subscription: Optional[bool] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -196,3 +200,23 @@ class ListReferralsDto:
 @dataclass(frozen=True, kw_only=True)
 class RequestPointsWithdrawalDto:
     amount: Decimal
+
+
+@dataclass(frozen=True, kw_only=True)
+class RedeemBonusDaysDto:
+    subscription_id: int
+    days: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class BonusDaysRedemptionDto:
+    subscription_id: int
+    expire_at: datetime
+    # balance left after the redemption
+    bonus_days: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdjustUserBonusDaysDto:
+    user_id: int
+    delta: int

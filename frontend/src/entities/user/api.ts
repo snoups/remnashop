@@ -38,6 +38,7 @@ export interface UserListItem {
   purchase_discount: number;
   referral_code?: string | null;
   points: string;
+  bonus_days: number;
   is_trial_available: boolean;
   created_at: string | null;
   /** set once the account is soft-deleted; name and contacts are wiped then */

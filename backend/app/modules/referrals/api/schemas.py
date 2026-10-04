@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Optional, TypeAlias
+from typing import Annotated, Final, Optional, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -12,6 +12,8 @@ from app.core.enums import (
 )
 
 _WholeDecimal: TypeAlias = Annotated[Decimal, Field(decimal_places=0)]
+# ten years; keeps a typo out of the int32 column
+MAX_BONUS_DAYS: Final[int] = 3650
 
 
 class ReferralSettingsResponse(BaseModel):
@@ -21,6 +23,7 @@ class ReferralSettingsResponse(BaseModel):
     reward_type: ReferralRewardType
     reward_strategy: ReferralRewardStrategy
     reward_amounts: dict[int, Decimal]
+    days_require_paid_subscription: bool
     anchor_currency: Optional[Currency]
 
 
@@ -31,6 +34,7 @@ class UpdateReferralSettingsRequest(BaseModel):
     reward_type: Optional[ReferralRewardType] = None
     reward_strategy: Optional[ReferralRewardStrategy] = None
     reward_amounts: Optional[dict[int, _WholeDecimal]] = None
+    days_require_paid_subscription: Optional[bool] = None
 
 
 class ReferralUserResponse(BaseModel):
@@ -60,6 +64,7 @@ class ReferralStatsResponse(BaseModel):
     referral_code: Optional[str]
     referrer_id: Optional[int]
     points: Decimal
+    bonus_days: int
     counts_by_level: dict[int, int]
     rewards: list[ReferralRewardResponse]
     # admin view only
@@ -98,12 +103,27 @@ class AdjustPointsRequest(BaseModel):
     delta: _WholeDecimal
 
 
+class AdjustBonusDaysRequest(BaseModel):
+    delta: int = Field(ge=-MAX_BONUS_DAYS, le=MAX_BONUS_DAYS)
+
+
 class AttachReferralRequest(BaseModel):
     code: str = Field(min_length=1, max_length=16)
 
 
 class WithdrawPointsRequest(BaseModel):
     amount: _WholeDecimal = Field(gt=0)
+
+
+class RedeemBonusDaysRequest(BaseModel):
+    subscription_id: int
+    days: int = Field(ge=1, le=MAX_BONUS_DAYS)
+
+
+class RedeemBonusDaysResponse(BaseModel):
+    subscription_id: int
+    expire_at: datetime
+    bonus_days: int
 
 
 class InvitedUserResponse(BaseModel):

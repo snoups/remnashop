@@ -132,6 +132,7 @@ export function ReferralSettingsPage() {
   const [rewardType, setRewardType] = useState<ReferralRewardType>("EXTRA_DAYS");
   const [rewardStrategy, setRewardStrategy] = useState<ReferralRewardStrategy>("AMOUNT");
   const [rewardAmounts, setRewardAmounts] = useState<Record<string, string>>({});
+  const [daysRequirePaid, setDaysRequirePaid] = useState(true);
   const [anchorCurrency, setAnchorCurrency] = useState<string | null>(null);
   const [exampleBase, setExampleBase] = useState(DEFAULT_EXAMPLE_BASE);
 
@@ -150,6 +151,7 @@ export function ReferralSettingsPage() {
     setRewardType(settings.reward_type);
     setRewardStrategy(settings.reward_strategy);
     setRewardAmounts(settings.reward_amounts);
+    setDaysRequirePaid(settings.days_require_paid_subscription);
     setAnchorCurrency(settings.anchor_currency);
   };
 
@@ -170,6 +172,7 @@ export function ReferralSettingsPage() {
         reward_type: rewardType,
         reward_strategy: rewardStrategy,
         reward_amounts: amounts,
+        days_require_paid_subscription: daysRequirePaid,
       });
       applySettings(updated);
       toast.success(t("referrals.settings.saved"));
@@ -271,6 +274,15 @@ export function ReferralSettingsPage() {
             name={(value) => t(`referrals.settings.rewardType.${value}`)}
             describe={(value) => t(`referrals.settings.rewardTypeDescription.${value}`)}
           />
+          {rewardType === "EXTRA_DAYS" && (
+            <div className="flex items-center justify-between gap-3 py-1">
+              <span className="flex items-center gap-1.5 text-sm text-foreground/80">
+                {t("referrals.settings.daysRequirePaidLabel")}
+                <FieldHint text={t("referrals.settings.daysRequirePaidHint")} />
+              </span>
+              <Switch checked={daysRequirePaid} onChange={setDaysRequirePaid} disabled={areSettingsLocked} />
+            </div>
+          )}
           <OptionGroup
             label={t("referrals.settings.rewardStrategyLabel")}
             value={rewardStrategy}

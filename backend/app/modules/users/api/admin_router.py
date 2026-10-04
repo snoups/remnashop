@@ -103,6 +103,7 @@ def _to_admin_response(user: UserDto) -> AdminResponse:
         personal_discount=user.personal_discount,
         purchase_discount=user.purchase_discount,
         points=user.points,
+        bonus_days=user.bonus_days,
         is_trial_available=user.is_trial_available,
         created_at=user.created_at,
         permission_grants=list(user.permission_grants or []),
