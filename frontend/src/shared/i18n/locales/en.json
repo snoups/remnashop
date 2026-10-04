@@ -144,14 +144,14 @@
       "revenue": "Revenue",
       "mrr": "MRR",
       "mrrHint": "Monthly Recurring Revenue — the sum of all active subscriptions' monthly value.",
-      "arpu": "ARPU",
-      "arpuHint": "Average Revenue Per User — total revenue in the period divided by the number of paying users.",
-      "activeSubscriptions": "Active subscriptions",
+      "arppu": "Revenue per payer",
+      "arppuHint": "ARPPU — revenue in the period divided by the number of customers who paid in it.",
+      "activeSubscriptions": "Paid subscriptions",
       "paidOrders": "Paid transactions",
-      "conversionRate": "Registration → payment",
-      "conversionRateHint": "Share of users registered in the period who made at least one paid transaction.",
+      "conversionRate": "Paid within {{days}} days",
+      "conversionRateHint": "Share of users who registered {{days}}+ days before the period's end and paid within {{days}} days of registering.",
       "mrrCaption": "monthly revenue of active subscriptions",
-      "arpuCaption": "average revenue per paying user",
+      "arppuCaption": "paying customers: {{count}}",
       "conversionOf": "{{paid}} of {{total}}"
     },
     "churn": {
@@ -174,7 +174,7 @@
       "loadError": "Failed to load the funnel. Try refreshing.",
       "steps": {
         "registered": "Registered",
-        "trial": "Started trial",
+        "connected": "Connected to VPN",
         "first_paid": "First paid purchase",
         "repeat_paid": "Repeat paid purchase"
       },
@@ -185,12 +185,12 @@
       "dropBadge": "−{{pct}} of users"
     },
     "cohorts": {
-      "title": "Cohort retention",
-      "titleHint": "Each row is users who registered in that month. M0, M1... show the share of them still active 0, 1... months later.",
+      "title": "Retention by first payment month",
+      "titleHint": "Each row is customers who first paid in that month. M0, M1… show the share with an active paid subscription 0, 1… months later.",
       "loadError": "Failed to load cohorts. Try refreshing.",
       "empty": "No data yet.",
       "cohortColumn": "Cohort",
-      "sizeColumn": "Users"
+      "sizeColumn": "Customers"
     },
     "ltv": {
       "title": "Lifetime value distribution",
@@ -1112,6 +1112,12 @@
     "ANALYTICS_FUNNEL_VIEW": "View conversion funnel",
     "ANALYTICS_COHORTS_VIEW": "View cohort retention",
     "ANALYTICS_LTV_VIEW": "View LTV distribution",
+    "ANALYTICS_LTV_BREAKDOWN_VIEW": "View LTV breakdown",
+    "ANALYTICS_REVENUE_VIEW": "View revenue analytics",
+    "ANALYTICS_TRIAL_VIEW": "View trial analytics",
+    "ANALYTICS_RETENTION_VIEW": "View retention analytics",
+    "ANALYTICS_SOURCES_VIEW": "View acquisition sources",
+    "ANALYTICS_PROMOCODES_VIEW": "View promocode analytics",
     "BOT_STATUS_VIEW": "View bot status",
     "BOT_LOGS_VIEW": "View bot logs",
     "BANNERS_RESTORE_DEFAULT": "Restore default banner",
@@ -2473,6 +2479,7 @@
     "AD_LINK_NOT_FOUND": "Ad link not found.",
     "AD_LINK_NO_CHANNEL": "The link must allow at least one channel.",
     "ALLOWED_LIST_EMPTY": "Add at least one allowed user.",
+    "ANALYTICS_PERIOD_INVALID": "The period start must be before its end.",
     "ANCHOR_CURRENCY_INVALID": "This currency can't be the anchor currency.",
     "ANCHOR_CURRENCY_UNCHANGED": "This currency is already the anchor.",
     "ANCHOR_PRICE_NOT_OVERRIDABLE": "The anchor currency price can't be overridden.",

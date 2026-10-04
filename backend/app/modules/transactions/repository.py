@@ -377,31 +377,6 @@ class TransactionRepository:
             repeat_payers.update(result.scalars().all())
         return repeat_payers
 
-    async def list_paid_user_month_pairs(
-        self, user_ids: list[int], since: datetime
-    ) -> list[tuple[int, date]]:
-        if not user_ids:
-            return []
-        month_col = func.date(
-            func.date_trunc("month", func.timezone("UTC", Transaction.updated_at))
-        )
-        pairs: list[tuple[int, date]] = []
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = (
-                select(Transaction.user_id, month_col)
-                .where(
-                    Transaction.user_id.in_(chunk),
-                    Transaction.status == TransactionStatus.PAID,
-                    _NOT_TEST,
-                    Transaction.updated_at >= since,
-                )
-                .distinct()
-            )
-            result = await self.session.execute(stmt)
-            pairs.extend(result.tuples().all())
-        return pairs
-
     async def sum_paid_final_price_per_user(
         self, user_ids: Optional[list[int]] = None, *, created_before: Optional[datetime] = None
     ) -> dict[int, dict[Currency, Decimal]]:
@@ -431,6 +406,32 @@ class TransactionRepository:
             )
             or 0
         )
+
+    async def list_paid_periods(self, user_ids: list[int]) -> list[tuple[int, datetime, int]]:
+        periods: list[tuple[int, datetime, int]] = []
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
+            stmt = (
+                select(Transaction.user_id, Transaction.updated_at, Transaction.duration_days)
+                .where(
+                    Transaction.user_id.in_(chunk),
+                    Transaction.status == TransactionStatus.PAID,
+                    _NOT_TEST,
+                )
+                .order_by(Transaction.user_id, Transaction.updated_at)
+            )
+            periods.extend((await self.session.execute(stmt)).tuples().all())
+        return periods
+
+    async def first_paid_at_since(self, since: datetime) -> dict[int, datetime]:
+        first_paid = func.min(Transaction.updated_at)
+        stmt = (
+            select(Transaction.user_id, first_paid)
+            .where(Transaction.status == TransactionStatus.PAID, _NOT_TEST)
+            .group_by(Transaction.user_id)
+            .having(first_paid >= since)
+        )
+        return dict((await self.session.execute(stmt)).tuples().all())
 
     async def sum_paid_final_price_since(self, since: datetime) -> dict[Currency, Decimal]:
         stmt = (

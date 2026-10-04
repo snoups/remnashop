@@ -1252,6 +1252,7 @@ def upgrade() -> None:
         sa.Column("device_single_reset_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("device_all_reset_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("link_reset_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("first_connected_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

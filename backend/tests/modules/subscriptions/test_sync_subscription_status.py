@@ -357,3 +357,38 @@ async def test_sync_ignores_a_sub_millisecond_expire_at_difference(
     )
 
     assert await _synced_event_count(session) == 0
+
+
+async def test_sync_records_first_connected_at_only_once(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    subscription_id = await _create_subscription(
+        subscription_repository, user_repository, 71901, SubscriptionStatus.ACTIVE
+    )
+    use_case = SyncSubscriptionStatusUseCase(
+        subscription_repository,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+    first = datetime_now() - timedelta(days=3)
+
+    for at in (first, datetime_now()):
+        await use_case.system(
+            SyncSubscriptionStatusDto(
+                remnawave_user_id=71901,
+                status=SubscriptionStatus.ACTIVE,
+                source="webhook",
+                first_connected_at=at,
+            )
+        )
+
+    stored = await session.scalar(
+        select(Subscription.first_connected_at).where(Subscription.id == subscription_id)
+    )
+    assert stored is not None
+    assert abs((stored - first).total_seconds()) < 1

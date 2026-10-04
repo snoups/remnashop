@@ -24,7 +24,7 @@ export function AnalyticsMetricsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         {state.kind === "ready" ? (
           <Tag>
-            {t("analytics.reportCurrency")} · <span className="text-foreground">{state.data.kpi.report_currency}</span>
+            {t("analytics.reportCurrency")} · <span className="text-foreground">{state.data.report_currency}</span>
           </Tag>
         ) : (
           <span />
@@ -43,12 +43,13 @@ export function AnalyticsMetricsPage() {
 
 function Overview({ data }: { data: Analytics }) {
   const { t, i18n } = useTranslation();
-  const { kpi, churn } = data;
-  const reportCurrency = kpi.report_currency;
-  const revenue = Object.entries(kpi.total_revenue_by_currency);
-  const mainRevenue = kpi.total_revenue_by_currency[reportCurrency];
-  const conversionPct = Math.min(100, kpi.conversion_rate * 100);
-  const retentionPct = Math.min(100, churn.retention_rate * 100);
+  const { current, snapshot } = data;
+  const reportCurrency = data.report_currency;
+  const revenue = Object.entries(data.revenue_by_currency);
+  const retentionRate = 1 - current.churn_rate;
+  const conversionPct = Math.min(100, current.conversion_rate * 100);
+  const retentionPct = Math.min(100, retentionRate * 100);
+  const hasChurnBase = current.churn_base > 0;
 
   return (
     <>
@@ -56,7 +57,7 @@ function Overview({ data }: { data: Analytics }) {
         <KpiTile
           icon={CreditCard}
           label={t("analytics.kpi.revenue")}
-          value={mainRevenue !== undefined ? formatMoney(mainRevenue, reportCurrency, i18n.language) : "—"}
+          value={formatMoney(current.revenue, reportCurrency, i18n.language)}
           hint={
             revenue.length > 1 && (
               <span className="flex flex-wrap gap-1.5">
@@ -70,33 +71,33 @@ function Overview({ data }: { data: Analytics }) {
         <KpiTile
           icon={TrendingUp}
           label={t("analytics.kpi.mrr")}
-          value={formatMoney(kpi.mrr, reportCurrency, i18n.language, true)}
+          value={formatMoney(snapshot.mrr, reportCurrency, i18n.language, true)}
           info={t("analytics.kpi.mrrHint")}
           hint={t("analytics.kpi.mrrCaption")}
         />
         <KpiTile
           icon={PieChart}
-          label={t("analytics.kpi.arpu")}
-          value={formatMoney(kpi.arpu, reportCurrency, i18n.language, true)}
-          info={t("analytics.kpi.arpuHint")}
-          hint={t("analytics.kpi.arpuCaption")}
+          label={t("analytics.kpi.arppu")}
+          value={formatMoney(current.arppu, reportCurrency, i18n.language, true)}
+          info={t("analytics.kpi.arppuHint")}
+          hint={t("analytics.kpi.arppuCaption", { count: current.paying_users })}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiTile icon={Users} label={t("analytics.kpi.activeSubscriptions")} value={String(kpi.active_subscriptions)} />
-        <KpiTile icon={ShoppingCart} label={t("analytics.kpi.paidOrders")} value={String(kpi.paid_orders_count)} />
+        <KpiTile icon={Users} label={t("analytics.kpi.activeSubscriptions")} value={String(snapshot.paid_subscriptions)} />
+        <KpiTile icon={ShoppingCart} label={t("analytics.kpi.paidOrders")} value={String(current.payments)} />
         <KpiTile
           icon={UserCheck}
-          label={t("analytics.kpi.conversionRate")}
-          value={formatPercent(kpi.conversion_rate, i18n.language)}
-          info={t("analytics.kpi.conversionRateHint")}
+          label={t("analytics.kpi.conversionRate", { days: data.conversion_window_days })}
+          value={formatPercent(current.conversion_rate, i18n.language)}
+          info={t("analytics.kpi.conversionRateHint", { days: data.conversion_window_days })}
           hint={
             <span className="flex items-center gap-3">
               <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
                 <span className="block h-full rounded-full bg-primary" style={{ width: `${conversionPct}%` }} />
               </span>
-              {t("analytics.kpi.conversionOf", { paid: kpi.paid_in_period, total: kpi.registered_in_period })}
+              {t("analytics.kpi.conversionOf", { paid: current.converted, total: current.conversion_cohort })}
             </span>
           }
         />
@@ -111,15 +112,15 @@ function Overview({ data }: { data: Analytics }) {
         <div className="grid grid-cols-2 items-center gap-6 px-1 pb-1 pt-5 md:grid-cols-[180px_180px_minmax(0,1fr)]">
           <div>
             <p className="text-[12.5px] text-muted-foreground">{t("analytics.churn.retention")}</p>
-            <p className="text-[28px] font-bold tabular-nums text-success">{formatPercent(churn.retention_rate, i18n.language)}</p>
+            <p className="text-[28px] font-bold tabular-nums text-success">{hasChurnBase ? formatPercent(retentionRate, i18n.language) : "—"}</p>
           </div>
           <div>
             <p className="text-[12.5px] text-muted-foreground">{t("analytics.churn.rate")}</p>
-            <p className="text-[28px] font-bold tabular-nums text-warning">{formatPercent(churn.churn_rate, i18n.language)}</p>
+            <p className="text-[28px] font-bold tabular-nums text-warning">{hasChurnBase ? formatPercent(current.churn_rate, i18n.language) : "—"}</p>
           </div>
           <div className="col-span-2 flex flex-col gap-2.5 md:col-span-1">
             <div className="flex h-2.5 gap-[3px] overflow-hidden rounded-full bg-white/[0.06]">
-              {churn.prev_active > 0 && (
+              {hasChurnBase && (
                 <>
                   <div className="rounded-full bg-success" style={{ width: `${retentionPct}%` }} />
                   <div className="flex-1 rounded-full bg-warning" />
@@ -127,9 +128,9 @@ function Overview({ data }: { data: Analytics }) {
               )}
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] tabular-nums text-muted-foreground">
-              <LegendItem dotClassName="bg-muted-foreground" label={t("analytics.churn.prevActive")} value={churn.prev_active} />
-              <LegendItem dotClassName="bg-success" label={t("analytics.churn.stillActive")} value={churn.still_active} />
-              <LegendItem dotClassName="bg-warning" label={t("analytics.churn.churned")} value={churn.churned} />
+              <LegendItem dotClassName="bg-muted-foreground" label={t("analytics.churn.prevActive")} value={current.churn_base} />
+              <LegendItem dotClassName="bg-success" label={t("analytics.churn.stillActive")} value={current.churn_base - current.churned} />
+              <LegendItem dotClassName="bg-warning" label={t("analytics.churn.churned")} value={current.churned} />
             </div>
           </div>
         </div>

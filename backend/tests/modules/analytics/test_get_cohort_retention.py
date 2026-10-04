@@ -1,9 +1,11 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.transaction import Transaction
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -21,18 +23,19 @@ from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.stats_repository import UserStatsRepository
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 
 
-def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
+def _paid_order_dto(
+    *, user_id: int, plan_id: int, idempotency_key: str, duration_days: int = 30
+) -> CreateTransactionDto:
     return CreateTransactionDto(
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
-        duration_days=30,
+        duration_days=duration_days,
         currency=Currency.RUB,
         purchase_type=PurchaseType.NEW,
         target_subscription_id=None,
@@ -48,63 +51,117 @@ def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> Crea
 
 
 async def test_actor_without_analytics_view_is_denied(
-    user_repository: UserRepository,
     transaction_repository: TransactionRepository,
     uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = GetCohortRetentionUseCase(
-        UserStatsRepository(user_repository.session), transaction_repository, uow
-    )
+    use_case = GetCohortRetentionUseCase(transaction_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor)
 
 
-async def test_cohort_retention_month_zero_vs_month_one(
+async def test_cohort_counts_paid_coverage_per_month(
     user_repository: UserRepository,
     transaction_repository: TransactionRepository,
     session: AsyncSession,
     uow: UnitOfWork,
     plan_id: int,
 ) -> None:
-    # Both users registered "now" (this calendar month = cohort month 0).
-    payer = await user_repository.create(CreateUserDto(name="Payer", telegram_id=829_001))
-    await user_repository.create(CreateUserDto(name="NonPayer", telegram_id=829_002))
+    month = datetime_now().replace(day=1, hour=12, minute=0, second=0, microsecond=0)
+    for _ in range(4):
+        month = (month - timedelta(days=1)).replace(day=1)
+    cohort_day = month.replace(day=2)
+    later_month = month
+    for _ in range(3):
+        later_month = (later_month + timedelta(days=32)).replace(day=1)
+    later_day = later_month.replace(day=2)
 
-    async with uow:
-        order = await transaction_repository.create(
-            _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="cohort-1")
-        )
-    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
-    # updated_at is a server default, so this order lands in the current month
+    async def pay(
+        telegram_id: int,
+        payments: list[tuple[datetime, int]],
+        status: TransactionStatus = TransactionStatus.PAID,
+    ) -> None:
+        user = await user_repository.create(CreateUserDto(name="U", telegram_id=telegram_id))
+        for n, (paid_at, days) in enumerate(payments):
+            async with uow:
+                order = await transaction_repository.create(
+                    _paid_order_dto(
+                        user_id=user.id,
+                        plan_id=plan_id,
+                        idempotency_key=f"cohort-{telegram_id}-{n}",
+                        duration_days=days,
+                    )
+                )
+            await transaction_repository.mark_status(order.id, status)
+            await session.execute(
+                update(Transaction).where(Transaction.id == order.id).values(updated_at=paid_at)
+            )
 
-    use_case = GetCohortRetentionUseCase(
-        UserStatsRepository(user_repository.session), transaction_repository, uow
-    )
-    result = await use_case(OWNER)
+    await pay(829_101, [(cohort_day, 20), (later_day, 20)])  # gap in M1-M2
+    await pay(829_102, [(cohort_day, 20), (cohort_day + timedelta(days=10), 30)])  # early renewal
+    await pay(829_103, [(cohort_day, 20)], status=TransactionStatus.REFUNDED)
 
-    current_month_key = datetime_now().strftime("%Y-%m")
-    row = next(r for r in result.cohorts if r.cohort == current_month_key)
+    result = await GetCohortRetentionUseCase(transaction_repository, uow)(OWNER)
+
+    row = next(r for r in result.cohorts if r.cohort == cohort_day.strftime("%Y-%m"))
     assert row.cohort_size == 2
-    assert row.retention_by_month[0] == pytest.approx(0.5)
+    assert row.retention_by_month == pytest.approx([1.0, 0.5, 0.0, 0.5, 0.0])
 
 
-async def test_cohort_retention_earliest_since_is_timezone_aware(
-    user_stats_repository: UserStatsRepository,
-    transaction_repository: TransactionRepository,
-    uow: UnitOfWork,
+async def test_cohort_since_is_timezone_aware(
+    transaction_repository: TransactionRepository, uow: UnitOfWork
 ) -> None:
     captured: dict[str, datetime] = {}
-    original = user_stats_repository.list_id_and_registration_date_since
+    original = transaction_repository.first_paid_at_since
 
-    async def _spy(since: datetime, role: Role) -> list[tuple[int, date]]:
+    async def _spy(since: datetime) -> dict[int, datetime]:
         captured["since"] = since
-        return await original(since, role)
+        return await original(since)
 
-    user_stats_repository.list_id_and_registration_date_since = _spy  # type: ignore[method-assign]
-
-    use_case = GetCohortRetentionUseCase(user_stats_repository, transaction_repository, uow)
-    await use_case(OWNER)
+    transaction_repository.first_paid_at_since = _spy  # type: ignore[method-assign]
+    await GetCohortRetentionUseCase(transaction_repository, uow)(OWNER)
 
     assert captured["since"].tzinfo is not None
+
+
+@pytest.mark.parametrize(("renewed", "expected_m1"), [(False, 0.0), (True, 1.0)])
+async def test_cohort_month_is_measured_at_the_payment_anniversary(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+    renewed: bool,
+    expected_m1: float,
+) -> None:
+    month = datetime_now().replace(day=1, hour=12, minute=0, second=0, microsecond=0)
+    for _ in range(2):
+        month = (month - timedelta(days=1)).replace(day=1)
+    first_paid_at = month.replace(day=15)
+    # 28 days ends before the next month's 15th even after a February
+    payments = [(first_paid_at, 28)]
+    if renewed:
+        payments.append((first_paid_at + timedelta(days=25), 28))
+
+    user = await user_repository.create(CreateUserDto(name="U", telegram_id=829_201))
+    for n, (paid_at, days) in enumerate(payments):
+        async with uow:
+            order = await transaction_repository.create(
+                _paid_order_dto(
+                    user_id=user.id,
+                    plan_id=plan_id,
+                    idempotency_key=f"anniversary-{n}",
+                    duration_days=days,
+                )
+            )
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+        await session.execute(
+            update(Transaction).where(Transaction.id == order.id).values(updated_at=paid_at)
+        )
+
+    result = await GetCohortRetentionUseCase(transaction_repository, uow)(OWNER)
+
+    row = next(r for r in result.cohorts if r.cohort == first_paid_at.strftime("%Y-%m"))
+    assert row.cohort_size == 1
+    assert row.retention_by_month[1] == expected_m1

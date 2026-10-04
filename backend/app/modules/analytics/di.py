@@ -4,7 +4,13 @@ from app.modules.analytics.usecases import (
     GetAnalyticsUseCase,
     GetCohortRetentionUseCase,
     GetFunnelUseCase,
+    GetLtvBreakdownUseCase,
     GetLtvDistributionUseCase,
+    GetPromocodeStatsUseCase,
+    GetRetentionUseCase,
+    GetRevenueUseCase,
+    GetSourcesUseCase,
+    GetTrialUseCase,
 )
 
 
@@ -15,7 +21,13 @@ class AnalyticsProvider(Provider):
         GetAnalyticsUseCase,
         GetFunnelUseCase,
         GetCohortRetentionUseCase,
+        GetLtvBreakdownUseCase,
         GetLtvDistributionUseCase,
+        GetPromocodeStatsUseCase,
+        GetRetentionUseCase,
+        GetRevenueUseCase,
+        GetSourcesUseCase,
+        GetTrialUseCase,
     )
 
 

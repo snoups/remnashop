@@ -85,17 +85,12 @@ class UserStatsRepository:
         rows = (await self.session.execute(stmt)).tuples()
         return list(rows.all())
 
-    async def list_ids_registered_since(self, since: datetime, role: Role) -> list[int]:
+    async def list_registrations(
+        self, start: datetime, end: datetime, role: Role
+    ) -> list[tuple[int, datetime]]:
         result = await self.session.execute(
-            select(User.id).where(User.role == role, User.created_at >= since)
-        )
-        return list(result.scalars().all())
-
-    async def list_id_and_registration_date_since(
-        self, since: datetime, role: Role
-    ) -> list[tuple[int, date]]:
-        day_col = func.date(func.timezone("UTC", User.created_at))
-        result = await self.session.execute(
-            select(User.id, day_col).where(User.role == role, User.created_at >= since)
+            select(User.id, User.created_at).where(
+                User.role == role, User.created_at >= start, User.created_at < end
+            )
         )
         return list(result.tuples().all())

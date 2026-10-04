@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
+from app.core.constants import MAX_SQL_IN_PARAMS
 from app.core.db.errors import constraint_name
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.user import User
@@ -243,10 +244,13 @@ class UserRepository:
         return self._convert_to_dto_list(list(rows))
 
     async def list_by_ids(self, user_ids: list[int]) -> list[UserDto]:
-        if not user_ids:
-            return []
-        result = await self.session.execute(select(User).where(User.id.in_(user_ids)))
-        return self._convert_to_dto_list(list(result.scalars()))
+        users: list[User] = []
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
+            users.extend(
+                (await self.session.execute(select(User).where(User.id.in_(chunk)))).scalars()
+            )
+        return self._convert_to_dto_list(users)
 
     async def get_list_item(self, user_id: int, roles: Sequence[Role]) -> UserListItemDto:
         row = (

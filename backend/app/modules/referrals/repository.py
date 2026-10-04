@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.core.constants import MAX_SQL_IN_PARAMS
 from app.core.db.errors import constraint_name
 from app.core.db.models.referral import Referral
 from app.core.db.models.referral_reward import ReferralReward
@@ -101,6 +102,19 @@ class ReferralRepository:
 
     async def has_referrer(self, user_id: int) -> bool:
         return await self.get_by_referred_id(user_id) is not None
+
+    async def list_edges(
+        self, referred_ids: Optional[list[int]] = None
+    ) -> list[tuple[int, Optional[int], int]]:
+        stmt = select(Referral.referred_id, Referral.referrer_id, Referral.level)
+        if referred_ids is None:
+            return list((await self.session.execute(stmt)).tuples().all())
+        result: list[tuple[int, Optional[int], int]] = []
+        for start in range(0, len(referred_ids), MAX_SQL_IN_PARAMS):
+            chunk = referred_ids[start : start + MAX_SQL_IN_PARAMS]
+            rows = await self.session.execute(stmt.where(Referral.referred_id.in_(chunk)))
+            result.extend(rows.tuples().all())
+        return result
 
     async def create_referral(
         self, *, referrer_id: int, referred_id: int, level: int
@@ -365,6 +379,14 @@ class ReferralRepository:
             referral_id: ReferralRewardTotalsDto(count=count, amounts=amounts[referral_id])
             for referral_id, count in counts.items()
         }
+
+    async def list_rewards(
+        self, start: datetime, end: datetime
+    ) -> list[tuple[Optional[int], ReferralRewardType, Decimal]]:
+        stmt = select(ReferralReward.referrer_id, ReferralReward.type, ReferralReward.amount).where(
+            ReferralReward.created_at >= start, ReferralReward.created_at < end
+        )
+        return list((await self.session.execute(stmt)).tuples().all())
 
     async def create_reward(
         self,

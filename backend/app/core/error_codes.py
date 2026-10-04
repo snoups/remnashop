@@ -19,6 +19,7 @@ class ErrorCode(UpperStrEnum):
     AD_LINK_NOT_FOUND = auto()
     AD_LINK_NO_CHANNEL = auto()
     ALLOWED_LIST_EMPTY = auto()
+    ANALYTICS_PERIOD_INVALID = auto()
     ANCHOR_CURRENCY_INVALID = auto()
     ANCHOR_CURRENCY_UNCHANGED = auto()
     ANCHOR_PRICE_NOT_OVERRIDABLE = auto()

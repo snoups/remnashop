@@ -86,6 +86,7 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
                     status=target_status,
                     source="webhook",
                     expire_at=None if is_deletion else payload.data.expire_at,
+                    first_connected_at=payload.data.first_connected_at,
                 )
             )
         except Exception:

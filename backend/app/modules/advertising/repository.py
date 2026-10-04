@@ -5,6 +5,7 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import MAX_SQL_IN_PARAMS
 from app.core.db.errors import constraint_name
 from app.core.db.models.ad_link import AdLink
 from app.core.db.models.ad_link_attribution import AdLinkAttribution
@@ -159,6 +160,18 @@ class AdLinkRepository:
 
         await self.session.delete(row)
         await self.session.flush()
+
+    async def list_user_links(self, user_ids: list[int]) -> list[tuple[int, int, str]]:
+        result: list[tuple[int, int, str]] = []
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
+            stmt = (
+                select(AdLinkAttribution.user_id, AdLink.id, AdLink.name)
+                .join(AdLink, AdLink.id == AdLinkAttribution.ad_link_id)
+                .where(AdLinkAttribution.user_id.in_(chunk))
+            )
+            result.extend((await self.session.execute(stmt)).tuples().all())
+        return result
 
     async def create_attribution(
         self, *, ad_link_id: int, user_id: int, channel: AdLinkChannel

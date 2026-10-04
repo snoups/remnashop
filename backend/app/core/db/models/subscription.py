@@ -53,3 +53,5 @@ class Subscription(BaseSql, TimestampMixin):
     device_single_reset_at: Mapped[Optional[datetime]]
     device_all_reset_at: Mapped[Optional[datetime]]
     link_reset_at: Mapped[Optional[datetime]]
+    # kept on DELETED rows: a trial->paid or plan change replaces the row, not the customer
+    first_connected_at: Mapped[Optional[datetime]]

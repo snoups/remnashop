@@ -265,6 +265,12 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.ANALYTICS_FUNNEL_VIEW,
         Permission.ANALYTICS_COHORTS_VIEW,
         Permission.ANALYTICS_LTV_VIEW,
+        Permission.ANALYTICS_LTV_BREAKDOWN_VIEW,
+        Permission.ANALYTICS_REVENUE_VIEW,
+        Permission.ANALYTICS_TRIAL_VIEW,
+        Permission.ANALYTICS_RETENTION_VIEW,
+        Permission.ANALYTICS_SOURCES_VIEW,
+        Permission.ANALYTICS_PROMOCODES_VIEW,
     }
 
 

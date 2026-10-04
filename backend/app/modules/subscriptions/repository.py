@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Final, Optional
 
-from sqlalchemy import ColumnElement, Numeric, func, or_, select
+from sqlalchemy import ColumnElement, Numeric, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import INT32_MAX
@@ -403,6 +404,17 @@ class SubscriptionRepository:
         row.url = new_url
         row.link_reset_at = datetime_now()
         await self.session.flush()
+
+    async def set_first_connected_at(self, remnawave_user_id: int, at: datetime) -> None:
+        await self.session.execute(
+            update(Subscription)
+            .where(
+                Subscription.remnawave_user_id == remnawave_user_id,
+                Subscription.status != SubscriptionStatus.DELETED,
+                Subscription.first_connected_at.is_(None),
+            )
+            .values(first_connected_at=at)
+        )
 
     async def apply_state(self, state: SubscriptionState) -> SubscriptionDto:
         row = await self._get_or_raise(state.id)

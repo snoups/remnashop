@@ -3,8 +3,6 @@ from app.modules.analytics.dto import (
     AnalyticsDto,
     CohortsDto,
     FunnelDto,
-    GetAnalyticsDto,
-    GetFunnelDto,
     LtvDistributionDto,
 )
 from app.modules.analytics.usecases import (
@@ -18,10 +16,8 @@ __all__ = [
     "AnalyticsDto",
     "CohortsDto",
     "FunnelDto",
-    "GetAnalyticsDto",
     "GetAnalyticsUseCase",
     "GetCohortRetentionUseCase",
-    "GetFunnelDto",
     "GetFunnelUseCase",
     "GetLtvDistributionUseCase",
     "LtvDistributionDto",

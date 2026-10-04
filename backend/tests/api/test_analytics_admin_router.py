@@ -125,7 +125,7 @@ async def test_get_analytics_requires_admin(client: httpx.AsyncClient) -> None:
     assert response.status_code == 401
 
 
-async def test_owner_can_get_analytics_with_valid_days(
+async def test_owner_can_get_analytics_for_a_period(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -134,13 +134,18 @@ async def test_owner_can_get_analytics_with_valid_days(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.get(f"{API_V1}/analytics/overview?days=30", headers=headers)
+    response = await client.get(
+        f"{API_V1}/analytics/overview?period_from=2026-09-01&period_to=2026-09-30", headers=headers
+    )
 
     assert response.status_code == 200
-    assert response.json()["days"] == 30
+    period = response.json()["period"]
+    assert period["start"].startswith("2026-09-01")
+    assert period["end"].startswith("2026-10-01")
+    assert period["previous_start"].startswith("2026-08-02")
 
 
-async def test_get_analytics_default_days_is_seven(
+async def test_get_analytics_defaults_to_the_last_30_days(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -152,10 +157,14 @@ async def test_get_analytics_default_days_is_seven(
     response = await client.get(f"{API_V1}/analytics/overview", headers=headers)
 
     assert response.status_code == 200
-    assert response.json()["days"] == 7
+    period = response.json()["period"]
+    span = datetime.datetime.fromisoformat(period["end"]) - datetime.datetime.fromisoformat(
+        period["start"]
+    )
+    assert span == timedelta(days=30)
 
 
-async def test_get_analytics_rejects_an_invalid_days_value(
+async def test_overview_rejects_an_inverted_period(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -164,9 +173,12 @@ async def test_get_analytics_rejects_an_invalid_days_value(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.get(f"{API_V1}/analytics/overview?days=5", headers=headers)
+    response = await client.get(
+        f"{API_V1}/analytics/overview?period_from=2026-09-30&period_to=2026-09-01", headers=headers
+    )
 
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.json()["code"] == "ANALYTICS_PERIOD_INVALID"
 
 
 async def test_admin_without_analytics_view_is_denied(
@@ -185,7 +197,7 @@ async def test_admin_without_analytics_view_is_denied(
     assert response.status_code == 403
 
 
-async def test_owner_can_get_funnel_with_valid_days(
+async def test_owner_can_get_funnel_by_period(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -194,14 +206,18 @@ async def test_owner_can_get_funnel_with_valid_days(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.get(f"{API_V1}/analytics/funnel?days=30", headers=headers)
+    response = await client.get(
+        f"{API_V1}/analytics/funnel?period_from=2026-09-01&period_to=2026-09-30", headers=headers
+    )
 
     assert response.status_code == 200
-    assert response.json()["days"] == 30
-    assert len(response.json()["steps"]) == 4
+    body = response.json()
+    assert len(body["steps"]) == 4
+    assert isinstance(body["by_source"], list)
+    assert "previous_start" in body["period"]
 
 
-async def test_get_funnel_default_days_is_seven(
+async def test_get_funnel_rejects_an_inverted_period(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -210,24 +226,12 @@ async def test_get_funnel_default_days_is_seven(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    response = await client.get(f"{API_V1}/analytics/funnel", headers=headers)
+    response = await client.get(
+        f"{API_V1}/analytics/funnel?period_from=2026-09-30&period_to=2026-09-01", headers=headers
+    )
 
-    assert response.status_code == 200
-    assert response.json()["days"] == 7
-
-
-async def test_get_funnel_rejects_an_invalid_days_value(
-    client: httpx.AsyncClient,
-    user_repository: UserRepository,
-    session_repository: SessionRepository,
-    uow: UnitOfWork,
-    config: AppConfig,
-) -> None:
-    headers = await _owner_headers(user_repository, session_repository, uow, config)
-
-    response = await client.get(f"{API_V1}/analytics/funnel?days=5", headers=headers)
-
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.json()["code"] == "ANALYTICS_PERIOD_INVALID"
 
 
 async def test_admin_without_analytics_view_is_denied_on_funnel(
@@ -306,3 +310,279 @@ async def test_admin_without_analytics_view_is_denied_on_ltv_distribution(
     response = await client.get(f"{API_V1}/analytics/ltv-distribution", headers=headers)
 
     assert response.status_code == 403
+
+
+async def test_owner_can_get_revenue(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/revenue?period_from=2026-09-01&period_to=2026-09-07&granularity=week",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["series"]) == 1
+    assert body["granularity"] == "week"
+    assert body["totals"]["payments"] == 0
+
+
+async def test_revenue_rejects_an_inverted_period(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/revenue?period_from=2026-09-30&period_to=2026-09-01", headers=headers
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "ANALYTICS_PERIOD_INVALID"
+
+
+async def test_admin_without_analytics_revenue_view_is_denied(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_REVENUE_VIEW"
+    )
+
+    response = await client.get(f"{API_V1}/analytics/revenue", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_get_trial(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/trial?period_from=2026-09-01&period_to=2026-09-07", headers=headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["trials"] == 0 and body["trial_days"] == 7
+    assert len(body["by_trial_day"]) == 11
+
+
+async def test_trial_rejects_an_inverted_period(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/trial?period_from=2026-09-30&period_to=2026-09-01", headers=headers
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "ANALYTICS_PERIOD_INVALID"
+
+
+async def test_admin_without_analytics_trial_view_is_denied(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_TRIAL_VIEW"
+    )
+
+    response = await client.get(f"{API_V1}/analytics/trial", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_get_retention(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/analytics/retention", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [p["months"] for p in body["points"]] == [1, 3, 6]
+    assert len(body["monthly_churn"]) == 12
+
+
+async def test_admin_without_analytics_retention_view_is_denied(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_RETENTION_VIEW"
+    )
+
+    response = await client.get(f"{API_V1}/analytics/retention", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_get_ltv_breakdown(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(f"{API_V1}/analytics/ltv-breakdown", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"report_currency", "by_first_plan", "by_source", "top_payers"}
+
+
+async def test_admin_without_analytics_ltv_breakdown_view_is_denied(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_LTV_BREAKDOWN_VIEW"
+    )
+
+    response = await client.get(f"{API_V1}/analytics/ltv-breakdown", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_get_sources(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/sources?period_from=2026-09-01&period_to=2026-09-07", headers=headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [c["source"] for c in body["channels"]] == ["organic", "ad_link", "referral"]
+    assert body["ad_links"] == [] and body["top_referrers"] == []
+
+
+async def test_admin_without_analytics_sources_view_is_denied(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_SOURCES_VIEW"
+    )
+
+    response = await client.get(f"{API_V1}/analytics/sources", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_owner_can_get_promocodes(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/promocodes?period_from=2026-09-01&period_to=2026-09-07",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["by_reward_type"]) == 6 and body["codes"] == []
+
+
+async def test_promocodes_with_inverted_period_is_a_400(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/promocodes?period_from=2026-09-30&period_to=2026-09-01",
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "ANALYTICS_PERIOD_INVALID"
+
+
+async def test_admin_without_analytics_promocodes_view_is_denied(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_PROMOCODES_VIEW"
+    )
+
+    response = await client.get(f"{API_V1}/analytics/promocodes", headers=headers)
+
+    assert response.status_code == 403
+
+
+async def test_sources_rejects_an_inverted_period(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/analytics/sources?period_from=2026-09-30&period_to=2026-09-01", headers=headers
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "ANALYTICS_PERIOD_INVALID"

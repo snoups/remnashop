@@ -9,6 +9,7 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import MAX_SQL_IN_PARAMS
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
@@ -337,6 +338,18 @@ async def test_list_by_ids_returns_matching_users_in_no_particular_order(
     assert {user.id for user in users} == {a.id, b.id}
 
 
+async def test_list_by_ids_chunks_more_ids_than_bind_param_cap(
+    user_repository: UserRepository,
+) -> None:
+    a = await user_repository.create(CreateUserDto(name="Alpha", telegram_id=910_011))
+    b = await user_repository.create(CreateUserDto(name="Beta", telegram_id=910_012))
+    missing = [-i for i in range(1, MAX_SQL_IN_PARAMS + 4)]
+
+    users = await user_repository.list_by_ids([a.id, *missing, b.id])
+
+    assert {user.id for user in users} == {a.id, b.id}
+
+
 async def test_list_by_ids_empty_input_returns_empty_list(
     user_repository: UserRepository,
 ) -> None:
@@ -392,51 +405,6 @@ async def test_count_registrations_by_day_groups_and_excludes_before_since(
     rows = await user_stats_repository.count_registrations_by_day(since, Role.USER)
 
     assert sum(count for _day, count in rows) == 2
-
-
-async def test_list_ids_registered_since_excludes_before_since_and_other_roles(
-    user_repository: UserRepository,
-    uow: UnitOfWork,
-    session: AsyncSession,
-    user_stats_repository: UserStatsRepository,
-) -> None:
-    since = datetime_now() - timedelta(days=1)
-    in_window = await _create_user(user_repository, uow, telegram_id=810_301, role=Role.USER)
-    outside_window = await _create_user(user_repository, uow, telegram_id=810_302, role=Role.USER)
-    await session.execute(
-        update(User)
-        .where(User.id == outside_window.id)
-        .values(created_at=since - timedelta(days=1))
-    )
-    await _create_user(user_repository, uow, login="admin-810-3", role=Role.ADMIN)
-
-    ids = await user_stats_repository.list_ids_registered_since(since, Role.USER)
-
-    assert ids == [in_window.id]
-
-
-async def test_list_id_and_registration_date_since_pairs_id_with_utc_date(
-    user_repository: UserRepository,
-    uow: UnitOfWork,
-    session: AsyncSession,
-    user_stats_repository: UserStatsRepository,
-) -> None:
-    since = datetime_now() - timedelta(days=1)
-    in_window = await _create_user(user_repository, uow, telegram_id=810_401, role=Role.USER)
-    outside_window = await _create_user(user_repository, uow, telegram_id=810_402, role=Role.USER)
-    await session.execute(
-        update(User)
-        .where(User.id == outside_window.id)
-        .values(created_at=since - timedelta(days=1))
-    )
-    await _create_user(user_repository, uow, login="admin-810-4", role=Role.ADMIN)
-
-    pairs = await user_stats_repository.list_id_and_registration_date_since(since, Role.USER)
-
-    assert len(pairs) == 1
-    user_id, registered_on = pairs[0]
-    assert user_id == in_window.id
-    assert registered_on == datetime_now().date()
 
 
 async def test_block_matching_handles_more_ids_than_bind_param_cap(

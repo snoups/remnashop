@@ -3,6 +3,8 @@ from app.modules.transactions.dto import (
     CheckoutResultDto,
     CreateCheckoutDto,
     CreateTransactionDto,
+    PaidTransactionDto,
+    PaymentAttemptDto,
     PriceQuote,
     TransactionDto,
 )
@@ -16,6 +18,7 @@ from app.modules.transactions.gateways.base import (
 )
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.transactions.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
 
@@ -25,6 +28,8 @@ __all__ = [
     "CreateCheckoutUseCase",
     "CreateTransactionDto",
     "HandlePaymentWebhookUseCase",
+    "PaidTransactionDto",
+    "PaymentAttemptDto",
     "PaymentGateway",
     "PaymentGatewayFactory",
     "PaymentIntent",
@@ -32,6 +37,7 @@ __all__ = [
     "ProviderPayment",
     "TransactionDto",
     "TransactionRepository",
+    "TransactionStatsRepository",
     "WebhookAck",
     "WebhookRequest",
     "WebhookSignal",

@@ -125,6 +125,18 @@ class SubscriptionDto(BaseDto, TimestampMixin):
 
 
 @dataclass(frozen=True, kw_only=True)
+class LiveSubscriptionDto:
+    user_id: int
+    is_trial: bool
+    status: SubscriptionStatus
+    expire_at: datetime
+    plan_name: str
+    price_paid: Decimal
+    currency: Currency
+    duration_days: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class CreateSubscriptionDto:
     user_id: int
     remnawave_user_id: int
@@ -195,6 +207,7 @@ class SyncSubscriptionStatusDto:
     status: SubscriptionStatus
     source: str
     expire_at: Optional[datetime] = None
+    first_connected_at: Optional[datetime] = None
 
 
 @dataclass(frozen=True, kw_only=True)

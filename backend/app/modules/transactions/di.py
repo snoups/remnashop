@@ -6,6 +6,7 @@ from dishka import Provider, Scope, provide, provide_all
 from app.modules.transactions.gateways.base import HTTP_TIMEOUT_S, PaymentHttpClient
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
@@ -27,6 +28,7 @@ class TransactionsProvider(Provider):
     scope = Scope.REQUEST
 
     transaction_repository = provide(TransactionRepository)
+    transaction_stats_repository = provide(TransactionStatsRepository)
     use_cases = provide_all(
         CreateCheckoutUseCase,
         CreateTestPaymentUseCase,

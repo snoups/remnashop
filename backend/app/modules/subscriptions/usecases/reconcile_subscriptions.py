@@ -64,5 +64,6 @@ class ReconcileSubscriptionsUseCase(UseCase[None, None]):
                     status=SubscriptionStatus(panel_user.status),
                     source="reconcile",
                     expire_at=panel_user.expire_at,
+                    first_connected_at=panel_user.first_connected_at,
                 )
             )

@@ -707,56 +707,6 @@ async def test_count_expiring_between_only_counts_live_rows_in_the_window(
     )
 
 
-async def test_count_churn_window_counts_pre_window_subscriptions_only(
-    subscription_repository: SubscriptionRepository,
-    user_repository: UserRepository,
-    session: AsyncSession,
-    subscription_stats_repository: SubscriptionStatsRepository,
-) -> None:
-    window_start = datetime_now() - timedelta(days=7)
-
-    retained = await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=824_001,
-        remnawave_user_id=824_001,
-        status=SubscriptionStatus.ACTIVE,
-        expire_at=datetime_now() + timedelta(days=60),
-    )
-    await session.execute(
-        update(Subscription)
-        .where(Subscription.id == retained.id)
-        .values(created_at=window_start - timedelta(days=10))
-    )
-    churned = await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=824_002,
-        remnawave_user_id=824_002,
-        status=SubscriptionStatus.EXPIRED,
-        expire_at=datetime_now() + timedelta(days=1),
-    )
-    await session.execute(
-        update(Subscription)
-        .where(Subscription.id == churned.id)
-        .values(created_at=window_start - timedelta(days=10))
-    )
-    # created inside the window, so not in prev_active
-    await create_subscription(
-        subscription_repository,
-        user_repository,
-        telegram_id=824_003,
-        remnawave_user_id=824_003,
-        status=SubscriptionStatus.ACTIVE,
-        expire_at=datetime_now() + timedelta(days=30),
-    )
-
-    prev_active, still_active = await subscription_stats_repository.count_churn_window(window_start)
-
-    assert prev_active == 2
-    assert still_active == 1
-
-
 async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inactive(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,

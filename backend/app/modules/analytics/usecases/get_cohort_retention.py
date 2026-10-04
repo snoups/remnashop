@@ -4,13 +4,12 @@ from typing import Final
 from app.core.actor import Actor
 from app.core.constants import TIMEZONE
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.analytics.coverage import is_covered, paid_coverage, shift_months
 from app.modules.analytics.dto import CohortRowDto, CohortsDto
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UserStatsRepository
 
 _COHORT_MONTHS: Final[int] = 12
 
@@ -35,11 +34,9 @@ class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
 
     def __init__(
         self,
-        user_stats: UserStatsRepository,
         transaction_repository: TransactionRepository,
         uow: UnitOfWork,
     ) -> None:
-        self._user_stats = user_stats
         self._transaction_repository = transaction_repository
         self._uow = uow
 
@@ -47,54 +44,48 @@ class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
         async with self._uow:
             now = datetime_now()
             today = now.date()
-            earliest_month = _add_months(_start_of_month(today), -(_COHORT_MONTHS - 1))
-            earliest_since = datetime.combine(earliest_month, time.min, tzinfo=TIMEZONE)
+            this_month = _start_of_month(today)
+            earliest_month = _add_months(this_month, -(_COHORT_MONTHS - 1))
 
-            registrations = await self._user_stats.list_id_and_registration_date_since(
-                earliest_since, Role.USER
+            first_paid = await self._transaction_repository.first_paid_at_since(
+                _month_start(earliest_month)
             )
             cohorts: dict[str, set[int]] = {}
-            registered_month_by_user: dict[int, str] = {}
-            for user_id, registered_on in registrations:
-                key = _start_of_month(registered_on).strftime("%Y-%m")
+            for user_id, paid_at in first_paid.items():
+                key = paid_at.astimezone(TIMEZONE).strftime("%Y-%m")
                 cohorts.setdefault(key, set()).add(user_id)
-                registered_month_by_user[user_id] = key
 
-            all_user_ids = list(registered_month_by_user.keys())
-            paid_pairs = await self._transaction_repository.list_paid_user_month_pairs(
-                all_user_ids, earliest_since
-            )
-            activity: dict[str, dict[str, set[int]]] = {}
-            for user_id, paid_month in paid_pairs:
-                cohort_key = registered_month_by_user.get(user_id)
-                if cohort_key is None:
-                    continue
-                month_key = paid_month.strftime("%Y-%m")
-                activity.setdefault(cohort_key, {}).setdefault(month_key, set()).add(user_id)
+            payments: dict[int, list[tuple[datetime, int]]] = {}
+            for user_id, paid_at, days in await self._transaction_repository.list_paid_periods(
+                list(first_paid)
+            ):
+                payments.setdefault(user_id, []).append((paid_at, days))
+            coverage = {user_id: paid_coverage(p) for user_id, p in payments.items()}
 
             rows = []
             for i in range(_COHORT_MONTHS):
-                cohort_date = _add_months(_start_of_month(today), -(_COHORT_MONTHS - 1 - i))
-                cohort_key = cohort_date.strftime("%Y-%m")
-                cohort_users = cohorts.get(cohort_key, set())
-                if not cohort_users:
-                    rows.append(
-                        CohortRowDto(cohort=cohort_key, cohort_size=0, retention_by_month=[])
-                    )
-                    continue
-                months_elapsed = _months_between(cohort_date, today) + 1
-                cohort_activity = activity.get(cohort_key, {})
-                retention = [
-                    len(cohort_activity.get(_add_months(cohort_date, m).strftime("%Y-%m"), set()))
-                    / len(cohort_users)
-                    for m in range(months_elapsed)
-                ]
+                cohort_month = _add_months(earliest_month, i)
+                users = cohorts.get(cohort_month.strftime("%Y-%m"), set())
+                retention = []
+                if users:
+                    for m in range(_months_between(cohort_month, today) + 1):
+                        # one point per user: a month-overlap check counts any 30-day plan in M1
+                        active = 0
+                        for user_id in users:
+                            point = min(
+                                shift_months(first_paid[user_id].astimezone(TIMEZONE), m), now
+                            )
+                            active += is_covered(coverage.get(user_id, []), point)
+                        retention.append(active / len(users))
                 rows.append(
                     CohortRowDto(
-                        cohort=cohort_key,
-                        cohort_size=len(cohort_users),
+                        cohort=cohort_month.strftime("%Y-%m"),
+                        cohort_size=len(users),
                         retention_by_month=retention,
                     )
                 )
-
             return CohortsDto(cohorts=rows)
+
+
+def _month_start(d: date) -> datetime:
+    return datetime.combine(d, time.min, tzinfo=TIMEZONE)

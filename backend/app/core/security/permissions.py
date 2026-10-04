@@ -16,6 +16,12 @@ class Permission(UpperStrEnum):
     ANALYTICS_FUNNEL_VIEW = auto()
     ANALYTICS_COHORTS_VIEW = auto()
     ANALYTICS_LTV_VIEW = auto()
+    ANALYTICS_LTV_BREAKDOWN_VIEW = auto()
+    ANALYTICS_REVENUE_VIEW = auto()
+    ANALYTICS_TRIAL_VIEW = auto()
+    ANALYTICS_RETENTION_VIEW = auto()
+    ANALYTICS_SOURCES_VIEW = auto()
+    ANALYTICS_PROMOCODES_VIEW = auto()
     BOT_SETTINGS_VIEW = auto()
     BOT_STATUS_VIEW = auto()
     BOT_LOGS_VIEW = auto()
@@ -327,6 +333,12 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ANALYTICS_FUNNEL_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_COHORTS_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_LTV_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_LTV_BREAKDOWN_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_REVENUE_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_TRIAL_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_RETENTION_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_SOURCES_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_PROMOCODES_VIEW: PermissionMeta(resource="analytics", kind="read"),
 }
 
 GRANTABLE_PERMISSIONS: Final[frozenset[Permission]] = frozenset(PERMISSION_METADATA)
@@ -511,6 +523,12 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.ANALYTICS_FUNNEL_VIEW,
         Permission.ANALYTICS_COHORTS_VIEW,
         Permission.ANALYTICS_LTV_VIEW,
+        Permission.ANALYTICS_LTV_BREAKDOWN_VIEW,
+        Permission.ANALYTICS_REVENUE_VIEW,
+        Permission.ANALYTICS_TRIAL_VIEW,
+        Permission.ANALYTICS_RETENTION_VIEW,
+        Permission.ANALYTICS_SOURCES_VIEW,
+        Permission.ANALYTICS_PROMOCODES_VIEW,
     },
     Role.USER: set(),
 }

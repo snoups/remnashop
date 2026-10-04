@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import ColumnElement, and_, case, exists, func, not_, select
@@ -72,6 +73,18 @@ class PromocodeRepository:
     async def list_all(self) -> list[PromocodeDto]:
         result = await self.session.execute(select(Promocode).order_by(Promocode.id))
         return [self._to_dto(row) for row in result.scalars()]
+
+    async def list_activations(
+        self, start: Optional[datetime], end: datetime
+    ) -> list[tuple[int, int, datetime]]:
+        stmt = select(
+            PromocodeActivation.promocode_id,
+            PromocodeActivation.user_id,
+            PromocodeActivation.activated_at,
+        ).where(PromocodeActivation.activated_at < end)
+        if start is not None:
+            stmt = stmt.where(PromocodeActivation.activated_at >= start)
+        return list((await self.session.execute(stmt)).tuples().all())
 
     async def list_paginated(self, data: ListPromocodesDto) -> tuple[list[PromocodeDto], int]:
         expired = and_(Promocode.expires_at.is_not(None), Promocode.expires_at < datetime_now())

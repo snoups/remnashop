@@ -157,3 +157,27 @@ class ListTransactionsDto:
 @dataclass(frozen=True, kw_only=True)
 class ReconcilePaidTransactionsDto:
     grace_period: timedelta = _GRACE_PERIOD
+
+
+@dataclass(frozen=True, kw_only=True)
+class PaidTransactionDto:
+    user_id: int
+    paid_at: datetime
+    currency: Currency
+    final_price: Decimal
+    base_price: Decimal
+    discount_percent: int
+    discount_promocode_id: Optional[int]
+    purchase_type: PurchaseType
+    plan_id: Optional[int]
+    plan_name: str
+    duration_days: int
+    gateway_type: PaymentGatewayType
+
+
+@dataclass(frozen=True, kw_only=True)
+class PaymentAttemptDto:
+    gateway_type: PaymentGatewayType
+    status: TransactionStatus
+    currency: Currency
+    final_price: Decimal

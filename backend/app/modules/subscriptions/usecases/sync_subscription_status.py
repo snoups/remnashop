@@ -37,6 +37,11 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
             if subscription is None:
                 return None
 
+            if data.first_connected_at is not None:
+                await self._subscription_repository.set_first_connected_at(
+                    data.remnawave_user_id, data.first_connected_at
+                )
+
             old_status = subscription.status
             status_drifted = subscription.status is not data.status
             expire_at_drifted = (

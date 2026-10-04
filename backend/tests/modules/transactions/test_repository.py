@@ -642,42 +642,6 @@ async def test_list_user_ids_with_multiple_paid_orders_requires_more_than_one(
     assert result == {user_id}
 
 
-async def test_list_paid_user_month_pairs_dedupes_within_a_month_and_respects_since(
-    transaction_repository: TransactionRepository,
-    session: AsyncSession,
-    uow: UnitOfWork,
-    user_id: int,
-    plan_id: int,
-) -> None:
-    async with uow:
-        early_this_month = await transaction_repository.create(
-            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="pairs-1")
-        )
-        later_this_month = await transaction_repository.create(
-            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="pairs-2")
-        )
-        too_old = await transaction_repository.create(
-            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="pairs-3")
-        )
-    await transaction_repository.mark_status(early_this_month.id, TransactionStatus.PAID)
-    await transaction_repository.mark_status(later_this_month.id, TransactionStatus.PAID)
-    await transaction_repository.mark_status(too_old.id, TransactionStatus.PAID)
-    await session.execute(
-        update(Transaction)
-        .where(Transaction.id == too_old.id)
-        .values(updated_at=datetime_now() - timedelta(days=400))
-    )
-
-    pairs = await transaction_repository.list_paid_user_month_pairs(
-        [user_id], datetime_now() - timedelta(days=60)
-    )
-
-    assert len(pairs) == 1
-    result_user_id, month = pairs[0]
-    assert result_user_id == user_id
-    assert month == datetime_now().date().replace(day=1)
-
-
 async def test_lookups_are_scoped_to_the_gateway(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:

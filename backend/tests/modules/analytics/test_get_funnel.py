@@ -5,9 +5,11 @@ import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
+    AdLinkChannel,
     Currency,
     DiscountSource,
     Locale,
@@ -19,8 +21,12 @@ from app.core.enums import (
 )
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
-from app.modules.analytics.dto import GetFunnelDto
+from app.modules.advertising.dto import CreateAdLinkDto
+from app.modules.advertising.repository import AdLinkRepository
+from app.modules.analytics.dto import AnalyticsPeriodQueryDto
+from app.modules.analytics.sources import SourceKind
 from app.modules.analytics.usecases import GetFunnelUseCase
+from app.modules.referrals.repository import ReferralRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -63,6 +69,8 @@ def _use_case(
         UserStatsRepository(user_repository.session),
         SubscriptionStatsRepository(subscription_repository.session),
         transaction_repository,
+        AdLinkRepository(user_repository.session),
+        ReferralRepository(user_repository.session),
         uow,
     )
 
@@ -77,10 +85,32 @@ async def test_actor_without_analytics_view_is_denied(
     use_case = _use_case(user_repository, subscription_repository, transaction_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(actor, GetFunnelDto(days=7))
+        await use_case(actor, AnalyticsPeriodQueryDto())
 
 
-async def test_funnel_counts_are_independent_within_the_registered_cohort(
+async def _connect(session: AsyncSession, subscription_id: int) -> None:
+    await session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription_id)
+        .values(first_connected_at=datetime_now())
+    )
+
+
+async def _pay(
+    transaction_repository: TransactionRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+    key: str,
+) -> None:
+    async with uow:
+        order = await transaction_repository.create(
+            _paid_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=key)
+        )
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+
+
+async def test_funnel_steps_are_nested(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
     transaction_repository: TransactionRepository,
@@ -88,58 +118,102 @@ async def test_funnel_counts_are_independent_within_the_registered_cohort(
     uow: UnitOfWork,
     plan_id: int,
 ) -> None:
-    # trial_then_paid: registered in window, took a trial, paid twice (repeat).
-    trial_then_paid = await create_subscription(
+    await user_repository.create(CreateUserDto(name="RegisteredOnly", telegram_id=828_101))
+    connected_only = await create_subscription(
         subscription_repository,
         user_repository,
-        telegram_id=828_001,
-        remnawave_user_id=828_001,
-        status=SubscriptionStatus.ACTIVE,
+        telegram_id=828_102,
+        remnawave_user_id=828_102,
         is_trial=True,
     )
-    async with uow:
-        first = await transaction_repository.create(
-            _paid_order_dto(
-                user_id=trial_then_paid.user_id, plan_id=plan_id, idempotency_key="funnel-1"
-            )
-        )
-        second = await transaction_repository.create(
-            _paid_order_dto(
-                user_id=trial_then_paid.user_id, plan_id=plan_id, idempotency_key="funnel-2"
-            )
-        )
-    await transaction_repository.mark_status(first.id, TransactionStatus.PAID)
-    await transaction_repository.mark_status(second.id, TransactionStatus.PAID)
-
-    # direct_payer: registered in window, no trial, paid once directly.
-    direct_payer = await user_repository.create(CreateUserDto(name="Direct", telegram_id=828_002))
-    async with uow:
-        direct_order = await transaction_repository.create(
-            _paid_order_dto(user_id=direct_payer.id, plan_id=plan_id, idempotency_key="funnel-3")
-        )
-    await transaction_repository.mark_status(direct_order.id, TransactionStatus.PAID)
-
-    # registered_only: registered in window, no trial, never paid.
-    await user_repository.create(CreateUserDto(name="RegisteredOnly", telegram_id=828_003))
-
-    # outside_window: registered too long ago, must be excluded from every step.
-    outside_window = await user_repository.create(CreateUserDto(name="Old", telegram_id=828_004))
+    await _connect(session, connected_only.id)
+    # connected on a trial row that was later replaced -- still connected
+    trial_payer = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=828_103,
+        remnawave_user_id=828_103,
+        status=SubscriptionStatus.DELETED,
+        is_trial=True,
+    )
+    await _connect(session, trial_payer.id)
+    await _pay(transaction_repository, uow, trial_payer.user_id, plan_id, "funnel-n1")
+    repeat_payer = await create_subscription(
+        subscription_repository, user_repository, telegram_id=828_104, remnawave_user_id=828_104
+    )
+    await _connect(session, repeat_payer.id)
+    await _pay(transaction_repository, uow, repeat_payer.user_id, plan_id, "funnel-n2")
+    await _pay(transaction_repository, uow, repeat_payer.user_id, plan_id, "funnel-n3")
+    never_connected = await create_subscription(
+        subscription_repository, user_repository, telegram_id=828_105, remnawave_user_id=828_105
+    )
+    await _pay(transaction_repository, uow, never_connected.user_id, plan_id, "funnel-n4")
+    # registered before the window: excluded from every step
+    outside_window = await create_subscription(
+        subscription_repository, user_repository, telegram_id=828_106, remnawave_user_id=828_106
+    )
+    await _connect(session, outside_window.id)
+    await _pay(transaction_repository, uow, outside_window.user_id, plan_id, "funnel-n5")
     await session.execute(
         update(User)
-        .where(User.id == outside_window.id)
-        .values(created_at=datetime_now() - timedelta(days=30))
+        .where(User.id == outside_window.user_id)
+        .values(created_at=datetime_now() - timedelta(days=60))
     )
 
     use_case = _use_case(user_repository, subscription_repository, transaction_repository, uow)
-    funnel = await use_case(OWNER, GetFunnelDto(days=7))
+    funnel = await use_case(OWNER, AnalyticsPeriodQueryDto())
 
-    by_key = {step.key: step for step in funnel.steps}
-    assert by_key["registered"].count == 3
-    assert by_key["trial"].count == 1
-    assert by_key["first_paid"].count == 2
-    assert by_key["repeat_paid"].count == 1
-    assert by_key["registered"].pct_of_start == pytest.approx(1.0)
-    assert by_key["trial"].pct_of_start == pytest.approx(1 / 3)
-    assert by_key["first_paid"].pct_of_start == pytest.approx(2 / 3)
-    # first_paid (2) above trial (1): users who paid without a trial still count
-    assert by_key["first_paid"].pct_of_prev == pytest.approx(2.0)
+    assert [step.key for step in funnel.steps] == [
+        "registered",
+        "connected",
+        "first_paid",
+        "repeat_paid",
+    ]
+    # a payer counts as connected even without a recorded connection
+    assert [step.count for step in funnel.steps] == [5, 4, 3, 1]
+    assert funnel.steps[2].pct_of_prev == pytest.approx(3 / 4)
+    assert funnel.paid_via_trial == 1
+
+
+async def test_funnel_by_source_splits_the_cohort(
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    ad_links = AdLinkRepository(session)
+    referrals = ReferralRepository(session)
+    organic = await create_subscription(
+        subscription_repository, user_repository, telegram_id=828_201, remnawave_user_id=828_201
+    )
+    referred = await create_subscription(
+        subscription_repository, user_repository, telegram_id=828_202, remnawave_user_id=828_202
+    )
+    advertised = await create_subscription(
+        subscription_repository, user_repository, telegram_id=828_203, remnawave_user_id=828_203
+    )
+    await _pay(transaction_repository, uow, organic.user_id, plan_id, "funnel-s1")
+    await _pay(transaction_repository, uow, referred.user_id, plan_id, "funnel-s2")
+    await _pay(transaction_repository, uow, advertised.user_id, plan_id, "funnel-s3")
+    link = await ad_links.create(CreateAdLinkDto(name="Blogger", code="blogger-funnel"))
+    await ad_links.create_attribution(
+        ad_link_id=link.id, user_id=advertised.user_id, channel=AdLinkChannel.BOT
+    )
+    await referrals.create_referral(
+        referrer_id=organic.user_id, referred_id=referred.user_id, level=1
+    )
+
+    use_case = _use_case(user_repository, subscription_repository, transaction_repository, uow)
+    funnel = await use_case(OWNER, AnalyticsPeriodQueryDto())
+
+    rows = {(row.source, row.ad_link_id): row for row in funnel.by_source}
+    assert set(rows) == {
+        (SourceKind.ORGANIC, None),
+        (SourceKind.REFERRAL, None),
+        (SourceKind.AD_LINK, link.id),
+    }
+    assert rows[(SourceKind.AD_LINK, link.id)].name == "Blogger"
+    assert sum(row.registered for row in funnel.by_source) == funnel.steps[0].count == 3
+    assert sum(row.paid for row in funnel.by_source) == funnel.steps[2].count == 3
