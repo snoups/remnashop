@@ -92,6 +92,8 @@ class ReferralRepository:
             reward_strategy=row.reward_strategy,
             reward_amounts={int(k): Decimal(str(v)) for k, v in row.reward_amounts.items()},
             days_require_paid_subscription=row.days_require_paid_subscription,
+            invitee_reward_type=row.invitee_reward_type,
+            invitee_reward_amount=row.invitee_reward_amount,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )

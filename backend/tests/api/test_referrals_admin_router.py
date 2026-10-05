@@ -255,3 +255,36 @@ async def test_adjust_user_bonus_days_rejects_an_absurd_delta(
         headers=admin_auth_headers,
     )
     assert response.status_code == 422
+
+
+async def test_invitee_reward_defaults_off_and_roundtrips(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str]
+) -> None:
+    initial = (await client.get(f"{API_V1}/referrals/settings", headers=admin_auth_headers)).json()
+    assert initial["invitee_reward_type"] == "EXTRA_DAYS"
+    assert initial["invitee_reward_amount"] == 0
+
+    patched = await client.patch(
+        f"{API_V1}/referrals/settings",
+        json={"invitee_reward_type": "POINTS", "invitee_reward_amount": 50},
+        headers=admin_auth_headers,
+    )
+    assert patched.status_code == 200
+    assert patched.json()["invitee_reward_type"] == "POINTS"
+    assert patched.json()["invitee_reward_amount"] == 50
+
+    reset = await client.post(
+        f"{API_V1}/referrals/settings/actions/reset", json={}, headers=admin_auth_headers
+    )
+    assert reset.json()["invitee_reward_amount"] == 0
+
+
+async def test_invitee_reward_amount_rejects_a_negative(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str]
+) -> None:
+    response = await client.patch(
+        f"{API_V1}/referrals/settings",
+        json={"invitee_reward_amount": -1},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 422

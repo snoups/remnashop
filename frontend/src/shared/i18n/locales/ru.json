@@ -638,6 +638,7 @@
       "ReferralAttachedEvent": "Реферал привязан",
       "ReferralCodeResetEvent": "Реферальный код сброшен",
       "ReferralRewardIssuedEvent": "Награда за реферала",
+      "InviteeRewardIssuedEvent": "Награда приглашённому",
       "SubscriptionAddOnGrantedEvent": "Дополнение выдано",
       "SubscriptionChangedEvent": "Подписка изменена",
       "SubscriptionPurchasedEvent": "Подписка куплена",
@@ -2063,6 +2064,15 @@
       },
       "daysRequirePaidLabel": "Только платившим",
       "daysRequirePaidHint": "Пользователю, который ни разу не оплачивал подписку, дни не начисляются.",
+      "invitee": {
+        "title": "Награда приглашённому",
+        "description": {
+          "EXTRA_DAYS": "На баланс дней",
+          "POINTS": "На счёт пользователя"
+        },
+        "amountLabel": "При регистрации по ссылке",
+        "hint": "Начисляется один раз при регистрации по реферальной ссылке. 0 — не начислять."
+      },
       "levelsTitle": "Уровни и награды",
       "levelsDescription": "Глубина цепочки и награда на каждом уровне",
       "status": {
@@ -3012,10 +3022,6 @@
     "PURCHASE_IN_PROGRESS": "Эта покупка уже обрабатывается.",
     "PURCHASE_SUPERSEDED": "Подписка изменилась во время покупки — попробуйте ещё раз.",
     "RATE_LIMITED": "Слишком много запросов — попробуйте позже.",
-    "REFERRALS_DISABLED": "Реферальная программа отключена.",
-    "REFERRAL_CODE_CYCLE": "Нельзя использовать код приглашённого вами пользователя.",
-    "REFERRAL_CODE_NOT_FOUND": "Реферальный код не найден.",
-    "REFERRAL_CODE_OWN": "Нельзя использовать собственный реферальный код.",
     "REFERRAL_REWARD_ALREADY_GRANTED": "Эта награда уже начислена.",
     "REFERRAL_REWARD_NEGATIVE": "Награда не может быть отрицательной.",
     "REFERRAL_REWARD_PERCENT_TOO_HIGH": "Процентная награда не может быть больше 100.",

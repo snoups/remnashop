@@ -142,39 +142,33 @@ async def test_get_my_referral_stats_requires_authentication(client: httpx.Async
     assert response.status_code == 401
 
 
-async def test_attach_referral_rejects_own_code(
-    client: httpx.AsyncClient,
-    actor: tuple[UserDto, dict[str, str]],
-    enabled_referrals: None,
-) -> None:
-    user, headers = actor
-    response = await client.post(
-        f"{API_V1}/referrals/actions/attach",
-        json={"code": user.referral_code},
-        headers=headers,
-    )
-    assert response.status_code == 400
-
-
-async def test_attach_referral_then_stats_reflect_the_referrer(
+async def test_stats_reflect_the_referrer(
     client: httpx.AsyncClient,
     actor: tuple[UserDto, dict[str, str]],
     referrer: tuple[UserDto, dict[str, str]],
-    enabled_referrals: None,
+    referral_repository: ReferralRepository,
+    uow: UnitOfWork,
 ) -> None:
     actor_user, actor_headers = actor
     referrer_user, _ = referrer
-
-    attach_response = await client.post(
-        f"{API_V1}/referrals/actions/attach",
-        json={"code": referrer_user.referral_code},
-        headers=actor_headers,
-    )
-    assert attach_response.status_code == 204
+    async with uow:
+        await referral_repository.create_referral(
+            referrer_id=referrer_user.id, referred_id=actor_user.id, level=1
+        )
 
     stats_response = await client.get(f"{API_V1}/referrals/me", headers=actor_headers)
     assert stats_response.status_code == 200
     assert stats_response.json()["referrer_id"] == referrer_user.id
+
+
+async def test_manual_referral_attach_is_gone(
+    client: httpx.AsyncClient, actor: tuple[UserDto, dict[str, str]]
+) -> None:
+    _, headers = actor
+    response = await client.post(
+        f"{API_V1}/referrals/actions/attach", json={"code": "ANY"}, headers=headers
+    )
+    assert response.status_code in (404, 405)
 
 
 async def test_withdraw_points_rejects_amount_above_points(
@@ -245,8 +239,8 @@ async def test_api_token_cannot_use_customer_endpoints(
         )
 
     response = await client.post(
-        f"{API_V1}/referrals/actions/attach",
-        json={"code": referrer_user.referral_code},
+        f"{API_V1}/referrals/actions/withdraw",
+        json={"amount": "1"},
         headers={"Authorization": f"Bearer {secret}"},
     )
 

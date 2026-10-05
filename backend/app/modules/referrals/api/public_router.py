@@ -7,18 +7,15 @@ from app.api.dependencies.rate_limit import user_rate_limit
 from app.api.errors import error_responses
 from app.core.constants import TIME_1H
 from app.modules.referrals.api.schemas import (
-    AttachReferralRequest,
     RedeemBonusDaysRequest,
     RedeemBonusDaysResponse,
     ReferralStatsResponse,
     WithdrawPointsRequest,
 )
 from app.modules.referrals.dto import (
-    AttachReferralDto,
     RedeemBonusDaysDto,
     RequestPointsWithdrawalDto,
 )
-from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
 from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
 from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
@@ -34,18 +31,6 @@ async def get_my_referral_stats(
     actor: UserDto = Depends(get_current_user),
 ) -> ReferralStatsResponse:
     return ReferralStatsResponse.model_validate(await use_case(actor), from_attributes=True)
-
-
-@router.post(
-    "/actions/attach", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(400)
-)
-@inject
-async def attach_referral(
-    payload: AttachReferralRequest,
-    use_case: FromDishka[AttachReferralUseCase],
-    actor: UserDto = Depends(get_current_user),
-) -> None:
-    await use_case(actor, AttachReferralDto(code=payload.code))
 
 
 @router.post(

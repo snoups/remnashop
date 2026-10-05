@@ -1,7 +1,6 @@
 from app.modules.referrals.di import get_referrals_providers
 from app.modules.referrals.dto import (
     AdjustUserPointsDto,
-    AttachReferralDto,
     ListReferralsDto,
     ReferralDto,
     ReferralRewardDto,
@@ -13,7 +12,6 @@ from app.modules.referrals.dto import (
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.referrals.usecases import (
     AdjustUserPointsUseCase,
-    AttachReferralUseCase,
     GetOwnReferralStatsUseCase,
     GetReferralSettingsUseCase,
     GetUserReferralStatsUseCase,
@@ -25,8 +23,6 @@ from app.modules.referrals.usecases import (
 __all__ = [
     "AdjustUserPointsDto",
     "AdjustUserPointsUseCase",
-    "AttachReferralDto",
-    "AttachReferralUseCase",
     "GetOwnReferralStatsUseCase",
     "GetReferralSettingsUseCase",
     "GetUserReferralStatsUseCase",

@@ -53,3 +53,10 @@ class BonusDaysRedeemedEvent(UserEvent):
 class UserBonusDaysAdjustedEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     delta: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class InviteeRewardIssuedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.REFERRAL
+    reward_type: str
+    amount: int

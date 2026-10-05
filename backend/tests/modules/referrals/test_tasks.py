@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from typing import Optional
 
 import pytest
 from sqlalchemy import select
@@ -32,7 +33,6 @@ from app.modules.referrals.usecases.assign_referral_rewards import (
     AssignReferralRewardsUseCase,
     _level_amounts,
 )
-from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -617,41 +617,179 @@ def test_level_amounts_percent_of_days_rounds_down_with_a_floor_of_one() -> None
     assert _level_amounts(settings, None) == {}
 
 
-async def test_attach_referral_on_registration_links_the_new_user(
+@pytest.fixture
+def attach_on_registration(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
-    uow,
-    event_publisher,
-) -> None:
-    await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True))
-    referrer = await user_repository.create(CreateUserDto(name="r", telegram_id=4201))
-    newcomer_id = await _create_user(user_repository, 4202)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-
-    await AttachReferralOnRegistrationUseCase(user_repository, use_case).system(
-        AttachReferralOnRegistrationDto(user_id=newcomer_id, referral_code=referrer.referral_code)
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> AttachReferralOnRegistrationUseCase:
+    return AttachReferralOnRegistrationUseCase(
+        referral_repository, user_repository, uow, event_publisher
     )
 
-    edge = await referral_repository.get_by_referred_id(newcomer_id)
+
+async def _register(
+    attach: AttachReferralOnRegistrationUseCase, newcomer_id: int, code: Optional[str]
+) -> None:
+    await attach.system(
+        AttachReferralOnRegistrationDto(user_id=newcomer_id, referral_code=code or "")
+    )
+
+
+async def _referral_code(user_repository: UserRepository, user_id: int) -> Optional[str]:
+    user = await user_repository.get_by_id(user_id)
+    assert user is not None
+    return user.referral_code
+
+
+async def test_registration_links_the_newcomer_at_level_one(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+) -> None:
+    await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True))
+    referrer = await _create_user(user_repository, 4201)
+    newcomer = await _create_user(user_repository, 4202)
+
+    await _register(
+        attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
+    )
+
+    edge = await referral_repository.get_by_referred_id(newcomer)
     assert edge is not None
-    assert edge.referrer_id == referrer.id
+    assert edge.referrer_id == referrer
+    assert edge.level == 1
 
 
-async def test_attach_referral_on_registration_ignores_an_unknown_code(
+async def test_registration_level_follows_the_referrers_chain_up_to_max_level(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
-    uow,
-    event_publisher,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
 ) -> None:
-    await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True))
-    newcomer_id = await _create_user(user_repository, 4203)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
+    await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True, max_level=2))
+    a, b, c, d = [await _create_user(user_repository, 4210 + i) for i in range(4)]
+    for parent, child in ((a, b), (b, c), (c, d)):
+        await _register(
+            attach_on_registration, child, await _referral_code(user_repository, parent)
+        )
 
-    await AttachReferralOnRegistrationUseCase(user_repository, use_case).system(
-        AttachReferralOnRegistrationDto(user_id=newcomer_id, referral_code="NOPE0000")
+    assert (await referral_repository.get_by_referred_id(c)).level == 2
+    assert (await referral_repository.get_by_referred_id(d)).level == 2  # clamped
+
+
+async def test_registration_rewards_the_newcomer_with_days(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(
+            enabled=True,
+            invitee_reward_type=ReferralRewardType.EXTRA_DAYS,
+            invitee_reward_amount=7,
+        )
+    )
+    referrer = await _create_user(user_repository, 4220)
+    newcomer = await _create_user(user_repository, 4221)
+
+    await _register(
+        attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
     )
 
-    assert await referral_repository.get_by_referred_id(newcomer_id) is None
+    assert (await user_repository.get_by_id(newcomer)).bonus_days == 7
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+
+
+async def test_registration_rewards_the_newcomer_with_points(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(
+            enabled=True, invitee_reward_type=ReferralRewardType.POINTS, invitee_reward_amount=50
+        )
+    )
+    referrer = await _create_user(user_repository, 4222)
+    newcomer = await _create_user(user_repository, 4223)
+
+    await _register(
+        attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
+    )
+
+    assert (await user_repository.get_by_id(newcomer)).points == Decimal(50)
+
+
+async def test_registration_with_a_zero_reward_links_without_crediting(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+) -> None:
+    await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True))
+    referrer = await _create_user(user_repository, 4224)
+    newcomer = await _create_user(user_repository, 4225)
+
+    await _register(
+        attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
+    )
+
+    assert await referral_repository.get_by_referred_id(newcomer) is not None
+    user = await user_repository.get_by_id(newcomer)
+    assert user.bonus_days == 0
+    assert user.points == Decimal(0)
+
+
+async def test_a_redelivered_registration_rewards_once(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await referral_repository.update_settings(
+            UpdateReferralSettingsDto(enabled=True, invitee_reward_amount=7)
+        )
+        referrer = await _create_user(user_repository, 4226)
+        newcomer = await _create_user(user_repository, 4227)
+    code = await _referral_code(user_repository, referrer)
+
+    await _register(attach_on_registration, newcomer, code)
+    await _register(attach_on_registration, newcomer, code)
+
+    assert (await user_repository.get_by_id(newcomer)).bonus_days == 7
+
+
+@pytest.mark.parametrize("case", ["disabled", "unknown", "own", "cycle"])
+async def test_registration_with_an_unusable_link_neither_links_nor_rewards(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+    case: str,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(enabled=True, invitee_reward_amount=7)
+    )
+    other = await _create_user(user_repository, 4230)
+    newcomer = await _create_user(user_repository, 4231)
+    if case == "cycle":
+        # the newcomer already invited `other`; linking back would close a loop
+        await _register(
+            attach_on_registration, other, await _referral_code(user_repository, newcomer)
+        )
+    if case == "disabled":
+        await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=False))
+    code = {
+        "disabled": await _referral_code(user_repository, other),
+        "unknown": "NOPE0000",
+        "own": await _referral_code(user_repository, newcomer),
+        "cycle": await _referral_code(user_repository, other),
+    }[case]
+
+    await _register(attach_on_registration, newcomer, code)
+
+    assert await referral_repository.get_by_referred_id(newcomer) is None
+    assert (await user_repository.get_by_id(newcomer)).bonus_days == 0
 
 
 def _free_order(buyer: int, idempotency_key: str, currency: Currency) -> CreateTransactionDto:

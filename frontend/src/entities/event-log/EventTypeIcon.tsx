@@ -93,6 +93,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   ReferralAttachedEvent: Users,
   ReferralCodeResetEvent: KeyRound,
   ReferralRewardIssuedEvent: Gift,
+  InviteeRewardIssuedEvent: Gift,
   SubscriptionAddOnGrantedEvent: PackagePlus,
   SubscriptionChangedEvent: ArrowLeftRight,
   SubscriptionPurchasedEvent: ShoppingCart,

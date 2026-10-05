@@ -41,6 +41,9 @@ class ReferralSettingsDto(BaseDto, TimestampMixin):
     reward_amounts: dict[int, Decimal] = field(default_factory=dict)
     # EXTRA_DAYS only: no days for someone who never paid for a subscription
     days_require_paid_subscription: bool = True
+    # what a user registering through a link gets; 0 = nothing
+    invitee_reward_type: ReferralRewardType = ReferralRewardType.EXTRA_DAYS
+    invitee_reward_amount: int = 0
     # not stored here: pricing's anchor, what a PERCENT points reward is counted in
     anchor_currency: Optional[Currency] = None
 
@@ -85,6 +88,8 @@ class UpdateReferralSettingsDto:
     reward_strategy: Optional[ReferralRewardStrategy] = None
     reward_amounts: Optional[dict[int, Decimal]] = None
     days_require_paid_subscription: Optional[bool] = None
+    invitee_reward_type: Optional[ReferralRewardType] = None
+    invitee_reward_amount: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -153,11 +158,6 @@ class AssignReferralRewardsDto:
     subscription_id: int
     is_new_purchase: bool
     payment_key: str
-
-
-@dataclass(frozen=True, kw_only=True)
-class AttachReferralDto:
-    code: str
 
 
 @dataclass(frozen=True, kw_only=True)

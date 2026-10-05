@@ -673,6 +673,12 @@ def upgrade() -> None:
             "days_require_paid_subscription", sa.Boolean(), server_default="true", nullable=False
         ),
         sa.Column(
+            "invitee_reward_type",
+            sa.Enum("EXTRA_DAYS", "POINTS", name="referralrewardtype"),
+            nullable=False,
+        ),
+        sa.Column("invitee_reward_amount", sa.Integer(), server_default="0", nullable=False),
+        sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),

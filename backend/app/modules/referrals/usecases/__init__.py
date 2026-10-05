@@ -1,7 +1,6 @@
 from app.modules.referrals.usecases.adjust_user_bonus_days import AdjustUserBonusDaysUseCase
 from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
 from app.modules.referrals.usecases.assign_referral_rewards import AssignReferralRewardsUseCase
-from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
 from app.modules.referrals.usecases.attach_referral_on_registration import (
     AttachReferralOnRegistrationUseCase,
 )
@@ -24,7 +23,6 @@ __all__ = [
     "AdjustUserPointsUseCase",
     "AssignReferralRewardsUseCase",
     "AttachReferralOnRegistrationUseCase",
-    "AttachReferralUseCase",
     "GetOwnReferralStatsUseCase",
     "GetReferralSettingsUseCase",
     "GetReferralSummaryUseCase",

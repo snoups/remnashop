@@ -24,7 +24,6 @@ from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import (
     AdjustUserPointsDto,
-    AttachReferralDto,
     ListReferralsDto,
     RequestPointsWithdrawalDto,
     UpdateReferralSettingsDto,
@@ -32,7 +31,6 @@ from app.modules.referrals.dto import (
 from app.modules.referrals.events import ReferralCodeResetEvent, UserPointsAdjustedEvent
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
-from app.modules.referrals.usecases.attach_referral import AttachReferralUseCase
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
 from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
@@ -92,143 +90,6 @@ async def _create_subscription(
         )
     )
     return sub.id
-
-
-async def _enabled_settings(referral_repository: ReferralRepository) -> None:
-    await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True, max_level=3))
-
-
-async def test_attach_referral_creates_level_one_edge(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    await _enabled_settings(referral_repository)
-    referrer = await _create_user(user_repository, 3001)
-    referred = await _create_user(user_repository, 3002)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-
-    result = await use_case(referred, AttachReferralDto(code=referrer.referral_code))
-
-    assert result is not None
-    assert result.id == referrer.id
-    edge = await referral_repository.get_by_referred_id(referred.id)
-    assert edge is not None
-    assert edge.referrer_id == referrer.id
-    assert edge.level == 1
-
-
-async def test_attach_referral_computes_deeper_level_from_referrers_own_chain(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    await _enabled_settings(referral_repository)
-    top = await _create_user(user_repository, 3003)
-    middle = await _create_user(user_repository, 3004)
-    bottom = await _create_user(user_repository, 3005)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-    await use_case(middle, AttachReferralDto(code=top.referral_code))
-
-    await use_case(bottom, AttachReferralDto(code=middle.referral_code))
-
-    edge = await referral_repository.get_by_referred_id(bottom.id)
-    assert edge is not None
-    assert edge.level == 2
-
-
-async def test_attach_referral_clamps_at_max_level(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True, max_level=2))
-    a = await _create_user(user_repository, 3006)
-    b = await _create_user(user_repository, 3007)
-    c = await _create_user(user_repository, 3008)
-    d = await _create_user(user_repository, 3009)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-    await use_case(b, AttachReferralDto(code=a.referral_code))
-    await use_case(c, AttachReferralDto(code=b.referral_code))  # level 2
-
-    await use_case(d, AttachReferralDto(code=c.referral_code))  # would be level 3
-
-    edge = await referral_repository.get_by_referred_id(d.id)
-    assert edge is not None
-    assert edge.level == 2  # clamped, not 3
-
-
-async def test_attach_referral_rejects_self_referral(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    await _enabled_settings(referral_repository)
-    user = await _create_user(user_repository, 3010)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-
-    with pytest.raises(ValidationError):
-        await use_case(user, AttachReferralDto(code=user.referral_code))
-
-
-async def test_attach_referral_rejects_second_attach(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    await _enabled_settings(referral_repository)
-    referrer_a = await _create_user(user_repository, 3011)
-    referrer_b = await _create_user(user_repository, 3012)
-    referred = await _create_user(user_repository, 3013)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-    await use_case(referred, AttachReferralDto(code=referrer_a.referral_code))
-
-    with pytest.raises(ValidationError):
-        await use_case(referred, AttachReferralDto(code=referrer_b.referral_code))
-
-
-async def test_attach_referral_rejects_a_mutual_cycle(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    # A invited B, so B's code must not attach A: the pair would earn from
-    # each other forever
-    await _enabled_settings(referral_repository)
-    a = await _create_user(user_repository, 3021)
-    b = await _create_user(user_repository, 3022)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-    await use_case(b, AttachReferralDto(code=a.referral_code))
-
-    with pytest.raises(ValidationError):
-        await use_case(a, AttachReferralDto(code=b.referral_code))
-
-    assert await referral_repository.get_by_referred_id(a.id) is None
-
-
-async def test_attach_referral_rejects_a_deeper_cycle(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    await _enabled_settings(referral_repository)
-    a = await _create_user(user_repository, 3023)
-    b = await _create_user(user_repository, 3024)
-    c = await _create_user(user_repository, 3025)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-    await use_case(b, AttachReferralDto(code=a.referral_code))
-    await use_case(c, AttachReferralDto(code=b.referral_code))
-
-    with pytest.raises(ValidationError):
-        await use_case(a, AttachReferralDto(code=c.referral_code))
-
-
-async def test_attach_referral_rejects_when_system_disabled(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    referrer = await _create_user(user_repository, 3014)
-    referred = await _create_user(user_repository, 3015)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-
-    with pytest.raises(ValidationError):
-        await use_case(referred, AttachReferralDto(code=referrer.referral_code))
-
-
-async def test_attach_referral_rejects_unknown_code(
-    referral_repository: ReferralRepository, user_repository: UserRepository, uow, event_publisher
-) -> None:
-    await _enabled_settings(referral_repository)
-    referred = await _create_user(user_repository, 3016)
-    use_case = AttachReferralUseCase(referral_repository, user_repository, uow, event_publisher)
-
-    with pytest.raises(ValidationError):
-        await use_case(referred, AttachReferralDto(code="NOPE0000"))
 
 
 async def test_request_withdrawal_rejects_amount_above_points(

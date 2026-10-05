@@ -602,6 +602,7 @@
       "ReferralAttachedEvent": "Referral attached",
       "ReferralCodeResetEvent": "Referral code reset",
       "ReferralRewardIssuedEvent": "Referral reward",
+      "InviteeRewardIssuedEvent": "Invited user rewarded",
       "SubscriptionAddOnGrantedEvent": "Add-on granted",
       "SubscriptionChangedEvent": "Subscription changed",
       "SubscriptionPurchasedEvent": "Subscription purchased",
@@ -2019,6 +2020,15 @@
       },
       "daysRequirePaidLabel": "Only for paying users",
       "daysRequirePaidHint": "Days aren't credited to someone who has never paid for a subscription.",
+      "invitee": {
+        "title": "Invited user reward",
+        "description": {
+          "EXTRA_DAYS": "To the bonus days balance",
+          "POINTS": "To the user's account"
+        },
+        "amountLabel": "On sign-up through a link",
+        "hint": "Credited once, when someone registers through a referral link. 0 turns it off."
+      },
       "levelsTitle": "Levels & rewards",
       "levelsDescription": "Chain depth and the reward at each level",
       "status": {
@@ -2952,10 +2962,6 @@
     "PURCHASE_IN_PROGRESS": "This purchase is already being processed.",
     "PURCHASE_SUPERSEDED": "The subscription changed during the purchase — try again.",
     "RATE_LIMITED": "Too many requests — try again later.",
-    "REFERRALS_DISABLED": "The referral program is disabled.",
-    "REFERRAL_CODE_CYCLE": "You can't use the code of someone you invited.",
-    "REFERRAL_CODE_NOT_FOUND": "Referral code not found.",
-    "REFERRAL_CODE_OWN": "You can't use your own referral code.",
     "REFERRAL_REWARD_ALREADY_GRANTED": "This reward was already granted.",
     "REFERRAL_REWARD_NEGATIVE": "A reward can't be negative.",
     "REFERRAL_REWARD_PERCENT_TOO_HIGH": "A percent reward can't exceed 100.",

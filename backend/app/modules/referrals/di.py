@@ -7,7 +7,6 @@ from app.modules.referrals.usecases import (
     AdjustUserPointsUseCase,
     AssignReferralRewardsUseCase,
     AttachReferralOnRegistrationUseCase,
-    AttachReferralUseCase,
     GetOwnReferralStatsUseCase,
     GetReferralSettingsUseCase,
     GetReferralSummaryUseCase,
@@ -29,7 +28,6 @@ class ReferralsProvider(Provider):
 
     referral_repository = provide(ReferralRepository)
     use_cases = provide_all(
-        AttachReferralUseCase,
         RequestPointsWithdrawalUseCase,
         AdjustUserPointsUseCase,
         AdjustUserBonusDaysUseCase,

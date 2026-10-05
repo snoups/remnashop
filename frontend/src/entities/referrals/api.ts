@@ -14,6 +14,8 @@ export interface ReferralSettings {
   // strings on the wire even though the backend's dict is keyed by int.
   reward_amounts: Record<string, string>;
   days_require_paid_subscription: boolean;
+  invitee_reward_type: ReferralRewardType;
+  invitee_reward_amount: number;
   // pricing's anchor: a PERCENT points reward is counted from the payment in it
   anchor_currency: string | null;
 }
@@ -30,6 +32,8 @@ export interface UpdateReferralSettingsRequest {
   reward_strategy?: ReferralRewardStrategy;
   reward_amounts?: Record<string, string>;
   days_require_paid_subscription?: boolean;
+  invitee_reward_type?: ReferralRewardType;
+  invitee_reward_amount?: number;
 }
 
 export function updateReferralSettings(payload: UpdateReferralSettingsRequest): Promise<ReferralSettings> {

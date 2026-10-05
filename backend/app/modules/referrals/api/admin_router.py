@@ -159,6 +159,8 @@ async def update_referral_settings(
             reward_strategy=payload.reward_strategy,
             reward_amounts=payload.reward_amounts,
             days_require_paid_subscription=payload.days_require_paid_subscription,
+            invitee_reward_type=payload.invitee_reward_type,
+            invitee_reward_amount=payload.invitee_reward_amount,
         ),
     )
     return _settings_to_response(updated)

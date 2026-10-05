@@ -3,6 +3,7 @@ import {
   Coins,
   CreditCard,
   Flag,
+  Gift,
   Hash,
   Info,
   Layers,
@@ -45,6 +46,7 @@ type IconType = ComponentType<{ className?: string }>;
 
 const LEVELS = [1, 2, 3] as const;
 const MAX_PERCENT = 100;
+const MAX_INVITEE_REWARD = 3650;
 // a level without a stored reward starts at the smallest allowed one
 const MIN_REWARD = "1";
 // the worked example under PERCENT starts from: a payment in the base currency, a term in days
@@ -72,7 +74,7 @@ function OptionGroup<T extends string>({
   describe,
   name,
 }: {
-  label: string;
+  label?: string;
   value: T;
   options: { value: T; icon: IconType }[];
   onChange: (value: T) => void;
@@ -82,7 +84,7 @@ function OptionGroup<T extends string>({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className={EYEBROW_CLASS}>{label}</span>
+      {label && <span className={EYEBROW_CLASS}>{label}</span>}
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map(({ value: option, icon: Icon }) => {
           const isActive = option === value;
@@ -133,6 +135,8 @@ export function ReferralSettingsPage() {
   const [rewardStrategy, setRewardStrategy] = useState<ReferralRewardStrategy>("AMOUNT");
   const [rewardAmounts, setRewardAmounts] = useState<Record<string, string>>({});
   const [daysRequirePaid, setDaysRequirePaid] = useState(true);
+  const [inviteeRewardType, setInviteeRewardType] = useState<ReferralRewardType>("EXTRA_DAYS");
+  const [inviteeRewardAmount, setInviteeRewardAmount] = useState("0");
   const [anchorCurrency, setAnchorCurrency] = useState<string | null>(null);
   const [exampleBase, setExampleBase] = useState(DEFAULT_EXAMPLE_BASE);
 
@@ -152,6 +156,8 @@ export function ReferralSettingsPage() {
     setRewardStrategy(settings.reward_strategy);
     setRewardAmounts(settings.reward_amounts);
     setDaysRequirePaid(settings.days_require_paid_subscription);
+    setInviteeRewardType(settings.invitee_reward_type);
+    setInviteeRewardAmount(String(settings.invitee_reward_amount));
     setAnchorCurrency(settings.anchor_currency);
   };
 
@@ -173,6 +179,8 @@ export function ReferralSettingsPage() {
         reward_strategy: rewardStrategy,
         reward_amounts: amounts,
         days_require_paid_subscription: daysRequirePaid,
+        invitee_reward_type: inviteeRewardType,
+        invitee_reward_amount: Number(inviteeRewardAmount) || 0,
       });
       applySettings(updated);
       toast.success(t("referrals.settings.saved"));
@@ -296,6 +304,43 @@ export function ReferralSettingsPage() {
                 : t("referrals.settings.rewardStrategyDescription.AMOUNT")
             }
           />
+          <div className="flex flex-col gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.05] p-3.5">
+            <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+              <Gift className="size-4 text-primary" />
+              {t("referrals.settings.invitee.title")}
+            </span>
+            <OptionGroup
+              value={inviteeRewardType}
+              options={REWARD_TYPE_OPTIONS}
+              onChange={setInviteeRewardType}
+              disabled={areSettingsLocked}
+              name={(value) => t(`referrals.settings.rewardType.${value}`)}
+              describe={(value) => t(`referrals.settings.invitee.description.${value}`)}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="referrals-invitee" className="flex items-center gap-1.5 text-sm text-foreground/80">
+                {t("referrals.settings.invitee.amountLabel")}
+                <FieldHint text={t("referrals.settings.invitee.hint")} />
+              </label>
+              <div className="flex h-9.5 w-28 shrink-0 items-center gap-1.5 rounded-full border border-border bg-input/60 px-3.5 focus-within:border-primary">
+                <input
+                  id="referrals-invitee"
+                  type="number"
+                  onKeyDown={blockNonIntegerKeys}
+                  min={0}
+                  max={MAX_INVITEE_REWARD}
+                  step="1"
+                  value={inviteeRewardAmount}
+                  disabled={areSettingsLocked}
+                  onChange={(event) => setInviteeRewardAmount(event.target.value)}
+                  className="w-full min-w-0 bg-transparent text-right text-sm font-semibold tabular-nums text-foreground outline-none [appearance:textfield] disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span className="shrink-0 text-[13px] text-muted-foreground">
+                  {t(`referrals.units.${inviteeRewardType}`, { count: Number(inviteeRewardAmount) || 0 })}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {(canManage || canReset) && (

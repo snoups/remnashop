@@ -30,3 +30,7 @@ class ReferralSettings(BaseSql, TimestampMixin):
     days_require_paid_subscription: Mapped[bool] = mapped_column(
         Boolean(), default=True, server_default="true"
     )
+    invitee_reward_type: Mapped[ReferralRewardType] = mapped_column(
+        default=ReferralRewardType.EXTRA_DAYS
+    )
+    invitee_reward_amount: Mapped[int] = mapped_column(default=0, server_default="0")
