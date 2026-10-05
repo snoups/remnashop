@@ -166,6 +166,8 @@ def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> Crea
         discount_percent=0,
         discount_source=DiscountSource.NONE,
         final_price=Decimal("500"),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal("500"),
         customer_email=None,
         idempotency_key=idempotency_key,
         expires_at=datetime_now() + timedelta(minutes=30),
@@ -298,6 +300,8 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
                     "currency": Currency.RUB,
                     "base_price": Decimal("900"),
                     "final_price": Decimal("900"),
+                    "anchor_base_price": Decimal("10"),
+                    "anchor_final_price": Decimal("10"),
                 }
             )
         )
@@ -310,6 +314,8 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
                     "currency": Currency.USD,
                     "base_price": Decimal("5"),
                     "final_price": Decimal("5"),
+                    "anchor_base_price": Decimal("5"),
+                    "anchor_final_price": Decimal("5"),
                 }
             )
         )

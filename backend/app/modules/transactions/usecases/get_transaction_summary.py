@@ -6,7 +6,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import TransactionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.pricing import PricingRepository, convert_for_report
+from app.modules.pricing import PricingRepository
 from app.modules.transactions.dto import GetTransactionSummaryDto, TransactionSummaryDto
 from app.modules.transactions.repository import TransactionRepository
 
@@ -43,13 +43,11 @@ class GetTransactionSummaryUseCase(UseCase[GetTransactionSummaryDto, Transaction
         counts: dict[TransactionStatus, int] = {}
         amounts: dict[TransactionStatus, Decimal] = {}
         paid_base = _ZERO
-        for order_status, currency, count, amount, base_amount in rows:
-            counts[order_status] = counts.get(order_status, 0) + count
-            amounts[order_status] = amounts.get(order_status, _ZERO) + convert_for_report(
-                amount, currency, report_currency, rate_table
-            )
+        for order_status, count, amount, base_amount in rows:
+            counts[order_status] = count
+            amounts[order_status] = amount
             if order_status is TransactionStatus.PAID:
-                paid_base += convert_for_report(base_amount, currency, report_currency, rate_table)
+                paid_base = base_amount
 
         total_count = sum(counts.values())
         paid_count = counts.get(TransactionStatus.PAID, 0)

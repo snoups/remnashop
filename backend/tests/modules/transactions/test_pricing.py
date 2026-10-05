@@ -226,3 +226,35 @@ def test_quote_price_carries_the_winning_discounts_promocode() -> None:
     )
     assert quote_price(plan, 30, Currency.RUB, user, _rates()).discount_promocode_id == 2
     assert quote_price(plan, 30, Currency.RUB, _user(), _rates()).discount_promocode_id is None
+
+
+def test_quote_price_converts_to_anchor_with_non_unit_rate() -> None:
+    quote = quote_price(
+        _plan(base_price=Decimal("10"), overrides={Currency.RUB: Decimal("905")}),
+        30,
+        Currency.RUB,
+        _user(personal_discount=10),
+        _rates(rub_rate=Decimal("90")),
+    )
+
+    assert quote.base_price == Decimal("905")
+    assert quote.anchor_base_price == Decimal("10.06")
+    assert quote.anchor_final_price == (quote.final_price / Decimal("90")).quantize(Decimal("0.01"))
+
+
+def test_quote_price_in_anchor_currency_keeps_amounts() -> None:
+    quote = quote_price(
+        _plan(base_price=Decimal("4.99")), 30, Currency.USD, _user(personal_discount=20), _rates()
+    )
+
+    assert quote.anchor_base_price == quote.base_price
+    assert quote.anchor_final_price == quote.final_price
+
+
+def test_quote_price_full_discount_has_zero_anchor_final() -> None:
+    quote = quote_price(
+        _plan(base_price=Decimal("5")), 30, Currency.USD, _user(personal_discount=100), _rates()
+    )
+
+    assert quote.anchor_final_price == Decimal(0)
+    assert quote.anchor_base_price == Decimal("5")

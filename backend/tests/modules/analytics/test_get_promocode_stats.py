@@ -80,6 +80,8 @@ async def _pay(
                 discount_percent=discount_percent,
                 discount_source=DiscountSource.NONE,
                 final_price=Decimal(final),
+                anchor_base_price=Decimal(base),
+                anchor_final_price=Decimal(final),
                 customer_email=None,
                 idempotency_key=key,
                 expires_at=datetime_now() + timedelta(minutes=30),

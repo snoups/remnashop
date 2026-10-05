@@ -14,7 +14,6 @@ from app.modules.analytics.aggregates import (
     bucket_index,
     bucket_starts,
     median,
-    report_amount,
 )
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
@@ -69,7 +68,6 @@ def _groups(groups: dict[str, list[Decimal]]) -> list[RevenueGroupDto]:
 def _count_attempts(
     gateways: dict[PaymentGatewayType, _Gateway],
     attempts: list[PaymentAttemptDto],
-    rates: CurrencyRateTable,
 ) -> tuple[int, Decimal]:
     refunds = 0
     refunded = _ZERO
@@ -82,7 +80,7 @@ def _count_attempts(
         elif attempt.status is TransactionStatus.REFUNDED:
             stats.refunded += 1
             refunds += 1
-            refunded += report_amount(attempt.final_price, attempt.currency, rates)
+            refunded += attempt.anchor_final_price
     return refunds, refunded
 
 
@@ -97,7 +95,7 @@ def _build_revenue(
     previous = period.previous
     current = [r for r in paid if period.start <= r.paid_at < period.end]
     before = [r for r in paid if previous.start <= r.paid_at < previous.end]
-    amount = {id(r): report_amount(r.final_price, r.currency, rates) for r in paid}
+    amount = {id(r): r.anchor_final_price for r in paid}
     starts = bucket_starts(period, granularity)
     previous_starts = bucket_starts(previous, granularity)
     buckets = [_Bucket() for _ in starts]
@@ -130,7 +128,7 @@ def _build_revenue(
         stats.paid += 1
         stats.revenue += amount[id(row)]
 
-    refunds, refunded = _count_attempts(gateways, attempts, rates)
+    refunds, refunded = _count_attempts(gateways, attempts)
 
     return RevenueDto(
         period=AnalyticsPeriodInfoDto(

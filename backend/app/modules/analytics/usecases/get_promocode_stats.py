@@ -10,7 +10,6 @@ from app.core.enums import PromocodeRewardType, PromocodeStatus, Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.analytics.aggregates import report_amount
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
@@ -85,19 +84,15 @@ class GetPromocodeStatsUseCase(UseCase[AnalyticsPeriodQueryDto, PromocodeStatsDt
             activators = sorted({user_id for _, user_id, _ in in_period})
             payments: dict[int, list[tuple[datetime, Decimal]]] = defaultdict(list)
             for row in await self._transaction_stats.list_paid_by_users(activators, period.end):
-                payments[row.user_id].append(
-                    (row.paid_at, report_amount(row.final_price, row.currency, rates))
-                )
+                payments[row.user_id].append((row.paid_at, row.anchor_final_price))
 
             period_revenue = discount_revenue = discount_given = _ZERO
             for row in await self._transaction_stats.list_paid(period.start, period.end):
-                amount = report_amount(row.final_price, row.currency, rates)
+                amount = row.anchor_final_price
                 period_revenue += amount
                 if row.discount_percent > 0:
                     discount_revenue += amount
-                    discount_given += report_amount(
-                        row.base_price - row.final_price, row.currency, rates
-                    )
+                    discount_given += row.anchor_base_price - row.anchor_final_price
 
             per_code: dict[int, list[tuple[int, datetime]]] = defaultdict(list)
             for promocode_id, user_id, at in in_period:

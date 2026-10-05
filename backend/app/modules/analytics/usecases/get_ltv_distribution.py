@@ -8,7 +8,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.analytics.aggregates import median
 from app.modules.analytics.dto import LtvBucketDto, LtvDistributionDto
-from app.modules.pricing import PricingRepository, convert_for_report
+from app.modules.pricing import PricingRepository
 from app.modules.transactions import TransactionRepository
 
 _QUANTILE_COUNT: Final[int] = 5
@@ -72,18 +72,8 @@ class GetLtvDistributionUseCase(UseCase[None, LtvDistributionDto]):
             rate_table = await self._pricing_repository.get_rate_table()
             report_currency = rate_table.anchor
 
-            per_user_by_currency = (
-                await self._transaction_repository.sum_paid_final_price_per_user()
-            )
             totals = sorted(
-                sum(
-                    (
-                        convert_for_report(amount, currency, report_currency, rate_table)
-                        for currency, amount in by_currency.items()
-                    ),
-                    start=Decimal(0),
-                )
-                for by_currency in per_user_by_currency.values()
+                (await self._transaction_repository.sum_paid_anchor_amount_per_user()).values()
             )
 
             if not totals:

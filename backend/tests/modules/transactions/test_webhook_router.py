@@ -151,6 +151,8 @@ def _pending_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> C
         discount_percent=0,
         discount_source=DiscountSource.NONE,
         final_price=Decimal("500"),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal("500"),
         customer_email=None,
         idempotency_key=idempotency_key,
         expires_at=datetime_now() + timedelta(minutes=30),
@@ -479,6 +481,7 @@ def _discounted_order_dto(
         discount_percent=20,
         discount_source=DiscountSource.PURCHASE,
         final_price=Decimal("400"),
+        anchor_final_price=Decimal("400"),
     )
 
 

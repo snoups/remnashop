@@ -6,7 +6,7 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import EventPublisher
+from app.core.ports import AnchorAmountRescaler, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans.addon_repository import AddOnRepository
@@ -32,12 +32,14 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
         pricing_repository: PricingRepository,
         plan_repository: PlanRepository,
         addon_repository: AddOnRepository,
+        anchor_amount_rescaler: AnchorAmountRescaler,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
         self._pricing_repository = pricing_repository
         self._plan_repository = plan_repository
         self._addon_repository = addon_repository
+        self._anchor_amount_rescaler = anchor_amount_rescaler
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -65,6 +67,7 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
 
         async with self._uow:
             await self._pricing_repository.set_anchor(data.new_anchor, new_rates)
+            await self._anchor_amount_rescaler.rescale_anchor_amounts(f)
 
             plans = await self._plan_repository.list_all()
             plan_updates = {

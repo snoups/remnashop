@@ -10,7 +10,6 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.advertising import AdLinkRepository
-from app.modules.analytics.aggregates import report_amount
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
@@ -144,9 +143,7 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
             ]
             totals: dict[int, Decimal] = {}
             for row in await self._transaction_stats.list_paid_by_users(cohort, now):
-                totals[row.user_id] = totals.get(row.user_id, _ZERO) + report_amount(
-                    row.final_price, row.currency, rates
-                )
+                totals[row.user_id] = totals.get(row.user_id, _ZERO) + row.anchor_final_price
             sources = await resolve_sources(
                 cohort, ad_links=self._ad_link_repository, referrals=self._referral_repository
             )
@@ -171,7 +168,7 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
             for row in await self._transaction_stats.list_paid(period.start, period.end):
                 if row.user_id in edges:
                     period_totals[row.user_id] = period_totals.get(row.user_id, _ZERO) + (
-                        report_amount(row.final_price, row.currency, rates)
+                        row.anchor_final_price
                     )
             referred_revenue = sum(period_totals.values(), start=_ZERO)
             deep_revenue = sum(

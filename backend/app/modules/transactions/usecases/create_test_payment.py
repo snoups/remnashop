@@ -14,6 +14,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.gateways import GatewayRepository
+from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import CreateTransactionDto, TestPaymentDto
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
@@ -32,11 +33,13 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
         self,
         gateway_repository: GatewayRepository,
         transaction_repository: TransactionRepository,
+        pricing_repository: PricingRepository,
         uow: UnitOfWork,
         gateway_factory: PaymentGatewayFactory,
     ) -> None:
         self._gateway_repository = gateway_repository
         self._transaction_repository = transaction_repository
+        self._pricing_repository = pricing_repository
         self._uow = uow
         self._gateway_factory = gateway_factory
 
@@ -65,6 +68,8 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
 
         currency = gateway_currency(data, settings)
         async with self._uow:
+            rates = await self._pricing_repository.get_rate_table()
+            anchor_amount = convert_for_report(_TEST_AMOUNT, currency, rates.anchor, rates)
             order = await self._transaction_repository.create(
                 CreateTransactionDto(
                     user_id=actor.id,
@@ -90,6 +95,8 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
                     discount_percent=0,
                     discount_source=DiscountSource.NONE,
                     final_price=_TEST_AMOUNT,
+                    anchor_base_price=anchor_amount,
+                    anchor_final_price=anchor_amount,
                     customer_email=actor.email,
                     idempotency_key=uuid4().hex,
                     expires_at=datetime_now() + _TEST_ORDER_TTL,

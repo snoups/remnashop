@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
 from app.core.enums import Locale
@@ -26,6 +27,10 @@ class SubscriptionRevoker(Protocol):
 @runtime_checkable
 class ReferrerLookup(Protocol):
     async def has_referrer(self, user_id: int) -> bool: ...
+
+
+class AnchorAmountRescaler(Protocol):
+    async def rescale_anchor_amounts(self, factor: Decimal) -> None: ...
 
 
 @runtime_checkable

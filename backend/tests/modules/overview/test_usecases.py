@@ -60,6 +60,8 @@ def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> Crea
         discount_percent=0,
         discount_source=DiscountSource.NONE,
         final_price=Decimal("500"),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal("500"),
         customer_email=None,
         idempotency_key=idempotency_key,
         expires_at=datetime_now() + timedelta(minutes=30),
@@ -391,7 +393,13 @@ async def _seed_paid(
     at: datetime,
 ) -> int:
     dto = _paid_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=key)
-    dto = replace(dto, final_price=Decimal(amount), base_price=Decimal(amount))
+    dto = replace(
+        dto,
+        final_price=Decimal(amount),
+        base_price=Decimal(amount),
+        anchor_final_price=Decimal(amount),
+        anchor_base_price=Decimal(amount),
+    )
     async with uow:
         order = await transaction_repository.create(dto)
     await transaction_repository.mark_status(order.id, TransactionStatus.PAID)

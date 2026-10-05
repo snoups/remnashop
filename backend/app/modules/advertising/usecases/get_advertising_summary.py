@@ -45,21 +45,15 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
             )
             # aggregates every payer, not just attributed ones; filter by
             # user_ids in SQL if the paid-user count gets large.
-            paid_by_user = await self._transaction_repository.sum_paid_final_price_per_user(
+            paid_by_user = await self._transaction_repository.sum_paid_anchor_amount_per_user(
                 created_before=data.created_to
             )
             rate_table = await self._pricing_repository.get_rate_table()
 
         report_currency = data.report_currency or rate_table.anchor
         revenue_by_user = {
-            user_id: sum(
-                (
-                    convert_for_report(amount, currency, report_currency, rate_table)
-                    for currency, amount in amounts.items()
-                ),
-                start=_ZERO,
-            )
-            for user_id, amounts in paid_by_user.items()
+            user_id: convert_for_report(amount, rate_table.anchor, report_currency, rate_table)
+            for user_id, amount in paid_by_user.items()
         }
 
         users_by_link: defaultdict[int, list[int]] = defaultdict(list)

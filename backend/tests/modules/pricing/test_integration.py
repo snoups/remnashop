@@ -208,7 +208,12 @@ async def test_switch_anchor_leaves_catalog_stable(
     )
 
     await SwitchAnchorCurrencyUseCase(
-        pricing_repository, plan_repository, addon_repository, uow, event_publisher
+        pricing_repository,
+        plan_repository,
+        addon_repository,
+        TransactionRepository(plan_repository.session),
+        uow,
+        event_publisher,
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
 
     after = await _rub_catalog_price(

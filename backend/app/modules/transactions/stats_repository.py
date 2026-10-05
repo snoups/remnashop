@@ -28,7 +28,8 @@ class TransactionStatsRepository:
             Transaction.updated_at,
             Transaction.currency,
             Transaction.final_price,
-            Transaction.base_price,
+            Transaction.anchor_final_price,
+            Transaction.anchor_base_price,
             Transaction.discount_percent,
             Transaction.discount_promocode_id,
             Transaction.purchase_type,
@@ -45,14 +46,15 @@ class TransactionStatsRepository:
             paid_at=row[1],
             currency=row[2],
             final_price=row[3],
-            base_price=row[4],
-            discount_percent=row[5],
-            discount_promocode_id=row[6],
-            purchase_type=row[7],
-            plan_id=row[8],
-            plan_name=row[9] or "",
-            duration_days=row[10],
-            gateway_type=row[11],
+            anchor_final_price=row[4],
+            anchor_base_price=row[5],
+            discount_percent=row[6],
+            discount_promocode_id=row[7],
+            purchase_type=row[8],
+            plan_id=row[9],
+            plan_name=row[10] or "",
+            duration_days=row[11],
+            gateway_type=row[12],
         )
 
     async def list_paid(self, start: Optional[datetime], end: datetime) -> list[PaidTransactionDto]:
@@ -88,16 +90,15 @@ class TransactionStatsRepository:
         stmt = select(
             Transaction.gateway_type,
             Transaction.status,
-            Transaction.currency,
-            Transaction.final_price,
+            Transaction.anchor_final_price,
         ).where(
             Transaction.is_test.is_(False),
             Transaction.created_at >= start,
             Transaction.created_at < end,
         )
         return [
-            PaymentAttemptDto(gateway_type=g, status=s, currency=c, final_price=p)
-            for g, s, c, p in (await self.session.execute(stmt)).tuples().all()
+            PaymentAttemptDto(gateway_type=g, status=s, anchor_final_price=a)
+            for g, s, a in (await self.session.execute(stmt)).tuples().all()
         ]
 
     async def count_failed_by_gateway(self, since: datetime) -> dict[PaymentGatewayType, int]:

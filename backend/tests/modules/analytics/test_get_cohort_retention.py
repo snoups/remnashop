@@ -44,6 +44,8 @@ def _paid_order_dto(
         discount_percent=0,
         discount_source=DiscountSource.NONE,
         final_price=Decimal("500"),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal("500"),
         customer_email=None,
         idempotency_key=idempotency_key,
         expires_at=datetime_now() + timedelta(minutes=30),

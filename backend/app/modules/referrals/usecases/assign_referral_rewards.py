@@ -14,7 +14,6 @@ from app.core.enums import (
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
-from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import AssignReferralRewardsDto, ReferralSettingsDto
 from app.modules.referrals.events import ReferralRewardIssuedEvent
 from app.modules.referrals.repository import ReferralRepository
@@ -58,7 +57,6 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         self,
         referral_repository: ReferralRepository,
         transaction_repository: TransactionRepository,
-        pricing_repository: PricingRepository,
         user_repository: UserRepository,
         subscription_repository: SubscriptionRepository,
         uow: UnitOfWork,
@@ -66,7 +64,6 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
     ) -> None:
         self._referral_repository = referral_repository
         self._transaction_repository = transaction_repository
-        self._pricing_repository = pricing_repository
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
         self._uow = uow
@@ -93,7 +90,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             return
 
         percent_base = (
-            await self._percent_base(order, settings.reward_type)
+            self._percent_base(order, settings.reward_type)
             if settings.reward_strategy is ReferralRewardStrategy.PERCENT
             else None
         )
@@ -166,14 +163,12 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             return False
         return True
 
-    async def _percent_base(
-        self, order: TransactionDto, reward_type: ReferralRewardType
-    ) -> Decimal:
+    @staticmethod
+    def _percent_base(order: TransactionDto, reward_type: ReferralRewardType) -> Decimal:
         if reward_type is ReferralRewardType.EXTRA_DAYS:
             return Decimal(order.duration_days)
         # points are anchor-currency units, whatever the buyer paid in
-        rates = await self._pricing_repository.get_rate_table()
-        return convert_for_report(order.final_price, order.currency, rates.anchor, rates)
+        return order.anchor_final_price
 
     async def _grant_one_level(
         self,

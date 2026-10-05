@@ -10,10 +10,9 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.advertising import AdLinkRepository
-from app.modules.analytics.aggregates import report_amount
 from app.modules.analytics.dto import LtvBreakdownDto, LtvGroupDto, TopPayerDto
 from app.modules.analytics.sources import SourceKind, UserSource, resolve_sources
-from app.modules.pricing import CurrencyRateTable, PricingRepository
+from app.modules.pricing import PricingRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.subscriptions import LiveSubscriptionDto, SubscriptionStatsRepository
 from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
@@ -63,15 +62,13 @@ def _current_plans(live: list[LiveSubscriptionDto]) -> dict[int, str]:
 
 
 def _per_user(
-    paid: list[PaidTransactionDto], rates: CurrencyRateTable
+    paid: list[PaidTransactionDto],
 ) -> tuple[dict[int, Decimal], dict[int, int], dict[int, PaidTransactionDto]]:
     totals: dict[int, Decimal] = {}
     payments: dict[int, int] = {}
     last: dict[int, PaidTransactionDto] = {}
     for row in paid:  # list_paid is ordered by paid_at
-        totals[row.user_id] = totals.get(row.user_id, _ZERO) + report_amount(
-            row.final_price, row.currency, rates
-        )
+        totals[row.user_id] = totals.get(row.user_id, _ZERO) + row.anchor_final_price
         payments[row.user_id] = payments.get(row.user_id, 0) + 1
         last[row.user_id] = row
     return totals, payments, last
@@ -124,7 +121,7 @@ class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
         async with self._uow:
             rates = await self._pricing_repository.get_rate_table()
             paid = await self._transaction_stats.list_paid(None, datetime_now())
-            totals, payments, last = _per_user(paid, rates)
+            totals, payments, last = _per_user(paid)
             first_plan: dict[int, str] = {}
             for row in paid:
                 first_plan.setdefault(row.user_id, row.plan_name)

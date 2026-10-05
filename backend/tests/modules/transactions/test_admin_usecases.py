@@ -11,12 +11,14 @@ from app.core.enums import (
     PaymentGatewayType,
     PurchaseType,
     Role,
+    RoundingMode,
     TransactionStatus,
 )
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
+from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.transactions.dto import (
     CreateTransactionDto,
@@ -48,6 +50,8 @@ def _order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTra
         discount_percent=0,
         discount_source=DiscountSource.NONE,
         final_price=Decimal("500"),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal("500"),
         customer_email=None,
         idempotency_key=idempotency_key,
         expires_at=datetime_now() + timedelta(minutes=30),
@@ -165,6 +169,7 @@ async def test_get_transaction_summary_counts_and_converts_paid_revenue(
             replace(
                 _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="summary-paid"),
                 base_price=Decimal("625"),
+                anchor_base_price=Decimal("625"),
                 discount_percent=20,
             )
         )
@@ -191,6 +196,43 @@ async def test_get_transaction_summary_counts_and_converts_paid_revenue(
         * rates.for_currency(rates.anchor).rate
     )
     assert summary.discount_amount == expected_base - expected_revenue
+
+
+async def test_summary_does_not_float_after_rate_change(
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    admin_actor: UserDto,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        await pricing_repository.get_rate_table()
+        order = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="float-paid"),
+                base_price=Decimal("900"),
+                final_price=Decimal("900"),
+                anchor_base_price=Decimal("10"),
+                anchor_final_price=Decimal("10"),
+            )
+        )
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+        await pricing_repository.update_rate(
+            UpdateCurrencyRateDto(
+                currency=Currency.RUB,
+                rate=Decimal("120"),
+                rounding_mode=RoundingMode.INTEGER,
+                charm_ending=None,
+                min_amount=Decimal("10"),
+            )
+        )
+
+    summary = await GetTransactionSummaryUseCase(transaction_repository, pricing_repository, uow)(
+        admin_actor, GetTransactionSummaryDto()
+    )
+
+    assert summary.revenue == Decimal("10")
 
 
 async def test_fulfill_transaction_marks_a_failed_order_paid_and_dispatches_it(

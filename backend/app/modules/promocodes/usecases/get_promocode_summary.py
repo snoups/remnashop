@@ -1,12 +1,10 @@
-from decimal import Decimal
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeRewardType
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.pricing import PricingRepository, convert_for_report
+from app.modules.pricing import PricingRepository
 from app.modules.promocodes.dto import PromocodeSummaryDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.transactions import TransactionRepository
@@ -36,7 +34,7 @@ class GetPromocodeSummaryUseCase(UseCase[None, PromocodeSummaryDto]):
             totals = await self._promocode_repository.reward_totals_by_type()
             (
                 discounted_orders,
-                discounts,
+                discount_amount,
             ) = await self._transaction_repository.sum_paid_promocode_discounts()
             rate_table = await self._pricing_repository.get_rate_table()
 
@@ -59,12 +57,6 @@ class GetPromocodeSummaryUseCase(UseCase[None, PromocodeSummaryDto]):
             + (subscription.duration_days_sum if subscription else 0),
             granted_subscriptions_count=subscription.count if subscription else 0,
             report_currency=report_currency,
-            discount_amount=sum(
-                (
-                    convert_for_report(amount, currency, report_currency, rate_table)
-                    for currency, amount in discounts.items()
-                ),
-                start=Decimal(0),
-            ),
+            discount_amount=discount_amount,
             discounted_orders_count=discounted_orders,
         )

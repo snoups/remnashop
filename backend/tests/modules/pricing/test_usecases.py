@@ -1,12 +1,27 @@
+from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.transaction import Transaction
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AddOnType, Currency, PlanType, PriceAdjustScope, Role, RoundingMode
+from app.core.enums import (
+    AddOnType,
+    Currency,
+    DiscountSource,
+    PaymentGatewayType,
+    PlanType,
+    PriceAdjustScope,
+    PurchaseType,
+    Role,
+    RoundingMode,
+)
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
+from app.core.utils.time import datetime_now
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     AddOnDto,
@@ -32,7 +47,11 @@ from app.modules.plans.usecases import (
 from app.modules.pricing.dto import UpdateCurrencyRateDto, UpdatePricingSettingsDto
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricingSettingsUseCase
-from app.modules.users.dto import UserDto
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
+from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.repository import UserRepository
+from tests.modules.subscriptions.factories import make_plan_snapshot
 
 OWNER = UserDto(name="owner", role=Role.OWNER)
 
@@ -163,7 +182,12 @@ async def test_switch_anchor_keeps_derived_prices_stable(
         OWNER
     )
     await SwitchAnchorCurrencyUseCase(
-        pricing_repository, plan_repository, addon_repository, uow, event_publisher
+        pricing_repository,
+        plan_repository,
+        addon_repository,
+        TransactionRepository(plan_repository.session),
+        uow,
+        event_publisher,
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
     after = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(
         OWNER
@@ -174,6 +198,71 @@ async def test_switch_anchor_keeps_derived_prices_stable(
     a_amount = next(c for c in a.cells if c.currency is Currency.RUB).amount
     assert abs(a_amount - b) <= Decimal("1")
     assert after.settings.anchor_currency is Currency.RUB
+
+
+async def test_switch_anchor_rescales_transaction_anchor_amounts(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    user_repository: UserRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    transaction_repository = TransactionRepository(session)
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("90"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=950_001))
+    async with uow:
+        order = await transaction_repository.create(
+            CreateTransactionDto(
+                user_id=buyer.id,
+                plan_id=None,
+                plan_snapshot=make_plan_snapshot(),
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                target_subscription_id=None,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+                base_price=Decimal("900"),
+                discount_percent=0,
+                discount_source=DiscountSource.NONE,
+                final_price=Decimal("900"),
+                anchor_base_price=Decimal("10"),
+                anchor_final_price=Decimal("10"),
+                customer_email=None,
+                idempotency_key=uuid4().hex,
+                expires_at=datetime_now(),
+            )
+        )
+    paid_at = datetime_now() - timedelta(days=40)
+    await session.execute(
+        update(Transaction).where(Transaction.id == order.id).values(updated_at=paid_at)
+    )
+
+    await SwitchAnchorCurrencyUseCase(
+        pricing_repository,
+        plan_repository,
+        addon_repository,
+        transaction_repository,
+        uow,
+        event_publisher,
+    )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
+
+    session.expire_all()
+    after = await transaction_repository.get_by_id(order.id)
+    assert after.anchor_base_price == Decimal("900")
+    assert after.anchor_final_price == Decimal("900")
+    assert (after.final_price, after.currency) == (Decimal("900"), Currency.RUB)
+    assert after.updated_at == paid_at
 
 
 async def test_preview_pricing_change_writes_nothing(

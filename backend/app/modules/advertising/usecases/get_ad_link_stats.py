@@ -49,16 +49,15 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
             revenue_by_currency = (
                 await self._transaction_repository.sum_paid_final_price_by_user_ids(user_ids)
             )
+            revenue_anchor = await self._transaction_repository.sum_paid_anchor_amount_by_user_ids(
+                user_ids
+            )
 
             rate_table = await self._pricing_repository.get_rate_table()
             report_currency = data.report_currency or rate_table.anchor
 
-            revenue = sum(
-                (
-                    convert_for_report(amount, currency, report_currency, rate_table)
-                    for currency, amount in revenue_by_currency.items()
-                ),
-                start=_ZERO,
+            revenue = convert_for_report(
+                revenue_anchor, rate_table.anchor, report_currency, rate_table
             )
             cost = convert_for_report(
                 ad_link.cost, ad_link.cost_currency, report_currency, rate_table

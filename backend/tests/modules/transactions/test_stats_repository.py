@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
@@ -36,6 +37,8 @@ def _order(user_id: int, plan_id: int, key: str) -> CreateTransactionDto:
         discount_percent=0,
         discount_source=DiscountSource.NONE,
         final_price=Decimal("500"),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal("500"),
         customer_email=None,
         idempotency_key=key,
         expires_at=datetime_now() + timedelta(minutes=30),
@@ -51,7 +54,13 @@ async def test_list_paid_returns_only_paid_non_test_rows_in_range(
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="u", telegram_id=861_001))
     async with uow:
-        paid = await transaction_repository.create(_order(user.id, plan_id, "stats-1"))
+        paid = await transaction_repository.create(
+            replace(
+                _order(user.id, plan_id, "stats-1"),
+                anchor_base_price=Decimal("7"),
+                anchor_final_price=Decimal("6"),
+            )
+        )
         await transaction_repository.create(_order(user.id, plan_id, "stats-2"))
         old = await transaction_repository.create(_order(user.id, plan_id, "stats-3"))
     for order in (paid, old):
@@ -69,6 +78,7 @@ async def test_list_paid_returns_only_paid_non_test_rows_in_range(
 
     assert [row.user_id for row in rows] == [user.id]
     assert rows[0].plan_name == "Basic"
+    assert (rows[0].anchor_base_price, rows[0].anchor_final_price) == (Decimal("7"), Decimal("6"))
     assert len(await repo.list_paid(None, datetime_now() + timedelta(seconds=1))) == 2
     attempts = await repo.list_attempts(
         datetime_now() - timedelta(days=1), datetime_now() + timedelta(seconds=1)

@@ -1188,6 +1188,8 @@ def _order(user_id: int, *, promocode_id: Optional[int], final_price: str) -> Cr
         discount_percent=20,
         discount_source=DiscountSource.PERSONAL,
         final_price=Decimal(final_price),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal(final_price),
         discount_promocode_id=promocode_id,
         customer_email=None,
         idempotency_key=uuid4().hex,

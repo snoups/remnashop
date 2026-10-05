@@ -572,6 +572,7 @@ async def test_checkout_rejects_a_currency_the_gateway_does_not_settle(
 async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_list(
     gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
@@ -579,7 +580,11 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
 ) -> None:
     owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
     use_case = CreateTestPaymentUseCase(
-        gateway_repository, transaction_repository, uow, _FakeFactory(fake_gateway)
+        gateway_repository,
+        transaction_repository,
+        pricing_repository,
+        uow,
+        _FakeFactory(fake_gateway),
     )
 
     result = await use_case(owner, PaymentGatewayType.YOOKASSA)
@@ -596,13 +601,18 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
 async def test_test_payment_rejects_an_unconfigured_gateway(
     gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
 ) -> None:
     owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
     use_case = CreateTestPaymentUseCase(
-        gateway_repository, transaction_repository, uow, _FakeFactory(fake_gateway)
+        gateway_repository,
+        transaction_repository,
+        pricing_repository,
+        uow,
+        _FakeFactory(fake_gateway),
     )
 
     with pytest.raises(ValidationError):

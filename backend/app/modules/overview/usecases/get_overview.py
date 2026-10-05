@@ -25,9 +25,9 @@ from app.modules.overview.dto import (
     RevenueTodayDto,
     RuntimeProcessDto,
 )
-from app.modules.pricing import PricingRepository, convert_for_report
+from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
-from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
+from app.modules.transactions import TransactionStatsRepository
 from app.modules.users import UserRepository, UserStatsRepository
 
 _RECENT_PAYMENTS: Final[int] = 8
@@ -113,13 +113,13 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
         rates = await self._pricing_repository.get_rate_table()
         paid = await self._transaction_stats.list_paid(today_start - timedelta(days=1), now)
 
-        def to_report(row: PaidTransactionDto) -> Decimal:
-            return convert_for_report(row.final_price, row.currency, rates.anchor, rates)
-
-        today = sum((to_report(r) for r in paid if r.paid_at >= today_start), start=Decimal(0))
+        today = sum(
+            (r.anchor_final_price for r in paid if r.paid_at >= today_start), start=Decimal(0)
+        )
         same_time_cutoff = now - timedelta(days=1)
         yesterday = sum(
-            (to_report(r) for r in paid if r.paid_at < same_time_cutoff), start=Decimal(0)
+            (r.anchor_final_price for r in paid if r.paid_at < same_time_cutoff),
+            start=Decimal(0),
         )
         return RevenueTodayDto(
             report_currency=rates.anchor,

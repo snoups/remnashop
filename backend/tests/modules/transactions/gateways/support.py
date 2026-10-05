@@ -49,6 +49,8 @@ def make_order(**overrides: Any) -> TransactionDto:
         "discount_percent": 0,
         "discount_source": DiscountSource.NONE,
         "final_price": Decimal("500"),
+        "anchor_base_price": Decimal("500"),
+        "anchor_final_price": Decimal("500"),
         "idempotency_key": ORDER_REF,
         "expires_at": datetime_now() + timedelta(minutes=30),
     }

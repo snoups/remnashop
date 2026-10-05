@@ -40,6 +40,8 @@ def _order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTra
         discount_percent=0,
         discount_source=DiscountSource.NONE,
         final_price=Decimal("500"),
+        anchor_base_price=Decimal("500"),
+        anchor_final_price=Decimal("500"),
         customer_email=None,
         idempotency_key=idempotency_key,
         expires_at=datetime_now() + timedelta(minutes=30),
@@ -251,7 +253,7 @@ async def test_list_paginated_filters_by_status(
     assert total >= 2
 
 
-async def test_summarize_groups_by_status_and_currency_and_honours_filters(
+async def test_summarize_groups_by_status_and_honours_filters(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
     async with uow:
@@ -268,11 +270,11 @@ async def test_summarize_groups_by_status_and_currency_and_honours_filters(
         await transaction_repository.mark_status(order_id, TransactionStatus.PAID)
 
     rows = await transaction_repository.summarize()
-    assert (TransactionStatus.PAID, Currency.RUB, 2, Decimal("1000"), Decimal("1000")) in rows
-    assert (TransactionStatus.PENDING, Currency.RUB, 1, Decimal("500"), Decimal("500")) in rows
+    assert (TransactionStatus.PAID, 2, Decimal("1000"), Decimal("1000")) in rows
+    assert (TransactionStatus.PENDING, 1, Decimal("500"), Decimal("500")) in rows
 
     rows = await transaction_repository.summarize(status=TransactionStatus.PAID)
-    assert rows == [(TransactionStatus.PAID, Currency.RUB, 2, Decimal("1000"), Decimal("1000"))]
+    assert rows == [(TransactionStatus.PAID, 2, Decimal("1000"), Decimal("1000"))]
 
 
 async def test_list_paginated_filters_by_gateway_purchase_type_and_created_from(
@@ -515,6 +517,8 @@ async def test_user_id_queries_chunk_and_merge_beyond_the_in_param_cap(
                         "currency": Currency.USD,
                         "base_price": Decimal("100"),
                         "final_price": Decimal("100"),
+                        "anchor_base_price": Decimal("100"),
+                        "anchor_final_price": Decimal("100"),
                     }
                 )
             )
@@ -524,6 +528,8 @@ async def test_user_id_queries_chunk_and_merge_beyond_the_in_param_cap(
 
     totals = await transaction_repository.sum_paid_final_price_by_user_ids(all_ids)
     assert totals == {Currency.RUB: Decimal("1500"), Currency.USD: Decimal("200")}
+    anchor_total = await transaction_repository.sum_paid_anchor_amount_by_user_ids(all_ids)
+    assert anchor_total == Decimal("1700")
 
     paid_ids = await transaction_repository.list_user_ids_with_paid_order(all_ids)
     assert paid_ids == set(all_ids)
@@ -585,6 +591,8 @@ async def test_sum_paid_final_price_since_groups_by_currency(
                     "currency": Currency.USD,
                     "base_price": Decimal("5"),
                     "final_price": Decimal("5"),
+                    "anchor_base_price": Decimal("5"),
+                    "anchor_final_price": Decimal("5"),
                 }
             )
         )
@@ -596,7 +604,7 @@ async def test_sum_paid_final_price_since_groups_by_currency(
     assert totals == {Currency.RUB: Decimal("500"), Currency.USD: Decimal("5")}
 
 
-async def test_daily_paid_revenue_by_currency_groups_by_day_and_currency(
+async def test_daily_paid_anchor_revenue_groups_by_day(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
     since = datetime_now() - timedelta(days=1)
@@ -606,10 +614,9 @@ async def test_daily_paid_revenue_by_currency_groups_by_day_and_currency(
         )
     await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
-    daily = await transaction_repository.daily_paid_revenue_by_currency(since)
+    daily = await transaction_repository.daily_paid_anchor_revenue(since)
 
-    total_revenue = sum(amount for by_currency in daily.values() for amount in by_currency.values())
-    assert total_revenue == Decimal("500")
+    assert sum(daily.values()) == Decimal("500")
 
 
 async def test_list_user_ids_with_multiple_paid_orders_requires_more_than_one(

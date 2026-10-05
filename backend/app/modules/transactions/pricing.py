@@ -5,7 +5,7 @@ from app.core.enums import Currency, DiscountSource
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.plans import PlanDto
-from app.modules.pricing import CurrencyRateTable, price_for, round_amount
+from app.modules.pricing import CurrencyRateTable, convert_for_report, price_for, round_amount
 from app.modules.transactions.dto import PriceQuote
 from app.modules.users import UserDto
 
@@ -42,15 +42,8 @@ def quote_price(
     discount_percent, discount_source, discount_promocode_id = _effective_discount(user)
 
     if discount_percent >= 100:
-        return PriceQuote(
-            base_price=base_price,
-            discount_percent=100,
-            discount_source=discount_source,
-            final_price=Decimal(0),
-            discount_promocode_id=discount_promocode_id,
-        )
-
-    if discount_percent == 0:
+        discount_percent, final_price = 100, Decimal(0)
+    elif discount_percent == 0:
         final_price = base_price
     else:
         discounted = base_price * (Decimal(100) - Decimal(discount_percent)) / Decimal(100)
@@ -61,5 +54,7 @@ def quote_price(
         discount_percent=discount_percent,
         discount_source=discount_source,
         final_price=final_price,
+        anchor_base_price=convert_for_report(base_price, currency, rates.anchor, rates),
+        anchor_final_price=convert_for_report(final_price, currency, rates.anchor, rates),
         discount_promocode_id=discount_promocode_id,
     )

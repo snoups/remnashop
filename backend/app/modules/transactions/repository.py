@@ -80,6 +80,8 @@ class TransactionRepository:
             discount_percent=row.discount_percent,
             discount_source=row.discount_source,
             final_price=row.final_price,
+            anchor_base_price=row.anchor_base_price,
+            anchor_final_price=row.anchor_final_price,
             discount_promocode_id=row.discount_promocode_id,
             customer_email=row.customer_email,
             idempotency_key=row.idempotency_key,
@@ -105,6 +107,8 @@ class TransactionRepository:
             discount_percent=data.discount_percent,
             discount_source=data.discount_source,
             final_price=data.final_price,
+            anchor_base_price=data.anchor_base_price,
+            anchor_final_price=data.anchor_final_price,
             discount_promocode_id=data.discount_promocode_id,
             customer_email=data.customer_email,
             idempotency_key=data.idempotency_key,
@@ -265,7 +269,7 @@ class TransactionRepository:
         created_to: Optional[datetime] = None,
         search: Optional[str] = None,
         user_id: Optional[int] = None,
-    ) -> list[tuple[TransactionStatus, Currency, int, Decimal, Decimal]]:
+    ) -> list[tuple[TransactionStatus, int, Decimal, Decimal]]:
         filters = _order_filters(
             status=status,
             gateway_type=gateway_type,
@@ -278,16 +282,25 @@ class TransactionRepository:
         stmt = (
             select(
                 Transaction.status,
-                Transaction.currency,
                 func.count(),
-                func.sum(Transaction.final_price),
-                func.sum(Transaction.base_price),
+                func.sum(Transaction.anchor_final_price),
+                func.sum(Transaction.anchor_base_price),
             )
             .where(*filters)
-            .group_by(Transaction.status, Transaction.currency)
+            .group_by(Transaction.status)
         )
         rows = (await self.session.execute(stmt)).tuples()
         return list(rows.all())
+
+    async def rescale_anchor_amounts(self, factor: Decimal) -> None:
+        await self.session.execute(
+            update(Transaction).values(
+                anchor_base_price=func.round(Transaction.anchor_base_price * factor, 2),
+                anchor_final_price=func.round(Transaction.anchor_final_price * factor, 2),
+                # paid-at timestamp, pinned like mark_fulfilled does
+                updated_at=Transaction.updated_at,
+            )
+        )
 
     async def list_gateway_types(self) -> list[PaymentGatewayType]:
         rows = await self.session.scalars(
@@ -320,27 +333,32 @@ class TransactionRepository:
                 totals[currency] = totals.get(currency, Decimal(0)) + amount
         return totals
 
-    async def sum_paid_promocode_discounts(self) -> tuple[int, dict[Currency, Decimal]]:
-        # (paid orders, discount amount per currency)
-        stmt = (
-            select(
-                Transaction.currency,
-                func.count(),
-                func.sum(Transaction.base_price - Transaction.final_price),
+    async def sum_paid_anchor_amount_by_user_ids(self, user_ids: list[int]) -> Decimal:
+        total = Decimal(0)
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
+            chunk_total = await self.session.scalar(
+                select(func.sum(Transaction.anchor_final_price)).where(
+                    Transaction.user_id.in_(chunk),
+                    Transaction.status == TransactionStatus.PAID,
+                    _NOT_TEST,
+                )
             )
-            .where(
-                Transaction.status == TransactionStatus.PAID,
-                Transaction.discount_promocode_id.is_not(None),
-                _NOT_TEST,
-            )
-            .group_by(Transaction.currency)
+            total += chunk_total or Decimal(0)
+        return total
+
+    async def sum_paid_promocode_discounts(self) -> tuple[int, Decimal]:
+        # (paid orders, discount amount in the anchor currency)
+        stmt = select(
+            func.count(),
+            func.sum(Transaction.anchor_base_price - Transaction.anchor_final_price),
+        ).where(
+            Transaction.status == TransactionStatus.PAID,
+            Transaction.discount_promocode_id.is_not(None),
+            _NOT_TEST,
         )
-        count = 0
-        totals: dict[Currency, Decimal] = {}
-        for currency, orders, amount in (await self.session.execute(stmt)).tuples():
-            count += orders
-            totals[currency] = amount
-        return count, totals
+        count, amount = (await self.session.execute(stmt)).tuples().one()
+        return count, amount or Decimal(0)
 
     async def list_user_ids_with_paid_order(self, user_ids: list[int]) -> set[int]:
         if not user_ids:
@@ -377,23 +395,19 @@ class TransactionRepository:
             repeat_payers.update(result.scalars().all())
         return repeat_payers
 
-    async def sum_paid_final_price_per_user(
+    async def sum_paid_anchor_amount_per_user(
         self, user_ids: Optional[list[int]] = None, *, created_before: Optional[datetime] = None
-    ) -> dict[int, dict[Currency, Decimal]]:
+    ) -> dict[int, Decimal]:
         stmt = (
-            select(Transaction.user_id, Transaction.currency, func.sum(Transaction.final_price))
+            select(Transaction.user_id, func.sum(Transaction.anchor_final_price))
             .where(Transaction.status == TransactionStatus.PAID, _NOT_TEST)
-            .group_by(Transaction.user_id, Transaction.currency)
+            .group_by(Transaction.user_id)
         )
         if user_ids is not None:
             stmt = stmt.where(Transaction.user_id.in_(user_ids))
         if created_before is not None:
             stmt = stmt.where(Transaction.created_at < created_before)
-        rows = (await self.session.execute(stmt)).tuples()
-        totals: dict[int, dict[Currency, Decimal]] = {}
-        for user_id, currency, amount in rows.all():
-            totals.setdefault(user_id, {})[currency] = amount
-        return totals
+        return dict((await self.session.execute(stmt)).tuples().all())
 
     async def count_paid_since(self, since: datetime) -> int:
         return int(
@@ -446,22 +460,16 @@ class TransactionRepository:
         rows = (await self.session.execute(stmt)).tuples()
         return dict(rows.all())
 
-    async def daily_paid_revenue_by_currency(
-        self, since: datetime
-    ) -> dict[date, dict[Currency, Decimal]]:
+    async def daily_paid_anchor_revenue(self, since: datetime) -> dict[date, Decimal]:
         day_col = func.date(func.timezone("UTC", Transaction.updated_at))
         stmt = (
-            select(day_col, Transaction.currency, func.sum(Transaction.final_price))
+            select(day_col, func.sum(Transaction.anchor_final_price))
             .where(
                 Transaction.status == TransactionStatus.PAID,
                 _NOT_TEST,
                 Transaction.updated_at >= since,
             )
-            .group_by(day_col, Transaction.currency)
+            .group_by(day_col)
             .order_by(day_col)
         )
-        rows = (await self.session.execute(stmt)).tuples()
-        result: dict[date, dict[Currency, Decimal]] = {}
-        for day, currency, amount in rows.all():
-            result.setdefault(day, {})[currency] = amount
-        return result
+        return dict((await self.session.execute(stmt)).tuples().all())

@@ -10,7 +10,7 @@ from app.core.enums import Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.analytics.aggregates import median, report_amount
+from app.modules.analytics.aggregates import median
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
@@ -20,7 +20,7 @@ from app.modules.analytics.dto import (
     TrialDto,
 )
 from app.modules.analytics.period import AnalyticsPeriod, resolve_period
-from app.modules.pricing import CurrencyRateTable, PricingRepository
+from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
 from app.modules.users import UserRepository, UserStatsRepository
@@ -112,13 +112,11 @@ def _day_buckets(cohort: _Cohort, trial_days: int) -> list[TrialDayBucketDto]:
     return [TrialDayBucketDto(key=key, count=counts[key]) for key in keys]
 
 
-def _plans_after_trial(cohort: _Cohort, rates: CurrencyRateTable) -> list[RevenueGroupDto]:
+def _plans_after_trial(cohort: _Cohort) -> list[RevenueGroupDto]:
     by_plan: dict[str, list[Decimal]] = {}
     for _, _, _, first in cohort:
         if first is not None:
-            by_plan.setdefault(first.plan_name, []).append(
-                report_amount(first.final_price, first.currency, rates)
-            )
+            by_plan.setdefault(first.plan_name, []).append(first.anchor_final_price)
     rows = [
         RevenueGroupDto(key=name, payments=len(amounts), revenue=_cents(sum(amounts, start=_ZERO)))
         for name, amounts in by_plan.items()
@@ -213,11 +211,7 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
                 if first is not None
             ]
             revenue = sum(
-                (
-                    report_amount(row.final_price, row.currency, rates)
-                    for row in paid
-                    if row.user_id in converted_ids
-                ),
+                (row.anchor_final_price for row in paid if row.user_id in converted_ids),
                 start=_ZERO,
             )
             previous_range = period.previous
@@ -238,5 +232,5 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
                 trial_days=trial_days,
                 by_trial_day=_day_buckets(cohort, trial_days),
                 time_to_first_payment=_time_to_first_payment(first_paid, registered, via_trial),
-                plans_after_trial=_plans_after_trial(cohort, rates),
+                plans_after_trial=_plans_after_trial(cohort),
             )

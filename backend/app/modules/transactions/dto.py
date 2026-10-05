@@ -30,6 +30,8 @@ class PriceQuote:
     discount_percent: int
     discount_source: DiscountSource
     final_price: Decimal
+    anchor_base_price: Decimal
+    anchor_final_price: Decimal
     discount_promocode_id: Optional[int] = None
 
 
@@ -48,6 +50,8 @@ class TransactionDto(BaseDto, TimestampMixin):
     discount_percent: int = 0
     discount_source: DiscountSource = DiscountSource.NONE
     final_price: Decimal
+    anchor_base_price: Decimal
+    anchor_final_price: Decimal
     discount_promocode_id: Optional[int] = None
     customer_email: Optional[str] = None
     idempotency_key: str
@@ -77,6 +81,8 @@ class CreateTransactionDto:
     discount_percent: int
     discount_source: DiscountSource
     final_price: Decimal
+    anchor_base_price: Decimal
+    anchor_final_price: Decimal
     customer_email: Optional[str]
     discount_promocode_id: Optional[int] = None
     idempotency_key: str
@@ -165,7 +171,8 @@ class PaidTransactionDto:
     paid_at: datetime
     currency: Currency
     final_price: Decimal
-    base_price: Decimal
+    anchor_final_price: Decimal
+    anchor_base_price: Decimal
     discount_percent: int
     discount_promocode_id: Optional[int]
     purchase_type: PurchaseType
@@ -179,5 +186,4 @@ class PaidTransactionDto:
 class PaymentAttemptDto:
     gateway_type: PaymentGatewayType
     status: TransactionStatus
-    currency: Currency
-    final_price: Decimal
+    anchor_final_price: Decimal

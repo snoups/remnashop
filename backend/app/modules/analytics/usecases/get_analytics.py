@@ -19,7 +19,7 @@ from app.modules.analytics.dto import (
     SnapshotKpiDto,
 )
 from app.modules.analytics.period import AnalyticsPeriod, resolve_period
-from app.modules.pricing import CurrencyRateTable, PricingRepository
+from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
 from app.modules.users import UserStatsRepository
@@ -34,12 +34,11 @@ def _period_kpi(
     first_paid: dict[int, datetime],
     coverage: dict[int, list[tuple[datetime, datetime]]],
     registrations: list[tuple[int, datetime]],
-    rates: CurrencyRateTable,
     now: datetime,
 ) -> PeriodKpiDto:
     in_period = [row for row in paid if period.start <= row.paid_at < period.end]
     revenue = sum(
-        (report_amount(row.final_price, row.currency, rates) for row in in_period),
+        (row.anchor_final_price for row in in_period),
         start=Decimal(0),
     )
     paying = {row.user_id for row in in_period}
@@ -149,7 +148,6 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
                     first_paid=first_paid,
                     coverage=coverage,
                     registrations=registrations,
-                    rates=rates,
                     now=now,
                 ),
                 previous=_period_kpi(
@@ -158,7 +156,6 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
                     first_paid=first_paid,
                     coverage=coverage,
                     registrations=registrations,
-                    rates=rates,
                     now=now,
                 ),
                 snapshot=SnapshotKpiDto(

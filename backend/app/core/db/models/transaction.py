@@ -59,6 +59,8 @@ class Transaction(BaseSql, TimestampMixin):
         default=DiscountSource.NONE, server_default="NONE"
     )
     final_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    anchor_base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    anchor_final_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     discount_promocode_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("promocodes.id", ondelete="SET NULL"), index=True
     )

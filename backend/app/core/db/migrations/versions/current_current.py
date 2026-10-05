@@ -1510,6 +1510,8 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("final_price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("anchor_base_price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("anchor_final_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("discount_promocode_id", sa.Integer(), nullable=True),
         sa.Column("customer_email", sa.String(length=255), nullable=True),
         sa.Column("idempotency_key", sa.String(length=36), nullable=False),

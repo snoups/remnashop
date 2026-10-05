@@ -146,12 +146,12 @@ def _active_by_plan(live: list[LiveSubscriptionDto]) -> list[PlanActiveDto]:
 
 
 def _spent_and_renewals(
-    paid: list[PaidTransactionDto], rates: CurrencyRateTable
+    paid: list[PaidTransactionDto],
 ) -> tuple[dict[int, Decimal], dict[int, int]]:
     spent: dict[int, Decimal] = {}
     renewals: dict[int, int] = {}
     for row in paid:
-        amount = report_amount(row.final_price, row.currency, rates)
+        amount = row.anchor_final_price
         spent[row.user_id] = spent.get(row.user_id, _ZERO) + amount
         if row.purchase_type == PurchaseType.RENEW:
             renewals[row.user_id] = renewals.get(row.user_id, 0) + 1
@@ -179,9 +179,8 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
         self,
         expiring: list[LiveSubscriptionDto],
         paid: list[PaidTransactionDto],
-        rates: CurrencyRateTable,
     ) -> list[ExpiringCustomerDto]:
-        spent, renewals = _spent_and_renewals(paid, rates)
+        spent, renewals = _spent_and_renewals(paid)
         nearest: dict[int, LiveSubscriptionDto] = {}
         for row in sorted(expiring, key=lambda r: r.expire_at):
             nearest.setdefault(row.user_id, row)
@@ -218,7 +217,7 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
                 expiring_paid=len(expiring_paid),
                 expiring_trials=len(window) - len(expiring_paid),
                 expiring_weeks=_expiring_weeks(expiring_paid, now, rates),
-                expiring_top=await self._top_customers(expiring_paid, paid, rates),
+                expiring_top=await self._top_customers(expiring_paid, paid),
                 active_by_plan=_active_by_plan(live),
                 monthly_churn=_monthly_churn(coverage, _last_month_starts(now, _CHURN_MONTHS), now),
             )
