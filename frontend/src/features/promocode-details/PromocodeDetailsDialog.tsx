@@ -11,6 +11,7 @@ import {
   getPromocodeStatus,
   limitsDraftOf,
   limitsToPayload,
+  PLAN_LIMITED_REWARDS,
   PROMOCODE_STATUS_BADGE_TONE,
   REWARD_TYPE_ICON,
 } from "@entities/promocodes/display";
@@ -128,7 +129,7 @@ function PromocodeDetailsDialogBody({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const limitsPayload = limitsToPayload(limits);
+    const limitsPayload = limitsToPayload(limits, promocode.reward_type);
     if (limitsPayload === undefined) {
       toast.error(t("errors.invalidNumber"));
       return;
@@ -211,7 +212,12 @@ function PromocodeDetailsDialogBody({
             {tab === "users" && <PromocodeUsersList promocode={promocode} />}
             {tab === "settings" && (
               <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)}>
-                <PromocodeLimitsFields idPrefix="promo-edit" value={limits} onChange={setLimits} />
+                <PromocodeLimitsFields
+                  idPrefix="promo-edit"
+                  value={limits}
+                  onChange={setLimits}
+                  plans={PLAN_LIMITED_REWARDS.includes(promocode.reward_type) ? plans : undefined}
+                />
               </form>
             )}
           </div>

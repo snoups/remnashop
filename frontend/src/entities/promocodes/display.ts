@@ -21,6 +21,7 @@ export type PromocodeReward = Pick<
 export interface PromocodeLimitsDraft {
   availability: PromocodeAvailability;
   allowedUserIds: number[];
+  allowedPlanIds: number[];
   expiresAt: string;
   maxActivations: string;
   isReusable: boolean;
@@ -89,6 +90,7 @@ export function limitsDraftOf(promo: Promocode): PromocodeLimitsDraft {
   return {
     availability: promo.availability,
     allowedUserIds: promo.allowed_user_ids,
+    allowedPlanIds: promo.allowed_plan_ids,
     expiresAt: promo.expires_at ? promo.expires_at.slice(0, 10) : "",
     maxActivations: promo.max_activations !== null ? String(promo.max_activations) : "",
     isReusable: promo.is_reusable,
@@ -96,13 +98,20 @@ export function limitsDraftOf(promo: Promocode): PromocodeLimitsDraft {
 }
 
 /** undefined means the activation limit isn't a valid number; reject the submit. */
-export function limitsToPayload(draft: PromocodeLimitsDraft): LimitsPayload | undefined {
+/** rewards applied to a chosen subscription, the only ones a plan list limits */
+export const PLAN_LIMITED_REWARDS: PromocodeRewardType[] = ["DURATION", "TRAFFIC", "DEVICES"];
+
+export function limitsToPayload(
+  draft: PromocodeLimitsDraft,
+  rewardType: PromocodeRewardType,
+): LimitsPayload | undefined {
   const maxActivations = parseOptionalInt(draft.maxActivations, 1);
   if (maxActivations === undefined) return undefined;
   return {
     availability: draft.availability,
     // the hidden allowlist is dropped with it, not left dangling on the row
     allowed_user_ids: draft.availability === "ALLOWED" ? draft.allowedUserIds : [],
+    allowed_plan_ids: PLAN_LIMITED_REWARDS.includes(rewardType) ? draft.allowedPlanIds : [],
     expires_at: draft.expiresAt ? `${draft.expiresAt}T23:59:59.000Z` : null,
     max_activations: maxActivations,
     is_reusable: draft.isReusable,

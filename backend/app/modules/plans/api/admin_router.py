@@ -125,6 +125,8 @@ async def create_plan(
             traffic_limit=payload.traffic_limit,
             device_limit=payload.device_limit,
             is_trial=payload.is_trial,
+            allow_bonus_days=payload.allow_bonus_days,
+            allow_promocodes=payload.allow_promocodes,
         ),
     )
     return PlanResponse.model_validate(plan, from_attributes=True)
@@ -163,6 +165,8 @@ async def update_plan(
             device_limit=payload.device_limit,
             is_active=payload.is_active,
             is_trial=payload.is_trial,
+            allow_bonus_days=payload.allow_bonus_days,
+            allow_promocodes=payload.allow_promocodes,
         ),
     )
     return PlanResponse.model_validate(plan, from_attributes=True)

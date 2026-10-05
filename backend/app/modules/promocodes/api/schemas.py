@@ -18,6 +18,7 @@ class PromocodeResponse(BaseModel):
     reward_duration_days: Optional[int] = None
     availability: PromocodeAvailability
     allowed_user_ids: list[int]
+    allowed_plan_ids: list[int]
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = None
     is_reusable: bool
@@ -44,6 +45,7 @@ class CreatePromocodeRequest(BaseModel):
     reward_duration_days: Optional[int] = None
     availability: PromocodeAvailability = PromocodeAvailability.ALL
     allowed_user_ids: list[int] = Field(default_factory=list)
+    allowed_plan_ids: list[int] = Field(default_factory=list)
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = Field(default=None, ge=1)
     is_reusable: bool = False
@@ -53,6 +55,7 @@ class UpdatePromocodeRequest(BaseModel):
     is_active: Optional[bool] = None
     availability: Optional[PromocodeAvailability] = None
     allowed_user_ids: Optional[list[int]] = None
+    allowed_plan_ids: Optional[list[int]] = None
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = Field(default=None, ge=1)
     is_reusable: Optional[bool] = None

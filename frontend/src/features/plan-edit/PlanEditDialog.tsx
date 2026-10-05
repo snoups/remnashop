@@ -89,6 +89,8 @@ function PlanEditDialogBody({
   const [trafficLimit, setTrafficLimit] = useState(String(plan?.traffic_limit ?? 0));
   const [deviceLimit, setDeviceLimit] = useState(String(plan?.device_limit ?? 0));
   const [isTrial, setIsTrial] = useState(plan?.is_trial ?? false);
+  const [allowBonusDays, setAllowBonusDays] = useState(plan?.allow_bonus_days ?? true);
+  const [allowPromocodes, setAllowPromocodes] = useState(plan?.allow_promocodes ?? true);
   const [isActive, setIsActive] = useState(plan?.is_active ?? true);
   const [durations, setDurations] = useState<DurationRow[]>(
     (plan?.durations ?? [])
@@ -151,6 +153,8 @@ function PlanEditDialogBody({
           traffic_limit: parsedTrafficLimit,
           device_limit: parsedDeviceLimit,
           is_trial: isTrial,
+          allow_bonus_days: allowBonusDays,
+          allow_promocodes: allowPromocodes,
         };
         const created = await createPlan(payload);
         toast.success(t("plans.edit.saved"));
@@ -167,6 +171,8 @@ function PlanEditDialogBody({
           device_limit: parsedDeviceLimit,
           is_active: isActive,
           is_trial: isTrial,
+          allow_bonus_days: allowBonusDays,
+          allow_promocodes: allowPromocodes,
         });
         updated = await setPlanDurations(
           plan.id,
@@ -344,6 +350,18 @@ function PlanEditDialogBody({
               hint={t("plans.edit.isTrialHint")}
               checked={isTrial}
               onChange={setIsTrial}
+            />
+            <ToggleRow
+              label={t("plans.edit.allowBonusDaysLabel")}
+              hint={t("plans.edit.allowBonusDaysHint")}
+              checked={allowBonusDays}
+              onChange={setAllowBonusDays}
+            />
+            <ToggleRow
+              label={t("plans.edit.allowPromocodesLabel")}
+              hint={t("plans.edit.allowPromocodesHint")}
+              checked={allowPromocodes}
+              onChange={setAllowPromocodes}
             />
           </Card>
         </div>

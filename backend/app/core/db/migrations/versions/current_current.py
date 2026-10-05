@@ -606,6 +606,8 @@ def upgrade() -> None:
         sa.Column("order_index", sa.Integer(), nullable=False),
         sa.Column("is_active", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("is_trial", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("allow_bonus_days", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("allow_promocodes", sa.Boolean(), server_default="true", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -1165,6 +1167,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("allowed_user_ids", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "allowed_plan_ids", postgresql.ARRAY(sa.Integer()), server_default="{}", nullable=False
+        ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("max_activations", sa.Integer(), nullable=True),
         sa.Column("is_reusable", sa.Boolean(), server_default="false", nullable=False),

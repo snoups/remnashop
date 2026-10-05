@@ -4,6 +4,8 @@ from functools import partial
 from typing import Final, Optional
 from uuid import uuid4
 
+from loguru import logger
+
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     DiscountSource,
@@ -15,6 +17,7 @@ from app.core.enums import (
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.ports import PromocodeLiveness
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -66,6 +69,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         uow: UnitOfWork,
         gateway_factory: PaymentGatewayFactory,
         purchase_dispatch: PurchaseSubscriptionDispatch,
+        promocode_liveness: PromocodeLiveness,
     ) -> None:
         self._plan_repository = plan_repository
         self._user_repository = user_repository
@@ -77,6 +81,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._uow = uow
         self._gateway_factory = gateway_factory
         self._purchase_dispatch = purchase_dispatch
+        self._promocode_liveness = promocode_liveness
 
     @staticmethod
     def _resolve_customer_email(
@@ -101,6 +106,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
         await self._validate_provisioning_preconditions(data)
+        user = await self._drop_dead_promocode_discounts(user)
 
         async with self._uow:
             rates = await self._pricing_repository.get_rate_table()
@@ -204,6 +210,27 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 expires_at=datetime_now() + _ORDER_TTL,
             )
         )
+
+    async def _drop_dead_promocode_discounts(self, user: UserDto) -> UserDto:
+        sources = {
+            source
+            for source in (user.personal_discount_promocode_id, user.purchase_discount_promocode_id)
+            if source is not None
+        }
+        if not sources:
+            return user
+        async with self._uow:
+            dead = {
+                source for source in sources if not await self._promocode_liveness.is_live(source)
+            }
+            if not dead:
+                return user
+            await self._user_repository.clear_discounts_from(dead, user_id=user.id)
+            refreshed = await self._user_repository.get_by_id(user.id)
+        if refreshed is None:
+            raise NotFoundError(f"User '{user.id}' not found", code=ErrorCode.USER_NOT_FOUND)
+        logger.info(f"{user.log} Dropped discounts from ended promocodes {sorted(dead)}")
+        return refreshed
 
     async def _spend_purchase_discount(self, quote: PriceQuote, user: UserDto) -> None:
         if quote.discount_source is not DiscountSource.PURCHASE:

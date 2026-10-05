@@ -239,6 +239,29 @@ class UserRepository:
         await self.session.flush()
         return cast(CursorResult, result).rowcount == 1
 
+    async def clear_discounts_from(
+        self, promocode_ids: set[int], *, user_id: Optional[int] = None
+    ) -> None:
+        # every user's when user_id is None, e.g. right before the promocode is
+        # deleted: the FK would null its id and the discount would pass for admin-granted
+        ids = list(promocode_ids)
+        personal: list[ColumnElement[bool]] = [User.personal_discount_promocode_id.in_(ids)]
+        purchase: list[ColumnElement[bool]] = [User.purchase_discount_promocode_id.in_(ids)]
+        if user_id is not None:
+            personal.append(User.id == user_id)
+            purchase.append(User.id == user_id)
+        await self.session.execute(
+            update(User)
+            .where(*personal)
+            .values(personal_discount=0, personal_discount_promocode_id=None)
+        )
+        await self.session.execute(
+            update(User)
+            .where(*purchase)
+            .values(purchase_discount=0, purchase_discount_promocode_id=None)
+        )
+        await self.session.flush()
+
     async def restore_purchase_discount(
         self, user_id: int, percent: int, promocode_id: Optional[int]
     ) -> None:

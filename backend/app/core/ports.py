@@ -29,6 +29,10 @@ class ReferrerLookup(Protocol):
     async def has_referrer(self, user_id: int) -> bool: ...
 
 
+class PromocodeLiveness(Protocol):
+    async def is_live(self, promocode_id: int) -> bool: ...
+
+
 class AnchorAmountRescaler(Protocol):
     async def rescale_anchor_amounts(self, factor: Decimal) -> None: ...
 

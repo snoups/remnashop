@@ -11,7 +11,7 @@ from app.core.enums import (
     SubscriptionStatus,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -96,6 +96,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                     "target_subscription_id must be an active subscription",
                     code=ErrorCode.TARGET_SUBSCRIPTION_NOT_ACTIVE,
                 )
+            await self._assert_plan_accepts(promo, target)
         elif promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
             reward_plan = await assert_subscription_reward_grantable(
                 promo,
@@ -122,6 +123,24 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
 
         logger.info(f"{actor.log} Activated promocode '{promo.code}'")
         return promo
+
+    async def _assert_plan_accepts(self, promo: PromocodeDto, target: SubscriptionDto) -> None:
+        plan_id = target.plan_snapshot.plan_id
+        if promo.allowed_plan_ids and plan_id not in promo.allowed_plan_ids:
+            raise ValidationError(
+                "This promocode isn't valid for the subscription's plan",
+                code=ErrorCode.PROMOCODE_PLAN_NOT_ALLOWED,
+            )
+        async with self._uow:
+            try:
+                plan = await self._plan_repository.get_by_id(plan_id)
+            except NotFoundError:
+                return  # a deleted plan keeps the defaults: allowed
+        if not plan.allow_promocodes:
+            raise ValidationError(
+                "The subscription's plan doesn't accept promocodes",
+                code=ErrorCode.PROMOCODE_PLAN_NOT_ALLOWED,
+            )
 
     async def _apply_reward(
         self,

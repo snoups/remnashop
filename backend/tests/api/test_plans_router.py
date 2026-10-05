@@ -247,3 +247,37 @@ async def test_catalog_refuses_an_api_token(
     )
 
     assert response.status_code == 403
+
+
+async def test_plan_switches_default_on_and_can_be_turned_off(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+    created = await client.post(
+        f"{API_V1}/plans",
+        headers=headers,
+        json={
+            "public_code": "switches",
+            "name": "Switches",
+            "type": "BOTH",
+            "traffic_limit": 100,
+            "device_limit": 3,
+        },
+    )
+    assert created.json()["allow_bonus_days"] is True
+    assert created.json()["allow_promocodes"] is True
+
+    patched = await client.patch(
+        f"{API_V1}/plans/{created.json()['id']}",
+        headers=headers,
+        json={"allow_bonus_days": False, "allow_promocodes": False},
+    )
+
+    assert patched.status_code == 200
+    assert patched.json()["allow_bonus_days"] is False
+    assert patched.json()["allow_promocodes"] is False

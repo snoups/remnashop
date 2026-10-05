@@ -35,6 +35,8 @@ export interface Plan {
   order_index: number;
   is_active: boolean;
   is_trial: boolean;
+  allow_bonus_days: boolean;
+  allow_promocodes: boolean;
   durations: PlanDuration[];
 }
 
@@ -55,6 +57,8 @@ export interface CreatePlanRequest {
   traffic_limit: number;
   device_limit: number;
   is_trial: boolean;
+  allow_bonus_days: boolean;
+  allow_promocodes: boolean;
 }
 
 export function createPlan(payload: CreatePlanRequest): Promise<Plan> {
@@ -71,6 +75,8 @@ export interface UpdatePlanRequest {
   device_limit?: number;
   is_active?: boolean;
   is_trial?: boolean;
+  allow_bonus_days?: boolean;
+  allow_promocodes?: boolean;
 }
 
 export function updatePlan(planId: number, payload: UpdatePlanRequest): Promise<Plan> {

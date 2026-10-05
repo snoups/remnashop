@@ -23,6 +23,7 @@ from app.modules.plans.usecases import SwitchAnchorCurrencyUseCase
 from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.usecases import UpdateCurrencyRateUseCase
+from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -146,6 +147,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         uow,
         _FakeFactory(),
         RecordingDispatch(),
+        PromocodeRepository(plan_repository.session),
     )
     result = await create_checkout(
         user,

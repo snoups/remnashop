@@ -17,6 +17,7 @@ import {
 import {
   describeReward,
   limitsToPayload,
+  PLAN_LIMITED_REWARDS,
   type PromocodeLimitsDraft,
   type PromocodeReward,
   REWARD_TYPE_ICON,
@@ -77,6 +78,7 @@ function PromocodeCreateDialogBody({
   const [limits, setLimits] = useState<PromocodeLimitsDraft>({
     availability: "ALL",
     allowedUserIds: [],
+    allowedPlanIds: [],
     expiresAt: "",
     maxActivations: "",
     isReusable: false,
@@ -113,7 +115,7 @@ function PromocodeCreateDialogBody({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    const limitsPayload = limitsToPayload(limits);
+    const limitsPayload = limitsToPayload(limits, rewardType);
     if (limitsPayload === undefined) {
       toast.error(t("errors.invalidNumber"));
       return;
@@ -327,7 +329,12 @@ function PromocodeCreateDialogBody({
             )}
           </Card>
 
-          <PromocodeLimitsFields idPrefix="promo" value={limits} onChange={setLimits} />
+          <PromocodeLimitsFields
+            idPrefix="promo"
+            value={limits}
+            onChange={setLimits}
+            plans={PLAN_LIMITED_REWARDS.includes(rewardType) ? plans : undefined}
+          />
         </div>
 
         <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-4">

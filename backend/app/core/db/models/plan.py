@@ -35,3 +35,5 @@ class Plan(BaseSql, TimestampMixin):
     order_index: Mapped[int] = mapped_column(index=True)
     is_active: Mapped[bool] = mapped_column(default=False, server_default="false")
     is_trial: Mapped[bool] = mapped_column(default=False, server_default="false")
+    allow_bonus_days: Mapped[bool] = mapped_column(default=True, server_default="true")
+    allow_promocodes: Mapped[bool] = mapped_column(default=True, server_default="true")

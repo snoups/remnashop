@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, ForeignKey, Integer, String, text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db.base import BaseSql
@@ -29,6 +29,8 @@ class Promocode(BaseSql, TimestampMixin):
     availability: Mapped[PromocodeAvailability]
     # the ALLOWED-availability allowlist, never queried (like User.permission_grants)
     allowed_user_ids: Mapped[Optional[list[int]]] = mapped_column(JSONB)
+    # empty = every plan; only for rewards applied to a subscription
+    allowed_plan_ids: Mapped[list[int]] = mapped_column(ARRAY(Integer), server_default="{}")
 
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     max_activations: Mapped[Optional[int]]

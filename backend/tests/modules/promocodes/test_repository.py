@@ -387,3 +387,30 @@ async def test_list_activations_by_user_returns_only_that_users_codes(
     activations = await promocode_repository.list_activations_by_user(user_id)
 
     assert {a.code for a in activations} == {"MINE1", "MINE2"}
+
+
+async def test_is_live_follows_activity_and_expiry(
+    promocode_repository: PromocodeRepository,
+) -> None:
+    fresh = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="LIVE1", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=5
+        )
+    )
+    off = await promocode_repository.create(
+        CreatePromocodeDto(code="OFF1", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=5)
+    )
+    await promocode_repository.update(UpdatePromocodeDto(promocode_id=off.id, is_active=False))
+    lapsed = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="LAPSED1",
+            reward_type=PromocodeRewardType.PURCHASE_DISCOUNT,
+            reward=5,
+            expires_at=datetime_now() - timedelta(days=1),
+        )
+    )
+
+    assert await promocode_repository.is_live(fresh.id) is True
+    assert await promocode_repository.is_live(off.id) is False
+    assert await promocode_repository.is_live(lapsed.id) is False
+    assert await promocode_repository.is_live(999_999_999) is False

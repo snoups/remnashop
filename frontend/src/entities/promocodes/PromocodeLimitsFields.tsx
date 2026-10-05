@@ -6,6 +6,7 @@ import { AVAILABILITIES, type PromocodeLimitsDraft } from "@entities/promocodes/
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { normalizePositiveInt } from "@shared/lib/chip-normalizers";
 import { ChipsInput } from "@shared/ui/ChipsInput";
+import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { DatePickerField } from "@shared/ui/DatePickerField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
@@ -40,9 +41,11 @@ interface PromocodeLimitsFieldsProps {
   idPrefix: string;
   value: PromocodeLimitsDraft;
   onChange: (value: PromocodeLimitsDraft) => void;
+  /** offered only for rewards applied to a subscription */
+  plans?: { id: number; name: string }[];
 }
 
-export function PromocodeLimitsFields({ idPrefix, value, onChange }: PromocodeLimitsFieldsProps) {
+export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: PromocodeLimitsFieldsProps) {
   const { t } = useTranslation();
   const set = (patch: Partial<PromocodeLimitsDraft>) => onChange({ ...value, ...patch });
 
@@ -70,6 +73,31 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange }: PromocodeLi
             inputMode="numeric"
             placeholder={t("promocodes.limits.allowedUserIdsPlaceholder")}
           />
+        </Field>
+      )}
+
+      {plans && plans.length > 0 && (
+        <Field label={t("promocodes.limits.plansLabel")} hint={t("promocodes.limits.plansHint")}>
+          <div className="flex flex-wrap gap-1.5">
+            {plans.map((plan) => {
+              const isSelected = value.allowedPlanIds.includes(plan.id);
+              return (
+                <ChoiceChip
+                  key={plan.id}
+                  active={isSelected}
+                  onClick={() =>
+                    set({
+                      allowedPlanIds: isSelected
+                        ? value.allowedPlanIds.filter((id) => id !== plan.id)
+                        : [...value.allowedPlanIds, plan.id],
+                    })
+                  }
+                >
+                  {plan.name}
+                </ChoiceChip>
+              );
+            })}
+          </div>
         </Field>
       )}
 

@@ -47,6 +47,8 @@ class PlanResponse(BaseModel):
     order_index: int
     is_active: bool
     is_trial: bool
+    allow_bonus_days: bool
+    allow_promocodes: bool
     durations: list[PlanDurationItem]
 
 
@@ -59,6 +61,8 @@ class CreatePlanRequest(BaseModel):
     traffic_limit: int = Field(ge=0)
     device_limit: int = Field(ge=0)
     is_trial: bool = False
+    allow_bonus_days: bool = True
+    allow_promocodes: bool = True
 
 
 class UpdatePlanRequest(BaseModel):
@@ -71,6 +75,8 @@ class UpdatePlanRequest(BaseModel):
     device_limit: Optional[int] = Field(default=None, ge=0)
     is_active: Optional[bool] = None
     is_trial: Optional[bool] = None
+    allow_bonus_days: Optional[bool] = None
+    allow_promocodes: Optional[bool] = None
 
 
 class SetPlanDurationsRequest(BaseModel):

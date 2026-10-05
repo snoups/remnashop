@@ -108,6 +108,8 @@ class PlanRepository:
             order_index=row.order_index,
             is_active=row.is_active,
             is_trial=row.is_trial,
+            allow_bonus_days=row.allow_bonus_days,
+            allow_promocodes=row.allow_promocodes,
             durations=durations,
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -166,6 +168,8 @@ class PlanRepository:
             order_index=next_order_index,
             is_active=False,
             is_trial=data.is_trial,
+            allow_bonus_days=data.allow_bonus_days,
+            allow_promocodes=data.allow_promocodes,
         )
         self.session.add(row)
 

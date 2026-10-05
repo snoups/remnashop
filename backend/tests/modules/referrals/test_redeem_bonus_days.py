@@ -41,6 +41,7 @@ from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_f
 def redeem(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
+    plan_repository: PlanRepository,
     purchase_subscription_use_case: PurchaseSubscriptionUseCase,
     idempotency_repository: PurchaseIdempotencyRepository,
     uow: UnitOfWork,
@@ -49,6 +50,7 @@ def redeem(
     return RedeemBonusDaysUseCase(
         user_repository,
         subscription_repository,
+        plan_repository,
         purchase_subscription_use_case,
         idempotency_repository,
         uow,
@@ -337,3 +339,21 @@ async def test_redeem_reports_insufficient_when_the_balance_moved_meanwhile(
 
     assert error.value.code is ErrorCode.BONUS_DAYS_INSUFFICIENT
     assert await _bonus_days(user_repository, stale.id) == 2
+
+
+async def test_redeem_refuses_a_plan_that_disallows_bonus_days(
+    redeem: RedeemBonusDaysUseCase,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+) -> None:
+    plan = await _plan(plan_repository)
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, allow_bonus_days=False))
+    user = await _user_with_days(user_repository, 940_011, 5)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+
+    with pytest.raises(ValidationError) as error:
+        await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=2))
+
+    assert error.value.code is ErrorCode.BONUS_DAYS_PLAN_NOT_ALLOWED
+    assert await _bonus_days(user_repository, user.id) == 5

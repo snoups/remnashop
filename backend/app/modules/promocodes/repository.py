@@ -39,6 +39,7 @@ class PromocodeRepository:
             reward_duration_days=row.reward_duration_days,
             availability=row.availability,
             allowed_user_ids=list(row.allowed_user_ids or []),
+            allowed_plan_ids=list(row.allowed_plan_ids or []),
             expires_at=row.expires_at,
             max_activations=row.max_activations,
             is_reusable=row.is_reusable,
@@ -124,6 +125,7 @@ class PromocodeRepository:
             reward_duration_days=data.reward_duration_days,
             availability=data.availability,
             allowed_user_ids=data.allowed_user_ids,
+            allowed_plan_ids=data.allowed_plan_ids,
             expires_at=data.expires_at,
             max_activations=data.max_activations,
             is_reusable=data.is_reusable,
@@ -155,6 +157,13 @@ class PromocodeRepository:
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_dto(row)
+
+    async def is_live(self, promocode_id: int) -> bool:
+        # a discount it granted lives exactly as long as the promocode does
+        row = await self.session.get(Promocode, promocode_id)
+        if row is None or not row.is_active:
+            return False
+        return row.expires_at is None or row.expires_at > datetime_now()
 
     async def delete(self, promocode_id: int) -> None:
         row = await self._get_or_raise(promocode_id)

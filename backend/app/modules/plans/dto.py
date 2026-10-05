@@ -41,6 +41,8 @@ class PlanDto(BaseDto, TimestampMixin):
     order_index: int = 0
     is_active: bool = False
     is_trial: bool = False
+    allow_bonus_days: bool = True
+    allow_promocodes: bool = True
     durations: list[PlanDurationDto] = Field(default_factory=list)
 
 
@@ -54,6 +56,8 @@ class CreatePlanDto:
     tag: Optional[str] = None
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET
     is_trial: bool = False
+    allow_bonus_days: bool = True
+    allow_promocodes: bool = True
     # left unset by the API: CreatePlanUseCase generates it
     public_code: Optional[str] = None
 
@@ -70,6 +74,8 @@ class UpdatePlanDto:
     device_limit: Optional[int] = None
     is_active: Optional[bool] = None
     is_trial: Optional[bool] = None
+    allow_bonus_days: Optional[bool] = None
+    allow_promocodes: Optional[bool] = None
 
 
 @dataclass(frozen=True, kw_only=True)

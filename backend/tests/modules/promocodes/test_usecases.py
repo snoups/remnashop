@@ -4,7 +4,9 @@ from typing import Optional
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete
 
+from app.core.db.models.plan import Plan
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AddOnType,
@@ -21,6 +23,7 @@ from app.core.enums import (
     SubscriptionStatus,
     TransactionStatus,
 )
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.plans.addon_repository import AddOnRepository
@@ -301,7 +304,10 @@ async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist
 
 
 async def test_delete_promocode(
-    promocode_repository: PromocodeRepository, uow, event_publisher
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+    uow,
+    event_publisher,
 ) -> None:
     create_use_case = CreatePromocodeUseCase(
         promocode_repository,
@@ -313,7 +319,9 @@ async def test_delete_promocode(
     created = await create_use_case(
         OWNER, CreatePromocodeDto(code="DELME", reward_type=PromocodeRewardType.DURATION, reward=5)
     )
-    delete_use_case = DeletePromocodeUseCase(promocode_repository, uow, event_publisher)
+    delete_use_case = DeletePromocodeUseCase(
+        promocode_repository, user_repository, uow, event_publisher
+    )
 
     await delete_use_case(OWNER, created.id)
 
@@ -1243,3 +1251,205 @@ async def test_admin_discount_clears_promocode_source(
     assert updated is not None
     assert updated.personal_discount == 5
     assert updated.personal_discount_promocode_id is None
+
+
+async def _plan_with_subscription(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user: UserDto,
+    code: str,
+    *,
+    allow_promocodes: bool = True,
+) -> tuple[int, int]:
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code=code,
+            name=code,
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+            allow_promocodes=allow_promocodes,
+        )
+    )
+    subscription = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=user.id,
+            remnawave_user_id=user.id,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=0,
+            device_limit=0,
+            expire_at=datetime_now(),
+            url="https://example.test/sub",
+            plan_snapshot=make_plan_snapshot(plan_id=plan.id),
+        )
+    )
+    return plan.id, subscription.id
+
+
+@pytest.mark.parametrize(
+    ("listed", "allow_promocodes"),
+    [(False, True), (True, False)],
+    ids=["plan-not-listed", "plan-refuses-promocodes"],
+)
+async def test_activate_refuses_a_subscription_on_a_disallowed_plan(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+    listed: bool,
+    allow_promocodes: bool,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Pat", telegram_id=330))
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan_id, subscription_id = await _plan_with_subscription(
+        plan_repository,
+        subscription_repository,
+        actor,
+        "rules-plan",
+        allow_promocodes=allow_promocodes,
+    )
+    other = await plan_repository.create(
+        CreatePlanDto(
+            public_code="other", name="other", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="PLANONLY",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=10,
+            allowed_plan_ids=[plan_id] if listed else [other.id],
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            actor, ActivatePromocodeDto(code="PLANONLY", target_subscription_id=subscription_id)
+        )
+
+    assert error.value.code is ErrorCode.PROMOCODE_PLAN_NOT_ALLOWED
+    assert await promocode_repository.get_activations_count(promo.id) == 0
+
+
+async def test_activate_on_a_deleted_plan_is_not_refused_for_the_plan(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Gone", telegram_id=331))
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan_id, subscription_id = await _plan_with_subscription(
+        plan_repository, subscription_repository, actor, "gone-plan", allow_promocodes=False
+    )
+    await plan_repository.session.execute(delete(Plan).where(Plan.id == plan_id))
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(code="ANYPLAN", reward_type=PromocodeRewardType.DURATION, reward=10)
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    # the fake panel has no user behind this row, so the reward step fails —
+    # after the plan checks let it through and the activation was claimed
+    with pytest.raises(Exception) as error:
+        await use_case(
+            actor, ActivatePromocodeDto(code="ANYPLAN", target_subscription_id=subscription_id)
+        )
+
+    assert getattr(error.value, "code", None) is not ErrorCode.PROMOCODE_PLAN_NOT_ALLOWED
+    assert await promocode_repository.get_activations_count(promo.id) == 1
+
+
+async def test_activate_on_a_listed_plan_passes_the_plan_checks(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Lis", telegram_id=332))
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan_id, subscription_id = await _plan_with_subscription(
+        plan_repository, subscription_repository, actor, "listed-plan"
+    )
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="LISTED",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=10,
+            allowed_plan_ids=[plan_id],
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    # the reward step then fails on the fake panel; the plan checks let it through
+    with pytest.raises(Exception) as error:
+        await use_case(
+            actor, ActivatePromocodeDto(code="LISTED", target_subscription_id=subscription_id)
+        )
+
+    assert getattr(error.value, "code", None) is not ErrorCode.PROMOCODE_PLAN_NOT_ALLOWED
+    assert await promocode_repository.get_activations_count(promo.id) == 1
+
+
+async def test_deleting_a_promocode_ends_the_discounts_it_gave(
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+    uow,
+    event_publisher,
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="GONEDISC", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=20
+        )
+    )
+    holder = await user_repository.create(CreateUserDto(name="Holder", telegram_id=340))
+    bystander = await user_repository.create(CreateUserDto(name="Admin-given", telegram_id=341))
+    async with uow:
+        await user_repository.update_fields(
+            holder.id,
+            UpdateUserDto(
+                purchase_discount=20,
+                purchase_discount_promocode_id=promo.id,
+                personal_discount=10,
+                personal_discount_promocode_id=promo.id,
+            ),
+        )
+        await user_repository.update_fields(bystander.id, UpdateUserDto(personal_discount=15))
+
+    await DeletePromocodeUseCase(promocode_repository, user_repository, uow, event_publisher)(
+        OWNER, promo.id
+    )
+
+    after = await user_repository.get_by_id(holder.id)
+    assert after is not None
+    assert (after.purchase_discount, after.personal_discount) == (0, 0)
+    untouched = await user_repository.get_by_id(bystander.id)
+    assert untouched is not None
+    assert untouched.personal_discount == 15

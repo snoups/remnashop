@@ -1,5 +1,6 @@
-from dishka import Provider, Scope, provide, provide_all
+from dishka import Provider, Scope, alias, provide, provide_all
 
+from app.core.ports import PromocodeLiveness
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.usecases import (
     ActivatePromocodeUseCase,
@@ -20,6 +21,7 @@ class PromocodesProvider(Provider):
     scope = Scope.REQUEST
 
     promocode_repository = provide(PromocodeRepository)
+    promocode_liveness = alias(source=PromocodeRepository, provides=PromocodeLiveness)
     use_cases = provide_all(
         CreatePromocodeUseCase,
         UpdatePromocodeUseCase,

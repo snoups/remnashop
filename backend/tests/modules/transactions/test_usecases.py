@@ -15,6 +15,7 @@ from app.core.enums import (
     PaymentGatewayType,
     PlanAvailability,
     PlanType,
+    PromocodeRewardType,
     PurchaseType,
     Role,
     SubscriptionStatus,
@@ -34,6 +35,8 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import PricingRepository
+from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
+from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions import (
@@ -104,6 +107,7 @@ def create_checkout_use_case(
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
     purchase_dispatch: RecordingDispatch,
+    promocode_repository: PromocodeRepository,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
         plan_repository,
@@ -116,6 +120,7 @@ def create_checkout_use_case(
         uow,
         _FakeFactory(fake_gateway),
         purchase_dispatch,
+        promocode_repository,
     )
 
 
@@ -681,3 +686,92 @@ async def test_a_personal_discount_order_leaves_the_purchase_discount_alone(
     await create_checkout_use_case(actor, _checkout_dto(actor, plan))
 
     assert (await user_repository.get_by_id(actor.id)).purchase_discount == 10  # type: ignore[union-attr]
+
+
+async def _promocode(promocode_repository: PromocodeRepository, code: str, *, live: bool) -> int:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(code=code, reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=20)
+    )
+    if not live:
+        await promocode_repository.update(
+            UpdatePromocodeDto(promocode_id=promo.id, is_active=False)
+        )
+    return promo.id
+
+
+async def test_a_discount_from_a_dead_promocode_is_dropped(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    promocode_repository: PromocodeRepository,
+    uow: UnitOfWork,
+) -> None:
+    dead = await _promocode(promocode_repository, "DEADDISC", live=False)
+    async with uow:
+        await user_repository.update_fields(
+            actor.id, UpdateUserDto(purchase_discount=20, purchase_discount_promocode_id=dead)
+        )
+    buyer = await user_repository.get_by_id(actor.id)
+    assert buyer is not None
+
+    result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert order.discount_percent == 0
+    user = await user_repository.get_by_id(actor.id)
+    assert user is not None
+    assert (user.purchase_discount, user.purchase_discount_promocode_id) == (0, None)
+
+
+async def test_the_live_smaller_discount_applies_when_the_larger_ones_promocode_is_dead(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    promocode_repository: PromocodeRepository,
+    uow: UnitOfWork,
+) -> None:
+    dead = await _promocode(promocode_repository, "DEADBIG", live=False)
+    live = await _promocode(promocode_repository, "LIVESMALL", live=True)
+    async with uow:
+        await user_repository.update_fields(
+            actor.id,
+            UpdateUserDto(
+                personal_discount=30,
+                personal_discount_promocode_id=dead,
+                purchase_discount=10,
+                purchase_discount_promocode_id=live,
+            ),
+        )
+    buyer = await user_repository.get_by_id(actor.id)
+    assert buyer is not None
+
+    result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert order.discount_percent == 10
+
+
+async def test_an_admin_granted_discount_survives(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=15))
+    buyer = await user_repository.get_by_id(actor.id)
+    assert buyer is not None
+
+    result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert order.discount_percent == 15
