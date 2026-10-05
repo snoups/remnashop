@@ -1,29 +1,57 @@
-import { ArrowRightLeft, BarChart3, Layers, TrendingUp } from "lucide-react";
+import { ArrowRightLeft, BarChart3, Gift, RefreshCw, Share2, TicketPercent, TrendingUp, Wallet } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Outlet, useMatch } from "react-router-dom";
+import { matchPath, Navigate, Outlet, useLocation } from "react-router-dom";
 
+import { usePermissions } from "@entities/user/use-current-user";
+import { ANALYTICS_TAB_PERMISSIONS } from "@entities/analytics/api";
+import type { AnalyticsPeriod } from "@entities/analytics/api";
 import { TabBar } from "@shared/ui/TabBar";
 import type { TabBarItem } from "@shared/ui/TabBar";
+import type { AnalyticsOutletContext } from "@pages/analytics/period";
+
+const BASE_PATH = "/dashboard/analytics";
+
+const TABS: { key: keyof typeof ANALYTICS_TAB_PERMISSIONS; to: string; icon: TabBarItem["icon"] }[] = [
+  { key: "metrics", to: "", icon: BarChart3 },
+  { key: "revenue", to: "revenue", icon: Wallet },
+  { key: "funnel", to: "funnel", icon: ArrowRightLeft },
+  { key: "trial", to: "trial", icon: Gift },
+  { key: "retention", to: "retention", icon: RefreshCw },
+  { key: "ltv", to: "ltv", icon: TrendingUp },
+  { key: "sources", to: "sources", icon: Share2 },
+  { key: "promocodes", to: "promocodes", icon: TicketPercent },
+];
 
 export function AnalyticsPage() {
   const { t } = useTranslation();
-  const isMetricsActive = useMatch({ path: "/dashboard/analytics", end: true }) !== null;
-  const isFunnelActive = useMatch("/dashboard/analytics/funnel") !== null;
-  const isCohortsActive = useMatch("/dashboard/analytics/cohorts") !== null;
-  const isLtvActive = useMatch("/dashboard/analytics/ltv") !== null;
+  const { pathname } = useLocation();
+  const permissions = usePermissions();
+  const [period, setPeriod] = useState<AnalyticsPeriod>({ kind: "days", days: 30 });
 
-  const items: TabBarItem[] = [
-    { key: "metrics", to: "", end: true, icon: BarChart3, label: t("analytics.tabs.metrics"), isActive: isMetricsActive },
-    { key: "funnel", to: "funnel", icon: ArrowRightLeft, label: t("analytics.tabs.funnel"), isActive: isFunnelActive },
-    { key: "cohorts", to: "cohorts", icon: Layers, label: t("analytics.tabs.cohorts"), isActive: isCohortsActive },
-    { key: "ltv", to: "ltv", icon: TrendingUp, label: t("analytics.tabs.ltv"), isActive: isLtvActive },
-  ];
+  const isActive = (tab: (typeof TABS)[number]) =>
+    matchPath({ path: tab.to ? `${BASE_PATH}/${tab.to}` : BASE_PATH, end: tab.to === "" }, pathname) !== null;
+  const allowed = (tab: (typeof TABS)[number]) => permissions.includes(ANALYTICS_TAB_PERMISSIONS[tab.key]);
+
+  const items: TabBarItem[] = TABS.filter(allowed).map((tab) => ({
+    key: tab.key,
+    to: tab.to,
+    end: tab.to === "",
+    icon: tab.icon,
+    label: t(`analytics.tabs.${tab.key}`),
+    isActive: isActive(tab),
+  }));
+
+  const activeTab = TABS.find(isActive);
+  if (activeTab && !allowed(activeTab) && items.length > 0) {
+    return <Navigate to={items[0].to ? `${BASE_PATH}/${items[0].to}` : BASE_PATH} replace />;
+  }
 
   return (
     <div>
       <TabBar items={items} />
       <div className="mt-6">
-        <Outlet />
+        <Outlet context={{ period, setPeriod } satisfies AnalyticsOutletContext} />
       </div>
     </div>
   );

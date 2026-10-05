@@ -3,13 +3,13 @@ import { useLocation } from "react-router-dom";
 
 import { usePermissions } from "@entities/user/use-current-user";
 import { TabBar } from "@shared/ui/TabBar";
-import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
+import { isNavItemVisible, NAV_ITEMS } from "@widgets/sidebar/nav-items";
 
 export function BottomNav() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const permissions = usePermissions();
-  const items = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission)).map((item) => ({
+  const items = NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions)).map((item) => ({
     key: item.key,
     to: item.to,
     end: item.end,

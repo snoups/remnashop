@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 
+import { ANALYTICS_TAB_PERMISSIONS } from "@entities/analytics/api";
 import type en from "@shared/i18n/locales/en.json";
 import type { Permission } from "@shared/types/rbac";
 
@@ -29,22 +30,26 @@ export interface NavItem {
   to: string;
   icon: ComponentType<{ className?: string }>;
   end?: boolean;
-  // omitted: always visible (overview, settings)
-  permission?: Permission;
+  /** shown when the actor holds any of these; omitted: always visible (overview, settings) */
+  anyOf?: Permission[];
+}
+
+export function isNavItemVisible(item: NavItem, permissions: Permission[]): boolean {
+  return !item.anyOf || item.anyOf.some((permission) => permissions.includes(permission));
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { key: "overview", to: "/dashboard", icon: LayoutGrid, end: true },
-  { key: "analytics", to: "/dashboard/analytics", icon: BarChart3, permission: "ANALYTICS_VIEW" },
-  { key: "users", to: "/dashboard/users", icon: Users, permission: "USERS_VIEW" },
-  { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, permission: "SUBSCRIPTIONS_VIEW" },
-  { key: "plans", to: "/dashboard/plans", icon: Package, permission: "PLANS_VIEW" },
-  { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, permission: "PROMOCODES_VIEW" },
-  { key: "referrals", to: "/dashboard/referrals", icon: Share2, permission: "REFERRALS_LIST" },
-  { key: "advertising", to: "/dashboard/advertising", icon: Link2, permission: "AD_LINKS_VIEW" },
-  { key: "transactions", to: "/dashboard/transactions", icon: CreditCard, permission: "TRANSACTIONS_VIEW" },
-  { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, permission: "ADMINS_MANAGE" },
-  { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, permission: "EVENT_LOG_VIEW" },
+  { key: "analytics", to: "/dashboard/analytics", icon: BarChart3, anyOf: Object.values(ANALYTICS_TAB_PERMISSIONS) },
+  { key: "users", to: "/dashboard/users", icon: Users, anyOf: ["USERS_VIEW"] },
+  { key: "subscriptions", to: "/dashboard/subscriptions", icon: Layers, anyOf: ["SUBSCRIPTIONS_VIEW"] },
+  { key: "plans", to: "/dashboard/plans", icon: Package, anyOf: ["PLANS_VIEW"] },
+  { key: "promocodes", to: "/dashboard/promocodes", icon: Ticket, anyOf: ["PROMOCODES_VIEW"] },
+  { key: "referrals", to: "/dashboard/referrals", icon: Share2, anyOf: ["REFERRALS_LIST"] },
+  { key: "advertising", to: "/dashboard/advertising", icon: Link2, anyOf: ["AD_LINKS_VIEW"] },
+  { key: "transactions", to: "/dashboard/transactions", icon: CreditCard, anyOf: ["TRANSACTIONS_VIEW"] },
+  { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, anyOf: ["ADMINS_MANAGE"] },
+  { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, anyOf: ["EVENT_LOG_VIEW"] },
   { key: "settings", to: "/dashboard/settings", icon: Settings },
 ];
 

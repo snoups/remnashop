@@ -1,12 +1,14 @@
-import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Calendar, X } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
+import { parseIsoDate } from "@shared/lib/iso-date";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { IconButton } from "@shared/ui/IconButton";
+import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { FIELD_SURFACE_CLASS } from "@shared/ui/TextInput";
 
@@ -22,29 +24,6 @@ interface DatePickerFieldProps {
   variant?: "glass" | "form";
 }
 
-function toIsoDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseIsoDate(value: string): Date | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-}
-
-function getMonthGrid(year: number, month: number): Date[] {
-  const firstOfMonth = new Date(year, month, 1);
-  const startOffset = (firstOfMonth.getDay() + 6) % 7;
-  const start = new Date(year, month, 1 - startOffset);
-  return Array.from(
-    { length: 42 },
-    (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i),
-  );
-}
-
 export function DatePickerField({ id, value, onChange, placeholder, variant = "glass" }: DatePickerFieldProps) {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -52,23 +31,12 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const selected = parseIsoDate(value);
-  const [viewDate, setViewDate] = useState(selected ?? new Date());
-
-  useEffect(() => {
-    if (isOpen) setViewDate(parseIsoDate(value) ?? new Date());
-  }, [isOpen, value]);
 
   useClickOutside([ref, popoverRef], isOpen, () => setIsOpen(false));
   useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
 
   const toggleOpen = () => setIsOpen(!isOpen);
 
-  const today = new Date();
-  const days = getMonthGrid(viewDate.getFullYear(), viewDate.getMonth());
-  const monthLabel = viewDate.toLocaleDateString(i18n.language, { month: "long", year: "numeric" });
-  const weekdayLabels = Array.from({ length: 7 }, (_, i) =>
-    new Date(2024, 0, 1 + i).toLocaleDateString(i18n.language, { weekday: "short" }),
-  );
   const displayValue = selected ? selected.toLocaleDateString(i18n.language) : "";
 
   return (
@@ -115,57 +83,13 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="w-64 p-3"
 >
-        <div className="flex items-center justify-between">
-          <IconButton
-            size="7"
-            onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-          >
-            <ChevronLeft className="size-4" />
-          </IconButton>
-          <span className="text-[13px] font-semibold capitalize text-foreground">{monthLabel}</span>
-          <IconButton
-            size="7"
-            onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-          >
-            <ChevronRight className="size-4" />
-          </IconButton>
-        </div>
-
-        <div className="mt-2 grid grid-cols-7 place-items-center gap-y-1">
-          {weekdayLabels.map((label, index) => (
-            <span
-              key={`${label}-${index}`}
-              className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >
-              {label}
-            </span>
-          ))}
-          {days.map((day) => {
-            const isCurrentMonth = day.getMonth() === viewDate.getMonth();
-            const isSelected = selected !== null && toIsoDate(day) === toIsoDate(selected);
-            const isToday = toIsoDate(day) === toIsoDate(today);
-
-            return (
-              <button
-                key={toIsoDate(day)}
-                type="button"
-                onClick={() => {
-                  onChange(toIsoDate(day));
-                  setIsOpen(false);
-                }}
-                className={`flex size-8 items-center justify-center rounded-full text-[12.5px] transition-colors ${
-                  isSelected
-                    ? "bg-accent font-semibold text-primary"
-                    : isCurrentMonth
-                      ? "text-foreground hover:bg-white/[0.08]"
-                      : "text-muted-foreground/50 hover:bg-white/[0.06]"
-                } ${isToday && !isSelected ? "border-2 border-primary/40" : ""}`}
-              >
-                {day.getDate()}
-              </button>
-            );
-          })}
-        </div>
+        <MonthCalendar
+          value={value}
+          onPick={(isoDate) => {
+            onChange(isoDate);
+            setIsOpen(false);
+          }}
+        />
       </PortalPopover>
     </div>
   );

@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { RequireAuth, RequireGuest } from "@shared/lib/route-guards";
 import { DashboardLayout } from "@widgets/dashboard-layout/DashboardLayout";
@@ -7,10 +7,14 @@ import { AppRouteError, PageRouteError } from "@widgets/route-error/RouteError";
 import {
   AdminsPage,
   AdvertisingPage,
-  AnalyticsCohortsPage,
   AnalyticsFunnelPage,
   AnalyticsLtvPage,
+  AnalyticsPromocodesPage,
+  AnalyticsSourcesPage,
+  AnalyticsRetentionPage,
+  AnalyticsRevenuePage,
   AnalyticsMetricsPage,
+  AnalyticsTrialPage,
   AnalyticsPage,
   ApiTokensPage,
   AppearanceSettingsPage,
@@ -96,9 +100,14 @@ export const router = createBrowserRouter([
                 element: <AnalyticsPage />,
                 children: [
                   { index: true, element: <AnalyticsMetricsPage /> },
+                  { path: "revenue", element: <AnalyticsRevenuePage /> },
                   { path: "funnel", element: <AnalyticsFunnelPage /> },
-                  { path: "cohorts", element: <AnalyticsCohortsPage /> },
+                  { path: "trial", element: <AnalyticsTrialPage /> },
+                  { path: "retention", element: <AnalyticsRetentionPage /> },
+                  { path: "cohorts", element: <Navigate to="../retention" replace /> },
                   { path: "ltv", element: <AnalyticsLtvPage /> },
+                  { path: "sources", element: <AnalyticsSourcesPage /> },
+                  { path: "promocodes", element: <AnalyticsPromocodesPage /> },
                 ],
               },
               { path: "event-log", element: <EventLogPage /> },

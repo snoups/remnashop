@@ -4,9 +4,6 @@ export const AdminsPage = lazy(() => import("@pages/admins/AdminsPage").then((m)
 export const AdvertisingPage = lazy(() =>
   import("@pages/advertising/AdvertisingPage").then((m) => ({ default: m.AdvertisingPage })),
 );
-export const AnalyticsCohortsPage = lazy(() =>
-  import("@pages/analytics/AnalyticsCohortsPage").then((m) => ({ default: m.AnalyticsCohortsPage })),
-);
 export const AnalyticsFunnelPage = lazy(() =>
   import("@pages/analytics/AnalyticsFunnelPage").then((m) => ({ default: m.AnalyticsFunnelPage })),
 );
@@ -15,6 +12,21 @@ export const AnalyticsLtvPage = lazy(() =>
 );
 export const AnalyticsMetricsPage = lazy(() =>
   import("@pages/analytics/AnalyticsMetricsPage").then((m) => ({ default: m.AnalyticsMetricsPage })),
+);
+export const AnalyticsPromocodesPage = lazy(() =>
+  import("@pages/analytics/AnalyticsPromocodesPage").then((m) => ({ default: m.AnalyticsPromocodesPage })),
+);
+export const AnalyticsSourcesPage = lazy(() =>
+  import("@pages/analytics/AnalyticsSourcesPage").then((m) => ({ default: m.AnalyticsSourcesPage })),
+);
+export const AnalyticsRevenuePage = lazy(() =>
+  import("@pages/analytics/AnalyticsRevenuePage").then((m) => ({ default: m.AnalyticsRevenuePage })),
+);
+export const AnalyticsRetentionPage = lazy(() =>
+  import("@pages/analytics/AnalyticsRetentionPage").then((m) => ({ default: m.AnalyticsRetentionPage })),
+);
+export const AnalyticsTrialPage = lazy(() =>
+  import("@pages/analytics/AnalyticsTrialPage").then((m) => ({ default: m.AnalyticsTrialPage })),
 );
 export const AnalyticsPage = lazy(() =>
   import("@pages/analytics/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })),

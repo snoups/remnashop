@@ -25,7 +25,7 @@ import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { BounceIcon } from "@shared/ui/BounceIcon";
-import { NAV_ITEMS, SETTINGS_TABS } from "@widgets/sidebar/nav-items";
+import { isNavItemVisible, NAV_ITEMS, SETTINGS_TABS } from "@widgets/sidebar/nav-items";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SearchClearButton } from "@shared/ui/SearchField";
 
@@ -120,7 +120,7 @@ export function HeaderSearch() {
   }, [wantsCatalog, userState]);
 
   const pages = useMemo<Entry[]>(() => {
-    const nav = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission)).map(
+    const nav = NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions)).map(
       (item) => ({ id: `nav:${item.key}`, label: t(`sidebar.${item.key}`), to: item.to, icon: item.icon }),
     );
     const settings = NAV_ITEMS.find((item) => item.key === "settings");

@@ -16,7 +16,7 @@ import { BottomNav } from "@widgets/bottom-nav/BottomNav";
 import { EntityDialogHost } from "@widgets/entity-dialog-host/EntityDialogHost";
 import { Header } from "@widgets/header/Header";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
-import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
+import { isNavItemVisible, NAV_ITEMS } from "@widgets/sidebar/nav-items";
 import { Sidebar } from "@widgets/sidebar/Sidebar";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -30,10 +30,8 @@ function AnimatedOutlet() {
   const section = location.pathname.split("/")[2] ?? "";
 
   // a page whose sidebar link is hidden is off limits by URL too
-  const gate = NAV_ITEMS.find(
-    (item) => item.permission && matchPath({ path: item.to, end: false }, location.pathname),
-  )?.permission;
-  if (gate && !permissions.includes(gate)) {
+  const gate = NAV_ITEMS.find((item) => item.anyOf && matchPath({ path: item.to, end: false }, location.pathname));
+  if (gate && !isNavItemVisible(gate, permissions)) {
     return <Navigate to="/dashboard" replace />;
   }
 

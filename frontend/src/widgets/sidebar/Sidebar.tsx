@@ -14,7 +14,7 @@ import { HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
 import { IconButton } from "@shared/ui/IconButton";
 import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
 import { DonateButton } from "@widgets/build-info/DonateButton";
-import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
+import { isNavItemVisible, NAV_ITEMS } from "@widgets/sidebar/nav-items";
 import type { NavItem } from "@widgets/sidebar/nav-items";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME, SIDEBAR_PILL_SHAPE_CLASSNAME } from "@widgets/sidebar/nav-pill";
 
@@ -90,7 +90,7 @@ export function Sidebar() {
   };
   const isCollapsed = useSidebarCollapsed();
   const permissions = usePermissions();
-  const visibleItems = NAV_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission));
+  const visibleItems = NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions));
   // `scale`, not width/height, so a pressed row never pushes its neighbours
   const tapProps = bounceTap();
 

@@ -10,7 +10,9 @@ import { CopyableValue } from "@shared/ui/CopyableValue";
 import { DatePickerField } from "@shared/ui/DatePickerField";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { IconButton } from "@shared/ui/IconButton";
+import { POPOVER_CLASS } from "@shared/ui/classes";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
+import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { TextInput } from "@shared/ui/TextInput";
 
 export function ButtonsSection() {
@@ -72,6 +74,13 @@ export function ButtonsSection() {
 export function IconButtonsSection() {
   const k = useKit();
   const [date, setDate] = useState("2026-09-29");
+  const [range, setRange] = useState({ start: "2026-09-10", end: "2026-09-18" });
+
+  const pickRangeDay = (iso: string) =>
+    setRange(({ start, end }) => {
+      if (start === "" || end !== "") return { start: iso, end: "" };
+      return iso < start ? { start: iso, end: start } : { start, end: iso };
+    });
 
   return (
     <DebugSection id="icons">
@@ -102,6 +111,14 @@ export function IconButtonsSection() {
           <IconButton size="9.5" tone="danger">
             <Trash2 className="size-4" />
           </IconButton>
+        </div>
+      </Specimen>
+      <Specimen name="MonthCalendar" usage={k("u.monthCalendar")}>
+        <div className={`${POPOVER_CLASS} w-64 p-3`}>
+          <MonthCalendar value={date} onPick={setDate} />
+        </div>
+        <div className={`${POPOVER_CLASS} w-64 p-3`}>
+          <MonthCalendar value={range.start} rangeEnd={range.end} onPick={pickRangeDay} />
         </div>
       </Specimen>
       <Specimen name='size="8"' usage={k("u.cardCorner")} stage="stretch">
