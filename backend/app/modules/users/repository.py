@@ -30,6 +30,7 @@ from app.modules.users.dto import (
     UpdateUserDto,
     UserDto,
     UserListItemDto,
+    UserLoyaltyStateDto,
     UserSort,
 )
 from app.modules.users.filters import (
@@ -72,7 +73,7 @@ _SORT_COLUMNS: Final[dict[str, InstrumentedAttribute[Any] | ColumnElement[Any]]]
 
 
 def _discount_filter() -> ColumnElement[bool]:
-    return or_(User.personal_discount > 0, User.purchase_discount > 0)
+    return or_(User.personal_discount > 0, User.purchase_discount > 0, User.loyalty_discount > 0)
 
 
 _SUBSCRIPTION_COUNTS: Final[tuple[ColumnElement[int], ...]] = (
@@ -377,6 +378,36 @@ class UserRepository:
         await self.session.flush()
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)
+
+    async def list_loyalty_states(self, user_ids: list[int]) -> list[UserLoyaltyStateDto]:
+        states: list[UserLoyaltyStateDto] = []
+        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
+            rows = await self.session.execute(
+                select(User.id, User.loyalty_discount, User.loyalty_excluded).where(
+                    User.id.in_(chunk)
+                )
+            )
+            states.extend(
+                UserLoyaltyStateDto(user_id=user_id, discount=discount, excluded=excluded)
+                for user_id, discount, excluded in rows.tuples()
+            )
+        return states
+
+    async def list_user_ids_with_loyalty_discount(self) -> list[int]:
+        return list(await self.session.scalars(select(User.id).where(User.loyalty_discount > 0)))
+
+    async def set_loyalty_discounts(self, changes: dict[int, int]) -> None:
+        by_percent: dict[int, list[int]] = {}
+        for user_id, percent in changes.items():
+            by_percent.setdefault(percent, []).append(user_id)
+        for percent, user_ids in by_percent.items():
+            for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
+                await self.session.execute(
+                    update(User)
+                    .where(User.id.in_(user_ids[start : start + MAX_SQL_IN_PARAMS]))
+                    .values(loyalty_discount=percent)
+                )
 
     async def update_fields(self, user_id: int, data: UpdateUserDto) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)

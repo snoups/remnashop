@@ -37,6 +37,10 @@ class AnchorAmountRescaler(Protocol):
     async def rescale_anchor_amounts(self, factor: Decimal) -> None: ...
 
 
+class LoyaltyThresholdRescaler(Protocol):
+    async def rescale_thresholds(self, factor: Decimal) -> None: ...
+
+
 @runtime_checkable
 class PasskeyRevoker(Protocol):
     async def delete_all_by_user(self, user_id: int) -> int: ...

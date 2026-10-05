@@ -24,15 +24,16 @@ def _base_price(
 
 
 def _effective_discount(user: UserDto) -> tuple[int, DiscountSource, Optional[int]]:
-    # (percent, source, promocode that set it)
-    personal = user.personal_discount
-    purchase = user.purchase_discount
-    percent = min(max(personal, purchase), 100)
-    if percent == 0:
+    # (percent, source, promocode that set it); a tie goes to the earlier source
+    candidates = (
+        (user.personal_discount, DiscountSource.PERSONAL, user.personal_discount_promocode_id),
+        (user.purchase_discount, DiscountSource.PURCHASE, user.purchase_discount_promocode_id),
+        (user.loyalty_discount, DiscountSource.LOYALTY, None),
+    )
+    percent, source, promocode_id = max(candidates, key=lambda candidate: candidate[0])
+    if percent <= 0:
         return 0, DiscountSource.NONE, None
-    if personal >= purchase:
-        return percent, DiscountSource.PERSONAL, user.personal_discount_promocode_id
-    return percent, DiscountSource.PURCHASE, user.purchase_discount_promocode_id
+    return min(percent, 100), source, promocode_id
 
 
 def quote_price(

@@ -22,6 +22,8 @@ from app.core.enums import (
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
+from app.modules.loyalty.dto import LoyaltyTierDto, UpdateLoyaltySettingsDto
+from app.modules.loyalty.repository import LoyaltyRepository
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     AddOnDto,
@@ -186,6 +188,7 @@ async def test_switch_anchor_keeps_derived_prices_stable(
         plan_repository,
         addon_repository,
         TransactionRepository(plan_repository.session),
+        LoyaltyRepository(plan_repository.session),
         uow,
         event_publisher,
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
@@ -253,6 +256,7 @@ async def test_switch_anchor_rescales_transaction_anchor_amounts(
         plan_repository,
         addon_repository,
         transaction_repository,
+        LoyaltyRepository(session),
         uow,
         event_publisher,
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
@@ -263,6 +267,48 @@ async def test_switch_anchor_rescales_transaction_anchor_amounts(
     assert after.anchor_final_price == Decimal("900")
     assert (after.final_price, after.currency) == (Decimal("900"), Currency.RUB)
     assert after.updated_at == paid_at
+
+
+async def test_switch_anchor_rescales_loyalty_thresholds(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("90"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    loyalty = LoyaltyRepository(session)
+    await loyalty.save_settings(
+        UpdateLoyaltySettingsDto(
+            enabled=True,
+            window_months=None,
+            tiers=[LoyaltyTierDto(threshold=Decimal("10"), percent=3)],
+        )
+    )
+
+    await SwitchAnchorCurrencyUseCase(
+        pricing_repository,
+        plan_repository,
+        addon_repository,
+        TransactionRepository(session),
+        loyalty,
+        uow,
+        event_publisher,
+    )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
+
+    assert (await loyalty.get_settings()).tiers == [
+        LoyaltyTierDto(threshold=Decimal("900"), percent=3)
+    ]
 
 
 async def test_preview_pricing_change_writes_nothing(

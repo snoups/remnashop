@@ -114,6 +114,7 @@ class ErrorCode(UpperStrEnum):
     LOCALE_DEFAULT_NOT_REMOVABLE = auto()
     LOCALE_NOT_ENABLED = auto()
     LOGIN_TAKEN = auto()
+    LOYALTY_TIERS_INVALID = auto()
     METHOD_NOT_ALLOWED = auto()
     NAME_INVALID = auto()
     NOTIFICATION_GROUP_UNKNOWN = auto()

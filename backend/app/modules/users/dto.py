@@ -40,6 +40,8 @@ class UserDto(BaseDto, TimestampMixin):
     purchase_discount: int = 0
     personal_discount_promocode_id: Optional[int] = None
     purchase_discount_promocode_id: Optional[int] = None
+    loyalty_discount: int = 0
+    loyalty_excluded: bool = False
 
     referral_code: Optional[str] = None
     points: Decimal = Decimal(0)
@@ -118,6 +120,13 @@ class CreateUserDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class UserLoyaltyStateDto:
+    user_id: int
+    discount: int
+    excluded: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class UpdateUserDto:
     # None = leave unchanged.
     name: Optional[str] = None
@@ -132,6 +141,7 @@ class UpdateUserDto:
     personal_discount_promocode_id: Optional[int] = None
     purchase_discount_promocode_id: Optional[int] = None
     is_trial_available: Optional[bool] = None
+    loyalty_excluded: Optional[bool] = None
 
 
 @dataclass(frozen=True, kw_only=True)

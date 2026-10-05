@@ -6,7 +6,7 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import AnchorAmountRescaler, EventPublisher
+from app.core.ports import AnchorAmountRescaler, EventPublisher, LoyaltyThresholdRescaler
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans.addon_repository import AddOnRepository
@@ -33,6 +33,7 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
         plan_repository: PlanRepository,
         addon_repository: AddOnRepository,
         anchor_amount_rescaler: AnchorAmountRescaler,
+        loyalty_threshold_rescaler: LoyaltyThresholdRescaler,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
@@ -40,6 +41,7 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
         self._plan_repository = plan_repository
         self._addon_repository = addon_repository
         self._anchor_amount_rescaler = anchor_amount_rescaler
+        self._loyalty_threshold_rescaler = loyalty_threshold_rescaler
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -68,6 +70,7 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
         async with self._uow:
             await self._pricing_repository.set_anchor(data.new_anchor, new_rates)
             await self._anchor_amount_rescaler.rescale_anchor_amounts(f)
+            await self._loyalty_threshold_rescaler.rescale_thresholds(f)
 
             plans = await self._plan_repository.list_all()
             plan_updates = {

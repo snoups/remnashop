@@ -17,6 +17,7 @@ from app.modules.auth.events import (
     SessionTheftDetectedEvent,
     UserSessionRevokedByAdminEvent,
 )
+from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
 from app.modules.oauth.events import (
     OAuthIdentityConnectedEvent,
     OAuthIdentityDisconnectedEvent,
@@ -29,6 +30,7 @@ from app.modules.subscriptions.events import (
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
 )
+from app.modules.transactions.events import TransactionRefundedEvent
 from app.modules.users.dto import UserDto
 from app.worker.subscribers import register_all_subscribers
 
@@ -53,6 +55,12 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
         UserSessionRevokedByAdminEvent(actor=_USER, target=_TARGET, session_id=1),
         SubscriptionPurchasedEvent(user=_USER, subscription_id=1, plan_id=1, purchase_type="NEW"),
         SubscriptionRenewedEvent(user=_USER, subscription_id=1, duration_days=30),
+        SubscriptionChangedEvent(
+            user=_USER, subscription_id=2, previous_subscription_id=1, previous_plan_snapshot={}
+        ),
+        TransactionRefundedEvent(
+            order_id=1, user_id=1, gateway_type="YOOKASSA", amount="10.00", currency="USD"
+        ),
     ]
 }
 
@@ -164,6 +172,7 @@ async def test_registered_handler_reads_its_real_payload_shape(
         return None
 
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(recalculate_loyalty_discounts_task, "kiq", _noop_kiq)
 
     bus = EventBus()
     register_all_subscribers(bus)

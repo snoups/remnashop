@@ -659,7 +659,9 @@
       "PricingSettingsChangedEvent": "Настройки цен изменены",
       "ReferralSettingsChangedEvent": "Настройки рефералов изменены",
       "SubscriptionEditedEvent": "Подписка изменена вручную",
-      "AddOnChangedEvent": "Дополнение изменено"
+      "AddOnChangedEvent": "Дополнение изменено",
+      "LoyaltySettingsChangedEvent": "Настройки лояльности изменены",
+      "UserLoyaltyExclusionChangedEvent": "Исключение из программы лояльности изменено"
     }
   },
   "sidebar": {
@@ -855,6 +857,16 @@
         "pointsHint": "Введите число или выражение: +50; −10; 100−50.",
         "bonusDaysHint": "Введите число или выражение: +7; −1; 30−7.",
         "discountHint": "Введите число или выражение: +5; −5; 100−50."
+      },
+      "loyaltyDiscount": "Лояльность",
+      "loyalty": {
+        "spent": "Потрачено за окно: {{amount}}",
+        "toNext": "До следующего уровня: {{amount}} ({{percent}}%)",
+        "topTier": "Достигнут высший уровень",
+        "exclude": "Исключить из программы",
+        "saved": "Сохранено.",
+        "error": "Не удалось изменить участие в программе лояльности.",
+        "loadError": "Не удалось загрузить данные лояльности."
       }
     },
     "kpi": {
@@ -930,7 +942,8 @@
       "backups": "Резервное копирование",
       "blacklist": "Чёрный список",
       "pricing": "Ценообразование",
-      "referrals": "Реферальная программа"
+      "referrals": "Реферальная программа",
+      "loyalty": "Программа лояльности"
     },
     "bot": {
       "title": "Telegram-бот",
@@ -1499,7 +1512,11 @@
     "DIALOGS_TEXT_UPDATE": "Редактирование текстов окон",
     "DIALOGS_EXPORT": "Экспорт окон",
     "DIALOGS_IMPORT": "Импорт окон",
-    "NOTIFICATIONS_VIEW": "Просмотр уведомлений"
+    "NOTIFICATIONS_VIEW": "Просмотр уведомлений",
+    "LOYALTY_SETTINGS_VIEW": "Просмотр настроек лояльности",
+    "LOYALTY_SETTINGS_MANAGE": "Изменение настроек лояльности",
+    "USERS_LOYALTY_VIEW": "Просмотр уровня лояльности пользователя",
+    "USERS_LOYALTY_MANAGE": "Исключение пользователя из программы лояльности"
   },
   "permissionCategories": {
     "botSettings": "Telegram-бот",
@@ -1526,7 +1543,8 @@
     "analytics": "Аналитика",
     "remnawave": "Remnawave",
     "dialogs": "Окна бота",
-    "emojiPacks": "Наборы эмодзи"
+    "emojiPacks": "Наборы эмодзи",
+    "loyalty": "Лояльность"
   },
   "permissionPicker": {
     "loadError": "Не удалось загрузить список разрешений.",
@@ -2495,7 +2513,8 @@
     "discountSource": {
       "NONE": "Нет",
       "PERSONAL": "Персональная",
-      "PURCHASE": "За покупку"
+      "PURCHASE": "За покупку",
+      "LOYALTY": "Лояльность"
     },
     "details": {
       "total": "К оплате",
@@ -2969,6 +2988,7 @@
     "LOCALE_DEFAULT_NOT_REMOVABLE": "Язык по умолчанию нельзя удалить.",
     "LOCALE_NOT_ENABLED": "Этот язык не включён.",
     "LOGIN_TAKEN": "Этот логин уже занят.",
+    "LOYALTY_TIERS_INVALID": "Пороги и проценты уровней должны возрастать.",
     "METHOD_NOT_ALLOWED": "Метод не поддерживается.",
     "NAME_INVALID": "Имя должно содержать буквы или цифры.",
     "NOTIFICATION_GROUP_UNKNOWN": "Неизвестная группа уведомлений.",
@@ -3079,5 +3099,31 @@
     "WITHDRAWAL_AMOUNT_INVALID": "Сумма должна быть больше нуля.",
     "WITHDRAWAL_EXCEEDS_POINTS": "Недостаточно баллов.",
     "BOT_PROXY_URL_INVALID": "Неверный адрес прокси: нужен socks5, socks5h или http с хостом и портом."
+  },
+  "loyalty": {
+    "settings": {
+      "title": "Программа лояльности",
+      "description": "Автоматическая скидка, которая растёт вместе с тем, сколько клиент заплатил",
+      "status": {
+        "enabled": "Включена",
+        "disabled": "Выключена"
+      },
+      "enabledLabel": "Программа включена",
+      "enabledHint": "Если выключить, скидка лояльности у всех клиентов обнулится при следующем пересчёте.",
+      "windowLabel": "Окно учёта",
+      "windowHint": "Учитываются только оплаты за последние N месяцев. Оставьте пустым, чтобы учитывать всё время.",
+      "windowUnit_one": "месяц",
+      "windowUnit_few": "месяца",
+      "windowUnit_many": "месяцев",
+      "windowUnit_other": "месяца",
+      "windowAllTime": "Всё время",
+      "tiersTitle": "Уровни",
+      "tiersDescription": "Ко всем покупкам применяется скидка самого высокого уровня, порог которого клиент уже оплатил.",
+      "tierFrom": "от",
+      "addTier": "Добавить уровень",
+      "saved": "Настройки лояльности сохранены.",
+      "error": "Не удалось сохранить настройки лояльности.",
+      "loadError": "Не удалось загрузить настройки лояльности."
+    }
   }
 }

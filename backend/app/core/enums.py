@@ -80,6 +80,7 @@ class DiscountSource(UpperStrEnum):
     NONE = auto()
     PERSONAL = auto()
     PURCHASE = auto()
+    LOYALTY = auto()
 
 
 class SubscriptionStatus(UpperStrEnum):

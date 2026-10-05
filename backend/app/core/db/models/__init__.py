@@ -22,6 +22,7 @@ from app.core.db.models.dialog_window import DialogWindow
 from app.core.db.models.emoji_pack import EmojiPack, EmojiPackItem
 from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.event_outbox import EventOutboxEntry
+from app.core.db.models.loyalty_settings import LoyaltySettings
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.passkey_credential import PasskeyCredential
@@ -68,6 +69,7 @@ __all__ = [
     "EmojiPackItem",
     "EventLogEntry",
     "EventOutboxEntry",
+    "LoyaltySettings",
     "OAuthIdentity",
     "OAuthSettings",
     "PasskeyCredential",

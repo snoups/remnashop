@@ -8,6 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PaymentGatewayType, PlanType, PurchaseType, Role, RoundingMode
 from app.core.ports import EventPublisher
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.loyalty.repository import LoyaltyRepository
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -214,6 +215,7 @@ async def test_switch_anchor_leaves_catalog_stable(
         plan_repository,
         addon_repository,
         TransactionRepository(plan_repository.session),
+        LoyaltyRepository(plan_repository.session),
         uow,
         event_publisher,
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))

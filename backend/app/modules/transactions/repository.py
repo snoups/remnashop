@@ -396,7 +396,11 @@ class TransactionRepository:
         return repeat_payers
 
     async def sum_paid_anchor_amount_per_user(
-        self, user_ids: Optional[list[int]] = None, *, created_before: Optional[datetime] = None
+        self,
+        user_ids: Optional[list[int]] = None,
+        *,
+        created_before: Optional[datetime] = None,
+        paid_since: Optional[datetime] = None,
     ) -> dict[int, Decimal]:
         stmt = (
             select(Transaction.user_id, func.sum(Transaction.anchor_final_price))
@@ -407,6 +411,9 @@ class TransactionRepository:
             stmt = stmt.where(Transaction.user_id.in_(user_ids))
         if created_before is not None:
             stmt = stmt.where(Transaction.created_at < created_before)
+        if paid_since is not None:
+            # updated_at of a PAID row is its paid moment
+            stmt = stmt.where(Transaction.updated_at >= paid_since)
         return dict((await self.session.execute(stmt)).tuples().all())
 
     async def count_paid_since(self, since: datetime) -> int:

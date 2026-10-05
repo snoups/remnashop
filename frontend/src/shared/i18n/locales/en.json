@@ -623,7 +623,9 @@
       "PricingSettingsChangedEvent": "Pricing settings changed",
       "ReferralSettingsChangedEvent": "Referral settings changed",
       "SubscriptionEditedEvent": "Subscription edited",
-      "AddOnChangedEvent": "Add-on changed"
+      "AddOnChangedEvent": "Add-on changed",
+      "LoyaltySettingsChangedEvent": "Loyalty settings changed",
+      "UserLoyaltyExclusionChangedEvent": "Loyalty program exclusion changed"
     }
   },
   "sidebar": {
@@ -811,6 +813,16 @@
         "pointsHint": "Enter a number or an expression: +50; −10; 100−50.",
         "bonusDaysHint": "Enter a number or an expression: +7; −1; 30−7.",
         "discountHint": "Enter a number or an expression: +5; −5; 100−50."
+      },
+      "loyaltyDiscount": "Loyalty",
+      "loyalty": {
+        "spent": "Spent in the window: {{amount}}",
+        "toNext": "{{amount}} to the next tier ({{percent}}%)",
+        "topTier": "Top tier reached",
+        "exclude": "Exclude from the program",
+        "saved": "Saved.",
+        "error": "Failed to change the loyalty program.",
+        "loadError": "Failed to load the loyalty data."
       }
     },
     "kpi": {
@@ -886,7 +898,8 @@
       "backups": "Backups",
       "blacklist": "Blacklist",
       "pricing": "Pricing",
-      "referrals": "Referral program"
+      "referrals": "Referral program",
+      "loyalty": "Loyalty program"
     },
     "bot": {
       "title": "Telegram bot",
@@ -1455,7 +1468,11 @@
     "DIALOGS_TEXT_UPDATE": "Edit window texts",
     "DIALOGS_EXPORT": "Export windows",
     "DIALOGS_IMPORT": "Import windows",
-    "NOTIFICATIONS_VIEW": "View notifications"
+    "NOTIFICATIONS_VIEW": "View notifications",
+    "LOYALTY_SETTINGS_VIEW": "View loyalty settings",
+    "LOYALTY_SETTINGS_MANAGE": "Edit loyalty settings",
+    "USERS_LOYALTY_VIEW": "View a user's loyalty tier",
+    "USERS_LOYALTY_MANAGE": "Exclude a user from the loyalty program"
   },
   "permissionCategories": {
     "botSettings": "Telegram bot",
@@ -1482,7 +1499,8 @@
     "analytics": "Analytics",
     "remnawave": "Remnawave",
     "dialogs": "Bot windows",
-    "emojiPacks": "Emoji packs"
+    "emojiPacks": "Emoji packs",
+    "loyalty": "Loyalty"
   },
   "permissionPicker": {
     "loadError": "Failed to load permissions.",
@@ -2437,7 +2455,8 @@
     "discountSource": {
       "NONE": "None",
       "PERSONAL": "Personal",
-      "PURCHASE": "Purchase"
+      "PURCHASE": "Purchase",
+      "LOYALTY": "Loyalty"
     },
     "details": {
       "total": "Total",
@@ -2909,6 +2928,7 @@
     "LOCALE_DEFAULT_NOT_REMOVABLE": "The default language can't be removed.",
     "LOCALE_NOT_ENABLED": "This language isn't enabled.",
     "LOGIN_TAKEN": "This login is already taken.",
+    "LOYALTY_TIERS_INVALID": "Tier thresholds and percents must both increase.",
     "METHOD_NOT_ALLOWED": "Method not allowed.",
     "NAME_INVALID": "The name must contain letters or digits.",
     "NOTIFICATION_GROUP_UNKNOWN": "Unknown notification group.",
@@ -3019,5 +3039,29 @@
     "WITHDRAWAL_AMOUNT_INVALID": "The amount must be positive.",
     "WITHDRAWAL_EXCEEDS_POINTS": "Not enough points.",
     "BOT_PROXY_URL_INVALID": "Invalid proxy address: use socks5, socks5h or http with a host and a port."
+  },
+  "loyalty": {
+    "settings": {
+      "title": "Loyalty program",
+      "description": "An automatic discount that grows with what a customer has paid",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "enabledLabel": "Program enabled",
+      "enabledHint": "Turned off, every customer's loyalty discount drops to zero on the next recalculation.",
+      "windowLabel": "Counting window",
+      "windowHint": "Only payments within the last N months count. Leave empty to count all time.",
+      "windowUnit_one": "month",
+      "windowUnit_other": "months",
+      "windowAllTime": "All time",
+      "tiersTitle": "Tiers",
+      "tiersDescription": "The discount of the highest tier whose threshold the customer has paid reaches applies to every purchase.",
+      "tierFrom": "from",
+      "addTier": "Add tier",
+      "saved": "Loyalty settings saved.",
+      "error": "Failed to save the loyalty settings.",
+      "loadError": "Failed to load the loyalty settings."
+    }
   }
 }

@@ -40,6 +40,7 @@ class AdminResponse(BaseModel):
     is_blocked: bool
     personal_discount: int
     purchase_discount: int
+    loyalty_discount: int
     points: Decimal
     bonus_days: int
     is_trial_available: bool
@@ -72,6 +73,7 @@ class UserResponse(BaseModel):
     is_blocked: bool
     personal_discount: int
     purchase_discount: int
+    loyalty_discount: int
     referral_code: Optional[str]
     points: Decimal
     bonus_days: int

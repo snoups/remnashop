@@ -651,6 +651,26 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
+        "loyalty_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("window_months", sa.SmallInteger(), nullable=True),
+        sa.Column("tiers", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "referral_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("enabled", sa.Boolean(), server_default="false", nullable=False),
@@ -788,6 +808,8 @@ def upgrade() -> None:
         sa.Column("purchase_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("personal_discount_promocode_id", sa.Integer(), nullable=True),
         sa.Column("purchase_discount_promocode_id", sa.Integer(), nullable=True),
+        sa.Column("loyalty_discount", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("loyalty_excluded", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
         sa.Column("points", sa.Numeric(precision=12, scale=0), server_default="0", nullable=False),
         sa.Column("bonus_days", sa.Integer(), server_default="0", nullable=False),
@@ -819,6 +841,9 @@ def upgrade() -> None:
         sa.CheckConstraint("bonus_days >= 0", name="ck_users_bonus_days_non_negative"),
         sa.CheckConstraint(
             "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
+        ),
+        sa.CheckConstraint(
+            "loyalty_discount BETWEEN 0 AND 100", name="ck_users_loyalty_discount_range"
         ),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -1510,7 +1535,7 @@ def upgrade() -> None:
         sa.Column("discount_percent", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
             "discount_source",
-            sa.Enum("NONE", "PERSONAL", "PURCHASE", name="discountsource"),
+            sa.Enum("NONE", "PERSONAL", "PURCHASE", "LOYALTY", name="discountsource"),
             server_default="NONE",
             nullable=False,
         ),
@@ -1784,6 +1809,7 @@ def downgrade() -> None:
     op.drop_table("users")
     op.drop_table("shop_settings")
     op.drop_table("referral_settings")
+    op.drop_table("loyalty_settings")
     op.drop_table("pricing_settings")
     op.drop_index(op.f("ix_plans_public_code"), table_name="plans")
     op.drop_index(op.f("ix_plans_order_index"), table_name="plans")

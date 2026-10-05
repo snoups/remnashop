@@ -3,11 +3,13 @@ import { useRef, useState, type ChangeEvent, type FocusEvent, type FormEvent, ty
 import { useTranslation } from "react-i18next";
 
 import { listEventLog, type EventLogEntry } from "@entities/event-log/api";
+import { getUserLoyalty, setUserLoyaltyExcluded } from "@entities/loyalty/api";
 import { adjustUserBonusDays, adjustUserPoints } from "@entities/referrals/api";
 import { setUserDiscount, type UserListItem } from "@entities/user/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { getErrorMessage } from "@shared/api/http";
+import { currencySymbol } from "@shared/lib/format";
 import { formatRelative } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -17,9 +19,11 @@ import { Button } from "@shared/ui/Button";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { Spinner } from "@shared/ui/Spinner";
+import { Switch } from "@shared/ui/Switch";
 import { SuffixInput, TextInput } from "@shared/ui/TextInput";
 
-// Points, bonus days and discount tiles of the user profile; each opens its own editor.
+// Points, bonus days, discount and loyalty tiles of the user profile; each opens its own editor.
 
 const POINT_DELTAS = [-50, -10, 10, 50];
 const DAY_DELTAS = [-7, -1, 1, 7];
@@ -43,6 +47,12 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
   const canEditDiscount =
     Boolean(onChanged) &&
     permissions.includes("USERS_DISCOUNT_MANAGE") &&
+    (user.role === "USER" || permissions.includes("ADMINS_MANAGE"));
+  // the editor reads the tier and flips the exclusion, under the same staff rule as discounts
+  const canEditLoyalty =
+    Boolean(onChanged) &&
+    permissions.includes("USERS_LOYALTY_VIEW") &&
+    permissions.includes("USERS_LOYALTY_MANAGE") &&
     (user.role === "USER" || permissions.includes("ADMINS_MANAGE"));
   const lastChange = (eventType: string, close: () => void) =>
     permissions.includes("EVENT_LOG_VIEW") ? (
@@ -89,7 +99,7 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
   const points = Math.trunc(Number(user.points));
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       {canEditPoints ? (
         <EditableKpi label={t("users.details.points")} value={String(user.points)}>
           {(close) => (
@@ -152,6 +162,21 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
       )}
       {discountTile("personal_discount", t("users.details.personalDiscount"))}
       {discountTile("purchase_discount", t("users.details.purchaseDiscount"))}
+      {canEditLoyalty ? (
+        <EditableKpi label={t("users.details.loyaltyDiscount")} value={`${user.loyalty_discount}%`}>
+          {(close) => (
+            <>
+              <LoyaltyEditor
+                userId={user.id}
+                onExcluded={(discount) => onChanged?.({ ...user, loyalty_discount: discount })}
+              />
+              {lastChange("UserLoyaltyExclusionChangedEvent", close)}
+            </>
+          )}
+        </EditableKpi>
+      ) : (
+        <KpiTile label={t("users.details.loyaltyDiscount")} value={`${user.loyalty_discount}%`} />
+      )}
       {/* outside the popovers: opening the dialog closes them */}
       {openedEntry && <EventDetailDialog entry={openedEntry} onClose={() => setOpenedEntry(null)} />}
     </div>
@@ -323,5 +348,56 @@ function LastChange({
         when: formatRelative(entry.occurred_at, i18n.language),
       })}
     </button>
+  );
+}
+
+/** Spend in the loyalty window, the next tier and the exclusion switch. */
+function LoyaltyEditor({ userId, onExcluded }: { userId: number; onExcluded: (discount: number) => void }) {
+  const { t, i18n } = useTranslation();
+  const [state, , setData] = useAsyncResource((signal) => getUserLoyalty(userId, signal));
+  const [isSaving, setIsSaving] = useState(false);
+
+  if (state.kind === "loading") return <Spinner />;
+  if (state.kind === "error") {
+    return <p className="text-[12px] text-error">{t("users.details.loyalty.loadError")}</p>;
+  }
+
+  const loyalty = state.data;
+  const unit = currencySymbol(loyalty.currency);
+  const money = (amount: number) => `${amount.toLocaleString(i18n.language)} ${unit}`;
+  const spent = Number(loyalty.spent);
+
+  const toggle = async (excluded: boolean) => {
+    setIsSaving(true);
+    try {
+      const updated = await setUserLoyaltyExcluded(userId, excluded);
+      setData(updated);
+      onExcluded(updated.discount);
+      toast.success(t("users.details.loyalty.saved"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("users.details.loyalty.error")));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p className="text-[12.5px] text-foreground">
+        {t("users.details.loyalty.spent", { amount: money(spent) })}
+      </p>
+      <p className="text-[12px] text-muted-foreground">
+        {loyalty.next_tier
+          ? t("users.details.loyalty.toNext", {
+              amount: money(Number(loyalty.next_tier.threshold) - spent),
+              percent: loyalty.next_tier.percent,
+            })
+          : t("users.details.loyalty.topTier")}
+      </p>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-foreground/80">{t("users.details.loyalty.exclude")}</span>
+        <Switch checked={loyalty.excluded} onChange={(value) => void toggle(value)} disabled={isSaving} />
+      </div>
+    </div>
   );
 }

@@ -631,3 +631,14 @@ async def test_anonymize_zeroes_bonus_days(user_repository: UserRepository) -> N
 
     assert anonymized is not None
     assert anonymized.bonus_days == 0
+
+
+async def test_has_discount_filter_counts_the_loyalty_discount(
+    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    loyal = await _create_user(user_repository, uow, name="Loyal")
+    await session.execute(update(User).where(User.id == loyal.id).values(loyalty_discount=5))
+
+    with_discount, _ = await user_repository.list_filtered(roles=[Role.USER], has_discount=True)
+
+    assert loyal.id in {user.id for user in with_discount}

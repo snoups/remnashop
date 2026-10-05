@@ -1,5 +1,6 @@
 import {
   Anchor,
+  BadgePercent,
   ArrowLeftRight,
   CreditCard,
   Ban,
@@ -113,6 +114,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   GatewayChangedEvent: CreditCard,
   PricingSettingsChangedEvent: Settings2,
   ReferralSettingsChangedEvent: Settings2,
+  LoyaltySettingsChangedEvent: Settings2,
+  UserLoyaltyExclusionChangedEvent: BadgePercent,
   SubscriptionEditedEvent: PencilLine,
   AddOnChangedEvent: PackagePlus,
 };

@@ -74,6 +74,8 @@ class Permission(UpperStrEnum):
     USERS_STATS_VIEW = auto()
     USERS_DELETE = auto()
     USERS_DISCOUNT_MANAGE = auto()
+    USERS_LOYALTY_VIEW = auto()
+    USERS_LOYALTY_MANAGE = auto()
     USER_SESSIONS_VIEW = auto()
     USER_SESSIONS_REVOKE = auto()
     APPEARANCE_SETTINGS_MANAGE = auto()
@@ -144,6 +146,8 @@ class Permission(UpperStrEnum):
     REFERRALS_POINTS_MANAGE = auto()
     REFERRALS_BONUS_DAYS_MANAGE = auto()
     REFERRALS_CODE_RESET = auto()
+    LOYALTY_SETTINGS_VIEW = auto()
+    LOYALTY_SETTINGS_MANAGE = auto()
     BACKUPS_VIEW = auto()
     BACKUPS_SETTINGS_VIEW = auto()
     BACKUPS_SETTINGS_MANAGE = auto()
@@ -234,6 +238,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.USERS_STATS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_DISCOUNT_MANAGE: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_LOYALTY_VIEW: PermissionMeta(resource="users", kind="read"),
+    Permission.USERS_LOYALTY_MANAGE: PermissionMeta(resource="users", kind="write"),
     Permission.USER_SESSIONS_VIEW: PermissionMeta(resource="user_sessions", kind="read"),
     Permission.USER_SESSIONS_REVOKE: PermissionMeta(resource="user_sessions", kind="write"),
     Permission.APPEARANCE_SETTINGS_MANAGE: PermissionMeta(resource="appearance", kind="write"),
@@ -302,6 +308,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.REFERRALS_POINTS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_BONUS_DAYS_MANAGE: PermissionMeta(resource="referrals", kind="write"),
     Permission.REFERRALS_CODE_RESET: PermissionMeta(resource="referrals", kind="write"),
+    Permission.LOYALTY_SETTINGS_VIEW: PermissionMeta(resource="loyalty", kind="read"),
+    Permission.LOYALTY_SETTINGS_MANAGE: PermissionMeta(resource="loyalty", kind="write"),
     Permission.BACKUPS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_SETTINGS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_SETTINGS_MANAGE: PermissionMeta(resource="backups", kind="write"),
@@ -498,6 +506,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.USERS_VIEW,
         Permission.USERS_DETAIL_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,
+        Permission.USERS_LOYALTY_VIEW,
+        Permission.USERS_LOYALTY_MANAGE,
         Permission.TRANSACTIONS_VIEW,
         Permission.TRANSACTIONS_SUMMARY_VIEW,
         Permission.TRANSACTIONS_DETAIL_VIEW,
@@ -515,6 +525,8 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.REFERRALS_POINTS_MANAGE,
         Permission.REFERRALS_BONUS_DAYS_MANAGE,
         Permission.REFERRALS_CODE_RESET,
+        Permission.LOYALTY_SETTINGS_VIEW,
+        Permission.LOYALTY_SETTINGS_MANAGE,
         Permission.AD_LINKS_VIEW,
         Permission.AD_LINKS_DETAIL_VIEW,
         Permission.AD_LINKS_STATS_VIEW,

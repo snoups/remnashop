@@ -36,6 +36,7 @@ export interface UserListItem {
   is_blocked: boolean;
   personal_discount: number;
   purchase_discount: number;
+  loyalty_discount: number;
   referral_code?: string | null;
   points: string;
   bonus_days: number;

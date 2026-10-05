@@ -34,6 +34,9 @@ class User(BaseSql, TimestampMixin):
         CheckConstraint(
             "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
         ),
+        CheckConstraint(
+            "loyalty_discount BETWEEN 0 AND 100", name="ck_users_loyalty_discount_range"
+        ),
         CheckConstraint("points >= 0", name="ck_users_points_non_negative"),
         CheckConstraint("bonus_days >= 0", name="ck_users_bonus_days_non_negative"),
     )
@@ -67,6 +70,8 @@ class User(BaseSql, TimestampMixin):
     purchase_discount_promocode_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("promocodes.id", ondelete="SET NULL")
     )
+    loyalty_discount: Mapped[int] = mapped_column(default=0, server_default="0")
+    loyalty_excluded: Mapped[bool] = mapped_column(default=False, server_default="false")
     # Nullable: create() always generates one, a soft delete wipes it --
     # multiple NULLs are fine under a UNIQUE index.
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)

@@ -6,7 +6,7 @@ import type { BadgeTone } from "@shared/ui/Badge";
 
 export type TransactionStatus = "PENDING" | "PAID" | "FAILED" | "CANCELED" | "REFUNDED";
 export type PurchaseType = "NEW" | "RENEW" | "CHANGE";
-export type DiscountSource = "NONE" | "PERSONAL" | "PURCHASE";
+export type DiscountSource = "NONE" | "PERSONAL" | "PURCHASE" | "LOYALTY";
 
 export interface PlanSnapshot {
   name?: string;

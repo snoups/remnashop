@@ -102,6 +102,7 @@ def _to_admin_response(user: UserDto) -> AdminResponse:
         is_blocked=user.is_blocked,
         personal_discount=user.personal_discount,
         purchase_discount=user.purchase_discount,
+        loyalty_discount=user.loyalty_discount,
         points=user.points,
         bonus_days=user.bonus_days,
         is_trial_available=user.is_trial_available,

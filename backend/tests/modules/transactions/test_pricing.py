@@ -70,6 +70,7 @@ def _user(
     purchase_discount: int = 0,
     personal_discount_promocode_id: Optional[int] = None,
     purchase_discount_promocode_id: Optional[int] = None,
+    loyalty_discount: int = 0,
 ) -> UserDto:
     return UserDto(
         name="buyer",
@@ -78,6 +79,7 @@ def _user(
         purchase_discount=purchase_discount,
         personal_discount_promocode_id=personal_discount_promocode_id,
         purchase_discount_promocode_id=purchase_discount_promocode_id,
+        loyalty_discount=loyalty_discount,
     )
 
 
@@ -258,3 +260,28 @@ def test_quote_price_full_discount_has_zero_anchor_final() -> None:
 
     assert quote.anchor_final_price == Decimal(0)
     assert quote.anchor_base_price == Decimal("5")
+
+
+def test_quote_price_loyalty_wins_when_strictly_higher() -> None:
+    quote = quote_price(
+        _plan(base_price=Decimal("10")),
+        30,
+        Currency.USD,
+        _user(personal_discount=5, loyalty_discount=7),
+        _rates(),
+    )
+
+    assert (quote.discount_percent, quote.discount_source) == (7, DiscountSource.LOYALTY)
+    assert quote.discount_promocode_id is None
+
+
+def test_quote_price_loyalty_loses_a_tie_to_personal() -> None:
+    quote = quote_price(
+        _plan(base_price=Decimal("10")),
+        30,
+        Currency.USD,
+        _user(personal_discount=7, loyalty_discount=7, personal_discount_promocode_id=3),
+        _rates(),
+    )
+
+    assert (quote.discount_source, quote.discount_promocode_id) == (DiscountSource.PERSONAL, 3)
