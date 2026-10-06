@@ -2,6 +2,7 @@ from app.core.actor import Actor
 from app.core.enums import PromocodeAvailability, PromocodeRewardType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
+from app.core.ports import ReferrerLookup
 from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.promocodes.dto import PromocodeDto
@@ -45,7 +46,10 @@ async def assert_subscription_reward_grantable(
 
 
 async def assert_available_to(
-    promo: PromocodeDto, actor: Actor, subscription_repository: SubscriptionRepository
+    promo: PromocodeDto,
+    actor: Actor,
+    subscription_repository: SubscriptionRepository,
+    referrer_lookup: ReferrerLookup,
 ) -> None:
     """Shared by ValidatePromocodeUseCase (the pre-activation preview) and
     ActivatePromocodeUseCase (the real thing). The two must agree, or the
@@ -74,8 +78,13 @@ async def assert_available_to(
                 code=ErrorCode.PROMOCODE_NOT_AVAILABLE,
             )
         return
-    # PromocodeAvailability.INVITED isn't implemented for promocodes yet --
-    # always denied.
+    if promo.availability is PromocodeAvailability.INVITED:
+        if not await referrer_lookup.has_referrer(actor.id):
+            raise ValidationError(
+                f"Promocode '{promo.code}' is for invited users only",
+                code=ErrorCode.PROMOCODE_NOT_AVAILABLE,
+            )
+        return
     raise ValidationError(
         f"Promocode '{promo.code}' is not available to this user",
         code=ErrorCode.PROMOCODE_NOT_AVAILABLE,

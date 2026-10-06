@@ -86,6 +86,7 @@ class ErrorCode(UpperStrEnum):
     EMOJI_PACK_FETCH_FAILED = auto()
     EMOJI_PACK_NAME_INVALID = auto()
     EMOJI_PACK_NOT_FOUND = auto()
+    EVENT_LOG_ENTRY_NOT_FOUND = auto()
     FLUENT_SYNTAX_INVALID = auto()
     GATEWAY_CURRENCY_INVALID = auto()
     GATEWAY_CURRENCY_UNSUPPORTED = auto()

@@ -149,6 +149,36 @@ async def test_get_event_log_filters_by_category(
     assert response.json()["total"] == 0
 
 
+async def test_get_event_log_entry_by_id(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_log_repository: EventLogRepository,
+) -> None:
+    entry = await event_log_repository.create(
+        EventLogEntryDto(
+            category=EventCategory.AUTH,
+            event_type="LoginFailedEvent",
+            occurred_at=datetime.datetime.now(datetime.timezone.utc),
+            payload={"login": "someone"},
+        )
+    )
+    assert entry is not None
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    found = await client.get(f"/api/v1/event-log/{entry.id}", headers=headers)
+    missing = await client.get(f"/api/v1/event-log/{entry.id + 1}", headers=headers)
+
+    assert found.status_code == 200
+    assert found.json()["event_type"] == "LoginFailedEvent"
+    assert found.json()["payload"] == {"login": "someone"}
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "EVENT_LOG_ENTRY_NOT_FOUND"
+
+
 async def test_get_event_log_rejects_admin_without_grant(
     client: httpx.AsyncClient,
     user_repository: UserRepository,

@@ -68,6 +68,7 @@ class Permission(UpperStrEnum):
     ADMINS_MANAGE = auto()
     API_TOKENS_MANAGE = auto()
     EVENT_LOG_VIEW = auto()
+    EVENT_LOG_DETAIL_VIEW = auto()
     NOTIFICATIONS_VIEW = auto()
     USERS_VIEW = auto()
     USERS_DETAIL_VIEW = auto()
@@ -232,6 +233,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.DIALOGS_EXPORT: PermissionMeta(resource="dialogs", kind="read"),
     Permission.DIALOGS_IMPORT: PermissionMeta(resource="dialogs", kind="write"),
     Permission.EVENT_LOG_VIEW: PermissionMeta(resource="event_log", kind="read"),
+    Permission.EVENT_LOG_DETAIL_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.NOTIFICATIONS_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DETAIL_VIEW: PermissionMeta(resource="users", kind="read"),

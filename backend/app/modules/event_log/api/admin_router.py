@@ -6,6 +6,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies.admin import require_admin, require_admin_user
+from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.constants import INT32_MAX
 from app.core.events import EventCategory
@@ -25,6 +26,7 @@ from app.modules.event_log.dto import (
 )
 from app.modules.event_log.usecases import (
     ClearNotificationsUseCase,
+    GetEventLogEntryUseCase,
     GetNotificationGroupsUseCase,
     GetNotificationsUseCase,
     ListEventLogUseCase,
@@ -124,3 +126,15 @@ async def update_notification_groups(
 ) -> NotificationGroupsResponse:
     groups = await use_case(actor, body.groups)
     return NotificationGroupsResponse(groups=groups, available=list(NOTIFICATION_GROUPS))
+
+
+@router.get("/{entry_id:int}", response_model=EventLogEntryResponse, responses=error_responses(404))
+@inject
+async def get_event_log_entry(
+    entry_id: int,
+    use_case: FromDishka[GetEventLogEntryUseCase],
+    actor: Actor = Depends(require_admin),
+) -> EventLogEntryResponse:
+    return EventLogEntryResponse.model_validate(
+        await use_case(actor, entry_id), from_attributes=True
+    )

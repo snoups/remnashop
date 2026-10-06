@@ -17,6 +17,7 @@ from app.modules.dialogs.usecases import (
     UpdateDialogWindowButtonsUseCase,
     UpdateDialogWindowUseCase,
 )
+from app.modules.event_log.usecases import GetEventLogEntryUseCase
 from app.modules.gateways.usecases.list_gateways import ListGatewaysUseCase
 from app.modules.gateways.usecases.reorder_gateways import ReorderGatewaysUseCase
 from app.modules.gateways.usecases.set_gateway_active import SetGatewayActiveUseCase
@@ -48,6 +49,7 @@ from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
     [
         (GetUserUseCase, Permission.USERS_DETAIL_VIEW),
         (GetAdLinkUseCase, Permission.AD_LINKS_DETAIL_VIEW),
+        (GetEventLogEntryUseCase, Permission.EVENT_LOG_DETAIL_VIEW),
         (GetPromocodeUseCase, Permission.PROMOCODES_DETAIL_VIEW),
         (GetSubscriptionUseCase, Permission.SUBSCRIPTIONS_DETAIL_VIEW),
         (GetAddOnUseCase, Permission.ADDONS_DETAIL_VIEW),

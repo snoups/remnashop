@@ -2,6 +2,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeRewardType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.ports import ReferrerLookup
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans import PlanRepository
@@ -25,12 +26,14 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto, UserD
         subscription_repository: SubscriptionRepository,
         plan_repository: PlanRepository,
         eligibility: PurchaseEligibility,
+        referrer_lookup: ReferrerLookup,
         uow: UnitOfWork,
     ) -> None:
         self._promocode_repository = promocode_repository
         self._subscription_repository = subscription_repository
         self._plan_repository = plan_repository
         self._eligibility = eligibility
+        self._referrer_lookup = referrer_lookup
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: ValidatePromocodeDto) -> PromocodeDto:
@@ -55,7 +58,9 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto, UserD
                         code=ErrorCode.PROMOCODE_ALREADY_ACTIVATED,
                     )
 
-        await assert_available_to(promo, actor, self._subscription_repository)
+        await assert_available_to(
+            promo, actor, self._subscription_repository, self._referrer_lookup
+        )
         if promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
             await assert_subscription_reward_grantable(
                 promo,

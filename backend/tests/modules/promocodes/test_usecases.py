@@ -384,6 +384,7 @@ def _activate_use_case(
         subscription_repository,
         PlanRepository(promocode_repository.session),
         make_eligibility(promocode_repository.session),
+        ReferralRepository(promocode_repository.session),
         user_repository,
         purchase_use_case,
         uow,
@@ -771,18 +772,27 @@ async def test_activate_allowed_availability_denies_other_users(
         await use_case(REGULAR_USER, ActivatePromocodeDto(code="VIPONLY"))
 
 
-async def test_activate_invited_availability_always_denies(
+async def test_activate_invited_availability_requires_a_referrer(
     promocode_repository: PromocodeRepository,
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
+    referral_repository: ReferralRepository,
     remnawave_sdk,
     uow,
     event_publisher,
 ) -> None:
+    unreferred_actor = await user_repository.create(
+        CreateUserDto(name="Unreferred", telegram_id=305)
+    )
+    referred_actor = await user_repository.create(CreateUserDto(name="Referred", telegram_id=306))
+    referrer = await user_repository.create(CreateUserDto(name="Referrer", telegram_id=307))
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=referred_actor.id, level=1
+    )
     await promocode_repository.create(
         CreatePromocodeDto(
             code="INVITEONLY",
-            reward_type=PromocodeRewardType.DURATION,
+            reward_type=PromocodeRewardType.PERSONAL_DISCOUNT,
             reward=10,
             availability=PromocodeAvailability.INVITED,
         )
@@ -796,8 +806,11 @@ async def test_activate_invited_availability_always_denies(
         event_publisher,
     )
 
-    with pytest.raises(ValidationError):
-        await use_case(REGULAR_USER, ActivatePromocodeDto(code="INVITEONLY"))
+    with pytest.raises(ValidationError) as error:
+        await use_case(unreferred_actor, ActivatePromocodeDto(code="INVITEONLY"))
+    assert error.value.code is ErrorCode.PROMOCODE_NOT_AVAILABLE
+
+    await use_case(referred_actor, ActivatePromocodeDto(code="INVITEONLY"))
 
 
 async def test_activate_duration_reward_requires_target_subscription(

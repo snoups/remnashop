@@ -12,7 +12,7 @@ from app.core.enums import (
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import EventPublisher
+from app.core.ports import EventPublisher, ReferrerLookup
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans import PlanDto, PlanRepository
@@ -54,6 +54,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
         subscription_repository: SubscriptionRepository,
         plan_repository: PlanRepository,
         eligibility: PurchaseEligibility,
+        referrer_lookup: ReferrerLookup,
         user_repository: UserRepository,
         purchase_subscription_use_case: PurchaseSubscriptionUseCase,
         uow: UnitOfWork,
@@ -64,6 +65,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
         self._subscription_repository = subscription_repository
         self._plan_repository = plan_repository
         self._eligibility = eligibility
+        self._referrer_lookup = referrer_lookup
         self._user_repository = user_repository
         self._purchase_subscription_use_case = purchase_subscription_use_case
         self._uow = uow
@@ -74,7 +76,9 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
         async with self._uow:
             promo = await get_usable_promocode(self._promocode_repository, data.code)
 
-        await assert_available_to(promo, actor, self._subscription_repository)
+        await assert_available_to(
+            promo, actor, self._subscription_repository, self._referrer_lookup
+        )
 
         target: Optional[SubscriptionDto] = None
         reward_plan: Optional[PlanDto] = None

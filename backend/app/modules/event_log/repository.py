@@ -11,7 +11,9 @@ from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.user import User
 from app.core.db.user_search import user_search_filter
 from app.core.dto import SERVER_OWNED_FIELDS
+from app.core.error_codes import ErrorCode
 from app.core.events import EventCategory
+from app.core.exceptions import NotFoundError
 from app.modules.event_log.dto import DEFAULT_PAGE_SIZE, EventLogEntryDto
 
 
@@ -44,6 +46,15 @@ class EventLogRepository:
         row = (await self.session.execute(stmt)).scalar_one_or_none()
         await self.session.flush()
         return self._convert_to_dto(row) if row is not None else None
+
+    async def get_by_id(self, entry_id: int) -> EventLogEntryDto:
+        row = await self.session.get(EventLogEntry, entry_id)
+        if row is None:
+            raise NotFoundError(
+                f"Event log entry '{entry_id}' not found",
+                code=ErrorCode.EVENT_LOG_ENTRY_NOT_FOUND,
+            )
+        return self._convert_to_dto(row)
 
     async def list(
         self,

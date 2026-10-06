@@ -33,6 +33,7 @@ async def test_validates_a_fresh_code(
         subscription_repository,
         PlanRepository(promocode_repository.session),
         make_eligibility(promocode_repository.session),
+        ReferralRepository(promocode_repository.session),
         uow,
     )
 
@@ -55,6 +56,7 @@ async def test_raises_not_found_for_an_unknown_code(
         subscription_repository,
         PlanRepository(promocode_repository.session),
         make_eligibility(promocode_repository.session),
+        ReferralRepository(promocode_repository.session),
         uow,
     )
 
@@ -80,6 +82,7 @@ async def test_does_not_claim_an_activation(
         subscription_repository,
         PlanRepository(promocode_repository.session),
         make_eligibility(promocode_repository.session),
+        ReferralRepository(promocode_repository.session),
         uow,
     )
 
@@ -119,6 +122,7 @@ async def test_preview_refuses_a_subscription_reward_whose_plan_is_unavailable(
         subscription_repository,
         plan_repository,
         make_eligibility(promocode_repository.session),
+        ReferralRepository(promocode_repository.session),
         uow,
     )
 
