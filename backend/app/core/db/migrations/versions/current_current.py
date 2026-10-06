@@ -608,6 +608,9 @@ def upgrade() -> None:
         sa.Column("is_trial", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("allow_bonus_days", sa.Boolean(), server_default="true", nullable=False),
         sa.Column("allow_promocodes", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("discount_percent", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("discount_starts_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("discount_ends_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -619,6 +622,9 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
+        ),
+        sa.CheckConstraint(
+            "discount_percent BETWEEN 0 AND 100", name="ck_plans_discount_percent_range"
         ),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -1539,6 +1545,7 @@ def upgrade() -> None:
             server_default="NONE",
             nullable=False,
         ),
+        sa.Column("plan_discount_percent", sa.Integer(), server_default="0", nullable=False),
         sa.Column("final_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("anchor_base_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("anchor_final_price", sa.Numeric(precision=10, scale=2), nullable=False),

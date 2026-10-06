@@ -33,6 +33,7 @@ class PriceQuote:
     anchor_base_price: Decimal
     anchor_final_price: Decimal
     discount_promocode_id: Optional[int] = None
+    plan_discount_percent: int = 0
 
 
 class TransactionDto(BaseDto, TimestampMixin):
@@ -49,6 +50,7 @@ class TransactionDto(BaseDto, TimestampMixin):
     base_price: Decimal
     discount_percent: int = 0
     discount_source: DiscountSource = DiscountSource.NONE
+    plan_discount_percent: int = 0
     final_price: Decimal
     anchor_base_price: Decimal
     anchor_final_price: Decimal
@@ -80,6 +82,7 @@ class CreateTransactionDto:
     base_price: Decimal
     discount_percent: int
     discount_source: DiscountSource
+    plan_discount_percent: int = 0
     final_price: Decimal
     anchor_base_price: Decimal
     anchor_final_price: Decimal
@@ -174,12 +177,19 @@ class PaidTransactionDto:
     anchor_final_price: Decimal
     anchor_base_price: Decimal
     discount_percent: int
+    plan_discount_percent: int
     discount_promocode_id: Optional[int]
     purchase_type: PurchaseType
     plan_id: Optional[int]
     plan_name: str
     duration_days: int
     gateway_type: PaymentGatewayType
+
+    @property
+    def user_discount_amount(self) -> Decimal:
+        # the user's own discount only, on top of the plan's
+        after_plan = self.anchor_base_price * (100 - self.plan_discount_percent) / 100
+        return after_plan - self.anchor_final_price
 
 
 @dataclass(frozen=True, kw_only=True)

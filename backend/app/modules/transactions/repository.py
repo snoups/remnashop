@@ -78,6 +78,7 @@ class TransactionRepository:
             status=row.status,
             base_price=row.base_price,
             discount_percent=row.discount_percent,
+            plan_discount_percent=row.plan_discount_percent,
             discount_source=row.discount_source,
             final_price=row.final_price,
             anchor_base_price=row.anchor_base_price,
@@ -105,6 +106,7 @@ class TransactionRepository:
             gateway_type=data.gateway_type,
             base_price=data.base_price,
             discount_percent=data.discount_percent,
+            plan_discount_percent=data.plan_discount_percent,
             discount_source=data.discount_source,
             final_price=data.final_price,
             anchor_base_price=data.anchor_base_price,
@@ -351,7 +353,11 @@ class TransactionRepository:
         # (paid orders, discount amount in the anchor currency)
         stmt = select(
             func.count(),
-            func.sum(Transaction.anchor_base_price - Transaction.anchor_final_price),
+            # the plan's own discount isn't the promocode's
+            func.sum(
+                Transaction.anchor_base_price * (100 - Transaction.plan_discount_percent) / 100
+                - Transaction.anchor_final_price
+            ),
         ).where(
             Transaction.status == TransactionStatus.PAID,
             Transaction.discount_promocode_id.is_not(None),

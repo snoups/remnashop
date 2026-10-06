@@ -145,6 +145,7 @@ class ErrorCode(UpperStrEnum):
     PERMISSION_DENIED = auto()
     PERMISSION_NOT_GRANTABLE = auto()
     PLAN_CONFLICT = auto()
+    PLAN_DISCOUNT_WINDOW_INVALID = auto()
     PLAN_DURATION_DUPLICATE = auto()
     PLAN_DURATION_NOT_FOUND = auto()
     PLAN_IN_USE = auto()

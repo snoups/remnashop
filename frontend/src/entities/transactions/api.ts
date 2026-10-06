@@ -39,11 +39,21 @@ export interface TransactionItem {
   base_price: string;
   discount_percent: number;
   discount_source: DiscountSource;
+  plan_discount_percent: number;
   final_price: string;
   customer_email: string | null;
   idempotency_key: string;
   expires_at: string;
   created_at: string;
+}
+
+export function hasDiscount(order: TransactionItem): boolean {
+  return order.discount_percent > 0 || order.plan_discount_percent > 0;
+}
+
+// the plan's and the user's discounts are applied one after the other
+export function totalDiscountPercent(order: TransactionItem): number {
+  return Math.round(100 - ((100 - order.plan_discount_percent) * (100 - order.discount_percent)) / 100);
 }
 
 export const DEFAULT_PAGE_SIZE = 50;

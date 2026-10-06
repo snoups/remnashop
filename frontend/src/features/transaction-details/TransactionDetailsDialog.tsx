@@ -25,6 +25,7 @@ import {
   type TransactionItem,
   canFulfillTransaction,
   fulfillTransaction,
+  hasDiscount,
 } from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
@@ -110,13 +111,20 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
             <KpiTile
               label={t("transactions.details.total")}
               value={money(order.final_price)}
-              valueSuffix={order.discount_percent > 0 && <s>{money(order.base_price)}</s>}
+              valueSuffix={hasDiscount(order) && <s>{money(order.base_price)}</s>}
               hint={
-                order.discount_percent > 0
-                  ? t("transactions.details.discount", {
-                      percent: order.discount_percent,
-                      source: t(`transactions.discountSource.${order.discount_source}`),
-                    })
+                hasDiscount(order)
+                  ? [
+                      order.plan_discount_percent > 0 &&
+                        t("transactions.details.planDiscount", { percent: order.plan_discount_percent }),
+                      order.discount_percent > 0 &&
+                        t("transactions.details.discount", {
+                          percent: order.discount_percent,
+                          source: t(`transactions.discountSource.${order.discount_source}`),
+                        }),
+                    ]
+                      .filter(Boolean)
+                      .join(" + ")
                   : t("transactions.details.noDiscount")
               }
             />

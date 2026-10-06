@@ -14,7 +14,7 @@ import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { DEFAULT_PAGE_SIZE, getTransactionSummary, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactions, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
+import { DEFAULT_PAGE_SIZE, getTransactionSummary, hasDiscount, totalDiscountPercent, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactions, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -333,12 +333,12 @@ export function TransactionsPage() {
                                 <span className="block text-[14px] font-semibold text-foreground">
                                   {formatMoney(order.final_price, order.currency, i18n.language, true)}
                                 </span>
-                                {order.discount_percent > 0 && (
+                                {hasDiscount(order) && (
                                   <span className="block text-[11.5px] text-muted-foreground">
                                     <span className="line-through">
                                       {formatMoney(order.base_price, order.currency, i18n.language, true)}
                                     </span>{" "}
-                                    <span className="text-primary">−{order.discount_percent}%</span>
+                                    <span className="text-primary">−{totalDiscountPercent(order)}%</span>
                                   </span>
                                 )}
                               </span>

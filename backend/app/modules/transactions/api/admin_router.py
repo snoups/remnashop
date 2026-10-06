@@ -61,6 +61,7 @@ def _to_response(item: TransactionWithUserDto) -> TransactionResponse:
         base_price=order.base_price,
         discount_percent=order.discount_percent,
         discount_source=order.discount_source.value,
+        plan_discount_percent=order.plan_discount_percent,
         final_price=order.final_price,
         customer_email=order.customer_email,
         idempotency_key=order.idempotency_key,

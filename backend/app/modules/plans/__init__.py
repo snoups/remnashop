@@ -19,6 +19,7 @@ from app.modules.plans.dto import (
     SetPlanPriceOverrideDto,
     UpdateAddOnDto,
     UpdatePlanAccessDto,
+    UpdatePlanDiscountDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -42,6 +43,7 @@ from app.modules.plans.usecases import (
     SetPlanPriceOverrideUseCase,
     UpdateAddOnUseCase,
     UpdatePlanAccessUseCase,
+    UpdatePlanDiscountUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
@@ -84,6 +86,8 @@ __all__ = [
     "UpdateAddOnUseCase",
     "UpdatePlanAccessDto",
     "UpdatePlanAccessUseCase",
+    "UpdatePlanDiscountDto",
+    "UpdatePlanDiscountUseCase",
     "UpdatePlanDto",
     "UpdatePlanSquadsDto",
     "UpdatePlanSquadsUseCase",

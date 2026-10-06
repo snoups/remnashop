@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -5,6 +6,7 @@ import pytest
 
 from app.core.enums import Currency, DiscountSource, PlanType, Role, RoundingMode
 from app.core.exceptions import ValidationError
+from app.core.utils.time import datetime_now
 from app.modules.plans.dto import PlanDto, PlanDurationDto, PlanPriceOverrideDto
 from app.modules.pricing.dto import CurrencyRateDto, CurrencyRateTable
 from app.modules.pricing.resolver import round_amount
@@ -285,3 +287,63 @@ def test_quote_price_loyalty_loses_a_tie_to_personal() -> None:
     )
 
     assert (quote.discount_source, quote.discount_promocode_id) == (DiscountSource.PERSONAL, 3)
+
+
+def _discounted_plan(
+    percent: int, *, starts_in: Optional[int] = None, ends_in: Optional[int] = None
+) -> PlanDto:
+    now = datetime_now()
+    return _plan(base_price=Decimal("500")).model_copy(
+        update={
+            "discount_percent": percent,
+            "discount_starts_at": None if starts_in is None else now + timedelta(days=starts_in),
+            "discount_ends_at": None if ends_in is None else now + timedelta(days=ends_in),
+        }
+    )
+
+
+def test_quote_price_applies_plan_discount_alone() -> None:
+    quote = quote_price(_discounted_plan(20), 30, Currency.RUB, _user(), _rates())
+    assert quote.plan_discount_percent == 20
+    assert quote.discount_source is DiscountSource.NONE
+    assert quote.final_price == Decimal("400")
+
+
+def test_quote_price_stacks_plan_discount_with_the_users() -> None:
+    quote = quote_price(
+        _discounted_plan(20), 30, Currency.RUB, _user(personal_discount=10), _rates()
+    )
+    # 500 * 0.8 * 0.9
+    assert quote.final_price == Decimal("360")
+    assert quote.plan_discount_percent == 20
+    assert quote.discount_percent == 10
+    assert quote.discount_source is DiscountSource.PERSONAL
+
+
+def test_quote_price_skips_plan_discount_outside_its_window() -> None:
+    for plan in (_discounted_plan(20, starts_in=1), _discounted_plan(20, ends_in=-1)):
+        quote = quote_price(plan, 30, Currency.RUB, _user(), _rates())
+        assert quote.plan_discount_percent == 0
+        assert quote.final_price == Decimal("500")
+
+
+def test_quote_price_applies_plan_discount_inside_its_window() -> None:
+    plan = _discounted_plan(20, starts_in=-1, ends_in=1)
+    quote = quote_price(plan, 30, Currency.RUB, _user(), _rates())
+    assert quote.final_price == Decimal("400")
+
+
+def test_quote_price_full_user_discount_is_free_on_a_discounted_plan() -> None:
+    quote = quote_price(
+        _discounted_plan(20), 30, Currency.RUB, _user(personal_discount=100), _rates()
+    )
+    assert quote.final_price == Decimal("0")
+
+
+def test_quote_price_full_plan_discount_leaves_the_users_discount_unused() -> None:
+    user = _user(purchase_discount=10, purchase_discount_promocode_id=7)
+    quote = quote_price(_discounted_plan(100), 30, Currency.RUB, user, _rates())
+    assert quote.final_price == Decimal("0")
+    assert quote.discount_percent == 0
+    assert quote.discount_source is DiscountSource.NONE
+    assert quote.discount_promocode_id is None

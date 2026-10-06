@@ -92,7 +92,7 @@ class GetPromocodeStatsUseCase(UseCase[AnalyticsPeriodQueryDto, PromocodeStatsDt
                 period_revenue += amount
                 if row.discount_percent > 0:
                     discount_revenue += amount
-                    discount_given += row.anchor_base_price - row.anchor_final_price
+                    discount_given += row.user_discount_amount
 
             per_code: dict[int, list[tuple[int, datetime]]] = defaultdict(list)
             for promocode_id, user_id, at in in_period:

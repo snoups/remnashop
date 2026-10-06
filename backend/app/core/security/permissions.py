@@ -101,6 +101,7 @@ class Permission(UpperStrEnum):
     PLANS_DURATION_BASE_PRICE_MANAGE = auto()
     PLANS_ACCESS_MANAGE = auto()
     PLANS_SQUADS_MANAGE = auto()
+    PLANS_DISCOUNT_MANAGE = auto()
     PLANS_ORDER_MANAGE = auto()
     PRICING_VIEW = auto()
     PRICING_PREVIEW_VIEW = auto()
@@ -266,6 +267,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PLANS_DURATION_BASE_PRICE_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_ACCESS_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_SQUADS_MANAGE: PermissionMeta(resource="plans", kind="write"),
+    Permission.PLANS_DISCOUNT_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_ORDER_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PRICING_VIEW: PermissionMeta(resource="pricing", kind="read"),
     Permission.PRICING_PREVIEW_VIEW: PermissionMeta(resource="pricing", kind="read"),
@@ -478,6 +480,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
         Permission.PLANS_ACCESS_MANAGE,
         Permission.PLANS_SQUADS_MANAGE,
+        Permission.PLANS_DISCOUNT_MANAGE,
         Permission.PLANS_ORDER_MANAGE,
         Permission.PRICING_VIEW,
         Permission.PRICING_PREVIEW_VIEW,

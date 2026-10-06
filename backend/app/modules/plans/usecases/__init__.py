@@ -20,6 +20,7 @@ from app.modules.plans.usecases.switch_anchor_currency import SwitchAnchorCurren
 from app.modules.plans.usecases.update_addon import UpdateAddOnUseCase
 from app.modules.plans.usecases.update_plan import UpdatePlanUseCase
 from app.modules.plans.usecases.update_plan_access import UpdatePlanAccessUseCase
+from app.modules.plans.usecases.update_plan_discount import UpdatePlanDiscountUseCase
 from app.modules.plans.usecases.update_plan_squads import UpdatePlanSquadsUseCase
 
 __all__ = [
@@ -44,6 +45,7 @@ __all__ = [
     "SwitchAnchorCurrencyUseCase",
     "UpdateAddOnUseCase",
     "UpdatePlanAccessUseCase",
+    "UpdatePlanDiscountUseCase",
     "UpdatePlanSquadsUseCase",
     "UpdatePlanUseCase",
 ]

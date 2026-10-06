@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
 from uuid import UUID
@@ -43,7 +44,17 @@ class PlanDto(BaseDto, TimestampMixin):
     is_trial: bool = False
     allow_bonus_days: bool = True
     allow_promocodes: bool = True
+    discount_percent: int = 0
+    discount_starts_at: Optional[datetime] = None
+    discount_ends_at: Optional[datetime] = None
     durations: list[PlanDurationDto] = Field(default_factory=list)
+
+    def active_discount(self, now: datetime) -> int:
+        if self.discount_starts_at is not None and now < self.discount_starts_at:
+            return 0
+        if self.discount_ends_at is not None and now >= self.discount_ends_at:
+            return 0
+        return self.discount_percent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -119,6 +130,14 @@ class UpdatePlanSquadsDto:
     plan_id: int
     internal_squads: list[UUID]
     external_squad: Optional[UUID]
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdatePlanDiscountDto:
+    plan_id: int
+    discount_percent: int
+    discount_starts_at: Optional[datetime]
+    discount_ends_at: Optional[datetime]
 
 
 @dataclass(frozen=True, kw_only=True)

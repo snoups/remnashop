@@ -29,6 +29,7 @@ from app.modules.plans.api.schemas import (
     UpdateAddOnRequest,
     UpdateCurrencyRateRequest,
     UpdatePlanAccessRequest,
+    UpdatePlanDiscountRequest,
     UpdatePlanRequest,
     UpdatePlanSquadsRequest,
     UpdatePricingSettingsRequest,
@@ -51,6 +52,7 @@ from app.modules.plans.dto import (
     SwitchAnchorCurrencyDto,
     UpdateAddOnDto,
     UpdatePlanAccessDto,
+    UpdatePlanDiscountDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -76,6 +78,7 @@ from app.modules.plans.usecases import (
     SwitchAnchorCurrencyUseCase,
     UpdateAddOnUseCase,
     UpdatePlanAccessUseCase,
+    UpdatePlanDiscountUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
@@ -291,6 +294,26 @@ async def update_plan_squads(
             plan_id=plan_id,
             internal_squads=payload.internal_squads,
             external_squad=payload.external_squad,
+        ),
+    )
+    return PlanResponse.model_validate(plan, from_attributes=True)
+
+
+@router.put("/{plan_id}/discount", response_model=PlanResponse, responses=error_responses(400, 404))
+@inject
+async def update_plan_discount(
+    plan_id: int,
+    payload: UpdatePlanDiscountRequest,
+    use_case: FromDishka[UpdatePlanDiscountUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PlanResponse:
+    plan = await use_case(
+        actor,
+        UpdatePlanDiscountDto(
+            plan_id=plan_id,
+            discount_percent=payload.discount_percent,
+            discount_starts_at=payload.discount_starts_at,
+            discount_ends_at=payload.discount_ends_at,
         ),
     )
     return PlanResponse.model_validate(plan, from_attributes=True)

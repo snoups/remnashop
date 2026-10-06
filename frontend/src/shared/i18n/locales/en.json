@@ -1358,6 +1358,7 @@
     "PLANS_DURATION_BASE_PRICE_MANAGE": "Manage plan base prices",
     "PLANS_ACCESS_MANAGE": "Manage plan access",
     "PLANS_SQUADS_MANAGE": "Manage plan squads",
+    "PLANS_DISCOUNT_MANAGE": "Manage plan discounts",
     "PLANS_ORDER_MANAGE": "Reorder plans",
     "PRICING_VIEW": "View pricing",
     "PRICING_PREVIEW_VIEW": "Preview pricing changes",
@@ -2396,6 +2397,25 @@
       "telegramIdsPlaceholder": "Telegram ID, Enter to add",
       "emailsPlaceholder": "email, Enter to add"
     },
+    "discount": {
+      "button": "Discount",
+      "title": "Plan discount",
+      "percentLabel": "Discount",
+      "percentHint": "0 turns the discount off",
+      "startsLabel": "Starts",
+      "startsPlaceholder": "Right away",
+      "endsLabel": "Ends after",
+      "endsPlaceholder": "No end date",
+      "stackingHint": "Applies to every duration of the plan. A user’s own discount is taken off the already discounted price: −20% and −10% make −28%.",
+      "saved": "Discount saved.",
+      "error": "Failed to save the discount.",
+      "badge": "−{{percent}}%",
+      "status": {
+        "scheduled": "Scheduled",
+        "active": "Running",
+        "ended": "Ended"
+      }
+    },
     "delete": {
       "button": "Delete plan",
       "confirmTitle": "Delete plan?",
@@ -2471,6 +2491,7 @@
       "targetSubscription": "Target subscription",
       "externalPaymentId": "External payment ID",
       "discount": "{{percent}}% off · {{source}}",
+      "planDiscount": "{{percent}}% off · plan",
       "customerEmail": "Receipt email",
       "idempotencyKey": "Idempotency key",
       "createdAt": "Created at",
@@ -2963,6 +2984,7 @@
     "PERMISSION_DENIED": "You don't have permission for this.",
     "PERMISSION_NOT_GRANTABLE": "Some of these permissions can't be granted.",
     "PLAN_CONFLICT": "The plan conflicts with an existing one.",
+    "PLAN_DISCOUNT_WINDOW_INVALID": "The discount must start before it ends.",
     "PLAN_DURATION_DUPLICATE": "This duration is already in the plan.",
     "PLAN_DURATION_NOT_FOUND": "The plan has no such duration.",
     "PLAN_IN_USE": "The plan is still in use.",

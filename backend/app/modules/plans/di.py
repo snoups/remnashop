@@ -24,6 +24,7 @@ from app.modules.plans.usecases import (
     SwitchAnchorCurrencyUseCase,
     UpdateAddOnUseCase,
     UpdatePlanAccessUseCase,
+    UpdatePlanDiscountUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
@@ -47,6 +48,7 @@ class PlansProvider(Provider):
         SetPlanPriceOverrideUseCase,
         UpdatePlanAccessUseCase,
         UpdatePlanSquadsUseCase,
+        UpdatePlanDiscountUseCase,
         ReorderPlansUseCase,
         CreateAddOnUseCase,
         DeleteAddOnUseCase,

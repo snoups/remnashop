@@ -47,6 +47,7 @@ class TransactionResponse(BaseModel):
     base_price: Decimal
     discount_percent: int
     discount_source: str
+    plan_discount_percent: int
     final_price: Decimal
     customer_email: Optional[str]
     idempotency_key: str

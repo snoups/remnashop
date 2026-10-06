@@ -37,6 +37,9 @@ export interface Plan {
   is_trial: boolean;
   allow_bonus_days: boolean;
   allow_promocodes: boolean;
+  discount_percent: number;
+  discount_starts_at: string | null;
+  discount_ends_at: string | null;
   durations: PlanDuration[];
 }
 
@@ -112,4 +115,14 @@ export interface UpdatePlanAccessRequest {
 
 export function updatePlanAccess(planId: number, payload: UpdatePlanAccessRequest): Promise<Plan> {
   return apiPut<Plan, UpdatePlanAccessRequest>(`/plans/${planId}/access`, payload);
+}
+
+export interface UpdatePlanDiscountRequest {
+  discount_percent: number;
+  discount_starts_at: string | null;
+  discount_ends_at: string | null;
+}
+
+export function updatePlanDiscount(planId: number, payload: UpdatePlanDiscountRequest): Promise<Plan> {
+  return apiPut<Plan, UpdatePlanDiscountRequest>(`/plans/${planId}/discount`, payload);
 }

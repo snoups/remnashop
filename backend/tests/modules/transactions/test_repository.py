@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
@@ -11,12 +12,15 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PromocodeRewardType,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
 )
 from app.core.utils.time import datetime_now
 from app.modules.plans.repository import PlanRepository
+from app.modules.promocodes.dto import CreatePromocodeDto
+from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -681,3 +685,33 @@ async def test_lookups_are_scoped_to_the_gateway(
         )
         is None
     )
+
+
+async def test_sum_paid_promocode_discounts_leaves_out_the_plan_discount(
+    transaction_repository: TransactionRepository,
+    promocode_repository: PromocodeRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(code="TEN", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=10)
+    )
+    async with uow:
+        # 500 -20% plan -> 400, -10% promocode -> 360
+        order = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="promo-plan"),
+                plan_discount_percent=20,
+                discount_percent=10,
+                discount_source=DiscountSource.PERSONAL,
+                discount_promocode_id=promo.id,
+                final_price=Decimal("360"),
+                anchor_final_price=Decimal("360"),
+            )
+        )
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+
+    count, amount = await transaction_repository.sum_paid_promocode_discounts()
+
+    assert (count, amount) == (1, Decimal("40"))

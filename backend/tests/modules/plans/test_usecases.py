@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -5,14 +6,16 @@ import pytest
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, PlanAvailability, PlanType, PromocodeRewardType, Role
-from app.core.exceptions import PermissionDeniedError
+from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
+from app.core.utils.time import datetime_now
 from app.modules.plans.dto import (
     CreatePlanDto,
     ReorderPlansDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
     UpdatePlanAccessDto,
+    UpdatePlanDiscountDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -24,6 +27,7 @@ from app.modules.plans.usecases import (
     ReorderPlansUseCase,
     SetPlanDurationsUseCase,
     UpdatePlanAccessUseCase,
+    UpdatePlanDiscountUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
@@ -383,3 +387,81 @@ async def test_deleting_a_plan_drops_it_from_promocode_plan_lists(
 
     assert (await promocodes.get_by_id(both.id)).allowed_plan_ids == [kept.id]
     assert (await promocodes.get_by_id(only.id)).allowed_plan_ids == []
+
+
+async def test_owner_can_set_and_clear_plan_discount(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
+        )
+    )
+    use_case = UpdatePlanDiscountUseCase(plan_repository, uow, event_publisher)
+    ends_at = datetime_now() + timedelta(days=7)
+
+    updated = await use_case(
+        OWNER,
+        UpdatePlanDiscountDto(
+            plan_id=created.id,
+            discount_percent=25,
+            discount_starts_at=None,
+            discount_ends_at=ends_at,
+        ),
+    )
+    assert updated.discount_percent == 25
+    assert updated.discount_ends_at == ends_at
+
+    cleared = await use_case(
+        OWNER,
+        UpdatePlanDiscountDto(
+            plan_id=created.id, discount_percent=0, discount_starts_at=None, discount_ends_at=None
+        ),
+    )
+    assert cleared.discount_percent == 0
+    assert cleared.discount_ends_at is None
+
+
+async def test_plan_discount_must_start_before_it_ends(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
+        )
+    )
+    use_case = UpdatePlanDiscountUseCase(plan_repository, uow, event_publisher)
+    now = datetime_now()
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            UpdatePlanDiscountDto(
+                plan_id=created.id,
+                discount_percent=10,
+                discount_starts_at=now,
+                discount_ends_at=now,
+            ),
+        )
+
+
+async def test_regular_user_cannot_set_plan_discount(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
+        )
+    )
+    use_case = UpdatePlanDiscountUseCase(plan_repository, uow, event_publisher)
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(
+            REGULAR_USER,
+            UpdatePlanDiscountDto(
+                plan_id=created.id,
+                discount_percent=10,
+                discount_starts_at=None,
+                discount_ends_at=None,
+            ),
+        )

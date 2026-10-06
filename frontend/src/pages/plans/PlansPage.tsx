@@ -11,6 +11,7 @@ import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordi
 import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowDownUp,
+  BadgePercent,
   GripVertical,
   Layers,
   Pencil,
@@ -23,9 +24,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { deletePlan, listPlans, type Plan, type PlanAvailability, reorderPlans, updatePlan } from "@entities/plans/api";
+import { PLAN_DISCOUNT_STATUS_TONE, planDiscountStatus } from "@entities/plans/discount";
 import { useAnchorCurrency } from "@entities/pricing/use-anchor-currency";
 import { usePermissions } from "@entities/user/use-current-user";
 import { PlanAccessDialog } from "@features/plan-access/PlanAccessDialog";
+import { PlanDiscountDialog } from "@features/plan-discount/PlanDiscountDialog";
 import { PlanEditDialog } from "@features/plan-edit/PlanEditDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
@@ -53,6 +56,7 @@ export function PlansPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [editingPlan, setEditingPlan] = useState<Plan | null | "new">(null);
   const [accessPlan, setAccessPlan] = useState<Plan | null>(null);
+  const [discountPlan, setDiscountPlan] = useState<Plan | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Plan | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -64,6 +68,7 @@ export function PlansPage() {
   const canUpdate = permissions.includes("PLANS_UPDATE");
   const canDelete = permissions.includes("PLANS_DELETE");
   const canManageAccess = permissions.includes("PLANS_ACCESS_MANAGE");
+  const canManageDiscount = permissions.includes("PLANS_DISCOUNT_MANAGE");
   const canReorder = permissions.includes("PLANS_ORDER_MANAGE");
 
   const [state, reload, setPlans] = useAsyncResource(listPlans);
@@ -188,6 +193,13 @@ export function PlansPage() {
                     onClick: () => setAccessPlan(plan),
                   });
                 }
+                if (canManageDiscount) {
+                  menuItems.push({
+                    label: t("plans.discount.button"),
+                    icon: BadgePercent,
+                    onClick: () => setDiscountPlan(plan),
+                  });
+                }
                 if (canDelete) {
                   menuItems.push({
                     label: t("plans.delete.button"),
@@ -237,6 +249,10 @@ export function PlansPage() {
         <PlanAccessDialog plan={accessPlan} onClose={() => setAccessPlan(null)} onSaved={handleSaved} />
       )}
 
+      {discountPlan && (
+        <PlanDiscountDialog plan={discountPlan} onClose={() => setDiscountPlan(null)} onSaved={handleSaved} />
+      )}
+
       {pendingDelete && (
         <ConfirmDialog
           title={t("plans.delete.confirmTitle")}
@@ -280,6 +296,7 @@ function PlanCard({
     null,
   );
   const isRestricted = RESTRICTED_AVAILABILITIES.has(plan.availability);
+  const discountStatus = planDiscountStatus(plan);
 
   return (
     <article
@@ -308,6 +325,12 @@ function PlanCard({
             {plan.tag && (
               <Badge tone="accent">
                 {plan.tag}
+              </Badge>
+            )}
+            {discountStatus && (
+              <Badge tone={PLAN_DISCOUNT_STATUS_TONE[discountStatus]}>
+                {t("plans.discount.badge", { percent: plan.discount_percent })}
+                {discountStatus !== "active" && ` · ${t(`plans.discount.status.${discountStatus}`)}`}
               </Badge>
             )}
           </div>

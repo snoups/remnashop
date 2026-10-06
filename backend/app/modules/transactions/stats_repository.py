@@ -37,6 +37,7 @@ class TransactionStatsRepository:
             Transaction.plan_snapshot["name"].astext,
             Transaction.duration_days,
             Transaction.gateway_type,
+            Transaction.plan_discount_percent,
         ).where(*_PAID)
 
     @staticmethod
@@ -55,6 +56,7 @@ class TransactionStatsRepository:
             plan_name=row[10] or "",
             duration_days=row[11],
             gateway_type=row[12],
+            plan_discount_percent=row[13],
         )
 
     async def list_paid(self, start: Optional[datetime], end: datetime) -> list[PaidTransactionDto]:

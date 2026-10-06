@@ -1,8 +1,9 @@
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
 from remnapy.enums import TrafficLimitStrategy
-from sqlalchemy import ARRAY, BigInteger, Text
+from sqlalchemy import ARRAY, BigInteger, CheckConstraint, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
@@ -12,6 +13,11 @@ from app.core.enums import PlanAvailability, PlanType
 
 class Plan(BaseSql, TimestampMixin):
     __tablename__ = "plans"
+    __table_args__ = (
+        CheckConstraint(
+            "discount_percent BETWEEN 0 AND 100", name="ck_plans_discount_percent_range"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -37,3 +43,8 @@ class Plan(BaseSql, TimestampMixin):
     is_trial: Mapped[bool] = mapped_column(default=False, server_default="false")
     allow_bonus_days: Mapped[bool] = mapped_column(default=True, server_default="true")
     allow_promocodes: Mapped[bool] = mapped_column(default=True, server_default="true")
+
+    # applied before the user's own discount; NULL bounds leave that side open
+    discount_percent: Mapped[int] = mapped_column(default=0, server_default="0")
+    discount_starts_at: Mapped[Optional[datetime]]
+    discount_ends_at: Mapped[Optional[datetime]]

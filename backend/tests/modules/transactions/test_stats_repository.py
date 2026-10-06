@@ -79,6 +79,7 @@ async def test_list_paid_returns_only_paid_non_test_rows_in_range(
     assert [row.user_id for row in rows] == [user.id]
     assert rows[0].plan_name == "Basic"
     assert (rows[0].anchor_base_price, rows[0].anchor_final_price) == (Decimal("7"), Decimal("6"))
+    assert rows[0].plan_discount_percent == 0
     assert len(await repo.list_paid(None, datetime_now() + timedelta(seconds=1))) == 2
     attempts = await repo.list_attempts(
         datetime_now() - timedelta(days=1), datetime_now() + timedelta(seconds=1)

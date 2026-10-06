@@ -1402,6 +1402,7 @@
     "PLANS_DURATION_BASE_PRICE_MANAGE": "Управление базовыми ценами планов",
     "PLANS_ACCESS_MANAGE": "Управление доступом к планам",
     "PLANS_SQUADS_MANAGE": "Управление сквадами планов",
+    "PLANS_DISCOUNT_MANAGE": "Управление скидками планов",
     "PLANS_ORDER_MANAGE": "Изменение порядка планов",
     "PRICING_VIEW": "Просмотр ценообразования",
     "PRICING_PREVIEW_VIEW": "Предпросмотр изменений цен",
@@ -2454,6 +2455,25 @@
       "telegramIdsPlaceholder": "Telegram ID, Enter — добавить",
       "emailsPlaceholder": "email, Enter — добавить"
     },
+    "discount": {
+      "button": "Скидка",
+      "title": "Скидка на план",
+      "percentLabel": "Скидка",
+      "percentHint": "0 — скидка выключена",
+      "startsLabel": "Начало",
+      "startsPlaceholder": "Сразу",
+      "endsLabel": "Последний день",
+      "endsPlaceholder": "Без срока",
+      "stackingHint": "Действует на все длительности плана. Личная скидка пользователя считается от уже сниженной цены: −20% и −10% дают −28%.",
+      "saved": "Скидка сохранена.",
+      "error": "Не удалось сохранить скидку.",
+      "badge": "−{{percent}}%",
+      "status": {
+        "scheduled": "Запланирована",
+        "active": "Идёт",
+        "ended": "Закончилась"
+      }
+    },
     "delete": {
       "button": "Удалить план",
       "confirmTitle": "Удалить план?",
@@ -2529,6 +2549,7 @@
       "targetSubscription": "Целевая подписка",
       "externalPaymentId": "Внешний ID платежа",
       "discount": "Скидка {{percent}}% · {{source}}",
+      "planDiscount": "Скидка {{percent}}% · план",
       "customerEmail": "Почта для чека",
       "idempotencyKey": "Ключ идемпотентности",
       "createdAt": "Создан",
@@ -3023,6 +3044,7 @@
     "PERMISSION_DENIED": "Недостаточно прав.",
     "PERMISSION_NOT_GRANTABLE": "Некоторые из этих прав нельзя выдать.",
     "PLAN_CONFLICT": "Тариф конфликтует с существующим.",
+    "PLAN_DISCOUNT_WINDOW_INVALID": "Скидка должна начинаться раньше, чем заканчивается.",
     "PLAN_DURATION_DUPLICATE": "Такая длительность уже есть в тарифе.",
     "PLAN_DURATION_NOT_FOUND": "В тарифе нет такой длительности.",
     "PLAN_IN_USE": "Тариф ещё используется.",

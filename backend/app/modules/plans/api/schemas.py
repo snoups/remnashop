@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
 from uuid import UUID
@@ -49,6 +50,9 @@ class PlanResponse(BaseModel):
     is_trial: bool
     allow_bonus_days: bool
     allow_promocodes: bool
+    discount_percent: int
+    discount_starts_at: Optional[datetime] = None
+    discount_ends_at: Optional[datetime] = None
     durations: list[PlanDurationItem]
 
 
@@ -100,6 +104,12 @@ class UpdatePlanAccessRequest(BaseModel):
 class UpdatePlanSquadsRequest(BaseModel):
     internal_squads: list[UUID] = Field(default_factory=list)
     external_squad: Optional[UUID] = None
+
+
+class UpdatePlanDiscountRequest(BaseModel):
+    discount_percent: int = Field(ge=0, le=100)
+    discount_starts_at: Optional[datetime] = None
+    discount_ends_at: Optional[datetime] = None
 
 
 class ReorderPlansRequest(BaseModel):

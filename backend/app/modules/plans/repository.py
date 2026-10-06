@@ -23,6 +23,7 @@ from app.modules.plans.dto import (
     SetPlanDurationsDto,
     SetPlanPriceOverrideDto,
     UpdatePlanAccessDto,
+    UpdatePlanDiscountDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -110,6 +111,9 @@ class PlanRepository:
             is_trial=row.is_trial,
             allow_bonus_days=row.allow_bonus_days,
             allow_promocodes=row.allow_promocodes,
+            discount_percent=row.discount_percent,
+            discount_starts_at=row.discount_starts_at,
+            discount_ends_at=row.discount_ends_at,
             durations=durations,
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -385,6 +389,17 @@ class PlanRepository:
         row = await self._get_or_raise(data.plan_id)
         row.internal_squads = data.internal_squads
         row.external_squad = data.external_squad
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        durations_by_plan = await self._load_durations([row.id])
+        return self._to_dto(row, durations_by_plan.get(row.id, []))
+
+    async def update_discount(self, data: UpdatePlanDiscountDto) -> PlanDto:
+        row = await self._get_or_raise(data.plan_id)
+        row.discount_percent = data.discount_percent
+        row.discount_starts_at = data.discount_starts_at
+        row.discount_ends_at = data.discount_ends_at
 
         await self.session.flush()
         await self.session.refresh(row)

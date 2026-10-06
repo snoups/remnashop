@@ -204,6 +204,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
         Permission.PLANS_ACCESS_MANAGE,
         Permission.PLANS_SQUADS_MANAGE,
+        Permission.PLANS_DISCOUNT_MANAGE,
         Permission.PLANS_ORDER_MANAGE,
         Permission.PRICING_VIEW,
         Permission.PRICING_PREVIEW_VIEW,
@@ -355,6 +356,7 @@ def test_plans_permissions_granted_to_admin_by_default() -> None:
         Permission.PLANS_DURATION_BASE_PRICE_MANAGE,
         Permission.PLANS_ACCESS_MANAGE,
         Permission.PLANS_SQUADS_MANAGE,
+        Permission.PLANS_DISCOUNT_MANAGE,
         Permission.PLANS_ORDER_MANAGE,
     ):
         assert permission in admin_default
