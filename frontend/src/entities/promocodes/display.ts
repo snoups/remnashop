@@ -97,10 +97,10 @@ export function limitsDraftOf(promo: Promocode): PromocodeLimitsDraft {
   };
 }
 
-/** undefined means the activation limit isn't a valid number; reject the submit. */
 /** rewards applied to a chosen subscription, the only ones a plan list limits */
 export const PLAN_LIMITED_REWARDS: PromocodeRewardType[] = ["DURATION", "TRAFFIC", "DEVICES"];
 
+/** undefined means the activation limit isn't a valid number; reject the submit. */
 export function limitsToPayload(
   draft: PromocodeLimitsDraft,
   rewardType: PromocodeRewardType,

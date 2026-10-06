@@ -642,3 +642,15 @@ async def test_has_discount_filter_counts_the_loyalty_discount(
     with_discount, _ = await user_repository.list_filtered(roles=[Role.USER], has_discount=True)
 
     assert loyal.id in {user.id for user in with_discount}
+
+
+async def test_restore_purchase_discount_skips_an_order_without_a_promocode(
+    user_repository: UserRepository,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="u", telegram_id=930_010))
+
+    await user_repository.restore_purchase_discount(user.id, 20, None)
+
+    restored = await user_repository.get_by_id(user.id)
+    assert restored is not None
+    assert restored.purchase_discount == 0

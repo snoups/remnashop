@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Optional
 
 from loguru import logger
 
@@ -23,6 +23,7 @@ from app.modules.promocodes.availability import (
 )
 from app.modules.promocodes.dto import ActivatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeActivatedEvent
+from app.modules.promocodes.plan_limits import PLAN_LIMITED_REWARDS
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.subscriptions import (
     GrantAddOnDispatch,
@@ -35,10 +36,6 @@ from app.modules.subscriptions import (
     get_owned_target,
 )
 from app.modules.users import UpdateUserDto, UserDto, UserRepository
-
-_TARGET_REQUIRED_REWARDS: Final[frozenset[PromocodeRewardType]] = frozenset(
-    {PromocodeRewardType.DURATION, PromocodeRewardType.TRAFFIC, PromocodeRewardType.DEVICES}
-)
 
 
 def _addon_grant_key(activation_id: int) -> str:
@@ -81,7 +78,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
 
         target: Optional[SubscriptionDto] = None
         reward_plan: Optional[PlanDto] = None
-        if promo.reward_type in _TARGET_REQUIRED_REWARDS:
+        if promo.reward_type in PLAN_LIMITED_REWARDS:
             if data.target_subscription_id is None:
                 raise ValidationError(
                     "target_subscription_id is required for this promocode",

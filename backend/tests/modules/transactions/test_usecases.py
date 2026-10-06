@@ -4,10 +4,10 @@ from typing import Optional
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db.models import Transaction
+from app.core.db.models import Subscription, Transaction
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -21,6 +21,7 @@ from app.core.enums import (
     SubscriptionStatus,
     TransactionStatus,
 )
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
@@ -775,3 +776,36 @@ async def test_an_admin_granted_discount_survives(
 
     order = await transaction_repository.get_by_id(result.order_id)
     assert order.discount_percent == 15
+
+
+async def test_create_checkout_renew_refuses_a_disabled_subscription(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_101, plan_id=plan.id
+    )
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription_id)
+        .values(status=SubscriptionStatus.DISABLED)
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                user_id=actor.id,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.RENEW,
+                target_subscription_id=subscription_id,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+            ),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DISABLED

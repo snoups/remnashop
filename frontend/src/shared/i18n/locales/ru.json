@@ -1220,6 +1220,7 @@
     "namePlaceholder": "например, ci-deploy",
     "permissionsLabel": "Права",
     "fullAccess": "Полный доступ",
+    "landing": "Лендинг",
     "readOnly": "Только чтение",
     "lifetimeLabel": "Время жизни токена",
     "expiresIn30Days": "30 дней",
@@ -2089,7 +2090,8 @@
           "POINTS": "На счёт пользователя"
         },
         "amountLabel": "При регистрации по ссылке",
-        "hint": "Начисляется один раз при регистрации по реферальной ссылке. 0 — не начислять."
+        "hint": "Начисляется один раз при регистрации по реферальной ссылке. 0 — не начислять.",
+        "pointsWarning": "Баллы начисляются без оплаты — их можно накрутить фейковыми аккаунтами."
       },
       "levelsTitle": "Уровни и награды",
       "levelsDescription": "Глубина цепочки и награда на каждом уровне",
@@ -2307,6 +2309,7 @@
       "allowedUserIdsPlaceholder": "Введите ID и нажмите Enter",
       "plansLabel": "Планы",
       "plansHint": "Ничего не выбрано — любой план",
+      "plansPromocodesOff": "Неактивные планы не принимают промокоды",
       "expiresLabel": "Действует до",
       "expiresPlaceholder": "Без срока",
       "maxActivationsLabel": "Лимит активаций",
@@ -2453,7 +2456,7 @@
     "delete": {
       "button": "Удалить план",
       "confirmTitle": "Удалить план?",
-      "confirm": "Безвозвратно удалить план «{{name}}»? Это действие нельзя отменить.",
+      "confirm": "Безвозвратно удалить план «{{name}}»? Это действие нельзя отменить. Промокоды, ограниченные только этим планом, станут доступны для всех планов.",
       "error": "Не удалось удалить план."
     }
   },
@@ -3041,6 +3044,7 @@
     "PROMOCODE_NOT_AVAILABLE": "Этот промокод вам недоступен.",
     "PROMOCODE_NOT_FOUND": "Промокод не найден.",
     "PROMOCODE_PLAN_NOT_ALLOWED": "Этот промокод нельзя применить к этому плану.",
+    "PROMOCODE_PLANS_NOT_APPLICABLE": "Планы ограничивают только промокоды на дни, трафик и устройства.",
     "PROMOCODE_REWARD_ADDON_REQUIRED": "Выберите аддон для этой награды.",
     "PROMOCODE_REWARD_ADDON_TYPE_MISMATCH": "Аддон не подходит к типу награды.",
     "PROMOCODE_REWARD_INVALID": "Недопустимое значение награды.",
@@ -3065,6 +3069,7 @@
     "SESSION_NOT_FOUND": "Сессия не найдена.",
     "SHOP_SUBSCRIPTION_LIMIT_INVALID": "Лимит должен быть больше нуля или пустым для безлимита.",
     "SUBSCRIPTION_DELETED": "Подписка удалена.",
+    "SUBSCRIPTION_DISABLED": "Подписка отключена.",
     "SUBSCRIPTION_LIMIT_REACHED": "Достигнут лимит подписок.",
     "SUBSCRIPTION_NOT_FOUND": "Подписка не найдена.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "Такая смена статуса подписки недопустима.",

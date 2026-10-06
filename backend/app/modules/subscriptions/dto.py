@@ -186,6 +186,9 @@ class PurchaseSubscriptionDto:
     # False for a paid checkout order: the cap was enforced at checkout, and
     # refusing after the charge leaves the customer paid with nothing.
     enforce_subscription_cap: bool = True
+    # False for a paid order too: a disabled target was refused at checkout,
+    # and one disabled after the charge is still owed its renewal
+    refuse_disabled_target: bool = True
 
 
 @dataclass(frozen=True, kw_only=True)

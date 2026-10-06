@@ -29,6 +29,10 @@ class ReferrerLookup(Protocol):
     async def has_referrer(self, user_id: int) -> bool: ...
 
 
+class PlanReferenceCleaner(Protocol):
+    async def forget_plan(self, plan_id: int) -> None: ...
+
+
 class PromocodeLiveness(Protocol):
     async def is_live(self, promocode_id: int) -> bool: ...
 

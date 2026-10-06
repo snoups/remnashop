@@ -1176,6 +1176,7 @@
     "namePlaceholder": "e.g. ci-deploy",
     "permissionsLabel": "Permissions",
     "fullAccess": "Full access",
+    "landing": "Landing",
     "readOnly": "Read only",
     "lifetimeLabel": "Token lifetime",
     "expiresIn30Days": "30 days",
@@ -2045,7 +2046,8 @@
           "POINTS": "To the user's account"
         },
         "amountLabel": "On sign-up through a link",
-        "hint": "Credited once, when someone registers through a referral link. 0 turns it off."
+        "hint": "Credited once, when someone registers through a referral link. 0 turns it off.",
+        "pointsWarning": "Points are credited without a payment and can be farmed with fake accounts."
       },
       "levelsTitle": "Levels & rewards",
       "levelsDescription": "Chain depth and the reward at each level",
@@ -2255,6 +2257,7 @@
       "allowedUserIdsPlaceholder": "Type an ID and press Enter",
       "plansLabel": "Plans",
       "plansHint": "None selected — any plan",
+      "plansPromocodesOff": "Greyed-out plans don't accept promocodes",
       "expiresLabel": "Valid until",
       "expiresPlaceholder": "No expiry",
       "maxActivationsLabel": "Activation limit",
@@ -2395,7 +2398,7 @@
     "delete": {
       "button": "Delete plan",
       "confirmTitle": "Delete plan?",
-      "confirm": "Permanently delete “{{name}}”? This cannot be undone.",
+      "confirm": "Permanently delete “{{name}}”? This cannot be undone. Promocodes limited to this plan alone become valid for every plan.",
       "error": "Failed to delete the plan."
     }
   },
@@ -2981,6 +2984,7 @@
     "PROMOCODE_NOT_AVAILABLE": "This promocode isn't available to you.",
     "PROMOCODE_NOT_FOUND": "Promocode not found.",
     "PROMOCODE_PLAN_NOT_ALLOWED": "This promocode can't be used with this plan.",
+    "PROMOCODE_PLANS_NOT_APPLICABLE": "Plans can only limit days, traffic and device promocodes.",
     "PROMOCODE_REWARD_ADDON_REQUIRED": "Choose an add-on for this reward.",
     "PROMOCODE_REWARD_ADDON_TYPE_MISMATCH": "The add-on doesn't match the reward type.",
     "PROMOCODE_REWARD_INVALID": "Invalid reward value.",
@@ -3005,6 +3009,7 @@
     "SESSION_NOT_FOUND": "Session not found.",
     "SHOP_SUBSCRIPTION_LIMIT_INVALID": "The limit must be positive, or empty for unlimited.",
     "SUBSCRIPTION_DELETED": "The subscription has been deleted.",
+    "SUBSCRIPTION_DISABLED": "This subscription is disabled.",
     "SUBSCRIPTION_LIMIT_REACHED": "The subscription limit is reached.",
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn't allowed.",

@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+import app.modules.promocodes.repository as promocode_repository_module
 from app.core.db.models.promocode import Promocode
 from app.core.enums import PromocodeAvailability, PromocodeRewardType, PromocodeStatus
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
@@ -414,3 +415,20 @@ async def test_is_live_follows_activity_and_expiry(
     assert await promocode_repository.is_live(off.id) is False
     assert await promocode_repository.is_live(lapsed.id) is False
     assert await promocode_repository.is_live(999_999_999) is False
+
+
+async def test_is_live_at_the_exact_expiry_instant(
+    promocode_repository: PromocodeRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    edge = datetime_now() + timedelta(days=1)
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="EDGE1",
+            reward_type=PromocodeRewardType.PURCHASE_DISCOUNT,
+            reward=5,
+            expires_at=edge,
+        )
+    )
+    monkeypatch.setattr(promocode_repository_module, "datetime_now", lambda: edge)
+
+    assert await promocode_repository.is_live(promo.id) is True

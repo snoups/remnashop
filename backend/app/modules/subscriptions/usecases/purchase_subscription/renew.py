@@ -58,6 +58,12 @@ class RenewPurchase:
                 raise ValidationError(
                     "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
                 )
+            # before the panel call: refusing after it would leave the panel
+            # extended and a pinned key a caller can only retry, never undo
+            if data.refuse_disabled_target and target.status is SubscriptionStatus.DISABLED:
+                raise ValidationError(
+                    "Cannot renew a disabled subscription", code=ErrorCode.SUBSCRIPTION_DISABLED
+                )
             if target.plan_snapshot.plan_id != data.plan_snapshot.plan_id:
                 raise ValidationError(
                     "Renewing a different plan is a CHANGE, not a RENEW",

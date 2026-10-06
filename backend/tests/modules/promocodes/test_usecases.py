@@ -261,7 +261,12 @@ async def test_update_promocode_deactivates(
     created = await create_use_case(
         OWNER, CreatePromocodeDto(code="TOGGLE", reward_type=PromocodeRewardType.DURATION, reward=5)
     )
-    update_use_case = UpdatePromocodeUseCase(promocode_repository, uow, event_publisher)
+    update_use_case = UpdatePromocodeUseCase(
+        promocode_repository,
+        PlanRepository(promocode_repository.session),
+        uow,
+        event_publisher,
+    )
 
     updated = await update_use_case(
         OWNER, UpdatePromocodeDto(promocode_id=created.id, is_active=False)
@@ -292,7 +297,12 @@ async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist
             allowed_user_ids=[1],
         ),
     )
-    update_use_case = UpdatePromocodeUseCase(promocode_repository, uow, event_publisher)
+    update_use_case = UpdatePromocodeUseCase(
+        promocode_repository,
+        PlanRepository(promocode_repository.session),
+        uow,
+        event_publisher,
+    )
 
     with pytest.raises(ValidationError):
         await update_use_case(
@@ -1453,3 +1463,124 @@ async def test_deleting_a_promocode_ends_the_discounts_it_gave(
     untouched = await user_repository.get_by_id(bystander.id)
     assert untouched is not None
     assert untouched.personal_discount == 15
+
+
+def _create_promocode_use_case(
+    promocode_repository, uow, event_publisher
+) -> CreatePromocodeUseCase:
+    return CreatePromocodeUseCase(
+        promocode_repository,
+        AddOnRepository(promocode_repository.session),
+        PlanRepository(promocode_repository.session),
+        uow,
+        event_publisher,
+    )
+
+
+async def test_create_refuses_a_plan_list_on_a_discount_promocode(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
+    plan = await PlanRepository(promocode_repository.session).create(
+        CreatePlanDto(
+            public_code="p-disc", name="p-disc", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await _create_promocode_use_case(promocode_repository, uow, event_publisher)(
+            OWNER,
+            CreatePromocodeDto(
+                code="DISCPLAN",
+                reward_type=PromocodeRewardType.PURCHASE_DISCOUNT,
+                reward=10,
+                allowed_plan_ids=[plan.id],
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PROMOCODE_PLANS_NOT_APPLICABLE
+
+
+async def test_create_refuses_an_unknown_plan(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
+    with pytest.raises(NotFoundError) as error:
+        await _create_promocode_use_case(promocode_repository, uow, event_publisher)(
+            OWNER,
+            CreatePromocodeDto(
+                code="NOPLAN",
+                reward_type=PromocodeRewardType.DURATION,
+                reward=10,
+                allowed_plan_ids=[999_999_999],
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PLAN_NOT_FOUND
+
+
+async def test_update_refuses_a_plan_list_on_a_discount_promocode(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="p-upd", name="p-upd", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+    created = await _create_promocode_use_case(promocode_repository, uow, event_publisher)(
+        OWNER,
+        CreatePromocodeDto(
+            code="UPDDISC", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=10
+        ),
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await UpdatePromocodeUseCase(promocode_repository, plan_repository, uow, event_publisher)(
+            OWNER, UpdatePromocodeDto(promocode_id=created.id, allowed_plan_ids=[plan.id])
+        )
+
+    assert error.value.code is ErrorCode.PROMOCODE_PLANS_NOT_APPLICABLE
+
+
+async def test_update_drops_a_stale_plan_id_instead_of_refusing(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="p-live", name="p-live", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+    # a dead id stored before plan deletion cleaned promocode lists
+    created = await promocode_repository.create(
+        CreatePromocodeDto(
+            code="STALEPLAN",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=5,
+            allowed_plan_ids=[plan.id, 999_999_999],
+        )
+    )
+
+    updated = await UpdatePromocodeUseCase(
+        promocode_repository, plan_repository, uow, event_publisher
+    )(
+        OWNER,
+        UpdatePromocodeDto(promocode_id=created.id, allowed_plan_ids=[plan.id, 999_999_999]),
+    )
+
+    assert updated.allowed_plan_ids == [plan.id]
+
+
+async def test_update_still_refuses_a_newly_added_unknown_plan(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
+    plan_repository = PlanRepository(promocode_repository.session)
+    created = await promocode_repository.create(
+        CreatePromocodeDto(code="NEWUNKNOWN", reward_type=PromocodeRewardType.DURATION, reward=5)
+    )
+
+    with pytest.raises(NotFoundError) as error:
+        await UpdatePromocodeUseCase(promocode_repository, plan_repository, uow, event_publisher)(
+            OWNER, UpdatePromocodeDto(promocode_id=created.id, allowed_plan_ids=[999_999_998])
+        )
+
+    assert error.value.code is ErrorCode.PLAN_NOT_FOUND

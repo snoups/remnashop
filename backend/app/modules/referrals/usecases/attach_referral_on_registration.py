@@ -35,9 +35,9 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
             settings = await self._referral_repository.get_settings()
             user = await self._user_repository.get_by_id(data.user_id)
             referrer = await self._user_repository.get_by_referral_code(data.referral_code)
-        if user is None or not settings.enabled:
+        if user is None or user.deleted_at is not None or not settings.enabled:
             return
-        if referrer is None or referrer.id == user.id:
+        if referrer is None or referrer.id == user.id or referrer.is_blocked:
             logger.info(f"{user.log} Referral code '{data.referral_code}' not usable, skipping")
             return
         if await self._is_in_own_downline(referrer.id, user.id, settings.max_level):

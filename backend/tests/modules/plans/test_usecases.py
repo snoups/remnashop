@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PlanAvailability, PlanType, Role
+from app.core.enums import Locale, PlanAvailability, PlanType, PromocodeRewardType, Role
 from app.core.exceptions import PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.modules.plans.dto import (
@@ -27,6 +27,8 @@ from app.modules.plans.usecases import (
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
+from app.modules.promocodes.dto import CreatePromocodeDto
+from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.users.dto import UserDto
 
 OWNER = UserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -164,7 +166,12 @@ async def test_owner_can_delete_plan(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = DeletePlanUseCase(plan_repository, uow, event_publisher)
+    use_case = DeletePlanUseCase(
+        plan_repository,
+        PromocodeRepository(plan_repository.session),
+        uow,
+        event_publisher,
+    )
 
     await use_case(OWNER, created.id)
 
@@ -179,7 +186,12 @@ async def test_regular_user_cannot_delete_plan(
             public_code="basic", name="Basic", type=PlanType.BOTH, traffic_limit=100, device_limit=3
         )
     )
-    use_case = DeletePlanUseCase(plan_repository, uow, event_publisher)
+    use_case = DeletePlanUseCase(
+        plan_repository,
+        PromocodeRepository(plan_repository.session),
+        uow,
+        event_publisher,
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, created.id)
@@ -334,3 +346,40 @@ async def test_regular_user_cannot_reorder_plans(
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, ReorderPlansDto(plan_ids=[created.id]))
+
+
+async def test_deleting_a_plan_drops_it_from_promocode_plan_lists(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    kept = await plan_repository.create(
+        CreatePlanDto(
+            public_code="kept", name="Kept", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+    gone = await plan_repository.create(
+        CreatePlanDto(
+            public_code="gone", name="Gone", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+    promocodes = PromocodeRepository(plan_repository.session)
+    both = await promocodes.create(
+        CreatePromocodeDto(
+            code="BOTHPLANS",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=5,
+            allowed_plan_ids=[kept.id, gone.id],
+        )
+    )
+    only = await promocodes.create(
+        CreatePromocodeDto(
+            code="ONLYGONE",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=5,
+            allowed_plan_ids=[gone.id],
+        )
+    )
+
+    await DeletePlanUseCase(plan_repository, promocodes, uow, event_publisher)(OWNER, gone.id)
+
+    assert (await promocodes.get_by_id(both.id)).allowed_plan_ids == [kept.id]
+    assert (await promocodes.get_by_id(only.id)).allowed_plan_ids == []

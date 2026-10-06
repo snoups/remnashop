@@ -8,7 +8,7 @@ import httpx
 import pytest
 from remnapy import RemnawaveSDK
 from remnapy.enums import TrafficLimitStrategy
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.core.db.models import EventOutboxEntry, Plan, Subscription, User
@@ -22,6 +22,7 @@ from app.core.enums import (
     RoundingMode,
     SubscriptionStatus,
 )
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
@@ -48,7 +49,11 @@ from app.modules.subscriptions.dto import (
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
+from app.modules.subscriptions.usecases import (
+    FulfillPurchaseUseCase,
+    GrantAddOnUseCase,
+    PurchaseSubscriptionUseCase,
+)
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore
@@ -2050,3 +2055,80 @@ async def test_change_that_loses_the_race_does_not_revert_the_winners_panel_conf
         )
 
     assert len(update_calls) == 1  # no compensating revert onto the winner's identity
+
+
+async def _disabled_subscription(
+    use_case: PurchaseSubscriptionUseCase,
+    subscription_repository: SubscriptionRepository,
+    buyer: UserDto,
+    plan: PlanDto,
+) -> int:
+    original = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("299.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == original.id)
+        .values(status=SubscriptionStatus.DISABLED)
+    )
+    return original.id
+
+
+def _renewal(buyer: UserDto, plan: PlanDto, target_id: int) -> PurchaseSubscriptionDto:
+    return PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot_from_plan(
+            plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+        ),
+        duration_days=30,
+        price_paid=Decimal("299.00"),
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.RENEW,
+        target_subscription_id=target_id,
+    )
+
+
+async def test_renew_refuses_a_disabled_target(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 431)
+    plan = await _create_plan(plan_repository, "renew-disabled")
+    target_id = await _disabled_subscription(
+        purchase_subscription_use_case, subscription_repository, buyer, plan
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await purchase_subscription_use_case(buyer, _renewal(buyer, plan, target_id))
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DISABLED
+
+
+async def test_a_paid_order_still_renews_a_subscription_disabled_after_checkout(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 432)
+    plan = await _create_plan(plan_repository, "renew-disabled-paid")
+    target_id = await _disabled_subscription(
+        purchase_subscription_use_case, subscription_repository, buyer, plan
+    )
+    fulfill = FulfillPurchaseUseCase(user_repository, purchase_subscription_use_case)
+
+    renewed = await fulfill.system(_renewal(buyer, plan, target_id))
+
+    assert renewed.id == target_id

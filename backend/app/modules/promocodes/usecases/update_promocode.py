@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from loguru import logger
 
 from app.core.actor import Actor
@@ -8,8 +10,10 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.plans import PlanRepository
 from app.modules.promocodes.dto import PromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.events import PromocodeChangedEvent
+from app.modules.promocodes.plan_limits import check_allowed_plans
 from app.modules.promocodes.repository import PromocodeRepository
 
 
@@ -19,10 +23,12 @@ class UpdatePromocodeUseCase(UseCase[UpdatePromocodeDto, PromocodeDto]):
     def __init__(
         self,
         promocode_repository: PromocodeRepository,
+        plan_repository: PlanRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
         self._promocode_repository = promocode_repository
+        self._plan_repository = plan_repository
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -42,6 +48,17 @@ class UpdatePromocodeUseCase(UseCase[UpdatePromocodeDto, PromocodeDto]):
                 raise ValidationError(
                     "availability=ALLOWED requires at least one allowed user id",
                     code=ErrorCode.ALLOWED_LIST_EMPTY,
+                )
+            if data.allowed_plan_ids is not None:
+                # the reward type is fixed at creation
+                data = replace(
+                    data,
+                    allowed_plan_ids=await check_allowed_plans(
+                        current.reward_type,
+                        data.allowed_plan_ids,
+                        self._plan_repository,
+                        already_stored=current.allowed_plan_ids,
+                    ),
                 )
 
         async with self._uow:

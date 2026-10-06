@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Eye, Globe, KeyRound } from "lucide-react";
+import { AlertTriangle, Clock, Eye, Globe, KeyRound, Megaphone } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -37,6 +37,9 @@ const EXPIRY_OPTIONS = [
   { value: "180", labelKey: "apiTokens.expiresIn180Days" },
   { value: "365", labelKey: "apiTokens.expiresIn365Days" },
 ] as const;
+
+// what an external marketing page needs to render plans and prices
+const LANDING_PERMISSIONS: readonly Permission[] = ["PLANS_VIEW", "ADDONS_VIEW", "PRICING_VIEW"];
 
 const labelClassName = "text-sm font-medium text-foreground/80";
 export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDialogProps) {
@@ -84,6 +87,11 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
         .map((entry) => entry.permission),
     );
     setPermissions((prev) => (setsEqual(prev, readOnly) ? new Set() : readOnly));
+  };
+
+  const applyLanding = () => {
+    const landing = new Set(LANDING_PERMISSIONS);
+    setPermissions((prev) => (setsEqual(prev, landing) ? new Set() : landing));
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -149,6 +157,10 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
             <div className="flex items-center justify-between gap-2 pb-1.5">
               <span className={labelClassName}>{t("apiTokens.permissionsLabel")}</span>
               <div className="flex gap-1.5">
+                <Button variant="secondary" size="sm" onClick={applyLanding}>
+                  <Megaphone className="size-3.5" />
+                  {t("apiTokens.landing")}
+                </Button>
                 <Button variant="secondary" size="sm" onClick={applyReadOnly}>
                   <Eye className="size-3.5" />
                   {t("apiTokens.readOnly")}

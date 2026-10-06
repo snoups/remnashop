@@ -178,7 +178,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         amount: Decimal,
     ) -> None:
         referrer = await self._user_repository.get_by_id(hop.referrer_id)
-        if referrer is None or referrer.deleted_at is not None:
+        if referrer is None or referrer.deleted_at is not None or referrer.is_blocked:
             return
 
         reward_type = settings.reward_type

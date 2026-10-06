@@ -18,10 +18,13 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PromocodeRewardType,
     PurchaseType,
     TransactionStatus,
 )
 from app.core.utils.time import datetime_now
+from app.modules.promocodes.dto import CreatePromocodeDto
+from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.providers import get_module_providers
 from app.modules.subscriptions import PurchaseSubscriptionDispatch
 from app.modules.transactions.dto import CreateTransactionDto
@@ -474,12 +477,13 @@ async def test_yookassa_ip_check_can_be_switched_off(client, gateway_repository,
 
 
 def _discounted_order_dto(
-    *, user_id: int, plan_id: int, idempotency_key: str
+    *, user_id: int, plan_id: int, idempotency_key: str, promocode_id: Optional[int] = None
 ) -> CreateTransactionDto:
     return replace(
         _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=idempotency_key),
         discount_percent=20,
         discount_source=DiscountSource.PURCHASE,
+        discount_promocode_id=promocode_id,
         final_price=Decimal("400"),
         anchor_final_price=Decimal("400"),
     )
@@ -489,8 +493,14 @@ async def test_provider_cancel_gives_back_the_purchase_discount_once(
     client, transaction_repository, user_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:
     async with uow:
+        promocode_id = await _discount_promocode(transaction_repository.session)
         await transaction_repository.create(
-            _discounted_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-disc-1")
+            _discounted_order_dto(
+                user_id=user_id,
+                plan_id=plan_id,
+                idempotency_key="wh-disc-1",
+                promocode_id=promocode_id,
+            )
         )
     canceled = WebhookSignal(
         reference="wh-disc-1", claims_paid=False, reported_status=TransactionStatus.CANCELED
@@ -523,3 +533,13 @@ async def test_late_payment_for_a_canceled_discounted_order_is_not_fulfilled(
     assert response.status_code == 200
     assert stub.confirm_calls == 0
     assert (await transaction_repository.get_by_id(order.id)).status is (TransactionStatus.CANCELED)
+
+
+async def _discount_promocode(session) -> int:
+    # a restored discount needs the promocode it came from
+    promo = await PromocodeRepository(session).create(
+        CreatePromocodeDto(
+            code="RESTOREME", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=20
+        )
+    )
+    return promo.id

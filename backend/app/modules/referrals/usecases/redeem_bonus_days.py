@@ -1,3 +1,4 @@
+from dataclasses import replace
 from decimal import Decimal
 from uuid import uuid4
 
@@ -90,7 +91,10 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             logger.warning(
                 f"{actor.log} Bonus days renewal '{key}' failed after pinning its date, retrying"
             )
-            subscription = await self._purchase_subscription_use_case(actor, renewal)
+            # the pinned date is owed now: a disable since must not strand the days
+            subscription = await self._purchase_subscription_use_case(
+                actor, replace(renewal, refuse_disabled_target=False)
+            )
 
         async with self._uow:
             await self._event_publisher.publish(
@@ -118,8 +122,8 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             raise ValidationError(
                 "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
             )
-        # disabled on purpose; a free extension mustn't undo that. Not re-checked
-        # under the renewal's row lock, so a disable landing mid-renewal slips through
+        # disabled on purpose; a free extension mustn't undo that (the renewal
+        # re-checks it right before touching the panel)
         if target.status is SubscriptionStatus.DISABLED:
             raise ValidationError(
                 "Bonus days can't extend a disabled subscription",

@@ -228,6 +228,9 @@ export function ReferralSettingsPage() {
     return !(value >= 1) || (isPercent && value > MAX_PERCENT);
   };
   const hasInvalidLevel = activeLevels.some(isLevelInvalid);
+  // mirrors the backend: a whole number of 0..MAX_INVITEE_REWARD
+  const isInviteeInvalid =
+    !/^\d+$/.test(inviteeRewardAmount) || Number(inviteeRewardAmount) > MAX_INVITEE_REWARD;
   const dimmed = enabled ? "" : "opacity-45";
 
   return (
@@ -322,7 +325,7 @@ export function ReferralSettingsPage() {
                 {t("referrals.settings.invitee.amountLabel")}
                 <FieldHint text={t("referrals.settings.invitee.hint")} />
               </label>
-              <div className="flex h-9.5 w-28 shrink-0 items-center gap-1.5 rounded-full border border-border bg-input/60 px-3.5 focus-within:border-primary">
+              <div className={`flex h-9.5 w-28 shrink-0 items-center gap-1.5 rounded-full border ${isInviteeInvalid ? "border-error/60" : "border-border"} bg-input/60 px-3.5 focus-within:border-primary`}>
                 <input
                   id="referrals-invitee"
                   type="number"
@@ -340,13 +343,16 @@ export function ReferralSettingsPage() {
                 </span>
               </div>
             </div>
+            {inviteeRewardType === "POINTS" && (
+              <p className="text-[12px] text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>
+            )}
           </div>
         </div>
 
         {(canManage || canReset) && (
           <div className="mt-4 flex items-center gap-2">
             {canManage && (
-              <Button variant="accent" className="w-fit" type="submit" disabled={isSaving || hasInvalidLevel}>
+              <Button variant="accent" className="w-fit" type="submit" disabled={isSaving || hasInvalidLevel || isInviteeInvalid}>
                 {isSaving ? t("common.saving") : t("common.save")}
               </Button>
             )}

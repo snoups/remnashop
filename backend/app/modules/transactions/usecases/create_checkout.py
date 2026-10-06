@@ -283,6 +283,11 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     f"Cannot {data.purchase_type.value.lower()} a deleted subscription",
                     code=ErrorCode.SUBSCRIPTION_DELETED,
                 )
+            if target.status is SubscriptionStatus.DISABLED:
+                raise ValidationError(
+                    f"Cannot {data.purchase_type.value.lower()} a disabled subscription",
+                    code=ErrorCode.SUBSCRIPTION_DISABLED,
+                )
 
             if data.purchase_type is PurchaseType.RENEW:
                 if target.plan_snapshot.plan_id != data.plan_id:

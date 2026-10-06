@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import ColumnElement, and_, case, exists, func, not_, select
+from sqlalchemy import ColumnElement, and_, case, exists, func, not_, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -158,12 +158,22 @@ class PromocodeRepository:
         await self.session.refresh(row)
         return self._to_dto(row)
 
+    async def forget_plan(self, plan_id: int) -> None:
+        # a plan list left with only this plan opens the promocode to every plan
+        await self.session.execute(
+            update(Promocode)
+            .where(Promocode.allowed_plan_ids.contains([plan_id]))
+            .values(allowed_plan_ids=func.array_remove(Promocode.allowed_plan_ids, plan_id))
+        )
+        await self.session.flush()
+
     async def is_live(self, promocode_id: int) -> bool:
         # a discount it granted lives exactly as long as the promocode does
         row = await self.session.get(Promocode, promocode_id)
         if row is None or not row.is_active:
             return False
-        return row.expires_at is None or row.expires_at > datetime_now()
+        # same edge as activation: usable through the expiry instant itself
+        return row.expires_at is None or row.expires_at >= datetime_now()
 
     async def delete(self, promocode_id: int) -> None:
         row = await self._get_or_raise(promocode_id)

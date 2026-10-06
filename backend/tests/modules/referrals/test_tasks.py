@@ -1152,3 +1152,64 @@ async def test_deleted_referrer_earns_nothing(
 
     assert (await user_repository.get_by_id(referrer)).bonus_days == 0
     assert await referral_repository.list_rewards_by_referrer(referrer) == []
+
+
+async def test_a_blocked_referrers_link_neither_links_nor_rewards(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(enabled=True, invitee_reward_amount=7)
+    )
+    referrer = await _create_user(user_repository, 4240)
+    newcomer = await _create_user(user_repository, 4241)
+    await user_repository.set_blocked(referrer, True)
+
+    code = await _referral_code(user_repository, referrer)
+    await _register(attach_on_registration, newcomer, code)
+
+    assert await referral_repository.get_by_referred_id(newcomer) is None
+    assert (await user_repository.get_by_id(newcomer)).bonus_days == 0
+
+
+async def test_a_deleted_newcomer_is_not_linked(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(enabled=True, invitee_reward_amount=7)
+    )
+    referrer = await _create_user(user_repository, 4242)
+    newcomer = await _create_user(user_repository, 4243)
+    code = await _referral_code(user_repository, referrer)
+    await user_repository.anonymize(newcomer)
+
+    await _register(attach_on_registration, newcomer, code)
+
+    assert await referral_repository.get_by_referred_id(newcomer) is None
+
+
+async def test_a_blocked_referrer_earns_nothing_from_payments(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await _enable_day_rewards(referral_repository, require_paid=False)
+    referrer = await _create_user(user_repository, 4244)
+    buyer = await _create_user(user_repository, 4245)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    await user_repository.set_blocked(referrer, True)
+    buyer_sub = await _create_active_subscription(subscription_repository, buyer, 4245)
+    await _paid_order(referral_repository.session, buyer, "d-7")
+
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer, subscription_id=buyer_sub, is_new_purchase=True, payment_key="d-7"
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert await referral_repository.list_rewards_by_referrer(referrer) == []

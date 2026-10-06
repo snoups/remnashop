@@ -357,3 +357,72 @@ async def test_redeem_refuses_a_plan_that_disallows_bonus_days(
 
     assert error.value.code is ErrorCode.BONUS_DAYS_PLAN_NOT_ALLOWED
     assert await _bonus_days(user_repository, user.id) == 5
+
+
+async def test_redeem_is_refused_when_the_subscription_is_disabled_mid_redemption(
+    redeem: RedeemBonusDaysUseCase,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = await _plan(plan_repository)
+    user = await _user_with_days(user_repository, 940_012, 6)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+
+    async def _disabled_right_after_the_check(target: SubscriptionDto) -> None:
+        await _set_status(subscription_repository, subscription.id, SubscriptionStatus.DISABLED)
+
+    monkeypatch.setattr(redeem, "_assert_redeemable", _disabled_right_after_the_check)
+
+    with pytest.raises(ValidationError) as error:
+        await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=3))
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DISABLED
+    assert await _bonus_days(user_repository, user.id) == 6
+
+
+async def test_a_resumed_redemption_lands_even_if_the_subscription_was_disabled_meanwhile(
+    redeem: RedeemBonusDaysUseCase,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with uow:
+        plan = await _plan(plan_repository)
+        user = await _user_with_days(user_repository, 940_013, 8)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+
+    # the first attempt pins its date and writes the panel, then its local step fails
+    lifecycle = purchase_subscription_use_case._renew._lifecycle_service
+    real_renew = lifecycle.renew
+    failures = [RuntimeError("commit lost")]
+
+    async def _renew_failing_once(subscription_id: int, expire_at: object) -> SubscriptionDto:
+        if failures:
+            raise failures.pop()
+        return await real_renew(subscription_id, expire_at)
+
+    monkeypatch.setattr(lifecycle, "renew", _renew_failing_once)
+
+    # an admin disables the subscription between the failed attempt and the resume
+    real_pinned = idempotency_repository.get_pending_renew_expire_at
+
+    async def _disabled_before_resume(key: str) -> object:
+        await _set_status(subscription_repository, subscription.id, SubscriptionStatus.DISABLED)
+        return await real_pinned(key)
+
+    monkeypatch.setattr(
+        idempotency_repository, "get_pending_renew_expire_at", _disabled_before_resume
+    )
+
+    result = await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=5))
+
+    expected = subscription.expire_at + timedelta(days=5)
+    assert abs(result.expire_at - expected) < timedelta(milliseconds=1)
+    assert await _bonus_days(user_repository, user.id) == 3

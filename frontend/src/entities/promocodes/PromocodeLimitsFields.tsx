@@ -42,7 +42,7 @@ interface PromocodeLimitsFieldsProps {
   value: PromocodeLimitsDraft;
   onChange: (value: PromocodeLimitsDraft) => void;
   /** offered only for rewards applied to a subscription */
-  plans?: { id: number; name: string }[];
+  plans?: { id: number; name: string; allow_promocodes: boolean }[];
 }
 
 export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: PromocodeLimitsFieldsProps) {
@@ -85,6 +85,8 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
                 <ChoiceChip
                   key={plan.id}
                   active={isSelected}
+                  // a plan that refuses promocodes can be unticked, not picked
+                  disabled={!plan.allow_promocodes && !isSelected}
                   onClick={() =>
                     set({
                       allowedPlanIds: isSelected
@@ -99,6 +101,9 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
             })}
           </div>
         </Field>
+      )}
+      {plans && plans.some((plan) => !plan.allow_promocodes) && (
+        <p className="-mt-1 text-[12px] text-muted-foreground">{t("promocodes.limits.plansPromocodesOff")}</p>
       )}
 
       <div className="grid grid-cols-2 gap-3">

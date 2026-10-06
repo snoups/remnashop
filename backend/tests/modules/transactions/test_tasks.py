@@ -8,11 +8,14 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PromocodeRewardType,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
 )
 from app.core.utils.time import datetime_now
+from app.modules.promocodes.dto import CreatePromocodeDto
+from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.subscriptions import IDEMPOTENCY_KEY_RETENTION_DAYS
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
@@ -63,6 +66,7 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
     transaction_repository: TransactionRepository, user_repository, uow, user_id, plan_id
 ) -> None:
     async with uow:
+        promocode_id = await _discount_promocode(transaction_repository.session)
         await transaction_repository.create(
             CreateTransactionDto(
                 user_id=user_id,
@@ -76,6 +80,7 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
                 base_price=Decimal("500"),
                 discount_percent=20,
                 discount_source=DiscountSource.PURCHASE,
+                discount_promocode_id=promocode_id,
                 final_price=Decimal("400"),
                 anchor_base_price=Decimal("500"),
                 anchor_final_price=Decimal("400"),
@@ -295,3 +300,13 @@ async def test_reconcile_paid_transactions_skips_orders_older_than_the_idempoten
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
     assert dispatch.messages == []
+
+
+async def _discount_promocode(session) -> int:
+    # a restored discount needs the promocode it came from
+    promo = await PromocodeRepository(session).create(
+        CreatePromocodeDto(
+            code="RESTOREME", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=20
+        )
+    )
+    return promo.id

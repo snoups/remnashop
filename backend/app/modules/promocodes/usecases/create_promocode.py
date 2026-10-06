@@ -11,6 +11,7 @@ from app.core.usecase import UseCase
 from app.modules.plans import AddOnRepository, PlanRepository
 from app.modules.promocodes.dto import CreatePromocodeDto, PromocodeDto
 from app.modules.promocodes.events import PromocodeChangedEvent
+from app.modules.promocodes.plan_limits import check_allowed_plans
 from app.modules.promocodes.repository import PromocodeRepository
 
 
@@ -34,6 +35,9 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
     async def _execute(self, actor: Actor, data: CreatePromocodeDto) -> PromocodeDto:
         async with self._uow:
             await self._validate_reward(data)
+            await check_allowed_plans(
+                data.reward_type, data.allowed_plan_ids, self._plan_repository
+            )
         if data.availability == PromocodeAvailability.ALLOWED and not data.allowed_user_ids:
             raise ValidationError(
                 "availability=ALLOWED requires at least one allowed user id",
