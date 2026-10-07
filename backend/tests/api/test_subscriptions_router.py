@@ -14,10 +14,12 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import Locale, Role, SubscriptionStatus
+from app.core.enums import Locale, PlanType, Role, SubscriptionStatus
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.plans.dto import CreatePlanDto
+from app.modules.plans.repository import PlanRepository
 from app.modules.providers import get_module_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -213,3 +215,233 @@ async def test_owner_can_manage_addon_lifecycle(
 
     list_response = await client.get(f"{API_V1}/addons", headers=headers)
     assert list_response.json()["items"] == []
+
+
+async def test_owner_can_grant_subscription(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    plan_repository: PlanRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    recipient = await user_repository.create(CreateUserDto(name="r", telegram_id=9301))
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="api-grant", name="g", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+
+    response = await client.post(
+        f"{API_V1}/subscriptions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"user_id": recipient.id, "plan_id": plan.id, "duration_days": 7},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["user_id"] == recipient.id
+    assert response.json()["plan_snapshot"]["plan_id"] == plan.id
+
+
+async def test_grant_rejects_non_positive_duration(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+
+    response = await client.post(
+        f"{API_V1}/subscriptions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"user_id": 1, "plan_id": 1, "duration_days": 0},
+    )
+
+    assert response.status_code == 422
+
+
+async def test_owner_can_change_subscription_plan(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    plan_repository: PlanRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+    recipient = await user_repository.create(CreateUserDto(name="r", telegram_id=9302))
+    plan, other_plan = [
+        await plan_repository.create(
+            CreatePlanDto(
+                public_code=code, name=code, type=PlanType.BOTH, traffic_limit=1, device_limit=1
+            )
+        )
+        for code in ("api-change-a", "api-change-b")
+    ]
+    granted = (
+        await client.post(
+            f"{API_V1}/subscriptions",
+            headers=headers,
+            json={"user_id": recipient.id, "plan_id": plan.id, "duration_days": 20},
+        )
+    ).json()
+
+    change = await client.post(
+        f"{API_V1}/subscriptions/{granted['id']}/actions/change-plan",
+        headers=headers,
+        json={"plan_id": other_plan.id},
+    )
+
+    assert change.status_code == 200
+    assert change.json()["plan_snapshot"]["plan_id"] == other_plan.id
+    assert change.json()["expire_at"] == granted["expire_at"]
+
+
+async def test_owner_can_set_subscription_expiry(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    remnawave_store: FakeUserStore,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9303))
+    remnawave_store[7101] = _user_payload(user_id=7101, username="fake_7101", expire_at=_EXPIRE_AT)
+    created = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=7101,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=_EXPIRE_AT,
+            url="https://example.com/sub/token",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+
+    response = await client.patch(
+        f"{API_V1}/subscriptions/{created.id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"expire_at": "2031-06-01T00:00:00Z"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["expire_at"].startswith("2031-06-01")
+    assert remnawave_store[7101]["expireAt"].startswith("2031-06-01")
+
+
+async def test_owner_can_disable_and_enable_subscription(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    remnawave_store: FakeUserStore,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9304))
+    remnawave_store[7102] = _user_payload(user_id=7102, username="fake_7102", expire_at=_EXPIRE_AT)
+    created = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=7102,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=_EXPIRE_AT,
+            url="https://example.com/sub/token",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+
+    disabled = await client.post(
+        f"{API_V1}/subscriptions/{created.id}/actions/disable", headers=headers
+    )
+    enabled = await client.post(
+        f"{API_V1}/subscriptions/{created.id}/actions/enable", headers=headers
+    )
+
+    assert disabled.status_code == 200
+    assert disabled.json()["status"] == "DISABLED"
+    assert enabled.status_code == 200
+    assert enabled.json()["status"] == "ACTIVE"
+
+
+async def test_owner_can_reset_traffic_and_reissue_link(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    remnawave_store: FakeUserStore,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9305))
+    remnawave_store[7103] = _user_payload(user_id=7103, username="fake_7103", expire_at=_EXPIRE_AT)
+    created = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=7103,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=_EXPIRE_AT,
+            url="https://example.com/sub/token",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+    base = f"{API_V1}/subscriptions/{created.id}/actions"
+
+    reset = await client.post(f"{base}/reset-traffic", headers=headers)
+    reissue = await client.post(f"{base}/reissue", headers=headers)
+
+    assert reset.status_code == 200
+    assert reissue.status_code == 200
+    assert reissue.json()["url"] != "https://example.com/sub/token"
+
+
+async def test_owner_can_list_subscription_devices(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    remnawave_store: FakeUserStore,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9306))
+    remnawave_store[7104] = _user_payload(user_id=7104, username="fake_7104", expire_at=_EXPIRE_AT)
+    created = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=7104,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=_EXPIRE_AT,
+            url="https://example.com/sub/token",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+    base = f"{API_V1}/subscriptions/{created.id}/devices"
+
+    listed = await client.get(base, headers=headers)
+    deleted = await client.delete(f"{base}/some-hwid", headers=headers)
+    bulk = await client.post(f"{base}/bulk/delete", headers=headers)
+
+    assert listed.status_code == 200
+    assert listed.json() == {"items": [], "total": 0}
+    assert deleted.status_code == 204
+    assert bulk.status_code == 204

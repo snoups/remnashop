@@ -143,6 +143,8 @@ class NewPurchase:
     ) -> None:
         if data.idempotency_key is not None:
             await self._idempotency.link(data.idempotency_key, subscription.id)
+        if not data.publish_event:
+            return
         await self._event_publisher.publish(
             SubscriptionPurchasedEvent(
                 user=actor,

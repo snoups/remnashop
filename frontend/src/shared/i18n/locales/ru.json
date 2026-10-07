@@ -660,6 +660,8 @@
       "PricingSettingsChangedEvent": "Настройки цен изменены",
       "ReferralSettingsChangedEvent": "Настройки рефералов изменены",
       "SubscriptionEditedEvent": "Подписка изменена вручную",
+      "SubscriptionGrantedEvent": "Подписка выдана",
+      "SubscriptionPlanChangedByAdminEvent": "План подписки изменён администратором",
       "AddOnChangedEvent": "Дополнение изменено",
       "LoyaltySettingsChangedEvent": "Настройки лояльности изменены",
       "UserLoyaltyExclusionChangedEvent": "Исключение из программы лояльности изменено"
@@ -1461,6 +1463,14 @@
     "SUBSCRIPTIONS_UPDATE": "Изменение подписок",
     "SUBSCRIPTIONS_SQUADS_MANAGE": "Управление сквадами подписок",
     "SUBSCRIPTIONS_DELETE": "Удаление подписок",
+    "SUBSCRIPTIONS_GRANT": "Выдача подписок",
+    "SUBSCRIPTIONS_PLAN_CHANGE": "Смена плана подписок",
+    "SUBSCRIPTIONS_STATUS_MANAGE": "Включение и отключение подписок",
+    "SUBSCRIPTIONS_TRAFFIC_RESET": "Сброс трафика подписок",
+    "SUBSCRIPTIONS_LINK_REISSUE": "Перевыпуск ссылок подписок",
+    "SUBSCRIPTIONS_DEVICES_VIEW": "Просмотр устройств подписок",
+    "SUBSCRIPTIONS_DEVICES_DELETE": "Удаление устройств подписок",
+    "SUBSCRIPTIONS_DEVICES_DELETE_ALL": "Удаление всех устройств подписок",
     "ADDONS_VIEW": "Просмотр дополнений",
     "ADDONS_DETAIL_VIEW": "Просмотр дополнения",
     "ADDONS_CREATE": "Создание дополнений",
@@ -2665,7 +2675,14 @@
         "MONTH_ROLLING": "Ежемесячно (скользящее)"
       },
       "saved": "Подписка обновлена.",
-      "error": "Не удалось обновить подписку."
+      "error": "Не удалось обновить подписку.",
+      "expireAtLabel": "Действует до",
+      "plusDays": "+{{days}} дн.",
+      "tabs": {
+        "params": "Параметры",
+        "plan": "План",
+        "devices": "Устройства"
+      }
     },
     "delete": {
       "button": "Удалить подписку",
@@ -2681,6 +2698,58 @@
       "soon": "Истекают в ближайшие 7 дней",
       "active": "Действующие",
       "inactive": "Истекшие и отключённые"
+    },
+    "grant": {
+      "open": "Выдать подписку",
+      "title": "Выдача подписки",
+      "planLabel": "План",
+      "planPlaceholder": "Выберите план",
+      "durationLabel": "Срок",
+      "submit": "Выдать",
+      "done": "Подписка выдана.",
+      "error": "Не удалось выдать подписку."
+    },
+    "duration": {
+      "days_one": "{{count}} день",
+      "days_few": "{{count}} дня",
+      "days_many": "{{count}} дней",
+      "days_other": "{{count}} дня",
+      "custom": "Свой срок",
+      "customLabel": "Дней",
+      "keep": "Оставить текущий (до {{date}})"
+    },
+    "plan": {
+      "name": "План",
+      "price": "Оплачено",
+      "duration": "Срок",
+      "change": "Сменить план",
+      "submit": "Сменить",
+      "changed": "План изменён.",
+      "error": "Не удалось сменить план.",
+      "resetWarning": "Дополнения, ручные лимиты и тег будут сброшены к значениям нового плана."
+    },
+    "devices": {
+      "empty": "Устройств нет",
+      "loadError": "Не удалось загрузить устройства.",
+      "deleted": "Устройство удалено.",
+      "deleteAll": "Удалить все устройства",
+      "deleteAllTitle": "Удалить все устройства?",
+      "deleteAllConfirm": "Всем устройствам придётся подключиться заново.",
+      "allDeleted": "Все устройства удалены.",
+      "error": "Не удалось удалить устройство."
+    },
+    "actions": {
+      "enable": "Включить",
+      "disable": "Отключить",
+      "enabled": "Подписка включена.",
+      "disabled": "Подписка отключена.",
+      "resetTraffic": "Сбросить трафик",
+      "trafficReset": "Трафик сброшен.",
+      "reissue": "Перевыпустить ссылку",
+      "reissueConfirmTitle": "Перевыпустить ссылку?",
+      "reissueConfirm": "Текущая ссылка перестанет работать у клиента.",
+      "reissued": "Ссылка перевыпущена.",
+      "error": "Не удалось выполнить действие."
     }
   },
   "donate": {

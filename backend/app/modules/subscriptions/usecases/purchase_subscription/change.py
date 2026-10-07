@@ -64,9 +64,13 @@ class ChangePurchase:
                     "Cannot change a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
                 )
 
-            now = datetime_now()
-            credit_days = await self._credit_days(old, data, now)
-            final_expire_at = now + timedelta(days=data.duration_days + credit_days)
+            if data.keep_expire_at:
+                credit_days = 0
+                final_expire_at = old.expire_at
+            else:
+                now = datetime_now()
+                credit_days = await self._credit_days(old, data, now)
+                final_expire_at = now + timedelta(days=data.duration_days + credit_days)
 
         # keeps old's panel user (same id, same subscription_url the client
         # already has) and changes only the plan config (limits, squads,
@@ -90,19 +94,27 @@ class ChangePurchase:
                     )
                 await self._subscription_repository.mark_deleted(old.id)
                 updated = await self._subscription_repository.create(
-                    subscription_row(data, panel_user, expire_at=final_expire_at)
+                    subscription_row(
+                        data,
+                        panel_user,
+                        expire_at=final_expire_at,
+                        # an admin change can reach a disabled or expired panel user,
+                        # which configure_for_plan leaves as it is
+                        status=SubscriptionStatus(panel_user.status),
+                    )
                 )
                 if data.idempotency_key is not None:
                     await self._idempotency.link(data.idempotency_key, updated.id)
-                await self._event_publisher.publish(
-                    SubscriptionChangedEvent(
-                        user=actor,
-                        subscription_id=updated.id,
-                        previous_subscription_id=old.id,
-                        previous_plan_snapshot=old.plan_snapshot.to_json(),
-                        payment_key=data.idempotency_key,
+                if data.publish_event:
+                    await self._event_publisher.publish(
+                        SubscriptionChangedEvent(
+                            user=actor,
+                            subscription_id=updated.id,
+                            previous_subscription_id=old.id,
+                            previous_plan_snapshot=old.plan_snapshot.to_json(),
+                            payment_key=data.idempotency_key,
+                        )
                     )
-                )
         except SupersededError:
             raise
         except Exception:

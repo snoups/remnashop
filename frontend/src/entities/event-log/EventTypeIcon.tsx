@@ -118,6 +118,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   LoyaltySettingsChangedEvent: Settings2,
   UserLoyaltyExclusionChangedEvent: BadgePercent,
   SubscriptionEditedEvent: PencilLine,
+  SubscriptionGrantedEvent: Gift,
+  SubscriptionPlanChangedByAdminEvent: ArrowLeftRight,
   AddOnChangedEvent: PackagePlus,
 };
 

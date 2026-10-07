@@ -105,12 +105,18 @@ export function SubscriptionsPage() {
   );
   useEntityChanged("subscription", reload);
 
-  const handleSaved = (updated: SubscriptionListItem) =>
+  const handleSaved = (updated: SubscriptionListItem) => {
+    // a plan change answers with a new subscription id; the old row is gone
+    if (state.kind === "ready" && !state.items.some((item) => item.id === updated.id)) {
+      reload();
+      return;
+    }
     setState((prev) =>
       prev.kind === "ready"
         ? { kind: "ready", items: prev.items.map((item) => (item.id === updated.id ? updated : item)), total: prev.total }
         : prev,
     );
+  };
 
   const handleDeleted = (subscription: SubscriptionListItem) =>
     setState((prev) =>

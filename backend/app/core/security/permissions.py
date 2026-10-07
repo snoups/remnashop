@@ -117,6 +117,14 @@ class Permission(UpperStrEnum):
     SUBSCRIPTIONS_UPDATE = auto()
     SUBSCRIPTIONS_SQUADS_MANAGE = auto()
     SUBSCRIPTIONS_DELETE = auto()
+    SUBSCRIPTIONS_GRANT = auto()
+    SUBSCRIPTIONS_PLAN_CHANGE = auto()
+    SUBSCRIPTIONS_STATUS_MANAGE = auto()
+    SUBSCRIPTIONS_TRAFFIC_RESET = auto()
+    SUBSCRIPTIONS_LINK_REISSUE = auto()
+    SUBSCRIPTIONS_DEVICES_VIEW = auto()
+    SUBSCRIPTIONS_DEVICES_DELETE = auto()
+    SUBSCRIPTIONS_DEVICES_DELETE_ALL = auto()
     ADDONS_VIEW = auto()
     ADDONS_DETAIL_VIEW = auto()
     ADDONS_CREATE = auto()
@@ -287,6 +295,16 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.SUBSCRIPTIONS_UPDATE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_SQUADS_MANAGE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_DELETE: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_GRANT: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_PLAN_CHANGE: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_STATUS_MANAGE: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_TRAFFIC_RESET: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_LINK_REISSUE: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_DEVICES_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
+    Permission.SUBSCRIPTIONS_DEVICES_DELETE: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL: PermissionMeta(
+        resource="subscriptions", kind="write"
+    ),
     Permission.ADDONS_VIEW: PermissionMeta(resource="addons", kind="read"),
     Permission.ADDONS_DETAIL_VIEW: PermissionMeta(resource="addons", kind="read"),
     Permission.ADDONS_CREATE: PermissionMeta(resource="addons", kind="write"),
@@ -390,6 +408,9 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.BACKUPS_SETTINGS_MANAGE,
         Permission.BACKUPS_RUN_DELETE,
         Permission.USERS_DELETE,
+        Permission.SUBSCRIPTIONS_LINK_REISSUE,
+        Permission.SUBSCRIPTIONS_DEVICES_DELETE,
+        Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,
         Permission.TRANSLATIONS_IMPORT,
         Permission.TRANSLATIONS_RESET_ALL,
         Permission.DIALOGS_IMPORT,
@@ -502,6 +523,14 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
         Permission.SUBSCRIPTIONS_DELETE,
+        Permission.SUBSCRIPTIONS_GRANT,
+        Permission.SUBSCRIPTIONS_PLAN_CHANGE,
+        Permission.SUBSCRIPTIONS_STATUS_MANAGE,
+        Permission.SUBSCRIPTIONS_TRAFFIC_RESET,
+        Permission.SUBSCRIPTIONS_LINK_REISSUE,
+        Permission.SUBSCRIPTIONS_DEVICES_VIEW,
+        Permission.SUBSCRIPTIONS_DEVICES_DELETE,
+        Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,
         Permission.ADDONS_VIEW,
         Permission.ADDONS_DETAIL_VIEW,
         Permission.ADDONS_CREATE,

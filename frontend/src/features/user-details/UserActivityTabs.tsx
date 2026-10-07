@@ -1,4 +1,4 @@
-import { CreditCard, Receipt, Ticket } from "lucide-react";
+import { CreditCard, Gift, Receipt, Ticket } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
@@ -10,6 +10,7 @@ import { listUserPromocodeActivations, type UserPromocodeActivation } from "@ent
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { GrantSubscriptionDialog } from "@features/subscription-grant/GrantSubscriptionDialog";
 import { PaidTimeline } from "@features/user-details/PaidTimeline";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
@@ -18,8 +19,10 @@ import { ReferralKpis } from "@features/user-referrals/ReferralOverview";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
+import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
+import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
@@ -247,49 +250,74 @@ export function TransactionsTab({ userId }: { userId: number }) {
 
 export function SubscriptionsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
-  const [state] = useAsyncResource((signal) =>
+  const permissions = usePermissions();
+  const canGrant = permissions.includes("SUBSCRIPTIONS_GRANT") && permissions.includes("PLANS_VIEW");
+  const canOpen = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
+  const { openSubscription } = useOpenEntity();
+  const [isGranting, setIsGranting] = useState(false);
+  const [state, reload] = useAsyncResource((signal) =>
     listSubscriptions({ userId, pageSize: SUBSCRIPTIONS_PAGE_SIZE }, signal),
   );
 
   return (
-    <Card variant="list">
-      {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("subscriptions.loadError")} />}
-      {state.kind === "ready" && state.data.items.length === 0 && (
-        <EmptyState icon={CreditCard} text={t("users.details.empty.subscriptions")} />
+    <>
+      {canGrant && (
+        <div className="flex justify-end pb-2">
+          <Button variant="secondary" size="sm" onClick={() => setIsGranting(true)}>
+            <Gift className="size-3.5" />
+            {t("subscriptions.grant.open")}
+          </Button>
+        </div>
       )}
-      {state.kind === "ready" &&
-        state.data.items.map((subscription) => (
-          <div key={subscription.id} className={ROW_CLASSNAME}>
-            <span className={ROW_ICON_CLASSNAME}>
-              <CreditCard className="size-3.5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-[13px] font-medium text-foreground/90">
-                  {subscription.tag ?? `#${subscription.id}`}
+      <Card variant="list">
+        {state.kind === "loading" && <Spinner size="card" />}
+        {state.kind === "error" && <ErrorState text={t("subscriptions.loadError")} />}
+        {state.kind === "ready" && state.data.items.length === 0 && (
+          <EmptyState icon={CreditCard} text={t("users.details.empty.subscriptions")} />
+        )}
+        {state.kind === "ready" &&
+          state.data.items.map((subscription) => (
+            <motion.button
+              key={subscription.id}
+              type="button"
+              disabled={!canOpen}
+              onClick={() => openSubscription(subscription.id, { data: subscription, onChanged: reload })}
+              {...(canOpen && bounceTap(0.03))}
+              className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
+            >
+              <span className={ROW_ICON_CLASSNAME}>
+                <CreditCard className="size-3.5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-[13px] font-medium text-foreground/90">
+                    {subscription.tag ?? `#${subscription.id}`}
+                  </span>
+                  {subscription.is_trial && <Tag>{t("subscriptions.trial")}</Tag>}
                 </span>
-                {subscription.is_trial && <Tag>{t("subscriptions.trial")}</Tag>}
+                <span className="block truncate text-[12px] text-muted-foreground">
+                  {subscription.effective_traffic_limit === 0
+                    ? t("subscriptions.trafficUnlimited")
+                    : `${subscription.effective_traffic_limit} GB`}
+                  {" · "}
+                  {subscription.effective_device_limit === 0
+                    ? t("subscriptions.devicesUnlimited")
+                    : t("subscriptions.devicesCount", { count: subscription.effective_device_limit })}
+                </span>
               </span>
-              <span className="block truncate text-[12px] text-muted-foreground">
-                {subscription.effective_traffic_limit === 0
-                  ? t("subscriptions.trafficUnlimited")
-                  : `${subscription.effective_traffic_limit} GB`}
-                {" · "}
-                {subscription.effective_device_limit === 0
-                  ? t("subscriptions.devicesUnlimited")
-                  : t("subscriptions.devicesCount", { count: subscription.effective_device_limit })}
+              <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground">
+                {formatDate(subscription.expire_at, i18n.language)}
               </span>
-            </span>
-            <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground">
-              {formatDate(subscription.expire_at, i18n.language)}
-            </span>
-            <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
-              {t(`subscriptions.status.${subscription.status}`)}
-            </Badge>
-          </div>
-        ))}
-    </Card>
+              <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
+                {t(`subscriptions.status.${subscription.status}`)}
+              </Badge>
+            </motion.button>
+          ))}
+      </Card>
+      {isGranting && (
+        <GrantSubscriptionDialog userId={userId} onGranted={reload} onClose={() => setIsGranting(false)} />
+      )}
+    </>
   );
 }
 

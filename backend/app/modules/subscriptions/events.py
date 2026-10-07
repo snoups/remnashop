@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
-from app.core.events import EventCategory, SystemEvent, UserEvent
+from app.core.events import ActorTargetEvent, EventCategory, SystemEvent, UserEvent
 
 if TYPE_CHECKING:
     from app.modules.users import UserDto
@@ -63,3 +63,21 @@ class SubscriptionEditedEvent(UserEvent):
     action: str
     subscription_id: int
     changed_fields: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionGrantedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    subscription_id: int
+    plan_id: int
+    duration_days: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionPlanChangedByAdminEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    subscription_id: int
+    previous_subscription_id: int
+    previous_plan_snapshot: dict[str, Any]
+    plan_id: int
+    duration_days: Optional[int] = None

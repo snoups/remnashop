@@ -2132,3 +2132,115 @@ async def test_a_paid_order_still_renews_a_subscription_disabled_after_checkout(
     renewed = await fulfill.system(_renewal(buyer, plan, target_id))
 
     assert renewed.id == target_id
+
+
+def _purchase_use_case(
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> PurchaseSubscriptionUseCase:
+    return PurchaseSubscriptionUseCase(
+        subscription_repository,
+        make_eligibility(subscription_repository.session),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+        idempotency_repository,
+    )
+
+
+async def test_new_purchase_without_publish_event_writes_no_outbox_row(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9101)
+    plan = await _create_plan(plan_repository, "silent")
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+
+    await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(plan),
+            duration_days=30,
+            price_paid=Decimal(0),
+            currency=Currency.USD,
+            purchase_type=PurchaseType.NEW,
+            publish_event=False,
+        ),
+    )
+
+    rows = (
+        await subscription_repository.session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == "SubscriptionPurchasedEvent"
+            )
+        )
+    ).all()
+    assert rows == []
+
+
+async def test_change_with_keep_expire_at_keeps_the_old_expiry(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9102)
+    first_plan = await _create_plan(plan_repository, "first")
+    second_plan = await _create_plan(plan_repository, "second")
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    old = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(first_plan, duration_days=45),
+            duration_days=45,
+            price_paid=Decimal(0),
+            currency=Currency.USD,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    changed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(second_plan, duration_days=45),
+            duration_days=45,
+            price_paid=Decimal(0),
+            currency=Currency.USD,
+            purchase_type=PurchaseType.CHANGE,
+            target_subscription_id=old.id,
+            keep_expire_at=True,
+            publish_event=False,
+        ),
+    )
+
+    assert changed.expire_at == old.expire_at
+    assert changed.plan_snapshot.plan_id == second_plan.id
+    assert changed.remnawave_user_id == old.remnawave_user_id
+    rows = (
+        await subscription_repository.session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == "SubscriptionChangedEvent"
+            )
+        )
+    ).all()
+    assert rows == []

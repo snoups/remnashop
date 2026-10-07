@@ -4,15 +4,18 @@ from uuid import uuid4
 import pytest
 from remnapy import RemnawaveSDK
 
+from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role, SubscriptionStatus
-from app.core.exceptions import PermissionDeniedError
+from app.core.enums import AddOnType, Locale, Role, SubscriptionStatus
+from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     ListSubscriptionsDto,
+    SubscriptionDto,
     UpdateSubscriptionDto,
     UpdateSubscriptionSquadsDto,
 )
+from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.usecases import (
@@ -42,6 +45,21 @@ def _create_dto(user_id: int, remnawave_user_id: int) -> CreateSubscriptionDto:
         expire_at=_EXPIRE_AT,
         url="https://example.com/sub/token",
         plan_snapshot=make_plan_snapshot(),
+    )
+
+
+def _update_use_case(
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher,
+    uow: UnitOfWork,
+) -> UpdateSubscriptionUseCase:
+    return UpdateSubscriptionUseCase(
+        subscription_repository,
+        remnawave_sdk,
+        event_publisher,
+        uow,
+        SubscriptionLifecycleService(subscription_repository),
     )
 
 
@@ -87,9 +105,7 @@ async def test_owner_can_update_subscription(
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=202))
     _seed_panel_user(remnawave_store, 6002)
     created = await subscription_repository.create(_create_dto(user.id, 6002))
-    use_case = UpdateSubscriptionUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
-    )
+    use_case = _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)
 
     updated = await use_case(
         OWNER, UpdateSubscriptionDto(subscription_id=created.id, traffic_limit=500)
@@ -109,9 +125,7 @@ async def test_regular_user_cannot_update_subscription(
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=203))
     _seed_panel_user(remnawave_store, 6003)
     created = await subscription_repository.create(_create_dto(user.id, 6003))
-    use_case = UpdateSubscriptionUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
-    )
+    use_case = _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(
@@ -236,3 +250,131 @@ async def test_regular_user_cannot_delete_subscription(
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, created.id)
+
+
+async def test_update_expire_at_pushes_to_panel_and_syncs_status(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9501))
+    _seed_panel_user(remnawave_store, 9501)
+    created = await subscription_repository.create(_create_dto(user.id, 9501))
+    past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+
+    updated = await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
+        OWNER, UpdateSubscriptionDto(subscription_id=created.id, expire_at=past)
+    )
+
+    assert updated.expire_at == past
+    assert updated.status is SubscriptionStatus.EXPIRED
+    assert remnawave_store[9501]["status"] == "EXPIRED"
+
+
+async def test_update_keeps_db_unchanged_when_panel_fails(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9502))
+    created = await subscription_repository.create(_create_dto(user.id, 9502))  # no panel user
+
+    with pytest.raises(Exception):
+        await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
+            OWNER, UpdateSubscriptionDto(subscription_id=created.id, traffic_limit=999)
+        )
+
+    assert (await subscription_repository.get_by_id(created.id)).traffic_limit == 100
+
+
+async def test_update_tag_only_does_not_call_panel(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9503))
+    created = await subscription_repository.create(_create_dto(user.id, 9503))  # no panel user
+
+    updated = await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
+        OWNER, UpdateSubscriptionDto(subscription_id=created.id, tag="vip")
+    )
+
+    assert updated.tag == "vip"
+
+
+async def test_update_unlimited_traffic_stays_unlimited_with_addon(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9504))
+    _seed_panel_user(remnawave_store, 9504)
+    created = await subscription_repository.create(_create_dto(user.id, 9504))
+    async with uow:
+        await subscription_repository.grant_entitlement(
+            subscription_id=created.id, addon_id=None, addon_type=AddOnType.TRAFFIC, amount=10
+        )
+
+    await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
+        OWNER, UpdateSubscriptionDto(subscription_id=created.id, traffic_limit=0)
+    )
+
+    assert remnawave_store[9504]["trafficLimitBytes"] == 0
+
+
+async def test_update_deleted_subscription_is_rejected(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9505))
+    created = await subscription_repository.create(_create_dto(user.id, 9505))
+    async with uow:
+        await subscription_repository.mark_deleted(created.id)
+
+    with pytest.raises(ValidationError):
+        await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
+            OWNER, UpdateSubscriptionDto(subscription_id=created.id, tag="x")
+        )
+
+
+class _FailingUpdateRepository(SubscriptionRepository):
+    async def update(self, data: UpdateSubscriptionDto) -> SubscriptionDto:
+        raise RuntimeError("db write failed")
+
+
+async def test_update_reverts_panel_to_effective_limits_when_db_write_fails(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9506))
+    _seed_panel_user(remnawave_store, 9506)
+    created = await subscription_repository.create(_create_dto(user.id, 9506))
+    async with uow:
+        await subscription_repository.grant_entitlement(
+            subscription_id=created.id, addon_id=None, addon_type=AddOnType.TRAFFIC, amount=10
+        )
+    failing = _FailingUpdateRepository(subscription_repository.session)
+
+    with pytest.raises(RuntimeError):
+        await _update_use_case(failing, remnawave_sdk, event_publisher, uow)(
+            OWNER, UpdateSubscriptionDto(subscription_id=created.id, traffic_limit=200)
+        )
+
+    assert remnawave_store[9506]["trafficLimitBytes"] == 110 * GB_TO_BYTES

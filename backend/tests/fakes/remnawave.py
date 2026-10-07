@@ -89,6 +89,9 @@ def _handle_update_user(request: httpx.Request, store: FakeUserStore) -> httpx.R
         payload["trafficLimitStrategy"] = body["trafficLimitStrategy"]
     if body.get("expireAt") is not None:
         payload["expireAt"] = body["expireAt"]
+        expire_at = datetime.fromisoformat(body["expireAt"].replace("Z", "+00:00"))
+        if payload["status"] in ("ACTIVE", "EXPIRED"):
+            payload["status"] = "EXPIRED" if expire_at <= datetime.now(timezone.utc) else "ACTIVE"
     payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
     return httpx.Response(200, json={"response": payload})
 
@@ -125,6 +128,27 @@ def _handle_disable_user(path: str, store: FakeUserStore) -> httpx.Response:
         return httpx.Response(404, json={"message": f"user {user_id} not found"})
     payload["status"] = "DISABLED"
     payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    return httpx.Response(200, json={"response": payload})
+
+
+def _handle_enable_user(path: str, store: FakeUserStore) -> httpx.Response:
+    user_id = int(path.split("/")[-3])
+    payload = store.get(user_id)
+    if payload is None:
+        return httpx.Response(404, json={"message": f"user {user_id} not found"})
+    expire_at = datetime.fromisoformat(payload["expireAt"].replace("Z", "+00:00"))
+    payload["status"] = "ACTIVE" if expire_at > datetime.now(timezone.utc) else "EXPIRED"
+    payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    return httpx.Response(200, json={"response": payload})
+
+
+def _handle_reset_traffic(path: str, store: FakeUserStore) -> httpx.Response:
+    user_id = int(path.split("/")[-3])
+    payload = store.get(user_id)
+    if payload is None:
+        return httpx.Response(404, json={"message": f"user {user_id} not found"})
+    payload["userTraffic"]["usedTrafficBytes"] = 0
+    payload["lastTrafficResetAt"] = datetime.now(timezone.utc).isoformat()
     return httpx.Response(200, json={"response": payload})
 
 
@@ -178,6 +202,10 @@ def _route_users(
         return _handle_extend_user(path, request, store)
     if path.endswith("/actions/disable") and request.method == "POST":
         return _handle_disable_user(path, store)
+    if path.endswith("/actions/enable") and request.method == "POST":
+        return _handle_enable_user(path, store)
+    if path.endswith("/actions/reset-traffic") and request.method == "POST":
+        return _handle_reset_traffic(path, store)
     if path.endswith("/actions/revoke") and request.method == "POST":
         return _handle_revoke_subscription(path, store)
     if path.startswith("/api/users/") and request.method == "GET":

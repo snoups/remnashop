@@ -216,6 +216,14 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
         Permission.SUBSCRIPTIONS_DELETE,
+        Permission.SUBSCRIPTIONS_GRANT,
+        Permission.SUBSCRIPTIONS_PLAN_CHANGE,
+        Permission.SUBSCRIPTIONS_STATUS_MANAGE,
+        Permission.SUBSCRIPTIONS_TRAFFIC_RESET,
+        Permission.SUBSCRIPTIONS_LINK_REISSUE,
+        Permission.SUBSCRIPTIONS_DEVICES_VIEW,
+        Permission.SUBSCRIPTIONS_DEVICES_DELETE,
+        Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,
         Permission.ADDONS_VIEW,
         Permission.ADDONS_DETAIL_VIEW,
         Permission.ADDONS_CREATE,
@@ -533,3 +541,29 @@ def test_can_manage_reaches_customers_and_only_lower_staff(
     actor: Actor, target: UserDto, allowed: bool
 ) -> None:
     assert PermissionPolicy.can_manage(actor, target) is allowed
+
+
+_ADMIN_SUBSCRIPTION_PERMISSIONS = (
+    Permission.SUBSCRIPTIONS_GRANT,
+    Permission.SUBSCRIPTIONS_PLAN_CHANGE,
+    Permission.SUBSCRIPTIONS_STATUS_MANAGE,
+    Permission.SUBSCRIPTIONS_TRAFFIC_RESET,
+    Permission.SUBSCRIPTIONS_LINK_REISSUE,
+    Permission.SUBSCRIPTIONS_DEVICES_VIEW,
+    Permission.SUBSCRIPTIONS_DEVICES_DELETE,
+    Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,
+)
+
+
+def test_admin_subscription_permissions_are_admin_default_and_grantable() -> None:
+    for permission in _ADMIN_SUBSCRIPTION_PERMISSIONS:
+        assert permission in ROLE_PERMISSIONS[Role.ADMIN]
+        assert permission in GRANTABLE_PERMISSIONS
+        assert PERMISSION_METADATA[permission].resource == "subscriptions"
+
+
+def test_irreversible_subscription_actions_are_not_token_grantable() -> None:
+    assert Permission.SUBSCRIPTIONS_LINK_REISSUE not in TOKEN_GRANTABLE_PERMISSIONS
+    assert Permission.SUBSCRIPTIONS_DEVICES_DELETE not in TOKEN_GRANTABLE_PERMISSIONS
+    assert Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL not in TOKEN_GRANTABLE_PERMISSIONS
+    assert Permission.SUBSCRIPTIONS_GRANT in TOKEN_GRANTABLE_PERMISSIONS

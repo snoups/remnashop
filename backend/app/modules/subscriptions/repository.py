@@ -405,6 +405,14 @@ class SubscriptionRepository:
         row.link_reset_at = datetime_now()
         await self.session.flush()
 
+    async def set_url(self, subscription_id: int, url: str) -> SubscriptionDto:
+        row = await self._get_or_raise(subscription_id)
+        row.url = url
+        await self.session.flush()
+        await self.session.refresh(row)
+        entitlements_by_subscription = await self._load_entitlements([row.id])
+        return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
+
     async def set_first_connected_at(self, remnawave_user_id: int, at: datetime) -> None:
         await self.session.execute(
             update(Subscription)

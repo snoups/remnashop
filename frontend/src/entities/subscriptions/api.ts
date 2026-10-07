@@ -1,8 +1,17 @@
-import { apiDelete, apiGet, apiPatch } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
 import type { BadgeTone } from "@shared/ui/Badge";
 
 export type SubscriptionStatus = "ACTIVE" | "LIMITED" | "EXPIRED" | "DISABLED" | "DELETED";
 export type TrafficLimitStrategy = "NO_RESET" | "DAY" | "WEEK" | "MONTH" | "MONTH_ROLLING";
+
+export interface PlanSnapshot {
+  plan_id: number;
+  name: string;
+  price_paid: string;
+  currency: string;
+  duration_days: number;
+  is_trial: boolean;
+}
 
 export interface SubscriptionListItem {
   id: number;
@@ -18,6 +27,8 @@ export interface SubscriptionListItem {
   internal_squads: string[];
   external_squad: string | null;
   expire_at: string;
+  url: string;
+  plan_snapshot: PlanSnapshot;
 }
 
 export const SUBSCRIPTION_STATUS_BADGE_TONE: Record<SubscriptionStatus, BadgeTone> = {
@@ -62,6 +73,7 @@ export interface UpdateSubscriptionRequest {
   traffic_limit?: number;
   device_limit?: number;
   traffic_limit_strategy?: TrafficLimitStrategy;
+  expire_at?: string;
 }
 
 export function updateSubscription(
@@ -77,4 +89,64 @@ export function getSubscription(subscriptionId: number, signal?: AbortSignal): P
 
 export function deleteSubscription(subscriptionId: number): Promise<void> {
   return apiDelete<void>(`/subscriptions/${subscriptionId}`);
+}
+
+export interface GrantSubscriptionRequest {
+  user_id: number;
+  plan_id: number;
+  duration_days: number;
+}
+
+export function grantSubscription(payload: GrantSubscriptionRequest): Promise<SubscriptionListItem> {
+  return apiPost<SubscriptionListItem, GrantSubscriptionRequest>("/subscriptions", payload);
+}
+
+export interface ChangeSubscriptionPlanRequest {
+  plan_id: number;
+  /** null keeps the current expiry */
+  duration_days: number | null;
+}
+
+export function changeSubscriptionPlan(
+  subscriptionId: number,
+  payload: ChangeSubscriptionPlanRequest,
+): Promise<SubscriptionListItem> {
+  return apiPost<SubscriptionListItem, ChangeSubscriptionPlanRequest>(
+    `/subscriptions/${subscriptionId}/actions/change-plan`,
+    payload,
+  );
+}
+
+function subscriptionAction(subscriptionId: number, action: string): Promise<SubscriptionListItem> {
+  return apiPost<SubscriptionListItem, Record<string, never>>(`/subscriptions/${subscriptionId}/actions/${action}`, {});
+}
+
+export const enableSubscription = (subscriptionId: number) => subscriptionAction(subscriptionId, "enable");
+export const disableSubscription = (subscriptionId: number) => subscriptionAction(subscriptionId, "disable");
+export const resetSubscriptionTraffic = (subscriptionId: number) => subscriptionAction(subscriptionId, "reset-traffic");
+export const reissueSubscriptionLink = (subscriptionId: number) => subscriptionAction(subscriptionId, "reissue");
+
+export interface SubscriptionDevice {
+  hwid: string;
+  platform: string | null;
+  device_model: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+export interface SubscriptionDeviceList {
+  items: SubscriptionDevice[];
+  total: number;
+}
+
+export function listSubscriptionDevices(subscriptionId: number, signal?: AbortSignal): Promise<SubscriptionDeviceList> {
+  return apiGet<SubscriptionDeviceList>(`/subscriptions/${subscriptionId}/devices`, signal);
+}
+
+export function deleteSubscriptionDevice(subscriptionId: number, hwid: string): Promise<void> {
+  return apiDelete<void>(`/subscriptions/${subscriptionId}/devices/${encodeURIComponent(hwid)}`);
+}
+
+export function deleteAllSubscriptionDevices(subscriptionId: number): Promise<void> {
+  return apiPost<void, Record<string, never>>(`/subscriptions/${subscriptionId}/devices/bulk/delete`, {});
 }

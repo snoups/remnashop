@@ -624,6 +624,8 @@
       "PricingSettingsChangedEvent": "Pricing settings changed",
       "ReferralSettingsChangedEvent": "Referral settings changed",
       "SubscriptionEditedEvent": "Subscription edited",
+      "SubscriptionGrantedEvent": "Subscription granted",
+      "SubscriptionPlanChangedByAdminEvent": "Subscription plan changed by admin",
       "AddOnChangedEvent": "Add-on changed",
       "LoyaltySettingsChangedEvent": "Loyalty settings changed",
       "UserLoyaltyExclusionChangedEvent": "Loyalty program exclusion changed"
@@ -1417,6 +1419,14 @@
     "SUBSCRIPTIONS_UPDATE": "Edit subscriptions",
     "SUBSCRIPTIONS_SQUADS_MANAGE": "Manage subscription squads",
     "SUBSCRIPTIONS_DELETE": "Delete subscriptions",
+    "SUBSCRIPTIONS_GRANT": "Grant subscriptions",
+    "SUBSCRIPTIONS_PLAN_CHANGE": "Change subscription plans",
+    "SUBSCRIPTIONS_STATUS_MANAGE": "Enable and disable subscriptions",
+    "SUBSCRIPTIONS_TRAFFIC_RESET": "Reset subscription traffic",
+    "SUBSCRIPTIONS_LINK_REISSUE": "Reissue subscription links",
+    "SUBSCRIPTIONS_DEVICES_VIEW": "View subscription devices",
+    "SUBSCRIPTIONS_DEVICES_DELETE": "Delete subscription devices",
+    "SUBSCRIPTIONS_DEVICES_DELETE_ALL": "Delete all subscription devices",
     "ADDONS_VIEW": "View add-ons",
     "ADDONS_DETAIL_VIEW": "View add-on details",
     "ADDONS_CREATE": "Create add-ons",
@@ -2605,7 +2615,14 @@
         "MONTH_ROLLING": "Monthly (rolling)"
       },
       "saved": "Subscription updated.",
-      "error": "Failed to update the subscription."
+      "error": "Failed to update the subscription.",
+      "expireAtLabel": "Valid until",
+      "plusDays": "+{{days}} d",
+      "tabs": {
+        "params": "Settings",
+        "plan": "Plan",
+        "devices": "Devices"
+      }
     },
     "delete": {
       "button": "Delete subscription",
@@ -2621,6 +2638,56 @@
       "soon": "Expiring within 7 days",
       "active": "Active",
       "inactive": "Expired and disabled"
+    },
+    "grant": {
+      "open": "Grant subscription",
+      "title": "Grant subscription",
+      "planLabel": "Plan",
+      "planPlaceholder": "Choose a plan",
+      "durationLabel": "Duration",
+      "submit": "Grant",
+      "done": "Subscription granted.",
+      "error": "Failed to grant the subscription."
+    },
+    "duration": {
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "custom": "Custom duration",
+      "customLabel": "Days",
+      "keep": "Keep current (until {{date}})"
+    },
+    "plan": {
+      "name": "Plan",
+      "price": "Paid",
+      "duration": "Duration",
+      "change": "Change plan",
+      "submit": "Change",
+      "changed": "Plan changed.",
+      "error": "Failed to change the plan.",
+      "resetWarning": "Add-ons, manual limits and the tag will be reset to the new plan’s values."
+    },
+    "devices": {
+      "empty": "No devices",
+      "loadError": "Failed to load devices.",
+      "deleted": "Device deleted.",
+      "deleteAll": "Delete all devices",
+      "deleteAllTitle": "Delete all devices?",
+      "deleteAllConfirm": "Every device will have to connect again.",
+      "allDeleted": "All devices deleted.",
+      "error": "Failed to delete the device."
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable",
+      "enabled": "Subscription enabled.",
+      "disabled": "Subscription disabled.",
+      "resetTraffic": "Reset traffic",
+      "trafficReset": "Traffic reset.",
+      "reissue": "Reissue link",
+      "reissueConfirmTitle": "Reissue the link?",
+      "reissueConfirm": "The current link will stop working for the client.",
+      "reissued": "Link reissued.",
+      "error": "Failed to apply the action."
     }
   },
   "donate": {

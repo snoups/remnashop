@@ -1,6 +1,17 @@
 from app.modules.subscriptions.usecases.activate_trial_subscription import (
     ActivateTrialSubscriptionUseCase,
 )
+from app.modules.subscriptions.usecases.admin_devices import (
+    AdminDeleteAllDevicesUseCase,
+    AdminDeleteDeviceUseCase,
+    AdminListDevicesUseCase,
+)
+from app.modules.subscriptions.usecases.admin_reissue_subscription import (
+    AdminReissueSubscriptionUseCase,
+)
+from app.modules.subscriptions.usecases.change_subscription_plan import (
+    ChangeSubscriptionPlanUseCase,
+)
 from app.modules.subscriptions.usecases.delete_all_devices import DeleteAllDevicesUseCase
 from app.modules.subscriptions.usecases.delete_device import DeleteDeviceUseCase
 from app.modules.subscriptions.usecases.delete_subscription import DeleteSubscriptionUseCase
@@ -8,6 +19,7 @@ from app.modules.subscriptions.usecases.fulfill_purchase import FulfillPurchaseU
 from app.modules.subscriptions.usecases.get_available_trial import GetAvailableTrialUseCase
 from app.modules.subscriptions.usecases.get_subscription import GetSubscriptionUseCase
 from app.modules.subscriptions.usecases.grant_addon import GrantAddOnUseCase
+from app.modules.subscriptions.usecases.grant_subscription import GrantSubscriptionUseCase
 from app.modules.subscriptions.usecases.handle_remnawave_webhook import (
     HandleRemnawaveWebhookUseCase,
 )
@@ -24,6 +36,12 @@ from app.modules.subscriptions.usecases.prune_idempotency_keys import (
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
 from app.modules.subscriptions.usecases.reconcile_subscriptions import ReconcileSubscriptionsUseCase
 from app.modules.subscriptions.usecases.reissue_subscription import ReissueSubscriptionUseCase
+from app.modules.subscriptions.usecases.reset_subscription_traffic import (
+    ResetSubscriptionTrafficUseCase,
+)
+from app.modules.subscriptions.usecases.set_subscription_enabled import (
+    SetSubscriptionEnabledUseCase,
+)
 from app.modules.subscriptions.usecases.sync_subscription_status import (
     SyncSubscriptionStatusUseCase,
 )
@@ -35,6 +53,11 @@ from app.modules.subscriptions.usecases.update_subscription_squads import (
 __all__ = [
     "IDEMPOTENCY_KEY_RETENTION_DAYS",
     "ActivateTrialSubscriptionUseCase",
+    "AdminDeleteAllDevicesUseCase",
+    "AdminDeleteDeviceUseCase",
+    "AdminListDevicesUseCase",
+    "AdminReissueSubscriptionUseCase",
+    "ChangeSubscriptionPlanUseCase",
     "DeleteAllDevicesUseCase",
     "DeleteDeviceUseCase",
     "DeleteSubscriptionUseCase",
@@ -42,6 +65,7 @@ __all__ = [
     "GetAvailableTrialUseCase",
     "GetSubscriptionUseCase",
     "GrantAddOnUseCase",
+    "GrantSubscriptionUseCase",
     "HandleRemnawaveWebhookUseCase",
     "ListActivePlansUseCase",
     "ListDevicesUseCase",
@@ -51,6 +75,8 @@ __all__ = [
     "PurchaseSubscriptionUseCase",
     "ReconcileSubscriptionsUseCase",
     "ReissueSubscriptionUseCase",
+    "ResetSubscriptionTrafficUseCase",
+    "SetSubscriptionEnabledUseCase",
     "SyncSubscriptionStatusUseCase",
     "UpdateSubscriptionSquadsUseCase",
     "UpdateSubscriptionUseCase",

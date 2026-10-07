@@ -160,6 +160,7 @@ class UpdateSubscriptionDto:
     traffic_limit: Optional[int] = None
     device_limit: Optional[int] = None
     traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
+    expire_at: Optional[datetime] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -189,6 +190,11 @@ class PurchaseSubscriptionDto:
     # False for a paid order too: a disabled target was refused at checkout,
     # and one disabled after the charge is still owed its renewal
     refuse_disabled_target: bool = True
+    # False for an admin grant/plan change: the caller publishes its own
+    # actor-and-target event instead of a purchase by the admin
+    publish_event: bool = True
+    # CHANGE only: keep the target's expire_at instead of now + days + credit
+    keep_expire_at: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -196,6 +202,21 @@ class GrantAddOnDto:
     subscription_id: int
     addon_id: int
     idempotency_key: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class GrantSubscriptionDto:
+    user_id: int
+    plan_id: int
+    duration_days: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class ChangeSubscriptionPlanDto:
+    subscription_id: int
+    plan_id: int
+    # None keeps the current expire_at
+    duration_days: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -251,6 +272,18 @@ class ActivateTrialSubscriptionDto:
 @dataclass(frozen=True, kw_only=True)
 class DeleteDeviceDto:
     hwid: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdminDeleteDeviceDto:
+    subscription_id: int
+    hwid: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetSubscriptionEnabledDto:
+    subscription_id: int
+    enabled: bool
 
 
 @dataclass(frozen=True, kw_only=True)

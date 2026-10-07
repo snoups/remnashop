@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
 from app.core.actor import Actor
+from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import ReferrerLookup
@@ -77,3 +78,14 @@ async def get_owned_target(
             code=ErrorCode.TARGET_SUBSCRIPTION_NOT_OWNED,
         )
     return target
+
+
+async def get_live_subscription(
+    repository: SubscriptionRepository, subscription_id: int
+) -> SubscriptionDto:
+    subscription = await repository.get_by_id(subscription_id)
+    if subscription.status is SubscriptionStatus.DELETED:
+        raise ValidationError(
+            f"Subscription '{subscription_id}' is deleted", code=ErrorCode.SUBSCRIPTION_DELETED
+        )
+    return subscription

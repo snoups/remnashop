@@ -53,8 +53,8 @@ def restore(subscription: SubscriptionDto) -> UpdateUserRequestDto:
     return UpdateUserRequestDto(
         id=subscription.remnawave_user_id,
         expire_at=subscription.expire_at,
-        traffic_limit_bytes=subscription.traffic_limit * GB_TO_BYTES,
-        hwid_device_limit=subscription.device_limit,
+        traffic_limit_bytes=subscription.effective_traffic_limit * GB_TO_BYTES,
+        hwid_device_limit=subscription.effective_device_limit,
         traffic_limit_strategy=subscription.traffic_limit_strategy,
         active_internal_squads=subscription.internal_squads or None,
         external_squad_uuid=subscription.external_squad,
@@ -65,12 +65,13 @@ def subscription_row(
     data: PurchaseSubscriptionDto,
     panel_user: UserResponseDto,
     expire_at: Optional[datetime] = None,
+    status: SubscriptionStatus = SubscriptionStatus.ACTIVE,
 ) -> CreateSubscriptionDto:
     plan = data.plan_snapshot
     return CreateSubscriptionDto(
         user_id=data.user_id,
         remnawave_user_id=panel_user.id,
-        status=SubscriptionStatus.ACTIVE,
+        status=status,
         traffic_limit=plan.traffic_limit,
         device_limit=plan.device_limit,
         traffic_limit_strategy=plan.traffic_limit_strategy,

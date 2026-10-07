@@ -56,11 +56,36 @@ class UpdateSubscriptionRequest(BaseModel):
     traffic_limit: Optional[int] = Field(default=None, ge=0)
     device_limit: Optional[int] = Field(default=None, ge=0)
     traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
+    expire_at: Optional[datetime] = None
 
 
 class UpdateSubscriptionSquadsRequest(BaseModel):
     internal_squads: list[UUID] = Field(default_factory=list)
     external_squad: Optional[UUID] = None
+
+
+class GrantSubscriptionRequest(BaseModel):
+    user_id: int
+    plan_id: int
+    duration_days: int = Field(ge=1, le=36500)
+
+
+class ChangeSubscriptionPlanRequest(BaseModel):
+    plan_id: int
+    duration_days: Optional[int] = Field(default=None, ge=1, le=36500)
+
+
+class DeviceItem(BaseModel):
+    hwid: str
+    platform: Optional[str] = None
+    device_model: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime
+
+
+class DeviceListResponse(BaseModel):
+    items: list[DeviceItem]
+    total: int
 
 
 class PublicPlanPriceItem(BaseModel):
