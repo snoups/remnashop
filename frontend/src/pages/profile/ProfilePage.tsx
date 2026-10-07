@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { SessionsForm } from "@features/account-sessions/SessionsForm";
-import { NotificationSettingsForm } from "@features/notification-settings/NotificationSettingsForm";
+import { NotificationChannelsForm } from "@features/notification-settings/NotificationChannelsForm";
 import { ConnectedAccountsForm } from "@features/oauth-accounts/ConnectedAccountsForm";
 import { EditProfileDialog } from "@features/profile-edit/EditProfileDialog";
 import { SecurityForm } from "@features/account-security/SecurityForm";
@@ -62,7 +62,7 @@ export function ProfilePage() {
       </Card>
 
       <ConnectedAccountsForm />
-      <NotificationSettingsForm />
+      <NotificationChannelsForm />
       <SecurityForm />
       <SessionsForm />
     </div>

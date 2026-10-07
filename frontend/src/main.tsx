@@ -5,6 +5,7 @@ import { App } from "@app/App";
 import "@shared/i18n";
 import { installFormValidationMessages } from "@shared/lib/form-validation";
 import { installGlassFade } from "@shared/lib/glass-fade";
+import { registerServiceWorker } from "@shared/lib/push";
 import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 
 import "@app/styles.css";
@@ -25,6 +26,7 @@ window.addEventListener("vite:preloadError", (event) => {
 
 installFormValidationMessages();
 installGlassFade();
+registerServiceWorker();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

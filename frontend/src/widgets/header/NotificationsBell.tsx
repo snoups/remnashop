@@ -13,6 +13,7 @@ import type { EventLogLocationState, Notifications } from "@entities/event-log/a
 import { describeEntry } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { usePermissions } from "@entities/user/use-current-user";
+import { onServiceWorkerMessage } from "@shared/lib/push";
 import { formatRelative } from "@shared/lib/relative-time";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
@@ -22,7 +23,7 @@ import { PortalPopover } from "@shared/ui/PortalPopover";
 import { AnnouncementDialog } from "@widgets/announcements/AnnouncementDialog";
 import { AnnouncementsCarousel } from "@widgets/announcements/AnnouncementsCarousel";
 
-// plain polling, move to SSE/websocket if the bell needs to be instant
+// fallback for browsers without push; a push reloads the bell at once
 const POLL_INTERVAL_MS = 60_000;
 const MAX_BADGE = 9;
 const POPOVER_MAX_HEIGHT = 420;
@@ -85,9 +86,13 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
       );
     load();
     const timer = setInterval(load, POLL_INTERVAL_MS);
+    const stopListening = onServiceWorkerMessage((message) => {
+      if (message.type === "notification") load();
+    });
     return () => {
       controller.abort();
       clearInterval(timer);
+      stopListening();
     };
   }, [canView]);
 
@@ -191,7 +196,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
   const openEntry = (state?: EventLogLocationState) => {
     onClose();
     setHighlighted(0);
-    navigate("/dashboard/event-log", { state });
+    navigate("/dashboard/events", { state });
   };
 
   return (

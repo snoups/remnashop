@@ -6,7 +6,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.constants import LOGIN_PATTERN
-from app.core.enums import BlacklistKind
+from app.core.enums import BlacklistKind, Locale
 from app.core.security import PASSWORD_MIN_LENGTH, PASSWORD_PATTERN
 from app.core.security.permissions import Permission
 
@@ -26,6 +26,7 @@ class CurrentUserResponse(BaseModel):
     role: str
     effective_permissions: list[Permission]
     password_change_required: bool
+    language: str
 
 
 class AdminResponse(BaseModel):
@@ -173,6 +174,7 @@ class UpdateOwnProfileRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1)
     current_password: Optional[str] = None
     new_password: Optional[str] = None
+    language: Optional[Locale] = None
 
     @field_validator("new_password")
     @classmethod

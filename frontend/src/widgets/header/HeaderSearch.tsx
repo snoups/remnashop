@@ -193,7 +193,7 @@ export function HeaderSearch() {
             id: "events",
             label: t("header.searchEvents"),
             hint: debounced,
-            to: link("/dashboard/event-log"),
+            to: link("/dashboard/events"),
             icon: ScrollText,
           },
         ]

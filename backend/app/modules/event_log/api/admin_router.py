@@ -14,28 +14,23 @@ from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.event_log.api.schemas import (
     EventLogEntryResponse,
     EventLogPageResponse,
-    NotificationGroupsResponse,
     NotificationsResponse,
-    UpdateNotificationGroupsRequest,
 )
 from app.modules.event_log.dto import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
-    NOTIFICATION_GROUPS,
     ListEventLogDto,
 )
 from app.modules.event_log.usecases import (
     ClearNotificationsUseCase,
     GetEventLogEntryUseCase,
-    GetNotificationGroupsUseCase,
     GetNotificationsUseCase,
     ListEventLogUseCase,
     MarkNotificationsReadUseCase,
-    UpdateNotificationGroupsUseCase,
 )
 from app.modules.users import UserDto
 
-router = APIRouter(prefix="/event-log", tags=["event-log"])
+router = APIRouter(prefix="/events", tags=["events"])
 
 
 @router.get("", response_model=EventLogPageResponse)
@@ -105,27 +100,6 @@ async def clear_notifications(
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
     await use_case(actor)
-
-
-@router.get("/notifications/groups", response_model=NotificationGroupsResponse)
-@inject
-async def get_notification_groups(
-    use_case: FromDishka[GetNotificationGroupsUseCase],
-    actor: UserDto = Depends(require_admin_user),
-) -> NotificationGroupsResponse:
-    groups = await use_case(actor)
-    return NotificationGroupsResponse(groups=groups, available=list(NOTIFICATION_GROUPS))
-
-
-@router.put("/notifications/groups", response_model=NotificationGroupsResponse)
-@inject
-async def update_notification_groups(
-    body: UpdateNotificationGroupsRequest,
-    use_case: FromDishka[UpdateNotificationGroupsUseCase],
-    actor: UserDto = Depends(require_admin_user),
-) -> NotificationGroupsResponse:
-    groups = await use_case(actor, body.groups)
-    return NotificationGroupsResponse(groups=groups, available=list(NOTIFICATION_GROUPS))
 
 
 @router.get("/{entry_id:int}", response_model=EventLogEntryResponse, responses=error_responses(404))

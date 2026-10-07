@@ -10,7 +10,7 @@ from app.core.enums import Locale
 from app.core.exceptions import ConflictError
 from app.modules.translations.repository import TranslationRepository
 
-_SEED_DOMAINS: Final[tuple[str, ...]] = ("commands.ftl", "menu.ftl")
+_SEED_DOMAINS: Final[tuple[str, ...]] = ("commands.ftl", "menu.ftl", "notifications.ftl")
 
 
 def _parse_seed_file(path: Path) -> list[tuple[str, str, str]]:

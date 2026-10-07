@@ -1,12 +1,15 @@
 import { AnimatePresence, motion } from "motion/react";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { matchPath, Navigate, useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 import { logout } from "@shared/api/http";
+import { pushApi } from "@entities/notifications/push-api";
+import { updateOwnProfile } from "@entities/user/api";
 import { CurrentUserProvider } from "@entities/user/CurrentUserProvider";
 import { PasswordChangeRequired } from "@features/password-change-required/PasswordChangeRequired";
 import type { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
+import { disablePush, healPushSubscription, onServiceWorkerMessage } from "@shared/lib/push";
 import { useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
@@ -59,6 +62,36 @@ interface DashboardShellProps {
 
 function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
   const userState = useCurrentUser();
+  const { i18n } = useTranslation();
+  const serverLanguage = userState.kind === "ready" ? userState.data.language : null;
+  const syncedLanguage = useRef<string | null>(null);
+  // the server renders push and Telegram texts in this language
+  useEffect(() => {
+    if (serverLanguage === null) return;
+    syncedLanguage.current ??= serverLanguage;
+    if (syncedLanguage.current === i18n.language) return;
+    syncedLanguage.current = i18n.language;
+    updateOwnProfile({ language: i18n.language }).catch(() => {
+      syncedLanguage.current = serverLanguage;
+    });
+  }, [serverLanguage, i18n.language]);
+
+  const isSignedIn = userState.kind === "ready";
+  useEffect(() => {
+    if (isSignedIn) healPushSubscription(pushApi).catch(() => undefined);
+  }, [isSignedIn]);
+
+  const navigate = useNavigate();
+  // a push notification clicked while the dashboard is already open
+  useEffect(
+    () =>
+      onServiceWorkerMessage((message) => {
+        if (message.type !== "navigate") return;
+        const url = new URL(message.url);
+        navigate(url.pathname + url.search);
+      }),
+    [navigate],
+  );
   const isSidebarCollapsed = useSidebarCollapsed();
   const location = useLocation();
   const isIntro = (location.state as typeof DASHBOARD_INTRO_STATE | null)?.intro === true;
@@ -118,6 +151,8 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
   );
 }
 
+const LOGOUT_PUSH_TIMEOUT_MS = 2000;
+
 export function DashboardLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -125,6 +160,12 @@ export function DashboardLayout() {
   const [isLeaving, setIsLeaving] = useState(false);
 
   const handleLogout = async () => {
+    // the next admin in this browser shouldn't get this one's notifications;
+    // capped, since a hung push service mustn't hold the logout
+    await Promise.race([
+      disablePush(pushApi, { optOut: false }).catch(() => undefined),
+      new Promise((resolve) => setTimeout(resolve, LOGOUT_PUSH_TIMEOUT_MS)),
+    ]);
     if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
     setIsLeaving(true);
   };

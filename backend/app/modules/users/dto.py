@@ -48,7 +48,7 @@ class UserDto(BaseDto, TimestampMixin):
     bonus_days: int = 0
     notifications_seen_at: Optional[datetime] = None
     notifications_cleared_at: Optional[datetime] = None
-    notification_groups: Optional[list[str]] = None
+    notification_channels: Optional[dict[str, list[str]]] = None
     deleted_at: Optional[datetime] = None
 
     @property
@@ -142,6 +142,7 @@ class UpdateUserDto:
     purchase_discount_promocode_id: Optional[int] = None
     is_trial_available: Optional[bool] = None
     loyalty_excluded: Optional[bool] = None
+    language: Optional[Locale] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -297,6 +298,7 @@ class UpdateOwnProfileDto:
     name: Optional[str] = None
     current_password: Optional[str] = None
     new_password: Optional[str] = None
+    language: Optional[Locale] = None
 
 
 @dataclass(frozen=True, kw_only=True)

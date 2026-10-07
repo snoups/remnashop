@@ -23,6 +23,7 @@ from app.core.db.models.emoji_pack import EmojiPack, EmojiPackItem
 from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.models.loyalty_settings import LoyaltySettings
+from app.core.db.models.notification_settings import NotificationSettings
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.passkey_credential import PasskeyCredential
@@ -32,6 +33,7 @@ from app.core.db.models.plan_duration import PlanDuration
 from app.core.db.models.plan_price_override import PlanPriceOverride
 from app.core.db.models.pricing_settings import PricingSettings
 from app.core.db.models.promocode import Promocode, PromocodeActivation
+from app.core.db.models.push_subscription import PushSubscription
 from app.core.db.models.referral import Referral
 from app.core.db.models.referral_reward import ReferralReward
 from app.core.db.models.referral_settings import ReferralSettings
@@ -70,6 +72,7 @@ __all__ = [
     "EventLogEntry",
     "EventOutboxEntry",
     "LoyaltySettings",
+    "NotificationSettings",
     "OAuthIdentity",
     "OAuthSettings",
     "PasskeyCredential",
@@ -80,6 +83,7 @@ __all__ = [
     "PricingSettings",
     "Promocode",
     "PromocodeActivation",
+    "PushSubscription",
     "Referral",
     "ReferralReward",
     "ReferralSettings",

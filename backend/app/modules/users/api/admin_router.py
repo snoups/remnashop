@@ -130,6 +130,7 @@ async def get_me(
             p.value for p in PermissionPolicy.effective_permissions(current_user)
         ),
         password_change_required=current_user.password_change_required,
+        language=str(current_user.language),
     )
 
 
@@ -146,6 +147,7 @@ async def update_me(
             name=payload.name,
             current_password=payload.current_password,
             new_password=payload.new_password,
+            language=payload.language,
         ),
     )
     return CurrentUserResponse(
@@ -157,6 +159,7 @@ async def update_me(
             p.value for p in PermissionPolicy.effective_permissions(updated)
         ),
         password_change_required=updated.password_change_required,
+        language=str(updated.language),
     )
 
 

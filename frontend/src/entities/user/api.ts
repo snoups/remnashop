@@ -8,12 +8,14 @@ export interface CurrentUser {
   role: Role;
   effective_permissions: Permission[];
   password_change_required: boolean;
+  language: string;
 }
 
 export interface UpdateOwnProfileRequest {
   name?: string;
   current_password?: string;
   new_password?: string;
+  language?: string;
 }
 
 export function getCurrentUser(signal?: AbortSignal): Promise<CurrentUser> {

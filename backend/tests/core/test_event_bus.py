@@ -18,6 +18,7 @@ from app.modules.auth.events import (
     UserSessionRevokedByAdminEvent,
 )
 from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
+from app.modules.notifications.tasks import deliver_notification_task
 from app.modules.oauth.events import (
     OAuthIdentityConnectedEvent,
     OAuthIdentityDisconnectedEvent,
@@ -173,6 +174,7 @@ async def test_registered_handler_reads_its_real_payload_shape(
 
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _noop_kiq)
     monkeypatch.setattr(recalculate_loyalty_discounts_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(deliver_notification_task, "kiq", _noop_kiq)
 
     bus = EventBus()
     register_all_subscribers(bus)

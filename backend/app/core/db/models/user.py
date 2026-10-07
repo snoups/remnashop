@@ -85,7 +85,7 @@ class User(BaseSql, TimestampMixin):
     notifications_seen_at: Mapped[Optional[datetime]]
     # dashboard bell: events up to this moment are hidden from it (the event log keeps them)
     notifications_cleared_at: Mapped[Optional[datetime]]
-    # NULL = the default (critical) groups; see NOTIFICATION_GROUPS
-    notification_groups: Mapped[Optional[list[str]]] = mapped_column(JSONB)
+    # {group: [channel, ...]}; NULL = DEFAULT_NOTIFICATION_CHANNELS (modules/notifications)
+    notification_channels: Mapped[Optional[dict[str, list[str]]]] = mapped_column(JSONB)
     # soft delete: the row stays for payment/referral history, personal data is wiped
     deleted_at: Mapped[Optional[datetime]]

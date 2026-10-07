@@ -501,11 +501,11 @@ class UserRepository:
         db_user.notifications_cleared_at = cleared_at
         await self.session.flush()
 
-    async def set_notification_groups(self, user_id: int, groups: list[str]) -> None:
+    async def set_notification_channels(self, user_id: int, channels: dict[str, list[str]]) -> None:
         db_user = await self.session.get(User, user_id)
         if db_user is None:
             return
-        db_user.notification_groups = groups
+        db_user.notification_channels = channels
         await self.session.flush()
 
     async def unblock_all(self) -> int:
@@ -536,7 +536,7 @@ class UserRepository:
         db_user.permission_grants = None
         db_user.permission_revokes = None
         db_user.ip_allowlist = None
-        db_user.notification_groups = None
+        db_user.notification_channels = None
         db_user.deleted_at = datetime_now()
         # provider subject ids are personal data too; nothing else reads them
         await self.session.execute(sa_delete(OAuthIdentity).where(OAuthIdentity.user_id == user_id))

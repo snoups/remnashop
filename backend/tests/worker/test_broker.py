@@ -1,14 +1,14 @@
 from taskiq import SmartRetryMiddleware
 from taskiq_redis import ListRedisScheduleSource
 
-from app.core.exceptions import RemnawavePanelUnavailableError
+from app.core.exceptions import RemnawavePanelUnavailableError, RetryableTaskError
 from app.worker.broker import broker, retry_schedule_source
 from app.worker.metrics import TaskMetricsMiddleware
 
 
-def test_broker_has_a_smart_retry_middleware_scoped_to_panel_unavailability() -> None:
+def test_broker_has_a_smart_retry_middleware_scoped_to_safe_retries() -> None:
     middleware = next(m for m in broker.middlewares if isinstance(m, SmartRetryMiddleware))
-    assert middleware.types_of_exceptions == (RemnawavePanelUnavailableError,)
+    assert middleware.types_of_exceptions == (RemnawavePanelUnavailableError, RetryableTaskError)
     assert middleware.schedule_source is retry_schedule_source
     assert middleware.default_retry_label is False
 

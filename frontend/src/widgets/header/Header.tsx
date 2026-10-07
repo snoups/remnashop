@@ -1,8 +1,8 @@
 import { ChevronDown, LogOut, RefreshCw, User as UserIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { useCurrentUser } from "@entities/user/use-current-user";
@@ -62,6 +62,16 @@ export function Header({ onLogout }: HeaderProps) {
     setOpenPopover(null),
   );
   useCloseOnScroll(openPopover !== null, [menuPopoverRef, notifPopoverRef], () => setOpenPopover(null));
+
+  // a push notification click lands here with ?bell=open
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("bell") !== "open") return;
+    setOpenPopover("notifications");
+    const next = new URLSearchParams(searchParams);
+    next.delete("bell");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
 
   return (

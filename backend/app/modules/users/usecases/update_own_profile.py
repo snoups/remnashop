@@ -59,6 +59,7 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto, UserDto]):
                     name=name,
                     password_hash=password_hash,
                     password_change_required=False if password_hash is not None else None,
+                    language=data.language,
                 ),
             )
             if password_hash is not None:

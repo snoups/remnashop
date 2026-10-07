@@ -234,6 +234,16 @@ allowed_importers =
     app.api.routers
     app.worker.subscribers
 
+[importlinter:contract:notifications-boundary]
+name = notifications internals are private
+type = protected
+protected_modules =
+    app.modules.notifications.*
+allowed_importers =
+    app.modules.notifications
+    app.api.routers
+    app.worker.subscribers
+
 [importlinter:contract:referrals-boundary]
 name = referrals internals are private
 type = protected

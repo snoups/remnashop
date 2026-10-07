@@ -112,7 +112,7 @@ export const router = createBrowserRouter([
                   { path: "promocodes", element: <AnalyticsPromocodesPage /> },
                 ],
               },
-              { path: "event-log", element: <EventLogPage /> },
+              { path: "events", element: <EventLogPage /> },
               {
                 path: "debug",
                 element: <DebugPage />,

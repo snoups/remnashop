@@ -1,12 +1,9 @@
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.event_log.dto import (
-    NOTIFICATIONS_LIMIT,
-    NotificationsDto,
-    notification_event_types,
-)
+from app.modules.event_log.dto import NOTIFICATIONS_LIMIT, NotificationsDto
 from app.modules.event_log.repository import EventLogRepository
+from app.modules.notifications import bell_event_types
 from app.modules.users import UserDto
 
 
@@ -18,7 +15,7 @@ class GetNotificationsUseCase(UseCase[None, NotificationsDto, UserDto]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> NotificationsDto:
-        event_types = notification_event_types(actor.notification_groups)
+        event_types = bell_event_types(actor)
         async with self._uow:
             items = await self._event_log_repository.list_notifications(
                 event_types=event_types,

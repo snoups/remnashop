@@ -5,7 +5,7 @@ from taskiq.serializers import ORJSONSerializer
 from taskiq_redis import ListQueueBroker, ListRedisScheduleSource
 
 from app.core.config import AppConfig
-from app.core.exceptions import RemnawavePanelUnavailableError
+from app.core.exceptions import RemnawavePanelUnavailableError, RetryableTaskError
 from app.core.json import json_default
 from app.worker.metrics import TaskMetricsMiddleware
 
@@ -47,7 +47,8 @@ broker.add_middlewares(
         # so a retry is safe. A real transport error may hide a POST/PATCH that
         # landed, and retrying it would orphan panel users in NewPurchase and
         # double the keyless extend_user in RenewPurchase.
-        types_of_exceptions=(RemnawavePanelUnavailableError,),
+        # RetryableTaskError: raised by a task only before it did anything
+        types_of_exceptions=(RemnawavePanelUnavailableError, RetryableTaskError),
     ),
     TaskMetricsMiddleware(),
 )

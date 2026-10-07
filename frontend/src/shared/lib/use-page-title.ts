@@ -9,7 +9,7 @@ const PAGE_TITLE_BY_PATH: { prefix: string; key: ParseKeys }[] = [
   { prefix: "/dashboard/settings", key: "settings.title" },
   { prefix: "/dashboard/profile", key: "profile.title" },
   { prefix: "/dashboard/admins", key: "admins.title" },
-  { prefix: "/dashboard/event-log", key: "eventLog.title" },
+  { prefix: "/dashboard/events", key: "eventLog.title" },
   { prefix: "/dashboard/users", key: "users.title" },
   { prefix: "/dashboard/subscriptions", key: "subscriptions.title" },
   { prefix: "/dashboard/transactions", key: "transactions.title" },

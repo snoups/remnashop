@@ -2,6 +2,7 @@ import type { ParseKeys } from "i18next";
 import {
   Ban,
   BarChart3,
+  BellRing,
   Bot,
   Check,
   ChevronRight,
@@ -61,6 +62,7 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   locales: Globe,
   translations: Languages,
   event_log: ScrollText,
+  notification_settings: BellRing,
   analytics: BarChart3,
   remnawave: Server,
   users: Users,

@@ -24,12 +24,3 @@ class EventLogPageResponse(BaseModel):
 class NotificationsResponse(BaseModel):
     items: list[EventLogEntryResponse]
     unread_count: int
-
-
-class NotificationGroupsResponse(BaseModel):
-    groups: list[str]
-    available: list[str]
-
-
-class UpdateNotificationGroupsRequest(BaseModel):
-    groups: list[str]

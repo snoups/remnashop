@@ -147,6 +147,7 @@ def test_every_catalog_permission_has_metadata() -> None:
         Permission.USERS_UNBLOCK_ALL,
         Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
         Permission.BACKUPS_RUN_DOWNLOAD,
+        Permission.NOTIFICATION_VAPID_KEYS_GENERATE,
     }
     assert set(Permission) - PERMISSION_METADATA.keys() == non_catalog
 

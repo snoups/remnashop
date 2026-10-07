@@ -34,6 +34,11 @@ class CooldownError(AppError):
         super().__init__(f"Cooldown active until {available_at}", code=ErrorCode.COOLDOWN_ACTIVE)
 
 
+class RetryableTaskError(Exception):
+    """A worker task failed before any side effect left the process, so the
+    broker may run it again (SmartRetryMiddleware in app/worker/broker.py)."""
+
+
 class RemnawavePanelUnavailableError(AppError):
     def __init__(self, message: str, *, code: ErrorCode = ErrorCode.REMNAWAVE_UNAVAILABLE) -> None:
         super().__init__(message, code=code)

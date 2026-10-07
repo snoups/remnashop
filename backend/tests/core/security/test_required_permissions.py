@@ -22,6 +22,11 @@ from app.modules.gateways.usecases.list_gateways import ListGatewaysUseCase
 from app.modules.gateways.usecases.reorder_gateways import ReorderGatewaysUseCase
 from app.modules.gateways.usecases.set_gateway_active import SetGatewayActiveUseCase
 from app.modules.gateways.usecases.update_gateway_settings import UpdateGatewaySettingsUseCase
+from app.modules.notifications.usecases import (
+    GenerateVapidKeysUseCase,
+    GetNotificationSettingsUseCase,
+    UpdateNotificationSettingsUseCase,
+)
 from app.modules.plans.usecases import GetAddOnUseCase
 from app.modules.plans.usecases.get_plan import GetPlanUseCase
 from app.modules.plans.usecases.set_plan_duration_base_price import SetPlanDurationBasePriceUseCase
@@ -50,6 +55,9 @@ from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
         (GetUserUseCase, Permission.USERS_DETAIL_VIEW),
         (GetAdLinkUseCase, Permission.AD_LINKS_DETAIL_VIEW),
         (GetEventLogEntryUseCase, Permission.EVENT_LOG_DETAIL_VIEW),
+        (GetNotificationSettingsUseCase, Permission.NOTIFICATION_SETTINGS_VIEW),
+        (UpdateNotificationSettingsUseCase, Permission.NOTIFICATION_SETTINGS_MANAGE),
+        (GenerateVapidKeysUseCase, Permission.NOTIFICATION_VAPID_KEYS_GENERATE),
         (GetPromocodeUseCase, Permission.PROMOCODES_DETAIL_VIEW),
         (GetSubscriptionUseCase, Permission.SUBSCRIPTIONS_DETAIL_VIEW),
         (GetAddOnUseCase, Permission.ADDONS_DETAIL_VIEW),

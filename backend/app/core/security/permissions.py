@@ -70,6 +70,9 @@ class Permission(UpperStrEnum):
     EVENT_LOG_VIEW = auto()
     EVENT_LOG_DETAIL_VIEW = auto()
     NOTIFICATIONS_VIEW = auto()
+    NOTIFICATION_SETTINGS_VIEW = auto()
+    NOTIFICATION_SETTINGS_MANAGE = auto()
+    NOTIFICATION_VAPID_KEYS_GENERATE = auto()
     USERS_VIEW = auto()
     USERS_DETAIL_VIEW = auto()
     USERS_STATS_VIEW = auto()
@@ -236,6 +239,12 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.EVENT_LOG_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.EVENT_LOG_DETAIL_VIEW: PermissionMeta(resource="event_log", kind="read"),
     Permission.NOTIFICATIONS_VIEW: PermissionMeta(resource="event_log", kind="read"),
+    Permission.NOTIFICATION_SETTINGS_VIEW: PermissionMeta(
+        resource="notification_settings", kind="read"
+    ),
+    Permission.NOTIFICATION_SETTINGS_MANAGE: PermissionMeta(
+        resource="notification_settings", kind="write"
+    ),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DETAIL_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_STATS_VIEW: PermissionMeta(resource="users", kind="read"),
@@ -375,6 +384,8 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.GATEWAYS_ACTIVE_SET,
         # provisions an order nobody was paid for
         Permission.TRANSACTIONS_FULFILL,
+        # who gets alerted, and from where
+        Permission.NOTIFICATION_SETTINGS_MANAGE,
         # irreversible or bulk
         Permission.BACKUPS_SETTINGS_MANAGE,
         Permission.BACKUPS_RUN_DELETE,

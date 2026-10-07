@@ -2,7 +2,7 @@ import pytest
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
+from app.core.enums import Locale, Role
 from app.core.exceptions import ValidationError
 from app.core.security import hash_password
 from app.modules.users.dto import CreateUserDto, UpdateOwnProfileDto, UserDto
@@ -65,3 +65,10 @@ async def test_own_password_change_clears_password_change_required(
         UpdateOwnProfileDto(current_password="temp-password", new_password="New-password-1"),
     )
     assert not updated.password_change_required
+
+
+async def test_update_own_profile_sets_language(
+    use_case: UpdateOwnProfileUseCase, admin: UserDto
+) -> None:
+    updated = await use_case(admin, UpdateOwnProfileDto(language=Locale.RU))
+    assert updated.language == Locale.RU

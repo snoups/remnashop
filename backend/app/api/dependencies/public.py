@@ -97,6 +97,8 @@ async def get_current_actor(
         logger.warning(f"Blocked actor {actor.log} attempted access from IP '{client_ip}'")
         raise ApiError(status.HTTP_401_UNAUTHORIZED, "User is blocked", code=ErrorCode.USER_BLOCKED)
 
+    request.state.session_id = session_id
+
     if actor.ip_allowlist and not is_ip_allowed(client_ip, actor.ip_allowlist):
         logger.warning(f"Actor {actor.log} denied access from disallowed IP '{client_ip}'")
         raise ApiError(
@@ -121,3 +123,15 @@ async def get_current_user(actor: Actor = Depends(get_current_actor)) -> UserDto
             code=ErrorCode.USER_ACCOUNT_REQUIRED,
         )
     return actor
+
+
+def get_current_session_id(request: Request, actor: Actor = Depends(get_current_actor)) -> int:
+    """The session the request's access token belongs to; an API token has none."""
+    session_id: Optional[int] = getattr(request.state, "session_id", None)
+    if session_id is None:
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "This endpoint is available to user accounts only",
+            code=ErrorCode.USER_ACCOUNT_REQUIRED,
+        )
+    return session_id

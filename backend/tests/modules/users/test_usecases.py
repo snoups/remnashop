@@ -1142,6 +1142,29 @@ async def test_register_telegram_user_keeps_a_staff_name(
     assert user.username == "adm"
 
 
+async def test_register_telegram_user_keeps_a_staff_language(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    async with uow:
+        await user_repository.create(
+            CreateUserDto(name="Admin", role=Role.ADMIN, telegram_id=781, language=Locale.RU)
+        )
+    use_case = RegisterTelegramUserUseCase(
+        user_repository, blacklist_repository, uow, event_publisher
+    )
+
+    user = await use_case.system(
+        RegisterTelegramUserDto(
+            telegram_id=781, name="Admin", language=Locale.EN, sync_language=True
+        )
+    )
+
+    assert user.language == Locale.RU
+
+
 async def test_register_telegram_user_publishes_event_only_on_creation(
     user_repository: UserRepository,
     blacklist_repository: BlacklistRepository,

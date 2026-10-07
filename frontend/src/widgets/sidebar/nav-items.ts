@@ -50,7 +50,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "advertising", to: "/dashboard/advertising", icon: Link2, anyOf: ["AD_LINKS_VIEW"] },
   { key: "transactions", to: "/dashboard/transactions", icon: CreditCard, anyOf: ["TRANSACTIONS_VIEW"] },
   { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, anyOf: ["ADMINS_MANAGE"] },
-  { key: "eventLog", to: "/dashboard/event-log", icon: ScrollText, anyOf: ["EVENT_LOG_VIEW"] },
+  { key: "eventLog", to: "/dashboard/events", icon: ScrollText, anyOf: ["EVENT_LOG_VIEW"] },
   { key: "settings", to: "/dashboard/settings", icon: Settings },
 ];
 
@@ -65,7 +65,7 @@ export interface SettingsTab {
 }
 
 export const SETTINGS_TABS: SettingsTab[] = [
-  { key: "general", to: "", icon: SlidersHorizontal, anyOf: ["SHOP_SETTINGS_VIEW", "OAUTH_SETTINGS_VIEW"] },
+  { key: "general", to: "", icon: SlidersHorizontal, anyOf: ["SHOP_SETTINGS_VIEW", "OAUTH_SETTINGS_VIEW", "NOTIFICATION_SETTINGS_VIEW"] },
   {
     key: "bot",
     to: "bot",

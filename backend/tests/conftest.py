@@ -34,6 +34,7 @@ from app.modules.dialogs.repository import DialogRepository
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.notifications.repository import NotificationRepository
 from app.modules.oauth.providers.state_store import OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
@@ -233,6 +234,11 @@ def promocode_repository(session: AsyncSession) -> PromocodeRepository:
 @pytest.fixture
 def event_log_repository(session: AsyncSession) -> EventLogRepository:
     return EventLogRepository(session)
+
+
+@pytest.fixture
+def notification_repository(session: AsyncSession) -> NotificationRepository:
+    return NotificationRepository(session)
 
 
 @pytest.fixture

@@ -619,6 +619,7 @@
       "TransactionRefundedEvent": "Transaction refunded",
       "TransactionFulfilledManuallyEvent": "Subscription issued manually",
       "BackupFailedEvent": "Backup failed",
+      "VapidKeysGeneratedEvent": "Web push keys generated",
       "GatewayChangedEvent": "Payment gateway changed",
       "PricingSettingsChangedEvent": "Pricing settings changed",
       "ReferralSettingsChangedEvent": "Referral settings changed",
@@ -1161,6 +1162,22 @@
         "wallet_id": "Wallet ID",
         "webhook_secret": "Webhook secret"
       }
+    },
+    "webPush": {
+      "title": "Web push",
+      "description": "Keys browsers use to accept notifications from this shop",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "publicKey": "Public key",
+      "contact": "Contact",
+      "contactHint": "Email or https:// — push services write here about problems",
+      "contactPlaceholder": "admin@example.com",
+      "generate": "Generate keys",
+      "regenerate": "Regenerate keys",
+      "confirmTitle": "Regenerate keys?",
+      "confirm": "Every device will have to turn push on again.",
+      "generated": "Keys generated.",
+      "loadError": "Failed to load web push settings."
     }
   },
   "apiTokens": {
@@ -1256,7 +1273,7 @@
     },
     "notifications": {
       "title": "Notifications",
-      "description": "Subscribe to notifications about events.",
+      "description": "Choose where each kind of event reaches you.",
       "loadError": "Failed to load notification settings.",
       "saveError": "Failed to save notification settings.",
       "groups": {
@@ -1280,6 +1297,35 @@
           "title": "Admins",
           "description": "Admins created, deleted or given different permissions"
         }
+      },
+      "channels": {
+        "bell": "Bell",
+        "push": "Push",
+        "telegram": "Telegram"
+      },
+      "push": {
+        "label": "Push on this device",
+        "enable": "Enable",
+        "enabled": "On",
+        "test": "Send test",
+        "testSent": "Test notification sent.",
+        "iosInstall": "Add the dashboard to the Home Screen to get push on iPhone",
+        "unsupported": "This browser doesn’t support push",
+        "notConfigured": "Not set up by the owner",
+        "denied": "Notifications are blocked in the browser settings.",
+        "failed": "Failed to turn on push."
+      },
+      "telegram": {
+        "label": "Telegram",
+        "link": "Link Telegram to your account",
+        "linked": "Linked"
+      },
+      "devices": {
+        "title": "My devices",
+        "empty": "No devices with push",
+        "thisDevice": "this device",
+        "lastActive": "active {{time}}",
+        "removed": "Device removed."
       }
     }
   },
@@ -1472,6 +1518,9 @@
     "DIALOGS_EXPORT": "Export windows",
     "DIALOGS_IMPORT": "Import windows",
     "NOTIFICATIONS_VIEW": "View notifications",
+    "NOTIFICATION_SETTINGS_VIEW": "View web push settings",
+    "NOTIFICATION_SETTINGS_MANAGE": "Change web push settings",
+    "NOTIFICATION_VAPID_KEYS_GENERATE": "Generate web push keys",
     "LOYALTY_SETTINGS_VIEW": "View loyalty settings",
     "LOYALTY_SETTINGS_MANAGE": "Edit loyalty settings",
     "USERS_LOYALTY_VIEW": "View a user's loyalty tier",
@@ -1503,7 +1552,8 @@
     "remnawave": "Remnawave",
     "dialogs": "Bot windows",
     "emojiPacks": "Emoji packs",
-    "loyalty": "Loyalty"
+    "loyalty": "Loyalty",
+    "notificationSettings": "Web push"
   },
   "permissionPicker": {
     "loadError": "Failed to load permissions.",
@@ -2957,7 +3007,7 @@
     "LOYALTY_TIERS_INVALID": "Tier thresholds and percents must both increase.",
     "METHOD_NOT_ALLOWED": "Method not allowed.",
     "NAME_INVALID": "The name must contain letters or digits.",
-    "NOTIFICATION_GROUP_UNKNOWN": "Unknown notification group.",
+    "NOTIFICATION_CHANNELS_INVALID": "Unknown notification group or channel.",
     "NOT_AUTHENTICATED": "Sign in to continue.",
     "NOT_FOUND": "Not found.",
     "OAUTH_ACCOUNT_LINKED_ELSEWHERE": "This account is already linked to another user.",
@@ -3017,6 +3067,10 @@
     "PURCHASE_DISCOUNT_USED": "The discount was already used — try again.",
     "PURCHASE_IN_PROGRESS": "This purchase is already being processed.",
     "PURCHASE_SUPERSEDED": "The subscription changed during the purchase — try again.",
+    "PUSH_ENDPOINT_NOT_ALLOWED": "This browser’s push service isn’t supported.",
+    "PUSH_NOT_CONFIGURED": "Web push isn’t set up yet: the owner has to generate keys in Settings.",
+    "PUSH_NO_SUBSCRIPTIONS": "Turn on push on this device first.",
+    "PUSH_SUBSCRIPTION_NOT_FOUND": "Device not found.",
     "RATE_LIMITED": "Too many requests — try again later.",
     "REFERRAL_REWARD_ALREADY_GRANTED": "This reward was already granted.",
     "REFERRAL_REWARD_NEGATIVE": "A reward can't be negative.",

@@ -18,6 +18,8 @@ from app.modules.emoji_packs.api import public_router as emoji_packs_public_rout
 from app.modules.event_log.api import admin_router as event_log_admin_router
 from app.modules.gateways.api import admin_router as gateways_admin_router
 from app.modules.loyalty.api import admin_router as loyalty_admin_router
+from app.modules.notifications.api import admin_router as notifications_admin_router
+from app.modules.notifications.api import settings_router as notifications_settings_router
 from app.modules.oauth.api import admin_router as oauth_admin_router
 from app.modules.oauth.api import router as oauth_router
 from app.modules.overview.api import admin_router as overview_admin_router
@@ -73,6 +75,8 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     emoji_packs_public_router,
     blacklist_admin_router,
     event_log_admin_router,
+    notifications_admin_router,
+    notifications_settings_router,
     announcements_admin_router,
     gateways_admin_router,
     transactions_admin_router,

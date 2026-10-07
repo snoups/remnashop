@@ -9,14 +9,12 @@ from app.modules.event_log.tasks import process_outbox_entry_task
 from app.modules.event_log.usecases import (
     ClearNotificationsUseCase,
     GetEventLogEntryUseCase,
-    GetNotificationGroupsUseCase,
     GetNotificationsUseCase,
     ListEventLogUseCase,
     MarkNotificationsReadUseCase,
     ProcessOutboxEntryUseCase,
     PruneOutboxUseCase,
     SweepOutboxUseCase,
-    UpdateNotificationGroupsUseCase,
 )
 
 
@@ -33,8 +31,6 @@ class EventLogProvider(Provider):
         GetNotificationsUseCase,
         ClearNotificationsUseCase,
         MarkNotificationsReadUseCase,
-        GetNotificationGroupsUseCase,
-        UpdateNotificationGroupsUseCase,
         ProcessOutboxEntryUseCase,
         SweepOutboxUseCase,
         PruneOutboxUseCase,

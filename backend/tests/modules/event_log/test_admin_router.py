@@ -115,7 +115,7 @@ async def test_get_event_log_returns_entries(
     )
     _, token = await _owner_token(user_repository, session_repository, uow, config)
 
-    response = await client.get("/api/v1/event-log", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get("/api/v1/events", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 200
     body = response.json()
@@ -142,7 +142,7 @@ async def test_get_event_log_filters_by_category(
     _, token = await _owner_token(user_repository, session_repository, uow, config)
 
     response = await client.get(
-        "/api/v1/event-log?category=AUTH", headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/events?category=AUTH", headers={"Authorization": f"Bearer {token}"}
     )
 
     assert response.status_code == 200
@@ -169,8 +169,8 @@ async def test_get_event_log_entry_by_id(
     _, token = await _owner_token(user_repository, session_repository, uow, config)
     headers = {"Authorization": f"Bearer {token}"}
 
-    found = await client.get(f"/api/v1/event-log/{entry.id}", headers=headers)
-    missing = await client.get(f"/api/v1/event-log/{entry.id + 1}", headers=headers)
+    found = await client.get(f"/api/v1/events/{entry.id}", headers=headers)
+    missing = await client.get(f"/api/v1/events/{entry.id + 1}", headers=headers)
 
     assert found.status_code == 200
     assert found.json()["event_type"] == "LoginFailedEvent"
@@ -199,7 +199,7 @@ async def test_get_event_log_rejects_admin_without_grant(
         await uow.commit()
     token = await _issue_token(admin.id, session_repository, config)
 
-    response = await client.get("/api/v1/event-log", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get("/api/v1/events", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 403
 
@@ -214,7 +214,7 @@ async def test_get_event_log_rejects_page_zero(
     _, token = await _owner_token(user_repository, session_repository, uow, config)
 
     response = await client.get(
-        "/api/v1/event-log?page=0", headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/events?page=0", headers={"Authorization": f"Bearer {token}"}
     )
 
     assert response.status_code == 422
@@ -230,7 +230,7 @@ async def test_get_event_log_rejects_oversized_page_size(
     _, token = await _owner_token(user_repository, session_repository, uow, config)
 
     response = await client.get(
-        "/api/v1/event-log?page_size=500", headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/events?page_size=500", headers={"Authorization": f"Bearer {token}"}
     )
 
     assert response.status_code == 422
@@ -256,15 +256,13 @@ async def test_notifications_list_then_mark_read(
     _, token = await _owner_token(user_repository, session_repository, uow, config)
     headers = {"Authorization": f"Bearer {token}"}
 
-    response = await client.get("/api/v1/event-log/notifications", headers=headers)
+    response = await client.get("/api/v1/events/notifications", headers=headers)
     assert response.status_code == 200
     assert response.json()["unread_count"] == 1
     assert [item["event_type"] for item in response.json()["items"]] == ["LoginFailedEvent"]
 
-    response = await client.post(
-        "/api/v1/event-log/notifications/actions/mark-read", headers=headers
-    )
+    response = await client.post("/api/v1/events/notifications/actions/mark-read", headers=headers)
     assert response.status_code == 204
 
-    response = await client.get("/api/v1/event-log/notifications", headers=headers)
+    response = await client.get("/api/v1/events/notifications", headers=headers)
     assert response.json()["unread_count"] == 0

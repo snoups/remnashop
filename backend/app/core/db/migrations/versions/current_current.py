@@ -329,6 +329,28 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
+        "notification_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("vapid_public_key", sa.String(length=128), nullable=True),
+        sa.Column(
+            "vapid_private_key", app.core.db.encrypted_string.EncryptedString(), nullable=True
+        ),
+        sa.Column("vapid_contact", sa.String(length=255), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "bot_translations",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -823,7 +845,7 @@ def upgrade() -> None:
         sa.Column("password_change_required", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("notifications_seen_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("notifications_cleared_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("notification_groups", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("notification_channels", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
@@ -1380,6 +1402,48 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_user_sessions_user_id"), "user_sessions", ["user_id"], unique=False)
     op.create_table(
+        "push_subscriptions",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("session_id", sa.Integer(), nullable=True),
+        sa.Column("endpoint", sa.Text(), nullable=False),
+        sa.Column("p256dh", sa.String(length=255), nullable=False),
+        sa.Column("auth", sa.String(length=255), nullable=False),
+        sa.Column("user_agent", sa.String(length=512), nullable=True),
+        sa.Column("failure_count", sa.Integer(), server_default="0", nullable=False),
+        sa.Column(
+            "last_seen_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["session_id"], ["user_sessions.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("endpoint"),
+    )
+    op.create_index(
+        op.f("ix_push_subscriptions_session_id"),
+        "push_subscriptions",
+        ["session_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_push_subscriptions_user_id"), "push_subscriptions", ["user_id"], unique=False
+    )
+    op.create_table(
         "ad_link_attributions",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("ad_link_id", sa.Integer(), nullable=False),
@@ -1759,6 +1823,9 @@ def downgrade() -> None:
     op.drop_table("addon_entitlements")
     op.drop_index(op.f("ix_ad_link_attributions_ad_link_id"), table_name="ad_link_attributions")
     op.drop_table("ad_link_attributions")
+    op.drop_index(op.f("ix_push_subscriptions_user_id"), table_name="push_subscriptions")
+    op.drop_index(op.f("ix_push_subscriptions_session_id"), table_name="push_subscriptions")
+    op.drop_table("push_subscriptions")
     op.drop_index(op.f("ix_user_sessions_user_id"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_revoked_at"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_refresh_token_hash"), table_name="user_sessions")
@@ -1828,6 +1895,7 @@ def downgrade() -> None:
     op.drop_table("dialog_windows")
     op.drop_table("currency_rates")
     op.drop_table("bot_translations")
+    op.drop_table("notification_settings")
     op.drop_table("bot_settings")
     op.drop_table("bot_commands")
     op.drop_table("blacklist_sources")

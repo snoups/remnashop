@@ -1,4 +1,4 @@
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, Optional, Union
 
 from loguru import logger
 
@@ -11,8 +11,10 @@ class EventBus:
     def __init__(self) -> None:
         self._handlers: dict[str, list[EventHandler]] = {}
 
-    def subscribe(self, event_type: type[BaseEvent], handler: EventHandler) -> None:
-        self._handlers.setdefault(event_type.__name__, []).append(handler)
+    def subscribe(self, event_type: Union[type[BaseEvent], str], handler: EventHandler) -> None:
+        # a name too, for subscribers that only know event types as stored strings
+        name = event_type if isinstance(event_type, str) else event_type.__name__
+        self._handlers.setdefault(name, []).append(handler)
 
     async def dispatch_stored(self, entry: StoredEvent) -> Optional[str]:
         # every handler runs even if an earlier one failed; the last failure is

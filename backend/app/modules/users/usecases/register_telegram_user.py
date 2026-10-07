@@ -83,7 +83,9 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
             if user.role == Role.USER
             else user.name
         )
-        language = data.language if data.sync_language else user.language
+        # staff language comes from the dashboard and drives their notifications
+        sync_language = data.sync_language and user.role == Role.USER
+        language = data.language if sync_language else user.language
         if (user.name, user.username, user.language) == (name, data.username, language):
             return user
         updated = await self._user_repository.update_telegram_profile(

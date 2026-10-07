@@ -36,6 +36,7 @@ dependencies = [
     # dialog text validation runs in api (update_text, import_dialogs, command_translations)
     "fluent-compiler~=1.1",
     "packaging>=25.0",
+    "pywebpush>=2.3.0",
 ]
 
 [project.optional-dependencies]
@@ -135,6 +136,8 @@ explicit_package_bases = true
 module = [
     "fluentogram.*",
     "fluent_compiler.*",
+    "py_vapid.*",
+    "pywebpush.*",
     "qrcode.*",
     "remnapy.*",
 ]

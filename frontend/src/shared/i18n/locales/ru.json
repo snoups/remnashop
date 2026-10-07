@@ -655,6 +655,7 @@
       "TransactionRefundedEvent": "Возврат транзакции",
       "TransactionFulfilledManuallyEvent": "Ручная выдача подписки",
       "BackupFailedEvent": "Ошибка резервного копирования",
+      "VapidKeysGeneratedEvent": "Ключи веб-пуша сгенерированы",
       "GatewayChangedEvent": "Платёжный шлюз изменён",
       "PricingSettingsChangedEvent": "Настройки цен изменены",
       "ReferralSettingsChangedEvent": "Настройки рефералов изменены",
@@ -1205,6 +1206,22 @@
         "wallet_id": "ID кошелька",
         "webhook_secret": "Секрет вебхука"
       }
+    },
+    "webPush": {
+      "title": "Веб-пуш",
+      "description": "Ключи, по которым браузеры принимают уведомления этого магазина",
+      "configured": "Настроен",
+      "notConfigured": "Не настроен",
+      "publicKey": "Публичный ключ",
+      "contact": "Контакт",
+      "contactHint": "Email или https:// — сюда пишут сервисы доставки о проблемах",
+      "contactPlaceholder": "admin@example.com",
+      "generate": "Сгенерировать ключи",
+      "regenerate": "Перегенерировать ключи",
+      "confirmTitle": "Перегенерировать ключи?",
+      "confirm": "Все устройства придётся подключить заново.",
+      "generated": "Ключи сгенерированы.",
+      "loadError": "Не удалось загрузить настройки веб-пуша."
     }
   },
   "apiTokens": {
@@ -1300,7 +1317,7 @@
     },
     "notifications": {
       "title": "Уведомления",
-      "description": "Подписка на получение уведомлений о событиях.",
+      "description": "Куда приходят уведомления о событиях каждого типа.",
       "loadError": "Не удалось загрузить настройки уведомлений.",
       "saveError": "Не удалось сохранить настройки уведомлений.",
       "groups": {
@@ -1324,6 +1341,35 @@
           "title": "Администраторы",
           "description": "Создание, удаление и изменение прав администраторов"
         }
+      },
+      "channels": {
+        "bell": "Колокольчик",
+        "push": "Пуш",
+        "telegram": "Telegram"
+      },
+      "push": {
+        "label": "Пуш на этом устройстве",
+        "enable": "Включить",
+        "enabled": "Включён",
+        "test": "Отправить тест",
+        "testSent": "Тестовое уведомление отправлено.",
+        "iosInstall": "Чтобы получать пуши на iPhone, добавьте панель управления на экран «Домой»",
+        "unsupported": "Этот браузер не поддерживает пуш",
+        "notConfigured": "Владелец ещё не настроил",
+        "denied": "Уведомления запрещены в настройках браузера.",
+        "failed": "Не удалось включить пуш."
+      },
+      "telegram": {
+        "label": "Telegram",
+        "link": "Привяжите Telegram к аккаунту",
+        "linked": "Привязан"
+      },
+      "devices": {
+        "title": "Мои устройства",
+        "empty": "Нет устройств с пушем",
+        "thisDevice": "это устройство",
+        "lastActive": "активно {{time}}",
+        "removed": "Устройство удалено."
       }
     }
   },
@@ -1516,6 +1562,9 @@
     "DIALOGS_EXPORT": "Экспорт окон",
     "DIALOGS_IMPORT": "Импорт окон",
     "NOTIFICATIONS_VIEW": "Просмотр уведомлений",
+    "NOTIFICATION_SETTINGS_VIEW": "Просмотр настроек веб-пуша",
+    "NOTIFICATION_SETTINGS_MANAGE": "Изменение настроек веб-пуша",
+    "NOTIFICATION_VAPID_KEYS_GENERATE": "Генерация ключей веб-пуша",
     "LOYALTY_SETTINGS_VIEW": "Просмотр настроек лояльности",
     "LOYALTY_SETTINGS_MANAGE": "Изменение настроек лояльности",
     "USERS_LOYALTY_VIEW": "Просмотр уровня лояльности пользователя",
@@ -1547,7 +1596,8 @@
     "remnawave": "Remnawave",
     "dialogs": "Окна бота",
     "emojiPacks": "Наборы эмодзи",
-    "loyalty": "Лояльность"
+    "loyalty": "Лояльность",
+    "notificationSettings": "Веб-пуш"
   },
   "permissionPicker": {
     "loadError": "Не удалось загрузить список разрешений.",
@@ -3017,7 +3067,7 @@
     "LOYALTY_TIERS_INVALID": "Пороги и проценты уровней должны возрастать.",
     "METHOD_NOT_ALLOWED": "Метод не поддерживается.",
     "NAME_INVALID": "Имя должно содержать буквы или цифры.",
-    "NOTIFICATION_GROUP_UNKNOWN": "Неизвестная группа уведомлений.",
+    "NOTIFICATION_CHANNELS_INVALID": "Неизвестная группа или канал уведомлений.",
     "NOT_AUTHENTICATED": "Войдите, чтобы продолжить.",
     "NOT_FOUND": "Не найдено.",
     "OAUTH_ACCOUNT_LINKED_ELSEWHERE": "Этот аккаунт уже привязан к другому пользователю.",
@@ -3077,6 +3127,10 @@
     "PURCHASE_DISCOUNT_USED": "Скидка уже использована — попробуйте ещё раз.",
     "PURCHASE_IN_PROGRESS": "Эта покупка уже обрабатывается.",
     "PURCHASE_SUPERSEDED": "Подписка изменилась во время покупки — попробуйте ещё раз.",
+    "PUSH_ENDPOINT_NOT_ALLOWED": "Push-сервис этого браузера не поддерживается.",
+    "PUSH_NOT_CONFIGURED": "Веб-пуш ещё не настроен: владелец должен сгенерировать ключи в настройках.",
+    "PUSH_NO_SUBSCRIPTIONS": "Сначала включите пуш на этом устройстве.",
+    "PUSH_SUBSCRIPTION_NOT_FOUND": "Устройство не найдено.",
     "RATE_LIMITED": "Слишком много запросов — попробуйте позже.",
     "REFERRAL_REWARD_ALREADY_GRANTED": "Эта награда уже начислена.",
     "REFERRAL_REWARD_NEGATIVE": "Награда не может быть отрицательной.",

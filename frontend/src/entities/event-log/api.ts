@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from "@shared/api/http";
+import { apiGet, apiPost } from "@shared/api/http";
 
 export const DEFAULT_PAGE_SIZE = 50;
 
@@ -14,7 +14,7 @@ export interface EventLogEntry {
   payload: Record<string, unknown>;
 }
 
-// `location.state` for /dashboard/event-log: opens that entry's detail dialog on arrival
+// `location.state` for /dashboard/events: opens that entry's detail dialog on arrival
 export interface EventLogLocationState {
   entry: EventLogEntry;
 }
@@ -52,7 +52,7 @@ export function listEventLog(
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
-  return apiGet<EventLogPage>(`/event-log?${params.toString()}`, signal);
+  return apiGet<EventLogPage>(`/events?${params.toString()}`, signal);
 }
 
 export interface Notifications {
@@ -61,26 +61,13 @@ export interface Notifications {
 }
 
 export function getNotifications(signal?: AbortSignal): Promise<Notifications> {
-  return apiGet<Notifications>("/event-log/notifications", signal);
+  return apiGet<Notifications>("/events/notifications", signal);
 }
 
 export function markNotificationsRead(): Promise<void> {
-  return apiPost<void, Record<string, never>>("/event-log/notifications/actions/mark-read", {});
+  return apiPost<void, Record<string, never>>("/events/notifications/actions/mark-read", {});
 }
 
 export function clearNotifications(): Promise<void> {
-  return apiPost<void, Record<string, never>>("/event-log/notifications/actions/clear", {});
-}
-
-export interface NotificationGroups {
-  groups: string[];
-  available: string[];
-}
-
-export function getNotificationGroups(signal?: AbortSignal): Promise<NotificationGroups> {
-  return apiGet<NotificationGroups>("/event-log/notifications/groups", signal);
-}
-
-export function updateNotificationGroups(groups: string[]): Promise<NotificationGroups> {
-  return apiPut<NotificationGroups, { groups: string[] }>("/event-log/notifications/groups", { groups });
+  return apiPost<void, Record<string, never>>("/events/notifications/actions/clear", {});
 }

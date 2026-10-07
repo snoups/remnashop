@@ -111,6 +111,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   TransactionRefundedEvent: Undo2,
   TransactionFulfilledManuallyEvent: PackageCheck,
   BackupFailedEvent: DatabaseZap,
+  VapidKeysGeneratedEvent: KeyRound,
   GatewayChangedEvent: CreditCard,
   PricingSettingsChangedEvent: Settings2,
   ReferralSettingsChangedEvent: Settings2,

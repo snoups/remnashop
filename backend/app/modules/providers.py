@@ -13,6 +13,7 @@ from app.modules.emoji_packs import get_emoji_packs_providers
 from app.modules.event_log import get_event_log_providers
 from app.modules.gateways import get_gateways_providers
 from app.modules.loyalty import get_loyalty_providers
+from app.modules.notifications import get_notifications_providers
 from app.modules.oauth import get_oauth_providers
 from app.modules.overview import get_overview_providers
 from app.modules.passkeys import get_passkeys_providers
@@ -41,6 +42,7 @@ def get_module_providers() -> list[Provider]:
         *get_promocodes_providers(),
         *get_referrals_providers(),
         *get_loyalty_providers(),
+        *get_notifications_providers(),
         *get_backups_providers(),
         *get_subscriptions_providers(),
         *get_banners_providers(),
