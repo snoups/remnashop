@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   Gift,
+  GitMerge,
   History,
   Info,
   KeyRound,
@@ -372,6 +373,13 @@ export function UsersPage() {
                       onClick: () => actions.run("promote", user),
                     });
                   }
+                  if (available.includes("bindTelegram")) {
+                    menuItems.push({
+                      label: t("users.telegram.action"),
+                      icon: Send,
+                      onClick: () => actions.run("bindTelegram", user),
+                    });
+                  }
                   if (available.includes("unblock")) {
                     menuItems.push({
                       label: t("users.unblock.button"),
@@ -386,6 +394,14 @@ export function UsersPage() {
                       icon: Ban,
                       variant: "danger",
                       onClick: () => actions.run("block", user),
+                    });
+                  }
+                  if (available.includes("merge")) {
+                    dangerItems.push({
+                      label: t("users.merge.action"),
+                      icon: GitMerge,
+                      variant: "danger",
+                      onClick: () => actions.run("merge", user),
                     });
                   }
                   if (available.includes("delete")) {

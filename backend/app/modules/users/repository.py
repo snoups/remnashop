@@ -160,6 +160,15 @@ class UserRepository:
             return None
         return self._convert_to_dto(db_user)
 
+    async def get_for_update(self, user_id: int) -> Optional[UserDto]:
+        db_user = await self.session.scalar(
+            select(User)
+            .where(User.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return self._convert_to_dto(db_user) if db_user else None
+
     async def get_many_by_ids(self, ids: list[int]) -> list[UserDto]:
         users: list[UserDto] = []
         for start in range(0, len(ids), MAX_SQL_IN_PARAMS):
@@ -498,6 +507,22 @@ class UserRepository:
             return None
         db_user.is_blocked = is_blocked
         await self.session.flush()
+        await self.session.refresh(db_user)
+        return self._convert_to_dto(db_user)
+
+    async def set_telegram_id(self, user_id: int, telegram_id: int) -> UserDto:
+        db_user = await self.session.scalar(
+            select(User)
+            .where(User.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if db_user is None or db_user.deleted_at is not None:
+            raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
+        db_user.telegram_id = telegram_id
+        # belongs to the previous account; the bot refills it on the next update
+        db_user.username = None
+        await self._flush_unique()
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)
 

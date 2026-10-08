@@ -1,11 +1,13 @@
 import {
   BarChart3,
   CreditCard,
+  GitMerge,
   History,
   Lock,
   MonitorSmartphone,
   Receipt,
   RotateCcw,
+  Send,
   Settings2,
   ShieldPlus,
   Ticket,
@@ -90,7 +92,8 @@ function UserDetailsDialogBody({
     onUpdated: handleUpdated,
     onDeleted: (deleted) => {
       onDeleted?.(deleted);
-      close();
+      // a merge deletes the other account while this one stays open
+      if (deleted.id === user.id) close();
     },
   });
   const available = actions.available(user);
@@ -185,6 +188,9 @@ function UserDetailsDialogBody({
                 ...(available.includes("promote")
                   ? [{ label: t("admins.promote.button"), icon: ShieldPlus, onClick: () => actions.run("promote", user) }]
                   : []),
+                ...(available.includes("bindTelegram")
+                  ? [{ label: t("users.telegram.action"), icon: Send, onClick: () => actions.run("bindTelegram", user) }]
+                  : []),
                 ...(available.includes("unblock")
                   ? [{ label: t("users.unblock.action"), icon: Unlock, onClick: () => actions.run("unblock", user) }]
                   : []),
@@ -200,6 +206,9 @@ function UserDetailsDialogBody({
                           onClick: () => actions.run("resetReferralCode", user),
                         },
                       ]
+                    : []),
+                  ...(available.includes("merge")
+                    ? [{ label: t("users.merge.action"), icon: GitMerge, onClick: () => actions.run("merge", user) }]
                     : []),
                   ...(available.includes("delete")
                     ? [{ label: t("common.delete"), icon: Trash2, onClick: () => actions.run("delete", user) }]

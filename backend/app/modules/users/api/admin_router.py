@@ -19,6 +19,7 @@ from app.modules.users.api.schemas import (
     AdminPromoteResponse,
     AdminResponse,
     AdminWithPasswordResponse,
+    BindTelegramRequest,
     BlacklistMatchPageResponse,
     CreateAdminRequest,
     CurrentUserResponse,
@@ -32,11 +33,11 @@ from app.modules.users.api.schemas import (
     UserListItemResponse,
     UserListStatsResponse,
     UserPageResponse,
-    UserResponse,
 )
 from app.modules.users.dto import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
+    BindTelegramDto,
     BlacklistMatchOrigin,
     CreateAdminDto,
     DeleteAdminDto,
@@ -54,7 +55,9 @@ from app.modules.users.dto import (
     UserDto,
     UserSort,
 )
+from app.modules.users.schemas import UserResponse
 from app.modules.users.usecases import (
+    BindTelegramIdUseCase,
     BlockUserUseCase,
     CreateAdminUseCase,
     DeleteAdminUseCase,
@@ -308,6 +311,22 @@ async def set_user_discount(
             personal_discount=payload.personal_discount,
             purchase_discount=payload.purchase_discount,
         ),
+    )
+    return UserResponse.model_validate(updated, from_attributes=True)
+
+
+@router.put(
+    "/{user_id}/telegram", response_model=UserResponse, responses=error_responses(400, 404, 409)
+)
+@inject
+async def bind_user_telegram(
+    user_id: int,
+    payload: BindTelegramRequest,
+    use_case: FromDishka[BindTelegramIdUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UserResponse:
+    updated = await use_case(
+        actor, BindTelegramDto(user_id=user_id, telegram_id=payload.telegram_id)
     )
     return UserResponse.model_validate(updated, from_attributes=True)
 

@@ -45,6 +45,12 @@ class UserDeletedEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class TelegramIdBoundEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+    previous_telegram_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
 class UserBlockedEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
 

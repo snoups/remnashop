@@ -8,6 +8,7 @@ from app.modules.users.dto import (
 )
 from app.modules.users.events import TelegramUserRegisteredEvent
 from app.modules.users.repository import UserRepository
+from app.modules.users.schemas import UserResponse
 from app.modules.users.stats_repository import UserStatsRepository
 from app.modules.users.usecases import (
     AcceptRulesUseCase,
@@ -38,6 +39,7 @@ __all__ = [
     "UpdateUserDto",
     "UserDto",
     "UserRepository",
+    "UserResponse",
     "UserStatsRepository",
     "get_users_providers",
 ]

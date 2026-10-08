@@ -204,6 +204,9 @@ class Permission(UpperStrEnum):
     USERS_UNBLOCK = auto()
     USERS_UNBLOCK_ALL = auto()
     USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
+    USERS_MERGE_PREVIEW = auto()
+    USERS_MERGE = auto()
+    USERS_TELEGRAM_BIND = auto()
     AD_LINKS_VIEW = auto()
     AD_LINKS_DETAIL_VIEW = auto()
     AD_LINKS_STATS_VIEW = auto()
@@ -401,6 +404,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BLACKLIST_MATCHES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.USERS_BLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_UNBLOCK: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_MERGE_PREVIEW: PermissionMeta(resource="users", kind="read"),
+    Permission.USERS_MERGE: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_TELEGRAM_BIND: PermissionMeta(resource="users", kind="write"),
     Permission.AD_LINKS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_DETAIL_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_STATS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
@@ -448,6 +454,10 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.BACKUPS_SETTINGS_MANAGE,
         Permission.BACKUPS_RUN_DELETE,
         Permission.USERS_DELETE,
+        Permission.USERS_MERGE,
+        Permission.USERS_MERGE_PREVIEW,
+        # a Telegram id is how a customer logs into the bot
+        Permission.USERS_TELEGRAM_BIND,
         Permission.SUBSCRIPTIONS_LINK_REISSUE,
         Permission.SUBSCRIPTIONS_DEVICES_DELETE,
         Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,

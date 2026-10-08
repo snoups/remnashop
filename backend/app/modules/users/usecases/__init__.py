@@ -1,4 +1,5 @@
 from app.modules.users.usecases.accept_rules import AcceptRulesUseCase
+from app.modules.users.usecases.bind_telegram_id import BindTelegramIdUseCase
 from app.modules.users.usecases.block_blacklist_matches import BlockBlacklistMatchesUseCase
 from app.modules.users.usecases.block_user import BlockUserUseCase
 from app.modules.users.usecases.create_admin import CreateAdminUseCase
@@ -24,6 +25,7 @@ from app.modules.users.usecases.update_own_security_settings import UpdateOwnSec
 
 __all__ = [
     "AcceptRulesUseCase",
+    "BindTelegramIdUseCase",
     "BlacklistMatchOrigin",
     "BlockBlacklistMatchesUseCase",
     "BlockUserUseCase",

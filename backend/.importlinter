@@ -234,6 +234,16 @@ allowed_importers =
     app.api.routers
     app.worker.subscribers
 
+[importlinter:contract:account-merge-boundary]
+name = account_merge internals are private
+type = protected
+protected_modules =
+    app.modules.account_merge.*
+allowed_importers =
+    app.modules.account_merge
+    app.api.routers
+    app.worker.subscribers
+
 [importlinter:contract:access-boundary]
 name = access internals are private
 type = protected

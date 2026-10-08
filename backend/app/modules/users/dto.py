@@ -164,6 +164,12 @@ class SetUserDiscountDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class BindTelegramDto:
+    user_id: int
+    telegram_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class UserListStatsDto:
     total: int
     new: int

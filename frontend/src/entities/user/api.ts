@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 import type { Permission, Role } from "@shared/types/rbac";
 
 export interface CurrentUser {
@@ -135,4 +135,47 @@ export function blockUser(userId: number): Promise<UserListItem> {
 
 export function unblockUser(userId: number): Promise<UserListItem> {
   return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/actions/unblock`, {});
+}
+
+export type MergeSide = "source" | "target";
+
+export interface MergeConflict {
+  key: string;
+  source_value: string | null;
+  target_value: string | null;
+  forced: MergeSide | null;
+}
+
+export interface MergePreview {
+  source: UserListItem;
+  target: UserListItem;
+  conflicts: MergeConflict[];
+  fingerprint: string;
+  source_counts: {
+    subscriptions: number;
+    transactions: number;
+    referrals: number;
+    passkeys: number;
+    oauth_identities: number;
+  };
+}
+
+export function getMergePreview(targetId: number, sourceId: number, signal?: AbortSignal): Promise<MergePreview> {
+  return apiGet<MergePreview>(`/users/${targetId}/merge-preview?source_id=${sourceId}`, signal);
+}
+
+export function mergeUsers(
+  targetId: number,
+  sourceId: number,
+  choices: Record<string, MergeSide>,
+  fingerprint: string,
+): Promise<UserListItem> {
+  return apiPost<UserListItem, { source_id: number; choices: Record<string, MergeSide>; fingerprint: string }>(
+    `/users/${targetId}/actions/merge`,
+    { source_id: sourceId, choices, fingerprint },
+  );
+}
+
+export function bindUserTelegram(userId: number, telegramId: number): Promise<UserListItem> {
+  return apiPut<UserListItem, { telegram_id: number }>(`/users/${userId}/telegram`, { telegram_id: telegramId });
 }

@@ -9,6 +9,7 @@ from app.modules.users.stats_repository import UserStatsRepository
 from app.modules.users.tasks import reconcile_blacklist_task
 from app.modules.users.usecases import (
     AcceptRulesUseCase,
+    BindTelegramIdUseCase,
     BlockBlacklistMatchesUseCase,
     BlockUserUseCase,
     CreateAdminUseCase,
@@ -61,6 +62,7 @@ class UsersProvider(Provider):
         RegisterTelegramUserUseCase,
         SetMarketingOptOutUseCase,
         SetUserDiscountUseCase,
+        BindTelegramIdUseCase,
         BlockUserUseCase,
         UnblockUserUseCase,
         UnblockAllUsersUseCase,

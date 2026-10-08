@@ -54,6 +54,7 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
     # pass on an empty list
     discovered = {label for label, _ in _discover_admin_routers()}
     assert discovered == {
+        "account_merge.router",
         "advertising.router",
         "announcements.router",
         "analytics.router",

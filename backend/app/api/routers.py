@@ -2,6 +2,7 @@ from typing import Final
 
 from fastapi import APIRouter
 
+from app.modules.account_merge.api import admin_router as account_merge_admin_router
 from app.modules.advertising.api import admin_router as advertising_admin_router
 from app.modules.analytics.api import admin_router as analytics_admin_router
 from app.modules.announcements.api import admin_router as announcements_admin_router
@@ -57,6 +58,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     passkeys_admin_router,
     users_admin_router,
     users_admins_router,
+    account_merge_admin_router,
     settings_admin_router,
     settings_router,
     plans_admin_router,

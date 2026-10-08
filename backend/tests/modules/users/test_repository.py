@@ -666,3 +666,19 @@ async def test_get_many_by_ids_skips_missing(
         found = await user_repository.get_many_by_ids([first.id, second.id, 999_999])
 
     assert {user.id for user in found} == {first.id, second.id}
+
+
+async def test_get_for_update_returns_fresh_row(
+    user_repository: UserRepository, session: AsyncSession
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="before"))
+    assert (await user_repository.get_by_id(user.id)) is not None
+    await session.execute(
+        update(User).where(User.id == user.id).values(name="after"),
+        execution_options={"synchronize_session": False},
+    )
+
+    fresh = await user_repository.get_for_update(user.id)
+
+    assert fresh is not None and fresh.name == "after"
+    assert await user_repository.get_for_update(user.id + 100000) is None

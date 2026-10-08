@@ -9,6 +9,7 @@ from app.core.constants import LOGIN_PATTERN
 from app.core.enums import BlacklistKind, Locale
 from app.core.security import PASSWORD_MIN_LENGTH, PASSWORD_PATTERN
 from app.core.security.permissions import Permission
+from app.modules.users.schemas import UserResponse
 
 
 def _validate_login_charset(value: str) -> str:
@@ -60,33 +61,6 @@ class AdminWithPasswordResponse(BaseModel):
 class AdminPromoteResponse(BaseModel):
     admin: AdminResponse
     password: Optional[str] = None
-
-
-class UserResponse(BaseModel):
-    id: int
-    name: str
-    role: str
-    telegram_id: Optional[int]
-    username: Optional[str]
-    email: Optional[str]
-    login: Optional[str]
-    language: str
-    is_blocked: bool
-    personal_discount: int
-    purchase_discount: int
-    loyalty_discount: int
-    referral_code: Optional[str]
-    points: Decimal
-    bonus_days: int
-    is_trial_available: bool
-    created_at: Optional[datetime]
-    deleted_at: Optional[datetime] = None
-
-    @field_validator("role", "language", mode="before")
-    @classmethod
-    def _enum_as_name(cls, value: object) -> str:
-        # Role's value is its rank; the API speaks its name
-        return str(value)
 
 
 class BlacklistOriginResponse(BaseModel):
@@ -210,6 +184,10 @@ class UpdateSecurityRequest(BaseModel):
 class SetDiscountRequest(BaseModel):
     personal_discount: Optional[int] = Field(None, ge=0, le=100)
     purchase_discount: Optional[int] = Field(None, ge=0, le=100)
+
+
+class BindTelegramRequest(BaseModel):
+    telegram_id: int = Field(gt=0, le=9_223_372_036_854_775_807)
 
 
 class SecurityResponse(BaseModel):
