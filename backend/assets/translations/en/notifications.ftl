@@ -30,3 +30,7 @@ ntf-admin-demoted = { $actor } demoted { $target }
     .title = Admin demoted
 ntf-admin-permissions-updated = { $actor } changed permissions of { $target }
     .title = Admin permissions changed
+ntf-broadcast-completed = Broadcast #{ $broadcast_id } finished: { $sent } delivered, { $failed } failed, { $blocked } blocked the bot.
+    .title = Broadcast sent
+ntf-broadcast-failed = Broadcast #{ $broadcast_id } stopped: { $error }
+    .title = Broadcast failed

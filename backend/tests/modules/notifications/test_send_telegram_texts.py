@@ -43,10 +43,8 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, str]]:
             return TelegramSendResult.FORBIDDEN
         return TelegramSendResult.SENT
 
-    async def _sleep(seconds: float) -> None: ...
-
     monkeypatch.setattr(send_telegram_texts, "send_telegram_text", _send)
-    monkeypatch.setattr(send_telegram_texts.asyncio, "sleep", _sleep)
+    monkeypatch.setattr(send_telegram_texts, "_SEND_PAUSE_S", 0)
     return calls
 
 

@@ -62,6 +62,7 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
         "auth.user_sessions_router",
         "backups.router",
         "banners.router",
+        "broadcasts.router",
         "emoji_packs.router",
         "blacklist.router",
         "dialogs.router",

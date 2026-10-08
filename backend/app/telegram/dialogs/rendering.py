@@ -6,6 +6,7 @@ from fluentogram import TranslatorRunner
 from fluentogram.exceptions import KeyNotFoundError
 from loguru import logger
 
+from app.core.utils.telegram_text import PREMIUM_EMOJI_RE
 from app.modules.dialogs import catalog
 from app.modules.translations import strip_serializer_escapes
 from app.telegram.dialogs.config_cache import DialogConfigCache
@@ -17,7 +18,7 @@ def render_window_text(runner: TranslatorRunner, key: str, **kwargs: Any) -> str
     # <tg-emoji> tag. Everything else is escaped first, so a variable holding
     # "<b>" stays literal.
     escaped = html.escape(strip_serializer_escapes(runner.get(key, **kwargs)), quote=False)
-    return catalog.PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', escaped)
+    return PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', escaped)
 
 
 def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Optional[str]:

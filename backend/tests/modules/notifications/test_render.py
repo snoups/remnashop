@@ -4,7 +4,6 @@ import pytest
 from fluent.syntax import FluentParser
 from fluent.syntax.ast import Message
 
-from app.core.config import AppConfig
 from app.core.enums import Locale
 from app.modules.notifications import NOTIFICATION_GROUPS
 from app.modules.notifications.render import (
@@ -14,6 +13,7 @@ from app.modules.notifications.render import (
     notification_args,
 )
 
+_TRANSLATIONS_DIR = Path(__file__).parents[3] / "assets" / "translations"
 SEEDED_LOCALES = (Locale.EN, Locale.RU)
 FTL = "ntf-login-failed = Login { $login }\n    .title = Login failed\n"
 
@@ -24,10 +24,8 @@ def _messages(path: Path) -> dict[str, Message]:
 
 
 @pytest.mark.parametrize("locale", SEEDED_LOCALES)
-def test_every_notification_type_has_a_template_with_a_title(
-    config: AppConfig, locale: Locale
-) -> None:
-    messages = _messages(config.translations_dir / locale.value / "notifications.ftl")
+def test_every_notification_type_has_a_template_with_a_title(locale: Locale) -> None:
+    messages = _messages(_TRANSLATIONS_DIR / locale.value / "notifications.ftl")
     event_types = [*frozenset().union(*NOTIFICATION_GROUPS.values()), TEST_EVENT_TYPE]
     for event_type in event_types:
         key = message_id(event_type)
@@ -81,6 +79,19 @@ def test_render_falls_through_a_message_without_title() -> None:
 
 def test_missing_ip_reads_as_a_dash() -> None:
     assert notification_args({}, None) == {"ip": "—"}
+
+
+def test_broadcast_completed_renders_counts() -> None:
+    texts = {Locale.EN: (_TRANSLATIONS_DIR / "en" / "notifications.ftl").read_text()}
+    renderer = NotificationRenderer(texts, default_locale=Locale.EN)
+    title, body = renderer.render(
+        Locale.EN,
+        "BroadcastCompletedEvent",
+        {"broadcast_id": 4, "sent": 10, "failed": 1, "blocked": 2, "ip": "—"},
+    )
+    assert title == "Broadcast sent"
+    assert "10" in body
+    assert "#4" in body
 
 
 def test_text_falls_back_to_the_default_locale_and_misses_cleanly() -> None:

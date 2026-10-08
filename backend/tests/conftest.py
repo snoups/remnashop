@@ -31,6 +31,7 @@ from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.repository import SessionRepository
 from app.modules.banners.repository import BannerRepository
 from app.modules.blacklist.repository import BlacklistRepository
+from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.event_log.repository import EventLogRepository
@@ -99,6 +100,11 @@ async def session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         yield async_session
         await async_session.close()
         await transaction.rollback()
+
+
+@pytest.fixture
+def broadcast_repository(session: AsyncSession) -> BroadcastRepository:
+    return BroadcastRepository(session)
 
 
 @pytest.fixture

@@ -4,15 +4,20 @@ from typing import Final
 from app.core.enums import ButtonLinkType, DialogWindowKind, Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.utils.telegram_text import (
+    TELEGRAM_CAPTION_LIMIT,
+    TELEGRAM_TEXT_LIMIT,
+    telegram_length,
+)
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto
 
 # Telegram's own limits; going over any of them fails the whole message.
 MAX_BUTTONS_PER_ROW: Final[int] = 8
 MAX_BUTTONS: Final[int] = 100
-MAX_TEXT_LENGTH: Final[int] = 4096
+MAX_TEXT_LENGTH: Final[int] = TELEGRAM_TEXT_LIMIT
 # A window with a banner goes out as a photo, and this is the caption limit.
-MAX_CAPTION_LENGTH: Final[int] = 1024
+MAX_CAPTION_LENGTH: Final[int] = TELEGRAM_CAPTION_LIMIT
 
 
 def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> None:
@@ -24,8 +29,7 @@ def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> Non
     # Telegram counts UTF-16 code units of the text as sent, where premium
     # emoji markup is just its glyph. Fluent placeables count as written --
     # what a variable expands to is only known at render time.
-    sent = catalog.PREMIUM_EMOJI_RE.sub(r"\1", value)
-    length = len(sent.encode("utf-16-le")) // 2
+    length = telegram_length(value)
     limit = MAX_CAPTION_LENGTH if has_banner else MAX_TEXT_LENGTH
     if length > limit:
         raise ValidationError(

@@ -18,6 +18,7 @@ from app.core.constants import CONTAINER_KEY, REDIS_KEY_PREFIX, USER_KEY
 from app.core.enums import MiddlewareEventType
 from app.modules.settings import BotRequirementsDto, GetBotRequirementsUseCase
 from app.modules.users import UserDto
+from app.telegram.broadcast_callbacks import RESUBSCRIBE_CALLBACK, UNSUBSCRIBE_CALLBACK
 from app.telegram.i18n import get_translator
 from app.telegram.middlewares.base import EventTypedMiddleware
 
@@ -28,8 +29,9 @@ CHANNEL_CHECK_CALLBACK: Final[str] = "requirements:channel"
 
 _SUBSCRIBED_TTL_S: Final[int] = 5 * 60
 _LEFT_STATUSES: Final[frozenset[str]] = frozenset({"left", "kicked"})
+# opting out of marketing must work even before the requirements are met
 _REQUIREMENT_CALLBACKS: Final[frozenset[str]] = frozenset(
-    {RULES_ACCEPT_CALLBACK, CHANNEL_CHECK_CALLBACK}
+    {RULES_ACCEPT_CALLBACK, CHANNEL_CHECK_CALLBACK, UNSUBSCRIBE_CALLBACK, RESUBSCRIBE_CALLBACK}
 )
 
 

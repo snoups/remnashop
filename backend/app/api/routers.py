@@ -12,6 +12,7 @@ from app.modules.auth.api import user_sessions_router as auth_user_sessions_rout
 from app.modules.backups.api import admin_router as backups_admin_router
 from app.modules.banners.api import admin_router as banners_admin_router
 from app.modules.blacklist.api import admin_router as blacklist_admin_router
+from app.modules.broadcasts.api import admin_router as broadcasts_admin_router
 from app.modules.dialogs.api import admin_router as dialogs_admin_router
 from app.modules.emoji_packs.api import admin_router as emoji_packs_admin_router
 from app.modules.emoji_packs.api import public_router as emoji_packs_public_router
@@ -71,6 +72,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     subscriptions_webhook_router,
     backups_admin_router,
     banners_admin_router,
+    broadcasts_admin_router,
     emoji_packs_admin_router,
     emoji_packs_public_router,
     blacklist_admin_router,

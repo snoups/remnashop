@@ -224,6 +224,16 @@ allowed_importers =
     app.api.routers
     app.worker.subscribers
 
+[importlinter:contract:broadcasts-boundary]
+name = broadcasts internals are private
+type = protected
+protected_modules =
+    app.modules.broadcasts.*
+allowed_importers =
+    app.modules.broadcasts
+    app.api.routers
+    app.worker.subscribers
+
 [importlinter:contract:access-boundary]
 name = access internals are private
 type = protected

@@ -21,6 +21,7 @@ class EventCategory(UpperStrEnum):
     PRICING = auto()
     PLANS = auto()
     PAYMENT = auto()
+    BROADCAST = auto()
 
 
 @dataclass(frozen=True, kw_only=True)

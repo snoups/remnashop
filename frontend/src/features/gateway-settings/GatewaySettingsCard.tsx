@@ -25,6 +25,7 @@ import { Field } from "@shared/ui/Field";
 import { CopyableValue } from "@shared/ui/CopyableValue";
 
 import { GATEWAY_DOCS_URLS } from "./docs-links";
+import { GATEWAY_LOGOS } from "./logos";
 import { inputModeFor, sanitizeFieldValue } from "./field-input";
 
 const TEST_PAYMENT_POLL_MS = 3000;
@@ -60,6 +61,7 @@ export function GatewaySettingsCard({
   const flagFields = fields.filter((field) => field.kind === "boolean");
   const valueFields = fields.filter((field) => field.kind !== "boolean");
   const docsUrl = GATEWAY_DOCS_URLS[gateway.type];
+  const logoUrl = GATEWAY_LOGOS[gateway.type];
   const canExpand = fields.length > 0 || webhookUrl !== null;
   // Stars pays inside the bot, there is no provider page to open
   const permissions = usePermissions();
@@ -164,7 +166,11 @@ export function GatewaySettingsCard({
         className={`flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04] ${canExpand ? "cursor-pointer" : ""}`}
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-bold text-foreground">
-          {label.charAt(0)}
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="size-[22px] rounded-[6px] object-contain" />
+          ) : (
+            label.charAt(0)
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-foreground">{label}</p>

@@ -655,6 +655,13 @@
       "TransactionRefundedEvent": "Возврат транзакции",
       "TransactionFulfilledManuallyEvent": "Ручная выдача подписки",
       "BackupFailedEvent": "Ошибка резервного копирования",
+      "BroadcastChangedEvent": "Рассылка изменена",
+      "BroadcastScheduledEvent": "Рассылка запланирована",
+      "BroadcastStartedEvent": "Рассылка начата",
+      "BroadcastCompletedEvent": "Рассылка завершена",
+      "BroadcastFailedEvent": "Ошибка рассылки",
+      "BroadcastCanceledEvent": "Рассылка отменена",
+      "BroadcastRecalledEvent": "Рассылка отозвана",
       "VapidKeysGeneratedEvent": "Ключи веб-пуша сгенерированы",
       "GatewayChangedEvent": "Платёжный шлюз изменён",
       "PricingSettingsChangedEvent": "Настройки цен изменены",
@@ -685,7 +692,8 @@
     "transactions": "Транзакции",
     "analytics": "Аналитика",
     "admins": "Администраторы",
-    "eventLog": "Журнал событий"
+    "eventLog": "Журнал событий",
+    "broadcasts": "Рассылки"
   },
   "admins": {
     "title": "Администраторы",
@@ -1367,6 +1375,10 @@
           "title": "Сбои",
           "description": "Неудачные резервные копии"
         },
+        "broadcasts": {
+          "title": "Рассылки",
+          "description": "Завершённые и остановленные рассылки"
+        },
         "requests": {
           "title": "Запросы",
           "description": "Запросы на вывод реферальных баллов"
@@ -1524,6 +1536,21 @@
     "PROMOCODES_ACTIVATIONS_VIEW": "Просмотр активаций промокодов пользователя",
     "PROMOCODES_SUMMARY_VIEW": "Просмотр сводки по промокодам",
     "PROMOCODES_USERS_VIEW": "Просмотр активировавших промокод",
+    "BROADCASTS_VIEW": "Просмотр рассылок",
+    "BROADCASTS_DETAIL_VIEW": "Просмотр деталей рассылки",
+    "BROADCASTS_CREATE": "Создание рассылок",
+    "BROADCASTS_UPDATE": "Редактирование рассылок",
+    "BROADCASTS_DELETE": "Удаление рассылок",
+    "BROADCASTS_SEND": "Отправка рассылок",
+    "BROADCASTS_RECALL": "Отзыв рассылок",
+    "BROADCASTS_CANCEL": "Отмена рассылок",
+    "BROADCASTS_RETRY": "Повтор неудачных отправок рассылок",
+    "BROADCASTS_TEST_SEND": "Тестовая отправка рассылок",
+    "BROADCASTS_RECIPIENTS_VIEW": "Просмотр получателей рассылки",
+    "BROADCASTS_MEDIA_SET": "Загрузка медиа рассылки",
+    "BROADCASTS_MEDIA_DELETE": "Удаление медиа рассылки",
+    "BROADCASTS_AUDIENCE_PREVIEW": "Предпросмотр аудитории рассылки",
+    "BROADCASTS_SUMMARY_VIEW": "Просмотр сводки рассылок",
     "TRANSACTIONS_VIEW": "Просмотр транзакций",
     "TRANSACTIONS_SUMMARY_VIEW": "Просмотр сводки по транзакциям",
     "TRANSACTIONS_DETAIL_VIEW": "Просмотр деталей транзакций",
@@ -1638,6 +1665,7 @@
     "subscriptions": "Подписки",
     "addons": "Дополнения",
     "promocodes": "Промокоды",
+    "broadcasts": "Рассылки",
     "transactions": "Транзакции",
     "referrals": "Рефералы",
     "backups": "Резервное копирование",
@@ -2004,13 +2032,22 @@
       "user_points": "Баллы пользователя",
       "subscription_url": "Ссылка подключения",
       "devices_current": "Подключено устройств",
-      "devices_max": "Лимит устройств"
+      "devices_max": "Лимит устройств",
+      "name": "Имя",
+      "username": "Username",
+      "points": "Баллы",
+      "bonus_days": "Бонусные дни",
+      "plan": "План",
+      "expire_date": "Дата окончания",
+      "days_left": "Осталось дней",
+      "promocode": "Промокод"
     },
     "variableCategories": {
       "user": "Пользователь",
       "subscription": "Подписка",
       "window": "Это окно",
-      "other": "Другое"
+      "other": "Другое",
+      "promo": "Промокод"
     },
     "description": "Содержимое и навигация окон бота",
     "texts": {
@@ -3092,6 +3129,26 @@
     "BACKUP_FILE_MISSING": "Файл резервной копии отсутствует.",
     "BACKUP_NOT_READY": "Резервная копия ещё не готова.",
     "BACKUP_RUN_NOT_FOUND": "Резервная копия не найдена.",
+    "BROADCAST_NOT_FOUND": "Рассылка не найдена.",
+    "BROADCAST_INVALID_STATUS": "Это действие недоступно для рассылки в текущем статусе.",
+    "BROADCAST_HTML_INVALID": "В тексте неверный или неподдерживаемый HTML.",
+    "BROADCAST_TEXT_TOO_LONG": "Текст слишком длинный для Telegram.",
+    "BROADCAST_VARIABLE_UNKNOWN": "В тексте неизвестная переменная.",
+    "BROADCAST_PROMOCODE_REQUIRED": "Выберите промокод, чтобы использовать кнопку или переменную промокода.",
+    "BROADCAST_PROMOCODE_UNUSABLE": "Промокод неактивен, истёк или исчерпан.",
+    "BROADCAST_BUTTONS_INVALID": "Проверьте кнопки: не больше 10, корректные ссылки и подпись на каждом языке.",
+    "BROADCAST_DEFAULT_LOCALE_MISSING": "Заполните текст на языке по умолчанию.",
+    "BROADCAST_TEXT_EMPTY": "Заполните текст для каждого языка или удалите пустой.",
+    "BROADCAST_CHANNEL_PERSONAL_VARIABLES": "В посте для канала не может быть персональных переменных.",
+    "BROADCAST_CHANNEL_NOT_CONFIGURED": "Сначала укажите канал в требованиях бота.",
+    "BROADCAST_AUDIENCE_INVALID": "Проверьте фильтры аудитории.",
+    "BROADCAST_MEDIA_INVALID": "Тип или размер файла не поддерживается.",
+    "BROADCAST_SCHEDULE_IN_PAST": "Время отправки уже прошло.",
+    "BROADCAST_BOT_NOT_CONFIGURED": "Сначала укажите токен бота.",
+    "BROADCAST_TEST_NO_TELEGRAM": "Привяжите Telegram к аккаунту, чтобы получить тестовое сообщение.",
+    "BROADCAST_TEST_FAILED": "Telegram отклонил тестовое сообщение.",
+    "BROADCAST_RECALL_EXPIRED": "Telegram позволяет удалять сообщения только в течение 48 часов.",
+    "BROADCAST_TITLE_TOO_LONG": "Название слишком длинное.",
     "BANNER_NAME_INVALID": "Недопустимое имя баннера.",
     "BANNER_NOT_FOUND": "Баннер не найден.",
     "BANNER_TOO_LARGE": "Файл баннера слишком большой.",
@@ -3322,6 +3379,349 @@
       "saved": "Настройки лояльности сохранены.",
       "error": "Не удалось сохранить настройки лояльности.",
       "loadError": "Не удалось загрузить настройки лояльности."
+    }
+  },
+  "broadcasts": {
+    "untitled": "Без названия",
+    "status": {
+      "DRAFT": "Черновик",
+      "SCHEDULED": "Запланирована",
+      "SENDING": "Отправляется",
+      "COMPLETED": "Завершена",
+      "CANCELED": "Отменена",
+      "FAILED": "Ошибка"
+    },
+    "recipientStatus": {
+      "PENDING": "Ожидает",
+      "SENT": "Отправлено",
+      "FAILED": "Ошибка",
+      "BLOCKED": "Заблокировал бота",
+      "CANCELED": "Отменено",
+      "RECALLED": "Отозвано"
+    },
+    "category": {
+      "SERVICE": "Сервисная",
+      "MARKETING": "Маркетинговая"
+    },
+    "media": {
+      "PHOTO": "фото",
+      "VIDEO": "видео",
+      "ANIMATION": "анимация",
+      "DOCUMENT": "документ"
+    },
+    "meta": {
+      "promocode": "промокод",
+      "channel": "+ канал"
+    },
+    "audience": {
+      "all": "Все клиенты",
+      "plans": "Планы: {{names}}",
+      "expiresWithin": "Истекает через ≤ {{days}} дн.",
+      "expiredWithin": "Истекла ≤ {{days}} дн. назад",
+      "paid": "платили",
+      "notPaid": "не платили",
+      "locales": "Языки: {{locales}}",
+      "registered": "Регистрация {{from}} – {{to}}",
+      "referred": "приглашённые",
+      "notReferred": "не приглашённые",
+      "subscription": {
+        "ACTIVE": "с подпиской",
+        "TRIAL": "на пробном",
+        "EXPIRED": "подписка истекла",
+        "NONE": "без подписки"
+      },
+      "users_one": "{{count}} клиент",
+      "users_few": "{{count}} клиента",
+      "users_many": "{{count}} клиентов",
+      "users_other": "{{count}} клиента",
+      "adLinks_one": "{{count}} рекламная ссылка",
+      "adLinks_few": "{{count}} рекламные ссылки",
+      "adLinks_many": "{{count}} рекламных ссылок",
+      "adLinks_other": "{{count}} рекламной ссылки"
+    },
+    "description": "Сообщения клиентам в бот и в канал",
+    "create": "Новая рассылка",
+    "promoBadge": "Акция",
+    "search": "Поиск по тексту",
+    "loadError": "Не удалось загрузить рассылки.",
+    "empty": "Рассылок пока нет.",
+    "noMatches": "Ничего не найдено.",
+    "kpi": {
+      "sending": "Идёт сейчас",
+      "scheduled": "Запланировано",
+      "nextScheduled": "Ближайшая — {{date}}",
+      "delivered": "Доставлено за 30 дней",
+      "deliveredShare": "{{percent}} от обработанного",
+      "optedOut": "Отписались от акций",
+      "optedOutShare": "{{percent}} клиентов с Telegram"
+    },
+    "filters": {
+      "all": "Все",
+      "DRAFT": "Черновики",
+      "SCHEDULED": "Запланированы",
+      "SENDING": "Идут",
+      "COMPLETED": "Завершены",
+      "problems": "Отменены и ошибки"
+    },
+    "columns": {
+      "broadcast": "Рассылка",
+      "status": "Статус",
+      "audience": "Аудитория",
+      "delivery": "Доставка",
+      "when": "Когда"
+    },
+    "progress": {
+      "draft": "Не отправлялась",
+      "waiting": "Ожидает старта",
+      "failed": "Остановлена · {{ratio}}",
+      "canceled": "{{ratio}} · отменена",
+      "delivered": "{{count}} доставлено",
+      "blocked": "{{count}} блок."
+    },
+    "when": {
+      "now": "Сейчас",
+      "edited": "Изм. {{date}}"
+    },
+    "editor": {
+      "loadError": "Не удалось загрузить рассылку.",
+      "breadcrumb": "Рассылки · #{{id}}",
+      "newBreadcrumb": "Рассылки · новая",
+      "category": "Категория",
+      "categoryOption": {
+        "SERVICE": "Сервисная",
+        "MARKETING": "Акция"
+      },
+      "categoryHint": {
+        "SERVICE": "Работы, смена домена, новые серверы. Получают все, отписаться нельзя.",
+        "MARKETING": "Скидки и промокоды. Отписавшиеся не получат, внизу появится кнопка «Отписаться от акций»."
+      },
+      "text": "Текст",
+      "defaultLocale": "основной",
+      "addLocale": "Добавить язык",
+      "fallbackHint": "Клиенты на других языках получат {{locale}}",
+      "withMedia": "с медиа",
+      "media": {
+        "hint": "Фото, GIF, видео MP4, PDF или ZIP; подпись не длиннее 1024 символов",
+        "saveFirst": "Медиа можно прикрепить после первого сохранения",
+        "upload": "Загрузить",
+        "replace": "Заменить",
+        "captionLimit": "подпись не длиннее 1024 символов",
+        "error": "Не удалось обновить медиа."
+      },
+      "buttons": {
+        "title": "Кнопки",
+        "hint": "Подписи — для каждого языка",
+        "add": "Кнопка",
+        "kind": {
+          "URL": "Ссылка",
+          "PROMOCODE": "Промокод",
+          "MENU": "Меню"
+        },
+        "limit_one": "Не больше {{count}} кнопки",
+        "limit_few": "Не больше {{count}} кнопок",
+        "limit_many": "Не больше {{count}} кнопок",
+        "limit_other": "Не больше {{count}} кнопки",
+        "label": "Подпись кнопки",
+        "promocodeTarget": "Откроет промокод {{code}} в боте",
+        "menuTarget": "Главное меню бота"
+      },
+      "promocode": {
+        "label": "Промокод",
+        "none": "Без промокода",
+        "until": "до {{date}}",
+        "activations_one": "до {{count}} активации",
+        "activations_few": "до {{count}} активаций",
+        "activations_many": "до {{count}} активаций",
+        "activations_other": "до {{count}} активации"
+      },
+      "audience": {
+        "title": "Аудитория",
+        "byFilters": "По фильтрам",
+        "byUsers": "Выбранным клиентам",
+        "search": "Найти клиента",
+        "searchPlaceholder": "Имя, username, Telegram ID",
+        "userIds": "Клиенты",
+        "userIdsHint": "ID клиентов; вставьте список или выберите в поиске",
+        "userIdsPlaceholder": "ID клиента",
+        "any": "Неважно",
+        "all": "Все",
+        "withinDays_one": "≤ {{count}} дн.",
+        "withinDays_few": "≤ {{count}} дн.",
+        "withinDays_many": "≤ {{count}} дн.",
+        "withinDays_other": "≤ {{count}} дн.",
+        "subscription": "Подписка",
+        "subscriptionChip": {
+          "ACTIVE": "Активная",
+          "TRIAL": "Пробная",
+          "EXPIRED": "Истекла",
+          "NONE": "Без подписки"
+        },
+        "plans": "Планы",
+        "expires": "Истекает",
+        "expired": "Истекла",
+        "paid": "Платил",
+        "language": "Язык",
+        "source": "Источник",
+        "anySource": "Любой",
+        "referred": "По приглашению",
+        "adLink": "Реклама: {{name}}",
+        "registered": "Регистрация",
+        "from": "С",
+        "to": "По",
+        "bothDates": "Укажите обе даты."
+      },
+      "channel": {
+        "title": "Опубликовать в канале",
+        "titleNamed": "Опубликовать в канале {{name}}",
+        "hint": "Пост на основном языке. Персональные переменные кроме { $promocode } в нём недоступны.",
+        "missing": "Сначала укажите канал в требованиях бота."
+      },
+      "preview": {
+        "title": "Превью",
+        "sampleName": "Анна",
+        "as": "как увидит {{name}} · {{locale}}",
+        "unsubscribe": "Отписаться от акций",
+        "empty": "Текста пока нет"
+      },
+      "recipients": {
+        "title": "Получатели",
+        "others": "Другие → получат {{locale}}",
+        "error": "Не удалось посчитать получателей.",
+        "excluded": "Без Telegram и заблокировавшие бота не входят.",
+        "excludedMarketing": "Без Telegram, заблокировавшие бота и отписавшиеся от акций не входят."
+      },
+      "footer": {
+        "unsaved": "Есть несохранённые изменения",
+        "savedAt": "Сохранено {{time}}",
+        "test": "Тест себе",
+        "when": "Когда",
+        "sendNow": "Отправить сейчас",
+        "schedule": "Запланировать"
+      },
+      "confirm": {
+        "sendTitle": "Отправить рассылку?",
+        "scheduleTitle": "Запланировать рассылку?",
+        "send_one": "Сообщение сразу уйдёт {{count}} получателю.",
+        "send_few": "Сообщение сразу уйдёт {{count}} получателям.",
+        "send_many": "Сообщение сразу уйдёт {{count}} получателям.",
+        "send_other": "Сообщение сразу уйдёт {{count}} получателя.",
+        "schedule_one": "Сообщение уйдёт {{count}} получателю {{date}}.",
+        "schedule_few": "Сообщение уйдёт {{count}} получателям {{date}}.",
+        "schedule_many": "Сообщение уйдёт {{count}} получателям {{date}}.",
+        "schedule_other": "Сообщение уйдёт {{count}} получателя {{date}}.",
+        "sendUncounted": "Сообщение уйдёт сразу.",
+        "scheduleUncounted": "Сообщение уйдёт {{date}}."
+      },
+      "leave": {
+        "title": "Уйти из редактора?",
+        "message": "Несохранённые изменения пропадут.",
+        "confirm": "Уйти"
+      },
+      "testSent": "Тестовое сообщение отправлено.",
+      "savedStillScheduled": "Сохранено, рассылка по-прежнему запланирована на {{date}}.",
+      "savedUnscheduled": "Сохранено. Рассылка снята с расписания.",
+      "openCard": "Открыть карточку",
+      "sent": "Рассылка запущена.",
+      "scheduled": "Рассылка запланирована."
+    },
+    "details": {
+      "loadError": "Не удалось загрузить рассылку.",
+      "recipientsError": "Не удалось загрузить получателей.",
+      "noRecipients": "Здесь нет получателей.",
+      "breadcrumb": "Рассылки · #{{id}} · {{category}}",
+      "of": "из {{total}}",
+      "speed": "≈ {{speed}} сообщ. в секунду",
+      "remainingSoon": "осталось меньше минуты",
+      "remaining_one": "осталось около {{count}} мин",
+      "remaining_few": "осталось около {{count}} мин",
+      "remaining_many": "осталось около {{count}} мин",
+      "remaining_other": "осталось около {{count}} мин",
+      "started": "Начата {{date}}",
+      "recallUntil": "отозвать можно до {{date}}",
+      "legend": {
+        "delivered": "Доставлено",
+        "blocked": "Заблокировали бота",
+        "failed": "Ошибки",
+        "queued": "В очереди"
+      },
+      "kpi": {
+        "delivered": "Доставлено",
+        "deliveredShare": "{{percent}} от обработанных",
+        "blocked": "Заблокировали бота",
+        "blockedHint": "Повтор им не уйдёт",
+        "failed": "Ошибки",
+        "failedHint": "Можно повторить после завершения",
+        "recalled": "Отозвано",
+        "recalledHint": "Доступно 48 ч с начала"
+      },
+      "recipients": "Получатели",
+      "tabs": {
+        "all": "Все",
+        "SENT": "Доставлено",
+        "FAILED": "Ошибки",
+        "BLOCKED": "Блок",
+        "PENDING": "В очереди",
+        "RECALLED": "Отозвано",
+        "CANCELED": "Отменены"
+      },
+      "columns": {
+        "customer": "Клиент",
+        "status": "Статус",
+        "details": "Подробности",
+        "time": "Время"
+      },
+      "idLabel": "id {{id}}",
+      "messageSent": "Сообщение отправлено",
+      "stopped": "Рассылка была остановлена",
+      "params": {
+        "title": "Параметры",
+        "category": "Категория",
+        "locales": "Языки",
+        "main": "(основной)",
+        "audience": "Аудитория",
+        "promocode": "Промокод",
+        "media": "Медиа",
+        "createdBy": "Создал",
+        "scheduledAt": "Запланирована на"
+      },
+      "channel": {
+        "title": "Пост в канале",
+        "posted": "Опубликован в канале",
+        "planned": "Будет опубликован в канале",
+        "recallHint": "При отзыве пост удалится вместе с личными сообщениями."
+      },
+      "actions": {
+        "cancel": {
+          "button": "Остановить",
+          "title": "Остановить рассылку?",
+          "message": "Неотправленные сообщения не уйдут. Уже доставленные останутся.",
+          "confirm": "Остановить",
+          "done": "Рассылка остановлена."
+        },
+        "retry": {
+          "button": "Повторить неудачные",
+          "unavailable": "Повторять нечего: нет неудачных доставок.",
+          "title": "Повторить неудачные доставки?",
+          "message": "Клиенты с ошибками получат сообщение ещё раз. Заблокировавшие бота будут пропущены.",
+          "confirm": "Повторить",
+          "done": "Повтор запущен."
+        },
+        "recall": {
+          "button": "Отозвать",
+          "unavailable": "Отозвать можно в течение 48 часов с начала, если что-то было доставлено.",
+          "title": "Отозвать рассылку?",
+          "message": "Доставленные сообщения удалятся из чатов клиентов, пост в канале будет убран. Это нельзя отменить.",
+          "confirm": "Отозвать",
+          "done": "Отзыв запущен."
+        },
+        "delete": {
+          "title": "Удалить рассылку?",
+          "message": "Рассылка и история её доставки будут удалены. Это нельзя отменить.",
+          "confirm": "Удалить",
+          "button": "Удалить",
+          "done": "Рассылка удалена."
+        }
+      }
     }
   }
 }

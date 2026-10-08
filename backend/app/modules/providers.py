@@ -9,6 +9,7 @@ from app.modules.auth import get_auth_providers
 from app.modules.backups import get_backups_providers
 from app.modules.banners import get_banners_providers
 from app.modules.blacklist import get_blacklist_providers
+from app.modules.broadcasts import get_broadcasts_providers
 from app.modules.dialogs import get_dialogs_providers
 from app.modules.emoji_packs import get_emoji_packs_providers
 from app.modules.event_log import get_event_log_providers
@@ -60,4 +61,5 @@ def get_module_providers() -> list[Provider]:
         *get_analytics_providers(),
         *get_overview_providers(),
         *get_announcements_providers(),
+        *get_broadcasts_providers(),
     ]

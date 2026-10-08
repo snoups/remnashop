@@ -46,6 +46,15 @@ export const BlacklistPage = lazy(() =>
 export const AccessSettingsPage = lazy(() =>
   import("@pages/settings/AccessSettingsPage").then((m) => ({ default: m.AccessSettingsPage })),
 );
+export const BroadcastsPage = lazy(() =>
+  import("@pages/broadcasts/BroadcastsPage").then((m) => ({ default: m.BroadcastsPage })),
+);
+export const BroadcastDetailsPage = lazy(() =>
+  import("@pages/broadcasts/BroadcastDetailsPage").then((m) => ({ default: m.BroadcastDetailsPage })),
+);
+export const BroadcastEditorPage = lazy(() =>
+  import("@pages/broadcasts/BroadcastEditorPage").then((m) => ({ default: m.BroadcastEditorPage })),
+);
 export const BotSettingsPage = lazy(() =>
   import("@pages/settings/BotSettingsPage").then((m) => ({ default: m.BotSettingsPage })),
 );

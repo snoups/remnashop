@@ -30,3 +30,7 @@ ntf-admin-demoted = { $actor } понизил { $target }
     .title = Администратор понижен
 ntf-admin-permissions-updated = { $actor } изменил права { $target }
     .title = Права администратора изменены
+ntf-broadcast-completed = Рассылка #{ $broadcast_id } завершена: доставлено { $sent }, ошибок { $failed }, заблокировали бота { $blocked }.
+    .title = Рассылка отправлена
+ntf-broadcast-failed = Рассылка #{ $broadcast_id } остановлена: { $error }
+    .title = Ошибка рассылки

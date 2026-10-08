@@ -485,6 +485,13 @@ class UserRepository:
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)
 
+    async def set_marketing_opt_out(self, user_id: int, value: bool) -> None:
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+        db_user.marketing_opt_out = value
+        await self.session.flush()
+
     async def set_blocked(self, user_id: int, is_blocked: bool) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
         if db_user is None:

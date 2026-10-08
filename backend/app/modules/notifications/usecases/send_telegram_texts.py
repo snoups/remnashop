@@ -18,6 +18,7 @@ from app.modules.users import UserRepository
 
 # Telegram allows ~30 messages/s per bot; leave headroom for live bot traffic
 _SEND_RATE_PER_SECOND: Final[int] = 25
+_SEND_PAUSE_S: Final[float] = 1 / _SEND_RATE_PER_SECOND
 
 
 class SendTelegramTextsUseCase(UseCase[SendTelegramTextsDto, set[int]]):
@@ -60,6 +61,6 @@ class SendTelegramTextsUseCase(UseCase[SendTelegramTextsDto, set[int]]):
                 )
                 if result is not TelegramSendResult.FAILED:
                     done.add(user.id)
-                await asyncio.sleep(1 / _SEND_RATE_PER_SECOND)
+                await asyncio.sleep(_SEND_PAUSE_S)
         logger.info(f"Telegram texts '{data.key}': {len(done)}/{len(data.user_ids)} done")
         return done

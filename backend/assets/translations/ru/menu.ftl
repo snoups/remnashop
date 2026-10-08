@@ -86,6 +86,16 @@ platform-icon =
     .linux = 🐧
     .default = ❓
 
+btn-broadcast =
+    .unsubscribe = Отписаться от акций
+    .resubscribe = Снова получать акции
+
+ntf-broadcast =
+    .unsubscribed = Вы больше не будете получать акции. Сервисные сообщения продолжат приходить.
+    .resubscribed = Вы снова будете получать акции.
+    .promo-gone = Это предложение больше недоступно.
+    .start-required = Нажмите /start, чтобы продолжить.
+
 ntf-requirements =
     .rules = Чтобы продолжить, прочитайте и примите правила.
     .channel = Чтобы продолжить, подпишитесь на наш канал.

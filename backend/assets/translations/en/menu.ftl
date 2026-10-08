@@ -86,6 +86,16 @@ platform-icon =
     .linux = 🐧
     .default = ❓
 
+btn-broadcast =
+    .unsubscribe = Unsubscribe from offers
+    .resubscribe = Get offers again
+
+ntf-broadcast =
+    .unsubscribed = You won't receive offers anymore. Service messages will still arrive.
+    .resubscribed = You'll receive offers again.
+    .promo-gone = This offer is no longer available.
+    .start-required = Press /start to continue.
+
 ntf-requirements =
     .rules = Please read and accept the rules to continue.
     .channel = Subscribe to our channel to continue.

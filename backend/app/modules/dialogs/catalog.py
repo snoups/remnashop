@@ -37,10 +37,6 @@ ICON_ID_KEY_SUFFIX: Final[str] = "-icon-id"
 # A custom window's body key is this prefix plus the window key.
 _WINDOW_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-"
 
-# Premium emoji in window text: the glyph plus the custom emoji id, turned into a
-# <tg-emoji> tag at render time.
-PREMIUM_EMOJI_RE: Final[re.Pattern[str]] = re.compile(r"\[([^\[\]]{1,16})\]\(emoji:(\d{1,24})\)")
-
 
 @dataclass(frozen=True, kw_only=True)
 class CatalogButton:

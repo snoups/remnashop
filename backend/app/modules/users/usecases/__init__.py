@@ -13,6 +13,7 @@ from app.modules.users.usecases.list_blacklist_matches import ListBlacklistMatch
 from app.modules.users.usecases.list_users import ListUsersUseCase
 from app.modules.users.usecases.promote_to_admin import PromoteToAdminUseCase
 from app.modules.users.usecases.register_telegram_user import RegisterTelegramUserUseCase
+from app.modules.users.usecases.set_marketing_opt_out import SetMarketingOptOutUseCase
 from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
 from app.modules.users.usecases.unblock_all_users import UnblockAllUsersUseCase
 from app.modules.users.usecases.unblock_blacklist_matches import UnblockBlacklistMatchesUseCase
@@ -38,6 +39,7 @@ __all__ = [
     "ListUsersUseCase",
     "PromoteToAdminUseCase",
     "RegisterTelegramUserUseCase",
+    "SetMarketingOptOutUseCase",
     "SetUserDiscountDto",
     "SetUserDiscountUseCase",
     "UnblockAllUsersUseCase",

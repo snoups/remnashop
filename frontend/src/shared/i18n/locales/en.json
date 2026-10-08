@@ -619,6 +619,13 @@
       "TransactionRefundedEvent": "Transaction refunded",
       "TransactionFulfilledManuallyEvent": "Subscription issued manually",
       "BackupFailedEvent": "Backup failed",
+      "BroadcastChangedEvent": "Broadcast changed",
+      "BroadcastScheduledEvent": "Broadcast scheduled",
+      "BroadcastStartedEvent": "Broadcast started",
+      "BroadcastCompletedEvent": "Broadcast finished",
+      "BroadcastFailedEvent": "Broadcast failed",
+      "BroadcastCanceledEvent": "Broadcast canceled",
+      "BroadcastRecalledEvent": "Broadcast recalled",
       "VapidKeysGeneratedEvent": "Web push keys generated",
       "GatewayChangedEvent": "Payment gateway changed",
       "PricingSettingsChangedEvent": "Pricing settings changed",
@@ -649,7 +656,8 @@
     "transactions": "Transactions",
     "analytics": "Analytics",
     "admins": "Admins",
-    "eventLog": "Event log"
+    "eventLog": "Event log",
+    "broadcasts": "Broadcasts"
   },
   "admins": {
     "title": "Admins",
@@ -1321,6 +1329,10 @@
           "title": "Failures",
           "description": "Failed backups"
         },
+        "broadcasts": {
+          "title": "Broadcasts",
+          "description": "Finished and failed broadcasts"
+        },
         "requests": {
           "title": "Requests",
           "description": "Referral points withdrawal requests"
@@ -1478,6 +1490,21 @@
     "PROMOCODES_ACTIVATIONS_VIEW": "View a user's promocode activations",
     "PROMOCODES_SUMMARY_VIEW": "View promocodes summary",
     "PROMOCODES_USERS_VIEW": "View users who activated a promocode",
+    "BROADCASTS_VIEW": "View broadcasts",
+    "BROADCASTS_DETAIL_VIEW": "View broadcast details",
+    "BROADCASTS_CREATE": "Create broadcasts",
+    "BROADCASTS_UPDATE": "Edit broadcasts",
+    "BROADCASTS_DELETE": "Delete broadcasts",
+    "BROADCASTS_SEND": "Send broadcasts",
+    "BROADCASTS_RECALL": "Recall broadcasts",
+    "BROADCASTS_CANCEL": "Cancel broadcasts",
+    "BROADCASTS_RETRY": "Retry failed broadcast deliveries",
+    "BROADCASTS_TEST_SEND": "Send test broadcasts",
+    "BROADCASTS_RECIPIENTS_VIEW": "View broadcast recipients",
+    "BROADCASTS_MEDIA_SET": "Upload broadcast media",
+    "BROADCASTS_MEDIA_DELETE": "Delete broadcast media",
+    "BROADCASTS_AUDIENCE_PREVIEW": "Preview broadcast audience",
+    "BROADCASTS_SUMMARY_VIEW": "View broadcasts summary",
     "TRANSACTIONS_VIEW": "View transactions",
     "TRANSACTIONS_SUMMARY_VIEW": "View transaction summary",
     "TRANSACTIONS_DETAIL_VIEW": "View transaction details",
@@ -1592,6 +1619,7 @@
     "subscriptions": "Subscriptions",
     "addons": "Add-ons",
     "promocodes": "Promocodes",
+    "broadcasts": "Broadcasts",
     "transactions": "Transactions",
     "referrals": "Referrals",
     "backups": "Backups",
@@ -1958,13 +1986,22 @@
       "user_points": "User points",
       "subscription_url": "Connection link",
       "devices_current": "Devices connected",
-      "devices_max": "Device limit"
+      "devices_max": "Device limit",
+      "name": "Name",
+      "username": "Username",
+      "points": "Points",
+      "bonus_days": "Bonus days",
+      "plan": "Plan",
+      "expire_date": "Expiry date",
+      "days_left": "Days left",
+      "promocode": "Promocode"
     },
     "variableCategories": {
       "user": "User",
       "subscription": "Subscription",
       "window": "This window",
-      "other": "Other"
+      "other": "Other",
+      "promo": "Promocode"
     },
     "description": "Bot window content and navigation",
     "texts": {
@@ -3028,6 +3065,26 @@
     "BACKUP_FILE_MISSING": "The backup file is missing.",
     "BACKUP_NOT_READY": "The backup isn't ready yet.",
     "BACKUP_RUN_NOT_FOUND": "Backup not found.",
+    "BROADCAST_NOT_FOUND": "Broadcast not found.",
+    "BROADCAST_INVALID_STATUS": "This action isn't available for the broadcast in its current status.",
+    "BROADCAST_HTML_INVALID": "The text has invalid or unsupported HTML.",
+    "BROADCAST_TEXT_TOO_LONG": "The text is too long for Telegram.",
+    "BROADCAST_VARIABLE_UNKNOWN": "The text uses an unknown variable.",
+    "BROADCAST_PROMOCODE_REQUIRED": "Choose a promocode to use the promocode button or variable.",
+    "BROADCAST_PROMOCODE_UNUSABLE": "The promocode is inactive, expired or used up.",
+    "BROADCAST_BUTTONS_INVALID": "Check the buttons: up to 10, valid links and a label in every language.",
+    "BROADCAST_DEFAULT_LOCALE_MISSING": "Fill in the text for the default language.",
+    "BROADCAST_TEXT_EMPTY": "Fill in the text for every language or remove the empty one.",
+    "BROADCAST_CHANNEL_PERSONAL_VARIABLES": "A channel post can't contain personal variables.",
+    "BROADCAST_CHANNEL_NOT_CONFIGURED": "Set the channel in the bot requirements first.",
+    "BROADCAST_AUDIENCE_INVALID": "Check the audience filters.",
+    "BROADCAST_MEDIA_INVALID": "The file type or size isn't supported.",
+    "BROADCAST_SCHEDULE_IN_PAST": "The send time is in the past.",
+    "BROADCAST_BOT_NOT_CONFIGURED": "Set the bot token first.",
+    "BROADCAST_TEST_NO_TELEGRAM": "Link Telegram to your account to receive a test message.",
+    "BROADCAST_TEST_FAILED": "Telegram rejected the test message.",
+    "BROADCAST_RECALL_EXPIRED": "Telegram only allows deleting messages within 48 hours.",
+    "BROADCAST_TITLE_TOO_LONG": "The title is too long.",
     "BANNER_NAME_INVALID": "Invalid banner name.",
     "BANNER_NOT_FOUND": "Banner not found.",
     "BANNER_TOO_LARGE": "The banner file is too large.",
@@ -3256,6 +3313,333 @@
       "saved": "Loyalty settings saved.",
       "error": "Failed to save the loyalty settings.",
       "loadError": "Failed to load the loyalty settings."
+    }
+  },
+  "broadcasts": {
+    "untitled": "Untitled",
+    "status": {
+      "DRAFT": "Draft",
+      "SCHEDULED": "Scheduled",
+      "SENDING": "Sending",
+      "COMPLETED": "Completed",
+      "CANCELED": "Canceled",
+      "FAILED": "Failed"
+    },
+    "recipientStatus": {
+      "PENDING": "Pending",
+      "SENT": "Sent",
+      "FAILED": "Failed",
+      "BLOCKED": "Blocked the bot",
+      "CANCELED": "Canceled",
+      "RECALLED": "Recalled"
+    },
+    "category": {
+      "SERVICE": "Service",
+      "MARKETING": "Marketing"
+    },
+    "media": {
+      "PHOTO": "photo",
+      "VIDEO": "video",
+      "ANIMATION": "animation",
+      "DOCUMENT": "document"
+    },
+    "meta": {
+      "promocode": "promocode",
+      "channel": "+ channel"
+    },
+    "audience": {
+      "all": "All customers",
+      "plans": "Plans: {{names}}",
+      "expiresWithin": "Expires in ≤ {{days}} d.",
+      "expiredWithin": "Expired ≤ {{days}} d. ago",
+      "paid": "paid",
+      "notPaid": "never paid",
+      "locales": "Languages: {{locales}}",
+      "registered": "Registered {{from}} – {{to}}",
+      "referred": "referred",
+      "notReferred": "not referred",
+      "subscription": {
+        "ACTIVE": "active subscription",
+        "TRIAL": "trial",
+        "EXPIRED": "expired",
+        "NONE": "no subscription"
+      },
+      "users_one": "{{count}} customer",
+      "users_other": "{{count}} customers",
+      "adLinks_one": "{{count}} ad link",
+      "adLinks_other": "{{count}} ad links"
+    },
+    "description": "Messages to customers in the bot and the channel",
+    "create": "New broadcast",
+    "promoBadge": "Promo",
+    "search": "Search by text",
+    "loadError": "Failed to load broadcasts.",
+    "empty": "No broadcasts yet.",
+    "noMatches": "Nothing found.",
+    "kpi": {
+      "sending": "Sending now",
+      "scheduled": "Scheduled",
+      "nextScheduled": "Next: {{date}}",
+      "delivered": "Delivered in 30 days",
+      "deliveredShare": "{{percent}} of processed",
+      "optedOut": "Opted out of promos",
+      "optedOutShare": "{{percent}} of customers with Telegram"
+    },
+    "filters": {
+      "all": "All",
+      "DRAFT": "Drafts",
+      "SCHEDULED": "Scheduled",
+      "SENDING": "Sending",
+      "COMPLETED": "Completed",
+      "problems": "Canceled and failed"
+    },
+    "columns": {
+      "broadcast": "Broadcast",
+      "status": "Status",
+      "audience": "Audience",
+      "delivery": "Delivery",
+      "when": "When"
+    },
+    "progress": {
+      "draft": "Not sent",
+      "waiting": "Waiting to start",
+      "failed": "Stopped · {{ratio}}",
+      "canceled": "{{ratio}} · canceled",
+      "delivered": "{{count}} delivered",
+      "blocked": "{{count}} blocked"
+    },
+    "when": {
+      "now": "Now",
+      "edited": "Edited {{date}}"
+    },
+    "editor": {
+      "loadError": "Failed to load the broadcast.",
+      "breadcrumb": "Broadcasts · #{{id}}",
+      "newBreadcrumb": "Broadcasts · new",
+      "category": "Category",
+      "categoryOption": {
+        "SERVICE": "Service",
+        "MARKETING": "Promo"
+      },
+      "categoryHint": {
+        "SERVICE": "Maintenance, a domain change, new servers. Everyone gets it, no opting out.",
+        "MARKETING": "Discounts and promocodes. Customers who opted out won’t get it; an “Unsubscribe from promos” button is added at the bottom."
+      },
+      "text": "Text",
+      "defaultLocale": "default",
+      "addLocale": "Add language",
+      "fallbackHint": "Customers in other languages get {{locale}}",
+      "withMedia": "with media",
+      "media": {
+        "hint": "Photo, GIF, MP4 video, PDF or ZIP; a caption is up to 1024 characters",
+        "saveFirst": "Media can be attached after the first save",
+        "upload": "Upload",
+        "replace": "Replace",
+        "captionLimit": "caption up to 1024 characters",
+        "error": "Failed to update the media."
+      },
+      "buttons": {
+        "title": "Buttons",
+        "hint": "Labels are per language",
+        "add": "Button",
+        "kind": {
+          "URL": "Link",
+          "PROMOCODE": "Promocode",
+          "MENU": "Menu"
+        },
+        "limit_one": "Up to {{count}} button",
+        "limit_other": "Up to {{count}} buttons",
+        "label": "Button label",
+        "promocodeTarget": "Opens promocode {{code}} in the bot",
+        "menuTarget": "The bot’s main menu"
+      },
+      "promocode": {
+        "label": "Promocode",
+        "none": "No promocode",
+        "until": "until {{date}}",
+        "activations_one": "up to {{count}} activation",
+        "activations_other": "up to {{count}} activations"
+      },
+      "audience": {
+        "title": "Audience",
+        "byFilters": "By filters",
+        "byUsers": "Selected customers",
+        "search": "Find a customer",
+        "searchPlaceholder": "Name, username, Telegram ID",
+        "userIds": "Customers",
+        "userIdsHint": "Customer IDs; paste a list or pick from the search",
+        "userIdsPlaceholder": "Customer ID",
+        "any": "Any",
+        "all": "All",
+        "withinDays_one": "≤ {{count}} day",
+        "withinDays_other": "≤ {{count}} days",
+        "subscription": "Subscription",
+        "subscriptionChip": {
+          "ACTIVE": "Active",
+          "TRIAL": "Trial",
+          "EXPIRED": "Expired",
+          "NONE": "No subscription"
+        },
+        "plans": "Plans",
+        "expires": "Expires within",
+        "expired": "Expired within",
+        "paid": "Has paid",
+        "language": "Language",
+        "source": "Source",
+        "anySource": "Any",
+        "referred": "Invited",
+        "adLink": "Ad: {{name}}",
+        "registered": "Registered",
+        "from": "From",
+        "to": "To",
+        "bothDates": "Set both dates."
+      },
+      "channel": {
+        "title": "Post to the channel",
+        "titleNamed": "Post to the channel {{name}}",
+        "hint": "The post uses the default language. Personal variables other than { $promocode } aren’t available in it.",
+        "missing": "Set the channel in the bot requirements first."
+      },
+      "preview": {
+        "title": "Preview",
+        "sampleName": "Anna",
+        "as": "as {{name}} sees it · {{locale}}",
+        "unsubscribe": "Unsubscribe from promos",
+        "empty": "No text yet"
+      },
+      "recipients": {
+        "title": "Recipients",
+        "others": "Others → get {{locale}}",
+        "error": "Failed to count the recipients.",
+        "excluded": "Customers without Telegram and those who blocked the bot are not counted.",
+        "excludedMarketing": "Customers without Telegram, those who blocked the bot and those who opted out of promos are not counted."
+      },
+      "footer": {
+        "unsaved": "Unsaved changes",
+        "savedAt": "Saved at {{time}}",
+        "test": "Test to myself",
+        "when": "When",
+        "sendNow": "Send now",
+        "schedule": "Schedule"
+      },
+      "confirm": {
+        "sendTitle": "Send the broadcast?",
+        "scheduleTitle": "Schedule the broadcast?",
+        "send_one": "The message goes out to {{count}} recipient right away.",
+        "send_other": "The message goes out to {{count}} recipients right away.",
+        "schedule_one": "The message goes out to {{count}} recipient on {{date}}.",
+        "schedule_other": "The message goes out to {{count}} recipients on {{date}}.",
+        "sendUncounted": "The message goes out right away.",
+        "scheduleUncounted": "The message goes out on {{date}}."
+      },
+      "leave": {
+        "title": "Leave the editor?",
+        "message": "Unsaved changes will be lost.",
+        "confirm": "Leave"
+      },
+      "testSent": "Test message sent.",
+      "savedStillScheduled": "Saved, still scheduled for {{date}}.",
+      "savedUnscheduled": "Saved. The broadcast is off the schedule.",
+      "openCard": "Open card",
+      "sent": "Broadcast started.",
+      "scheduled": "Broadcast scheduled."
+    },
+    "details": {
+      "loadError": "Failed to load the broadcast.",
+      "recipientsError": "Failed to load recipients.",
+      "noRecipients": "No recipients here.",
+      "breadcrumb": "Broadcasts · #{{id}} · {{category}}",
+      "of": "of {{total}}",
+      "speed": "≈ {{speed}} messages per second",
+      "remainingSoon": "less than a minute left",
+      "remaining_one": "about {{count}} min left",
+      "remaining_other": "about {{count}} min left",
+      "started": "Started {{date}}",
+      "recallUntil": "can be recalled until {{date}}",
+      "legend": {
+        "delivered": "Delivered",
+        "blocked": "Blocked the bot",
+        "failed": "Errors",
+        "queued": "Queued"
+      },
+      "kpi": {
+        "delivered": "Delivered",
+        "deliveredShare": "{{percent}} of processed",
+        "blocked": "Blocked the bot",
+        "blockedHint": "They won’t get a retry",
+        "failed": "Errors",
+        "failedHint": "Can be retried once sending ends",
+        "recalled": "Recalled",
+        "recalledHint": "Available for 48 h after the start"
+      },
+      "recipients": "Recipients",
+      "tabs": {
+        "all": "All",
+        "SENT": "Delivered",
+        "FAILED": "Errors",
+        "BLOCKED": "Blocked",
+        "PENDING": "Queued",
+        "RECALLED": "Recalled",
+        "CANCELED": "Canceled"
+      },
+      "columns": {
+        "customer": "Customer",
+        "status": "Status",
+        "details": "Details",
+        "time": "Time"
+      },
+      "idLabel": "id {{id}}",
+      "messageSent": "Message sent",
+      "stopped": "Broadcast was stopped",
+      "params": {
+        "title": "Parameters",
+        "category": "Category",
+        "locales": "Languages",
+        "main": "(main)",
+        "audience": "Audience",
+        "promocode": "Promocode",
+        "media": "Media",
+        "createdBy": "Created by",
+        "scheduledAt": "Scheduled for"
+      },
+      "channel": {
+        "title": "Channel post",
+        "posted": "Published in the channel",
+        "planned": "Will be published in the channel",
+        "recallHint": "Recalling deletes the post along with the private messages."
+      },
+      "actions": {
+        "cancel": {
+          "button": "Stop",
+          "title": "Stop the broadcast?",
+          "message": "Messages that haven’t been sent yet won’t go out. Delivered ones stay.",
+          "confirm": "Stop",
+          "done": "Broadcast stopped."
+        },
+        "retry": {
+          "button": "Retry failed",
+          "unavailable": "Nothing to retry: no failed deliveries.",
+          "title": "Retry failed deliveries?",
+          "message": "Customers with errors will get the message again. Those who blocked the bot are skipped.",
+          "confirm": "Retry",
+          "done": "Retry started."
+        },
+        "recall": {
+          "button": "Recall",
+          "unavailable": "Messages can be recalled within 48 hours of the start, if something was delivered.",
+          "title": "Recall the broadcast?",
+          "message": "Delivered messages are deleted from customers’ chats and the channel post is removed. This can’t be undone.",
+          "confirm": "Recall",
+          "done": "Recall started."
+        },
+        "delete": {
+          "title": "Delete the broadcast?",
+          "message": "The broadcast and its delivery history will be deleted. This can’t be undone.",
+          "confirm": "Delete",
+          "button": "Delete",
+          "done": "Broadcast deleted."
+        }
+      }
     }
   }
 }

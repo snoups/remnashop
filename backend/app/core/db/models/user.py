@@ -81,6 +81,7 @@ class User(BaseSql, TimestampMixin):
     )
     loyalty_discount: Mapped[int] = mapped_column(default=0, server_default="0")
     loyalty_excluded: Mapped[bool] = mapped_column(default=False, server_default="false")
+    marketing_opt_out: Mapped[bool] = mapped_column(default=False, server_default="false")
     # NULL = never accepted; a date, not a flag, so changed rules can ask again
     rules_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # Nullable: create() always generates one, a soft delete wipes it --

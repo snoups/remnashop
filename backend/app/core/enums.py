@@ -172,6 +172,49 @@ class TransactionStatus(UpperStrEnum):
     REFUNDED = auto()
 
 
+class BroadcastStatus(UpperStrEnum):
+    DRAFT = auto()
+    SCHEDULED = auto()
+    SENDING = auto()
+    COMPLETED = auto()
+    CANCELED = auto()
+    FAILED = auto()
+
+
+class BroadcastCategory(UpperStrEnum):
+    SERVICE = auto()
+    MARKETING = auto()
+
+
+class BroadcastRecipientStatus(UpperStrEnum):
+    PENDING = auto()
+    SENT = auto()
+    FAILED = auto()
+    BLOCKED = auto()
+    CANCELED = auto()
+    RECALLED = auto()
+
+
+class BroadcastButtonKind(UpperStrEnum):
+    URL = auto()
+    PROMOCODE = auto()
+    MENU = auto()
+
+
+class BroadcastMediaType(UpperStrEnum):
+    PHOTO = auto()
+    VIDEO = auto()
+    ANIMATION = auto()
+    DOCUMENT = auto()
+
+
+class BroadcastSubscriptionFilter(UpperStrEnum):
+    ACTIVE = auto()
+    TRIAL = auto()
+    EXPIRED = auto()
+    NONE = auto()
+
+
 class BackupKind(UpperStrEnum):
     DATABASE = auto()
     ASSETS = auto()

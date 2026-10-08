@@ -27,6 +27,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
         }
     ),
     "failures": frozenset({"BackupFailedEvent"}),
+    "broadcasts": frozenset({"BroadcastCompletedEvent", "BroadcastFailedEvent"}),
     "requests": frozenset({"PointsWithdrawalRequestedEvent"}),
     "money": frozenset(
         {

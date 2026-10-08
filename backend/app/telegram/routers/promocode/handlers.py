@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from typing import Final
 
 from aiogram.types import CallbackQuery, Message
@@ -6,7 +7,7 @@ from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
-from fluentogram import TranslatorHub
+from fluentogram import TranslatorHub, TranslatorRunner
 from loguru import logger
 
 from app.core.constants import USER_KEY
@@ -39,6 +40,41 @@ def _refusal_key(error: AppError) -> str:
     return _NOTIFICATION_BY_CODE.get(error.code, "ntf-promocode.not-available")
 
 
+async def continue_with_code(
+    code: str,
+    user: UserDto,
+    dialog_manager: DialogManager,
+    validate_promocode: ValidatePromocodeUseCase,
+    list_own_active_subscriptions: ListOwnActiveSubscriptionsUseCase,
+    reply: Callable[[str], Awaitable[object]],
+    runner: TranslatorRunner,
+) -> None:
+    try:
+        promo = await validate_promocode(user, ValidatePromocodeDto(code=code))
+    except (NotFoundError, ValidationError) as error:
+        await reply(runner.get(_refusal_key(error)))
+        return
+
+    dialog_manager.dialog_data["promo_code"] = promo.code
+    dialog_manager.dialog_data["promo_reward_type"] = promo.reward_type.value
+    dialog_manager.dialog_data["promo_reward"] = promo.reward
+
+    if promo.reward_type not in _TARGET_REQUIRED_REWARDS:
+        await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
+        return
+
+    active = await list_own_active_subscriptions(user)
+    if not active:
+        await reply(runner.get("ntf-promocode.no-target-subscription"))
+        return
+    if len(active) == 1:
+        dialog_manager.dialog_data["target_subscription_id"] = active[0].id
+        await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
+        return
+
+    await dialog_manager.switch_to(state=Subscription.PROMOCODE_TARGET)
+
+
 @inject
 async def on_promocode_input(
     message: Message,
@@ -55,30 +91,15 @@ async def on_promocode_input(
     if not code:
         return
 
-    try:
-        promo = await validate_promocode(user, ValidatePromocodeDto(code=code))
-    except (NotFoundError, ValidationError) as error:
-        await message.answer(runner.get(_refusal_key(error)))
-        return
-
-    dialog_manager.dialog_data["promo_code"] = promo.code
-    dialog_manager.dialog_data["promo_reward_type"] = promo.reward_type.value
-    dialog_manager.dialog_data["promo_reward"] = promo.reward
-
-    if promo.reward_type not in _TARGET_REQUIRED_REWARDS:
-        await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
-        return
-
-    active = await list_own_active_subscriptions(user)
-    if not active:
-        await message.answer(runner.get("ntf-promocode.no-target-subscription"))
-        return
-    if len(active) == 1:
-        dialog_manager.dialog_data["target_subscription_id"] = active[0].id
-        await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
-        return
-
-    await dialog_manager.switch_to(state=Subscription.PROMOCODE_TARGET)
+    await continue_with_code(
+        code,
+        user,
+        dialog_manager,
+        validate_promocode,
+        list_own_active_subscriptions,
+        reply=message.answer,
+        runner=runner,
+    )
 
 
 async def on_target_subscription_selected(

@@ -147,6 +147,21 @@ class Permission(UpperStrEnum):
     PROMOCODES_ACTIVATIONS_VIEW = auto()
     PROMOCODES_SUMMARY_VIEW = auto()
     PROMOCODES_USERS_VIEW = auto()
+    BROADCASTS_VIEW = auto()
+    BROADCASTS_DETAIL_VIEW = auto()
+    BROADCASTS_CREATE = auto()
+    BROADCASTS_UPDATE = auto()
+    BROADCASTS_DELETE = auto()
+    BROADCASTS_SEND = auto()
+    BROADCASTS_RECALL = auto()
+    BROADCASTS_CANCEL = auto()
+    BROADCASTS_RETRY = auto()
+    BROADCASTS_TEST_SEND = auto()
+    BROADCASTS_RECIPIENTS_VIEW = auto()
+    BROADCASTS_MEDIA_SET = auto()
+    BROADCASTS_MEDIA_DELETE = auto()
+    BROADCASTS_AUDIENCE_PREVIEW = auto()
+    BROADCASTS_SUMMARY_VIEW = auto()
     TRANSACTIONS_VIEW = auto()
     TRANSACTIONS_SUMMARY_VIEW = auto()
     TRANSACTIONS_DETAIL_VIEW = auto()
@@ -332,6 +347,21 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PROMOCODES_UPDATE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_DELETE: PermissionMeta(resource="promocodes", kind="write"),
     Permission.PROMOCODES_GENERATE_CODE: PermissionMeta(resource="promocodes", kind="write"),
+    Permission.BROADCASTS_VIEW: PermissionMeta(resource="broadcasts", kind="read"),
+    Permission.BROADCASTS_DETAIL_VIEW: PermissionMeta(resource="broadcasts", kind="read"),
+    Permission.BROADCASTS_CREATE: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_UPDATE: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_DELETE: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_SEND: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_RECALL: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_CANCEL: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_RETRY: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_TEST_SEND: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_RECIPIENTS_VIEW: PermissionMeta(resource="broadcasts", kind="read"),
+    Permission.BROADCASTS_MEDIA_SET: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_MEDIA_DELETE: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_AUDIENCE_PREVIEW: PermissionMeta(resource="broadcasts", kind="read"),
+    Permission.BROADCASTS_SUMMARY_VIEW: PermissionMeta(resource="broadcasts", kind="read"),
     Permission.TRANSACTIONS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_SUMMARY_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
@@ -425,6 +455,10 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.TRANSLATIONS_RESET_ALL,
         Permission.DIALOGS_IMPORT,
         Permission.DIALOGS_WINDOWS_RESET_ALL,
+        Permission.BROADCASTS_SEND,
+        Permission.BROADCASTS_RECALL,
+        Permission.BROADCASTS_RETRY,
+        Permission.BROADCASTS_DELETE,
     }
 )
 
@@ -563,6 +597,21 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.PROMOCODES_ACTIVATIONS_VIEW,
         Permission.PROMOCODES_SUMMARY_VIEW,
         Permission.PROMOCODES_USERS_VIEW,
+        Permission.BROADCASTS_VIEW,
+        Permission.BROADCASTS_DETAIL_VIEW,
+        Permission.BROADCASTS_CREATE,
+        Permission.BROADCASTS_UPDATE,
+        Permission.BROADCASTS_DELETE,
+        Permission.BROADCASTS_SEND,
+        Permission.BROADCASTS_RECALL,
+        Permission.BROADCASTS_CANCEL,
+        Permission.BROADCASTS_RETRY,
+        Permission.BROADCASTS_TEST_SEND,
+        Permission.BROADCASTS_RECIPIENTS_VIEW,
+        Permission.BROADCASTS_MEDIA_SET,
+        Permission.BROADCASTS_MEDIA_DELETE,
+        Permission.BROADCASTS_AUDIENCE_PREVIEW,
+        Permission.BROADCASTS_SUMMARY_VIEW,
         Permission.USERS_VIEW,
         Permission.USERS_DETAIL_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,

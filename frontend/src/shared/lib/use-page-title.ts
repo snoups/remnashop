@@ -15,6 +15,7 @@ const PAGE_TITLE_BY_PATH: { prefix: string; key: ParseKeys }[] = [
   { prefix: "/dashboard/transactions", key: "transactions.title" },
   { prefix: "/dashboard/plans", key: "plans.title" },
   { prefix: "/dashboard/promocodes", key: "promocodes.title" },
+  { prefix: "/dashboard/broadcasts", key: "sidebar.broadcasts" },
   { prefix: "/dashboard/referrals", key: "referrals.title" },
   { prefix: "/dashboard/advertising", key: "advertising.title" },
   { prefix: "/dashboard/analytics", key: "analytics.title" },

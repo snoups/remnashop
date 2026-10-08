@@ -10,6 +10,8 @@ const EMOJI_CLASSNAME = "inline-block size-[1.25em] align-[-0.25em] object-conta
 export interface RichTextFieldHandle {
   /** Inserts markup at the last caret position the field had. */
   insert: (markup: string) => void;
+  /** Wraps the selection in `open`/`close`; with none, inserts the pair and leaves the caret between. */
+  wrap: (open: string, close: string) => void;
 }
 
 interface RichTextFieldProps {
@@ -119,25 +121,41 @@ export const RichTextField = forwardRef<RichTextFieldHandle, RichTextFieldProps>
     return () => root.removeEventListener("error", handleError, true);
   }, []);
 
+  // focus moves the caret to the start; put it back where the field last had it
+  const restoreCaret = (root: HTMLDivElement): Selection | null => {
+    root.focus();
+    const selection = document.getSelection();
+    const saved = savedRangeRef.current;
+    if (selection) {
+      selection.removeAllRanges();
+      if (saved && root.contains(saved.startContainer)) {
+        selection.addRange(saved);
+      } else {
+        const end = document.createRange();
+        end.selectNodeContents(root);
+        end.collapse(false);
+        selection.addRange(end);
+      }
+    }
+    return selection;
+  };
+
   useImperativeHandle(ref, () => ({
     insert(markup: string) {
       const root = rootRef.current;
       if (!root) return;
-      root.focus();
-      const selection = document.getSelection();
-      const saved = savedRangeRef.current;
-      if (selection) {
-        selection.removeAllRanges();
-        if (saved && root.contains(saved.startContainer)) {
-          selection.addRange(saved);
-        } else {
-          const end = document.createRange();
-          end.selectNodeContents(root);
-          end.collapse(false);
-          selection.addRange(end);
-        }
-      }
+      restoreCaret(root);
       insertMarkup(markup);
+    },
+    wrap(open: string, close: string) {
+      const root = rootRef.current;
+      if (!root) return;
+      const selection = restoreCaret(root);
+      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+      const inner = range && !range.collapsed ? serializeChildren(range.cloneContents()) : "";
+      insertMarkup(`${open}${inner}${close}`);
+      if (inner) return;
+      for (let i = 0; i < close.length; i++) selection?.modify("move", "backward", "character");
     },
   }));
 
