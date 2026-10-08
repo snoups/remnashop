@@ -2244,3 +2244,68 @@ async def test_change_with_keep_expire_at_keeps_the_old_expiry(
         )
     ).all()
     assert rows == []
+
+
+@pytest.mark.parametrize("reset_traffic", [True, False])
+async def test_change_deducts_spent_traffic_from_the_credit(
+    reset_traffic: bool,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 450)
+    old_plan = await _create_plan(plan_repository, "spent-old")
+    new_plan = await _create_plan(plan_repository, "spent-new")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        make_eligibility(subscription_repository.session),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+        idempotency_repository,
+    )
+    old_subscription = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                old_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+    spent = 95 * 1024**3  # of 100 GB
+    remnawave_store[old_subscription.remnawave_user_id]["userTraffic"]["usedTrafficBytes"] = spent
+
+    changed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                new_plan, price_paid=Decimal("300.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.CHANGE,
+            target_subscription_id=old_subscription.id,
+            reset_traffic=reset_traffic,
+        ),
+    )
+
+    # 5% of the traffic left caps the credit at 15 => 1 day at 10/day,
+    # instead of the 30 days the untouched term alone would give
+    assert (changed.expire_at - datetime_now()).days in (29, 30)
+    used = remnawave_store[changed.remnawave_user_id]["userTraffic"]["usedTrafficBytes"]
+    assert used == (0 if reset_traffic else spent)

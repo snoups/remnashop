@@ -8,6 +8,7 @@ from uuid import UUID
 
 from remnapy.enums import TrafficLimitStrategy
 
+from app.core.constants import GB_TO_BYTES
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
@@ -134,6 +135,9 @@ def calculate_proration_credit(
     expire_at: datetime,
     is_trial: bool,
     now: datetime,
+    traffic_limit: int,
+    traffic_limit_strategy: TrafficLimitStrategy,
+    used_traffic_bytes: int,
 ) -> Decimal:
     """Proration credit from the OLD subscription's fields alone. Public so
     ChangePurchase can compute the new expire_at (base days + credit days)
@@ -142,4 +146,10 @@ def calculate_proration_credit(
         return Decimal("0")
     remaining_days = max(0, (expire_at - now).days)
     daily_rate = price_paid / Decimal(duration_days)
-    return daily_rate * Decimal(remaining_days)
+    credit = daily_rate * Decimal(remaining_days)
+    # a resetting counter covers the current period, not the whole term
+    if traffic_limit > 0 and traffic_limit_strategy is TrafficLimitStrategy.NO_RESET:
+        limit_bytes = traffic_limit * GB_TO_BYTES
+        remaining_bytes = max(0, limit_bytes - used_traffic_bytes)
+        credit = min(credit, price_paid * Decimal(remaining_bytes) / Decimal(limit_bytes))
+    return credit

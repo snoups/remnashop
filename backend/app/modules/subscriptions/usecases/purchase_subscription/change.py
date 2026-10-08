@@ -64,13 +64,13 @@ class ChangePurchase:
                     "Cannot change a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
                 )
 
-            if data.keep_expire_at:
-                credit_days = 0
-                final_expire_at = old.expire_at
-            else:
-                now = datetime_now()
-                credit_days = await self._credit_days(old, data, now)
-                final_expire_at = now + timedelta(days=data.duration_days + credit_days)
+        if data.keep_expire_at:
+            credit_days = 0
+            final_expire_at = old.expire_at
+        else:
+            now = datetime_now()
+            credit_days = await self._credit_days(old, data, now)
+            final_expire_at = now + timedelta(days=data.duration_days + credit_days)
 
         # keeps old's panel user (same id, same subscription_url the client
         # already has) and changes only the plan config (limits, squads,
@@ -125,26 +125,45 @@ class ChangePurchase:
                 await self._remnawave_sdk.users.update_user(restore(old))
             raise
 
+        await self._reset_traffic(data, updated)
+
         logger.info(
             f"{actor.log} Changed subscription '{old.id}' to plan '{plan.plan_id}' "
             f"({credit_days}d credit applied)"
         )
         return updated
 
+    async def _reset_traffic(
+        self, data: PurchaseSubscriptionDto, subscription: SubscriptionDto
+    ) -> None:
+        if not data.reset_traffic:
+            return
+        # the spent share is already out of the credit; a failure here leaves
+        # the old counter running, nothing to revert
+        try:
+            await self._remnawave_sdk.users.reset_user_traffic(subscription.remnawave_user_id)
+        except Exception:
+            logger.exception(f"Failed to reset traffic of subscription '{subscription.id}'")
+
     async def _credit_days(
         self, old: SubscriptionDto, data: PurchaseSubscriptionDto, now: datetime
     ) -> int:
         # depends on `old` alone, so the panel gets the final expire_at on the
         # first call
+        panel_user = await self._remnawave_sdk.users.get_user_by_id(old.remnawave_user_id)
         credit = calculate_proration_credit(
             price_paid=old.plan_snapshot.price_paid,
             duration_days=old.plan_snapshot.duration_days,
             expire_at=old.expire_at,
             is_trial=old.is_trial,
             now=now,
+            traffic_limit=old.effective_traffic_limit,
+            traffic_limit_strategy=old.traffic_limit_strategy,
+            used_traffic_bytes=int(panel_user.used_traffic_bytes),
         )
         if old.plan_snapshot.currency is not data.currency:
-            rates = await self._pricing_repository.get_rate_table()
+            async with self._uow:
+                rates = await self._pricing_repository.get_rate_table()
             credit = (
                 credit
                 / rates.for_currency(old.plan_snapshot.currency).rate

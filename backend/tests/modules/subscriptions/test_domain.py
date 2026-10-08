@@ -1,12 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
 from remnapy.enums import TrafficLimitStrategy
 
+from app.core.constants import GB_TO_BYTES
 from app.core.enums import Currency, SubscriptionStatus
 from app.core.exceptions import ValidationError
-from app.modules.subscriptions.domain import VALID_TRANSITIONS, SubscriptionState, assert_transition
+from app.modules.subscriptions.domain import (
+    VALID_TRANSITIONS,
+    SubscriptionState,
+    assert_transition,
+    calculate_proration_credit,
+)
 from app.modules.subscriptions.dto import PlanSnapshot
 
 
@@ -158,3 +164,40 @@ def test_sync_expire_at_is_a_noop_when_already_deleted() -> None:
     state = _state(status=SubscriptionStatus.DELETED, expire_at=datetime(2026, 1, 1))  # noqa: DTZ001
 
     assert state.sync_expire_at(datetime(2026, 2, 1)) is state  # noqa: DTZ001
+
+
+def _credit(
+    *,
+    used_gb: int,
+    traffic_limit: int = 100,
+    strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET,
+) -> Decimal:
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    return calculate_proration_credit(
+        price_paid=Decimal("300"),
+        duration_days=30,
+        expire_at=now + timedelta(days=20),
+        is_trial=False,
+        now=now,
+        traffic_limit=traffic_limit,
+        traffic_limit_strategy=strategy,
+        used_traffic_bytes=used_gb * GB_TO_BYTES,
+    )
+
+
+@pytest.mark.parametrize(
+    ("used_gb", "expected"),
+    [(10, Decimal("200")), (50, Decimal("150")), (95, Decimal("15")), (120, Decimal("0"))],
+)
+def test_proration_credit_takes_the_smaller_of_days_and_traffic_left(
+    used_gb: int, expected: Decimal
+) -> None:
+    assert _credit(used_gb=used_gb) == expected
+
+
+def test_proration_credit_ignores_traffic_on_an_unlimited_plan() -> None:
+    assert _credit(used_gb=95, traffic_limit=0) == Decimal("200")
+
+
+def test_proration_credit_ignores_a_counter_that_resets_every_period() -> None:
+    assert _credit(used_gb=95, strategy=TrafficLimitStrategy.MONTH) == Decimal("200")
