@@ -16,8 +16,10 @@ from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token, hash_refresh_token
 from app.core.security.permissions import expand_token_scopes
 from app.core.utils.http import is_ip_allowed, resolve_client_ip
+from app.modules.access import is_restricted_for
 from app.modules.api_tokens import ApiTokenRepository
 from app.modules.auth import SessionRepository
+from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.users import UserDto, UserRepository
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -110,7 +112,7 @@ async def get_current_actor(
     return actor
 
 
-async def get_current_user(actor: Actor = Depends(get_current_actor)) -> UserDto:
+def require_user_account(actor: Actor) -> UserDto:
     """Customer-facing routes: the actor must be a real user row. An API token
     authenticates staff automation and has no customer identity behind it --
     without this it reaches a self-service route as user id 0 and fails on a
@@ -123,6 +125,23 @@ async def get_current_user(actor: Actor = Depends(get_current_actor)) -> UserDto
             code=ErrorCode.USER_ACCOUNT_REQUIRED,
         )
     return actor
+
+
+@inject
+async def get_current_user(
+    get_access_settings: FromDishka[GetAccessSettingsUseCase],
+    actor: Actor = Depends(get_current_actor),
+) -> UserDto:
+    """Customer-facing routes: a real user row, and not a customer while the
+    service is in restricted mode (staff are exempt)."""
+    user = require_user_account(actor)
+    if is_restricted_for(user, await get_access_settings.system()):
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "The service is temporarily closed",
+            code=ErrorCode.ACCESS_RESTRICTED,
+        )
+    return user
 
 
 def get_current_session_id(request: Request, actor: Actor = Depends(get_current_actor)) -> int:

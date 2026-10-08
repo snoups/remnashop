@@ -3,8 +3,10 @@ from typing import Final, Optional, TypeVar
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.access_settings import AccessSettings
 from app.core.db.models.appearance_settings import AppearanceSettings
 from app.core.db.models.bot_command import BotCommand
+from app.core.db.models.bot_requirements import BotRequirements
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
@@ -12,12 +14,16 @@ from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import get_or_create_singleton
 from app.core.enums import AppearanceImageKind
 from app.modules.settings.dto import (
+    AccessSettingsDto,
     AppearanceSettingsDto,
     BotCommandDto,
+    BotRequirementsDto,
     BotSettingsDto,
     OAuthSettingsDto,
     ShopSettingsDto,
+    UpdateAccessSettingsDto,
     UpdateAppearanceSettingsDto,
+    UpdateBotRequirementsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
     UpdateShopSettingsDto,
@@ -30,7 +36,13 @@ _SINGLETON_ID: Final[int] = 1
 _BOT_COMMANDS_LOCK_KEY: Final[int] = 8221937
 
 _SingletonRow = TypeVar(
-    "_SingletonRow", BotSettings, OAuthSettings, AppearanceSettings, ShopSettings
+    "_SingletonRow",
+    BotSettings,
+    OAuthSettings,
+    AppearanceSettings,
+    ShopSettings,
+    AccessSettings,
+    BotRequirements,
 )
 
 
@@ -88,6 +100,41 @@ class SettingsRepository:
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_shop_dto(row)
+
+    def _to_access_dto(self, row: Optional[AccessSettings]) -> AccessSettingsDto:
+        if row is None:
+            return AccessSettingsDto()
+        return AccessSettingsDto.model_validate(row, from_attributes=True)
+
+    async def get_bot_requirements(self) -> BotRequirementsDto:
+        row = await self.session.get(BotRequirements, _SINGLETON_ID)
+        if row is None:
+            return BotRequirementsDto()
+        return BotRequirementsDto.model_validate(row, from_attributes=True)
+
+    async def update_bot_requirements(self, data: UpdateBotRequirementsDto) -> BotRequirementsDto:
+        row = await self._get_or_create_singleton(BotRequirements)
+        row.rules_required = data.rules_required
+        row.rules_url = data.rules_url
+        row.channel_required = data.channel_required
+        row.channel_id = data.channel_id
+        row.channel_url = data.channel_url
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        return BotRequirementsDto.model_validate(row, from_attributes=True)
+
+    async def get_access_settings(self) -> AccessSettingsDto:
+        row = await self.session.get(AccessSettings, _SINGLETON_ID)
+        return self._to_access_dto(row)
+
+    async def update_access_settings(self, data: UpdateAccessSettingsDto) -> AccessSettingsDto:
+        row = await self._get_or_create_singleton(AccessSettings)
+        apply_partial_update(row, data)
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_access_dto(row)
 
     def _to_oauth_dto(self, row: Optional[OAuthSettings]) -> OAuthSettingsDto:
         if row is None:

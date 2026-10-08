@@ -135,3 +135,39 @@ export function getShopSettings(signal?: AbortSignal): Promise<ShopSettings> {
 export function updateShopSettings(payload: UpdateShopSettingsPayload): Promise<ShopSettings> {
   return apiPatch<ShopSettings, UpdateShopSettingsPayload>("/settings/shop", payload);
 }
+
+export type AccessMode = "PUBLIC" | "INVITED" | "RESTRICTED";
+
+export interface AccessSettings {
+  mode: AccessMode;
+  registration_enabled: boolean;
+  payments_enabled: boolean;
+}
+
+export function getAccessSettings(signal?: AbortSignal): Promise<AccessSettings> {
+  return apiGet<AccessSettings>("/settings/access", signal);
+}
+
+export function updateAccessSettings(payload: Partial<AccessSettings>): Promise<AccessSettings> {
+  return apiPatch<AccessSettings, Partial<AccessSettings>>("/settings/access", payload);
+}
+
+export interface BotRequirements {
+  rules_required: boolean;
+  rules_url: string | null;
+  channel_required: boolean;
+  channel_id: number | null;
+  channel_url: string | null;
+}
+
+export function getBotRequirements(signal?: AbortSignal): Promise<BotRequirements> {
+  return apiGet<BotRequirements>("/settings/bot/requirements", signal);
+}
+
+export function updateBotRequirements(payload: BotRequirements): Promise<BotRequirements> {
+  return apiPut<BotRequirements, BotRequirements>("/settings/bot/requirements", payload);
+}
+
+export function getPaymentWaitlistCount(signal?: AbortSignal): Promise<{ total: number }> {
+  return apiGet<{ total: number }>("/transactions/waitlist", signal);
+}

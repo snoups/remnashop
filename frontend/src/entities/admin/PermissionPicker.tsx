@@ -25,6 +25,7 @@ import {
   Server,
   Share2,
   Shield,
+  ShieldCheck,
   Smile,
   Store,
   Ticket,
@@ -55,6 +56,7 @@ interface PermissionPickerProps {
 
 const RESOURCE_ICONS: Record<string, LucideIcon> = {
   bot_settings: Bot,
+  access_settings: ShieldCheck,
   oauth_settings: KeyRound,
   banners: Image,
   emoji_packs: Smile,

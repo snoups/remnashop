@@ -5,13 +5,17 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
-import { useCurrentUser } from "@entities/user/use-current-user";
+import { useOnAccessSettingsSaved } from "@entities/settings/access-sync";
+import { getAccessSettings } from "@entities/settings/api";
+import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { usePageTitle } from "@shared/lib/use-page-title";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { initials } from "@shared/lib/initials";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Badge } from "@shared/ui/Badge";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { HeaderSearch } from "@widgets/header/HeaderSearch";
 import { NotificationsBell } from "@widgets/header/NotificationsBell";
@@ -49,6 +53,7 @@ export function Header({ onLogout }: HeaderProps) {
     setIsRefreshing(true);
     setTimeout(() => setIsRefreshing(false), 1000);
   }, [refresh]);
+  const permissions = usePermissions();
   const userState = useCurrentUser();
   const login = userState.kind === "ready" ? userState.data.login : null;
   const role = userState.kind === "ready" ? userState.data.role : null;
@@ -93,6 +98,8 @@ export function Header({ onLogout }: HeaderProps) {
 
       <div className="flex flex-1 items-center justify-end gap-3.5">
         <HeaderSearch />
+
+        {permissions.includes("ACCESS_SETTINGS_VIEW") && <MaintenanceBadge />}
 
         <LanguagePicker />
 
@@ -160,4 +167,12 @@ export function Header({ onLogout }: HeaderProps) {
       </div>
     </header>
   );
+}
+
+function MaintenanceBadge() {
+  const { t } = useTranslation();
+  const [state, , setData] = useAsyncResource(getAccessSettings);
+  useOnAccessSettingsSaved(setData);
+  if (state.kind !== "ready" || state.data.mode !== "RESTRICTED") return null;
+  return <Badge tone="warning">{t("header.maintenance")}</Badge>;
 }

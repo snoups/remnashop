@@ -73,3 +73,18 @@ class NotificationRenderer:
                 logger.warning(f"Notification template '{key}' ({candidate}): {error}")
             return str(title), str(body)
         return event_type, ""
+
+    def text(self, locale: Locale, key: str) -> Optional[str]:
+        for candidate in (locale, self._default_locale):
+            bundle = self._bundles.get(candidate)
+            if bundle is None:
+                continue
+            try:
+                # has_message() is False for a message that has only attributes
+                value, errors = bundle.format(key, {})
+            except KeyError:
+                continue
+            for error in errors:
+                logger.warning(f"Template '{key}' ({candidate}): {error}")
+            return str(value)
+        return None

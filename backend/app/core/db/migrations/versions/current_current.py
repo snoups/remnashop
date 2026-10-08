@@ -743,6 +743,53 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
+        "access_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column(
+            "mode",
+            sa.Enum("PUBLIC", "INVITED", "RESTRICTED", name="accessmode"),
+            server_default="PUBLIC",
+            nullable=False,
+        ),
+        sa.Column("registration_enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("payments_enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "bot_requirements",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("rules_required", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("rules_url", sa.String(), nullable=True),
+        sa.Column("channel_required", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("channel_id", sa.BigInteger(), nullable=True),
+        sa.Column("channel_url", sa.String(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "shop_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("max_active_subscriptions", sa.Integer(), nullable=True),
@@ -838,6 +885,7 @@ def upgrade() -> None:
         sa.Column("purchase_discount_promocode_id", sa.Integer(), nullable=True),
         sa.Column("loyalty_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("loyalty_excluded", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("rules_accepted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
         sa.Column("points", sa.Numeric(precision=12, scale=0), server_default="0", nullable=False),
         sa.Column("bonus_days", sa.Integer(), server_default="0", nullable=False),
@@ -1444,6 +1492,18 @@ def upgrade() -> None:
         op.f("ix_push_subscriptions_user_id"), "push_subscriptions", ["user_id"], unique=False
     )
     op.create_table(
+        "payment_waitlist",
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("user_id"),
+    )
+    op.create_table(
         "ad_link_attributions",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("ad_link_id", sa.Integer(), nullable=False),
@@ -1823,6 +1883,7 @@ def downgrade() -> None:
     op.drop_table("addon_entitlements")
     op.drop_index(op.f("ix_ad_link_attributions_ad_link_id"), table_name="ad_link_attributions")
     op.drop_table("ad_link_attributions")
+    op.drop_table("payment_waitlist")
     op.drop_index(op.f("ix_push_subscriptions_user_id"), table_name="push_subscriptions")
     op.drop_index(op.f("ix_push_subscriptions_session_id"), table_name="push_subscriptions")
     op.drop_table("push_subscriptions")
@@ -1882,6 +1943,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_users_email"), table_name="users")
     op.drop_table("users")
     op.drop_table("shop_settings")
+    op.drop_table("bot_requirements")
+    op.drop_table("access_settings")
     op.drop_table("referral_settings")
     op.drop_table("loyalty_settings")
     op.drop_table("pricing_settings")

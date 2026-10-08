@@ -197,3 +197,8 @@ class PaymentAttemptDto:
     gateway_type: PaymentGatewayType
     status: TransactionStatus
     anchor_final_price: Decimal
+
+
+@dataclass(frozen=True, kw_only=True)
+class PaymentWaitlistCountDto:
+    total: int

@@ -6,24 +6,30 @@ from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.modules.settings.api.schemas import (
+    AccessSettingsResponse,
     AppearanceResponse,
     BotCommandItem,
     BotCommandsResponse,
     BotLogsResponse,
+    BotRequirementsResponse,
     BotSettingsResponse,
     BotStatusResponse,
     OAuthSettingsResponse,
     SetBotProxyRequest,
     ShopSettingsResponse,
+    UpdateAccessSettingsRequest,
     UpdateAppearanceRequest,
     UpdateBotCommandsRequest,
     UpdateBotCommandsResponse,
+    UpdateBotRequirementsRequest,
     UpdateBotSettingsRequest,
     UpdateOAuthSettingsRequest,
     UpdateShopSettingsRequest,
 )
 from app.modules.settings.dto import (
+    UpdateAccessSettingsDto,
     UpdateAppearanceSettingsDto,
+    UpdateBotRequirementsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
     UpdateShopSettingsDto,
@@ -32,8 +38,10 @@ from app.modules.settings.dto import (
 from app.modules.settings.usecases import (
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
+    GetAccessSettingsUseCase,
     GetBotCommandsUseCase,
     GetBotLogsUseCase,
+    GetBotRequirementsUseCase,
     GetBotSettingsUseCase,
     GetBotStatusUseCase,
     GetOAuthSettingsUseCase,
@@ -42,8 +50,10 @@ from app.modules.settings.usecases import (
     ResetAppearanceSettingsUseCase,
     RestartBotUseCase,
     SetBotProxyUseCase,
+    UpdateAccessSettingsUseCase,
     UpdateAppearanceSettingsUseCase,
     UpdateBotCommandsUseCase,
+    UpdateBotRequirementsUseCase,
     UpdateBotSettingsUseCase,
     UpdateOAuthSettingsUseCase,
     UpdateShopSettingsUseCase,
@@ -121,6 +131,68 @@ async def remove_bot_proxy(
 ) -> BotSettingsResponse:
     settings = await use_case(actor)
     return BotSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.get("/bot/requirements", response_model=BotRequirementsResponse)
+@inject
+async def get_bot_requirements(
+    use_case: FromDishka[GetBotRequirementsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> BotRequirementsResponse:
+    settings = await use_case(actor)
+    return BotRequirementsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.put(
+    "/bot/requirements",
+    response_model=BotRequirementsResponse,
+    responses=error_responses(400),
+)
+@inject
+async def update_bot_requirements(
+    payload: UpdateBotRequirementsRequest,
+    use_case: FromDishka[UpdateBotRequirementsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> BotRequirementsResponse:
+    settings = await use_case(
+        actor,
+        UpdateBotRequirementsDto(
+            rules_required=payload.rules_required,
+            rules_url=str(payload.rules_url) if payload.rules_url else None,
+            channel_required=payload.channel_required,
+            channel_id=payload.channel_id,
+            channel_url=str(payload.channel_url) if payload.channel_url else None,
+        ),
+    )
+    return BotRequirementsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.get("/access", response_model=AccessSettingsResponse)
+@inject
+async def get_access_settings(
+    use_case: FromDishka[GetAccessSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AccessSettingsResponse:
+    settings = await use_case(actor)
+    return AccessSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.patch("/access", response_model=AccessSettingsResponse)
+@inject
+async def update_access_settings(
+    payload: UpdateAccessSettingsRequest,
+    use_case: FromDishka[UpdateAccessSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AccessSettingsResponse:
+    settings = await use_case(
+        actor,
+        UpdateAccessSettingsDto(
+            mode=payload.mode,
+            registration_enabled=payload.registration_enabled,
+            payments_enabled=payload.payments_enabled,
+        ),
+    )
+    return AccessSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.get("/shop", response_model=ShopSettingsResponse)

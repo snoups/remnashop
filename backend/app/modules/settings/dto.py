@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, SecretStr
 
 from app.core.dto import BaseDto, TimestampMixin
+from app.core.enums import AccessMode
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
@@ -180,3 +181,34 @@ class UpdateAppearanceSettingsDto:
 class UploadAppearanceImageDto:
     content_type: str
     data: bytes
+
+
+class AccessSettingsDto(BaseDto, TimestampMixin):
+    mode: AccessMode = AccessMode.PUBLIC
+    registration_enabled: bool = True
+    payments_enabled: bool = True
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateAccessSettingsDto:
+    mode: Optional[AccessMode] = None
+    registration_enabled: Optional[bool] = None
+    payments_enabled: Optional[bool] = None
+
+
+class BotRequirementsDto(BaseDto, TimestampMixin):
+    rules_required: bool = False
+    rules_url: Optional[str] = None
+    channel_required: bool = False
+    channel_id: Optional[int] = None
+    channel_url: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateBotRequirementsDto:
+    # full replace: None clears a field
+    rules_required: bool
+    rules_url: Optional[str]
+    channel_required: bool
+    channel_id: Optional[int]
+    channel_url: Optional[str]

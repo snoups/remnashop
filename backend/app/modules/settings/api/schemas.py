@@ -1,8 +1,11 @@
 import re
 from typing import Annotated, Final, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, HttpUrl, model_validator
 
+from app.core.enums import AccessMode
+
+_INT64_MAX: Final[int] = 2**63 - 1
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
 
 
@@ -127,3 +130,31 @@ class UpdateAppearanceRequest(BaseModel):
         default=None, min_length=4, max_length=4
     )
     shader_enabled: Optional[bool] = None
+
+
+class AccessSettingsResponse(BaseModel):
+    mode: AccessMode
+    registration_enabled: bool
+    payments_enabled: bool
+
+
+class UpdateAccessSettingsRequest(BaseModel):
+    mode: Optional[AccessMode] = None
+    registration_enabled: Optional[bool] = None
+    payments_enabled: Optional[bool] = None
+
+
+class BotRequirementsResponse(BaseModel):
+    rules_required: bool
+    rules_url: Optional[str]
+    channel_required: bool
+    channel_id: Optional[int]
+    channel_url: Optional[str]
+
+
+class UpdateBotRequirementsRequest(BaseModel):
+    rules_required: bool = False
+    rules_url: Optional[HttpUrl] = None
+    channel_required: bool = False
+    channel_id: Optional[int] = Field(default=None, ge=-_INT64_MAX - 1, le=_INT64_MAX)
+    channel_url: Optional[HttpUrl] = None

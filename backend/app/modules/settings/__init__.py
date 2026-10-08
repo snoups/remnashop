@@ -2,8 +2,10 @@ from app.modules.settings.bootstrap import enable_password_login, read_bot_setti
 from app.modules.settings.bot_commands import BOT_COMMANDS, BotCommand
 from app.modules.settings.di import get_settings_providers
 from app.modules.settings.dto import (
+    AccessSettingsDto,
     AppearanceSettingsDto,
     BotCommandDto,
+    BotRequirementsDto,
     BotSettingsDto,
     BotStatusDto,
     OAuthSettingsDto,
@@ -14,14 +16,16 @@ from app.modules.settings.dto import (
     UpdateShopSettingsDto,
     UploadAppearanceImageDto,
 )
-from app.modules.settings.events import OidcIssuerChangedEvent
+from app.modules.settings.events import AccessSettingsChangedEvent, OidcIssuerChangedEvent
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.telegram_status import fetch_bot_status, fetch_bot_username
 from app.modules.settings.usecases import (
     DeleteAppearanceFaviconUseCase,
     DeleteAppearanceLogoUseCase,
+    GetAccessSettingsUseCase,
     GetBotCommandsUseCase,
     GetBotLogsUseCase,
+    GetBotRequirementsUseCase,
     GetBotSettingsUseCase,
     GetBotStatusUseCase,
     GetOAuthSettingsUseCase,
@@ -43,15 +47,20 @@ from app.modules.settings.usecases import (
 
 __all__ = [
     "BOT_COMMANDS",
+    "AccessSettingsChangedEvent",
+    "AccessSettingsDto",
     "AppearanceSettingsDto",
     "BotCommand",
     "BotCommandDto",
+    "BotRequirementsDto",
     "BotSettingsDto",
     "BotStatusDto",
     "DeleteAppearanceFaviconUseCase",
     "DeleteAppearanceLogoUseCase",
+    "GetAccessSettingsUseCase",
     "GetBotCommandsUseCase",
     "GetBotLogsUseCase",
+    "GetBotRequirementsUseCase",
     "GetBotSettingsUseCase",
     "GetBotStatusUseCase",
     "GetOAuthSettingsUseCase",

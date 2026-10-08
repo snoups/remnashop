@@ -39,6 +39,8 @@ from app.modules.pricing import PricingRepository
 from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
+from app.modules.settings import GetAccessSettingsUseCase
+from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions import (
     CreateSubscriptionDto,
@@ -50,6 +52,7 @@ from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
+from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
@@ -109,6 +112,7 @@ def create_checkout_use_case(
     fake_gateway: _FakeGateway,
     purchase_dispatch: RecordingDispatch,
     promocode_repository: PromocodeRepository,
+    waitlist_repository: WaitlistRepository,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
         plan_repository,
@@ -122,6 +126,8 @@ def create_checkout_use_case(
         _FakeFactory(fake_gateway),
         purchase_dispatch,
         promocode_repository,
+        GetAccessSettingsUseCase(settings_repository, uow),
+        waitlist_repository,
     )
 
 
@@ -809,3 +815,92 @@ async def test_create_checkout_renew_refuses_a_disabled_subscription(
         )
 
     assert error.value.code is ErrorCode.SUBSCRIPTION_DISABLED
+
+
+async def test_checkout_with_payments_off_refuses_and_waitlists_the_buyer(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    settings_repository: SettingsRepository,
+    waitlist_repository: WaitlistRepository,
+    uow: UnitOfWork,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    async with uow:
+        await settings_repository.update_access_settings(
+            UpdateAccessSettingsDto(payments_enabled=False)
+        )
+
+    for _ in range(2):
+        with pytest.raises(PermissionDeniedError) as error:
+            await create_checkout_use_case(
+                actor,
+                CreateCheckoutDto(
+                    user_id=actor.id,
+                    plan_id=plan.id,
+                    duration_days=30,
+                    currency=Currency.RUB,
+                    purchase_type=PurchaseType.NEW,
+                    gateway_type=PaymentGatewayType.YOOKASSA,
+                ),
+            )
+        assert error.value.code is ErrorCode.PAYMENTS_DISABLED
+
+    async with uow:
+        assert await waitlist_repository.claim_batch(100, set()) == [actor.id]
+
+
+async def test_admin_checkout_with_payments_off_waitlists_the_customer(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    settings_repository: SettingsRepository,
+    waitlist_repository: WaitlistRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    admin = await user_repository.create(CreateUserDto(name="admin", role=Role.OWNER))
+    async with uow:
+        await settings_repository.update_access_settings(
+            UpdateAccessSettingsDto(payments_enabled=False)
+        )
+
+    with pytest.raises(PermissionDeniedError):
+        await create_checkout_use_case(
+            admin,
+            CreateCheckoutDto(
+                user_id=actor.id,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+            ),
+        )
+
+    async with uow:
+        assert await waitlist_repository.claim_batch(100, set()) == [actor.id]
+
+
+async def test_payments_gate_fires_before_pricing_for_a_full_discount_order(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    settings_repository: SettingsRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    actor: UserDto,
+    plan: PlanDto,
+    purchase_dispatch: RecordingDispatch,
+) -> None:
+    # the gate runs before the quote, so a free order never gets past it
+    async with uow:
+        await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=100))
+        await settings_repository.update_access_settings(
+            UpdateAccessSettingsDto(payments_enabled=False)
+        )
+
+    with pytest.raises(PermissionDeniedError) as error:
+        await create_checkout_use_case(actor, _checkout_dto(actor, plan))
+
+    assert error.value.code is ErrorCode.PAYMENTS_DISABLED
+    assert await session.scalar(select(func.count()).select_from(Transaction)) == 0
+    assert purchase_dispatch.messages == []

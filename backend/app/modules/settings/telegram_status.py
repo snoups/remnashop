@@ -9,6 +9,7 @@ TELEGRAM_API_URL: Final[str] = "https://api.telegram.org"
 _TIMEOUT_SECONDS: Final[float] = 5.0
 # token -> username; a bot's username can't change without a new token
 _USERNAME_CACHE: Final[dict[str, str]] = {}
+_CHANNEL_ADMIN_STATUSES: Final[frozenset[str]] = frozenset({"administrator", "creator"})
 
 
 async def fetch_bot_status(token: str, proxy: Optional[str]) -> BotStatusDto:
@@ -52,3 +53,19 @@ async def fetch_bot_username(token: str, proxy: Optional[str]) -> Optional[str]:
     username: str = payload["result"]["username"]
     _USERNAME_CACHE[token] = username
     return username
+
+
+async def is_bot_channel_admin(token: str, proxy: Optional[str], channel_id: int) -> bool:
+    try:
+        bot_id = int(token.split(":", 1)[0])
+        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy) as client:
+            response = await client.get(
+                f"{TELEGRAM_API_URL}/bot{token}/getChatMember",
+                params={"chat_id": channel_id, "user_id": bot_id},
+            )
+        payload: dict[str, Any] = response.json()
+    except (httpx.HTTPError, ValueError):
+        return False
+    if not payload.get("ok"):
+        return False
+    return payload.get("result", {}).get("status") in _CHANNEL_ADMIN_STATUSES

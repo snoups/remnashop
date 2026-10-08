@@ -38,6 +38,13 @@ ntf-devices =
     .all-deleted = All devices deleted.
     .reissued = Connection link reissued.
 
+ntf-access =
+    .restricted = The service is temporarily closed for maintenance. Please come back later.
+    .registration-disabled = Sign-ups are closed right now.
+    .invite-only = Sign-up is by invitation only. Ask a friend for their referral link.
+    .payments-disabled = Payments are temporarily unavailable. We'll message you when they're back.
+    .payments-restored = Payments are available again — you can complete your purchase.
+
 ntf-common =
     .cooldown-active = You can repeat this action after { $available_at }.
     .trial-unavailable = Trial is not available.
@@ -78,3 +85,14 @@ platform-icon =
     .macos = 💻
     .linux = 🐧
     .default = ❓
+
+ntf-requirements =
+    .rules = Please read and accept the rules to continue.
+    .channel = Subscribe to our channel to continue.
+    .channel-not-found = We can't see your subscription yet. Subscribe and try again.
+
+btn-requirements =
+    .rules = Read the rules
+    .accept = I accept
+    .subscribe = Subscribe
+    .check = I've subscribed

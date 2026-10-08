@@ -224,6 +224,16 @@ allowed_importers =
     app.api.routers
     app.worker.subscribers
 
+[importlinter:contract:access-boundary]
+name = access internals are private
+type = protected
+protected_modules =
+    app.modules.access.*
+allowed_importers =
+    app.modules.access
+    app.api.routers
+    app.worker.subscribers
+
 [importlinter:contract:loyalty-boundary]
 name = loyalty internals are private
 type = protected

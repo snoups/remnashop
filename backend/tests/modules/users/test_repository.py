@@ -654,3 +654,15 @@ async def test_restore_purchase_discount_skips_an_order_without_a_promocode(
     restored = await user_repository.get_by_id(user.id)
     assert restored is not None
     assert restored.purchase_discount == 0
+
+
+async def test_get_many_by_ids_skips_missing(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    first = await _create_user(user_repository, uow, name="First")
+    second = await _create_user(user_repository, uow, name="Second")
+
+    async with uow:
+        found = await user_repository.get_many_by_ids([first.id, second.id, 999_999])
+
+    assert {user.id for user in found} == {first.id, second.id}

@@ -81,3 +81,17 @@ def test_render_falls_through_a_message_without_title() -> None:
 
 def test_missing_ip_reads_as_a_dash() -> None:
     assert notification_args({}, None) == {"ip": "—"}
+
+
+def test_text_falls_back_to_the_default_locale_and_misses_cleanly() -> None:
+    renderer = NotificationRenderer(
+        {
+            Locale.EN: "ntf-access =\n    .payments-restored = Back!\nplain = Hello\n",
+            Locale.RU: "plain = Привет\n",
+        },
+        default_locale=Locale.EN,
+    )
+
+    assert renderer.text(Locale.RU, "plain") == "Привет"
+    assert renderer.text(Locale.RU, "ntf-access.payments-restored") == "Back!"
+    assert renderer.text(Locale.RU, "ntf-access.missing") is None

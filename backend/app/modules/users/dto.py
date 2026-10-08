@@ -42,6 +42,7 @@ class UserDto(BaseDto, TimestampMixin):
     purchase_discount_promocode_id: Optional[int] = None
     loyalty_discount: int = 0
     loyalty_excluded: bool = False
+    rules_accepted_at: Optional[datetime] = None
 
     referral_code: Optional[str] = None
     points: Decimal = Decimal(0)

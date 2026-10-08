@@ -12,6 +12,7 @@ from app.core.actor import Actor
 from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from app.modules.transactions.api.schemas import (
     CreateTestPaymentRequest,
+    PaymentWaitlistCountResponse,
     TestPaymentResponse,
     TestPaymentStatusResponse,
     TransactionGatewayListResponse,
@@ -30,6 +31,7 @@ from app.modules.transactions.dto import (
 from app.modules.transactions.usecases import (
     CreateTestPaymentUseCase,
     FulfillTransactionUseCase,
+    GetPaymentWaitlistCountUseCase,
     GetTestPaymentStatusUseCase,
     GetTransactionSummaryUseCase,
     GetTransactionUseCase,
@@ -131,6 +133,15 @@ async def get_transaction_summary(
         ),
     )
     return TransactionSummaryResponse(**asdict(summary))
+
+
+@router.get("/waitlist", response_model=PaymentWaitlistCountResponse)
+@inject
+async def get_payment_waitlist_count(
+    use_case: FromDishka[GetPaymentWaitlistCountUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PaymentWaitlistCountResponse:
+    return PaymentWaitlistCountResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.get("/gateways", response_model=TransactionGatewayListResponse)

@@ -30,11 +30,16 @@ class Permission(UpperStrEnum):
     BOT_COMMANDS_VIEW = auto()
     BOT_SETTINGS_MANAGE = auto()
     BOT_COMMANDS_MANAGE = auto()
+    BOT_REQUIREMENTS_VIEW = auto()
+    BOT_REQUIREMENTS_MANAGE = auto()
     BOT_RESTART = auto()
     BOT_PROXY_SET = auto()
     BOT_PROXY_REMOVE = auto()
     SHOP_SETTINGS_VIEW = auto()
     SHOP_SETTINGS_MANAGE = auto()
+    ACCESS_SETTINGS_VIEW = auto()
+    ACCESS_SETTINGS_MANAGE = auto()
+    PAYMENT_WAITLIST_VIEW = auto()
     OAUTH_SETTINGS_VIEW = auto()
     OAUTH_SETTINGS_MANAGE = auto()
     BANNERS_IMAGE_VIEW = auto()
@@ -210,11 +215,16 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BOT_COMMANDS_VIEW: PermissionMeta(resource="bot_settings", kind="read"),
     Permission.BOT_SETTINGS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_COMMANDS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
+    Permission.BOT_REQUIREMENTS_VIEW: PermissionMeta(resource="bot_settings", kind="read"),
+    Permission.BOT_REQUIREMENTS_MANAGE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_RESTART: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_PROXY_SET: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.BOT_PROXY_REMOVE: PermissionMeta(resource="bot_settings", kind="write"),
     Permission.SHOP_SETTINGS_VIEW: PermissionMeta(resource="shop_settings", kind="read"),
     Permission.SHOP_SETTINGS_MANAGE: PermissionMeta(resource="shop_settings", kind="write"),
+    Permission.ACCESS_SETTINGS_VIEW: PermissionMeta(resource="access_settings", kind="read"),
+    Permission.ACCESS_SETTINGS_MANAGE: PermissionMeta(resource="access_settings", kind="write"),
+    Permission.PAYMENT_WAITLIST_VIEW: PermissionMeta(resource="access_settings", kind="read"),
     Permission.OAUTH_SETTINGS_VIEW: PermissionMeta(resource="oauth_settings", kind="read"),
     Permission.OAUTH_SETTINGS_MANAGE: PermissionMeta(resource="oauth_settings", kind="write"),
     Permission.BANNERS_IMAGE_VIEW: PermissionMeta(resource="banners", kind="read"),
@@ -467,11 +477,16 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.BOT_COMMANDS_VIEW,
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_COMMANDS_MANAGE,
+        Permission.BOT_REQUIREMENTS_VIEW,
+        Permission.BOT_REQUIREMENTS_MANAGE,
         Permission.BOT_RESTART,
         Permission.BOT_PROXY_SET,
         Permission.BOT_PROXY_REMOVE,
         Permission.SHOP_SETTINGS_VIEW,
         Permission.SHOP_SETTINGS_MANAGE,
+        Permission.ACCESS_SETTINGS_VIEW,
+        Permission.ACCESS_SETTINGS_MANAGE,
+        Permission.PAYMENT_WAITLIST_VIEW,
         Permission.BANNERS_IMAGE_VIEW,
         Permission.BANNERS_UPLOAD,
         Permission.BANNERS_DELETE,

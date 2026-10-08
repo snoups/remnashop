@@ -1,0 +1,42 @@
+from typing import Any, Awaitable, Callable, Optional
+
+from aiogram.types import CallbackQuery, Message, TelegramObject
+from dishka import AsyncContainer
+from fluentogram import TranslatorHub
+
+from app.core.constants import CONTAINER_KEY, USER_KEY
+from app.core.enums import MiddlewareEventType
+from app.modules.access import is_restricted_for
+from app.modules.settings import GetAccessSettingsUseCase
+from app.modules.users import UserDto
+from app.telegram.i18n import get_translator
+from app.telegram.middlewares.base import EventTypedMiddleware
+
+
+class AccessMiddleware(EventTypedMiddleware):
+    __event_types__ = [
+        MiddlewareEventType.MESSAGE,
+        MiddlewareEventType.CALLBACK_QUERY,
+    ]
+
+    async def middleware_logic(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        user: Optional[UserDto] = data.get(USER_KEY)
+        if user is None:
+            return await handler(event, data)
+
+        container: AsyncContainer = data[CONTAINER_KEY]
+        get_settings = await container.get(GetAccessSettingsUseCase)
+        if not is_restricted_for(user, await get_settings.system()):
+            return await handler(event, data)
+
+        text = get_translator(await container.get(TranslatorHub), user).get("ntf-access.restricted")
+        if isinstance(event, Message):
+            await event.answer(text)
+        elif isinstance(event, CallbackQuery):
+            await event.answer(text, show_alert=True)
+        return None

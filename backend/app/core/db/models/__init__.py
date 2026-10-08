@@ -1,3 +1,4 @@
+from app.core.db.models.access_settings import AccessSettings
 from app.core.db.models.active_locale import ActiveLocale
 from app.core.db.models.ad_link import AdLink
 from app.core.db.models.ad_link_attribution import AdLinkAttribution
@@ -14,6 +15,7 @@ from app.core.db.models.banner import Banner
 from app.core.db.models.blacklist import Blacklist
 from app.core.db.models.blacklist_source import BlacklistSource
 from app.core.db.models.bot_command import BotCommand
+from app.core.db.models.bot_requirements import BotRequirements
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.bot_translation import BotTranslation
 from app.core.db.models.currency_rate import CurrencyRate
@@ -28,6 +30,7 @@ from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.passkey_credential import PasskeyCredential
 from app.core.db.models.payment_gateway import PaymentGateway
+from app.core.db.models.payment_waitlist import PaymentWaitlistEntry
 from app.core.db.models.plan import Plan
 from app.core.db.models.plan_duration import PlanDuration
 from app.core.db.models.plan_price_override import PlanPriceOverride
@@ -45,6 +48,7 @@ from app.core.db.models.user import User
 from app.core.db.models.user_session import UserSession
 
 __all__ = [
+    "AccessSettings",
     "ActiveLocale",
     "AdLink",
     "AdLinkAttribution",
@@ -62,6 +66,7 @@ __all__ = [
     "Blacklist",
     "BlacklistSource",
     "BotCommand",
+    "BotRequirements",
     "BotSettings",
     "BotTranslation",
     "CurrencyRate",
@@ -77,6 +82,7 @@ __all__ = [
     "OAuthSettings",
     "PasskeyCredential",
     "PaymentGateway",
+    "PaymentWaitlistEntry",
     "Plan",
     "PlanDuration",
     "PlanPriceOverride",

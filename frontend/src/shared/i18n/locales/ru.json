@@ -664,7 +664,10 @@
       "SubscriptionPlanChangedByAdminEvent": "План подписки изменён администратором",
       "AddOnChangedEvent": "Дополнение изменено",
       "LoyaltySettingsChangedEvent": "Настройки лояльности изменены",
-      "UserLoyaltyExclusionChangedEvent": "Исключение из программы лояльности изменено"
+      "UserLoyaltyExclusionChangedEvent": "Исключение из программы лояльности изменено",
+      "AccessSettingsChangedEvent": "Настройки доступа изменены",
+      "BotRequirementsChangedEvent": "Требования бота изменены",
+      "UserRulesAcceptedEvent": "Правила приняты"
     }
   },
   "sidebar": {
@@ -932,12 +935,14 @@
     "openEventLog": "Открыть журнал событий",
     "searching": "Поиск…",
     "notificationsLoadError": "Не удалось загрузить уведомления.",
-    "entityNotFound": "Не найдено — возможно, уже удалено."
+    "entityNotFound": "Не найдено — возможно, уже удалено.",
+    "maintenance": "Техработы"
   },
   "settings": {
     "title": "Настройки",
     "tabs": {
       "general": "Общие",
+      "access": "Доступ",
       "bot": "Telegram-бот",
       "apiTokens": "API-токены",
       "appearance": "Внешний вид",
@@ -1224,6 +1229,37 @@
       "confirm": "Все устройства придётся подключить заново.",
       "generated": "Ключи сгенерированы.",
       "loadError": "Не удалось загрузить настройки веб-пуша."
+    },
+    "access": {
+      "title": "Доступ",
+      "description": "Кто может регистрироваться и платить — в боте и веб-кабинете",
+      "loadError": "Не удалось загрузить настройки доступа.",
+      "modes": {
+        "public": "Открыт для всех",
+        "invited": "Только по приглашению",
+        "restricted": "Закрыт (техработы)"
+      },
+      "modeHints": {
+        "public": "Зарегистрироваться может любой",
+        "invited": "Новичкам нужна реферальная или рекламная ссылка",
+        "restricted": "Ботом и кабинетом пользуются только сотрудники"
+      },
+      "registrationLabel": "Регистрация новых пользователей",
+      "paymentsLabel": "Приём платежей",
+      "waitlist_one": "Ждут оплаты: {{count}}",
+      "waitlist_few": "Ждут оплаты: {{count}}",
+      "waitlist_many": "Ждут оплаты: {{count}}",
+      "waitlist_other": "Ждут оплаты: {{count}}"
+    },
+    "botRequirements": {
+      "title": "Требования",
+      "description": "Что клиент должен сделать, прежде чем пользоваться ботом",
+      "rulesLabel": "Принять правила",
+      "rulesUrl": "Ссылка на правила",
+      "channelLabel": "Подписаться на канал",
+      "channelId": "ID канала",
+      "channelUrl": "Ссылка на канал",
+      "loadError": "Не удалось загрузить требования."
     }
   },
   "apiTokens": {
@@ -1578,7 +1614,12 @@
     "LOYALTY_SETTINGS_VIEW": "Просмотр настроек лояльности",
     "LOYALTY_SETTINGS_MANAGE": "Изменение настроек лояльности",
     "USERS_LOYALTY_VIEW": "Просмотр уровня лояльности пользователя",
-    "USERS_LOYALTY_MANAGE": "Исключение пользователя из программы лояльности"
+    "USERS_LOYALTY_MANAGE": "Исключение пользователя из программы лояльности",
+    "ACCESS_SETTINGS_VIEW": "Просмотр настроек доступа",
+    "ACCESS_SETTINGS_MANAGE": "Изменение настроек доступа",
+    "BOT_REQUIREMENTS_VIEW": "Просмотр требований бота",
+    "BOT_REQUIREMENTS_MANAGE": "Изменение требований бота",
+    "PAYMENT_WAITLIST_VIEW": "Просмотр листа ожидания оплаты"
   },
   "permissionCategories": {
     "botSettings": "Telegram-бот",
@@ -1607,7 +1648,8 @@
     "dialogs": "Окна бота",
     "emojiPacks": "Наборы эмодзи",
     "loyalty": "Лояльность",
-    "notificationSettings": "Веб-пуш"
+    "notificationSettings": "Веб-пуш",
+    "accessSettings": "Доступ"
   },
   "permissionPicker": {
     "loadError": "Не удалось загрузить список разрешений.",
@@ -3025,6 +3067,7 @@
     "progress": "{{shown}} из {{total}}"
   },
   "apiErrors": {
+    "ACCESS_RESTRICTED": "Сервис временно закрыт на техработы.",
     "ADDON_NAME_TAKEN": "Аддон с таким названием уже есть.",
     "ADDON_NOT_FOUND": "Аддон не найден.",
     "ADDON_REORDER_INCOMPLETE": "Новый порядок должен включать каждый аддон ровно один раз.",
@@ -3062,7 +3105,9 @@
     "BONUS_DAYS_SUBSCRIPTION_DISABLED": "Бонусные дни нельзя добавить к отключённой подписке.",
     "BONUS_DAYS_TRIAL_SUBSCRIPTION": "Бонусные дни нельзя добавить к пробной подписке.",
     "BOT_COMMANDS_MISMATCH": "Список команд устарел — обновите страницу.",
+    "BOT_REQUIREMENTS_INCOMPLETE": "Укажите ссылку (и ID канала) для каждого включённого требования.",
     "CANNOT_DELETE_SELF": "Нельзя удалить собственный аккаунт.",
+    "CHANNEL_NOT_ACCESSIBLE": "Бот не видит этот канал — добавьте его администратором и проверьте ID.",
     "COOLDOWN_ACTIVE": "Слишком рано — попробуйте позже.",
     "CSRF_FAILED": "Проверка безопасности не пройдена — обновите страницу.",
     "CURRENCY_RATE_MISSING": "Для этой валюты не задан курс.",
@@ -3160,6 +3205,7 @@
     "PAYMENT_GATEWAY_ERROR": "Платёжный шлюз вернул ошибку.",
     "PAYMENT_ORDER_NOT_FOUND": "Заказ не найден.",
     "PAYMENT_ORDER_NOT_FULFILLABLE": "По этой транзакции нельзя выдать подписку.",
+    "PAYMENTS_DISABLED": "Оплата временно недоступна.",
     "PERMISSION_DENIED": "Недостаточно прав.",
     "PERMISSION_NOT_GRANTABLE": "Некоторые из этих прав нельзя выдать.",
     "PLAN_CONFLICT": "Тариф конфликтует с существующим.",

@@ -10,6 +10,7 @@ from app.modules.notifications.usecases.push_subscriptions import (
     SendTestPushUseCase,
     SubscribePushUseCase,
 )
+from app.modules.notifications.usecases.send_telegram_texts import SendTelegramTextsUseCase
 from app.modules.notifications.usecases.settings import (
     GenerateVapidKeysUseCase,
     GetNotificationSettingsUseCase,
@@ -24,6 +25,7 @@ __all__ = [
     "GetNotificationSettingsUseCase",
     "GetPushPublicKeyUseCase",
     "ListPushSubscriptionsUseCase",
+    "SendTelegramTextsUseCase",
     "SendTestPushUseCase",
     "SubscribePushUseCase",
     "UpdateNotificationChannelsUseCase",

@@ -10,6 +10,7 @@ from app.modules.users.events import TelegramUserRegisteredEvent
 from app.modules.users.repository import UserRepository
 from app.modules.users.stats_repository import UserStatsRepository
 from app.modules.users.usecases import (
+    AcceptRulesUseCase,
     BlockBlacklistMatchesUseCase,
     BlockUserUseCase,
     GetCurrentUserUseCase,
@@ -20,6 +21,7 @@ from app.modules.users.usecases import (
 )
 
 __all__ = [
+    "AcceptRulesUseCase",
     "BlockBlacklistMatchesUseCase",
     "BlockUserUseCase",
     "CreateUserDto",

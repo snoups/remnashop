@@ -24,6 +24,7 @@ from app.core.utils.time import datetime_now
 from app.modules.gateways import GatewayRepository
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.pricing import PricingRepository
+from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.subscriptions import (
     PlanSnapshot,
     PurchaseEligibility,
@@ -43,6 +44,7 @@ from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.transactions.pricing import quote_price
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users import UserDto, UserRepository
 
 _ORDER_TTL: Final[timedelta] = timedelta(minutes=30)
@@ -70,6 +72,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         gateway_factory: PaymentGatewayFactory,
         purchase_dispatch: PurchaseSubscriptionDispatch,
         promocode_liveness: PromocodeLiveness,
+        get_access_settings: GetAccessSettingsUseCase,
+        waitlist_repository: WaitlistRepository,
     ) -> None:
         self._plan_repository = plan_repository
         self._user_repository = user_repository
@@ -82,6 +86,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._gateway_factory = gateway_factory
         self._purchase_dispatch = purchase_dispatch
         self._promocode_liveness = promocode_liveness
+        self._get_access_settings = get_access_settings
+        self._waitlist_repository = waitlist_repository
 
     @staticmethod
     def _resolve_customer_email(
@@ -99,6 +105,12 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
         if data.user_id != actor.id and not actor.is_privileged:
             raise PermissionDeniedError
+
+        if not (await self._get_access_settings.system()).payments_enabled:
+            # own transaction, so the refusal below doesn't roll it back
+            async with self._uow:
+                await self._waitlist_repository.add(data.user_id)
+            raise PermissionDeniedError("Payments are disabled", code=ErrorCode.PAYMENTS_DISABLED)
 
         async with self._uow:
             gateway_settings = await self._load_gateway_settings(data)

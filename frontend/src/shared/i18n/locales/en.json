@@ -628,7 +628,10 @@
       "SubscriptionPlanChangedByAdminEvent": "Subscription plan changed by admin",
       "AddOnChangedEvent": "Add-on changed",
       "LoyaltySettingsChangedEvent": "Loyalty settings changed",
-      "UserLoyaltyExclusionChangedEvent": "Loyalty program exclusion changed"
+      "UserLoyaltyExclusionChangedEvent": "Loyalty program exclusion changed",
+      "AccessSettingsChangedEvent": "Access settings changed",
+      "BotRequirementsChangedEvent": "Bot requirements changed",
+      "UserRulesAcceptedEvent": "Rules accepted"
     }
   },
   "sidebar": {
@@ -888,12 +891,14 @@
     "openEventLog": "Open the event log",
     "searching": "Searching…",
     "notificationsLoadError": "Failed to load notifications.",
-    "entityNotFound": "Not found — it may have been deleted."
+    "entityNotFound": "Not found — it may have been deleted.",
+    "maintenance": "Maintenance"
   },
   "settings": {
     "title": "Settings",
     "tabs": {
       "general": "General",
+      "access": "Access",
       "bot": "Telegram bot",
       "apiTokens": "API tokens",
       "appearance": "Appearance",
@@ -1180,6 +1185,35 @@
       "confirm": "Every device will have to turn push on again.",
       "generated": "Keys generated.",
       "loadError": "Failed to load web push settings."
+    },
+    "access": {
+      "title": "Access",
+      "description": "Who can sign up and pay — in the bot and the web cabinet",
+      "loadError": "Failed to load access settings.",
+      "modes": {
+        "public": "Open to everyone",
+        "invited": "Invite only",
+        "restricted": "Closed (maintenance)"
+      },
+      "modeHints": {
+        "public": "Anyone can sign up",
+        "invited": "New users need a referral or an ad link",
+        "restricted": "Only staff can use the bot and the cabinet"
+      },
+      "registrationLabel": "New user sign-ups",
+      "paymentsLabel": "Accept payments",
+      "waitlist_one": "{{count}} waiting to pay",
+      "waitlist_other": "{{count}} waiting to pay"
+    },
+    "botRequirements": {
+      "title": "Requirements",
+      "description": "What a customer must do before using the bot",
+      "rulesLabel": "Accept the rules",
+      "rulesUrl": "Rules link",
+      "channelLabel": "Subscribe to the channel",
+      "channelId": "Channel ID",
+      "channelUrl": "Channel link",
+      "loadError": "Failed to load requirements."
     }
   },
   "apiTokens": {
@@ -1534,7 +1568,12 @@
     "LOYALTY_SETTINGS_VIEW": "View loyalty settings",
     "LOYALTY_SETTINGS_MANAGE": "Edit loyalty settings",
     "USERS_LOYALTY_VIEW": "View a user's loyalty tier",
-    "USERS_LOYALTY_MANAGE": "Exclude a user from the loyalty program"
+    "USERS_LOYALTY_MANAGE": "Exclude a user from the loyalty program",
+    "ACCESS_SETTINGS_VIEW": "View access settings",
+    "ACCESS_SETTINGS_MANAGE": "Change access settings",
+    "BOT_REQUIREMENTS_VIEW": "View bot requirements",
+    "BOT_REQUIREMENTS_MANAGE": "Change bot requirements",
+    "PAYMENT_WAITLIST_VIEW": "View the payment waitlist"
   },
   "permissionCategories": {
     "botSettings": "Telegram bot",
@@ -1563,7 +1602,8 @@
     "dialogs": "Bot windows",
     "emojiPacks": "Emoji packs",
     "loyalty": "Loyalty",
-    "notificationSettings": "Web push"
+    "notificationSettings": "Web push",
+    "accessSettings": "Access"
   },
   "permissionPicker": {
     "loadError": "Failed to load permissions.",
@@ -2963,6 +3003,7 @@
     "progress": "{{shown}} of {{total}}"
   },
   "apiErrors": {
+    "ACCESS_RESTRICTED": "The service is temporarily closed for maintenance.",
     "ADDON_NAME_TAKEN": "An add-on with this name already exists.",
     "ADDON_NOT_FOUND": "Add-on not found.",
     "ADDON_REORDER_INCOMPLETE": "The new order must include every add-on exactly once.",
@@ -3000,7 +3041,9 @@
     "BONUS_DAYS_SUBSCRIPTION_DISABLED": "Bonus days can't be added to a disabled subscription.",
     "BONUS_DAYS_TRIAL_SUBSCRIPTION": "Bonus days can't be added to a trial subscription.",
     "BOT_COMMANDS_MISMATCH": "The command list is out of date — reload the page.",
+    "BOT_REQUIREMENTS_INCOMPLETE": "Fill in the link (and the channel ID) for every enabled requirement.",
     "CANNOT_DELETE_SELF": "You can't delete your own account.",
+    "CHANNEL_NOT_ACCESSIBLE": "The bot can't see this channel — add it as an admin and check the ID.",
     "COOLDOWN_ACTIVE": "Too soon — try again later.",
     "CSRF_FAILED": "Security check failed — reload the page.",
     "CURRENCY_RATE_MISSING": "No rate is set for this currency.",
@@ -3098,6 +3141,7 @@
     "PAYMENT_GATEWAY_ERROR": "The payment gateway returned an error.",
     "PAYMENT_ORDER_NOT_FOUND": "Order not found.",
     "PAYMENT_ORDER_NOT_FULFILLABLE": "This transaction can’t be fulfilled.",
+    "PAYMENTS_DISABLED": "Payments are temporarily unavailable.",
     "PERMISSION_DENIED": "You don't have permission for this.",
     "PERMISSION_NOT_GRANTABLE": "Some of these permissions can't be granted.",
     "PLAN_CONFLICT": "The plan conflicts with an existing one.",

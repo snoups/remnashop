@@ -38,6 +38,13 @@ ntf-devices =
     .all-deleted = Все устройства удалены.
     .reissued = Ссылка подключения перевыпущена.
 
+ntf-access =
+    .restricted = Сервис временно закрыт на техработы. Загляните позже.
+    .registration-disabled = Регистрация сейчас закрыта.
+    .invite-only = Регистрация только по приглашению. Попросите у друга реферальную ссылку.
+    .payments-disabled = Оплата временно недоступна. Мы напишем, когда она вернётся.
+    .payments-restored = Оплата снова доступна — можно завершить покупку.
+
 ntf-common =
     .cooldown-active = Повторить это действие можно после { $available_at }.
     .trial-unavailable = Пробный период недоступен.
@@ -78,3 +85,14 @@ platform-icon =
     .macos = 💻
     .linux = 🐧
     .default = ❓
+
+ntf-requirements =
+    .rules = Чтобы продолжить, прочитайте и примите правила.
+    .channel = Чтобы продолжить, подпишитесь на наш канал.
+    .channel-not-found = Пока не видим подписку. Подпишитесь и попробуйте ещё раз.
+
+btn-requirements =
+    .rules = Читать правила
+    .accept = Принимаю
+    .subscribe = Подписаться
+    .check = Я подписался

@@ -160,6 +160,14 @@ class UserRepository:
             return None
         return self._convert_to_dto(db_user)
 
+    async def get_many_by_ids(self, ids: list[int]) -> list[UserDto]:
+        users: list[UserDto] = []
+        for start in range(0, len(ids), MAX_SQL_IN_PARAMS):
+            chunk = ids[start : start + MAX_SQL_IN_PARAMS]
+            rows = await self.session.scalars(select(User).where(User.id.in_(chunk)))
+            users.extend(self._convert_to_dto_list(list(rows)))
+        return users
+
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[UserDto]:
         stmt = select(User).where(User.telegram_id == telegram_id)
         db_user = await self.session.scalar(stmt)
@@ -464,6 +472,15 @@ class UserRepository:
         db_user.permission_revokes = None
         db_user.ip_allowlist = None
 
+        await self.session.flush()
+        await self.session.refresh(db_user)
+        return self._convert_to_dto(db_user)
+
+    async def set_rules_accepted_at(self, user_id: int, accepted_at: datetime) -> UserDto:
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+        db_user.rules_accepted_at = accepted_at
         await self.session.flush()
         await self.session.refresh(db_user)
         return self._convert_to_dto(db_user)

@@ -152,6 +152,18 @@ class AdLinkChannel(UpperStrEnum):
     WEBCABINET = auto()
 
 
+class AccessMode(UpperStrEnum):
+    PUBLIC = auto()
+    INVITED = auto()
+    RESTRICTED = auto()
+
+
+class AccessDenial(UpperStrEnum):
+    RESTRICTED = auto()
+    REGISTRATION_DISABLED = auto()
+    INVITE_ONLY = auto()
+
+
 class TransactionStatus(UpperStrEnum):
     PENDING = auto()
     PAID = auto()

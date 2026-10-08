@@ -1,3 +1,4 @@
+from app.modules.users.usecases.accept_rules import AcceptRulesUseCase
 from app.modules.users.usecases.block_blacklist_matches import BlockBlacklistMatchesUseCase
 from app.modules.users.usecases.block_user import BlockUserUseCase
 from app.modules.users.usecases.create_admin import CreateAdminUseCase
@@ -21,6 +22,7 @@ from app.modules.users.usecases.update_own_profile import UpdateOwnProfileUseCas
 from app.modules.users.usecases.update_own_security_settings import UpdateOwnSecuritySettingsUseCase
 
 __all__ = [
+    "AcceptRulesUseCase",
     "BlacklistMatchOrigin",
     "BlockBlacklistMatchesUseCase",
     "BlockUserUseCase",

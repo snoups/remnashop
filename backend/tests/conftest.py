@@ -25,6 +25,7 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.ports import EventPublisher
+from app.modules.advertising.repository import AdLinkRepository
 from app.modules.announcements.repository import AnnouncementRepository
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.repository import SessionRepository
@@ -138,6 +139,11 @@ def uow(session: AsyncSession) -> UnitOfWork:
 @pytest.fixture
 def event_publisher(uow: UnitOfWork) -> EventPublisher:
     return OutboxEventPublisher(uow, RecordingDispatch())
+
+
+@pytest.fixture
+def ad_link_repository(session: AsyncSession) -> AdLinkRepository:
+    return AdLinkRepository(session)
 
 
 @pytest.fixture

@@ -6,6 +6,7 @@ from typing import Final
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.enums import (
+    AccessMode,
     AddOnType,
     AdLinkChannel,
     BackupKind,
@@ -43,6 +44,7 @@ _MIGRATION: Final[Path] = (
 # the Python enum it must stay in sync with. A persisted enum missing from
 # this map fails test_every_migration_enum_is_mapped.
 _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
+    "accessmode": AccessMode,
     "addontype": AddOnType,
     "adlinkchannel": AdLinkChannel,
     "backupkind": BackupKind,

@@ -2,7 +2,16 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, Numeric, String, text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -72,6 +81,8 @@ class User(BaseSql, TimestampMixin):
     )
     loyalty_discount: Mapped[int] = mapped_column(default=0, server_default="0")
     loyalty_excluded: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # NULL = never accepted; a date, not a flag, so changed rules can ask again
+    rules_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # Nullable: create() always generates one, a soft delete wipes it --
     # multiple NULLs are fine under a UNIQUE index.
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)

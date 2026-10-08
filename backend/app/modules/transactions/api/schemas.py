@@ -92,3 +92,7 @@ class TestPaymentResponse(BaseModel):
 
 class TestPaymentStatusResponse(BaseModel):
     status: TransactionStatus
+
+
+class PaymentWaitlistCountResponse(BaseModel):
+    total: int

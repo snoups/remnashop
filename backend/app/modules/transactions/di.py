@@ -9,6 +9,8 @@ from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
+    GetPaymentWaitlistCountUseCase,
+    NotifyPaymentWaitlistUseCase,
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
 )
@@ -23,6 +25,7 @@ from app.modules.transactions.usecases.list_transaction_gateways import (
     ListTransactionGatewaysUseCase,
 )
 from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
+from app.modules.transactions.waitlist_repository import WaitlistClaims, WaitlistRepository
 
 
 class TransactionsProvider(Provider):
@@ -30,6 +33,8 @@ class TransactionsProvider(Provider):
 
     transaction_repository = provide(TransactionRepository)
     transaction_stats_repository = provide(TransactionStatsRepository)
+    waitlist_repository = provide(WaitlistRepository)
+    waitlist_claims = provide(WaitlistClaims, scope=Scope.APP)
     anchor_amount_rescaler = alias(source=TransactionRepository, provides=AnchorAmountRescaler)
     use_cases = provide_all(
         CreateCheckoutUseCase,
@@ -40,7 +45,9 @@ class TransactionsProvider(Provider):
         ListTransactionGatewaysUseCase,
         GetTransactionUseCase,
         GetTransactionSummaryUseCase,
+        GetPaymentWaitlistCountUseCase,
         HandlePaymentWebhookUseCase,
+        NotifyPaymentWaitlistUseCase,
         PruneExpiredTransactionsUseCase,
         ReconcilePaidTransactionsUseCase,
     )

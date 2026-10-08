@@ -77,3 +77,8 @@ class UserPurchaseDiscountChangedEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
     old_percent: int
     new_percent: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserRulesAcceptedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER

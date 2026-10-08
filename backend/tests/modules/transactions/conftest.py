@@ -5,6 +5,7 @@ from app.core.enums import PlanType
 from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -12,6 +13,11 @@ from app.modules.users.repository import UserRepository
 @pytest.fixture
 def transaction_repository(session: AsyncSession) -> TransactionRepository:
     return TransactionRepository(session)
+
+
+@pytest.fixture
+def waitlist_repository(session: AsyncSession) -> WaitlistRepository:
+    return WaitlistRepository(session)
 
 
 @pytest.fixture

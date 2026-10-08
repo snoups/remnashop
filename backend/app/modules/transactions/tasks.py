@@ -7,6 +7,7 @@ from redis.asyncio import Redis
 from app.core.utils.lock import cron_lock
 from app.modules.transactions.dto import ReconcilePaidTransactionsDto
 from app.modules.transactions.usecases import (
+    NotifyPaymentWaitlistUseCase,
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
 )
@@ -36,3 +37,11 @@ async def reconcile_paid_transactions_task(
             logger.debug("reconcile_paid_transactions_task already running, skipping this tick")
             return
         await use_case.system(ReconcilePaidTransactionsDto())
+
+
+@broker.task
+@inject(patch_module=True)
+async def notify_payment_waitlist_task(
+    use_case: FromDishka[NotifyPaymentWaitlistUseCase],
+) -> None:
+    await use_case.system()

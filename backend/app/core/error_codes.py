@@ -6,6 +6,7 @@ from app.core.enums import UpperStrEnum
 # Stable, machine-readable error identifiers sent to clients as "code" next to
 # the human-readable "detail"; the dashboard translates them by this name.
 class ErrorCode(UpperStrEnum):
+    ACCESS_RESTRICTED = auto()
     ADDON_NAME_TAKEN = auto()
     ADDON_NOT_FOUND = auto()
     ADDON_REORDER_INCOMPLETE = auto()
@@ -44,7 +45,9 @@ class ErrorCode(UpperStrEnum):
     BONUS_DAYS_TRIAL_SUBSCRIPTION = auto()
     BOT_COMMANDS_MISMATCH = auto()
     BOT_PROXY_URL_INVALID = auto()
+    BOT_REQUIREMENTS_INCOMPLETE = auto()
     CANNOT_DELETE_SELF = auto()
+    CHANNEL_NOT_ACCESSIBLE = auto()
     COOLDOWN_ACTIVE = auto()
     CSRF_FAILED = auto()
     CURRENCY_RATE_MISSING = auto()
@@ -142,6 +145,7 @@ class ErrorCode(UpperStrEnum):
     PAYMENT_GATEWAY_ERROR = auto()
     PAYMENT_ORDER_NOT_FOUND = auto()
     PAYMENT_ORDER_NOT_FULFILLABLE = auto()
+    PAYMENTS_DISABLED = auto()
     PERMISSION_DENIED = auto()
     PERMISSION_NOT_GRANTABLE = auto()
     PLAN_CONFLICT = auto()

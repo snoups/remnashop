@@ -148,3 +148,10 @@ class DeliverNotificationDto:
     payload: dict[str, Any]
     actor_id: Optional[int]
     ip_address: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SendTelegramTextsDto:
+    user_ids: list[int]
+    # "<message>.<attribute>" from the bot's translations
+    key: str

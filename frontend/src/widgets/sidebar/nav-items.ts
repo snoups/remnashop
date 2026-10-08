@@ -66,11 +66,12 @@ export interface SettingsTab {
 
 export const SETTINGS_TABS: SettingsTab[] = [
   { key: "general", to: "", icon: SlidersHorizontal, anyOf: ["SHOP_SETTINGS_VIEW", "OAUTH_SETTINGS_VIEW", "NOTIFICATION_SETTINGS_VIEW"] },
+  { key: "access", to: "access", icon: ShieldCheck, anyOf: ["ACCESS_SETTINGS_VIEW"] },
   {
     key: "bot",
     to: "bot",
     icon: Bot,
-    anyOf: ["BOT_SETTINGS_VIEW", "BOT_COMMANDS_VIEW", "DIALOGS_CATALOG_VIEW", "TRANSLATIONS_VIEW", "EMOJI_PACKS_VIEW"],
+    anyOf: ["BOT_SETTINGS_VIEW", "BOT_REQUIREMENTS_VIEW", "BOT_COMMANDS_VIEW", "DIALOGS_CATALOG_VIEW", "TRANSLATIONS_VIEW", "EMOJI_PACKS_VIEW"],
   },
   { key: "apiTokens", to: "api-tokens", icon: KeyRound, anyOf: ["API_TOKENS_MANAGE"] },
   {

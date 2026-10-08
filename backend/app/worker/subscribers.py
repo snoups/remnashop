@@ -11,6 +11,9 @@ from app.modules.notifications.subscribers import (
 )
 from app.modules.oauth.subscribers import register_subscribers as register_oauth_subscribers
 from app.modules.referrals.subscribers import register_subscribers as register_referral_subscribers
+from app.modules.transactions.subscribers import (
+    register_subscribers as register_transaction_subscribers,
+)
 
 
 def register_all_subscribers(bus: EventBus) -> None:
@@ -21,4 +24,5 @@ def register_all_subscribers(bus: EventBus) -> None:
     register_advertising_subscribers(bus)
     register_loyalty_subscribers(bus)
     register_notification_subscribers(bus)
+    register_transaction_subscribers(bus)
     logger.debug(f"Event bus ready: {bus.handler_count} handler(s) registered")

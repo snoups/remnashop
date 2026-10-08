@@ -4,6 +4,7 @@ from pydantic import SecretStr, ValidationError
 from app.modules.settings.api.schemas import (
     BotCommandItem,
     OAuthSettingsResponse,
+    UpdateBotRequirementsRequest,
     UpdateOAuthSettingsRequest,
 )
 from app.modules.settings.dto import BotSettingsDto
@@ -63,3 +64,11 @@ def test_bot_settings_is_configured_still_works_with_secretstr() -> None:
     assert BotSettingsDto(token=SecretStr("t"), secret_token=SecretStr("s")).is_configured
     assert not BotSettingsDto(token=SecretStr("t")).is_configured
     assert not BotSettingsDto().is_configured
+
+
+def test_bot_requirements_channel_id_is_bounded_to_int64() -> None:
+    UpdateBotRequirementsRequest(channel_id=-(2**63))
+    UpdateBotRequirementsRequest(channel_id=2**63 - 1)
+    for value in (2**63, -(2**63) - 1):
+        with pytest.raises(ValidationError):
+            UpdateBotRequirementsRequest(channel_id=value)

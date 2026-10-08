@@ -5,6 +5,7 @@ import { DashboardLayout } from "@widgets/dashboard-layout/DashboardLayout";
 import { AppRouteError, PageRouteError } from "@widgets/route-error/RouteError";
 
 import {
+  AccessSettingsPage,
   AdminsPage,
   AdvertisingPage,
   AnalyticsFunnelPage,
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
                 element: <SettingsPage />,
                 children: [
                   { index: true, element: <GeneralSettingsPage /> },
+                  { path: "access", element: <AccessSettingsPage /> },
                   { path: "bot", element: <BotSettingsPage /> },
                   { path: "api-tokens", element: <ApiTokensPage /> },
                   { path: "appearance", element: <AppearanceSettingsPage /> },
