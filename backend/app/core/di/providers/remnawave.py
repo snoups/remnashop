@@ -14,7 +14,6 @@ class RemnawaveProvider(Provider):
 
     @provide
     async def get_remnawave(self, config: AppConfig) -> AsyncIterator[RemnawaveSDK]:
-        assert config.remnawave.token is not None
         logger.debug("Initializing RemnawaveSDK")
 
         headers = {}

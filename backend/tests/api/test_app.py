@@ -40,10 +40,20 @@ def test_health_returns_ok(config: AppConfig, readyz_container: AsyncContainer) 
     assert response.json() == {"status": "ok"}
 
 
+def test_metrics_endpoint_is_absent_by_default(
+    config: AppConfig, readyz_container: AsyncContainer
+) -> None:
+    app = get_app(config.model_copy(update={"metrics_enabled": False}))
+    setup_dishka(readyz_container, app)
+    client = TestClient(app)
+
+    assert client.get("/metrics").status_code == 404
+
+
 def test_metrics_endpoint_exposes_prometheus_text_format(
     config: AppConfig, readyz_container: AsyncContainer
 ) -> None:
-    app = get_app(config)
+    app = get_app(config.model_copy(update={"metrics_enabled": True}))
     setup_dishka(readyz_container, app)
     client = TestClient(app)
     client.get("/health")
@@ -57,7 +67,7 @@ def test_metrics_endpoint_exposes_prometheus_text_format(
 async def test_metrics_is_exempt_from_the_global_rate_limit(
     config: AppConfig, readyz_container: AsyncContainer, redis: Redis
 ) -> None:
-    app = get_app(config)
+    app = get_app(config.model_copy(update={"metrics_enabled": True}))
     setup_dishka(readyz_container, app)
     key = "remnashop:ratelimit:global:ip:203.0.113.23"
     await redis.delete(key)

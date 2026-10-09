@@ -64,9 +64,9 @@ services:
       timeout: 10s
       retries: 3
 
-  remnashop-api:
-    container_name: "remnashop-api-local"
-    hostname: remnashop-api
+  remnashop:
+    container_name: "remnashop-local"
+    hostname: remnashop
     build:
       context: .
       dockerfile: Dockerfile.local
@@ -107,7 +107,7 @@ services:
     ports:
       - 127.0.0.1:${BOT_PORT:-5001}:${BOT_PORT:-5001}
     depends_on:
-      remnashop-api:
+      remnashop:
         condition: service_healthy
 
   remnashop-worker:
@@ -123,9 +123,9 @@ services:
       - remnashop-media-data:/opt/remnashop/media
     command: ["worker"]
     ports:
-      - 127.0.0.1:${WORKER_METRICS_PORT:-9110}:${APP_METRICS_PORT:-9110}
+      - 127.0.0.1:${APP_METRICS_PORT:-9110}:${APP_METRICS_PORT:-9110}
     depends_on:
-      remnashop-api:
+      remnashop:
         condition: service_healthy
 
   remnashop-scheduler:
@@ -137,7 +137,7 @@ services:
     <<: [*build-volumes, *common, *logging, *env]
     command: ["scheduler"]
     depends_on:
-      remnashop-api:
+      remnashop:
         condition: service_healthy
 
   remnashop-frontend:
@@ -150,14 +150,14 @@ services:
       - /opt/frontend/node_modules
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     environment:
-      VITE_API_PROXY_TARGET: http://remnashop-api:5000
+      VITE_API_PROXY_TARGET: http://remnashop:5000
     restart: unless-stopped
     networks:
       - remnawave-network
     ports:
       - 127.0.0.1:5173:5173
     depends_on:
-      remnashop-api:
+      remnashop:
         condition: service_healthy
 
 networks:

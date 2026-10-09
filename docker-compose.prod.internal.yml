@@ -60,9 +60,9 @@ services:
       timeout: 10s
       retries: 3
 
-  remnashop-api:
-    container_name: "remnashop-api"
-    hostname: remnashop-api
+  remnashop:
+    container_name: "remnashop"
+    hostname: remnashop
     <<: [*build, *common, *logging, *env]
     command: ["api"]
     volumes:
@@ -94,7 +94,7 @@ services:
     ports:
       - 127.0.0.1:${BOT_PORT:-5001}:${BOT_PORT:-5001}
     depends_on:
-      remnashop-api:
+      remnashop:
         condition: service_healthy
 
   remnashop-worker:
@@ -106,9 +106,9 @@ services:
       - ./logs:/opt/remnashop/logs
       - remnashop-media-data:/opt/remnashop/media
     ports:
-      - 127.0.0.1:${WORKER_METRICS_PORT:-9110}:${APP_METRICS_PORT:-9110}
+      - 127.0.0.1:${APP_METRICS_PORT:-9110}:${APP_METRICS_PORT:-9110}
     depends_on:
-      remnashop-api:
+      remnashop:
         condition: service_healthy
 
   remnashop-scheduler:
@@ -119,7 +119,7 @@ services:
     volumes:
       - ./logs:/opt/remnashop/logs
     depends_on:
-      remnashop-api:
+      remnashop:
         condition: service_healthy
 
 networks:

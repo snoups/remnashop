@@ -22,6 +22,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     domain: SecretStr
     host: str = "0.0.0.0"
     port: int = 5000
+    metrics_enabled: bool = False
     metrics_port: int = 9110
 
     default_locale: Locale = Locale.EN

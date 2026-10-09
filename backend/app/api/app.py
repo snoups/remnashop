@@ -168,9 +168,10 @@ def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
 
     app.include_router(probes_router)
 
-    Instrumentator().instrument(app, metric_namespace="remnashop").expose(
-        app, include_in_schema=False
-    )
+    if config.metrics_enabled:
+        Instrumentator().instrument(app, metric_namespace="remnashop").expose(
+            app, include_in_schema=False
+        )
 
     _setup_spa_serving(app, frontend_dist)
 

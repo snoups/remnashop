@@ -25,7 +25,8 @@ async def _setup_worker_container(state: TaskiqState) -> None:
     ProcessCollector(registry=WORKER_METRICS_REGISTRY)
     PlatformCollector(registry=WORKER_METRICS_REGISTRY)
     GCCollector(registry=WORKER_METRICS_REGISTRY)
-    start_http_server(config.metrics_port, registry=WORKER_METRICS_REGISTRY)
+    if config.metrics_enabled:
+        start_http_server(config.metrics_port, registry=WORKER_METRICS_REGISTRY)
     container = create_worker_container(config)
     state.worker_container = container
     setup_dishka(container, broker)

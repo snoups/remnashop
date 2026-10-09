@@ -10,7 +10,7 @@ from app.core.utils.validators import is_valid_domain
 
 class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
     host: SecretStr = SecretStr("http://remnawave:3000")
-    token: Optional[SecretStr] = None
+    token: SecretStr
     caddy_token: SecretStr = SecretStr("")
     cf_client_id: SecretStr = SecretStr("")
     cf_client_secret: SecretStr = SecretStr("")
@@ -49,7 +49,13 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
 
         return cookies
 
-    @field_validator("token", "webhook_secret")
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, field: SecretStr, info: ValidationInfo) -> SecretStr:
+        validate_not_change_me(field, info)
+        return field
+
+    @field_validator("webhook_secret")
     @classmethod
     def validate_optional_secret(
         cls, field: Optional[SecretStr], info: ValidationInfo
