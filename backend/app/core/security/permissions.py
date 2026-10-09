@@ -52,6 +52,7 @@ class Permission(UpperStrEnum):
     LOCALES_VIEW = auto()
     LOCALES_ADD = auto()
     LOCALES_REMOVE = auto()
+    LOCALES_DEFAULT_SET = auto()
     TRANSLATIONS_VIEW = auto()
     TRANSLATIONS_UPDATE = auto()
     TRANSLATIONS_RESET = auto()
@@ -255,6 +256,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.LOCALES_VIEW: PermissionMeta(resource="locales", kind="read"),
     Permission.LOCALES_ADD: PermissionMeta(resource="locales", kind="write"),
     Permission.LOCALES_REMOVE: PermissionMeta(resource="locales", kind="write"),
+    Permission.LOCALES_DEFAULT_SET: PermissionMeta(resource="locales", kind="write"),
     Permission.TRANSLATIONS_VIEW: PermissionMeta(resource="translations", kind="read"),
     Permission.TRANSLATIONS_UPDATE: PermissionMeta(resource="translations", kind="write"),
     Permission.TRANSLATIONS_RESET: PermissionMeta(resource="translations", kind="write"),
@@ -544,6 +546,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.LOCALES_VIEW,
         Permission.LOCALES_ADD,
         Permission.LOCALES_REMOVE,
+        Permission.LOCALES_DEFAULT_SET,
         Permission.TRANSLATIONS_VIEW,
         Permission.TRANSLATIONS_UPDATE,
         Permission.TRANSLATIONS_RESET,

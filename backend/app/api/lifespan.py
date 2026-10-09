@@ -47,7 +47,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await ensure_blacklist_sources_seeded(blacklist_repository)
 
             banner_repository = await startup_container.get(BannerRepository)
-            await ensure_default_banner_seeded(banner_repository, config)
+            await ensure_default_banner_seeded(
+                banner_repository, config, await translation_repository.get_default_locale()
+            )
 
             dialog_repository = await startup_container.get(DialogRepository)
             await ensure_dialogs_seeded(dialog_repository, translation_repository)

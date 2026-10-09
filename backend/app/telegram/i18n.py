@@ -43,9 +43,8 @@ async def read_translator_hub(config: AppConfig) -> TranslatorHub:
             translations_by_locale = await translation_repository.get_fluent_text_by_locale(
                 active_locales
             )
-            return build_translator_hub(
-                active_locales, translations_by_locale, config.default_locale
-            )
+            default_locale = await translation_repository.get_default_locale()
+            return build_translator_hub(active_locales, translations_by_locale, default_locale)
     finally:
         await engine.dispose()
 

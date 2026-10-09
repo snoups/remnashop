@@ -3,7 +3,6 @@ import pytest
 from redis.asyncio import Redis
 
 from app.core.bot_signals import RedisBotSignals
-from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
@@ -59,14 +58,13 @@ async def test_owner_can_update_translation_value(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -85,7 +83,6 @@ async def test_update_translation_rejects_invalid_fluent_syntax(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     async with uow:
@@ -93,7 +90,7 @@ async def test_update_translation_rejects_invalid_fluent_syntax(
     use_case = UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -114,7 +111,6 @@ async def test_update_translation_rejects_placeables(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     async with uow:
@@ -122,7 +118,7 @@ async def test_update_translation_rejects_placeables(
     use_case = UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -143,14 +139,13 @@ async def test_update_translation_raises_not_found_for_unknown_key(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -167,14 +162,13 @@ async def test_reset_translation_raises_not_found_for_unknown_key(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
     use_case = ResetTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -190,7 +184,6 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
@@ -214,7 +207,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     use_case = UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
     await use_case(
@@ -232,14 +225,13 @@ async def test_owner_can_reset_translation_to_default(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
     update_use_case = UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
     await update_use_case(
@@ -251,7 +243,7 @@ async def test_owner_can_reset_translation_to_default(
     reset_use_case = ResetTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -266,14 +258,13 @@ async def test_regular_user_cannot_update_translation(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
     use_case = UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -305,14 +296,13 @@ async def test_import_applies_known_keys_and_skips_the_rest(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
     use_case = ImportTranslationsUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -346,13 +336,12 @@ async def test_import_rejects_a_foreign_export_version(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     use_case = ImportTranslationsUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )
 
@@ -364,14 +353,13 @@ async def test_reset_all_restores_every_edited_string(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     await _seed(settings_repository, translation_repository)
     await UpdateTranslationUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )(
         OWNER,
@@ -383,7 +371,7 @@ async def test_reset_all_restores_every_edited_string(
     await ResetAllTranslationsUseCase(
         translation_repository,
         uow,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
     )(OWNER)
 

@@ -103,3 +103,25 @@ async def test_seeding_only_activates_locales_with_a_seed_file(
     await ensure_translations_seeded(en_only_config, translation_repository)
 
     assert await translation_repository.list_active_locales() == [Locale.EN]
+
+
+async def test_seeding_fills_new_keys_into_a_dashboard_added_locale(
+    tmp_path: Path,
+    config: AppConfig,
+    translation_repository: TranslationRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    seed_config = _seed_config(config, tmp_path)
+    await ensure_translations_seeded(seed_config, translation_repository)
+    await translation_repository.add_active_locale(Locale.DE)
+    await translation_repository.seed_missing(Locale.DE, "command", "menu", "Hauptmenü")
+    (tmp_path / "translations" / "en" / "commands.ftl").write_text(
+        "command =\n    .menu = Open the main menu\n    .help = Get help\n"
+    )
+
+    await ensure_translations_seeded(seed_config, translation_repository)
+
+    added = await translation_repository.get(Locale.DE, "command", "help")
+    kept = await translation_repository.get(Locale.DE, "command", "menu")
+    assert added is not None and added.value == "Get help"
+    assert kept is not None and kept.value == "Hauptmenü"

@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
@@ -13,12 +12,17 @@ from app.core.exceptions import (
 )
 from app.core.ports import EventPublisher
 from app.modules.settings.repository import SettingsRepository
-from app.modules.translations.events import LocaleActivatedEvent, LocaleDeactivatedEvent
+from app.modules.translations.events import (
+    DefaultLocaleChangedEvent,
+    LocaleActivatedEvent,
+    LocaleDeactivatedEvent,
+)
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.usecases import (
     AddLocaleUseCase,
     ListActiveLocalesUseCase,
     RemoveLocaleUseCase,
+    SetDefaultLocaleUseCase,
 )
 from app.modules.users.dto import UserDto
 from tests.modules.settings.factories import make_bot_commands_sync
@@ -49,19 +53,18 @@ async def test_owner_can_add_and_list_active_locales(
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     add_use_case = AddLocaleUseCase(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
     )
     list_use_case = ListActiveLocalesUseCase(translation_repository, uow)
 
     await add_use_case(OWNER, Locale.RU)
 
-    assert set(await list_use_case(OWNER)) == {Locale.RU}
+    assert set((await list_use_case(OWNER)).active) == {Locale.RU}
 
 
 async def test_add_locale_copies_english_translations_in_the_same_transaction(
@@ -69,7 +72,6 @@ async def test_add_locale_copies_english_translations_in_the_same_transaction(
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     # The dashboard re-reads the translations as soon as this returns, so the
     # copy cannot wait on a worker task.
@@ -79,7 +81,7 @@ async def test_add_locale_copies_english_translations_in_the_same_transaction(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
     )
 
     await add_use_case(OWNER, Locale.RU)
@@ -94,7 +96,6 @@ async def test_add_locale_keeps_the_translations_of_a_reactivated_locale(
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     await translation_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
     await translation_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
@@ -103,7 +104,7 @@ async def test_add_locale_keeps_the_translations_of_a_reactivated_locale(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
     )
 
     await add_use_case(OWNER, Locale.RU)
@@ -119,13 +120,12 @@ async def test_add_locale_publishes_locale_activated_event(
     uow: UnitOfWork,
     session: AsyncSession,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     add_use_case = AddLocaleUseCase(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
     )
 
     await add_use_case(OWNER, Locale.RU)
@@ -146,13 +146,12 @@ async def test_add_locale_is_idempotent(
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     add_use_case = AddLocaleUseCase(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
     )
     first = await add_use_case(OWNER, Locale.RU)
 
@@ -165,20 +164,18 @@ async def test_remove_locale_publishes_locale_deactivated_event(
     uow: UnitOfWork,
     session: AsyncSession,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     add_use_case = AddLocaleUseCase(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
     )
     remove_use_case = RemoveLocaleUseCase(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
-        config,
+        make_bot_commands_sync(settings_repository.session, uow),
     )
     await add_use_case(OWNER, Locale.RU)
 
@@ -194,44 +191,80 @@ async def test_remove_locale_publishes_locale_deactivated_event(
     assert row.payload["locale"] == Locale.RU
 
 
+def _locale_use_cases(
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> tuple[AddLocaleUseCase, RemoveLocaleUseCase, SetDefaultLocaleUseCase]:
+    bot_commands = make_bot_commands_sync(translation_repository.session, uow)
+    return (
+        AddLocaleUseCase(translation_repository, uow, event_publisher, bot_commands),
+        RemoveLocaleUseCase(translation_repository, uow, event_publisher, bot_commands),
+        SetDefaultLocaleUseCase(translation_repository, uow, event_publisher, bot_commands),
+    )
+
+
 async def test_remove_locale_rejects_the_default_locale(
-    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
-    remove_use_case = RemoveLocaleUseCase(
-        TranslationRepository(settings_repository.session),
-        uow,
-        event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
-        config,
-    )
+    add, remove, _ = _locale_use_cases(translation_repository, uow, event_publisher)
+    await add(OWNER, Locale.EN)
+    await translation_repository.set_default_locale(Locale.EN)
 
     with pytest.raises(ValidationError):
-        await remove_use_case(OWNER, config.default_locale)
+        await remove(OWNER, Locale.EN)
 
 
-async def test_remove_locale_rejects_a_non_en_default_locale(
-    settings_repository: SettingsRepository,
+async def test_set_default_locale_moves_the_removal_guard(
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+    event_publisher: EventPublisher,
+) -> None:
+    add, remove, set_default = _locale_use_cases(translation_repository, uow, event_publisher)
+    await add(OWNER, Locale.EN)
+    await add(OWNER, Locale.RU)
+    await translation_repository.set_default_locale(Locale.EN)
+
+    locales = await set_default(OWNER, Locale.RU)
+
+    assert locales.default == Locale.RU
+    assert set((await remove(OWNER, Locale.EN)).active) == {Locale.RU}
+    with pytest.raises(ValidationError):
+        await remove(OWNER, Locale.RU)
+    row = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == DefaultLocaleChangedEvent.__name__
+            )
+        )
+    ).one()
+    assert row.payload["locale"] == Locale.RU
+
+
+async def test_set_default_locale_rejects_an_inactive_locale(
+    translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
-    # The guard has to follow APP_DEFAULT_LOCALE, not a hardcoded `en`: the
-    # default locale is the TranslatorHub's root_locale, and losing it crashes
-    # the telegram process on startup rather than just dropping a language.
-    ru_default = config.model_copy(update={"default_locale": Locale.RU})
-    remove_use_case = RemoveLocaleUseCase(
-        TranslationRepository(settings_repository.session),
-        uow,
-        event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, ru_default),
-        ru_default,
-    )
+    _, _, set_default = _locale_use_cases(translation_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
-        await remove_use_case(OWNER, Locale.RU)
+        await set_default(OWNER, Locale.DE)
+
+
+async def test_regular_user_cannot_set_default_locale(
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    add, _, set_default = _locale_use_cases(translation_repository, uow, event_publisher)
+    await add(OWNER, Locale.RU)
+
+    with pytest.raises(PermissionDeniedError):
+        await set_default(REGULAR_USER, Locale.RU)
 
 
 async def test_regular_user_cannot_add_locale(
@@ -239,13 +272,12 @@ async def test_regular_user_cannot_add_locale(
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     add_use_case = AddLocaleUseCase(
         translation_repository,
         uow,
         event_publisher,
-        make_bot_commands_sync(settings_repository.session, uow, config),
+        make_bot_commands_sync(settings_repository.session, uow),
     )
 
     with pytest.raises(PermissionDeniedError):

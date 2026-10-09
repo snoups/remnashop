@@ -31,6 +31,7 @@ class _FakeRunner:
 
 class _FakeHub:
     translators_map = {"en": [], "ru": []}
+    root_locale = "en"
 
     def get_translator_by_locale(self, locale: str) -> _FakeRunner:
         return _FakeRunner()

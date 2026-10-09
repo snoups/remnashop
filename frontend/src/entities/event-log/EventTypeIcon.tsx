@@ -78,6 +78,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   TelegramUserRegisteredEvent: Send,
   LocaleActivatedEvent: Languages,
   LocaleDeactivatedEvent: Languages,
+  DefaultLocaleChangedEvent: Languages,
   AnchorSwitchedEvent: Anchor,
   BasePricesAdjustedEvent: Tags,
   ApiTokenCreatedEvent: KeyRound,

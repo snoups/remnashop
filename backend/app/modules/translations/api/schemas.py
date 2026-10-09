@@ -40,3 +40,8 @@ class TranslationEntryListResponse(BaseModel):
 class ActiveLocalesResponse(BaseModel):
     active: list[Locale]
     available: list[Locale]
+    default: Locale
+
+
+class UpdateLocalesRequest(BaseModel):
+    default: Locale

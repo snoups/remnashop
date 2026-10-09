@@ -1,6 +1,5 @@
 from loguru import logger
 
-from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.modules.settings.command_translations import (
@@ -21,13 +20,11 @@ class BotCommandsPusher:
         settings_repository: SettingsRepository,
         translation_repository: TranslationRepository,
         get_bot_commands: GetBotCommandsUseCase,
-        config: AppConfig,
         uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
         self._translation_repository = translation_repository
         self._get_bot_commands = get_bot_commands
-        self._config = config
         self._uow = uow
 
     async def push(self) -> bool:
@@ -44,6 +41,7 @@ class BotCommandsPusher:
                 translations_by_locale = (
                     await self._translation_repository.get_fluent_text_by_locale(active_locales)
                 )
+                default_locale = await self._translation_repository.get_default_locale()
         except Exception:
             logger.exception("Failed to prepare bot commands for the Telegram push")
             return False
@@ -53,7 +51,7 @@ class BotCommandsPusher:
             [item for item in commands if item.enabled],
             active_locales,
             translations_by_locale,
-            self._config.default_locale,
+            default_locale,
         )
 
     async def drop_locale(self, locale: Locale) -> None:

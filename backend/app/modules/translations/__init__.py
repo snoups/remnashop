@@ -4,7 +4,11 @@ from app.modules.translations.dto import (
     TranslationEntryDto,
     UpdateTranslationDto,
 )
-from app.modules.translations.events import LocaleActivatedEvent, LocaleDeactivatedEvent
+from app.modules.translations.events import (
+    DefaultLocaleChangedEvent,
+    LocaleActivatedEvent,
+    LocaleDeactivatedEvent,
+)
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.seed import ensure_translations_seeded
 from app.modules.translations.serializer import (
@@ -25,11 +29,13 @@ from app.modules.translations.usecases import (
     RemoveLocaleUseCase,
     ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
+    SetDefaultLocaleUseCase,
     UpdateTranslationUseCase,
 )
 
 __all__ = [
     "AddLocaleUseCase",
+    "DefaultLocaleChangedEvent",
     "ExportTranslationsUseCase",
     "ImportTranslationsUseCase",
     "ListActiveLocalesUseCase",
@@ -40,6 +46,7 @@ __all__ = [
     "ResetAllTranslationsUseCase",
     "ResetTranslationDto",
     "ResetTranslationUseCase",
+    "SetDefaultLocaleUseCase",
     "TranslationEntryDto",
     "TranslationRepository",
     "UpdateTranslationDto",

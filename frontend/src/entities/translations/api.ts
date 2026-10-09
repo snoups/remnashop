@@ -1,9 +1,10 @@
-import { apiDelete, apiGet, apiPost, apiPut } from "@shared/api/http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
 
 export interface ActiveLocalesResult {
   active: string[];
   available: string[];
+  default: string;
 }
 
 export interface TranslationEntry {
@@ -24,6 +25,10 @@ export function addLocale(locale: string): Promise<ActiveLocalesResult> {
 
 export function removeLocale(locale: string): Promise<ActiveLocalesResult> {
   return apiDelete<ActiveLocalesResult>(`/settings/locales/${locale}`);
+}
+
+export function setDefaultLocale(locale: string): Promise<ActiveLocalesResult> {
+  return apiPatch<ActiveLocalesResult, { default: string }>("/settings/locales", { default: locale });
 }
 
 export function listTranslations(signal?: AbortSignal): Promise<TranslationEntry[]> {

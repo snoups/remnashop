@@ -98,8 +98,16 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
+        sa.Column("is_default", sa.Boolean(), server_default="false", nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("locale", name="ux_active_locales_locale"),
+    )
+    op.create_index(
+        "ux_active_locales_default",
+        "active_locales",
+        ["is_default"],
+        unique=True,
+        postgresql_where=sa.text("is_default"),
     )
     op.create_table(
         "addons",
@@ -2116,6 +2124,11 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_addons_order_index"), table_name="addons")
     op.drop_index(op.f("ix_addons_name"), table_name="addons")
     op.drop_table("addons")
+    op.drop_index(
+        "ux_active_locales_default",
+        table_name="active_locales",
+        postgresql_where=sa.text("is_default"),
+    )
     op.drop_table("active_locales")
     op.drop_table("access_settings")
     # ### end Alembic commands ###

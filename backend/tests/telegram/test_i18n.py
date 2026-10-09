@@ -16,7 +16,7 @@ _MESSAGE_ID = "test_i18n_hub_check"
 async def test_read_translator_hub_builds_a_working_hub(config: AppConfig) -> None:
     # read_translator_hub opens its own engine, so the seed goes through a
     # separate committed connection; the rolled-back `session` is invisible to it
-    locale = config.default_locale
+    locale = Locale.EN
     engine = create_async_engine(config.database.dsn)
     added_locale = False
     try:

@@ -1,6 +1,5 @@
 from typing import Optional
 
-from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.modules.notifications.render import NotificationRenderer
 from app.modules.settings import SettingsRepository
@@ -20,15 +19,13 @@ class BotTokenSource:
 
 
 class NotificationRendererFactory:
-    def __init__(
-        self, translation_repository: TranslationRepository, uow: UnitOfWork, config: AppConfig
-    ) -> None:
+    def __init__(self, translation_repository: TranslationRepository, uow: UnitOfWork) -> None:
         self._translation_repository = translation_repository
         self._uow = uow
-        self._config = config
 
     async def build(self) -> NotificationRenderer:
         async with self._uow:
             locales = await self._translation_repository.list_active_locales()
             texts = await self._translation_repository.get_fluent_text_by_locale(locales)
-        return NotificationRenderer(texts, default_locale=self._config.default_locale)
+            default_locale = await self._translation_repository.get_default_locale()
+        return NotificationRenderer(texts, default_locale=default_locale)

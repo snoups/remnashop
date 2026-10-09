@@ -11,7 +11,7 @@ from app.core.db.models.bot_translation import BotTranslation
 from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
-from app.modules.translations.dto import TranslationEntryDto
+from app.modules.translations.dto import ActiveLocalesDto, TranslationEntryDto
 from app.modules.translations.serializer import serialize_to_fluent
 
 
@@ -48,6 +48,27 @@ class TranslationRepository:
 
     async def remove_active_locale(self, locale: Locale) -> None:
         await self.session.execute(delete(ActiveLocale).where(ActiveLocale.locale == locale))
+
+    async def get_locales(self) -> ActiveLocalesDto:
+        return ActiveLocalesDto(
+            active=await self.list_active_locales(), default=await self.get_default_locale()
+        )
+
+    async def get_default_locale(self) -> Locale:
+        result = await self.session.execute(
+            select(ActiveLocale.locale).where(ActiveLocale.is_default)
+        )
+        # nothing flagged until ensure_translations_seeded() has run
+        return result.scalar_one_or_none() or Locale.EN
+
+    async def set_default_locale(self, locale: Locale) -> None:
+        # cleared first: the partial unique index allows one flagged row per statement
+        await self.session.execute(
+            update(ActiveLocale).where(ActiveLocale.is_default).values(is_default=False)
+        )
+        await self.session.execute(
+            update(ActiveLocale).where(ActiveLocale.locale == locale).values(is_default=True)
+        )
 
     async def list_all(self) -> list[TranslationEntryDto]:
         result = await self.session.execute(

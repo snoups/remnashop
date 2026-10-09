@@ -5,6 +5,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.seed import restore_default_banner
+from app.modules.translations import TranslationRepository
 
 
 class RestoreDefaultBannerUseCase(UseCase[None, None]):
@@ -14,12 +15,18 @@ class RestoreDefaultBannerUseCase(UseCase[None, None]):
     required_permission = Permission.BANNERS_RESTORE_DEFAULT
 
     def __init__(
-        self, banner_repository: BannerRepository, config: AppConfig, uow: UnitOfWork
+        self,
+        banner_repository: BannerRepository,
+        translation_repository: TranslationRepository,
+        config: AppConfig,
+        uow: UnitOfWork,
     ) -> None:
         self._banner_repository = banner_repository
+        self._translation_repository = translation_repository
         self._config = config
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: None) -> None:
         async with self._uow:
-            await restore_default_banner(self._banner_repository, self._config)
+            default_locale = await self._translation_repository.get_default_locale()
+            await restore_default_banner(self._banner_repository, self._config, default_locale)

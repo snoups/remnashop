@@ -181,6 +181,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.LOCALES_VIEW,
         Permission.LOCALES_ADD,
         Permission.LOCALES_REMOVE,
+        Permission.LOCALES_DEFAULT_SET,
         Permission.TRANSLATIONS_VIEW,
         Permission.TRANSLATIONS_UPDATE,
         Permission.TRANSLATIONS_RESET,

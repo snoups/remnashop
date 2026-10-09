@@ -13,7 +13,7 @@ from app.core.config.redis import RedisConfig
 from app.core.config.remnawave import RemnawaveConfig
 from app.core.config.validators import validate_not_change_me
 from app.core.constants import API_V1, ASSETS_DIR, MEDIA_DIR, PAYMENTS_WEBHOOK_PATH
-from app.core.enums import Locale, PaymentGatewayType
+from app.core.enums import PaymentGatewayType
 from app.core.types import StringList
 from app.core.utils.validators import is_valid_domain
 
@@ -24,8 +24,6 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     port: int = 5000
     metrics_enabled: bool = False
     metrics_port: int = 9110
-
-    default_locale: Locale = Locale.EN
 
     crypt_key: SecretStr
     jwt_secret: SecretStr

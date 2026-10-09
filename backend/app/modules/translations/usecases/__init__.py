@@ -6,6 +6,7 @@ from app.modules.translations.usecases.list_translations import ListTranslations
 from app.modules.translations.usecases.remove_locale import RemoveLocaleUseCase
 from app.modules.translations.usecases.reset_all_translations import ResetAllTranslationsUseCase
 from app.modules.translations.usecases.reset_translation import ResetTranslationUseCase
+from app.modules.translations.usecases.set_default_locale import SetDefaultLocaleUseCase
 from app.modules.translations.usecases.update_translation import UpdateTranslationUseCase
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "RemoveLocaleUseCase",
     "ResetAllTranslationsUseCase",
     "ResetTranslationUseCase",
+    "SetDefaultLocaleUseCase",
     "UpdateTranslationUseCase",
 ]

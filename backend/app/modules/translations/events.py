@@ -12,6 +12,12 @@ class LocaleActivatedEvent(ActorEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class DefaultLocaleChangedEvent(ActorEvent):
+    category: ClassVar[EventCategory] = EventCategory.SETTINGS
+    locale: Locale
+
+
+@dataclass(frozen=True, kw_only=True)
 class LocaleDeactivatedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
     locale: Locale

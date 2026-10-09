@@ -5,8 +5,7 @@ from aiogram.types import CallbackQuery, Chat, Message, TelegramObject
 from dishka import AsyncContainer
 from fluentogram import TranslatorHub
 
-from app.core.config import AppConfig
-from app.core.constants import CONFIG_KEY, CONTAINER_KEY, USER_KEY
+from app.core.constants import CONTAINER_KEY, USER_KEY
 from app.core.enums import AdLinkChannel, Locale, MiddlewareEventType
 from app.modules.access import CheckRegistrationAccessDto, CheckRegistrationAccessUseCase
 from app.modules.users import RegisterTelegramUserDto, RegisterTelegramUserUseCase
@@ -38,13 +37,12 @@ class UserMiddleware(EventTypedMiddleware):
             return await handler(event, data)
 
         container: AsyncContainer = data[CONTAINER_KEY]
-        config: AppConfig = data[CONFIG_KEY]
         use_case = await container.get(RegisterTelegramUserUseCase)
         hub = await container.get(TranslatorHub)
         # "pt-br" -> "pt"; only a locale the bot actually serves counts
         code = (aiogram_user.language_code or "").split("-")[0].lower()
         telegram_language = Locale(code) if code in hub.translators_map else None
-        language = telegram_language or config.default_locale
+        language = telegram_language or Locale(hub.root_locale)
         referral_code = parse_referral_code(event)
         ad_link_code = parse_ad_link_code(event)
 

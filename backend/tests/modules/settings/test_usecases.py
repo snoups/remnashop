@@ -548,10 +548,9 @@ async def test_owner_can_update_and_list_bot_commands(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
     get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
@@ -593,10 +592,9 @@ async def test_update_bot_commands_rejects_unknown_command(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     with pytest.raises(ValidationError):
@@ -607,10 +605,9 @@ async def test_update_bot_commands_rejects_missing_command(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     with pytest.raises(ValidationError):
@@ -643,10 +640,9 @@ async def test_regular_user_cannot_update_bot_commands(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -657,10 +653,9 @@ async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigur
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
@@ -687,7 +682,6 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     await _seed_en(translation_repository)
     await translation_repository.add_active_locale(Locale.RU)
@@ -700,7 +694,7 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     pushed = _capture_command_pushes(monkeypatch)
@@ -721,7 +715,6 @@ async def test_update_bot_commands_resolves_distinct_text_per_locale(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     await translation_repository.add_active_locale(Locale.EN)
     await translation_repository.add_active_locale(Locale.RU)
@@ -736,7 +729,7 @@ async def test_update_bot_commands_resolves_distinct_text_per_locale(
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     pushed = _capture_command_pushes(monkeypatch)
@@ -754,7 +747,6 @@ async def test_update_bot_commands_reports_sync_failure_when_locale_file_missing
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     await _seed_en(translation_repository)
     await translation_repository.add_active_locale(Locale.RU)
@@ -766,7 +758,7 @@ async def test_update_bot_commands_reports_sync_failure_when_locale_file_missing
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
@@ -779,7 +771,6 @@ async def test_update_bot_commands_excludes_disabled_from_telegram_push(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     await _seed_en(translation_repository)
     await translation_repository.add_active_locale(Locale.RU)
@@ -799,7 +790,7 @@ async def test_update_bot_commands_excludes_disabled_from_telegram_push(
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     pushed = _capture_command_pushes(monkeypatch)
@@ -817,7 +808,6 @@ async def test_update_bot_commands_reports_telegram_sync_failure_on_missing_tran
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     monkeypatch.setattr(
         update_bot_commands,
@@ -831,7 +821,7 @@ async def test_update_bot_commands_reports_telegram_sync_failure_on_missing_tran
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     result = await update_use_case(OWNER, [("start", True)])
@@ -844,7 +834,6 @@ async def test_update_bot_commands_reports_telegram_sync_success(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
-    config: AppConfig,
 ) -> None:
     settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
     await settings_use_case(
@@ -852,7 +841,7 @@ async def test_update_bot_commands_reports_telegram_sync_success(
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow, config)
+        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
     )
 
     await _seed_en(translation_repository)

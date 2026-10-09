@@ -40,18 +40,44 @@ def _parse_seed_file(path: Path) -> list[tuple[str, str, str]]:
     return entries
 
 
+def _read_seed_entries(config: AppConfig, locale: Locale) -> list[tuple[str, str, str]]:
+    seed_files = [config.translations_dir / locale.value / domain for domain in _SEED_DOMAINS]
+    return [
+        entry
+        for seed_file in seed_files
+        if seed_file.is_file()
+        for entry in _parse_seed_file(seed_file)
+    ]
+
+
+async def _fill_locales_without_seed(
+    translation_repository: TranslationRepository,
+    locales: set[Locale],
+    en_entries: list[tuple[str, str, str]],
+) -> None:
+    # a locale added in the dashboard has no .ftl of its own: keys a release
+    # adds reach it in English, otherwise its users hit KeyNotFoundError
+    for locale in locales:
+        for message_id, attribute_id, value in en_entries:
+            await translation_repository.seed_missing(locale, message_id, attribute_id, value)
+
+
 async def ensure_translations_seeded(
     config: AppConfig,
     translation_repository: TranslationRepository,
 ) -> None:
     active_locales = set(await translation_repository.list_active_locales())
     first_boot = not active_locales
+    shipped_locales: set[Locale] = set()
+    en_entries: list[tuple[str, str, str]] = []
 
     for locale in Locale:
-        seed_files = [config.translations_dir / locale.value / domain for domain in _SEED_DOMAINS]
-        seed_files = [seed_file for seed_file in seed_files if seed_file.is_file()]
-        if not seed_files:
+        entries = _read_seed_entries(config, locale)
+        if not entries:
             continue
+        shipped_locales.add(locale)
+        if locale == Locale.EN:
+            en_entries = entries
 
         if first_boot:
             try:
@@ -63,6 +89,12 @@ async def ensure_translations_seeded(
         if locale not in active_locales:
             continue
 
-        for seed_file in seed_files:
-            for message_id, attribute_id, value in _parse_seed_file(seed_file):
-                await translation_repository.seed_missing(locale, message_id, attribute_id, value)
+        for message_id, attribute_id, value in entries:
+            await translation_repository.seed_missing(locale, message_id, attribute_id, value)
+
+    await _fill_locales_without_seed(
+        translation_repository, active_locales - shipped_locales, en_entries
+    )
+
+    if first_boot:
+        await translation_repository.set_default_locale(Locale.EN)

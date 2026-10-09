@@ -13,6 +13,12 @@ class TranslationEntryDto(BaseDto, TimestampMixin):
 
 
 @dataclass(frozen=True, kw_only=True)
+class ActiveLocalesDto:
+    active: list[Locale]
+    default: Locale
+
+
+@dataclass(frozen=True, kw_only=True)
 class TranslationTextExportDto:
     locale: Locale
     message_id: str

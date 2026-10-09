@@ -13,9 +13,11 @@ from app.modules.translations.api.schemas import (
     TranslationsExportPayload,
     TranslationsImportResult,
     TranslationTextExportItem,
+    UpdateLocalesRequest,
     UpdateTranslationRequest,
 )
 from app.modules.translations.dto import (
+    ActiveLocalesDto,
     ResetTranslationDto,
     TranslationsImportDto,
     TranslationTextExportDto,
@@ -30,6 +32,7 @@ from app.modules.translations.usecases import (
     RemoveLocaleUseCase,
     ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
+    SetDefaultLocaleUseCase,
     UpdateTranslationUseCase,
 )
 
@@ -144,9 +147,11 @@ async def reset_translation(
     return TranslationEntryItem.model_validate(entry, from_attributes=True)
 
 
-def _to_response(active: list[Locale]) -> ActiveLocalesResponse:
+def _to_response(locales: ActiveLocalesDto) -> ActiveLocalesResponse:
     return ActiveLocalesResponse(
-        active=active, available=[locale for locale in Locale if locale not in active]
+        active=locales.active,
+        available=[locale for locale in Locale if locale not in locales.active],
+        default=locales.default,
     )
 
 
@@ -157,6 +162,16 @@ async def list_locales(
     actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
     return _to_response(await use_case(actor))
+
+
+@locales_router.patch("", response_model=ActiveLocalesResponse, responses=error_responses(400))
+@inject
+async def update_locales(
+    payload: UpdateLocalesRequest,
+    use_case: FromDishka[SetDefaultLocaleUseCase],
+    actor: Actor = Depends(require_admin),
+) -> ActiveLocalesResponse:
+    return _to_response(await use_case(actor, payload.default))
 
 
 @locales_router.put("/{locale}", response_model=ActiveLocalesResponse)

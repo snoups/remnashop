@@ -10,6 +10,7 @@ from app.modules.translations.usecases import (
     RemoveLocaleUseCase,
     ResetAllTranslationsUseCase,
     ResetTranslationUseCase,
+    SetDefaultLocaleUseCase,
     UpdateTranslationUseCase,
 )
 
@@ -28,6 +29,7 @@ class TranslationsProvider(Provider):
         ListActiveLocalesUseCase,
         AddLocaleUseCase,
         RemoveLocaleUseCase,
+        SetDefaultLocaleUseCase,
     )
 
 

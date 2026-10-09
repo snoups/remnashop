@@ -10,6 +10,7 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.flows.menu import register_menu_metadata
 from app.modules.subscriptions import GetAvailableTrialUseCase
 from app.modules.subscriptions.usecases import ListOwnActiveSubscriptionsUseCase
+from app.modules.translations.repository import TranslationRepository
 from app.telegram.routers.menu.getters import device_confirm_delete_getter, menu_getter
 
 
@@ -60,7 +61,9 @@ async def test_menu_getter_includes_rendered_buttons(
     data = await menu_getter.__dishka_orig_func__(
         dialog_manager=dialog_manager,
         config=config,
-        get_banner=GetBannerForDisplayUseCase(banner_repository, config, uow),
+        get_banner=GetBannerForDisplayUseCase(
+            banner_repository, TranslationRepository(banner_repository.session), uow
+        ),
         list_own_active_subscriptions=ListOwnActiveSubscriptionsUseCase(
             subscription_repository, uow
         ),
@@ -113,7 +116,9 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
     await menu_getter.__dishka_orig_func__(
         dialog_manager=dialog_manager,
         config=config,
-        get_banner=GetBannerForDisplayUseCase(banner_repository, config, uow),
+        get_banner=GetBannerForDisplayUseCase(
+            banner_repository, TranslationRepository(banner_repository.session), uow
+        ),
         list_own_active_subscriptions=ListOwnActiveSubscriptionsUseCase(
             subscription_repository, uow
         ),
