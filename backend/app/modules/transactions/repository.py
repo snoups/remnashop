@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final, Optional, cast
 
@@ -21,12 +21,16 @@ from app.core.enums import (
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.ports import SpentPurchaseDiscount
-from app.modules.subscriptions import PlanSnapshot
+from app.modules.subscriptions import IDEMPOTENCY_KEY_RETENTION_DAYS, PlanSnapshot
 from app.modules.transactions.dto import DEFAULT_PAGE_SIZE, CreateTransactionDto, TransactionDto
 
 # Test orders never provision a subscription and must stay out of every
 # revenue/analytics/reconciliation query, and out of the admin order list.
 _NOT_TEST: Final[ColumnElement[bool]] = Transaction.is_test.is_(False)
+
+# Must stay inside the idempotency-key retention: past it, a key-less order
+# looks unprovisioned and a redispatch would provision it a second time.
+RECONCILE_WINDOW: Final[timedelta] = timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS - 1)
 
 
 def _order_filters(
@@ -249,14 +253,21 @@ class TransactionRepository:
             )
         )
 
-    async def count_open_new_orders(self, user_id: int, now: datetime) -> int:
+    async def count_open_new_orders(
+        self, user_id: int, now: datetime, *, exclude_key: Optional[str] = None
+    ) -> int:
+        conditions = [
+            _NOT_TEST,
+            Transaction.user_id == user_id,
+            Transaction.purchase_type == PurchaseType.NEW,
+        ]
+        if exclude_key is not None:
+            conditions.append(Transaction.idempotency_key != exclude_key)
         count = await self.session.scalar(
             select(func.count())
             .select_from(Transaction)
             .where(
-                _NOT_TEST,
-                Transaction.user_id == user_id,
-                Transaction.purchase_type == PurchaseType.NEW,
+                *conditions,
                 or_(
                     and_(
                         Transaction.status == TransactionStatus.PENDING,
@@ -265,6 +276,9 @@ class TransactionRepository:
                     and_(
                         Transaction.status == TransactionStatus.PAID,
                         Transaction.fulfilled_subscription_id.is_(None),
+                        # older paid orders are past reconcile and no longer turn
+                        # into a subscription on their own
+                        Transaction.updated_at >= now - RECONCILE_WINDOW,
                         # provisioned but not yet linked by the reconcile sweep
                         ~exists().where(
                             SubscriptionPurchaseIdempotency.key == Transaction.idempotency_key,

@@ -4,6 +4,7 @@ from typing import Final
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.constants import MAX_POINTS_BALANCE
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ReferralRewardStrategy, ReferralRewardType
 from app.core.error_codes import ErrorCode
@@ -26,7 +27,7 @@ _MIN_REWARD: Final[Decimal] = Decimal(1)
 # an amount reward's ceiling: MAX_BONUS_DAYS for days, Numeric(12, 0) for points
 _MAX_AMOUNT_REWARD: Final[dict[ReferralRewardType, Decimal]] = {
     ReferralRewardType.EXTRA_DAYS: Decimal(MAX_BONUS_DAYS),
-    ReferralRewardType.POINTS: Decimal(10**12 - 1),
+    ReferralRewardType.POINTS: MAX_POINTS_BALANCE,
 }
 
 

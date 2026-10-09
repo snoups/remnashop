@@ -657,3 +657,19 @@ async def test_update_referral_settings_rejects_an_amount_reward_past_its_limit(
         )
 
     assert error.value.code is ErrorCode.REFERRAL_REWARD_TOO_HIGH
+
+
+async def test_adjust_user_points_above_the_column_limit_raises_validation_error(
+    user_repository: UserRepository, uow, event_publisher
+) -> None:
+    async with uow:
+        target = await _create_user(user_repository, 5006)
+        await user_repository.credit_points(target.id, Decimal(10**12 - 2))
+    use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("5")))
+
+    assert error.value.code is ErrorCode.POINTS_LIMIT_EXCEEDED
+    unchanged = await user_repository.get_by_id(target.id)
+    assert unchanged.points == Decimal(10**12 - 2)

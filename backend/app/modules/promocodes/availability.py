@@ -35,10 +35,12 @@ async def assert_subscription_reward_grantable(
     assert promo.reward_type is PromocodeRewardType.SUBSCRIPTION
     assert promo.reward_plan_id is not None
 
-    await eligibility.assert_below_cap(actor.id)
+    # an unpaid NEW order counts like it does at checkout: paying it later skips the cap
+    open_orders = await eligibility.open_new_orders(actor.id)
+    await eligibility.assert_below_cap(actor.id, pending=open_orders)
     plan = await plan_repository.get_by_id(promo.reward_plan_id)
     # a promocode grants a plan, it doesn't bypass the plan's own availability
-    if not await eligibility.is_purchasable(plan, actor):
+    if not await eligibility.is_purchasable(plan, actor, has_open_order=open_orders > 0):
         raise ValidationError(
             f"Plan '{plan.id}' is not available for purchase", code=ErrorCode.PLAN_NOT_AVAILABLE
         )

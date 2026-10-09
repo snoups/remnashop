@@ -24,6 +24,8 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AddOnType,
     Currency,
+    DiscountSource,
+    PaymentGatewayType,
     PlanType,
     PurchaseType,
     Role,
@@ -47,6 +49,7 @@ from app.modules.plans.dto import (
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.pricing.repository import PricingRepository
+from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
@@ -62,6 +65,7 @@ from app.modules.subscriptions.usecases import (
     GrantAddOnUseCase,
     PurchaseSubscriptionUseCase,
 )
+from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -2764,3 +2768,165 @@ async def test_a_change_outrun_by_renewals_twice_gives_up_and_restores_the_panel
     current = await subscription_repository.get_by_id(old.id)
     panel_expire = remnawave_store[old.remnawave_user_id]["expireAt"]
     assert datetime.fromisoformat(panel_expire.replace("Z", "+00:00")) == current.expire_at
+
+
+async def _capped_buyer_with_open_order(
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    telegram_id: int,
+    order_key: str,
+) -> tuple[UserDto, PlanDto]:
+    buyer = await _create_buyer(user_repository, telegram_id)
+    plan = await _create_plan(plan_repository, f"open-{telegram_id}")
+    await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=1, fields_set=frozenset({"max_active_subscriptions"})
+        )
+    )
+    await TransactionRepository(plan_repository.session).create(
+        CreateTransactionDto(
+            user_id=buyer.id,
+            plan_id=plan.id,
+            plan_snapshot=snapshot_from_plan(plan),
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            target_subscription_id=None,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+            base_price=Decimal("0"),
+            discount_percent=0,
+            discount_source=DiscountSource.NONE,
+            final_price=Decimal("0"),
+            anchor_base_price=Decimal("0"),
+            anchor_final_price=Decimal("0"),
+            customer_email=None,
+            idempotency_key=order_key,
+            expires_at=datetime_now() + timedelta(minutes=30),
+        )
+    )
+    return buyer, plan
+
+
+@pytest.mark.parametrize(("key", "refused"), [("own-free-order", False), (None, True)])
+async def test_new_purchase_counts_other_open_orders_but_not_its_own(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    key: Optional[str],
+    refused: bool,
+) -> None:
+    buyer, plan = await _capped_buyer_with_open_order(
+        plan_repository, user_repository, settings_repository, 430, "own-free-order"
+    )
+    dto = PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot_from_plan(plan),
+        duration_days=30,
+        price_paid=Decimal("0"),
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+        idempotency_key=key,
+    )
+
+    if refused:
+        with pytest.raises(ValidationError) as error:
+            await purchase_subscription_use_case(buyer, dto)
+        assert error.value.code is ErrorCode.SUBSCRIPTION_LIMIT_REACHED
+    else:
+        await purchase_subscription_use_case(buyer, dto)
+
+
+async def test_trial_is_not_crowded_out_by_an_open_order(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    buyer, plan = await _capped_buyer_with_open_order(
+        plan_repository, user_repository, settings_repository, 431, "paid-later"
+    )
+
+    await purchase_subscription_use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(plan, is_trial=True),
+            duration_days=3,
+            price_paid=Decimal("0"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    assert len(await subscription_repository.get_active_by_user(buyer.id)) == 1
+
+
+async def test_a_reclaimed_new_attempt_returns_the_finished_subscription(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buyer = await _create_buyer(user_repository, 432)
+    plan = await _create_plan(plan_repository, "reclaim-test")
+    dto = PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot_from_plan(
+            plan, price_paid=Decimal("100.00"), currency=Currency.RUB, duration_days=30
+        ),
+        duration_days=30,
+        price_paid=Decimal("100.00"),
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+        idempotency_key="reclaimed-key",
+    )
+    first = await purchase_subscription_use_case(buyer, dto)
+    disabled: list[object] = []
+    original_disable = remnawave_sdk.users.disable_user
+
+    async def _tracking_disable(user_id: object) -> None:
+        disabled.append(user_id)
+        await original_disable(user_id)
+
+    monkeypatch.setattr(remnawave_sdk.users, "disable_user", _tracking_disable)
+
+    # a stalled attempt resumes after the attempt that reclaimed its key finished
+    again = await purchase_subscription_use_case._new.run(buyer, dto)
+
+    assert again.id == first.id
+    assert len(await subscription_repository.get_active_by_user(buyer.id)) == 1
+    assert len(disabled) == 1
+
+
+async def test_releasing_a_key_keeps_it_once_a_subscription_is_linked(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    uow: UnitOfWork,
+) -> None:
+    buyer = await _create_buyer(user_repository, 433)
+    plan = await _create_plan(plan_repository, "release-test")
+    finished = await purchase_subscription_use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(plan),
+            duration_days=30,
+            price_paid=Decimal("0"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            idempotency_key="linked-key",
+        ),
+    )
+
+    # a reclaiming attempt that fails afterwards must not erase the finished one's link
+    async with uow:
+        await idempotency_repository.release("linked-key")
+
+    assert await idempotency_repository.get_subscription_id("linked-key") == finished.id

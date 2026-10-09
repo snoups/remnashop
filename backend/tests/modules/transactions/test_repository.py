@@ -715,3 +715,27 @@ async def test_sum_paid_promocode_discounts_leaves_out_the_plan_discount(
     count, amount = await transaction_repository.sum_paid_promocode_discounts()
 
     assert (count, amount) == (1, Decimal("40"))
+
+
+@pytest.mark.parametrize(("paid_days_ago", "counted"), [(1, 1), (30, 0)])
+async def test_count_open_new_orders_drops_paid_orders_past_reconcile(
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+    paid_days_ago: int,
+    counted: int,
+) -> None:
+    async with uow:
+        paid = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=f"open-{paid_days_ago}")
+        )
+        await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
+    await session.execute(
+        update(Transaction)
+        .where(Transaction.id == paid.id)
+        .values(updated_at=datetime_now() - timedelta(days=paid_days_ago))
+    )
+
+    assert await transaction_repository.count_open_new_orders(user_id, datetime_now()) == counted

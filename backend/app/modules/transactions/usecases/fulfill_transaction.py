@@ -16,6 +16,7 @@ from app.modules.transactions.dto import TransactionWithUserDto
 from app.modules.transactions.events import TransactionFulfilledManuallyEvent
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.usecases.visibility import visible_transaction
 from app.modules.users import UserRepository
 
 # the gateway reported no payment, the admin confirms it was received after all
@@ -92,4 +93,4 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
 
         async with self._uow:
             order = await self._transaction_repository.get_by_id(data)
-        return TransactionWithUserDto(order=order, user=user)
+        return visible_transaction(actor, order, user)

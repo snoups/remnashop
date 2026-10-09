@@ -75,10 +75,15 @@ class PurchaseIdempotencyRepository:
         return row.subscription_id if row is not None else None
 
     async def release(self, key: str) -> None:
-        row = await self.session.get(SubscriptionPurchaseIdempotency, key)
-        if row is not None:
-            await self.session.delete(row)
-            await self.session.flush()
+        # a linked key belongs to a finished purchase: an attempt that failed after
+        # reclaiming it must not erase that link
+        await self.session.execute(
+            delete(SubscriptionPurchaseIdempotency).where(
+                SubscriptionPurchaseIdempotency.key == key,
+                SubscriptionPurchaseIdempotency.subscription_id.is_(None),
+            )
+        )
+        await self.session.flush()
 
     async def delete_stale(self, cutoff: datetime) -> tuple[int, int]:
         purchase = await self.session.execute(

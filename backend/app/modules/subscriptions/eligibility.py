@@ -1,10 +1,12 @@
 from collections.abc import Sequence
+from typing import Optional
 
 from app.core.actor import Actor
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import ReferrerLookup
+from app.core.ports import OpenOrderCounter, ReferrerLookup
+from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, is_plan_purchasable_by
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import SubscriptionDto
@@ -22,14 +24,21 @@ class PurchaseEligibility:
         subscription_repository: SubscriptionRepository,
         referrer_lookup: ReferrerLookup,
         settings_repository: SettingsRepository,
+        open_order_counter: OpenOrderCounter,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._referrer_lookup = referrer_lookup
         self._settings_repository = settings_repository
+        self._open_order_counter = open_order_counter
 
     async def lock_user(self, user_id: int) -> None:
         # same key as NewPurchase, so a checkout and a fulfilment for one user serialize
         await self._subscription_repository.acquire_purchase_cap_lock(user_id)
+
+    async def open_new_orders(self, user_id: int, *, exclude_key: Optional[str] = None) -> int:
+        return await self._open_order_counter.count_open_new_orders(
+            user_id, datetime_now(), exclude_key=exclude_key
+        )
 
     async def assert_below_cap(self, user_id: int, *, lock: bool = False, pending: int = 0) -> None:
         # lock=True only under lock_user; pending = open orders not yet provisioned

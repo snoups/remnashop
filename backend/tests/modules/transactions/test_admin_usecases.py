@@ -330,3 +330,38 @@ async def test_fulfill_transaction_marks_a_failed_order_paid_and_dispatches_it(
     with pytest.raises(ConflictError):
         await use_case(admin_actor, pending.id)
     assert len(dispatch.messages) == 1
+
+
+async def test_fulfill_response_hides_a_staff_owner_from_an_admin(
+    transaction_repository: TransactionRepository,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    user_repository: UserRepository,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    admin_actor: UserDto,
+    plan_id: int,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="other-staff", role=Role.ADMIN, telegram_id=800_003)
+    )
+    async with uow:
+        order = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=staff.id, plan_id=plan_id, idempotency_key="fulfill-staff"),
+                customer_email="staff@example.com",
+            )
+        )
+        await transaction_repository.mark_status(order.id, TransactionStatus.CANCELED)
+    use_case = FulfillTransactionUseCase(
+        transaction_repository,
+        idempotency_repository,
+        user_repository,
+        event_publisher,
+        uow,
+        RecordingDispatch(),
+    )
+
+    result = await use_case(admin_actor, order.id)
+
+    assert result.user is None
+    assert result.order.customer_email is None

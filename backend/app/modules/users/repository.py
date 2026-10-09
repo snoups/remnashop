@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from app.core.constants import MAX_SQL_IN_PARAMS
+from app.core.constants import MAX_POINTS_BALANCE, MAX_SQL_IN_PARAMS
 from app.core.db.errors import constraint_name
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.user import User
@@ -208,15 +208,24 @@ class UserRepository:
         # first and updating after would let two debits both pass and overdraw.
         stmt = (
             update(User)
-            .where(User.id == user_id, User.points + amount >= 0)
+            .where(
+                User.id == user_id,
+                User.points + amount >= 0,
+                User.points + amount <= MAX_POINTS_BALANCE,
+            )
             .values(points=User.points + amount)
         )
         result = await self.session.execute(stmt)
         await self.session.flush()
         if cast(CursorResult, result).rowcount == 0:
+            if amount < 0:
+                raise ValidationError(
+                    f"Adjustment would take user '{user_id}' points below zero",
+                    code=ErrorCode.POINTS_BELOW_ZERO,
+                )
             raise ValidationError(
-                f"Adjustment would take user '{user_id}' points below zero",
-                code=ErrorCode.POINTS_BELOW_ZERO,
+                f"Adjustment would take user '{user_id}' points above the limit",
+                code=ErrorCode.POINTS_LIMIT_EXCEEDED,
             )
 
     async def credit_bonus_days(self, user_id: int, delta: int) -> None:

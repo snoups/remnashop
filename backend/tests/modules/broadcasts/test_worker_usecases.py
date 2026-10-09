@@ -26,6 +26,7 @@ from app.core.enums import (
     PromocodeRewardType,
 )
 from app.core.events import BaseEvent
+from app.core.exceptions import ConflictError
 from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dto import (
     BroadcastAudienceDto,
@@ -1337,3 +1338,34 @@ async def test_retry_after_rejected_token_resends_unsent(
     assert result.failed_count == 0
     assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.PENDING] * 3
     assert start_dispatch.messages == [{"broadcast_id": broadcast.id}]
+
+
+async def test_recall_can_be_requested_again_while_messages_remain(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    publisher: RecordingPublisher,
+) -> None:
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9780, 2)
+    first, second = await _recipients(session, broadcast_id)
+    await broadcast_repository.mark_recipient(first.id, BroadcastRecipientStatus.RECALLED)
+    await broadcast_repository.mark_recall_failed(second.id, "err")
+    await broadcast_repository.update_fields(
+        broadcast_id, recall_requested_at=datetime_now(), channel_message_id=None
+    )
+    await broadcast_repository.refresh_counts(broadcast_id)
+    recall = RecallBroadcastUseCase(broadcast_repository, recall_dispatch, uow, publisher)
+
+    await recall.system(broadcast_id)
+
+    assert recall_dispatch.messages == [{"broadcast_id": broadcast_id}]
+    assert [r.id for r in await broadcast_repository.list_recallable(broadcast_id, 10)] == [
+        second.id
+    ]
+
+    await broadcast_repository.mark_recipient(second.id, BroadcastRecipientStatus.RECALLED)
+    await broadcast_repository.refresh_counts(broadcast_id)
+    with pytest.raises(ConflictError):
+        await recall.system(broadcast_id)

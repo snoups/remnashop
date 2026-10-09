@@ -9,6 +9,7 @@ from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import FromDishka
 from fluentogram import TranslatorHub, TranslatorRunner
 
+from app.core.constants import INT32_MAX
 from app.modules.broadcasts import GetBroadcastPromocodeUseCase
 from app.modules.promocodes import ValidatePromocodeUseCase
 from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
@@ -25,19 +26,26 @@ from app.telegram.i18n import get_translator
 from app.telegram.routers.promocode.handlers import continue_with_code
 from app.telegram.states import Subscription
 
-_START_PAYLOAD: Final[re.Pattern[str]] = re.compile(rf"{START_PREFIX}(\d+)")
+_START_PAYLOAD: Final[re.Pattern[str]] = re.compile(rf"{START_PREFIX}([0-9]+)")
 
 router = Router(name=__name__)
 
 
+def _broadcast_id(raw: str) -> Optional[int]:
+    # broadcasts.id is int32; anything else can't be one of ours
+    if not (raw.isascii() and raw.isdigit()):
+        return None
+    value = int(raw)
+    return value if value <= INT32_MAX else None
+
+
 def parse_broadcast_id(data: str) -> Optional[int]:
-    raw = data.removeprefix(PROMO_PREFIX)
-    return int(raw) if raw.isdigit() else None
+    return _broadcast_id(data.removeprefix(PROMO_PREFIX))
 
 
 def parse_start_broadcast_id(payload: str) -> Optional[int]:
     match = _START_PAYLOAD.fullmatch(payload)
-    return int(match.group(1)) if match else None
+    return _broadcast_id(match.group(1)) if match else None
 
 
 # the user middleware skips bots and callbacks without a chat

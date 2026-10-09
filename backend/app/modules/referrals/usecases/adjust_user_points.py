@@ -1,6 +1,7 @@
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.constants import MAX_POINTS_BALANCE
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
@@ -38,6 +39,11 @@ class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
                 raise ValidationError(
                     f"Adjustment would take user '{data.user_id}' points below zero",
                     code=ErrorCode.POINTS_BELOW_ZERO,
+                )
+            if target.points + data.delta > MAX_POINTS_BALANCE:
+                raise ValidationError(
+                    f"Adjustment would take user '{data.user_id}' points above the limit",
+                    code=ErrorCode.POINTS_LIMIT_EXCEEDED,
                 )
 
         async with self._uow:

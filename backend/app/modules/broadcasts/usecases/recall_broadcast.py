@@ -43,10 +43,12 @@ class RecallBroadcastUseCase(UseCase[int, BroadcastDto]):
         now = datetime_now()
         async with self._uow:
             broadcast = await self._broadcast_repository.lock_for_update(data)
+            nothing_left = broadcast.sent_count == 0 and broadcast.channel_message_id is None
             if (
                 broadcast.status not in _RECALLABLE
                 or broadcast.started_at is None
-                or broadcast.recall_requested_at is not None
+                # a repeat picks up deletes Telegram didn't confirm the first time
+                or (broadcast.recall_requested_at is not None and nothing_left)
             ):
                 raise ConflictError(
                     f"Broadcast '{data}' is {broadcast.status}",
@@ -56,6 +58,7 @@ class RecallBroadcastUseCase(UseCase[int, BroadcastDto]):
                 raise ValidationError(
                     "Recall window has passed", code=ErrorCode.BROADCAST_RECALL_EXPIRED
                 )
+            await self._broadcast_repository.clear_recall_failures(data)
             await self._broadcast_repository.update_fields(data, recall_requested_at=now)
             if broadcast.status is BroadcastStatus.SENDING:
                 await cancel_sending(self._broadcast_repository, data)

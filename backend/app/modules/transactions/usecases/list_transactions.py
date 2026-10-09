@@ -7,7 +7,8 @@ from app.modules.transactions.dto import (
     TransactionWithUserDto,
 )
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.users import UserRepository, visible_user
+from app.modules.transactions.usecases.visibility import visible_transaction
+from app.modules.users import UserRepository
 
 
 class ListTransactionsUseCase(
@@ -48,8 +49,5 @@ class ListTransactionsUseCase(
         items = []
         for order in orders:
             user = users_by_id.get(order.user_id)
-            shown = visible_user(actor, user)
-            if user is not None and shown is None:
-                order = order.model_copy(update={"customer_email": None})
-            items.append(TransactionWithUserDto(order=order, user=shown))
+            items.append(visible_transaction(actor, order, user))
         return items, total

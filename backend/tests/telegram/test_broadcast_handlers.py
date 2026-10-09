@@ -58,3 +58,11 @@ async def test_menu_button_answers_with_start_deep_link() -> None:
     await on_broadcast_menu(callback, bot, AsyncMock(), user=UserDto(name="c"))
 
     callback.answer.assert_awaited_once_with(url="https://t.me/shop_bot?start=menu")
+
+
+def test_broadcast_ids_reject_non_ascii_digits_and_values_beyond_int32() -> None:
+    assert parse_broadcast_id("bc:promo:¹") is None
+    assert parse_broadcast_id(f"bc:promo:{2**31}") is None
+    assert parse_start_broadcast_id(f"bc_{2**31}") is None
+    assert parse_start_broadcast_id("bc_٤٢") is None
+    assert parse_broadcast_id("bc:promo:42") == 42

@@ -186,6 +186,7 @@ class ErrorCode(UpperStrEnum):
     PLAN_REORDER_INCOMPLETE = auto()
     PLAN_USED_BY_PROMOCODE = auto()
     POINTS_BELOW_ZERO = auto()
+    POINTS_LIMIT_EXCEEDED = auto()
     PRICING_PREVIEW_AMBIGUOUS = auto()
     PROMOCODE_ALREADY_ACTIVATED = auto()
     PROMOCODE_CODE_TAKEN = auto()

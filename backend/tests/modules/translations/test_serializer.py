@@ -164,3 +164,10 @@ def test_special_char_at_continuation_line_start_round_trips(line: str) -> None:
 )
 def test_split_message_key(key: str, expected: tuple[str, str]) -> None:
     assert split_message_key(key) == expected
+
+
+def test_an_indented_line_starting_with_a_dot_stays_in_the_value() -> None:
+    text = serialize_to_fluent([_entry("msg-a", "", "Hello\n  .note = x")])
+    value, errors = FluentBundle.from_string("en", text).format("msg-a")
+    assert not errors
+    assert strip_serializer_escapes(value).endswith(".note = x")

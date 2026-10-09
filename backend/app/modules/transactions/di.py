@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 import httpx
 from dishka import Provider, Scope, alias, provide, provide_all
 
-from app.core.ports import AnchorAmountRescaler, OrderFailer
+from app.core.ports import AnchorAmountRescaler, OpenOrderCounter, OrderFailer
 from app.modules.transactions.gateways.base import HTTP_TIMEOUT_S, PaymentHttpClient
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
@@ -37,6 +37,7 @@ class TransactionsProvider(Provider):
     waitlist_claims = provide(WaitlistClaims, scope=Scope.APP)
     anchor_amount_rescaler = alias(source=TransactionRepository, provides=AnchorAmountRescaler)
     order_failer = alias(source=TransactionRepository, provides=OrderFailer)
+    open_order_counter = alias(source=TransactionRepository, provides=OpenOrderCounter)
     use_cases = provide_all(
         CreateCheckoutUseCase,
         CreateTestPaymentUseCase,

@@ -1,6 +1,3 @@
-from datetime import timedelta
-from typing import Final
-
 from loguru import logger
 
 from app.core.actor import Actor
@@ -8,17 +5,12 @@ from app.core.db.uow import UnitOfWork
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions import (
-    IDEMPOTENCY_KEY_RETENTION_DAYS,
     PurchaseIdempotencyRepository,
     PurchaseSubscriptionDispatch,
 )
 from app.modules.transactions.dto import ReconcilePaidTransactionsDto
 from app.modules.transactions.fulfillment import dispatch_fulfillment
-from app.modules.transactions.repository import TransactionRepository
-
-# Must stay inside the idempotency-key retention: past it, a key-less order
-# looks unprovisioned and a redispatch would provision it a second time.
-_WINDOW: Final[timedelta] = timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS - 1)
+from app.modules.transactions.repository import RECONCILE_WINDOW, TransactionRepository
 
 
 class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, None]):
@@ -39,7 +31,7 @@ class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, Non
     async def _execute(self, actor: Actor, data: ReconcilePaidTransactionsDto) -> None:
         now = datetime_now()
         stuck = await self._transaction_repository.list_paid_awaiting_reconciliation(
-            now - data.grace_period, since=now - _WINDOW
+            now - data.grace_period, since=now - RECONCILE_WINDOW
         )
 
         redispatched = 0
@@ -50,8 +42,8 @@ class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, Non
                     await self._transaction_repository.mark_fulfilled(order.id, linked)
                 continue
 
-            # same idempotency_key as the original attempt, safe even if it's
-            # still running or already succeeded
+            # same idempotency_key as the original attempt: the purchase locks the
+            # key before writing, so only one of them provisions the order
             await dispatch_fulfillment(self._purchase_dispatch, order)
             redispatched += 1
 

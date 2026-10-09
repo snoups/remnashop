@@ -3336,6 +3336,7 @@
     "PLAN_REORDER_INCOMPLETE": "Новый порядок должен включать каждый тариф ровно один раз.",
     "PLAN_USED_BY_PROMOCODE": "Тариф ещё используется в промокоде.",
     "POINTS_BELOW_ZERO": "Баллы не могут стать меньше нуля.",
+    "POINTS_LIMIT_EXCEEDED": "Баллы не могут превышать предельный баланс.",
     "PRICING_PREVIEW_AMBIGUOUS": "Выберите ровно одно изменение для предпросмотра.",
     "PROMOCODE_ALREADY_ACTIVATED": "Вы уже активировали этот промокод.",
     "PROMOCODE_CODE_TAKEN": "Промокод с таким кодом уже есть.",

@@ -3272,6 +3272,7 @@
     "PLAN_REORDER_INCOMPLETE": "The new order must include every plan exactly once.",
     "PLAN_USED_BY_PROMOCODE": "The plan is still used by a promocode.",
     "POINTS_BELOW_ZERO": "Points can't go below zero.",
+    "POINTS_LIMIT_EXCEEDED": "Points can't exceed the balance limit.",
     "PRICING_PREVIEW_AMBIGUOUS": "Choose exactly one change to preview.",
     "PROMOCODE_ALREADY_ACTIVATED": "You've already activated this promocode.",
     "PROMOCODE_CODE_TAKEN": "A promocode with this code already exists.",

@@ -316,6 +316,17 @@ class BroadcastRepository:
             .values(error=f"{RECALL_FAILED_ERROR}: {error}"[:255])
         )
 
+    async def clear_recall_failures(self, broadcast_id: int) -> None:
+        await self.session.execute(
+            update(BroadcastRecipient)
+            .where(
+                BroadcastRecipient.broadcast_id == broadcast_id,
+                BroadcastRecipient.status == BroadcastRecipientStatus.SENT,
+                BroadcastRecipient.error.startswith(RECALL_FAILED_ERROR),
+            )
+            .values(error=None)
+        )
+
     async def bump_attempt(self, recipient_id: int, max_attempts: int, error: str) -> None:
         status_type = BroadcastRecipient.status.type
         await self.session.execute(

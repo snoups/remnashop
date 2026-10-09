@@ -83,3 +83,10 @@ def test_window_whose_previous_window_is_unrepresentable_is_invalid() -> None:
         resolve_period(datetime(1, 1, 2), datetime(1, 1, 10), earliest=None, now=NOW)
 
     assert error.value.code is ErrorCode.ANALYTICS_PERIOD_INVALID
+
+
+def test_a_period_too_close_to_the_minimum_date_is_invalid() -> None:
+    # the previous window plus the conversion window would reach before year 1
+    with pytest.raises(ValidationError) as error:
+        resolve_period(datetime(1, 1, 2), datetime(1, 1, 2), earliest=None, now=NOW)
+    assert error.value.code is ErrorCode.ANALYTICS_PERIOD_INVALID

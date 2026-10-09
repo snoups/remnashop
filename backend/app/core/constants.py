@@ -82,6 +82,8 @@ USER_LIST_ORIGIN: Final[str] = "user_list_origin"
 USER_LIST_PAYLOAD: Final[str] = "user_list_payload"
 
 INT32_MAX: Final[int] = 2_147_483_647
+# users.points is Numeric(12, 0)
+MAX_POINTS_BALANCE: Final[Decimal] = Decimal(10**12 - 1)
 INT64_MAX: Final[int] = 2**63 - 1
 
 TIMEZONE: Final[timezone] = timezone.utc

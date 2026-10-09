@@ -87,7 +87,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
             # PaymentGateway.parse_webhook), not a 500 with a stack trace.
             raise PaymentGatewayError("Could not parse webhook") from error
         if signal is None or not signal.claims_paid:
-            await self._record_reported_status(data.gateway_type, signal)
+            await self._record_reported_status(data.gateway_type, gateway, signal)
             return gateway.webhook_ack(signal)
 
         order = await self._resolve_order(data.gateway_type, signal)
@@ -183,6 +183,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
     async def _record_reported_status(
         self,
         gateway_type: PaymentGatewayType,
+        gateway: PaymentGateway,
         signal: Optional[WebhookSignal],
     ) -> None:
         if signal is None or signal.reported_status is None:
@@ -192,6 +193,17 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
         order = await self._resolve_order(gateway_type, signal)
         if order is None or order.status not in allowed_from:
             return
+        try:
+            confirmed = await gateway.confirm_reported(order, signal)
+        except Exception as error:  # any provider API failure is a gateway problem
+            raise PaymentGatewayError("Could not confirm reported status") from error
+        if confirmed is None:
+            logger.warning(
+                f"{gateway_type.value} reported {status.value} for order '{order.id}', "
+                "provider API disagrees; ignored"
+            )
+            return
+        signal = confirmed
         if status is TransactionStatus.REFUNDED and self._is_partial_refund(order, signal):
             logger.warning(
                 f"Partial refund {signal.refund_amount} of {order.final_price} "

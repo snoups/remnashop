@@ -114,7 +114,6 @@ export function isEditable(b: Broadcast): boolean {
 }
 
 export function canRecall(b: Broadcast, now: number): boolean {
-  if (b.recall_requested) return false;
   if (!b.started_at || now - new Date(b.started_at).getTime() >= RECALL_WINDOW_MS) return false;
   if (b.sent_count === 0 && !b.has_channel_post) return false;
   return b.status === "SENDING" || b.status === "COMPLETED" || b.status === "CANCELED";

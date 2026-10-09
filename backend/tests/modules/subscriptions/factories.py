@@ -13,13 +13,17 @@ from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto, PlanSnapshot, SubscriptionDto
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
 
 def make_eligibility(session: AsyncSession) -> PurchaseEligibility:
     return PurchaseEligibility(
-        SubscriptionRepository(session), ReferralRepository(session), SettingsRepository(session)
+        SubscriptionRepository(session),
+        ReferralRepository(session),
+        SettingsRepository(session),
+        TransactionRepository(session),
     )
 
 

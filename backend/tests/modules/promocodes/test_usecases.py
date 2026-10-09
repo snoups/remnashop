@@ -30,6 +30,7 @@ from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     CreateAddOnDto,
     CreatePlanDto,
+    PlanDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
     UpdatePlanAccessDto,
@@ -58,6 +59,8 @@ from app.modules.promocodes.usecases import (
     UpdatePromocodeUseCase,
 )
 from app.modules.referrals import ReferralRepository
+from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.subscriptions.dto import CreateSubscriptionDto, PurchaseSubscriptionDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
@@ -1597,3 +1600,105 @@ async def test_update_still_refuses_a_newly_added_unknown_plan(
         )
 
     assert error.value.code is ErrorCode.PLAN_NOT_FOUND
+
+
+async def _reward_promocode(
+    promocode_repository: PromocodeRepository, code: str, telegram_id: int
+) -> tuple[UserDto, PlanDto]:
+    user_repository = UserRepository(promocode_repository.session)
+    actor = await user_repository.create(CreateUserDto(name="Opener", telegram_id=telegram_id))
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code=code.lower(),
+            name=code,
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    plan = await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
+    await promocode_repository.create(
+        CreatePromocodeDto(
+            code=code,
+            reward_type=PromocodeRewardType.SUBSCRIPTION,
+            reward_plan_id=plan.id,
+            reward_duration_days=30,
+        )
+    )
+    # a pending NEW order the customer hasn't paid yet
+    await TransactionRepository(promocode_repository.session).create(
+        _order(actor.id, promocode_id=None, final_price="400")
+    )
+    return actor, plan
+
+
+async def test_subscription_reward_counts_an_open_order_against_the_cap(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor, _ = await _reward_promocode(promocode_repository, "CAPPED", 331)
+    await SettingsRepository(promocode_repository.session).update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=1, fields_set=frozenset({"max_active_subscriptions"})
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(actor, ActivatePromocodeDto(code="CAPPED"))
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_LIMIT_REACHED
+    assert await subscription_repository.get_active_by_user(actor.id) == []
+
+
+async def test_subscription_reward_counts_an_open_order_as_purchase_history(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor, plan = await _reward_promocode(promocode_repository, "NEWONLY", 332)
+    await PlanRepository(promocode_repository.session).update_access(
+        UpdatePlanAccessDto(
+            plan_id=plan.id,
+            availability=PlanAvailability.NEW,
+            allowed_telegram_ids=[],
+            allowed_emails=[],
+        )
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(actor, ActivatePromocodeDto(code="NEWONLY"))
+
+    assert error.value.code is ErrorCode.PLAN_NOT_AVAILABLE

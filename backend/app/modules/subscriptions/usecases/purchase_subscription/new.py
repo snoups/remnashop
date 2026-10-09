@@ -26,6 +26,12 @@ from app.modules.subscriptions.usecases.purchase_subscription.panel import (
 )
 
 
+class _AlreadyProvisionedError(Exception):
+    def __init__(self, subscription_id: int) -> None:
+        super().__init__(subscription_id)
+        self.subscription_id = subscription_id
+
+
 class NewPurchase:
     def __init__(
         self,
@@ -65,7 +71,9 @@ class NewPurchase:
         # Unlocked pre-check so a purchase that's deterministically over the cap
         # never mints a panel user; the locked re-check below closes the race.
         if data.enforce_subscription_cap:
-            await self._eligibility.assert_below_cap(data.user_id)
+            await self._eligibility.assert_below_cap(
+                data.user_id, pending=await self._open_orders(data)
+            )
 
         plan = data.plan_snapshot
         expire_at = datetime_now() + timedelta(days=data.duration_days)
@@ -75,6 +83,7 @@ class NewPurchase:
 
         try:
             async with self._uow:
+                await self._assert_not_provisioned(data)
                 if data.enforce_subscription_cap:
                     # Must come before the count-check below: FOR UPDATE on
                     # get_active_by_user_for_update only locks rows that already
@@ -82,11 +91,18 @@ class NewPurchase:
                     # here could both observe the same under-cap count and both
                     # insert, silently exceeding the cap.
                     await self._subscription_repository.acquire_purchase_cap_lock(data.user_id)
-                    await self._eligibility.assert_below_cap(data.user_id, lock=True)
+                    await self._eligibility.assert_below_cap(
+                        data.user_id, lock=True, pending=await self._open_orders(data)
+                    )
                 subscription = await self._subscription_repository.create(
                     subscription_row(data, panel_user)
                 )
                 await self._finish(actor, data, subscription)
+        except _AlreadyProvisionedError as done:
+            with suppress(Exception):
+                await self._remnawave_sdk.users.disable_user(panel_user.id)
+            async with self._uow:
+                return await self._subscription_repository.get_by_id(done.subscription_id)
         except Exception:
             # disable, not delete: the DB write failed, not the panel user, and
             # a disabled user can still be inspected and restored
@@ -98,6 +114,23 @@ class NewPurchase:
             f"{actor.log} Purchased subscription '{subscription.id}' (plan '{plan.plan_id}', NEW)"
         )
         return subscription
+
+    async def _assert_not_provisioned(self, data: PurchaseSubscriptionDto) -> None:
+        # a stale claim can be reclaimed; the attempt that reclaimed it may already have finished
+        if data.idempotency_key is None:
+            return
+        finished_id = await self._idempotency.lock(data.idempotency_key)
+        if finished_id is not None:
+            raise _AlreadyProvisionedError(finished_id)
+
+    async def _open_orders(self, data: PurchaseSubscriptionDto) -> int:
+        # a trial is upgraded in place by a later paid order, so open orders don't crowd
+        # it out; the order being fulfilled must not count against itself
+        if data.plan_snapshot.is_trial:
+            return 0
+        return await self._eligibility.open_new_orders(
+            data.user_id, exclude_key=data.idempotency_key
+        )
 
     async def _upgrade_trial_in_place(
         self, actor: Actor, data: PurchaseSubscriptionDto, trial: SubscriptionDto
@@ -112,6 +145,7 @@ class NewPurchase:
 
         try:
             async with self._uow:
+                await self._assert_not_provisioned(data)
                 locked_trial = await self._subscription_repository.get_by_id_for_update(trial.id)
                 if locked_trial.status is SubscriptionStatus.DELETED:
                     raise SupersededError(
@@ -126,6 +160,10 @@ class NewPurchase:
                     subscription_row(data, panel_user, status=SubscriptionStatus(panel_user.status))
                 )
                 await self._finish(actor, data, subscription)
+        except _AlreadyProvisionedError as done:
+            # no revert: the panel user now belongs to the finished subscription
+            async with self._uow:
+                return await self._subscription_repository.get_by_id(done.subscription_id)
         except SupersededError:
             raise
         except Exception:

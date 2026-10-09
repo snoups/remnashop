@@ -49,8 +49,10 @@ class _StubGateway:
         confirm_exc: Optional[BaseException] = None,
         parse_exc: Optional[BaseException] = None,
         ack: WebhookAck = WebhookAck(),
+        reported_confirmed: bool = True,
     ) -> None:
         self._signal = signal
+        self._reported_confirmed = reported_confirmed
         self._payment = payment
         self._confirm_exc = confirm_exc
         self._parse_exc = parse_exc
@@ -67,6 +69,11 @@ class _StubGateway:
         if self._confirm_exc is not None:
             raise self._confirm_exc
         return self._payment
+
+    async def confirm_reported(
+        self, order: object, signal: WebhookSignal
+    ) -> Optional[WebhookSignal]:
+        return signal if self._reported_confirmed else None
 
     def webhook_ack(self, signal: object) -> WebhookAck:
         return self._ack
@@ -629,3 +636,22 @@ async def _discount_promocode(session) -> int:
         )
     )
     return promo.id
+
+
+async def test_webhook_refund_the_provider_does_not_confirm_keeps_paid(
+    client, transaction_repository, uow, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        order = await transaction_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-refund-fake")
+        )
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+    signal = WebhookSignal(
+        reference="wh-refund-fake", claims_paid=False, reported_status=TransactionStatus.REFUNDED
+    )
+    _install_stub(monkeypatch, _StubGateway(signal=signal, reported_confirmed=False))
+
+    response = await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert response.status_code == 200
+    assert (await transaction_repository.get_by_id(order.id)).status is TransactionStatus.PAID

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional, Protocol, runtime_checkable
 
@@ -58,6 +59,13 @@ class OrderFailer(Protocol):
     async def fail_unpaid_free_order(self, idempotency_key: str) -> Optional[SpentPurchaseDiscount]:
         """The one-shot discount to hand back when this call failed the order."""
         ...
+
+
+class OpenOrderCounter(Protocol):
+    # NEW orders that can still become a subscription: unexpired PENDING or PAID-unlinked
+    async def count_open_new_orders(
+        self, user_id: int, now: datetime, *, exclude_key: Optional[str] = None
+    ) -> int: ...
 
 
 class LoyaltyThresholdRescaler(Protocol):

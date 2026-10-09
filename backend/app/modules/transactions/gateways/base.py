@@ -146,5 +146,12 @@ class PaymentGateway(ABC):
             return None
         return payment
 
+    async def confirm_reported(
+        self, order: TransactionDto, signal: WebhookSignal
+    ) -> Optional[WebhookSignal]:
+        """A non-paid status as the provider's API confirms it, or None to ignore
+        the notification. A signed notification is its own confirmation."""
+        return signal
+
     def webhook_ack(self, signal: Optional[WebhookSignal]) -> WebhookAck:
         return self.ack

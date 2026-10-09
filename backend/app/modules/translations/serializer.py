@@ -33,8 +33,11 @@ _LINE_START_SPECIAL: Final[frozenset[str]] = frozenset("[*.")
 
 
 def _escape_line_start(line: str) -> str:
+    # Fluent reads past the indent, so the first visible character is the one that counts;
     # a string-literal placeable renders as the bare character
-    return f'{{"{line[0]}"}}{line[1:]}' if line[:1] in _LINE_START_SPECIAL else line
+    body = line.lstrip(" ")
+    indent = line[: len(line) - len(body)]
+    return f'{indent}{{"{body[0]}"}}{body[1:]}' if body[:1] in _LINE_START_SPECIAL else line
 
 
 # Fluent has no empty value: `key =` alone is a syntax error that takes the

@@ -5,7 +5,7 @@ import pytest
 
 from app.core.enums import TransactionStatus
 from app.core.exceptions import PaymentGatewayError
-from app.modules.transactions.gateways.base import PaymentHttpClient
+from app.modules.transactions.gateways.base import PaymentHttpClient, WebhookSignal
 from app.modules.transactions.gateways.yookassa import YooKassaGateway
 from tests.modules.transactions.gateways.support import (
     NO_HTTP,
@@ -155,3 +155,59 @@ async def test_parse_webhook_refund_carries_the_refund_amount() -> None:
     )
     assert signal is not None
     assert signal.refund_amount == Decimal("50.00") and signal.refund_currency == "RUB"
+
+
+def _refund_signal() -> WebhookSignal:
+    return WebhookSignal(
+        reference="",
+        claims_paid=False,
+        provider_payment_id="yk-1",
+        reported_status=TransactionStatus.REFUNDED,
+        refund_amount=Decimal("500.00"),
+        refund_currency="RUB",
+    )
+
+
+def _canceled_signal() -> WebhookSignal:
+    return WebhookSignal(
+        reference="",
+        claims_paid=False,
+        provider_payment_id="yk-1",
+        reported_status=TransactionStatus.CANCELED,
+    )
+
+
+async def test_confirm_reported_ignores_a_refund_the_api_does_not_show() -> None:
+    http = HttpRecorder(json_response(_payment()))
+    order = make_order(external_payment_id="yk-1")
+
+    assert await _gateway(http=http.client).confirm_reported(order, _refund_signal()) is None
+    assert http.last.url.path == "/v3/payments/yk-1"
+
+
+async def test_confirm_reported_takes_the_refund_amount_from_the_api() -> None:
+    http = HttpRecorder(
+        json_response(_payment(refunded_amount={"value": "100.00", "currency": "RUB"}))
+    )
+    order = make_order(external_payment_id="yk-1")
+
+    confirmed = await _gateway(http=http.client).confirm_reported(order, _refund_signal())
+
+    assert confirmed is not None
+    assert confirmed.refund_amount == Decimal("100.00") and confirmed.refund_currency == "RUB"
+
+
+@pytest.mark.parametrize(("api_status", "confirmed"), [("succeeded", False), ("canceled", True)])
+async def test_confirm_reported_checks_a_cancel_against_the_api(
+    api_status: str, confirmed: bool
+) -> None:
+    http = HttpRecorder(json_response(_payment(status=api_status, paid=api_status == "succeeded")))
+    order = make_order(external_payment_id="yk-1")
+
+    result = await _gateway(http=http.client).confirm_reported(order, _canceled_signal())
+
+    assert (result is not None) is confirmed
+
+
+async def test_confirm_reported_without_a_stored_payment_id_is_ignored() -> None:
+    assert await _gateway().confirm_reported(make_order(), _refund_signal()) is None

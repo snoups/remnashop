@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Final, Optional
 
 import orjson
@@ -17,6 +18,7 @@ from app.modules.transactions.gateways.common import PROVIDER_API_TIMEOUT_S, par
 
 _API_BASE: Final[str] = "https://api.yookassa.ru/v3"
 _PAID_STATUS: Final[str] = "succeeded"
+_CANCELED_STATUS: Final[str] = "canceled"
 _PAID_EVENT: Final[str] = "payment.succeeded"
 _REPORTED_EVENTS: Final[dict[str, TransactionStatus]] = {
     "payment.canceled": TransactionStatus.CANCELED,
@@ -127,3 +129,24 @@ class YooKassaGateway(PaymentGateway):
             reference=str((data.get("metadata") or {}).get("order_ref") or ""),
             provider_payment_id=str(data.get("id") or order.external_payment_id),
         )
+
+    async def confirm_reported(
+        self, order: TransactionDto, signal: WebhookSignal
+    ) -> Optional[WebhookSignal]:
+        # notifications are unsigned, and a refund also claws back referral rewards
+        if not order.external_payment_id:
+            return None
+        response = await self._http.get(
+            f"{_API_BASE}/payments/{order.external_payment_id}",
+            auth=self._auth(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        data = orjson.loads(response.content)
+        if signal.reported_status is TransactionStatus.REFUNDED:
+            refunded = data.get("refunded_amount") or {}
+            amount = to_decimal(refunded.get("value"))
+            if not amount:
+                return None
+            return replace(signal, refund_amount=amount, refund_currency=refunded.get("currency"))
+        return signal if data.get("status") == _CANCELED_STATUS else None

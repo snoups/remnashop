@@ -9,6 +9,8 @@ from app.core.utils.time import range_end_utc, range_start_utc
 
 _DEFAULT_DAYS: Final[int] = 30
 _MAX_PERIOD_DAYS: Final[int] = 3660
+# how far after registration a first payment still counts as a conversion
+CONVERSION_WINDOW_DAYS: Final[int] = 7
 # the previous window must be representable too
 _MIN_INSTANT: Final[datetime] = datetime.min.replace(tzinfo=TIMEZONE)
 
@@ -63,7 +65,9 @@ def resolve_period(
         raise ValidationError(
             "period_from must be before period_to", code=ErrorCode.ANALYTICS_PERIOD_INVALID
         )
-    if end - start > timedelta(days=_MAX_PERIOD_DAYS) or start - _MIN_INSTANT < end - start:
+    # callers reach back a whole previous window plus the conversion window
+    reach_back = end - start + timedelta(days=CONVERSION_WINDOW_DAYS)
+    if end - start > timedelta(days=_MAX_PERIOD_DAYS) or start - _MIN_INSTANT < reach_back:
         raise ValidationError(
             "Period is longer than the reporting limit", code=ErrorCode.ANALYTICS_PERIOD_INVALID
         )

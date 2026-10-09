@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Final
 
 from app.core.actor import Actor
 from app.core.constants import ONE_CENT, TIMEZONE
@@ -18,13 +17,11 @@ from app.modules.analytics.dto import (
     PeriodKpiDto,
     SnapshotKpiDto,
 )
-from app.modules.analytics.period import AnalyticsPeriod, resolve_period
+from app.modules.analytics.period import CONVERSION_WINDOW_DAYS, AnalyticsPeriod, resolve_period
 from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
 from app.modules.users import UserStatsRepository
-
-_CONVERSION_WINDOW_DAYS: Final[int] = 7
 
 
 def _period_kpi(
@@ -43,7 +40,7 @@ def _period_kpi(
     )
     paying = {row.user_id for row in in_period}
     # registrations shifted back by the window, so each had all of it to pay
-    window = timedelta(days=_CONVERSION_WINDOW_DAYS)
+    window = timedelta(days=CONVERSION_WINDOW_DAYS)
     cohort = {
         user_id: registered_at
         for user_id, registered_at in registrations
@@ -57,7 +54,7 @@ def _period_kpi(
             first_paid[user_id].astimezone(TIMEZONE).date()
             - registered_at.astimezone(TIMEZONE).date()
         ).days
-        <= _CONVERSION_WINDOW_DAYS
+        <= CONVERSION_WINDOW_DAYS
     )
     # an unfinished period is judged as of now, not its future end
     end_point = min(period.end, now) - timedelta(microseconds=1)
@@ -113,7 +110,7 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
             paid = await self._transaction_stats.list_paid(None, period.end)
             first_paid, coverage = coverage_by_user(paid)
             registrations = await self._user_stats.list_registrations(
-                previous.start - timedelta(days=_CONVERSION_WINDOW_DAYS), period.end, Role.USER
+                previous.start - timedelta(days=CONVERSION_WINDOW_DAYS), period.end, Role.USER
             )
 
             revenue_by_currency: dict[Currency, Decimal] = {}
@@ -141,7 +138,7 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
                 ),
                 report_currency=rates.anchor,
                 revenue_by_currency=revenue_by_currency,
-                conversion_window_days=_CONVERSION_WINDOW_DAYS,
+                conversion_window_days=CONVERSION_WINDOW_DAYS,
                 current=_period_kpi(
                     period=period,
                     paid=paid,

@@ -38,6 +38,9 @@ htmlcov/
 backend/backups/*
 !backend/backups/.gitkeep
 
+# Runtime media: uploads, broadcast media, backups
+backend/media/
+
 # Logs
 *.log
 
