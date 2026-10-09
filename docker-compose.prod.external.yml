@@ -1,5 +1,5 @@
 x-build: &build
-  image: ghcr.io/snoups/remnashop:latest
+  image: ghcr.io/remnashop/remnashop:latest
 
 x-common: &common
   ulimits:
@@ -85,7 +85,7 @@ services:
   remnashop-telegram:
     container_name: "remnashop-telegram"
     hostname: remnashop-telegram
-    image: ghcr.io/snoups/remnashop:latest-telegram
+    image: ghcr.io/remnashop/remnashop:latest-telegram
     <<: [*common, *logging, *env]
     command: ["telegram"]
     volumes:

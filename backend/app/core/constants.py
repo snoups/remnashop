@@ -22,7 +22,7 @@ LOGIN_PATTERN: Final[Pattern[str]] = re.compile(r"^[A-Za-z0-9._-]+$")
 REMNAWAVE_MIN_VERSION: Final[Version] = Version("2.7.0")
 REMNAWAVE_MAX_VERSION: Final[Version] = Version("2.8.0")
 
-REPOSITORY: Final[str] = "https://github.com/snoups/remnashop"
+REPOSITORY: Final[str] = "https://github.com/remnashop/remnashop"
 DOCS: Final[str] = "https://remnashop.dev"
 T_ME: Final[str] = "https://t.me/"
 API_V1: Final[str] = "/api/v1"

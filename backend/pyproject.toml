@@ -51,11 +51,11 @@ telegram = [
 ]
 
 #[tool.uv.sources]
-#remnapy = { git = "https://github.com/snoups/remnapy", rev = "0680253" }
+#remnapy = { git = "https://github.com/remnashop/remnapy", rev = "0680253" }
 
 [project.urls]
 homepage = "https://t.me/@remna_shop"
-repository = "https://github.com/snoups/remnashop"
+repository = "https://github.com/remnashop/remnashop"
 
 [dependency-groups]
 dev = [

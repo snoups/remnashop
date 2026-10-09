@@ -58,8 +58,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/snoups/remnashop:latest
-            ghcr.io/snoups/remnashop:${{ github.ref_name }}
+            ghcr.io/remnashop/remnashop:latest
+            ghcr.io/remnashop/remnashop:${{ github.ref_name }}
           build-args: |
             BUILD_TIME=${{ steps.vars.outputs.build_time }}
             BUILD_BRANCH=${{ steps.vars.outputs.build_branch }}
@@ -73,8 +73,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/snoups/remnashop:latest-telegram
-            ghcr.io/snoups/remnashop:${{ github.ref_name }}-telegram
+            ghcr.io/remnashop/remnashop:latest-telegram
+            ghcr.io/remnashop/remnashop:${{ github.ref_name }}-telegram
           build-args: |
             BUILD_TIME=${{ steps.vars.outputs.build_time }}
             BUILD_BRANCH=${{ steps.vars.outputs.build_branch }}
@@ -97,7 +97,7 @@ jobs:
 
             ---
 
-            - [Compare changes (${{ steps.latest-tag.outputs.previousTag }}...${{ steps.latest-tag.outputs.latestTag }})](https://github.com/snoups/remnashop/compare/${{ steps.latest-tag.outputs.previousTag }}...${{ steps.latest-tag.outputs.latestTag }})
+            - [Compare changes (${{ steps.latest-tag.outputs.previousTag }}...${{ steps.latest-tag.outputs.latestTag }})](https://github.com/remnashop/remnashop/compare/${{ steps.latest-tag.outputs.previousTag }}...${{ steps.latest-tag.outputs.latestTag }})
 
             ---
 
@@ -105,14 +105,14 @@ jobs:
 
             `api` service:
             ```
-            ghcr.io/snoups/remnashop:latest
-            ghcr.io/snoups/remnashop:${{ github.ref_name }}
+            ghcr.io/remnashop/remnashop:latest
+            ghcr.io/remnashop/remnashop:${{ github.ref_name }}
             ```
 
             `telegram` service (includes aiogram -- only this variant needs it):
             ```
-            ghcr.io/snoups/remnashop:latest-telegram
-            ghcr.io/snoups/remnashop:${{ github.ref_name }}-telegram
+            ghcr.io/remnashop/remnashop:latest-telegram
+            ghcr.io/remnashop/remnashop:${{ github.ref_name }}-telegram
             ```
           draft: false
           prerelease: false
