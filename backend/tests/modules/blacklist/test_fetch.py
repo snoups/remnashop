@@ -68,3 +68,22 @@ async def test_fetch_source_gives_up_on_a_source_that_trickles_bytes(monkeypatch
 
     with pytest.raises(ValueError, match="did not finish"):
         await fetch.fetch_source("https://blacklist.example/list.txt")
+
+
+def test_takes_the_first_csv_field_and_skips_dates():
+    parsed = parse_source_text("123456789,spam,2024-01-01\n2024-01-15\njohn99@gmail.com\n5;x\n")
+    assert parsed.telegram_ids == [5, 123456789]
+    assert parsed.emails == ["john99@gmail.com"]
+
+
+async def test_fetch_source_reads_a_file_with_a_byte_order_mark(monkeypatch) -> None:
+    async def _public(url: str) -> None:
+        return None
+
+    async def _download(url: str) -> bytes:
+        return "\ufeff123\n456\n".encode()
+
+    monkeypatch.setattr(fetch, "assert_public_https_host", _public)
+    monkeypatch.setattr(fetch, "_download", _download)
+    parsed = await fetch.fetch_source("https://feed.example/list.txt")
+    assert parsed.telegram_ids == [123, 456]

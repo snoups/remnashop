@@ -19,11 +19,14 @@ from app.core.enums import (
     SubscriptionStatus,
     TransactionStatus,
 )
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import (
+    MAX_BONUS_DAYS,
     AdjustUserPointsDto,
+    ListInvitedUsersDto,
     ListReferralsDto,
     RequestPointsWithdrawalDto,
     UpdateReferralSettingsDto,
@@ -36,6 +39,7 @@ from app.modules.referrals.usecases.get_referral_settings import GetReferralSett
 from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
 from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
+from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
 from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
 from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
@@ -414,6 +418,111 @@ async def test_list_referrals_joins_users_and_empty_rewards(
     assert items[0].rewards.amounts == {}
 
 
+async def test_list_referrals_hides_staff_from_an_admin(
+    referral_repository: ReferralRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    referrer = await _create_user(user_repository, 5201)
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", role=Role.ADMIN, telegram_id=5202)
+    )
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=staff.id, level=1
+    )
+    use_case = ListReferralsUseCase(referral_repository, user_repository, uow)
+    admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
+
+    items, _ = await use_case(admin, ListReferralsDto())
+    assert items[0].referred is None and items[0].referrer is not None
+
+    items, _ = await use_case(OWNER, ListReferralsDto())
+    assert items[0].referred is not None
+
+
+async def test_list_referrals_search_does_not_match_hidden_staff(
+    referral_repository: ReferralRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    referrer = await _create_user(user_repository, 5211)
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", role=Role.ADMIN, telegram_id=5212, email="probe@example.com")
+    )
+    await referral_repository.create_referral(
+        referrer_id=referrer.id, referred_id=staff.id, level=1
+    )
+    use_case = ListReferralsUseCase(referral_repository, user_repository, uow)
+    admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
+
+    _, total = await use_case(admin, ListReferralsDto(search="probe@example"))
+    assert total == 0
+
+    _, total = await use_case(OWNER, ListReferralsDto(search="probe@example"))
+    assert total == 1
+
+
+async def test_list_invited_users_hides_staff_from_an_admin(
+    referral_repository: ReferralRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    root = await _create_user(user_repository, 5221)
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", role=Role.ADMIN, telegram_id=5222, email="probe2@example.com")
+    )
+    child = await _create_user(user_repository, 5223)
+    await referral_repository.create_referral(referrer_id=root.id, referred_id=staff.id, level=1)
+    await referral_repository.create_referral(referrer_id=staff.id, referred_id=child.id, level=2)
+    use_case = ListInvitedUsersUseCase(referral_repository, user_repository, uow)
+    admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
+    data = ListInvitedUsersDto(user_id=root.id)
+
+    items, _ = await use_case(admin, data)
+    by_depth = {i.depth: i for i in items}
+    assert by_depth[1].user is None
+    assert by_depth[2].user is not None and by_depth[2].via is None
+
+    items, _ = await use_case(OWNER, data)
+    by_depth = {i.depth: i for i in items}
+    assert by_depth[1].user is not None and by_depth[2].via is not None
+
+    _, total = await use_case(admin, ListInvitedUsersDto(user_id=root.id, search="probe2"))
+    assert total == 0
+
+
+async def test_get_user_referral_stats_hides_staff_from_an_admin(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+) -> None:
+    staff_referrer = await user_repository.create(
+        CreateUserDto(name="staff-ref", role=Role.ADMIN, telegram_id=5231)
+    )
+    target = await _create_user(user_repository, 5232)
+    staff_buyer = await user_repository.create(
+        CreateUserDto(name="staff-buyer", role=Role.ADMIN, telegram_id=5233)
+    )
+    await referral_repository.create_referral(
+        referrer_id=staff_referrer.id, referred_id=target.id, level=1
+    )
+    edge = await referral_repository.create_referral(
+        referrer_id=target.id, referred_id=staff_buyer.id, level=1
+    )
+    subscription_id = await _create_subscription(subscription_repository, staff_buyer.id, 5233)
+    await referral_repository.create_reward(
+        referral_id=edge.id,
+        referrer_id=target.id,
+        subscription_id=subscription_id,
+        payment_key="order-staff",
+        type=ReferralRewardType.POINTS,
+        amount=Decimal("3"),
+    )
+    use_case = GetUserReferralStatsUseCase(referral_repository, user_repository, uow)
+    admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
+
+    stats = await use_case(admin, target.id)
+    assert stats.referrer is None and stats.rewards[0].buyer is None
+
+    stats = await use_case(OWNER, target.id)
+    assert stats.referrer is not None and stats.rewards[0].buyer is not None
+
+
 async def test_reset_referral_code_issues_a_new_code_and_logs_it(
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -516,3 +625,35 @@ async def test_update_referral_settings_requires_a_reward_on_every_active_level(
         ),
     )
     assert result.enabled is True
+
+
+@pytest.mark.parametrize(
+    ("reward_type", "amount"),
+    [
+        (ReferralRewardType.EXTRA_DAYS, Decimal(MAX_BONUS_DAYS + 1)),
+        (ReferralRewardType.POINTS, Decimal(10**12)),
+    ],
+)
+async def test_update_referral_settings_rejects_an_amount_reward_past_its_limit(
+    referral_repository: ReferralRepository,
+    uow: UnitOfWork,
+    event_publisher,
+    reward_type: ReferralRewardType,
+    amount: Decimal,
+) -> None:
+    owner = OWNER.model_copy(update={"id": 0})
+    use_case = UpdateReferralSettingsUseCase(
+        referral_repository, PricingRepository(referral_repository.session), event_publisher, uow
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            owner,
+            UpdateReferralSettingsDto(
+                reward_type=reward_type,
+                reward_strategy=ReferralRewardStrategy.AMOUNT,
+                reward_amounts={1: amount},
+            ),
+        )
+
+    assert error.value.code is ErrorCode.REFERRAL_REWARD_TOO_HIGH

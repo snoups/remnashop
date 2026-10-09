@@ -12,10 +12,15 @@ EMAIL = BlacklistKind.EMAIL
     [
         ("123456789", "123456789"),
         ("  123456789 ", "123456789"),
-        ("id123456789", "123456789"),
-        ("tg://user?id=123456789", "123456789"),
-        ("-100123456789", "100123456789"),
+        # only a whole decimal id: gluing digits out of other text made up ids
+        ("id123456789", None),
+        ("tg://user?id=123456789", None),
+        ("-100123456789", None),
+        ("2024-01-15", None),
+        ("12345678901234567890", None),
+        ("9223372036854775807", "9223372036854775807"),
         ("007", "7"),
+        ("00042", "42"),
         ("0", None),
         ("", None),
         ("not-a-number", None),
@@ -64,4 +69,4 @@ def test_derive_source_name(url: str, expected: str) -> None:
 
 def test_removal_key_keeps_emails_saved_under_a_looser_rule() -> None:
     assert removal_key(EMAIL, "  Email@. ") == "email@."
-    assert removal_key(TG, "id 0123") == "123"
+    assert removal_key(TG, " 0123 ") == "123"

@@ -10,6 +10,7 @@ from app.core.enums import (
     ReferralAccrualStrategy,
     ReferralRewardStrategy,
     ReferralRewardType,
+    TransactionStatus,
 )
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
@@ -78,9 +79,12 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         if order is None:
             logger.info(f"Referral reward skipped: no order for payment '{data.payment_key}'")
             return
-        if order.final_price <= 0:
-            # a 100%-discount checkout carries a payment_key too, but no money
-            logger.info(f"Referral reward skipped: order for payment '{data.payment_key}' was free")
+        # unpaid or refunded orders earn nothing; a 100%-discount checkout is paid but free
+        if order.status is not TransactionStatus.PAID or order.final_price <= 0:
+            logger.info(
+                f"Referral reward skipped: order for payment '{data.payment_key}' is "
+                f"{order.status.value} at {order.final_price}"
+            )
             return
         if not await self._purchase_earns_a_reward(settings.accrual_strategy, data):
             return

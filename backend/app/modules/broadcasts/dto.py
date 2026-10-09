@@ -185,7 +185,6 @@ class AudiencePreviewDto:
 class SetBroadcastMediaDto:
     broadcast_id: int
     content_type: str
-    filename: str
     data: bytes
 
 

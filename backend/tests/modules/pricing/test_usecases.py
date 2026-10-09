@@ -1,11 +1,13 @@
+import asyncio
 from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, update
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.core.db.models.pricing_settings import PricingSettings
 from app.core.db.models.transaction import Transaction
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
@@ -19,7 +21,9 @@ from app.core.enums import (
     Role,
     RoundingMode,
 )
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.loyalty.dto import LoyaltyTierDto, UpdateLoyaltySettingsDto
@@ -53,6 +57,7 @@ from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 OWNER = UserDto(name="owner", role=Role.OWNER)
@@ -419,3 +424,57 @@ async def test_update_pricing_settings_persists(
     )
     assert settings.price_per_day == Decimal("0.50")
     assert settings.price_per_gb == Decimal("0.30")
+
+
+async def test_anchor_switch_rechecks_the_anchor_under_the_row_lock(engine: AsyncEngine) -> None:
+    # A concurrent switch commits while this one runs. Only the committed
+    # settings column is touched (and restored); the switcher's own writes stay
+    # in a rolled-back transaction.
+    async with AsyncSession(engine) as setup:
+        existed = await setup.get(PricingSettings, 1) is not None
+        settings = await PricingRepository(setup).get_settings()
+        await setup.commit()
+    original = settings.anchor_currency
+    target = Currency.RUB if original is not Currency.RUB else Currency.USD
+
+    async with engine.connect() as holder_conn, engine.connect() as switch_conn:
+        holder = AsyncSession(bind=holder_conn)
+        await holder.execute(
+            update(PricingSettings)
+            .where(PricingSettings.id == settings.id)
+            .values(anchor_currency=target)
+        )
+
+        await switch_conn.begin()
+        switcher = AsyncSession(
+            bind=switch_conn, expire_on_commit=False, join_transaction_mode="create_savepoint"
+        )
+        uow = UnitOfWork(switcher)
+        use_case = SwitchAnchorCurrencyUseCase(
+            PricingRepository(switcher),
+            PlanRepository(switcher),
+            AddOnRepository(switcher),
+            TransactionRepository(switcher),
+            LoyaltyRepository(switcher),
+            uow,
+            OutboxEventPublisher(uow, RecordingDispatch()),
+        )
+        switch = asyncio.create_task(use_case(OWNER, SwitchAnchorCurrencyDto(new_anchor=target)))
+        try:
+            await asyncio.sleep(0.3)
+            await holder.commit()
+
+            with pytest.raises(ValidationError) as error:
+                await switch
+            assert error.value.code is ErrorCode.ANCHOR_CURRENCY_UNCHANGED
+        finally:
+            if not switch.done():
+                switch.cancel()
+            await switch_conn.rollback()
+            restore = (
+                update(PricingSettings).values(anchor_currency=original)
+                if existed
+                else delete(PricingSettings)
+            )
+            await holder.execute(restore.where(PricingSettings.id == settings.id))
+            await holder.commit()

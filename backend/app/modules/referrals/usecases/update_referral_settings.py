@@ -5,7 +5,7 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import ReferralRewardStrategy
+from app.core.enums import ReferralRewardStrategy, ReferralRewardType
 from app.core.error_codes import ErrorCode
 from app.core.events import set_fields
 from app.core.exceptions import ValidationError
@@ -13,18 +13,28 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.pricing import PricingRepository
-from app.modules.referrals.dto import ReferralSettingsDto, UpdateReferralSettingsDto
+from app.modules.referrals.dto import (
+    MAX_BONUS_DAYS,
+    ReferralSettingsDto,
+    UpdateReferralSettingsDto,
+)
 from app.modules.referrals.events import ReferralSettingsChangedEvent
 from app.modules.referrals.repository import ReferralRepository
 
 _MAX_PERCENT: Final[Decimal] = Decimal(100)
 _MIN_REWARD: Final[Decimal] = Decimal(1)
+# an amount reward's ceiling: MAX_BONUS_DAYS for days, Numeric(12, 0) for points
+_MAX_AMOUNT_REWARD: Final[dict[ReferralRewardType, Decimal]] = {
+    ReferralRewardType.EXTRA_DAYS: Decimal(MAX_BONUS_DAYS),
+    ReferralRewardType.POINTS: Decimal(10**12 - 1),
+}
 
 
 def _check_amounts(
     amounts: dict[int, Decimal],
     *,
     strategy: ReferralRewardStrategy,
+    reward_type: ReferralRewardType,
     enabled: bool,
     max_level: int,
 ) -> None:
@@ -35,6 +45,13 @@ def _check_amounts(
     ):
         raise ValidationError(
             "A percent reward can't exceed 100", code=ErrorCode.REFERRAL_REWARD_PERCENT_TOO_HIGH
+        )
+    if strategy is ReferralRewardStrategy.AMOUNT and any(
+        amount > _MAX_AMOUNT_REWARD[reward_type] for amount in amounts.values()
+    ):
+        raise ValidationError(
+            f"An amount reward can't exceed {_MAX_AMOUNT_REWARD[reward_type]}",
+            code=ErrorCode.REFERRAL_REWARD_TOO_HIGH,
         )
     # a level that shouldn't earn is switched off via max_level, not a zero;
     # a disabled program may keep blanks, e.g. right after a reset
@@ -71,7 +88,13 @@ class UpdateReferralSettingsUseCase(UseCase[UpdateReferralSettingsDto, ReferralS
             )
             enabled = data.enabled if data.enabled is not None else current.enabled
             max_level = data.max_level or current.max_level
-            _check_amounts(amounts, strategy=strategy, enabled=enabled, max_level=max_level)
+            _check_amounts(
+                amounts,
+                strategy=strategy,
+                reward_type=data.reward_type or current.reward_type,
+                enabled=enabled,
+                max_level=max_level,
+            )
             updated = await self._referral_repository.update_settings(data)
             await self._event_publisher.publish(
                 ReferralSettingsChangedEvent(

@@ -6,6 +6,7 @@ from app.modules.settings.api.schemas import (
     OAuthSettingsResponse,
     UpdateBotRequirementsRequest,
     UpdateOAuthSettingsRequest,
+    UpdateShopSettingsRequest,
 )
 from app.modules.settings.dto import BotSettingsDto
 
@@ -72,3 +73,14 @@ def test_bot_requirements_channel_id_is_bounded_to_int64() -> None:
     for value in (2**63, -(2**63) - 1):
         with pytest.raises(ValidationError):
             UpdateBotRequirementsRequest(channel_id=value)
+
+
+def test_update_shop_settings_request_tracks_sent_fields() -> None:
+    request = UpdateShopSettingsRequest.model_validate({"max_active_subscriptions": None})
+
+    assert request.model_fields_set == {"max_active_subscriptions"}
+
+
+def test_update_shop_settings_request_rejects_null_for_non_nullable_fields() -> None:
+    with pytest.raises(ValidationError):
+        UpdateShopSettingsRequest.model_validate({"link_reset_enabled": None})

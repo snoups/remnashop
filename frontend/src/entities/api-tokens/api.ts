@@ -8,6 +8,7 @@ export interface ApiToken {
   last_used_at: string | null;
   created_at: string;
   expires_at: string | null;
+  ip_allowlist: string[];
 }
 
 export interface CreatedApiToken {
@@ -19,11 +20,17 @@ export function listApiTokens(signal?: AbortSignal): Promise<ApiToken[]> {
   return apiGet<ListResponse<ApiToken>>("/api-tokens", signal).then((response) => response.items);
 }
 
-export function createApiToken(name: string, scopes: string[], expiresInDays: number): Promise<CreatedApiToken> {
-  return apiPost<CreatedApiToken, { name: string; scopes: string[]; expires_in_days: number }>("/api-tokens", {
+export function createApiToken(
+  name: string,
+  scopes: string[],
+  expiresInDays: number,
+  ipAllowlist: string[],
+): Promise<CreatedApiToken> {
+  return apiPost<CreatedApiToken, { name: string; scopes: string[]; expires_in_days: number; ip_allowlist: string[] }>("/api-tokens", {
     name,
     scopes,
     expires_in_days: expiresInDays,
+    ip_allowlist: ipAllowlist,
   });
 }
 

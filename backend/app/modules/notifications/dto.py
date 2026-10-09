@@ -17,6 +17,11 @@ class NotificationChannel(StrEnum):
     TELEGRAM = "telegram"
 
 
+COALESCED_EVENT_TYPES: Final[frozenset[str]] = frozenset(
+    {"LoginFailedEvent", "PasskeyLoginFailedEvent", "OAuthLoginFailedEvent"}
+)
+COALESCE_WINDOW_S: Final[int] = 300
+
 NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
     "security": frozenset(
         {
@@ -34,6 +39,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "SubscriptionPurchasedEvent",
             "SubscriptionRenewedEvent",
             "TransactionRefundedEvent",
+            "TransactionPartiallyRefundedEvent",
             "TransactionFulfilledManuallyEvent",
         }
     ),
@@ -149,6 +155,7 @@ class DeliverNotificationDto:
     payload: dict[str, Any]
     actor_id: Optional[int]
     ip_address: Optional[str]
+    suppressed: int = 0
 
 
 @dataclass(frozen=True, kw_only=True)

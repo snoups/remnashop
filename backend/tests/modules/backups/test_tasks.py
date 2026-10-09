@@ -6,9 +6,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.actor import Actor
+from app.core.db.models.backup_run import BackupRun
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus
@@ -316,3 +317,122 @@ async def test_auto_backup_noops_when_last_run_younger_than_interval(
     await RunScheduledBackupUseCase(backup_repository, uow, run_backup).system()
 
     assert run_backup.runs == []
+
+
+async def _failed_events(backup_repository: BackupRepository) -> list[int]:
+    rows = await backup_repository.session.scalars(
+        select(EventOutboxEntry).where(EventOutboxEntry.event_type == "BackupFailedEvent")
+    )
+    return [row.payload["run_id"] for row in rows]
+
+
+async def _running_since(
+    backup_repository: BackupRepository, uow: UnitOfWork, age: timedelta
+) -> int:
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+        await backup_repository.mark_running(run.id)
+        await backup_repository.session.execute(
+            update(BackupRun)
+            .where(BackupRun.id == run.id)
+            .values(created_at=datetime_now() - age, updated_at=datetime_now() - age)
+        )
+    return run.id
+
+
+async def test_run_backup_fails_a_run_stranded_by_a_killed_worker(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
+) -> None:
+    monkeypatch.setattr(config, "media_dir", tmp_path)
+    stranded = await _running_since(backup_repository, uow, timedelta(hours=3))
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+
+    with patch(
+        "app.modules.backups.usecases.run_backup.create_database_dump",
+        AsyncMock(side_effect=lambda config, dest: dest.write_bytes(b"dump")),
+    ):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
+        )
+
+    assert (await backup_repository.get_run(stranded)).status == BackupRunStatus.FAILED
+    assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.COMPLETED
+    assert await _failed_events(backup_repository) == [stranded]
+
+
+async def test_run_backup_still_waits_for_a_long_running_backup(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    event_publisher,
+) -> None:
+    running = await _running_since(backup_repository, uow, timedelta(minutes=90))
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
+    )
+
+    assert (await backup_repository.get_run(running)).status == BackupRunStatus.RUNNING
+    assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.FAILED
+    assert await _failed_events(backup_repository) == [run.id]
+
+
+async def test_run_backup_does_not_fail_itself_after_a_long_queue(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
+) -> None:
+    monkeypatch.setattr(config, "media_dir", tmp_path)
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+        old = datetime_now() - timedelta(hours=3)
+        await backup_repository.session.execute(
+            update(BackupRun).where(BackupRun.id == run.id).values(created_at=old, updated_at=old)
+        )
+
+    with patch(
+        "app.modules.backups.usecases.run_backup.create_database_dump",
+        AsyncMock(side_effect=lambda config, dest: dest.write_bytes(b"dump")),
+    ):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
+        )
+
+    done = await backup_repository.get_run(run.id)
+    assert done.status == BackupRunStatus.COMPLETED and done.error is None
+    assert await _failed_events(backup_repository) == []
+
+
+async def test_run_backup_keeps_a_run_that_started_late_after_queueing(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    event_publisher,
+) -> None:
+    async with uow:
+        queued = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+        await backup_repository.session.execute(
+            update(BackupRun)
+            .where(BackupRun.id == queued.id)
+            .values(created_at=datetime_now() - timedelta(hours=3))
+        )
+        await backup_repository.mark_running(queued.id)
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
+    )
+
+    assert (await backup_repository.get_run(queued.id)).status == BackupRunStatus.RUNNING
+    assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.FAILED

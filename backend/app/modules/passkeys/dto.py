@@ -4,6 +4,9 @@ from typing import Any, Final, Optional
 
 from app.core.dto import BaseDto, TimestampMixin
 
+# width of passkey_credentials.credential_id
+PASSKEY_CREDENTIAL_ID_MAX_LENGTH: Final[int] = 255
+
 RP_NAME: Final[str] = "Remnashop"
 
 

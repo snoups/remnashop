@@ -3,9 +3,9 @@ from typing import Annotated, Final, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 
+from app.core.constants import INT64_MAX
 from app.core.enums import AccessMode
 
-_INT64_MAX: Final[int] = 2**63 - 1
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
 
 
@@ -45,12 +45,19 @@ class ShopSettingsResponse(BaseModel):
 
 class UpdateShopSettingsRequest(BaseModel):
     max_active_subscriptions: Optional[int] = Field(default=None, ge=1)
-    device_single_reset_enabled: bool = True
-    device_single_reset_cooldown_hours: int = Field(default=0, ge=0)
-    device_all_reset_enabled: bool = True
-    device_all_reset_cooldown_hours: int = Field(default=0, ge=0)
-    link_reset_enabled: bool = True
-    link_reset_cooldown_hours: int = Field(default=0, ge=0)
+    device_single_reset_enabled: Optional[bool] = None
+    device_single_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    device_all_reset_enabled: Optional[bool] = None
+    device_all_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    link_reset_enabled: Optional[bool] = None
+    link_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def non_nullable_fields(self) -> "UpdateShopSettingsRequest":
+        for name in self.model_fields_set - {"max_active_subscriptions"}:
+            if getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null")
+        return self
 
 
 class BotCommandItem(BaseModel):
@@ -156,5 +163,5 @@ class UpdateBotRequirementsRequest(BaseModel):
     rules_required: bool = False
     rules_url: Optional[HttpUrl] = None
     channel_required: bool = False
-    channel_id: Optional[int] = Field(default=None, ge=-_INT64_MAX - 1, le=_INT64_MAX)
+    channel_id: Optional[int] = Field(default=None, ge=-INT64_MAX - 1, le=INT64_MAX)
     channel_url: Optional[HttpUrl] = None

@@ -146,3 +146,46 @@ async def test_notifications_follow_chosen_groups(
         "LoginFailedEvent",
     ]
     assert [item.event_type for item in chosen.items] == ["SubscriptionPurchasedEvent"]
+
+
+async def test_bell_payload_drops_contact_fields_without_detail_permission(
+    event_log_repository: EventLogRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    owner: UserDto,
+) -> None:
+    await event_log_repository.create(
+        EventLogEntryDto(
+            category=EventCategory.AUTH,
+            event_type="LoginFailedEvent",
+            occurred_at=NOW,
+            actor_email="a@x.io",
+            payload={
+                "user": {
+                    "login": "l",
+                    "name": "n",
+                    "username": "u",
+                    "email": "e@x.io",
+                    "telegram_id": 5,
+                }
+            },
+        )
+    )
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(
+                login="adm",
+                name="adm",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_grants=["NOTIFICATIONS_VIEW"],
+            )
+        )
+
+    trimmed = (await GetNotificationsUseCase(event_log_repository, uow)(admin)).items[0]
+    full = (await GetNotificationsUseCase(event_log_repository, uow)(owner)).items[0]
+
+    assert trimmed.payload["user"] == {"login": "l", "name": "n"}
+    assert trimmed.actor_email is None
+    assert full.payload["user"]["email"] == "e@x.io"
+    assert full.actor_email == "a@x.io"

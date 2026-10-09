@@ -1160,6 +1160,12 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=64), nullable=False),
         sa.Column("token_hash", sa.String(length=64), nullable=False),
         sa.Column("scopes", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "ip_allowlist",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default="[]",
+            nullable=False,
+        ),
         sa.Column("created_by_user_id", sa.Integer(), nullable=True),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
@@ -1802,6 +1808,7 @@ def upgrade() -> None:
             "type", sa.Enum("EXTRA_DAYS", "POINTS", name="referralrewardtype"), nullable=False
         ),
         sa.Column("amount", sa.Numeric(precision=12, scale=0), nullable=False),
+        sa.Column("reversed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -1910,6 +1917,7 @@ def upgrade() -> None:
         sa.Column("anchor_base_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("anchor_final_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("discount_promocode_id", sa.Integer(), nullable=True),
+        sa.Column("discount_from_promocode", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("customer_email", sa.String(length=255), nullable=True),
         sa.Column("idempotency_key", sa.String(length=36), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),

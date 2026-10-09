@@ -415,6 +415,92 @@ async def test_webhook_refund_marks_only_a_paid_order_and_publishes_an_event(
     assert [event.payload["order_id"] for event in events] == [paid.id]
 
 
+async def _refund_webhook(
+    client, transaction_repository, uow, user_id, plan_id, monkeypatch, key, amount, currency=None
+):
+    async with uow:
+        order = await transaction_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=key)
+        )
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+    signal = WebhookSignal(
+        reference=key,
+        claims_paid=False,
+        reported_status=TransactionStatus.REFUNDED,
+        refund_amount=amount,
+        refund_currency=currency,
+    )
+    _install_stub(monkeypatch, _StubGateway(signal=signal))
+    await client.post("/api/v1/payments/yookassa", content=b"{}")
+    return order
+
+
+async def _events(session, event_type):
+    return (
+        await session.scalars(
+            select(EventOutboxEntry).where(EventOutboxEntry.event_type == event_type)
+        )
+    ).all()
+
+
+async def test_webhook_partial_refund_keeps_paid_and_alerts(
+    client, transaction_repository, uow, session, user_id, plan_id, monkeypatch
+) -> None:
+    order = await _refund_webhook(
+        client,
+        transaction_repository,
+        uow,
+        user_id,
+        plan_id,
+        monkeypatch,
+        "wh-partial-1",
+        Decimal("1"),
+    )
+
+    assert (await transaction_repository.get_by_id(order.id)).status is TransactionStatus.PAID
+    assert await _events(session, "TransactionRefundedEvent") == []
+    partial = await _events(session, "TransactionPartiallyRefundedEvent")
+    assert [(event.payload["order_id"], event.payload["currency"]) for event in partial] == [
+        (order.id, order.currency.value)
+    ]
+
+
+async def test_webhook_full_refund_amount_marks_refunded(
+    client, transaction_repository, uow, session, user_id, plan_id, monkeypatch
+) -> None:
+    order = await _refund_webhook(
+        client,
+        transaction_repository,
+        uow,
+        user_id,
+        plan_id,
+        monkeypatch,
+        "wh-full-1",
+        Decimal("100000"),
+    )
+
+    assert (await transaction_repository.get_by_id(order.id)).status is TransactionStatus.REFUNDED
+    assert await _events(session, "TransactionPartiallyRefundedEvent") == []
+
+
+async def test_webhook_refund_in_another_currency_is_unknown_and_full(
+    client, transaction_repository, uow, session, user_id, plan_id, monkeypatch
+) -> None:
+    order = await _refund_webhook(
+        client,
+        transaction_repository,
+        uow,
+        user_id,
+        plan_id,
+        monkeypatch,
+        "wh-cur-1",
+        Decimal("1"),
+        currency="XXX",
+    )
+
+    assert (await transaction_repository.get_by_id(order.id)).status is TransactionStatus.REFUNDED
+
+
 async def test_webhook_refunded_order_is_not_reprovisioned(
     client, transaction_repository, uow, user_id, plan_id, monkeypatch
 ) -> None:

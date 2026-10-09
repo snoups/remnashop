@@ -111,6 +111,15 @@ async def assert_public_https_host(url: str) -> None:
             )
 
 
+def validate_ip_allowlist(value: list[str]) -> list[str]:
+    for entry in value:
+        try:
+            ipaddress.ip_network(entry, strict=False)
+        except ValueError as error:
+            raise ValueError(f"Invalid IP or CIDR: {entry}") from error
+    return value
+
+
 def is_ip_allowed(client_ip: str, allowlist: list[str]) -> bool:
     try:
         address = ipaddress.ip_address(client_ip)

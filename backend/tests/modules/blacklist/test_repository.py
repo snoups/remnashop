@@ -4,7 +4,7 @@ from app.modules.blacklist.repository import BlacklistRepository
 
 
 async def test_add_entry_normalises_and_dedupes(blacklist_repository: BlacklistRepository) -> None:
-    assert await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "id 123")
+    assert await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "0123")
     # already there
     assert not await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "123")
     assert not await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "garbage")  # invalid

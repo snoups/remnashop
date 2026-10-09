@@ -1,11 +1,14 @@
 from pathlib import Path
 
+import pytest
+
 from app.core.enums import Locale
 from app.modules.banners.storage import (
     banner_path,
     delete_banner_file,
     read_banner_file,
     save_banner_file,
+    validate_banner_name,
 )
 
 
@@ -42,3 +45,8 @@ def test_delete_removes_file(tmp_path: Path) -> None:
 
 def test_delete_missing_file_does_not_raise(tmp_path: Path) -> None:
     delete_banner_file(tmp_path, "menu", Locale.RU, "jpg")
+
+
+def test_banner_name_with_trailing_newline_is_rejected() -> None:
+    with pytest.raises(ValueError):
+        validate_banner_name("menu\n")

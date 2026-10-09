@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,7 @@ from app.core.exceptions import (
 from app.core.ports import EventPublisher
 from app.core.security import hash_password, hash_refresh_token
 from app.core.security.permissions import Permission
+from app.modules.auth.api.schemas import BootstrapRequest
 from app.modules.auth.dto import RevokeSessionDto, RevokeUserSessionDto
 from app.modules.auth.events import (
     BootstrapConflictEvent,
@@ -871,3 +873,26 @@ async def test_api_token_reaches_customer_sessions_but_not_staff_sessions(
                 user_id=owner.id, session_id=owner_sessions[0].id, client_ip=CLIENT_IP
             ),
         )
+
+
+def test_bootstrap_rejects_login_with_trailing_newline() -> None:
+    with pytest.raises(PydanticValidationError):
+        BootstrapRequest(login="owner\n", password="Correct-horse-battery-staple-1")
+
+
+async def test_login_with_trailing_newline_is_invalid_credentials(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    use_case = _login_use_case(
+        user_repository, uow, config, event_publisher, session_repository, settings_repository
+    )
+
+    with pytest.raises(AuthenticationError) as error:
+        await use_case.execute("owner\n", "Secret-password-1", "203.0.113.1", None)
+
+    assert error.value.code is ErrorCode.INVALID_CREDENTIALS

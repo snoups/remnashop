@@ -16,6 +16,8 @@ from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseC
 from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
+from app.modules.referrals.usecases.resume_bonus_renewal import ResumeBonusRenewalUseCase
+from app.modules.referrals.usecases.reverse_referral_rewards import ReverseReferralRewardsUseCase
 from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
 
 __all__ = [
@@ -35,5 +37,7 @@ __all__ = [
     "RequestPointsWithdrawalUseCase",
     "ResetReferralCodeUseCase",
     "ResetReferralSettingsUseCase",
+    "ResumeBonusRenewalUseCase",
+    "ReverseReferralRewardsUseCase",
     "UpdateReferralSettingsUseCase",
 ]

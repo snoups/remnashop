@@ -1,4 +1,3 @@
-import ipaddress
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
@@ -9,11 +8,12 @@ from app.core.constants import LOGIN_PATTERN
 from app.core.enums import BlacklistKind, Locale
 from app.core.security import PASSWORD_MIN_LENGTH, PASSWORD_PATTERN
 from app.core.security.permissions import Permission
+from app.core.utils.http import validate_ip_allowlist
 from app.modules.users.schemas import UserResponse
 
 
 def _validate_login_charset(value: str) -> str:
-    if not LOGIN_PATTERN.match(value):
+    if not LOGIN_PATTERN.fullmatch(value):
         raise ValueError(
             "Login may only contain Latin letters, digits, dots, underscores, and hyphens"
         )
@@ -170,15 +170,7 @@ class UpdateOwnProfileRequest(BaseModel):
 class UpdateSecurityRequest(BaseModel):
     ip_allowlist: list[str]
 
-    @field_validator("ip_allowlist")
-    @classmethod
-    def validate_entries(cls, value: list[str]) -> list[str]:
-        for entry in value:
-            try:
-                ipaddress.ip_network(entry, strict=False)
-            except ValueError as error:
-                raise ValueError(f"Invalid IP or CIDR: {entry}") from error
-        return value
+    _validate_ip_allowlist = field_validator("ip_allowlist")(validate_ip_allowlist)
 
 
 class SetDiscountRequest(BaseModel):

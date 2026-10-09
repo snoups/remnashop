@@ -178,7 +178,6 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.EMOJI_PACKS_IMPORT,
         Permission.EMOJI_PACKS_DELETE,
         Permission.OAUTH_SETTINGS_VIEW,
-        Permission.OAUTH_SETTINGS_MANAGE,
         Permission.LOCALES_VIEW,
         Permission.LOCALES_ADD,
         Permission.LOCALES_REMOVE,
@@ -587,3 +586,9 @@ def test_irreversible_subscription_actions_are_not_token_grantable() -> None:
     assert Permission.SUBSCRIPTIONS_DEVICES_DELETE not in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL not in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.SUBSCRIPTIONS_GRANT in TOKEN_GRANTABLE_PERMISSIONS
+
+
+def test_oauth_settings_manage_is_owner_only_by_default() -> None:
+    assert Permission.OAUTH_SETTINGS_MANAGE not in ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.OAUTH_SETTINGS_MANAGE in ROLE_PERMISSIONS[Role.OWNER]
+    assert Permission.OAUTH_SETTINGS_MANAGE in GRANTABLE_PERMISSIONS

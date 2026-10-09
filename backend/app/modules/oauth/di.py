@@ -1,10 +1,10 @@
-from dishka import Provider, Scope, provide, provide_all
+from dishka import Provider, Scope, alias, provide, provide_all
 from redis.asyncio import Redis
 
+from app.core.ports import OidcIdentityCleaner
 from app.modules.oauth.providers.state_store import OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
-    CleanupOidcIdentitiesUseCase,
     ListOAuthIdentitiesUseCase,
     OAuthConnectAuthorizeUseCase,
     OAuthConnectCallbackUseCase,
@@ -18,6 +18,7 @@ class OAuthDIProvider(Provider):
     scope = Scope.REQUEST
 
     oauth_identity_repository = provide(OAuthIdentityRepository)
+    oidc_identity_cleaner = alias(source=OAuthIdentityRepository, provides=OidcIdentityCleaner)
     use_cases = provide_all(
         OAuthLoginAuthorizeUseCase,
         OAuthLoginCallbackUseCase,
@@ -25,7 +26,6 @@ class OAuthDIProvider(Provider):
         OAuthConnectCallbackUseCase,
         OAuthDisconnectUseCase,
         ListOAuthIdentitiesUseCase,
-        CleanupOidcIdentitiesUseCase,
     )
 
     @provide

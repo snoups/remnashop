@@ -210,13 +210,57 @@ async def test_media_upload_and_delete(
     created = await client.post("/api/v1/broadcasts", json=_body(), headers=admin_headers)
     url = f"/api/v1/broadcasts/{created.json()['id']}/media"
     uploaded = await client.put(
-        url, files={"file": ("a.jpg", b"jpeg", "image/jpeg")}, headers=admin_headers
+        url, content=b"jpeg", headers={**admin_headers, "Content-Type": "image/jpeg"}
     )
     assert uploaded.status_code == 200
     assert uploaded.json()["media_type"] == "PHOTO"
     deleted = await client.delete(url, headers=admin_headers)
     assert deleted.status_code == 200
     assert deleted.json()["media_type"] is None
+
+
+@pytest.mark.parametrize(("content_type", "status_code"), [("video/mp4", 200), ("image/png", 400)])
+async def test_media_upload_takes_raw_body_up_to_type_limit(
+    client: httpx.AsyncClient, admin_headers: dict[str, str], content_type: str, status_code: int
+) -> None:
+    created = await client.post("/api/v1/broadcasts", json=_body(), headers=admin_headers)
+    response = await client.put(
+        f"/api/v1/broadcasts/{created.json()['id']}/media",
+        content=b"\x00" * (12 * 1024 * 1024),
+        headers={**admin_headers, "Content-Type": content_type},
+    )
+    assert response.status_code == status_code
+    if status_code == 200:
+        assert response.json()["media_type"] == "VIDEO"
+    else:
+        assert response.json()["code"] == "BROADCAST_MEDIA_INVALID"
+
+
+async def test_media_upload_body_is_not_read_without_auth(
+    config: AppConfig, test_container: AsyncContainer
+) -> None:
+    app = get_app(config)
+    setup_dishka(test_container, app)
+    pulled: list[int] = []
+
+    async def counting(scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        async def counted_receive():  # type: ignore[no-untyped-def]
+            message = await receive()
+            if message["type"] == "http.request":
+                pulled.append(len(message.get("body", b"")))
+            return message
+
+        await app(scope, counted_receive, send)
+
+    transport = httpx.ASGITransport(app=counting)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.put(
+            "/api/v1/broadcasts/1/media",
+            content=b"\x00" * (40 * 1024 * 1024),
+            headers={"Content-Type": "video/mp4"},
+        )
+    assert response.status_code == 401
+    assert pulled == []
 
 
 async def test_delete_draft(client: httpx.AsyncClient, admin_headers: dict[str, str]) -> None:

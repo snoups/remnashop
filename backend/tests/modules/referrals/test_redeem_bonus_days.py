@@ -22,8 +22,9 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
-from app.modules.referrals.dto import RedeemBonusDaysDto
+from app.modules.referrals.dto import RedeemBonusDaysDto, ResumeBonusRenewalDto
 from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
+from app.modules.referrals.usecases.resume_bonus_renewal import ResumeBonusRenewalUseCase
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     PurchaseSubscriptionDto,
@@ -34,6 +35,7 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
 
 
@@ -46,6 +48,7 @@ def redeem(
     idempotency_repository: PurchaseIdempotencyRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    bonus_renewal_dispatch: RecordingDispatch,
 ) -> RedeemBonusDaysUseCase:
     return RedeemBonusDaysUseCase(
         user_repository,
@@ -55,7 +58,13 @@ def redeem(
         idempotency_repository,
         uow,
         event_publisher,
+        bonus_renewal_dispatch,
     )
+
+
+@pytest.fixture
+def bonus_renewal_dispatch() -> RecordingDispatch:
+    return RecordingDispatch()
 
 
 async def _plan(plan_repository: PlanRepository) -> PlanDto:
@@ -286,10 +295,12 @@ async def test_redeem_keeps_the_debit_when_the_panel_already_extended(
     real_renew = lifecycle.renew
     failures = [RuntimeError("commit lost")]
 
-    async def _renew_failing_once(subscription_id: int, expire_at: object) -> SubscriptionDto:
+    async def _renew_failing_once(
+        subscription_id: int, expire_at: object, **credit: object
+    ) -> SubscriptionDto:
         if failures:
             raise failures.pop()
-        return await real_renew(subscription_id, expire_at)
+        return await real_renew(subscription_id, expire_at, **credit)
 
     monkeypatch.setattr(lifecycle, "renew", _renew_failing_once)
 
@@ -403,10 +414,12 @@ async def test_a_resumed_redemption_lands_even_if_the_subscription_was_disabled_
     real_renew = lifecycle.renew
     failures = [RuntimeError("commit lost")]
 
-    async def _renew_failing_once(subscription_id: int, expire_at: object) -> SubscriptionDto:
+    async def _renew_failing_once(
+        subscription_id: int, expire_at: object, **credit: object
+    ) -> SubscriptionDto:
         if failures:
             raise failures.pop()
-        return await real_renew(subscription_id, expire_at)
+        return await real_renew(subscription_id, expire_at, **credit)
 
     monkeypatch.setattr(lifecycle, "renew", _renew_failing_once)
 
@@ -425,4 +438,63 @@ async def test_a_resumed_redemption_lands_even_if_the_subscription_was_disabled_
 
     expected = subscription.expire_at + timedelta(days=5)
     assert abs(result.expire_at - expected) < timedelta(milliseconds=1)
+    assert await _bonus_days(user_repository, user.id) == 3
+
+
+async def test_redeem_hands_a_stuck_pinned_renewal_to_the_worker(
+    redeem: RedeemBonusDaysUseCase,
+    bonus_renewal_dispatch: RecordingDispatch,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with uow:
+        plan = await _plan(plan_repository)
+        user = await _user_with_days(user_repository, 940_014, 8)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+
+    # the date is pinned and the panel written, then the local step fails twice
+    lifecycle = purchase_subscription_use_case._renew._lifecycle_service
+    real_renew = lifecycle.renew
+    failures = [RuntimeError("commit lost"), RuntimeError("commit lost")]
+
+    async def _renew_failing_twice(
+        subscription_id: int, expire_at: object, **credit: object
+    ) -> SubscriptionDto:
+        if failures:
+            raise failures.pop()
+        return await real_renew(subscription_id, expire_at, **credit)
+
+    monkeypatch.setattr(lifecycle, "renew", _renew_failing_twice)
+
+    result = await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=5))
+
+    assert result.pending is True
+    assert result.expire_at == subscription.expire_at
+    assert result.bonus_days == 3
+    assert await _bonus_days(user_repository, user.id) == 3
+    [message] = bonus_renewal_dispatch.messages
+    key = message["idempotency_key"]
+    assert message == {
+        "user_id": user.id,
+        "subscription_id": subscription.id,
+        "days": 5,
+        "idempotency_key": key,
+    }
+
+    resume = ResumeBonusRenewalUseCase(
+        user_repository, subscription_repository, purchase_subscription_use_case, uow
+    )
+    # a redelivered task finds the key linked and applies nothing twice
+    for _ in range(2):
+        await resume.system(ResumeBonusRenewalDto(**message))
+
+    renewed = await subscription_repository.get_by_id(subscription.id)
+    expected = subscription.expire_at + timedelta(days=5)
+    assert abs(renewed.expire_at - expected) < timedelta(milliseconds=1)
+    assert await idempotency_repository.get_subscription_id(key) == subscription.id
     assert await _bonus_days(user_repository, user.id) == 3

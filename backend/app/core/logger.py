@@ -15,7 +15,6 @@ from app.core.constants import LOG_DIR
 LOG_BUFFER_CAPACITY: Final[int] = 200
 REDIS_LOG_CAPACITY: Final[int] = 500
 REDIS_LOG_TIMEOUT_S: Final[float] = 2.0
-LOG_FILENAME: Final[str] = "remnashop.log"
 LOG_ENCODING: Final[str] = "utf-8"
 # Bot API calls carry the token in the URL path, and httpx logs every request URL at INFO
 _BOT_TOKEN_IN_URL: Final[re.Pattern[str]] = re.compile(r"/bot\d+:[\w-]+")
@@ -63,7 +62,7 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, message)
 
 
-def setup_logger(config: AppConfig) -> None:
+def setup_logger(config: AppConfig, process: str) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logger.remove()
 
@@ -82,7 +81,8 @@ def setup_logger(config: AppConfig) -> None:
 
     if config.log.to_file:
         logger.add(
-            sink=LOG_DIR / LOG_FILENAME,
+            # one file per process: two processes rotating one file clobber each other
+            sink=LOG_DIR / f"remnashop-{process}.log",
             level=config.log.level,
             format=LOG_FORMAT,
             rotation=config.log.rotation,

@@ -1,5 +1,5 @@
 import json
-from typing import Any, Final, Optional
+from typing import Any, Optional
 
 from webauthn import verify_authentication_response
 from webauthn.helpers import base64url_to_bytes
@@ -11,6 +11,7 @@ from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
 from app.modules.auth import IssuedSession, SessionIssuer
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
+from app.modules.passkeys.dto import PASSKEY_CREDENTIAL_ID_MAX_LENGTH
 from app.modules.passkeys.events import (
     PasskeyLoginFailedEvent,
     PasskeyLoginSucceededEvent,
@@ -18,8 +19,6 @@ from app.modules.passkeys.events import (
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto, UserRepository
-
-_CREDENTIAL_ID_MAX_LENGTH: Final[int] = 255
 
 
 def _read_client_data_challenge(credential: dict[str, Any]) -> Optional[str]:
@@ -81,7 +80,10 @@ class VerifyPasskeyAuthenticationUseCase:
         credential_id = credential.get("id")
         # the stored column is 255 wide; anything longer can't match and would
         # land in the failure event's payload as-is
-        if not isinstance(credential_id, str) or len(credential_id) > _CREDENTIAL_ID_MAX_LENGTH:
+        if (
+            not isinstance(credential_id, str)
+            or len(credential_id) > PASSKEY_CREDENTIAL_ID_MAX_LENGTH
+        ):
             raise await self._fail(
                 "Invalid passkey credential", ErrorCode.PASSKEY_INVALID, client_ip
             )

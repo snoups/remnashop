@@ -6,7 +6,16 @@ import pytest
 from remnapy import RemnawaveSDK
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AddOnType, Currency, PlanType, PurchaseType, SubscriptionStatus
+from app.core.enums import (
+    AddOnType,
+    Currency,
+    DiscountSource,
+    PaymentGatewayType,
+    PlanType,
+    PurchaseType,
+    SubscriptionStatus,
+    TransactionStatus,
+)
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.plans.addon_repository import AddOnRepository
@@ -19,6 +28,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
@@ -40,6 +50,8 @@ from app.modules.subscriptions.usecases import (
     ReconcileSubscriptionsUseCase,
     SyncSubscriptionStatusUseCase,
 )
+from app.modules.transactions.dto import CreateTransactionDto
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, _user_payload
@@ -48,9 +60,16 @@ from tests.modules.subscriptions.factories import make_plan_snapshot
 
 @pytest.fixture
 def fulfill_purchase(
-    user_repository: UserRepository, purchase_subscription_use_case: PurchaseSubscriptionUseCase
+    user_repository: UserRepository,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    uow: UnitOfWork,
 ) -> FulfillPurchaseUseCase:
-    return FulfillPurchaseUseCase(user_repository, purchase_subscription_use_case)
+    return FulfillPurchaseUseCase(
+        user_repository,
+        purchase_subscription_use_case,
+        TransactionRepository(user_repository.session),
+        uow,
+    )
 
 
 def _reconcile_use_case(
@@ -165,6 +184,90 @@ async def test_purchase_subscription_task_body_provisions_a_paid_order_past_the_
         )
 
     assert len(await subscription_repository.get_active_by_user(buyer.id)) == 4
+
+
+async def test_a_free_order_over_the_cap_fails_instead_of_provisioning(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    fulfill_purchase: FulfillPurchaseUseCase,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=444))
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="task-free-cap",
+            name="task-free-cap",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+        )
+    )
+    await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=1,
+            device_single_reset_enabled=True,
+            device_single_reset_cooldown_hours=0,
+            device_all_reset_enabled=True,
+            device_all_reset_cooldown_hours=0,
+            link_reset_enabled=True,
+            link_reset_cooldown_hours=0,
+        )
+    )
+    snapshot = make_plan_snapshot(plan_id=plan.id, price_paid=Decimal(0), currency=Currency.RUB)
+    await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=buyer.id,
+            remnawave_user_id=444_000,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=datetime_now() + timedelta(days=30),
+            url="https://example.com/sub/444000",
+            plan_snapshot=snapshot,
+        )
+    )
+    transactions = TransactionRepository(user_repository.session)
+    order = await transactions.create(
+        CreateTransactionDto(
+            user_id=buyer.id,
+            plan_id=plan.id,
+            plan_snapshot=snapshot,
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            target_subscription_id=None,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+            base_price=Decimal("500.00"),
+            discount_percent=100,
+            discount_source=DiscountSource.PURCHASE,
+            final_price=Decimal(0),
+            anchor_base_price=Decimal("500.00"),
+            anchor_final_price=Decimal(0),
+            customer_email=None,
+            idempotency_key="task-free-cap",
+            expires_at=datetime_now() + timedelta(minutes=30),
+        )
+    )
+    await transactions.mark_status(order.id, TransactionStatus.PAID)
+
+    result = await fulfill_purchase.system(
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot,
+            duration_days=30,
+            price_paid=Decimal(0),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            idempotency_key="task-free-cap",
+        )
+    )
+
+    assert result is None
+    assert len(await subscription_repository.get_active_by_user(buyer.id)) == 1
+    assert (await transactions.get_by_id(order.id)).status is TransactionStatus.FAILED
+    # the spent 100% purchase discount that made the order free comes back
+    assert (await user_repository.get_by_id(buyer.id)).purchase_discount == 100  # type: ignore[union-attr]
 
 
 async def test_grant_addon_task_body_grants_an_entitlement(

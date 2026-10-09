@@ -3,12 +3,14 @@ from app.core.events import StoredEvent
 from app.modules.referrals.tasks import (
     assign_referral_rewards_task,
     attach_referral_on_registration_task,
+    reverse_referral_rewards_task,
 )
 from app.modules.subscriptions import (
     SubscriptionChangedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
 )
+from app.modules.transactions import TransactionRefundedEvent
 from app.modules.users import TelegramUserRegisteredEvent
 
 
@@ -43,8 +45,17 @@ async def _on_telegram_user_registered(entry: StoredEvent) -> None:
     )
 
 
+async def _on_transaction_refunded(entry: StoredEvent) -> None:
+    payment_key = entry.payload.get("payment_key")
+    if not payment_key:
+        return  # outbox rows written before the field existed
+
+    await reverse_referral_rewards_task.kiq(payment_key=payment_key)  # type: ignore[call-overload]
+
+
 def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(TelegramUserRegisteredEvent, _on_telegram_user_registered)
     bus.subscribe(SubscriptionPurchasedEvent, _on_subscription_purchased)
     bus.subscribe(SubscriptionRenewedEvent, _on_subscription_renewed_or_changed)
     bus.subscribe(SubscriptionChangedEvent, _on_subscription_renewed_or_changed)
+    bus.subscribe(TransactionRefundedEvent, _on_transaction_refunded)

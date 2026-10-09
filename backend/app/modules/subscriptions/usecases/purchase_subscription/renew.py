@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Callable
 
 from loguru import logger
@@ -12,6 +13,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now, truncate_to_ms
+from app.modules.pricing import PricingRepository
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
 from app.modules.subscriptions.eligibility import get_owned_target
 from app.modules.subscriptions.events import SubscriptionRenewedEvent
@@ -29,6 +31,7 @@ class RenewPurchase:
         uow: UnitOfWork,
         event_publisher: EventPublisher,
         lifecycle_service: SubscriptionLifecycleService,
+        pricing_repository: PricingRepository,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._idempotency = idempotency_repository
@@ -36,6 +39,7 @@ class RenewPurchase:
         self._uow = uow
         self._event_publisher = event_publisher
         self._lifecycle_service = lifecycle_service
+        self._pricing_repository = pricing_repository
 
     async def run(
         self, actor: Actor, data: PurchaseSubscriptionDto, keep_key: Callable[[], None]
@@ -99,7 +103,10 @@ class RenewPurchase:
                     "Subscription was deleted while this renewal was in flight",
                     code=ErrorCode.SUBSCRIPTION_DELETED,
                 )
-            subscription = await self._lifecycle_service.renew(locked.id, expire_at)
+            paid = await self._paid_in_snapshot_currency(data, locked)
+            subscription = await self._lifecycle_service.renew(
+                locked.id, expire_at, paid=paid, days=data.duration_days
+            )
             if data.idempotency_key is not None:
                 await self._idempotency.link(data.idempotency_key, subscription.id)
             await self._event_publisher.publish(
@@ -115,6 +122,19 @@ class RenewPurchase:
             f"{actor.log} Renewed subscription '{subscription.id}' by {data.duration_days}d"
         )
         return subscription
+
+    async def _paid_in_snapshot_currency(
+        self, data: PurchaseSubscriptionDto, target: SubscriptionDto
+    ) -> Decimal:
+        currency = target.plan_snapshot.currency
+        if data.price_paid <= 0 or data.currency is currency:
+            return data.price_paid
+        rates = await self._pricing_repository.get_rate_table()
+        return (
+            data.price_paid
+            / rates.for_currency(data.currency).rate
+            * rates.for_currency(currency).rate
+        )
 
     async def _apply_pinned_renewal(
         self,

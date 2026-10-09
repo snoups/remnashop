@@ -215,13 +215,8 @@ async def update_shop_settings(
     settings = await use_case(
         actor,
         UpdateShopSettingsDto(
-            max_active_subscriptions=payload.max_active_subscriptions,
-            device_single_reset_enabled=payload.device_single_reset_enabled,
-            device_single_reset_cooldown_hours=payload.device_single_reset_cooldown_hours,
-            device_all_reset_enabled=payload.device_all_reset_enabled,
-            device_all_reset_cooldown_hours=payload.device_all_reset_cooldown_hours,
-            link_reset_enabled=payload.link_reset_enabled,
-            link_reset_cooldown_hours=payload.link_reset_cooldown_hours,
+            **payload.model_dump(exclude_unset=True),
+            fields_set=frozenset(payload.model_fields_set),
         ),
     )
     return ShopSettingsResponse.model_validate(settings, from_attributes=True)

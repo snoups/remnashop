@@ -29,10 +29,19 @@ async def _resolve_api_token_actor(
     credential: str,
     api_token_repository: ApiTokenRepository,
     uow: UnitOfWork,
+    client_ip: str,
 ) -> Optional[SyntheticActor]:
     token = await api_token_repository.get_active_by_hash(hash_refresh_token(credential))
     if token is None:
         return None
+
+    if token.ip_allowlist and not is_ip_allowed(client_ip, token.ip_allowlist):
+        logger.warning(f"API token '{token.name}' denied from disallowed IP '{client_ip}'")
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Access denied from this IP address",
+            code=ErrorCode.IP_NOT_ALLOWED,
+        )
 
     # Unlike interactive sessions (last_used_at only updated on refresh --
     # see SessionRepository.rotate), token traffic is low-volume/scripted,
@@ -74,7 +83,7 @@ async def get_current_actor(
         session_id = int(payload["sid"])
     except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         token_actor = await _resolve_api_token_actor(
-            credentials.credentials, api_token_repository, uow
+            credentials.credentials, api_token_repository, uow, client_ip
         )
         if token_actor is not None:
             return token_actor

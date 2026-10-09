@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Final, Optional
 from uuid import uuid4
 
+from loguru import logger
+from remnapy import RemnawaveSDK
 from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserResponseDto
 
 from app.core.constants import GB_TO_BYTES
@@ -82,3 +84,15 @@ def subscription_row(
         url=panel_user.subscription_url,
         plan_snapshot=plan,
     )
+
+
+async def reset_traffic_if_paid(
+    sdk: RemnawaveSDK, data: PurchaseSubscriptionDto, subscription: SubscriptionDto
+) -> None:
+    if not data.reset_traffic:
+        return
+    # a failure leaves the old counter running, nothing to revert
+    try:
+        await sdk.users.reset_user_traffic(subscription.remnawave_user_id)
+    except Exception:
+        logger.exception(f"Failed to reset traffic of subscription '{subscription.id}'")

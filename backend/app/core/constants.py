@@ -60,6 +60,9 @@ TRANSLATION_CHANGED_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:translati
 # how many custom windows a shop can have.
 CUSTOM_DIALOG_WINDOW_SLOTS: Final[int] = 50
 
+# largest per-type broadcast media cap; the body-size middleware lets this much through
+BROADCAST_MEDIA_MAX_BYTES: Final[int] = 50 * 1024 * 1024
+
 # Shared between auth's /refresh, /logout and oauth's /oauth/{provider}/callback --
 # oauth writes this cookie, auth reads it.
 REFRESH_COOKIE_NAME: Final[str] = "refresh_token"
@@ -79,6 +82,7 @@ USER_LIST_ORIGIN: Final[str] = "user_list_origin"
 USER_LIST_PAYLOAD: Final[str] = "user_list_payload"
 
 INT32_MAX: Final[int] = 2_147_483_647
+INT64_MAX: Final[int] = 2**63 - 1
 
 TIMEZONE: Final[timezone] = timezone.utc
 DATETIME_VIEW_FORMAT: Final[str] = "%d.%m.%y %H:%M:%S"

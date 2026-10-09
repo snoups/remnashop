@@ -329,23 +329,26 @@ async def test_get_by_remnawave_user_id_finds_the_matching_subscription(
     assert found.id == created.id
 
 
-async def test_list_non_terminal_excludes_expired_and_deleted(
+async def test_list_non_terminal_keeps_recently_expired_and_excludes_deleted(
     subscription_repository: SubscriptionRepository, user_repository: UserRepository
 ) -> None:
     user_id = await _create_user(user_repository, 143)
     active = await subscription_repository.create(_create_dto(user_id, 54323))
-    expired = await subscription_repository.create(
-        CreateSubscriptionDto(
+
+    def expired_dto(remnawave_user_id: int, days_ago: int) -> CreateSubscriptionDto:
+        return CreateSubscriptionDto(
             user_id=user_id,
-            remnawave_user_id=54324,
+            remnawave_user_id=remnawave_user_id,
             status=SubscriptionStatus.EXPIRED,
             traffic_limit=100,
             device_limit=3,
-            expire_at=datetime_now() - timedelta(days=1),
-            url="https://example.com/sub/expired",
+            expire_at=datetime_now() - timedelta(days=days_ago),
+            url=f"https://example.com/sub/expired-{days_ago}",
             plan_snapshot=make_plan_snapshot(),
         )
-    )
+
+    recently_expired = await subscription_repository.create(expired_dto(54324, 10))
+    long_expired = await subscription_repository.create(expired_dto(54326, 40))
     deleted = await subscription_repository.create(
         CreateSubscriptionDto(
             user_id=user_id,
@@ -363,7 +366,8 @@ async def test_list_non_terminal_excludes_expired_and_deleted(
     result_ids = {row.id for row in result}
 
     assert active.id in result_ids
-    assert expired.id not in result_ids
+    assert recently_expired.id in result_ids
+    assert long_expired.id not in result_ids
     assert deleted.id not in result_ids
 
 
@@ -388,12 +392,111 @@ async def test_claim_idempotency_key_first_caller_wins(
     idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
     async with uow:
-        first = await idempotency_repository.claim("key-1")
+        first = await idempotency_repository.claim(
+            "key-1", stale_before=datetime_now() - timedelta(minutes=15)
+        )
     async with uow:
-        second = await idempotency_repository.claim("key-1")
+        second = await idempotency_repository.claim(
+            "key-1", stale_before=datetime_now() - timedelta(minutes=15)
+        )
 
     assert first is True
     assert second is False
+
+
+_STALE_AFTER = timedelta(minutes=15)
+
+
+async def _insert_key(
+    session: AsyncSession,
+    key: str,
+    *,
+    age: timedelta,
+    subscription_id: int | None = None,
+    renew_expire_at: datetime | None = None,
+) -> None:
+    session.add(
+        SubscriptionPurchaseIdempotency(
+            key=key,
+            subscription_id=subscription_id,
+            renew_expire_at=renew_expire_at,
+            created_at=datetime_now() - age,
+        )
+    )
+    await session.flush()
+
+
+async def test_claim_reclaims_an_unlinked_unpinned_stale_key(
+    uow: UnitOfWork, idempotency_repository: PurchaseIdempotencyRepository
+) -> None:
+    async with uow:
+        await _insert_key(idempotency_repository.session, "stale-1", age=timedelta(minutes=20))
+    async with uow:
+        reclaimed = await idempotency_repository.claim(
+            "stale-1", stale_before=datetime_now() - _STALE_AFTER
+        )
+    async with uow:
+        again = await idempotency_repository.claim(
+            "stale-1", stale_before=datetime_now() - _STALE_AFTER
+        )
+
+    assert reclaimed is True
+    assert again is False
+
+
+async def test_claim_keeps_a_fresh_key(
+    uow: UnitOfWork, idempotency_repository: PurchaseIdempotencyRepository
+) -> None:
+    async with uow:
+        await _insert_key(idempotency_repository.session, "fresh-1", age=timedelta(minutes=5))
+    async with uow:
+        claimed = await idempotency_repository.claim(
+            "fresh-1", stale_before=datetime_now() - _STALE_AFTER
+        )
+
+    assert claimed is False
+
+
+async def test_claim_never_reclaims_a_pinned_key(
+    uow: UnitOfWork, idempotency_repository: PurchaseIdempotencyRepository
+) -> None:
+    async with uow:
+        await _insert_key(
+            idempotency_repository.session,
+            "pinned-1",
+            age=timedelta(minutes=20),
+            renew_expire_at=datetime_now() + timedelta(days=30),
+        )
+    async with uow:
+        claimed = await idempotency_repository.claim(
+            "pinned-1", stale_before=datetime_now() - _STALE_AFTER
+        )
+
+    assert claimed is False
+
+
+async def test_claim_never_reclaims_a_linked_key(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    created = await create_subscription(
+        subscription_repository, user_repository, telegram_id=503, remnawave_user_id=503001
+    )
+    async with uow:
+        await _insert_key(
+            idempotency_repository.session,
+            "linked-1",
+            age=timedelta(minutes=20),
+            subscription_id=created.id,
+        )
+    async with uow:
+        claimed = await idempotency_repository.claim(
+            "linked-1", stale_before=datetime_now() - _STALE_AFTER
+        )
+
+    assert claimed is False
 
 
 async def test_link_and_get_idempotency_key(
@@ -406,7 +509,7 @@ async def test_link_and_get_idempotency_key(
         subscription_repository, user_repository, telegram_id=502, remnawave_user_id=502001
     )
     async with uow:
-        await idempotency_repository.claim("key-2")
+        await idempotency_repository.claim("key-2", stale_before=datetime_now())
         await idempotency_repository.link("key-2", created.id)
 
     linked = await idempotency_repository.get_subscription_id("key-2")

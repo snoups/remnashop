@@ -51,6 +51,9 @@ from app.modules.broadcasts.dto import (
 )
 
 NO_TELEGRAM_ERROR: Final[str] = "no telegram"
+OPTED_OUT_ERROR: Final[str] = "opted out"
+BLOCKED_ERROR: Final[str] = "blocked"
+RECALL_FAILED_ERROR: Final[str] = "recall failed"
 SUMMARY_WINDOW: Final[timedelta] = timedelta(days=30)
 # only the message texts, so a search for "text" or "_" doesn't hit the JSON keys
 _TEXTS_PATH: Final[str] = "$.*.text"
@@ -224,8 +227,22 @@ class BroadcastRepository:
         return int(total or 0)
 
     async def claim_pending(
-        self, broadcast_id: int, limit: int, lease: timedelta
+        self, broadcast_id: int, limit: int, lease: timedelta, *, marketing: bool
     ) -> builtins.list[PendingRecipientDto]:
+        # audience was built at materialization; a block or opt-out since then still wins
+        unreachable = [(User.is_blocked.is_(True), BLOCKED_ERROR)]
+        if marketing:
+            unreachable.append((User.marketing_opt_out.is_(True), OPTED_OUT_ERROR))
+        for condition, error in unreachable:
+            await self.session.execute(
+                update(BroadcastRecipient)
+                .where(
+                    BroadcastRecipient.broadcast_id == broadcast_id,
+                    BroadcastRecipient.status == BroadcastRecipientStatus.PENDING,
+                    BroadcastRecipient.user_id.in_(select(User.id).where(condition)),
+                )
+                .values(status=BroadcastRecipientStatus.CANCELED, error=error)
+            )
         # a user who lost their telegram_id since materialization can never be reached
         await self.session.execute(
             update(BroadcastRecipient)
@@ -290,6 +307,13 @@ class BroadcastRepository:
             values["error"] = error[:255]
         await self.session.execute(
             update(BroadcastRecipient).where(BroadcastRecipient.id == recipient_id).values(**values)
+        )
+
+    async def mark_recall_failed(self, recipient_id: int, error: str) -> None:
+        await self.session.execute(
+            update(BroadcastRecipient)
+            .where(BroadcastRecipient.id == recipient_id)
+            .values(error=f"{RECALL_FAILED_ERROR}: {error}"[:255])
         )
 
     async def bump_attempt(self, recipient_id: int, max_attempts: int, error: str) -> None:
@@ -358,6 +382,8 @@ class BroadcastRepository:
                 BroadcastRecipient.broadcast_id == broadcast_id,
                 BroadcastRecipient.status == BroadcastRecipientStatus.SENT,
                 BroadcastRecipient.telegram_message_id.is_not(None),
+                # a failed delete stays SENT but is skipped, or the chain would loop over it
+                BroadcastRecipient.error.is_(None),
                 User.telegram_id.is_not(None),
             )
             .order_by(BroadcastRecipient.id)

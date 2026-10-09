@@ -1,8 +1,15 @@
 from dishka.integrations.taskiq import FromDishka, inject
 
-from app.modules.referrals.dto import AssignReferralRewardsDto, AttachReferralOnRegistrationDto
+from app.modules.referrals.dto import (
+    AssignReferralRewardsDto,
+    AttachReferralOnRegistrationDto,
+    ResumeBonusRenewalDto,
+    ReverseReferralRewardsDto,
+)
 from app.modules.referrals.usecases import AttachReferralOnRegistrationUseCase
 from app.modules.referrals.usecases.assign_referral_rewards import AssignReferralRewardsUseCase
+from app.modules.referrals.usecases.resume_bonus_renewal import ResumeBonusRenewalUseCase
+from app.modules.referrals.usecases.reverse_referral_rewards import ReverseReferralRewardsUseCase
 from app.worker.broker import broker
 
 
@@ -32,4 +39,31 @@ async def attach_referral_on_registration_task(
 ) -> None:
     await use_case.system(
         AttachReferralOnRegistrationDto(user_id=user_id, referral_code=referral_code)
+    )
+
+
+@broker.task(retry_on_error=True, max_retries=3)
+@inject(patch_module=True)
+async def reverse_referral_rewards_task(
+    payment_key: str, use_case: FromDishka[ReverseReferralRewardsUseCase]
+) -> None:
+    await use_case.system(ReverseReferralRewardsDto(payment_key=payment_key))
+
+
+@broker.task(retry_on_error=True, max_retries=10)
+@inject(patch_module=True)
+async def resume_bonus_renewal_task(
+    user_id: int,
+    subscription_id: int,
+    days: int,
+    idempotency_key: str,
+    use_case: FromDishka[ResumeBonusRenewalUseCase],
+) -> None:
+    await use_case.system(
+        ResumeBonusRenewalDto(
+            user_id=user_id,
+            subscription_id=subscription_id,
+            days=days,
+            idempotency_key=idempotency_key,
+        )
     )

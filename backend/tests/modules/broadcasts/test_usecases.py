@@ -134,7 +134,6 @@ def _photo(broadcast_id: int, size: int = 100) -> SetBroadcastMediaDto:
     return SetBroadcastMediaDto(
         broadcast_id=broadcast_id,
         content_type="image/jpeg",
-        filename="../../evil.exe",
         data=b"\xff" * size,
     )
 
@@ -257,7 +256,6 @@ async def test_media_rejects_unknown_content_type(
             SetBroadcastMediaDto(
                 broadcast_id=broadcast.id,
                 content_type="application/x-msdownload",
-                filename="a.exe",
                 data=b"x",
             ),
         )
@@ -285,9 +283,7 @@ async def test_replacing_media_with_other_type_removes_old_file(
     await media_use_case(admin, _photo(broadcast.id))
     updated = await media_use_case(
         admin,
-        SetBroadcastMediaDto(
-            broadcast_id=broadcast.id, content_type="video/mp4", filename="v", data=b"v"
-        ),
+        SetBroadcastMediaDto(broadcast_id=broadcast.id, content_type="video/mp4", data=b"v"),
     )
     assert updated.media_type is BroadcastMediaType.VIDEO
     assert not media_path(media_config.media_dir, broadcast.id, 1, "jpg").exists()

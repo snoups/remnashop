@@ -4,7 +4,7 @@ from typing import Final
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import TransactionStatus
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.pricing import PricingRepository
 from app.modules.transactions.dto import GetTransactionSummaryDto, TransactionSummaryDto
@@ -36,6 +36,7 @@ class GetTransactionSummaryUseCase(UseCase[GetTransactionSummaryDto, Transaction
                 created_to=data.created_to,
                 search=data.search,
                 user_id=data.user_id,
+                search_staff=PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE),
             )
             rate_table = await self._pricing_repository.get_rate_table()
 

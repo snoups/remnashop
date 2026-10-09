@@ -705,6 +705,141 @@ async def test_recall_deletes_and_marks(
     assert recall_dispatch.messages == []
 
 
+async def _sent_broadcast(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    first_telegram_id: int,
+    count: int,
+) -> int:
+    ids = await _customers(session, user_repository, first_telegram_id, count)
+    broadcast = await _sending(broadcast_repository, ids)
+    for message_id, recipient in enumerate(await _recipients(session, broadcast.id), start=1):
+        await broadcast_repository.mark_recipient(
+            recipient.id, BroadcastRecipientStatus.SENT, message_id=message_id
+        )
+    await broadcast_repository.update_fields(
+        broadcast.id,
+        status=BroadcastStatus.COMPLETED,
+        channel_chat_id=-100500,
+        channel_message_id=77,
+    )
+    return broadcast.id
+
+
+async def test_recall_skips_unconfirmed_deletes_and_goes_on(
+    monkeypatch: pytest.MonkeyPatch,
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    with_token: None,
+) -> None:
+    # a full page: the chain would otherwise re-kick for the next one
+    monkeypatch.setattr(recall_module, "BATCH_SIZE", 3)
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9740, 3)
+    telegram = MockTelegram(
+        _by_chat(
+            {
+                9740: httpx.Response(200, json={"ok": True, "result": True}),
+                9741: _error(502),
+                9742: _error(403, "blocked"),
+            }
+        )
+    )
+
+    await RecallBroadcastBatchUseCase(
+        broadcast_repository, settings_repository, telegram, recall_dispatch, uow
+    ).system(broadcast_id)
+
+    assert await _statuses(session, broadcast_id) == [
+        BroadcastRecipientStatus.RECALLED,
+        BroadcastRecipientStatus.SENT,
+        BroadcastRecipientStatus.RECALLED,
+    ]
+    # a transient failure doesn't drop the rest of the recall; the row is skipped, not looped over
+    assert recall_dispatch.messages == [{"broadcast_id": broadcast_id}]
+    assert await broadcast_repository.list_recallable(broadcast_id, 10) == []
+    [kept] = [r for r in await _recipients(session, broadcast_id) if r.status == "SENT"]
+    assert kept.error == "recall failed: err"
+
+
+async def test_recall_stops_at_once_on_unauthorized(
+    monkeypatch: pytest.MonkeyPatch,
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    with_token: None,
+) -> None:
+    monkeypatch.setattr(recall_module, "GROUP_SIZE", 1)
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9750, 2)
+    telegram = MockTelegram(lambda request: _error(401, "Unauthorized"))
+
+    await RecallBroadcastBatchUseCase(
+        broadcast_repository, settings_repository, telegram, recall_dispatch, uow
+    ).system(broadcast_id)
+
+    assert len(telegram.requests) == 1
+    assert await _statuses(session, broadcast_id) == [BroadcastRecipientStatus.SENT] * 2
+    assert (await broadcast_repository.get_or_raise(broadcast_id)).channel_message_id == 77
+    assert recall_dispatch.messages == []
+
+
+async def test_recall_keeps_channel_post_it_could_not_delete(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    with_token: None,
+) -> None:
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9760, 1)
+    telegram = MockTelegram(
+        _by_chat(
+            {9760: httpx.Response(200, json={"ok": True, "result": True}), -100500: _error(502)}
+        )
+    )
+
+    await RecallBroadcastBatchUseCase(
+        broadcast_repository, settings_repository, telegram, recall_dispatch, uow
+    ).system(broadcast_id)
+
+    assert await _statuses(session, broadcast_id) == [BroadcastRecipientStatus.RECALLED]
+    assert (await broadcast_repository.get_or_raise(broadcast_id)).channel_message_id == 77
+
+
+async def test_recall_rekicks_until_the_last_page(
+    monkeypatch: pytest.MonkeyPatch,
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    with_token: None,
+) -> None:
+    monkeypatch.setattr(recall_module, "BATCH_SIZE", 1)
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9770, 2)
+    telegram = MockTelegram(ok_response)
+    recall = RecallBroadcastBatchUseCase(
+        broadcast_repository, settings_repository, telegram, recall_dispatch, uow
+    )
+
+    await recall.system(broadcast_id)
+    assert recall_dispatch.messages == [{"broadcast_id": broadcast_id}]
+    await recall.system(broadcast_id)
+    await recall.system(broadcast_id)
+
+    assert await _statuses(session, broadcast_id) == [BroadcastRecipientStatus.RECALLED] * 2
+    assert len(recall_dispatch.messages) == 2
+
+
 async def test_tick_starts_due_and_rekicks_stalled(
     session: AsyncSession,
     user_repository: UserRepository,

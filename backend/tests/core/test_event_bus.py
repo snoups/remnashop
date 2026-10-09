@@ -25,7 +25,7 @@ from app.modules.oauth.events import (
     OAuthLoginFailedEvent,
     OAuthLoginSucceededEvent,
 )
-from app.modules.referrals.tasks import assign_referral_rewards_task
+from app.modules.referrals.tasks import assign_referral_rewards_task, reverse_referral_rewards_task
 from app.modules.subscriptions.events import (
     SubscriptionChangedEvent,
     SubscriptionPurchasedEvent,
@@ -60,7 +60,12 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
             user=_USER, subscription_id=2, previous_subscription_id=1, previous_plan_snapshot={}
         ),
         TransactionRefundedEvent(
-            order_id=1, user_id=1, gateway_type="YOOKASSA", amount="10.00", currency="USD"
+            order_id=1,
+            user_id=1,
+            payment_key="k",
+            gateway_type="YOOKASSA",
+            amount="10.00",
+            currency="USD",
         ),
     ]
 }
@@ -173,6 +178,7 @@ async def test_registered_handler_reads_its_real_payload_shape(
         return None
 
     monkeypatch.setattr(assign_referral_rewards_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(reverse_referral_rewards_task, "kiq", _noop_kiq)
     monkeypatch.setattr(recalculate_loyalty_discounts_task, "kiq", _noop_kiq)
     monkeypatch.setattr(deliver_notification_task, "kiq", _noop_kiq)
 

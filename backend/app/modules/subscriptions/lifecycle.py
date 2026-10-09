@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from app.core.enums import SubscriptionStatus
 from app.modules.subscriptions.domain import SubscriptionState
@@ -48,8 +49,10 @@ class SubscriptionLifecycleService:
         new_state = state.sync_expire_at(new_expire_at)
         return await self._subscription_repository.apply_state(new_state)
 
-    async def renew(self, subscription_id: int, new_expire_at: datetime) -> SubscriptionDto:
+    async def renew(
+        self, subscription_id: int, new_expire_at: datetime, *, paid: Decimal, days: int
+    ) -> SubscriptionDto:
         dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
         state = _dto_to_state(dto)
-        new_state = state.reactivate_on_renew(new_expire_at)
+        new_state = state.reactivate_on_renew(new_expire_at).add_renewal_credit(paid, days)
         return await self._subscription_repository.apply_state(new_state)

@@ -100,11 +100,14 @@ class WataGateway(PaymentGateway):
         transaction_id = data.get("id") or data.get("transactionId")
         # A completed refund also reports transactionStatus=Paid.
         is_payment = data.get("kind") == _PAYMENT_KIND
+        is_refund = data.get("kind") == _REFUND_KIND
         return WebhookSignal(
             reference=str(order_ref),
             claims_paid=is_payment and data.get("transactionStatus") == _PAID_STATUS,
             provider_payment_id=str(transaction_id) if transaction_id else None,
             reported_status=_reported_status(data),
+            refund_amount=to_decimal(data.get("amount")) if is_refund else None,
+            refund_currency=data.get("currency") if is_refund else None,
         )
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:

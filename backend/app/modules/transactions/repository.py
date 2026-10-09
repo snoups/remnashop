@@ -1,16 +1,26 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Final, Optional, cast
+from typing import Any, Final, Optional, cast
 
-from sqlalchemy import ColumnElement, CursorResult, func, or_, select, update
+from sqlalchemy import ColumnElement, CursorResult, and_, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import INT32_MAX, MAX_SQL_IN_PARAMS
+from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
 from app.core.db.models.transaction import Transaction
+from app.core.db.models.user import User
 from app.core.db.timestamp import NOW_FUNC
-from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
+from app.core.enums import (
+    Currency,
+    DiscountSource,
+    PaymentGatewayType,
+    PurchaseType,
+    Role,
+    TransactionStatus,
+)
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
+from app.core.ports import SpentPurchaseDiscount
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import DEFAULT_PAGE_SIZE, CreateTransactionDto, TransactionDto
 
@@ -28,6 +38,7 @@ def _order_filters(
     created_to: Optional[datetime] = None,
     search: Optional[str] = None,
     user_id: Optional[int] = None,
+    search_staff: bool = True,
 ) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = [_NOT_TEST]
     if user_id is not None:
@@ -44,13 +55,20 @@ def _order_filters(
         filters.append(Transaction.created_at < created_to)
     if search:
         pattern = f"%{search}%"
+        email_match: ColumnElement[bool] = Transaction.customer_email.ilike(pattern)
+        if not search_staff:
+            # a staff order's email is hidden from this caller; matching it would be an oracle
+            email_match = and_(
+                email_match,
+                Transaction.user_id.in_(select(User.id).where(User.role == Role.USER)),
+            )
         search_filters: list[ColumnElement[bool]] = [
             Transaction.external_payment_id.ilike(pattern),
-            Transaction.customer_email.ilike(pattern),
+            email_match,
             Transaction.plan_snapshot["name"].astext.ilike(pattern),
         ]
         # id/user_id are Integer; a longer digit string would overflow asyncpg
-        if search.isdigit() and int(search) <= INT32_MAX:
+        if search.isascii() and search.isdigit() and int(search) <= INT32_MAX:
             search_filters += [
                 Transaction.id == int(search),
                 Transaction.user_id == int(search),
@@ -84,6 +102,7 @@ class TransactionRepository:
             anchor_base_price=row.anchor_base_price,
             anchor_final_price=row.anchor_final_price,
             discount_promocode_id=row.discount_promocode_id,
+            discount_from_promocode=row.discount_from_promocode,
             customer_email=row.customer_email,
             idempotency_key=row.idempotency_key,
             expires_at=row.expires_at,
@@ -112,6 +131,7 @@ class TransactionRepository:
             anchor_base_price=data.anchor_base_price,
             anchor_final_price=data.anchor_final_price,
             discount_promocode_id=data.discount_promocode_id,
+            discount_from_promocode=data.discount_from_promocode,
             customer_email=data.customer_email,
             idempotency_key=data.idempotency_key,
             expires_at=data.expires_at,
@@ -174,12 +194,16 @@ class TransactionRepository:
         status: TransactionStatus,
         *,
         current: frozenset[TransactionStatus],
+        external_payment_id: Optional[str] = None,
     ) -> bool:
         # conditional in SQL so a status that landed meanwhile (e.g. PAID) wins
+        values: dict[str, Any] = {"status": status, "updated_at": NOW_FUNC}
+        if external_payment_id is not None:
+            values["external_payment_id"] = external_payment_id
         result = await self.session.execute(
             update(Transaction)
             .where(Transaction.id == order_id, Transaction.status.in_(current))
-            .values(status=status, updated_at=NOW_FUNC)
+            .values(**values)
         )
         return cast(CursorResult, result).rowcount > 0
 
@@ -225,6 +249,61 @@ class TransactionRepository:
             )
         )
 
+    async def count_open_new_orders(self, user_id: int, now: datetime) -> int:
+        count = await self.session.scalar(
+            select(func.count())
+            .select_from(Transaction)
+            .where(
+                _NOT_TEST,
+                Transaction.user_id == user_id,
+                Transaction.purchase_type == PurchaseType.NEW,
+                or_(
+                    and_(
+                        Transaction.status == TransactionStatus.PENDING,
+                        Transaction.expires_at > now,
+                    ),
+                    and_(
+                        Transaction.status == TransactionStatus.PAID,
+                        Transaction.fulfilled_subscription_id.is_(None),
+                        # provisioned but not yet linked by the reconcile sweep
+                        ~exists().where(
+                            SubscriptionPurchaseIdempotency.key == Transaction.idempotency_key,
+                            SubscriptionPurchaseIdempotency.subscription_id.is_not(None),
+                        ),
+                    ),
+                ),
+            )
+        )
+        return count or 0
+
+    async def fail_unpaid_free_order(self, idempotency_key: str) -> Optional[SpentPurchaseDiscount]:
+        row = await self.session.execute(
+            update(Transaction)
+            .where(
+                Transaction.idempotency_key == idempotency_key,
+                Transaction.status == TransactionStatus.PAID,
+                Transaction.final_price == 0,
+                Transaction.fulfilled_subscription_id.is_(None),
+            )
+            .values(status=TransactionStatus.FAILED, updated_at=NOW_FUNC)
+            .returning(
+                Transaction.user_id,
+                Transaction.discount_source,
+                Transaction.discount_percent,
+                Transaction.discount_promocode_id,
+                Transaction.discount_from_promocode,
+            )
+        )
+        failed = row.first()
+        if failed is None or failed.discount_source is not DiscountSource.PURCHASE:
+            return None
+        return SpentPurchaseDiscount(
+            user_id=failed.user_id,
+            percent=failed.discount_percent,
+            promocode_id=failed.discount_promocode_id,
+            from_promocode=failed.discount_from_promocode,
+        )
+
     async def list_paginated(
         self,
         *,
@@ -235,6 +314,7 @@ class TransactionRepository:
         created_to: Optional[datetime] = None,
         search: Optional[str] = None,
         user_id: Optional[int] = None,
+        search_staff: bool = True,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[TransactionDto], int]:
@@ -246,6 +326,7 @@ class TransactionRepository:
             created_to=created_to,
             search=search,
             user_id=user_id,
+            search_staff=search_staff,
         )
 
         count_stmt = select(func.count()).select_from(Transaction).where(*filters)
@@ -271,6 +352,7 @@ class TransactionRepository:
         created_to: Optional[datetime] = None,
         search: Optional[str] = None,
         user_id: Optional[int] = None,
+        search_staff: bool = True,
     ) -> list[tuple[TransactionStatus, int, Decimal, Decimal]]:
         filters = _order_filters(
             status=status,
@@ -280,6 +362,7 @@ class TransactionRepository:
             created_to=created_to,
             search=search,
             user_id=user_id,
+            search_staff=search_staff,
         )
         stmt = (
             select(

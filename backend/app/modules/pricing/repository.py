@@ -94,6 +94,16 @@ class PricingRepository:
             rows={currency: self._to_rate_dto(row) for currency, row in rows.items()},
         )
 
+    async def lock_settings(self) -> None:
+        # serializes anchor switches: the anchor is re-read after this returns
+        settings = await self._get_or_create_settings()
+        await self.session.execute(
+            select(PricingSettings)
+            .where(PricingSettings.id == settings.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+
     async def get_settings(self) -> PricingSettingsDto:
         settings = await self._get_or_create_settings()
         await self.session.flush()

@@ -44,7 +44,7 @@ class LoginUseCase:
     ) -> tuple[UserDto, IssuedSession]:
         if (
             len(login) > _LOGIN_MAX_LENGTH
-            or not LOGIN_PATTERN.match(login)
+            or not LOGIN_PATTERN.fullmatch(login)
             or len(password) > _PASSWORD_MAX_LENGTH
         ):
             raise AuthenticationError(

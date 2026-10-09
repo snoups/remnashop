@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Optional, Protocol, runtime_checkable
 
 from app.core.enums import Locale
 from app.core.events import BaseEvent
@@ -8,6 +9,10 @@ from app.core.events import BaseEvent
 @runtime_checkable
 class EventPublisher(Protocol):
     async def publish(self, event: BaseEvent) -> None: ...
+
+
+class OidcIdentityCleaner(Protocol):
+    async def delete_all_oidc(self) -> int: ...
 
 
 class OutboxEntryDispatch(Protocol):
@@ -39,6 +44,20 @@ class PromocodeLiveness(Protocol):
 
 class AnchorAmountRescaler(Protocol):
     async def rescale_anchor_amounts(self, factor: Decimal) -> None: ...
+
+
+@dataclass(frozen=True, kw_only=True)
+class SpentPurchaseDiscount:
+    user_id: int
+    percent: int
+    promocode_id: Optional[int]
+    from_promocode: bool
+
+
+class OrderFailer(Protocol):
+    async def fail_unpaid_free_order(self, idempotency_key: str) -> Optional[SpentPurchaseDiscount]:
+        """The one-shot discount to hand back when this call failed the order."""
+        ...
 
 
 class LoyaltyThresholdRescaler(Protocol):

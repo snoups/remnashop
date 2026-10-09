@@ -10,6 +10,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.dto import (
+    PASSKEY_CREDENTIAL_ID_MAX_LENGTH,
     CreatePasskeyCredentialDto,
     PasskeyCredentialDto,
     VerifyPasskeyRegistrationDto,
@@ -77,13 +78,20 @@ class VerifyPasskeyRegistrationUseCase(
                 code=ErrorCode.PASSKEY_REGISTRATION_FAILED,
             ) from error
 
+        credential_id = bytes_to_base64url(verification.credential_id)
+        # the column is that wide; a longer id would be a 500 on insert
+        if len(credential_id) > PASSKEY_CREDENTIAL_ID_MAX_LENGTH:
+            raise AuthenticationError(
+                "Passkey credential id is too long", code=ErrorCode.PASSKEY_REGISTRATION_FAILED
+            )
+
         transports = data.credential.get("response", {}).get("transports")
 
         async with self._uow:
             credential = await self._passkey_repository.create(
                 CreatePasskeyCredentialDto(
                     user_id=actor.id,
-                    credential_id=bytes_to_base64url(verification.credential_id),
+                    credential_id=credential_id,
                     public_key=verification.credential_public_key,
                     sign_count=verification.sign_count,
                     transports=transports,

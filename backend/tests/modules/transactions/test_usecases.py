@@ -1,13 +1,24 @@
+import asyncio
+import contextlib
+import dataclasses
 from datetime import timedelta
 from decimal import Decimal
-from typing import Optional
+from typing import Final, Optional
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
-from app.core.db.models import Subscription, Transaction
+from app.core.db.models import (
+    CurrencyRate,
+    Plan,
+    PricingSettings,
+    ShopSettings,
+    Subscription,
+    Transaction,
+    User,
+)
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -31,6 +42,7 @@ from app.modules.plans.dto import (
     SetPlanDurationDto,
     SetPlanDurationsDto,
     UpdatePlanAccessDto,
+    UpdatePlanDiscountDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
@@ -40,12 +52,13 @@ from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.settings import GetAccessSettingsUseCase
-from app.modules.settings.dto import UpdateAccessSettingsDto
+from app.modules.settings.dto import UpdateAccessSettingsDto, UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions import (
     CreateSubscriptionDto,
     SubscriptionRepository,
 )
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
@@ -57,6 +70,8 @@ from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_eligibility, make_plan_snapshot
+
+_SHOP_FIELDS: Final[set[str]] = {field.name for field in dataclasses.fields(UpdateShopSettingsDto)}
 
 
 class _FakeGateway:
@@ -295,6 +310,218 @@ async def test_create_checkout_rejects_a_new_purchase_at_the_subscription_cap(
         select(func.count()).select_from(Transaction).where(Transaction.user_id == actor.id)
     )
     assert order_count == 0
+
+
+async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) -> None:
+    # Separate connections, since an advisory xact lock in one shared session
+    # serializes nothing; the seed rows are committed and cleaned up by hand.
+    attempts = 3
+
+    async def one_checkout(conn: AsyncConnection, buyer: UserDto, plan_id: int) -> str:
+        session = AsyncSession(bind=conn, expire_on_commit=False)
+        uow = UnitOfWork(session)
+        use_case = CreateCheckoutUseCase(
+            PlanRepository(session),
+            UserRepository(session),
+            GatewayRepository(session),
+            TransactionRepository(session),
+            SubscriptionRepository(session),
+            make_eligibility(session),
+            PricingRepository(session),
+            uow,
+            _FakeFactory(_FakeGateway()),
+            RecordingDispatch(),
+            PromocodeRepository(session),
+            GetAccessSettingsUseCase(SettingsRepository(session), uow),
+            WaitlistRepository(session),
+        )
+        try:
+            await use_case(
+                buyer,
+                CreateCheckoutDto(
+                    user_id=buyer.id,
+                    plan_id=plan_id,
+                    duration_days=30,
+                    currency=Currency.RUB,
+                    purchase_type=PurchaseType.NEW,
+                    gateway_type=PaymentGatewayType.YOOKASSA,
+                ),
+            )
+            return "ok"
+        except ValidationError as error:
+            assert error.code is ErrorCode.SUBSCRIPTION_LIMIT_REACHED
+            return "rejected"
+        finally:
+            await session.close()
+
+    # the checkouts commit seed rows into these singletons; a table empty
+    # before the test is emptied again afterwards
+    singletons = (ShopSettings, CurrencyRate, PricingSettings)
+    async with engine.connect() as conn:
+        shop_before = await SettingsRepository(
+            AsyncSession(bind=conn, expire_on_commit=False)
+        ).get_shop_settings()
+        empty_before = [
+            model
+            for model in singletons
+            if not await conn.scalar(select(func.count()).select_from(model))
+        ]
+
+    try:
+        async with contextlib.AsyncExitStack() as stack:
+            conns = [await stack.enter_async_context(engine.connect()) for _ in range(attempts + 1)]
+
+            setup = AsyncSession(bind=conns[0], expire_on_commit=False)
+            await SettingsRepository(setup).update_shop_settings(
+                UpdateShopSettingsDto(
+                    **{
+                        **shop_before.model_dump(include=_SHOP_FIELDS),
+                        "max_active_subscriptions": 1,
+                    }
+                )
+            )
+            buyer = await UserRepository(setup).create(
+                CreateUserDto(name="checkout-cap-buyer", telegram_id=90_211)
+            )
+            plans = PlanRepository(setup)
+            plan = await plans.create(
+                CreatePlanDto(
+                    public_code="checkout-cap-race",
+                    name="checkout-cap-race",
+                    type=PlanType.BOTH,
+                    traffic_limit=100,
+                    device_limit=3,
+                )
+            )
+            await plans.set_durations(
+                SetPlanDurationsDto(
+                    plan_id=plan.id,
+                    durations=[
+                        SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("500.00"))
+                    ],
+                )
+            )
+            await plans.update_squads(
+                UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+            )
+            await plans.update_discount(
+                UpdatePlanDiscountDto(
+                    plan_id=plan.id,
+                    discount_percent=100,
+                    discount_starts_at=None,
+                    discount_ends_at=None,
+                )
+            )
+            await plans.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
+            await setup.commit()
+            await setup.close()
+
+            results = await asyncio.gather(
+                *(one_checkout(conns[i + 1], buyer, plan.id) for i in range(attempts))
+            )
+            assert results.count("ok") == 1
+            assert results.count("rejected") == attempts - 1
+
+            check = AsyncSession(bind=conns[0], expire_on_commit=False)
+            orders = await check.scalar(
+                select(func.count()).select_from(Transaction).where(Transaction.user_id == buyer.id)
+            )
+            assert orders == 1
+            await check.close()
+    finally:
+        async with engine.begin() as cleanup:
+            buyers = select(User.id).where(User.telegram_id == 90_211)
+            await cleanup.execute(delete(Transaction).where(Transaction.user_id.in_(buyers)))
+            await cleanup.execute(delete(Plan).where(Plan.public_code == "checkout-cap-race"))
+            await cleanup.execute(delete(User).where(User.telegram_id == 90_211))
+            for model in empty_before:
+                await cleanup.execute(delete(model))
+            if ShopSettings not in empty_before:
+                await SettingsRepository(AsyncSession(bind=cleanup)).update_shop_settings(
+                    UpdateShopSettingsDto(**shop_before.model_dump(include=_SHOP_FIELDS))
+                )
+
+
+async def test_a_provisioned_order_awaiting_its_link_is_not_counted_twice(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    subscription_repository: SubscriptionRepository,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    purchase_dispatch: RecordingDispatch,
+    fake_gateway: _FakeGateway,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await settings_repository.update_shop_settings(
+            UpdateShopSettingsDto(
+                max_active_subscriptions=2,
+                device_single_reset_enabled=True,
+                device_single_reset_cooldown_hours=0,
+                device_all_reset_enabled=True,
+                device_all_reset_cooldown_hours=0,
+                link_reset_enabled=True,
+                link_reset_cooldown_hours=0,
+            )
+        )
+        await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=100))
+    checkout = CreateCheckoutDto(
+        user_id=actor.id,
+        plan_id=plan.id,
+        duration_days=30,
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+        gateway_type=PaymentGatewayType.YOOKASSA,
+    )
+    await create_checkout_use_case(actor, checkout)
+
+    # the order's fulfilment ran; the reconcile sweep hasn't linked it yet
+    key = purchase_dispatch.messages[0]["idempotency_key"]
+    async with uow:
+        subscription_id = await _seed_subscription(
+            subscription_repository, user_id=actor.id, remnawave_user_id=820_000, plan_id=plan.id
+        )
+        await idempotency_repository.claim(key, stale_before=datetime_now())
+        await idempotency_repository.link(key, subscription_id)
+        await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=0))
+
+    result = await create_checkout_use_case(actor, checkout)
+
+    assert result.confirmation_url == fake_gateway.confirmation_url
+
+
+async def test_an_open_order_counts_as_history_for_a_new_only_plan(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+) -> None:
+    await plan_repository.update_access(
+        UpdatePlanAccessDto(
+            plan_id=plan.id,
+            availability=PlanAvailability.NEW,
+            allowed_telegram_ids=[],
+            allowed_emails=[],
+        )
+    )
+    checkout = CreateCheckoutDto(
+        user_id=actor.id,
+        plan_id=plan.id,
+        duration_days=30,
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+        gateway_type=PaymentGatewayType.YOOKASSA,
+    )
+
+    await create_checkout_use_case(actor, checkout)
+
+    with pytest.raises(NotFoundError) as error:
+        await create_checkout_use_case(actor, checkout)
+    assert error.value.code is ErrorCode.PLAN_NOT_FOUND
 
 
 async def test_create_checkout_link_plan_requires_its_code(
@@ -762,6 +989,60 @@ async def test_the_live_smaller_discount_applies_when_the_larger_ones_promocode_
 
     order = await transaction_repository.get_by_id(result.order_id)
     assert order.discount_percent == 10
+
+
+async def test_a_personal_promocode_discount_is_not_flagged_as_a_purchase_promocode(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    promocode_repository: PromocodeRepository,
+    uow: UnitOfWork,
+) -> None:
+    live = await _promocode(promocode_repository, "LIVEPERSONAL", live=True)
+    async with uow:
+        await user_repository.update_fields(
+            actor.id, UpdateUserDto(personal_discount=15, personal_discount_promocode_id=live)
+        )
+    buyer = await user_repository.get_by_id(actor.id)
+    assert buyer is not None
+
+    result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert (order.discount_source, order.discount_promocode_id) == (DiscountSource.PERSONAL, live)
+    assert order.discount_from_promocode is False
+
+
+class _FailingGateway(_FakeGateway):
+    async def create_payment(self, order: TransactionDto) -> PaymentIntent:
+        raise RuntimeError("provider down")
+
+
+async def test_a_gateway_failure_fails_the_order_and_hands_the_discount_back(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    fake_gateway: _FakeGateway,
+    actor: UserDto,
+    plan: PlanDto,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await user_repository.update_fields(actor.id, UpdateUserDto(purchase_discount=20))
+    create_checkout_use_case._gateway_factory = _FakeFactory(_FailingGateway())  # type: ignore[assignment]
+
+    with pytest.raises(RuntimeError, match="provider down"):
+        await create_checkout_use_case(actor, _checkout_dto(actor, plan))
+
+    orders, _ = await transaction_repository.list_paginated(user_id=actor.id)
+    assert [order.status for order in orders] == [TransactionStatus.FAILED]
+    restored = await user_repository.get_by_id(actor.id)
+    assert restored is not None
+    assert (restored.purchase_discount, restored.purchase_discount_promocode_id) == (20, None)
 
 
 async def test_an_admin_granted_discount_survives(

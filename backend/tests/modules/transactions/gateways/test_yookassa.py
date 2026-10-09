@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import httpx
 import pytest
 
@@ -136,3 +138,20 @@ async def test_parse_webhook_refund_reports_refunded_against_the_payment() -> No
     assert signal is not None and signal.claims_paid is False
     assert signal.reported_status is TransactionStatus.REFUNDED
     assert signal.provider_payment_id == "yk-1"
+
+
+async def test_parse_webhook_refund_carries_the_refund_amount() -> None:
+    signal = await _gateway().parse_webhook(
+        webhook(
+            {
+                "event": "refund.succeeded",
+                "object": {
+                    "id": "rf-1",
+                    "payment_id": "yk-1",
+                    "amount": {"value": "50.00", "currency": "RUB"},
+                },
+            }
+        )
+    )
+    assert signal is not None
+    assert signal.refund_amount == Decimal("50.00") and signal.refund_currency == "RUB"

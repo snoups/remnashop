@@ -274,3 +274,57 @@ async def test_require_admin_user_refuses_api_token(
         await require_admin_user(actor)
 
     assert exc_info.value.status_code == 403
+
+
+def _request_from(ip: str) -> Request:
+    return Request({"type": "http", "client": (ip, 12345), "headers": []})
+
+
+@pytest.mark.parametrize(
+    ("allowlist", "ip", "allowed"),
+    [
+        (["10.0.0.0/8"], "203.0.113.5", False),
+        (["10.0.0.0/8"], "10.1.2.3", True),
+        ([], "203.0.113.5", True),
+    ],
+)
+async def test_api_token_ip_allowlist(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    api_token_repository: ApiTokenRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    allowlist: list[str],
+    ip: str,
+    allowed: bool,
+) -> None:
+    secret = f"ip-secret-{ip}-{len(allowlist)}"
+    async with uow:
+        await api_token_repository.create(
+            CreateApiTokenDto(
+                name="ci-script",
+                scopes=[Permission.BANNERS_UPLOAD.value],
+                token_hash=hash_refresh_token(secret),
+                created_by_user_id=None,
+                expires_at=None,
+                ip_allowlist=allowlist,
+            )
+        )
+        await uow.commit()
+
+    call = get_current_actor.__dishka_orig_func__(
+        _request_from(ip),
+        config,
+        user_repository,
+        session_repository,
+        api_token_repository,
+        uow,
+        _credentials(secret),
+    )
+    if allowed:
+        assert (await call).id == 0
+    else:
+        with pytest.raises(HTTPException) as exc_info:
+            await call
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.code == "IP_NOT_ALLOWED"  # type: ignore[attr-defined]

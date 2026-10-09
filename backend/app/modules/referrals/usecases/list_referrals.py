@@ -1,6 +1,6 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import (
     ListReferralsDto,
@@ -8,7 +8,7 @@ from app.modules.referrals.dto import (
     ReferralRewardTotalsDto,
 )
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, visible_user
 
 
 class ListReferralsUseCase(UseCase[ListReferralsDto, tuple[list[ReferralListItemDto], int]]):
@@ -35,6 +35,7 @@ class ListReferralsUseCase(UseCase[ListReferralsDto, tuple[list[ReferralListItem
                 search=data.search,
                 has_rewards=data.has_rewards,
                 reward_type=data.reward_type,
+                search_staff=PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE),
                 page=data.page,
                 page_size=data.page_size,
             )
@@ -50,8 +51,8 @@ class ListReferralsUseCase(UseCase[ListReferralsDto, tuple[list[ReferralListItem
         items = [
             ReferralListItemDto(
                 referral=referral,
-                referred=users_by_id.get(referral.referred_id),
-                referrer=users_by_id.get(referral.referrer_id)
+                referred=visible_user(actor, users_by_id.get(referral.referred_id)),
+                referrer=visible_user(actor, users_by_id.get(referral.referrer_id))
                 if referral.referrer_id is not None
                 else None,
                 rewards=rewards.get(referral.id, no_rewards),

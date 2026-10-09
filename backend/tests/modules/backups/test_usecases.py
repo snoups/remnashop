@@ -3,7 +3,9 @@ from typing import Optional
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import update
 
+from app.core.db.models.backup_run import BackupRun
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus, Locale, Role
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
@@ -113,6 +115,27 @@ async def test_create_backup_run_rejects_when_already_running(
 
     with pytest.raises(ConflictError):
         await use_case(owner, BackupKind.DATABASE)
+
+
+async def test_create_backup_run_ignores_a_stranded_run(
+    backup_repository: BackupRepository, uow: UnitOfWork, owner: UserDto
+) -> None:
+    dispatch = RecordingDispatch()
+    use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch)
+    stranded = await use_case(owner, BackupKind.DATABASE)
+    async with uow:
+        await backup_repository.mark_running(stranded.id)
+        await backup_repository.session.execute(
+            update(BackupRun)
+            .where(BackupRun.id == stranded.id)
+            .values(
+                created_at=datetime.now(timezone.utc) - timedelta(hours=3),
+                updated_at=datetime.now(timezone.utc) - timedelta(hours=3),
+            )
+        )
+
+    run = await use_case(owner, BackupKind.DATABASE)
+    assert run.status.name == "PENDING"
 
 
 async def test_list_backup_runs_returns_page(

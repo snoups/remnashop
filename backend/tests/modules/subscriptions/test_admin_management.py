@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from remnapy import RemnawaveSDK
@@ -10,7 +11,12 @@ from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Locale, PlanType, Role, SubscriptionStatus
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import (
+    NotFoundError,
+    PermissionDeniedError,
+    RemnawavePanelUnavailableError,
+    ValidationError,
+)
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.plans.addon_repository import AddOnRepository
@@ -31,20 +37,24 @@ from app.modules.subscriptions.dto import (
     GrantSubscriptionDto,
     SetSubscriptionEnabledDto,
     SubscriptionDto,
+    UpdateSubscriptionSquadsDto,
 )
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.usecases import (
     AdminDeleteAllDevicesUseCase,
     AdminDeleteDeviceUseCase,
     AdminListDevicesUseCase,
     AdminReissueSubscriptionUseCase,
     ChangeSubscriptionPlanUseCase,
+    DeleteSubscriptionUseCase,
     GrantSubscriptionUseCase,
     PurchaseSubscriptionUseCase,
     ResetSubscriptionTrafficUseCase,
     SetSubscriptionEnabledUseCase,
+    UpdateSubscriptionSquadsUseCase,
 )
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -503,3 +513,112 @@ async def test_change_plan_of_disabled_subscription_stays_disabled(
     )
 
     assert changed.status is SubscriptionStatus.DISABLED
+
+
+async def _superseded(
+    grant_use_case: GrantSubscriptionUseCase,
+    change_plan_use_case: ChangeSubscriptionPlanUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    telegram_id: int,
+    code: str,
+) -> tuple[SubscriptionDto, SubscriptionDto]:
+    old = await _granted(grant_use_case, user_repository, plan_repository, telegram_id, code)
+    new_plan = await _plan(plan_repository, f"{code}-new")
+    live = await change_plan_use_case(
+        OWNER,
+        ChangeSubscriptionPlanDto(subscription_id=old.id, plan_id=new_plan.id, duration_days=None),
+    )
+    return old, live
+
+
+async def test_delete_of_superseded_row_keeps_live_panel_user(
+    grant_use_case: GrantSubscriptionUseCase,
+    change_plan_use_case: ChangeSubscriptionPlanUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    old, live = await _superseded(
+        grant_use_case, change_plan_use_case, user_repository, plan_repository, 9801, "sup-del"
+    )
+    use_case = DeleteSubscriptionUseCase(
+        subscription_repository,
+        PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
+        event_publisher,
+        uow,
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(OWNER, old.id)
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DELETED
+    assert live.remnawave_user_id in remnawave_store
+    assert (await subscription_repository.get_by_id(live.id)).status is SubscriptionStatus.ACTIVE
+
+
+async def test_squads_of_superseded_row_are_rejected(
+    grant_use_case: GrantSubscriptionUseCase,
+    change_plan_use_case: ChangeSubscriptionPlanUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    old, live = await _superseded(
+        grant_use_case, change_plan_use_case, user_repository, plan_repository, 9802, "sup-sq"
+    )
+    panel_before = dict(remnawave_store[live.remnawave_user_id])
+    use_case = UpdateSubscriptionSquadsUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            OWNER,
+            UpdateSubscriptionSquadsDto(
+                subscription_id=old.id, internal_squads=[uuid4()], external_squad=None
+            ),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DELETED
+    assert remnawave_store[live.remnawave_user_id] == panel_before
+
+
+async def test_squads_keep_db_unchanged_when_panel_fails(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    granted = await _granted(grant_use_case, user_repository, plan_repository, 9803, "sq-fail")
+
+    async def failing_update_user(request: object) -> object:
+        raise RemnawavePanelUnavailableError("panel down")
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", failing_update_user)
+    use_case = UpdateSubscriptionSquadsUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
+
+    with pytest.raises(RemnawavePanelUnavailableError):
+        await use_case(
+            OWNER,
+            UpdateSubscriptionSquadsDto(
+                subscription_id=granted.id, internal_squads=[uuid4()], external_squad=None
+            ),
+        )
+
+    current = await subscription_repository.get_by_id(granted.id)
+    assert current.internal_squads == granted.internal_squads

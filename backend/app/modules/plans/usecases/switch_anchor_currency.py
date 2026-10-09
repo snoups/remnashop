@@ -53,6 +53,7 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
             )
 
         async with self._uow:
+            await self._pricing_repository.lock_settings()
             table = await self._pricing_repository.get_rate_table()
             old_anchor = table.anchor
             if data.new_anchor == old_anchor:
@@ -67,7 +68,6 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
             }
             new_rates[data.new_anchor] = Decimal("1.000000")
 
-        async with self._uow:
             await self._pricing_repository.set_anchor(data.new_anchor, new_rates)
             await self._anchor_amount_rescaler.rescale_anchor_amounts(f)
             await self._loyalty_threshold_rescaler.rescale_thresholds(f)

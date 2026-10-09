@@ -9,7 +9,7 @@ _NAME_RE: Final[re.Pattern[str]] = re.compile(BANNER_NAME_PATTERN)
 
 
 def validate_banner_name(name: str) -> str:
-    if _NAME_RE.match(name) is None or ".." in name:
+    if _NAME_RE.fullmatch(name) is None or ".." in name:
         raise ValueError(f"Invalid banner name: {name!r}")
     return name
 

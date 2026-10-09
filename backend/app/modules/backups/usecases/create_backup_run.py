@@ -9,9 +9,11 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.time import datetime_now
 from app.modules.backups.dispatch import RunBackupDispatch
 from app.modules.backups.dto import BackupRunDto, CreateBackupRunDto
 from app.modules.backups.repository import BackupRepository
+from app.modules.backups.usecases.run_backup import STALE_RUN_AFTER
 
 
 class CreateBackupRunUseCase(UseCase[BackupKind, BackupRunDto]):
@@ -29,7 +31,9 @@ class CreateBackupRunUseCase(UseCase[BackupKind, BackupRunDto]):
 
     async def _execute(self, actor: Actor, data: BackupKind) -> BackupRunDto:
         async with self._uow:
-            if await self._backup_repository.has_active(data):
+            if await self._backup_repository.has_active(
+                data, started_after=datetime_now() - STALE_RUN_AFTER
+            ):
                 raise ConflictError(
                     f"A '{data.value}' backup is already running",
                     code=ErrorCode.BACKUP_ALREADY_RUNNING,

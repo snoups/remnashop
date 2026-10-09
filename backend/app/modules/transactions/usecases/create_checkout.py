@@ -129,6 +129,22 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             await self._validate_gateway_availability(data.gateway_type)
 
         async with self._uow:
+            # rechecked under the per-user lock, counting orders not yet
+            # provisioned, so concurrent checkouts can't all pass the reads above
+            await self._eligibility.lock_user(data.user_id)
+            open_orders = await self._transaction_repository.count_open_new_orders(
+                data.user_id, datetime_now()
+            )
+            if not await self._eligibility.is_purchasable(
+                plan, user, has_open_order=open_orders > 0
+            ) or not _link_code_matches(plan, data.plan_code):
+                raise NotFoundError(
+                    f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND
+                )
+            if data.purchase_type is PurchaseType.NEW:
+                await self._eligibility.assert_below_cap(
+                    data.user_id, lock=True, pending=open_orders
+                )
             # the one-shot discount is spent in the same transaction as the
             # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
@@ -144,7 +160,24 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
         gateway = self._gateway_factory.build(data.gateway_type, gateway_settings)
-        intent = await gateway.create_payment(order)
+        try:
+            intent = await gateway.create_payment(order)
+        except Exception:
+            # no payment exists at the provider, so the order and its spent discount go back
+            async with self._uow:
+                failed = await self._transaction_repository.mark_status_if(
+                    order.id,
+                    TransactionStatus.FAILED,
+                    current=frozenset({TransactionStatus.PENDING}),
+                )
+                if failed and order.discount_source is DiscountSource.PURCHASE:
+                    await self._user_repository.restore_purchase_discount(
+                        order.user_id,
+                        order.discount_percent,
+                        order.discount_promocode_id,
+                        from_promocode=order.discount_from_promocode,
+                    )
+            raise
 
         async with self._uow:
             await self._transaction_repository.mark_status(
@@ -218,6 +251,10 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 anchor_base_price=quote.anchor_base_price,
                 anchor_final_price=quote.anchor_final_price,
                 discount_promocode_id=quote.discount_promocode_id,
+                discount_from_promocode=(
+                    quote.discount_promocode_id is not None
+                    and quote.discount_source is DiscountSource.PURCHASE
+                ),
                 customer_email=customer_email,
                 idempotency_key=uuid4().hex,
                 expires_at=datetime_now() + _ORDER_TTL,
@@ -265,9 +302,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
 
     async def _validate_provisioning_preconditions(self, data: CreateCheckoutDto) -> None:
         # PurchaseSubscriptionUseCase re-checks the target subscription under
-        # its own lock. The subscription cap is enforced only here: a paid
-        # order is provisioned even if the cap filled up meanwhile
-        # (enforce_subscription_cap=False).
+        # its own lock. A paid order is provisioned even if the cap filled up
+        # meanwhile; only a free one is refused at fulfilment.
         async with self._uow:
             if data.purchase_type is PurchaseType.NEW:
                 if data.target_subscription_id is not None:

@@ -6,7 +6,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import ReferralStatsDto, ReferralStatsRewardDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, visible_user
 
 
 class GetUserReferralStatsUseCase(UseCase[int, ReferralStatsDto]):
@@ -47,10 +47,14 @@ class GetUserReferralStatsUseCase(UseCase[int, ReferralStatsDto]):
                     type=r.type,
                     amount=r.amount,
                     created_at=r.created_at,
-                    buyer=users.get(r.buyer_id) if r.buyer_id is not None else None,
+                    buyer=visible_user(actor, users.get(r.buyer_id))
+                    if r.buyer_id is not None
+                    else None,
                     level=buyer_levels.get(r.buyer_id) if r.buyer_id is not None else None,
                 )
                 for r in rewards
             ],
-            referrer=users.get(referrer_id) if referrer_id is not None else None,
+            referrer=visible_user(actor, users.get(referrer_id))
+            if referrer_id is not None
+            else None,
         )

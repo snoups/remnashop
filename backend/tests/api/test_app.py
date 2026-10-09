@@ -351,6 +351,26 @@ async def test_upload_route_allows_bodies_above_the_default_limit() -> None:
     assert other.status_code == 413
 
 
+async def test_broadcast_media_route_allows_bodies_up_to_its_media_limit() -> None:
+    async def drain(scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        more = True
+        while more:
+            message = await receive()
+            more = message.get("more_body", False)
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    transport = httpx.ASGITransport(app=BodySizeLimitMiddleware(drain))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        video = await client.put("/api/v1/broadcasts/7/media", content=b"x" * (12 * 1024 * 1024))
+        huge = await client.put("/api/v1/broadcasts/7/media", content=b"x" * (60 * 1024 * 1024))
+        other = await client.put("/api/v1/broadcasts/7", content=b"x" * (2 * 1024 * 1024))
+
+    assert video.status_code == 200
+    assert huge.status_code == 413
+    assert other.status_code == 413
+
+
 def test_docs_refuse_a_request_without_a_ticket(
     config: AppConfig, readyz_container: AsyncContainer
 ) -> None:

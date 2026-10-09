@@ -9,11 +9,13 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub, TranslatorRunner
 from loguru import logger
+from redis.asyncio import Redis
 
-from app.core.constants import USER_KEY
+from app.core.constants import REDIS_KEY_PREFIX, USER_KEY
 from app.core.enums import PromocodeRewardType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError, NotFoundError, ValidationError
+from app.core.utils.rate_counter import hit_counter
 from app.modules.promocodes import (
     ActivatePromocodeDto,
     ActivatePromocodeUseCase,
@@ -25,6 +27,8 @@ from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.states import MainMenu, Subscription
 
+PROMOCODE_INPUT_LIMIT: Final[int] = 10
+PROMOCODE_INPUT_WINDOW_S: Final[int] = 60
 _NOTIFICATION_BY_CODE: Final[dict[ErrorCode, str]] = {
     ErrorCode.PROMOCODE_NOT_FOUND: "ntf-promocode.not-found",
     ErrorCode.PROMOCODE_EXPIRED: "ntf-promocode.expired",
@@ -82,6 +86,7 @@ async def on_promocode_input(
     dialog_manager: DialogManager,
     validate_promocode: FromDishka[ValidatePromocodeUseCase],
     list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    redis: FromDishka[Redis],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     dialog_manager.show_mode = ShowMode.EDIT
@@ -89,6 +94,11 @@ async def on_promocode_input(
     runner = get_translator(i18n, user)
     code = (message.text or "").strip().upper()
     if not code:
+        return
+
+    key = f"{REDIS_KEY_PREFIX}ratelimit:bot_promocode:user:{user.id}"
+    if await hit_counter(redis, key, PROMOCODE_INPUT_WINDOW_S) > PROMOCODE_INPUT_LIMIT:
+        await message.answer(runner.get("ntf-promocode.too-many-attempts"))
         return
 
     await continue_with_code(

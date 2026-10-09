@@ -14,7 +14,7 @@ class BootstrapRequest(BaseModel):
     @field_validator("login")
     @classmethod
     def validate_login(cls, value: str) -> str:
-        if not LOGIN_PATTERN.match(value):
+        if not LOGIN_PATTERN.fullmatch(value):
             raise ValueError(
                 "Login may only contain Latin letters, digits, dots, underscores, and hyphens"
             )

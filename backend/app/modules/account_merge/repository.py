@@ -56,6 +56,8 @@ UNTOUCHED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("user_sessions", "user_id"),
     }
 )
+# ceiling on the walk up the referrers; a longer upline is left unchecked
+_MAX_CHAIN_WALK: Final[int] = 64
 
 
 class AccountMergeRepository:
@@ -211,6 +213,17 @@ class AccountMergeRepository:
         await self.session.execute(
             update(Referral).where(Referral.referrer_id == s).values(referrer_id=t)
         )
+        # s's upline may run through t's downline: target -> x -> source now loops
+        current: Optional[int] = t
+        for _ in range(_MAX_CHAIN_WALK):
+            current = await self.session.scalar(
+                select(Referral.referrer_id).where(Referral.referred_id == current)
+            )
+            if current is None:
+                break
+            if current == t:
+                await self.session.execute(delete(Referral).where(Referral.referred_id == t))
+                break
 
     async def _replace_in_promocode_allowlists(self, s: int, t: int) -> None:
         promocodes = await self.session.scalars(

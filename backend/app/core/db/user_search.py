@@ -1,11 +1,7 @@
-from typing import Final
-
 from sqlalchemy import ColumnElement, or_
 
-from app.core.constants import INT32_MAX
+from app.core.constants import INT32_MAX, INT64_MAX
 from app.core.db.models.user import User
-
-_INT64_MAX: Final[int] = 2**63 - 1
 
 
 def _escape_like(value: str) -> str:
@@ -26,8 +22,8 @@ def user_search_filter(search: str, *, include_login: bool = True) -> ColumnElem
         search_filters.append(User.login.ilike(pattern, escape="\\"))
     # a longer digit string is valid input but overflows the column type,
     # raising NumericValueOutOfRange from asyncpg
-    if search.isdigit() and int(search) <= _INT64_MAX:
+    if search.isascii() and search.isdigit() and int(search) <= INT64_MAX:
         search_filters.append(User.telegram_id == int(search))
-    if search.isdigit() and int(search) <= INT32_MAX:
+    if search.isascii() and search.isdigit() and int(search) <= INT32_MAX:
         search_filters.append(User.id == int(search))
     return or_(*search_filters)

@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Final, Optional
 
-from sqlalchemy import ColumnElement, Numeric, func, or_, select, update
+from sqlalchemy import ColumnElement, Numeric, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import INT32_MAX
@@ -27,6 +27,7 @@ from app.modules.subscriptions.dto import (
 # pg_advisory_xact_lock namespace key, paired with a user_id (keys in
 # modules/plans/repository.py are 8221938/8221939).
 _SUBSCRIPTION_PURCHASE_CAP_LOCK_KEY: Final[int] = 8221940
+RECONCILE_EXPIRED_WINDOW: Final[timedelta] = timedelta(days=30)
 
 
 class SubscriptionRepository:
@@ -149,7 +150,7 @@ class SubscriptionRepository:
                 Subscription.plan_snapshot["name"].astext.ilike(pattern),
             ]
             # id/user_id are Integer; a longer digit string would overflow asyncpg
-            if search.isdigit() and int(search) <= INT32_MAX:
+            if search.isascii() and search.isdigit() and int(search) <= INT32_MAX:
                 search_filters += [
                     Subscription.id == int(search),
                     Subscription.user_id == int(search),
@@ -219,9 +220,10 @@ class SubscriptionRepository:
     async def has_paid_subscription_before(
         self, user_id: int, subscription_id: Optional[int] = None
     ) -> bool:
-        """Whether the user has a paid subscription, other than subscription_id when given --
-        "is this the user's first paid subscription", where has_any_subscription
-        would also count the one just created. A free one (100% discount,
+        """Whether the user has a paid subscription, created before subscription_id when
+        given -- "is this the user's first paid subscription", where
+        has_any_subscription would also count the one just created, and a later
+        purchase rewarded first would hide this one. A free one (100% discount,
         promocode grant) doesn't count as paid."""
         price_paid = Subscription.plan_snapshot["price_paid"].astext.cast(Numeric)
         conditions = [
@@ -230,14 +232,25 @@ class SubscriptionRepository:
             price_paid > 0,
         ]
         if subscription_id is not None:
-            conditions.append(Subscription.id != subscription_id)
+            # ids come from one sequence, so their order is creation order
+            conditions.append(Subscription.id < subscription_id)
         stmt = select(func.count()).select_from(Subscription).where(*conditions)
         return bool(await self.session.scalar(stmt))
 
     async def list_non_terminal(self) -> list[SubscriptionDto]:
+        # recently EXPIRED rows too: a renewal that reached the panel but not
+        # our commit leaves the row EXPIRED until reconcile pulls it in
         result = await self.session.execute(
             select(Subscription)
-            .where(Subscription.status.in_(OWNED_STATUSES))
+            .where(
+                or_(
+                    Subscription.status.in_(OWNED_STATUSES),
+                    and_(
+                        Subscription.status == SubscriptionStatus.EXPIRED,
+                        Subscription.expire_at > datetime_now() - RECONCILE_EXPIRED_WINDOW,
+                    ),
+                )
+            )
             .order_by(Subscription.id)
         )
         rows = result.scalars().all()

@@ -46,6 +46,10 @@ class WebhookSignal:
     # A non-paid outcome the provider reported (FAILED/CANCELED/REFUNDED);
     # None where the provider only ever notifies about successful payments.
     reported_status: Optional[TransactionStatus] = None
+    # Amount of a refund, when the provider states one; None means unknown and
+    # is handled as a full refund.
+    refund_amount: Optional[Decimal] = None
+    refund_currency: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

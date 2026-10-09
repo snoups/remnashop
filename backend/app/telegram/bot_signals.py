@@ -13,6 +13,7 @@ from app.core.constants import (
     TELEGRAM_RESTART_CHANNEL,
     TRANSLATION_CHANGED_CHANNEL,
 )
+from app.modules.translations import fluent_value_source
 
 SignalHandler = Callable[[str], Awaitable[None]]
 
@@ -52,7 +53,10 @@ def live_update_handlers(cache: _Reloadable, hub: TranslatorHub) -> dict[str, Si
 
     async def patch_translation(data: str) -> None:
         payload = json.loads(data)
-        await hub.update_translation(payload["locale"], payload["message_id"], payload["value"])
+        # fluentogram compiles `f"{key} = {value}"`: a raw newline would end the message
+        await hub.update_translation(
+            payload["locale"], payload["message_id"], fluent_value_source(payload["value"])
+        )
 
     return {
         **restart_handlers(),

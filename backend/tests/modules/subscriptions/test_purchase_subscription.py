@@ -1,7 +1,9 @@
 import asyncio
 import contextlib
+from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Optional
 from uuid import uuid4
 
 import httpx
@@ -11,7 +13,13 @@ from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
-from app.core.db.models import EventOutboxEntry, Plan, Subscription, User
+from app.core.db.models import (
+    EventOutboxEntry,
+    Plan,
+    Subscription,
+    SubscriptionPurchaseIdempotency,
+    User,
+)
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AddOnType,
@@ -54,6 +62,7 @@ from app.modules.subscriptions.usecases import (
     GrantAddOnUseCase,
     PurchaseSubscriptionUseCase,
 )
+from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore
@@ -1188,6 +1197,56 @@ async def test_purchase_failure_after_panel_call_disables_the_panel_user(
     assert len(disabled_ids) == 1
 
 
+async def test_cancelled_purchase_releases_its_idempotency_key(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 405)
+    plan = await _create_plan(plan_repository, "cancel-test")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        make_eligibility(subscription_repository.session),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+        idempotency_repository,
+    )
+
+    async def _cancelled(*args: object, **kwargs: object) -> None:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(use_case._new, "run", _cancelled)
+
+    with pytest.raises(asyncio.CancelledError):
+        await use_case(
+            buyer,
+            PurchaseSubscriptionDto(
+                user_id=buyer.id,
+                plan_snapshot=snapshot_from_plan(
+                    plan, price_paid=Decimal("100.00"), currency=Currency.RUB, duration_days=30
+                ),
+                duration_days=30,
+                price_paid=Decimal("100.00"),
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                idempotency_key="cancel-key-1",
+            ),
+        )
+
+    assert (
+        await idempotency_repository.session.get(SubscriptionPurchaseIdempotency, "cancel-key-1")
+        is None
+    )
+
+
 async def test_renew_reactivates_an_expired_subscription(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
@@ -2127,10 +2186,16 @@ async def test_a_paid_order_still_renews_a_subscription_disabled_after_checkout(
     target_id = await _disabled_subscription(
         purchase_subscription_use_case, subscription_repository, buyer, plan
     )
-    fulfill = FulfillPurchaseUseCase(user_repository, purchase_subscription_use_case)
+    fulfill = FulfillPurchaseUseCase(
+        user_repository,
+        purchase_subscription_use_case,
+        TransactionRepository(user_repository.session),
+        UnitOfWork(user_repository.session),
+    )
 
     renewed = await fulfill.system(_renewal(buyer, plan, target_id))
 
+    assert renewed is not None
     assert renewed.id == target_id
 
 
@@ -2309,3 +2374,393 @@ async def test_change_deducts_spent_traffic_from_the_credit(
     assert (changed.expire_at - datetime_now()).days in (29, 30)
     used = remnawave_store[changed.remnawave_user_id]["userTraffic"]["usedTrafficBytes"]
     assert used == (0 if reset_traffic else spent)
+
+
+async def test_change_credit_is_the_average_rate_over_renewals(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 431)
+    plan = await _create_plan(plan_repository, "cumcredit")
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+
+    def dto(
+        days: int, price: str, purchase_type: PurchaseType, target: Optional[int] = None
+    ) -> PurchaseSubscriptionDto:
+        return PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal(price), currency=Currency.RUB, duration_days=days
+            ),
+            duration_days=days,
+            price_paid=Decimal(price),
+            base_price=Decimal(price),
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=target,
+        )
+
+    original = await use_case(buyer, dto(30, "100", PurchaseType.NEW))
+    renewed = await use_case(buyer, dto(365, "600", PurchaseType.RENEW, original.id))
+
+    assert renewed.plan_snapshot.credit_paid == Decimal("700")
+    assert renewed.plan_snapshot.credit_days == 395
+    assert renewed.plan_snapshot.price_paid == Decimal("100")
+    assert renewed.plan_snapshot.duration_days == 30
+
+    changed = await use_case(buyer, dto(365, "600", PurchaseType.CHANGE, renewed.id))
+
+    # 700 credit at 600/365 per day is about 426 days (the old rule gave 801)
+    days = (changed.expire_at - datetime_now()).days
+    assert 365 + 426 - 4 <= days <= 365 + 426 + 1
+
+
+async def test_a_free_renewal_adds_days_to_the_credit_but_not_money(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 432)
+    plan = await _create_plan(plan_repository, "freecredit")
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    snapshot = snapshot_from_plan(
+        plan, price_paid=Decimal("100"), currency=Currency.RUB, duration_days=30
+    )
+    original = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot,
+            duration_days=30,
+            price_paid=Decimal("100"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    granted = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=replace(snapshot, price_paid=Decimal("0")),
+            duration_days=30,
+            price_paid=Decimal("0"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.RENEW,
+            target_subscription_id=original.id,
+        ),
+    )
+
+    assert granted.plan_snapshot.credit_paid == Decimal("100")
+    assert granted.plan_snapshot.credit_days == 60
+
+
+async def test_a_renewal_in_another_currency_accumulates_in_the_snapshot_currency(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    pricing_repository: PricingRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("100"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    buyer = await _create_buyer(user_repository, 433)
+    plan = await _create_plan(plan_repository, "fxcredit")
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    original = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("300"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    # 3 USD at RUB=100 is 300 RUB
+    renewed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("3"), currency=Currency.USD, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("3"),
+            currency=Currency.USD,
+            purchase_type=PurchaseType.RENEW,
+            target_subscription_id=original.id,
+        ),
+    )
+
+    assert renewed.plan_snapshot.currency is Currency.RUB
+    assert renewed.plan_snapshot.credit_paid == Decimal("600")
+    assert renewed.plan_snapshot.credit_days == 60
+
+
+def _trial_dto(buyer: UserDto, plan: PlanDto) -> PurchaseSubscriptionDto:
+    return PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot_from_plan(
+            plan, price_paid=Decimal("0"), currency=Currency.RUB, duration_days=3, is_trial=True
+        ),
+        duration_days=3,
+        price_paid=Decimal("0"),
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+    )
+
+
+def _paid_new_dto(
+    buyer: UserDto, plan: PlanDto, *, reset_traffic: bool = False
+) -> PurchaseSubscriptionDto:
+    return PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot_from_plan(
+            plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+        ),
+        duration_days=30,
+        price_paid=Decimal("299.00"),
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW,
+        reset_traffic=reset_traffic,
+    )
+
+
+async def test_a_paid_upgrade_of_a_disabled_trial_keeps_the_panels_status(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_store: FakeUserStore,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9201)
+    trial_plan = await _create_plan(plan_repository, "disabled-trial")
+    paid_plan = await _create_plan(plan_repository, "disabled-trial-paid")
+    trial = await purchase_subscription_use_case(buyer, _trial_dto(buyer, trial_plan))
+    remnawave_store[trial.remnawave_user_id]["status"] = "DISABLED"
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == trial.id)
+        .values(status=SubscriptionStatus.DISABLED)
+    )
+
+    paid = await purchase_subscription_use_case(buyer, _paid_new_dto(buyer, paid_plan))
+
+    assert paid.remnawave_user_id == trial.remnawave_user_id
+    assert paid.status is SubscriptionStatus.DISABLED
+
+
+async def test_a_paid_upgrade_of_a_trial_resets_its_traffic(
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    monkeypatch: pytest.MonkeyPatch,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9202)
+    trial_plan = await _create_plan(plan_repository, "reset-trial")
+    paid_plan = await _create_plan(plan_repository, "reset-trial-paid")
+    trial = await purchase_subscription_use_case(buyer, _trial_dto(buyer, trial_plan))
+    resets: list[object] = []
+    original_reset = remnawave_sdk.users.reset_user_traffic
+
+    async def counting_reset(user_id: object) -> object:
+        resets.append(user_id)
+        return await original_reset(user_id)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(remnawave_sdk.users, "reset_user_traffic", counting_reset)
+
+    await purchase_subscription_use_case(buyer, _paid_new_dto(buyer, paid_plan, reset_traffic=True))
+
+    assert resets == [trial.remnawave_user_id]
+
+
+async def test_a_change_racing_a_renewal_credits_the_renewed_days(
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    monkeypatch: pytest.MonkeyPatch,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9203)
+    old_plan = await _create_plan(plan_repository, "race-renew-old")
+    new_plan = await _create_plan(plan_repository, "race-renew-new")
+
+    def dto(
+        plan: PlanDto, purchase_type: PurchaseType, target: Optional[int] = None
+    ) -> PurchaseSubscriptionDto:
+        return PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("300"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300"),
+            base_price=Decimal("300"),
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=target,
+        )
+
+    old = await purchase_subscription_use_case(buyer, dto(old_plan, PurchaseType.NEW))
+    reached, release = asyncio.Event(), asyncio.Event()
+    original_get = remnawave_sdk.users.get_user_by_id
+    gated = False
+
+    async def gated_get(user_id: object) -> object:
+        # first call is CHANGE's credit read, right after its unlocked row read
+        nonlocal gated
+        if not gated:
+            gated = True
+            reached.set()
+            await release.wait()
+        return await original_get(user_id)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(remnawave_sdk.users, "get_user_by_id", gated_get)
+
+    change = asyncio.create_task(
+        purchase_subscription_use_case(buyer, dto(new_plan, PurchaseType.CHANGE, old.id))
+    )
+    await reached.wait()
+    await purchase_subscription_use_case(buyer, dto(old_plan, PurchaseType.RENEW, old.id))
+    release.set()
+    changed = await change
+
+    # 600 paid over 60 days left, at 10/day: about 60 credit days on top of 30
+    # (the stale read gave about 30)
+    assert 88 <= (changed.expire_at - datetime_now()).days <= 90
+
+
+async def test_a_second_change_credits_back_the_credit_the_first_one_carried(
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9204)
+    plan = await _create_plan(plan_repository, "double-change")
+
+    def dto(
+        days: int, price: str, purchase_type: PurchaseType, target: Optional[int] = None
+    ) -> PurchaseSubscriptionDto:
+        return PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal(price), currency=Currency.RUB, duration_days=days
+            ),
+            duration_days=days,
+            price_paid=Decimal(price),
+            base_price=Decimal(price),
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=target,
+        )
+
+    original = await purchase_subscription_use_case(buyer, dto(365, "600", PurchaseType.NEW))
+    first = await purchase_subscription_use_case(
+        buyer, dto(30, "100", PurchaseType.CHANGE, original.id)
+    )
+    # about 598 credit at 100/30 per day: 179 days on top of 30
+    assert first.plan_snapshot.credit_days == 30 + 179
+    assert Decimal("698") < first.plan_snapshot.effective_credit_paid < Decimal("699")
+
+    second = await purchase_subscription_use_case(
+        buyer, dto(30, "100", PurchaseType.CHANGE, first.id)
+    )
+
+    # about 695 credit carried, not capped at the second order's 100 (30 days)
+    assert 30 + 205 <= (second.expire_at - datetime_now()).days <= 30 + 209
+
+
+async def test_a_change_outrun_by_renewals_twice_gives_up_and_restores_the_panel(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    monkeypatch: pytest.MonkeyPatch,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9205)
+    old_plan = await _create_plan(plan_repository, "race-twice-old")
+    new_plan = await _create_plan(plan_repository, "race-twice-new")
+
+    def dto(
+        plan: PlanDto, purchase_type: PurchaseType, target: Optional[int] = None
+    ) -> PurchaseSubscriptionDto:
+        return PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("300"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("300"),
+            base_price=Decimal("300"),
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=target,
+        )
+
+    old = await purchase_subscription_use_case(buyer, dto(old_plan, PurchaseType.NEW))
+    reached, release = asyncio.Event(), asyncio.Event()
+    original_get = remnawave_sdk.users.get_user_by_id
+    gated = 0
+
+    async def gated_get(user_id: object) -> object:
+        # each attempt's credit read, right after its unlocked row read
+        nonlocal gated
+        if gated < 2:
+            gated += 1
+            reached.set()
+            await release.wait()
+            release.clear()
+        return await original_get(user_id)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(remnawave_sdk.users, "get_user_by_id", gated_get)
+
+    change = asyncio.create_task(
+        purchase_subscription_use_case(buyer, dto(new_plan, PurchaseType.CHANGE, old.id))
+    )
+    for _ in range(2):
+        await reached.wait()
+        reached.clear()
+        await purchase_subscription_use_case(buyer, dto(old_plan, PurchaseType.RENEW, old.id))
+        release.set()
+
+    with pytest.raises(ValidationError) as raised:
+        await change
+
+    assert raised.value.code is ErrorCode.PURCHASE_SUPERSEDED
+    current = await subscription_repository.get_by_id(old.id)
+    panel_expire = remnawave_store[old.remnawave_user_id]["expireAt"]
+    assert datetime.fromisoformat(panel_expire.replace("Z", "+00:00")) == current.expire_at

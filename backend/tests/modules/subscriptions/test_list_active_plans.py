@@ -358,5 +358,6 @@ async def test_invited_plan_visible_only_to_referred_users(
     plans_for_referred = await use_case(referred)
     plans_for_unreferred = await use_case(unreferred)
 
-    assert created.public_code in {p.public_code for p in plans_for_referred}
-    assert created.public_code not in {p.public_code for p in plans_for_unreferred}
+    assert created.id in {p.id for p in plans_for_referred}
+    assert created.id not in {p.id for p in plans_for_unreferred}
+    assert not hasattr(plans_for_referred[0], "public_code")

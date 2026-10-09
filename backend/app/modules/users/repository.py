@@ -234,6 +234,35 @@ class UserRepository:
                 code=ErrorCode.BONUS_DAYS_BELOW_ZERO,
             )
 
+    async def debit_bonus_days_floor(self, user_id: int, days: int) -> int:
+        # row lock: RETURNING only sees the new value, the old one is needed for "taken"
+        old = await self.session.scalar(
+            select(User.bonus_days).where(User.id == user_id).with_for_update()
+        )
+        if old is None:
+            return 0
+        new = await self.session.scalar(
+            update(User)
+            .where(User.id == user_id)
+            .values(bonus_days=func.greatest(User.bonus_days - days, 0))
+            .returning(User.bonus_days)
+        )
+        return old - (new or 0)
+
+    async def debit_points_floor(self, user_id: int, amount: Decimal) -> Decimal:
+        old = await self.session.scalar(
+            select(User.points).where(User.id == user_id).with_for_update()
+        )
+        if old is None:
+            return Decimal(0)
+        new = await self.session.scalar(
+            update(User)
+            .where(User.id == user_id)
+            .values(points=func.greatest(User.points - amount, 0))
+            .returning(User.points)
+        )
+        return old - (new or Decimal(0))
+
     async def spend_trial(self, user_id: int) -> bool:
         # Atomic claim: of two concurrent callers only one sees rowcount 1.
         stmt = (
@@ -281,11 +310,11 @@ class UserRepository:
         await self.session.flush()
 
     async def restore_purchase_discount(
-        self, user_id: int, percent: int, promocode_id: Optional[int]
+        self, user_id: int, percent: int, promocode_id: Optional[int], *, from_promocode: bool
     ) -> None:
-        # an order whose promocode was deleted has no id left: handing its
-        # one-shot discount back would pass it off as admin-granted
-        if promocode_id is None:
+        # a promocode order whose promocode was deleted has no id left: handing
+        # its one-shot discount back would pass it off as admin-granted
+        if from_promocode and promocode_id is None:
             return
         # only into an empty slot, never over a discount granted since
         await self.session.execute(

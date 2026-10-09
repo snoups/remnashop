@@ -108,10 +108,13 @@ async def test_add_and_list_entry(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    add_response = await client.put(
-        f"{API_V1}/blacklist/entries/TELEGRAM_ID/id%2042", headers=headers
-    )
+    add_response = await client.put(f"{API_V1}/blacklist/entries/TELEGRAM_ID/042", headers=headers)
     assert add_response.status_code == 200
+    too_big = await client.put(
+        f"{API_V1}/blacklist/entries/TELEGRAM_ID/{'9' * 20}", headers=headers
+    )
+    assert too_big.status_code == 400
+    assert too_big.json()["code"] == "BLACKLIST_VALUE_INVALID"
     assert add_response.json()["telegram_ids"] == [42]
 
     list_response = await client.get(f"{API_V1}/blacklist", headers=headers)

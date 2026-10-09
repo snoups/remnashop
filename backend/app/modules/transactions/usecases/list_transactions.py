@@ -1,13 +1,13 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.transactions.dto import (
     ListTransactionsDto,
     TransactionWithUserDto,
 )
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, visible_user
 
 
 class ListTransactionsUseCase(
@@ -37,6 +37,7 @@ class ListTransactionsUseCase(
                 created_to=data.created_to,
                 search=data.search,
                 user_id=data.user_id,
+                search_staff=PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE),
                 page=data.page,
                 page_size=data.page_size,
             )
@@ -44,8 +45,11 @@ class ListTransactionsUseCase(
                 list({order.user_id for order in orders})
             )
         users_by_id = {user.id: user for user in users}
-        items = [
-            TransactionWithUserDto(order=order, user=users_by_id.get(order.user_id))
-            for order in orders
-        ]
+        items = []
+        for order in orders:
+            user = users_by_id.get(order.user_id)
+            shown = visible_user(actor, user)
+            if user is not None and shown is None:
+                order = order.model_copy(update={"customer_email": None})
+            items.append(TransactionWithUserDto(order=order, user=shown))
         return items, total

@@ -89,7 +89,7 @@ class EventLogRepository:
             ]
             # actor_id is Integer, not BigInteger: a longer digit string would
             # make asyncpg raise NumericValueOutOfRange
-            if search.isdigit() and int(search) <= INT32_MAX:
+            if search.isascii() and search.isdigit() and int(search) <= INT32_MAX:
                 search_filters.append(EventLogEntry.actor_id == int(search))
             filters.append(or_(*search_filters))
         if occurred_from is not None:

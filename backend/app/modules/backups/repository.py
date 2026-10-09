@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Final, Optional
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.backup_run import BackupRun
@@ -68,19 +69,44 @@ class BackupRepository:
         await self.session.refresh(row)
         return self._to_run_dto(row)
 
-    async def has_active(self, kind: BackupKind, *, exclude_run_id: Optional[int] = None) -> bool:
+    async def has_active(
+        self,
+        kind: BackupKind,
+        *,
+        started_after: datetime,
+        exclude_run_id: Optional[int] = None,
+    ) -> bool:
         # PENDING counts too: a new run waits there for the worker, and a
         # second click meanwhile must not pass. exclude_run_id lets run_backup()
-        # skip its own PENDING row.
+        # skip its own PENDING row. Older rows were stranded by a killed worker;
+        # updated_at is when a RUNNING row started, not when it was queued.
         conditions = [
             BackupRun.kind == kind,
             BackupRun.status.in_((BackupRunStatus.PENDING, BackupRunStatus.RUNNING)),
+            BackupRun.updated_at >= started_after,
         ]
         if exclude_run_id is not None:
             conditions.append(BackupRun.id != exclude_run_id)
         stmt = select(func.count()).select_from(BackupRun).where(*conditions)
         count = await self.session.scalar(stmt)
         return bool(count)
+
+    async def fail_stale(
+        self, kind: BackupKind, *, before: datetime, error: str, exclude_run_id: int
+    ) -> list[int]:
+        rows = await self.session.scalars(
+            update(BackupRun)
+            .where(
+                BackupRun.kind == kind,
+                BackupRun.status.in_((BackupRunStatus.PENDING, BackupRunStatus.RUNNING)),
+                BackupRun.updated_at < before,
+                BackupRun.id != exclude_run_id,
+            )
+            .values(status=BackupRunStatus.FAILED, error=error, finished_at=datetime_now())
+            .returning(BackupRun.id)
+            .execution_options(synchronize_session=False)
+        )
+        return list(rows)
 
     async def mark_running(self, run_id: int) -> BackupRunDto:
         row = await self._get_row(run_id)
@@ -97,6 +123,7 @@ class BackupRepository:
         row.file_path = file_path
         row.size_bytes = size_bytes
         row.checksum_sha256 = checksum_sha256
+        row.error = None
         row.finished_at = datetime_now()
         await self.session.flush()
         await self.session.refresh(row)

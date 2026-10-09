@@ -4,7 +4,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.transactions.dto import TransactionWithUserDto
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, visible_user
 
 
 class GetTransactionUseCase(UseCase[int, TransactionWithUserDto]):
@@ -24,4 +24,7 @@ class GetTransactionUseCase(UseCase[int, TransactionWithUserDto]):
         async with self._uow:
             order = await self._transaction_repository.get_by_id(data)
             user = await self._user_repository.get_by_id(order.user_id)
-        return TransactionWithUserDto(order=order, user=user)
+        shown = visible_user(actor, user)
+        if user is not None and shown is None:
+            order = order.model_copy(update={"customer_email": None})
+        return TransactionWithUserDto(order=order, user=shown)

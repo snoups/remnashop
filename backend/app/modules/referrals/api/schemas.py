@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Final, Optional, TypeAlias
+from typing import Annotated, Optional, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -10,10 +10,10 @@ from app.core.enums import (
     ReferralRewardStrategy,
     ReferralRewardType,
 )
+from app.modules.referrals.dto import MAX_BONUS_DAYS
 
-_WholeDecimal: TypeAlias = Annotated[Decimal, Field(decimal_places=0)]
-# ten years; keeps a typo out of the int32 column
-MAX_BONUS_DAYS: Final[int] = 3650
+# the points columns are Numeric(12, 0)
+_WholeDecimal: TypeAlias = Annotated[Decimal, Field(max_digits=12, decimal_places=0)]
 
 
 class ReferralSettingsResponse(BaseModel):
@@ -124,6 +124,7 @@ class RedeemBonusDaysResponse(BaseModel):
     subscription_id: int
     expire_at: datetime
     bonus_days: int
+    pending: bool
 
 
 class InvitedUserResponse(BaseModel):

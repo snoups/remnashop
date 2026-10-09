@@ -10,6 +10,7 @@ from app.modules.translations.seed import ensure_translations_seeded
 from app.modules.translations.serializer import (
     assert_fluent_compiles,
     find_disallowed_placeable,
+    fluent_value_source,
     join_message_key,
     serialize_to_fluent,
     split_message_key,
@@ -46,6 +47,7 @@ __all__ = [
     "assert_fluent_compiles",
     "ensure_translations_seeded",
     "find_disallowed_placeable",
+    "fluent_value_source",
     "get_translations_providers",
     "join_message_key",
     "serialize_to_fluent",

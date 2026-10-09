@@ -9,6 +9,17 @@ class TransactionRefundedEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
     user_id: int
+    payment_key: str
+    gateway_type: str
+    amount: str
+    currency: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class TransactionPartiallyRefundedEvent(SystemEvent):
+    category: ClassVar[EventCategory] = EventCategory.PAYMENT
+    order_id: int
+    user_id: int
     gateway_type: str
     amount: str
     currency: str

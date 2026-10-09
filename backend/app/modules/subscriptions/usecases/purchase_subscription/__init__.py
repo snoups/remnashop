@@ -1,5 +1,6 @@
 from contextlib import suppress
-from typing import Optional
+from datetime import timedelta
+from typing import Final, Optional
 
 from remnapy import RemnawaveSDK
 
@@ -11,6 +12,7 @@ from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
 from app.modules.subscriptions.eligibility import PurchaseEligibility
@@ -20,6 +22,8 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription.change import ChangePurchase
 from app.modules.subscriptions.usecases.purchase_subscription.new import NewPurchase
 from app.modules.subscriptions.usecases.purchase_subscription.renew import RenewPurchase
+
+STALE_CLAIM_AFTER: Final[timedelta] = timedelta(minutes=15)
 
 
 class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionDto]):
@@ -55,6 +59,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             uow,
             event_publisher,
             lifecycle_service,
+            pricing_repository,
         )
         self._change = ChangePurchase(
             subscription_repository,
@@ -96,7 +101,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             if data.purchase_type is PurchaseType.CHANGE:
                 return await self._change.run(actor, data)
             raise NotImplementedError(f"purchase_type '{data.purchase_type}' not yet implemented")
-        except Exception:
+        except BaseException:
             if not keep_key:
                 await self._release_idempotency_key_best_effort(data.idempotency_key)
             raise
@@ -105,7 +110,9 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         self, key: str, purchase_type: PurchaseType
     ) -> Optional[SubscriptionDto]:
         async with self._uow:
-            claimed = await self._idempotency.claim(key)
+            claimed = await self._idempotency.claim(
+                key, stale_before=datetime_now() - STALE_CLAIM_AFTER
+            )
         async with self._uow:
             if claimed:
                 return None

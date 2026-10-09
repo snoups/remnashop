@@ -2,11 +2,11 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import InvitedUserDto, ListInvitedUsersDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, visible_user
 
 
 class ListInvitedUsersUseCase(UseCase[ListInvitedUsersDto, tuple[list[InvitedUserDto], int]]):
@@ -34,6 +34,7 @@ class ListInvitedUsersUseCase(UseCase[ListInvitedUsersDto, tuple[list[InvitedUse
                 data.user_id,
                 depth=data.level,
                 search=data.search,
+                search_staff=PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE),
                 page=data.page,
                 page_size=data.page_size,
             )
@@ -47,8 +48,10 @@ class ListInvitedUsersUseCase(UseCase[ListInvitedUsersDto, tuple[list[InvitedUse
         users_by_id = {user.id: user for user in users}
         items = [
             InvitedUserDto(
-                user=users_by_id.get(entry.referred_id),
-                via=users_by_id.get(entry.parent_id) if entry.depth > 1 else None,
+                user=visible_user(actor, users_by_id.get(entry.referred_id)),
+                via=visible_user(actor, users_by_id.get(entry.parent_id))
+                if entry.depth > 1
+                else None,
                 depth=entry.depth,
                 created_at=entry.created_at,
                 reward_amounts=rewards.get(entry.referred_id, {}),

@@ -1,4 +1,5 @@
 from contextlib import suppress
+from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -22,9 +23,18 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription.panel import (
     SupersededError,
     configure_for_plan,
+    reset_traffic_if_paid,
     restore,
     subscription_row,
 )
+
+
+class _TargetMovedError(Exception):
+    """The target's expire_at moved (a renewal committed) after the credit was
+    computed from it."""
+
+    def __init__(self, current: SubscriptionDto) -> None:
+        self.current = current
 
 
 class ChangePurchase:
@@ -45,37 +55,56 @@ class ChangePurchase:
         self._pricing_repository = pricing_repository
 
     async def run(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
-        async with self._uow:
-            if data.target_subscription_id is None:
-                raise ValidationError(
-                    "target_subscription_id is required for a CHANGE",
-                    code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
-                )
-            if data.duration_days <= 0:
-                raise ValidationError(
-                    "duration_days must be positive", code=ErrorCode.DURATION_NOT_POSITIVE
-                )
-
-            old = await get_owned_target(
-                self._subscription_repository, data.target_subscription_id, data.user_id
+        if data.target_subscription_id is None:
+            raise ValidationError(
+                "target_subscription_id is required for a CHANGE",
+                code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
             )
+        if data.duration_days <= 0:
+            raise ValidationError(
+                "duration_days must be positive", code=ErrorCode.DURATION_NOT_POSITIVE
+            )
+        # the retry's update_user overwrites the stale expire_at the first one set
+        with suppress(_TargetMovedError):
+            return await self._attempt(actor, data, data.target_subscription_id)
+        try:
+            return await self._attempt(actor, data, data.target_subscription_id)
+        except _TargetMovedError as moved:
+            with suppress(Exception):
+                await self._remnawave_sdk.users.update_user(restore(moved.current))
+            raise SupersededError(
+                "Subscription kept changing while this request was in flight",
+                code=ErrorCode.PURCHASE_SUPERSEDED,
+            ) from None
+
+    async def _attempt(
+        self, actor: Actor, data: PurchaseSubscriptionDto, target_id: int
+    ) -> SubscriptionDto:
+        async with self._uow:
+            old = await get_owned_target(self._subscription_repository, target_id, data.user_id)
             if old.status is SubscriptionStatus.DELETED:
                 raise ValidationError(
                     "Cannot change a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
                 )
 
+        plan = data.plan_snapshot
         if data.keep_expire_at:
             credit_days = 0
             final_expire_at = old.expire_at
         else:
             now = datetime_now()
-            credit_days = await self._credit_days(old, data, now)
+            credit, credit_days = await self._credit(old, data, now)
             final_expire_at = now + timedelta(days=data.duration_days + credit_days)
+            # the new term carries the credit, so a later CHANGE may credit it back
+            plan = replace(
+                plan,
+                credit_paid=plan.price_paid + credit,
+                credit_days=plan.duration_days + credit_days,
+            )
 
         # keeps old's panel user (same id, same subscription_url the client
         # already has) and changes only the plan config (limits, squads,
         # expiry); the local row is replaced below
-        plan = data.plan_snapshot
         panel_user = await self._remnawave_sdk.users.update_user(
             configure_for_plan(old.remnawave_user_id, plan, final_expire_at)
         )
@@ -92,10 +121,12 @@ class ChangePurchase:
                         "was in flight",
                         code=ErrorCode.PURCHASE_SUPERSEDED,
                     )
+                if locked_old.expire_at != old.expire_at:
+                    raise _TargetMovedError(locked_old)
                 await self._subscription_repository.mark_deleted(old.id)
                 updated = await self._subscription_repository.create(
                     subscription_row(
-                        data,
+                        replace(data, plan_snapshot=plan),
                         panel_user,
                         expire_at=final_expire_at,
                         # an admin change can reach a disabled or expired panel user,
@@ -115,7 +146,7 @@ class ChangePurchase:
                             payment_key=data.idempotency_key,
                         )
                     )
-        except SupersededError:
+        except (SupersededError, _TargetMovedError):
             raise
         except Exception:
             # no orphan: update_user changed old's own panel user. Best-effort
@@ -125,7 +156,7 @@ class ChangePurchase:
                 await self._remnawave_sdk.users.update_user(restore(old))
             raise
 
-        await self._reset_traffic(data, updated)
+        await reset_traffic_if_paid(self._remnawave_sdk, data, updated)
 
         logger.info(
             f"{actor.log} Changed subscription '{old.id}' to plan '{plan.plan_id}' "
@@ -133,27 +164,15 @@ class ChangePurchase:
         )
         return updated
 
-    async def _reset_traffic(
-        self, data: PurchaseSubscriptionDto, subscription: SubscriptionDto
-    ) -> None:
-        if not data.reset_traffic:
-            return
-        # the spent share is already out of the credit; a failure here leaves
-        # the old counter running, nothing to revert
-        try:
-            await self._remnawave_sdk.users.reset_user_traffic(subscription.remnawave_user_id)
-        except Exception:
-            logger.exception(f"Failed to reset traffic of subscription '{subscription.id}'")
-
-    async def _credit_days(
+    async def _credit(
         self, old: SubscriptionDto, data: PurchaseSubscriptionDto, now: datetime
-    ) -> int:
+    ) -> tuple[Decimal, int]:
         # depends on `old` alone, so the panel gets the final expire_at on the
         # first call
         panel_user = await self._remnawave_sdk.users.get_user_by_id(old.remnawave_user_id)
         credit = calculate_proration_credit(
-            price_paid=old.plan_snapshot.price_paid,
-            duration_days=old.plan_snapshot.duration_days,
+            credit_paid=old.plan_snapshot.effective_credit_paid,
+            credit_days=old.plan_snapshot.effective_credit_days,
             expire_at=old.expire_at,
             is_trial=old.is_trial,
             now=now,
@@ -173,4 +192,6 @@ class ChangePurchase:
         # 90%-off checkout would buy 10x the credit days
         proration_denominator = data.base_price if data.base_price is not None else data.price_paid
         daily_rate_new = proration_denominator / Decimal(data.duration_days)
-        return int(credit / daily_rate_new) if daily_rate_new > 0 else 0
+        if daily_rate_new <= 0:
+            return Decimal(0), 0
+        return credit, int(credit / daily_rate_new)

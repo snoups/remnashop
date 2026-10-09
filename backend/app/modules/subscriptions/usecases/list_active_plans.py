@@ -12,7 +12,6 @@ from app.modules.users import UserDto
 def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable) -> CatalogPlanDto:
     return CatalogPlanDto(
         id=plan.id,
-        public_code=plan.public_code,
         name=plan.name,
         description=plan.description,
         tag=plan.tag,

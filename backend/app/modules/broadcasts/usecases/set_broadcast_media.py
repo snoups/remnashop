@@ -4,6 +4,7 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.config import AppConfig
+from app.core.constants import BROADCAST_MEDIA_MAX_BYTES
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BroadcastMediaType, BroadcastStatus
 from app.core.error_codes import ErrorCode
@@ -23,12 +24,11 @@ _TYPES: Final[dict[str, tuple[BroadcastMediaType, str, int]]] = {
     "image/jpeg": (BroadcastMediaType.PHOTO, "jpg", 10 * _MB),
     "image/png": (BroadcastMediaType.PHOTO, "png", 10 * _MB),
     "image/webp": (BroadcastMediaType.PHOTO, "webp", 10 * _MB),
-    "image/gif": (BroadcastMediaType.ANIMATION, "gif", 50 * _MB),
-    "video/mp4": (BroadcastMediaType.VIDEO, "mp4", 50 * _MB),
-    "application/pdf": (BroadcastMediaType.DOCUMENT, "pdf", 50 * _MB),
-    "application/zip": (BroadcastMediaType.DOCUMENT, "zip", 50 * _MB),
+    "image/gif": (BroadcastMediaType.ANIMATION, "gif", BROADCAST_MEDIA_MAX_BYTES),
+    "video/mp4": (BroadcastMediaType.VIDEO, "mp4", BROADCAST_MEDIA_MAX_BYTES),
+    "application/pdf": (BroadcastMediaType.DOCUMENT, "pdf", BROADCAST_MEDIA_MAX_BYTES),
+    "application/zip": (BroadcastMediaType.DOCUMENT, "zip", BROADCAST_MEDIA_MAX_BYTES),
 }
-MAX_MEDIA_SIZE_BYTES: Final[int] = 50 * _MB
 
 
 class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):

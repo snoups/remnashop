@@ -14,6 +14,8 @@ from app.modules.users import UserDto
 
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
+# ten years; keeps a typo out of the int32 column
+MAX_BONUS_DAYS: Final[int] = 3650
 
 
 class ReferralDto(BaseDto, TimestampMixin):
@@ -161,6 +163,11 @@ class AssignReferralRewardsDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ReverseReferralRewardsDto:
+    payment_key: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class AttachReferralOnRegistrationDto:
     user_id: int
     referral_code: str
@@ -214,6 +221,16 @@ class BonusDaysRedemptionDto:
     expire_at: datetime
     # balance left after the redemption
     bonus_days: int
+    # the worker finishes the renewal; expire_at is still the old date
+    pending: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResumeBonusRenewalDto:
+    user_id: int
+    subscription_id: int
+    days: int
+    idempotency_key: str
 
 
 @dataclass(frozen=True, kw_only=True)

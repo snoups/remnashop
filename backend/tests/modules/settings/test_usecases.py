@@ -12,7 +12,7 @@ from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AppearanceImageKind, Locale, Role
+from app.core.enums import AppearanceImageKind, Locale, OAuthProvider, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import (
     NotFoundError,
@@ -21,6 +21,8 @@ from app.core.exceptions import (
 )
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
+from app.modules.oauth.dto import CreateOAuthIdentityDto
+from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.settings import command_translations
 from app.modules.settings.bot_commands import BOT_COMMANDS, BotCommand
 from app.modules.settings.dto import (
@@ -31,7 +33,7 @@ from app.modules.settings.dto import (
     UpdateShopSettingsDto,
     UploadAppearanceImageDto,
 )
-from app.modules.settings.events import OidcIssuerChangedEvent
+from app.modules.settings.events import OidcIssuerChangedEvent, ShopSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import (
     DeleteAppearanceLogoUseCase,
@@ -248,10 +250,10 @@ async def test_regular_user_cannot_update_bot_settings(
 
 
 async def test_owner_can_view_and_update_shop_settings(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     get_use_case = GetShopSettingsUseCase(settings_repository, uow)
-    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow, event_publisher)
 
     settings = await get_use_case(OWNER)
     assert settings.max_active_subscriptions == 3
@@ -282,9 +284,9 @@ async def test_regular_user_cannot_view_shop_settings(
 
 
 async def test_regular_user_cannot_update_shop_settings(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
         await update_use_case(
@@ -302,9 +304,9 @@ async def test_regular_user_cannot_update_shop_settings(
 
 
 async def test_update_shop_settings_rejects_non_positive_cap(
-    settings_repository: SettingsRepository, uow: UnitOfWork
+    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
-    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
         await update_use_case(
@@ -326,6 +328,7 @@ async def test_owner_can_view_and_update_oauth_settings(
     uow: UnitOfWork,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
 ) -> None:
     # assert_public_https_host resolves real DNS, stubbed here (the check
     # itself: test_update_oauth_settings_rejects_non_public_issuer_host)
@@ -337,7 +340,9 @@ async def test_owner_can_view_and_update_oauth_settings(
         _fake_assert_public_https_host,
     )
     get_use_case = GetOAuthSettingsUseCase(settings_repository, uow)
-    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
+    update_use_case = UpdateOAuthSettingsUseCase(
+        settings_repository, uow, event_publisher, oauth_identity_repository
+    )
 
     settings = await get_use_case(OWNER)
     assert not settings.is_github_configured
@@ -360,9 +365,14 @@ async def test_owner_can_view_and_update_oauth_settings(
 
 
 async def test_update_oauth_settings_rejects_non_public_issuer_host(
-    settings_repository: SettingsRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
 ) -> None:
-    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
+    update_use_case = UpdateOAuthSettingsUseCase(
+        settings_repository, uow, event_publisher, oauth_identity_repository
+    )
 
     with pytest.raises(ValidationError):
         await update_use_case(
@@ -376,6 +386,7 @@ async def test_update_oauth_settings_publishes_oidc_issuer_changed_event_when_is
     session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
 ) -> None:
     async def _fake_assert_public_https_host(url: str) -> None:
         return None
@@ -384,7 +395,9 @@ async def test_update_oauth_settings_publishes_oidc_issuer_changed_event_when_is
         "app.modules.settings.usecases.update_oauth_settings.assert_public_https_host",
         _fake_assert_public_https_host,
     )
-    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
+    update_use_case = UpdateOAuthSettingsUseCase(
+        settings_repository, uow, event_publisher, oauth_identity_repository
+    )
 
     await update_use_case(
         OWNER, UpdateOAuthSettingsDto(oidc_issuer_url="https://keycloak.example.com/realms/first")
@@ -406,6 +419,7 @@ async def test_update_oauth_settings_does_not_publish_event_when_issuer_is_uncha
     session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
 ) -> None:
     async def _fake_assert_public_https_host(url: str) -> None:
         return None
@@ -414,7 +428,9 @@ async def test_update_oauth_settings_does_not_publish_event_when_issuer_is_uncha
         "app.modules.settings.usecases.update_oauth_settings.assert_public_https_host",
         _fake_assert_public_https_host,
     )
-    update_use_case = UpdateOAuthSettingsUseCase(settings_repository, uow, event_publisher)
+    update_use_case = UpdateOAuthSettingsUseCase(
+        settings_repository, uow, event_publisher, oauth_identity_repository
+    )
     issuer_url = "https://keycloak.example.com/realms/stable"
     await update_use_case(OWNER, UpdateOAuthSettingsDto(oidc_issuer_url=issuer_url))
     # First call above already published one OidcIssuerChangedEvent (None -> issuer_url) --
@@ -432,6 +448,90 @@ async def test_update_oauth_settings_does_not_publish_event_when_issuer_is_uncha
         )
     ).all()
     assert len(rows) == 1  # the second call added no event
+
+
+async def _noop_async(url: str) -> None:
+    return None
+
+
+async def test_issuer_change_deletes_oidc_identities_in_same_transaction(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
+) -> None:
+    monkeypatch.setattr(
+        "app.modules.settings.usecases.update_oauth_settings.assert_public_https_host",
+        _noop_async,
+    )
+    async with uow:
+        await oauth_identity_repository.create(
+            CreateOAuthIdentityDto(
+                user_id=OWNER.id,
+                provider=OAuthProvider.OIDC,
+                external_id="sub-1",
+                external_login=None,
+            )
+        )
+        await oauth_identity_repository.create(
+            CreateOAuthIdentityDto(
+                user_id=OWNER.id,
+                provider=OAuthProvider.GITHUB,
+                external_id="gh-1",
+                external_login=None,
+            )
+        )
+    use_case = UpdateOAuthSettingsUseCase(
+        settings_repository, uow, event_publisher, oauth_identity_repository
+    )
+    await use_case(OWNER, UpdateOAuthSettingsDto(oidc_issuer_url="https://idp-b.example.com"))
+
+    async with uow:
+        assert (
+            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.OIDC, "sub-1")
+            is None
+        )
+        assert (
+            await oauth_identity_repository.get_by_provider_external_id(
+                OAuthProvider.GITHUB, "gh-1"
+            )
+            is not None
+        )
+
+
+async def test_same_issuer_keeps_oidc_identities(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
+) -> None:
+    monkeypatch.setattr(
+        "app.modules.settings.usecases.update_oauth_settings.assert_public_https_host",
+        _noop_async,
+    )
+    use_case = UpdateOAuthSettingsUseCase(
+        settings_repository, uow, event_publisher, oauth_identity_repository
+    )
+    issuer = "https://idp-a.example.com"
+    await use_case(OWNER, UpdateOAuthSettingsDto(oidc_issuer_url=issuer))
+    async with uow:
+        await oauth_identity_repository.create(
+            CreateOAuthIdentityDto(
+                user_id=OWNER.id,
+                provider=OAuthProvider.OIDC,
+                external_id="sub-1",
+                external_login=None,
+            )
+        )
+    await use_case(OWNER, UpdateOAuthSettingsDto(oidc_issuer_url=issuer, oidc_display_name="X"))
+
+    async with uow:
+        assert (
+            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.OIDC, "sub-1")
+            is not None
+        )
 
 
 async def test_regular_user_cannot_view_oauth_settings(
@@ -1141,3 +1241,57 @@ async def test_admin_with_only_favicon_permission_cannot_upload_logo(
             limited_admin,
             UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
         )
+
+
+async def test_shop_settings_patch_keeps_unsent_fields(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow, event_publisher)
+    await update_use_case(
+        OWNER,
+        UpdateShopSettingsDto(
+            max_active_subscriptions=3,
+            link_reset_cooldown_hours=24,
+            fields_set=frozenset({"max_active_subscriptions", "link_reset_cooldown_hours"}),
+        ),
+    )
+
+    updated = await update_use_case(
+        OWNER,
+        UpdateShopSettingsDto(
+            link_reset_enabled=False, fields_set=frozenset({"link_reset_enabled"})
+        ),
+    )
+
+    assert updated.max_active_subscriptions == 3
+    assert updated.link_reset_cooldown_hours == 24
+    assert updated.link_reset_enabled is False
+    events = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == ShopSettingsChangedEvent.__name__
+            )
+        )
+    ).all()
+    assert len(events) == 2
+
+
+async def test_shop_settings_patch_sets_unlimited_when_null_is_sent(
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    update_use_case = UpdateShopSettingsUseCase(settings_repository, uow, event_publisher)
+
+    updated = await update_use_case(
+        OWNER,
+        UpdateShopSettingsDto(
+            max_active_subscriptions=None, fields_set=frozenset({"max_active_subscriptions"})
+        ),
+    )
+
+    assert updated.max_active_subscriptions is None
+    assert updated.device_single_reset_enabled is True

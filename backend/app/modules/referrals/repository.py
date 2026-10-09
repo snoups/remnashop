@@ -1,11 +1,13 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, cast
 
 from sqlalchemy import (
     CTE,
     ColumnElement,
+    CursorResult,
     Integer,
+    Select,
     case,
     distinct,
     exists,
@@ -13,6 +15,7 @@ from sqlalchemy import (
     literal,
     or_,
     select,
+    update,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,9 +31,10 @@ from app.core.db.models.user import User
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import get_or_create_singleton
 from app.core.db.user_search import user_search_filter
-from app.core.enums import ReferralLevel, ReferralRewardType
+from app.core.enums import ReferralLevel, ReferralRewardType, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
+from app.core.utils.time import datetime_now
 from app.modules.referrals.dto import (
     DEFAULT_PAGE_SIZE,
     DownlineEntryDto,
@@ -48,7 +52,16 @@ _MAX_DEPTH: Final[int] = max(ReferralLevel)
 
 
 def _rewards_before(created_to: Optional[datetime]) -> list[ColumnElement[bool]]:
-    return [ReferralReward.created_at < created_to] if created_to is not None else []
+    filters: list[ColumnElement[bool]] = [ReferralReward.reversed_at.is_(None)]
+    if created_to is not None:
+        filters.append(ReferralReward.created_at < created_to)
+    return filters
+
+
+def _search_users(search: str, search_staff: bool) -> Select[tuple[int]]:
+    # staff rows are hidden from callers without ADMINS_MANAGE; matching them would be an oracle
+    query = select(User.id).where(user_search_filter(search, include_login=False))
+    return query if search_staff else query.where(User.role == Role.USER)
 
 
 class ReferralRepository:
@@ -171,6 +184,7 @@ class ReferralRepository:
         *,
         depth: Optional[int] = None,
         search: Optional[str] = None,
+        search_staff: bool = True,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[DownlineEntryDto], int]:
@@ -179,11 +193,7 @@ class ReferralRepository:
         if depth is not None:
             filters.append(downline.c.depth == depth)
         if search:
-            filters.append(
-                downline.c.referred_id.in_(
-                    select(User.id).where(user_search_filter(search, include_login=False))
-                )
-            )
+            filters.append(downline.c.referred_id.in_(_search_users(search, search_staff)))
 
         total = await self.session.scalar(
             select(func.count()).select_from(downline).where(*filters)
@@ -228,7 +238,11 @@ class ReferralRepository:
         stmt = (
             select(Subscription.user_id, ReferralReward.type, func.sum(ReferralReward.amount))
             .join(Subscription, Subscription.id == ReferralReward.subscription_id)
-            .where(ReferralReward.referrer_id == referrer_id, Subscription.user_id.in_(buyer_ids))
+            .where(
+                ReferralReward.referrer_id == referrer_id,
+                Subscription.user_id.in_(buyer_ids),
+                ReferralReward.reversed_at.is_(None),
+            )
             .group_by(Subscription.user_id, ReferralReward.type)
         )
         totals: dict[int, dict[ReferralRewardType, Decimal]] = {}
@@ -244,6 +258,7 @@ class ReferralRepository:
         search: Optional[str],
         has_rewards: Optional[bool],
         reward_type: Optional[ReferralRewardType],
+        search_staff: bool = True,
         created_to: Optional[datetime] = None,
     ) -> list[ColumnElement[bool]]:
         filters: list[ColumnElement[bool]] = []
@@ -254,7 +269,7 @@ class ReferralRepository:
         if created_to is not None:
             filters.append(Referral.created_at < created_to)
         if search:
-            matching_users = select(User.id).where(user_search_filter(search, include_login=False))
+            matching_users = _search_users(search, search_staff)
             filters.append(
                 or_(
                     Referral.referred_id.in_(matching_users),
@@ -279,6 +294,7 @@ class ReferralRepository:
         search: Optional[str] = None,
         has_rewards: Optional[bool] = None,
         reward_type: Optional[ReferralRewardType] = None,
+        search_staff: bool = True,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[ReferralDto], int]:
@@ -289,6 +305,7 @@ class ReferralRepository:
             search=search,
             has_rewards=has_rewards,
             reward_type=reward_type,
+            search_staff=search_staff,
         )
 
         count_stmt = select(func.count()).select_from(Referral).where(*filters)
@@ -297,7 +314,7 @@ class ReferralRepository:
         order_by: list[ColumnElement[Any]] = []
         if search:
             # the searched user's own edge first, then the ones they invited
-            matching_users = select(User.id).where(user_search_filter(search, include_login=False))
+            matching_users = _search_users(search, search_staff)
             order_by.append(case((Referral.referred_id.in_(matching_users), 0), else_=1))
         order_by += [Referral.created_at.desc(), Referral.id.desc()]
         stmt = (
@@ -319,6 +336,7 @@ class ReferralRepository:
         search: Optional[str] = None,
         has_rewards: Optional[bool] = None,
         reward_type: Optional[ReferralRewardType] = None,
+        search_staff: bool = True,
     ) -> ReferralSummaryDto:
         # created_to: the summary as it looked then, later referrals and rewards left out
         filters = self._list_filters(
@@ -328,6 +346,7 @@ class ReferralRepository:
             search=search,
             has_rewards=has_rewards,
             reward_type=reward_type,
+            search_staff=search_staff,
         )
         rewarded = exists().where(
             ReferralReward.referral_id == Referral.id, *_rewards_before(created_to)
@@ -370,7 +389,9 @@ class ReferralRepository:
                 func.count(),
                 func.sum(ReferralReward.amount),
             )
-            .where(ReferralReward.referral_id.in_(referral_ids))
+            .where(
+                ReferralReward.referral_id.in_(referral_ids), ReferralReward.reversed_at.is_(None)
+            )
             .group_by(ReferralReward.referral_id, ReferralReward.type)
         )
         counts: dict[int, int] = {}
@@ -387,7 +408,9 @@ class ReferralRepository:
         self, start: datetime, end: datetime
     ) -> list[tuple[Optional[int], ReferralRewardType, Decimal]]:
         stmt = select(ReferralReward.referrer_id, ReferralReward.type, ReferralReward.amount).where(
-            ReferralReward.created_at >= start, ReferralReward.created_at < end
+            ReferralReward.created_at >= start,
+            ReferralReward.created_at < end,
+            ReferralReward.reversed_at.is_(None),
         )
         return list((await self.session.execute(stmt)).tuples().all())
 
@@ -421,13 +444,29 @@ class ReferralRepository:
             ) from error
         return self._reward_to_dto(row)
 
+    async def list_active_rewards_by_payment_key(self, key: str) -> list[ReferralRewardDto]:
+        rows = await self.session.scalars(
+            select(ReferralReward)
+            .where(ReferralReward.payment_key == key, ReferralReward.reversed_at.is_(None))
+            .order_by(ReferralReward.id)
+        )
+        return [self._reward_to_dto(row) for row in rows]
+
+    async def mark_reversed(self, reward_id: int) -> bool:
+        result = await self.session.execute(
+            update(ReferralReward)
+            .where(ReferralReward.id == reward_id, ReferralReward.reversed_at.is_(None))
+            .values(reversed_at=datetime_now())
+        )
+        return cast(CursorResult, result).rowcount > 0
+
     async def list_rewards_by_referrer(self, referrer_id: int) -> list[ReferralRewardDto]:
         # the buyer is the subscription's owner; the reward's referral edge is
         # this referrer's hop, not the purchase's
         stmt = (
             select(ReferralReward, Subscription.user_id)
             .outerjoin(Subscription, Subscription.id == ReferralReward.subscription_id)
-            .where(ReferralReward.referrer_id == referrer_id)
+            .where(ReferralReward.referrer_id == referrer_id, ReferralReward.reversed_at.is_(None))
             .order_by(ReferralReward.created_at.desc())
         )
         rows = await self.session.execute(stmt)

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Final, Optional
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 
@@ -47,6 +47,19 @@ class UpdateBotSettingsDto:
     drop_pending_updates: Optional[bool] = None
 
 
+SHOP_SETTINGS_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "max_active_subscriptions",
+        "device_single_reset_enabled",
+        "device_single_reset_cooldown_hours",
+        "device_all_reset_enabled",
+        "device_all_reset_cooldown_hours",
+        "link_reset_enabled",
+        "link_reset_cooldown_hours",
+    }
+)
+
+
 class ShopSettingsDto(BaseDto, TimestampMixin):
     # None = unlimited. The column has no default (see
     # core/db/models/shop_settings.py), so this covers a row that doesn't exist yet.
@@ -61,15 +74,16 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateShopSettingsDto:
-    # Full replace, not a partial patch: None in max_active_subscriptions means
-    # unlimited, not "leave unchanged".
-    max_active_subscriptions: Optional[int]
-    device_single_reset_enabled: bool
-    device_single_reset_cooldown_hours: int
-    device_all_reset_enabled: bool
-    device_all_reset_cooldown_hours: int
-    link_reset_enabled: bool
-    link_reset_cooldown_hours: int
+    # None in max_active_subscriptions means unlimited; fields_set says which
+    # fields the caller sent.
+    max_active_subscriptions: Optional[int] = None
+    device_single_reset_enabled: Optional[bool] = None
+    device_single_reset_cooldown_hours: Optional[int] = None
+    device_all_reset_enabled: Optional[bool] = None
+    device_all_reset_cooldown_hours: Optional[int] = None
+    link_reset_enabled: Optional[bool] = None
+    link_reset_cooldown_hours: Optional[int] = None
+    fields_set: frozenset[str] = SHOP_SETTINGS_FIELDS
 
 
 class BotCommandDto(BaseDto, TimestampMixin):

@@ -17,6 +17,7 @@ class ApiTokenRepository:
             id=row.id,
             name=row.name,
             scopes=row.scopes,
+            ip_allowlist=row.ip_allowlist,
             created_by_user_id=row.created_by_user_id,
             last_used_at=row.last_used_at,
             revoked_at=row.revoked_at,
@@ -30,6 +31,7 @@ class ApiTokenRepository:
             name=data.name,
             token_hash=data.token_hash,
             scopes=data.scopes,
+            ip_allowlist=data.ip_allowlist,
             created_by_user_id=data.created_by_user_id,
             expires_at=data.expires_at,
         )

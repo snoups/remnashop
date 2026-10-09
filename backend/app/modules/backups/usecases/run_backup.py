@@ -1,5 +1,6 @@
 import hashlib
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import Final, Optional
 
@@ -20,6 +21,9 @@ from app.modules.backups.provenance import sign_backup_file
 from app.modules.backups.repository import BackupRepository
 
 _FILE_MODE: Final[int] = 0o600
+# a run older than this was stranded by a killed worker; a real dump finishes well within it
+STALE_RUN_AFTER: Final[timedelta] = timedelta(hours=2)
+_STALE_RUN_ERROR: Final[str] = "Interrupted: the worker stopped before the backup finished"
 _EXTENSION_BY_KIND: Final[dict[BackupKind, str]] = {
     BackupKind.DATABASE: "dump",
     BackupKind.ASSETS: "zip",
@@ -43,10 +47,26 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
 
     async def _execute(self, actor: Actor, data: RunBackupDto) -> None:
         kind, run_id = data.kind, data.run_id
-        if await self._backup_repository.has_active(kind, exclude_run_id=run_id):
+        started_after = datetime_now() - STALE_RUN_AFTER
+        async with self._uow:
+            stale = await self._backup_repository.fail_stale(
+                kind, before=started_after, error=_STALE_RUN_ERROR, exclude_run_id=run_id
+            )
+            for stale_id in stale:
+                await self._event_publisher.publish(
+                    BackupFailedEvent(run_id=stale_id, kind=kind.value, error=_STALE_RUN_ERROR)
+                )
+        for stale_id in stale:
+            logger.warning(f"Backup run '{stale_id}' ('{kind.value}') was stranded, failed it")
+
+        if await self._backup_repository.has_active(
+            kind, started_after=started_after, exclude_run_id=run_id
+        ):
+            error = f"A '{kind.value}' backup is already running"
             async with self._uow:
-                await self._backup_repository.mark_failed(
-                    run_id, error=f"A '{kind.value}' backup is already running"
+                await self._backup_repository.mark_failed(run_id, error=error)
+                await self._event_publisher.publish(
+                    BackupFailedEvent(run_id=run_id, kind=kind.value, error=error)
                 )
             logger.warning(f"Backup run '{run_id}' rejected: '{kind.value}' already running")
             return

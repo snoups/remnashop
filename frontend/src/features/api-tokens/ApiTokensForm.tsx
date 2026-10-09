@@ -233,6 +233,9 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
         </div>
         <div className="flex min-w-0 flex-1 items-start gap-2">
           <p className="min-w-0 truncate font-mono leading-8 text-sm font-medium text-foreground">{token.name}</p>
+          {token.ip_allowlist.length > 0 && (
+            <Tag className="mt-1.5 shrink-0">{t("apiTokens.ipRestricted", { n: token.ip_allowlist.length })}</Tag>
+          )}
           {isFullAccess ? (
             <span className="mt-1.5 flex shrink-0 items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">
               <ShieldCheck className="size-3" />

@@ -74,6 +74,17 @@ class NotificationRenderer:
             return str(title), str(body)
         return event_type, ""
 
+    def render_message(self, locale: Locale, key: str, args: dict[str, str | int]) -> str:
+        for candidate in (locale, self._default_locale):
+            bundle = self._bundles.get(candidate)
+            if bundle is None or not bundle.has_message(key):
+                continue
+            value, errors = bundle.format(key, args)
+            for error in errors:
+                logger.warning(f"Template '{key}' ({candidate}): {error}")
+            return str(value)
+        return ""
+
     def text(self, locale: Locale, key: str) -> Optional[str]:
         for candidate in (locale, self._default_locale):
             bundle = self._bundles.get(candidate)

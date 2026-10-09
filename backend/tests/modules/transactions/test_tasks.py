@@ -81,6 +81,7 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
                 discount_percent=20,
                 discount_source=DiscountSource.PURCHASE,
                 discount_promocode_id=promocode_id,
+                discount_from_promocode=True,
                 final_price=Decimal("400"),
                 anchor_base_price=Decimal("500"),
                 anchor_final_price=Decimal("400"),
@@ -93,6 +94,75 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
     await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
 
     assert (await user_repository.get_by_id(user_id)).purchase_discount == 20
+
+
+async def _prune_discounted_order(
+    transaction_repository,
+    user_repository,
+    uow,
+    user_id,
+    plan_id,
+    *,
+    from_promocode: bool,
+    key: str,
+) -> int:
+    async with uow:
+        await transaction_repository.create(
+            CreateTransactionDto(
+                user_id=user_id,
+                plan_id=plan_id,
+                plan_snapshot=make_plan_snapshot(plan_id=plan_id),
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                target_subscription_id=None,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+                base_price=Decimal("500"),
+                discount_percent=20,
+                discount_source=DiscountSource.PURCHASE,
+                discount_from_promocode=from_promocode,
+                final_price=Decimal("400"),
+                anchor_base_price=Decimal("500"),
+                anchor_final_price=Decimal("400"),
+                customer_email=None,
+                idempotency_key=key,
+                expires_at=datetime_now() - timedelta(minutes=1),
+            )
+        )
+    await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
+    return (await user_repository.get_by_id(user_id)).purchase_discount
+
+
+async def test_prune_gives_back_an_admin_granted_purchase_discount(
+    transaction_repository, user_repository, uow, user_id, plan_id
+) -> None:
+    restored = await _prune_discounted_order(
+        transaction_repository,
+        user_repository,
+        uow,
+        user_id,
+        plan_id,
+        from_promocode=False,
+        key="stale-admin-key",
+    )
+
+    assert restored == 20
+
+
+async def test_prune_keeps_a_deleted_promocodes_discount_gone(
+    transaction_repository, user_repository, uow, user_id, plan_id
+) -> None:
+    restored = await _prune_discounted_order(
+        transaction_repository,
+        user_repository,
+        uow,
+        user_id,
+        plan_id,
+        from_promocode=True,
+        key="stale-dead-promo-key",
+    )
+
+    assert restored == 0
 
 
 def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
@@ -169,7 +239,7 @@ async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_
                 plan_snapshot=make_plan_snapshot(),
             )
         )
-        await idempotency_repository.claim("recon-linked")
+        await idempotency_repository.claim("recon-linked", stale_before=datetime_now())
         await idempotency_repository.link("recon-linked", subscription.id)
 
     dispatch = RecordingDispatch()
@@ -234,7 +304,7 @@ async def _create_linked_paid_order(
             )
         )
         idempotency = PurchaseIdempotencyRepository(subscription_repository.session)
-        await idempotency.claim(idempotency_key)
+        await idempotency.claim(idempotency_key, stale_before=datetime_now())
         await idempotency.link(idempotency_key, subscription.id)
     return order
 

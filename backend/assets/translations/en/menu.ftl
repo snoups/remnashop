@@ -59,6 +59,7 @@ ntf-promocode =
     .no-target-subscription = You have no active subscription to apply this promocode to.
     .activated = Promocode activated!
     .activation-failed = Failed to activate the promocode. Please try again later.
+    .too-many-attempts = Too many attempts. Try again in a minute.
 
 msg-promocode-input = Enter your promocode:
 msg-promocode-target = Choose which subscription to apply the promocode to:

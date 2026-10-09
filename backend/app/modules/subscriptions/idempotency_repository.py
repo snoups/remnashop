@@ -1,12 +1,13 @@
 from datetime import datetime
 from typing import Optional, cast
 
-from sqlalchemy import CursorResult, delete, select
+from sqlalchemy import CursorResult, delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
+from app.core.db.timestamp import NOW_FUNC
 
 
 class PurchaseIdempotencyRepository:
@@ -15,16 +16,30 @@ class PurchaseIdempotencyRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def claim(self, key: str) -> bool:
-        result = await self.session.execute(
+    async def claim(self, key: str, *, stale_before: datetime) -> bool:
+        inserted = await self.session.execute(
             pg_insert(SubscriptionPurchaseIdempotency)
             .values(key=key, subscription_id=None)
             .on_conflict_do_nothing(index_elements=["key"])
             .returning(SubscriptionPurchaseIdempotency.key)
         )
-        claimed = result.scalar_one_or_none() is not None
+        if inserted.scalar_one_or_none() is not None:
+            await self.session.flush()
+            return True
+        # an attempt killed mid-purchase never released its key
+        reclaimed = await self.session.execute(
+            update(SubscriptionPurchaseIdempotency)
+            .where(
+                SubscriptionPurchaseIdempotency.key == key,
+                SubscriptionPurchaseIdempotency.subscription_id.is_(None),
+                SubscriptionPurchaseIdempotency.renew_expire_at.is_(None),
+                SubscriptionPurchaseIdempotency.created_at < stale_before,
+            )
+            .values(created_at=NOW_FUNC)
+            .returning(SubscriptionPurchaseIdempotency.key)
+        )
         await self.session.flush()
-        return claimed
+        return reclaimed.scalar_one_or_none() is not None
 
     async def get_subscription_id(self, key: str) -> Optional[int]:
         row = await self.session.get(SubscriptionPurchaseIdempotency, key)

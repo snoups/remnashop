@@ -64,7 +64,7 @@ async def test_add_and_list_entry(
     reconcile: RecordingDispatch,
 ) -> None:
     add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher, reconcile)
-    result = await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="id 55"))
+    result = await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="55"))
     assert result.telegram_ids == [55]
 
     listed = await ListBlacklistUseCase(blacklist_repository, uow)(owner)
@@ -108,6 +108,8 @@ async def test_add_entry_rejects_invalid_value(
     add = AddBlacklistEntryUseCase(blacklist_repository, uow, event_publisher, reconcile)
     with pytest.raises(ValidationError):
         await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="nope"))
+    with pytest.raises(ValidationError):
+        await add(owner, BlacklistEntryInputDto(kind=BlacklistKind.TELEGRAM_ID, value="9" * 20))
 
 
 async def test_add_entry_kicks_reconcile_only_for_a_real_new_entry(

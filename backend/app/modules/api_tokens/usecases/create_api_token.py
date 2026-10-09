@@ -45,6 +45,7 @@ class CreateApiTokenUseCase(UseCase[IssueApiTokenDto, CreatedApiTokenDto]):
                     token_hash=hash_refresh_token(secret),
                     created_by_user_id=actor.id if actor.id > 0 else None,
                     expires_at=expires_at,
+                    ip_allowlist=data.ip_allowlist,
                 )
             )
             await self._event_publisher.publish(

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { createApiToken, type CreatedApiToken } from "@entities/api-tokens/api";
 import { toTokenScopes } from "@entities/api-tokens/scopes";
 import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
+import { isIpOrNetwork, parseEntries } from "@entities/user/security";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
@@ -15,7 +16,7 @@ import type { Permission } from "@shared/types/rbac";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { DialogHeader } from "@shared/ui/DialogHeader";
-import { TextInput } from "@shared/ui/TextInput";
+import { TextArea, TextInput } from "@shared/ui/TextInput";
 import { Field } from "@shared/ui/Field";
 
 interface CreateApiTokenDialogProps {
@@ -57,7 +58,11 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
   const [name, setName] = useState("");
   const [permissions, setPermissions] = useState<Set<Permission>>(new Set());
   const [expiresInDays, setExpiresInDays] = useState("30");
+  const [ipText, setIpText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const ipEntries = parseEntries(ipText);
+  const invalidIps = ipEntries.filter((entry) => !isIpOrNetwork(entry));
 
   const togglePermission = (permission: Permission) => {
     setPermissions((prev) => {
@@ -103,6 +108,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
         name.trim(),
         toTokenScopes(permissions, catalogState.data),
         Number(expiresInDays),
+        ipEntries,
       );
       onCreated(created);
     } catch (err) {
@@ -173,6 +179,26 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
             </div>
             <PermissionPicker selected={permissions} onToggle={togglePermission} tokenGrantableOnly />
           </Card>
+
+          <Card variant="form">
+            <Field label={t("apiTokens.ipAllowlist")} htmlFor="api-token-ips" hint={t("apiTokens.ipAllowlistHint")}>
+              <TextArea
+                id="api-token-ips"
+                value={ipText}
+                onChange={(event) => setIpText(event.target.value)}
+                placeholder={t("profile.accountSecurity.placeholder")}
+                spellCheck={false}
+                rows={3}
+                className="mt-1 w-full"
+                aria-invalid={invalidIps.length > 0}
+              />
+            </Field>
+            {invalidIps.length > 0 && (
+              <p className="mt-1.5 text-[12px] text-error">
+                {t("profile.accountSecurity.invalidEntries", { entries: invalidIps.join(", ") })}
+              </p>
+            )}
+          </Card>
         </div>
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
@@ -186,7 +212,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
           <Button
             variant="accent"
             type="submit"
-            disabled={isSubmitting || name.trim().length === 0 || permissions.size === 0}
+            disabled={isSubmitting || name.trim().length === 0 || permissions.size === 0 || invalidIps.length > 0}
           >
             {t("common.create")}
           </Button>

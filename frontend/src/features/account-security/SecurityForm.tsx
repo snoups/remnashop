@@ -2,7 +2,7 @@ import { Lock, Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getOwnSecurity, updateOwnSecurity } from "@entities/user/security";
+import { getOwnSecurity, isIpOrNetwork, parseEntries, updateOwnSecurity } from "@entities/user/security";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -12,31 +12,6 @@ import { Button } from "@shared/ui/Button";
 import { TextArea } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
-
-const IPV4_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
-
-/** Mirrors the backend's ipaddress.ip_network(entry, strict=False): an address, optionally with a prefix. */
-function isIpOrNetwork(entry: string): boolean {
-  const [address, prefix, ...rest] = entry.split("/");
-  if (rest.length > 0) return false;
-  const isV6 = address.includes(":");
-  if (prefix !== undefined && !(/^\d{1,3}$/.test(prefix) && Number(prefix) <= (isV6 ? 128 : 32))) return false;
-  try {
-    // the URL parser validates IPv6 and rejects octets over 255; a hostname that
-    // comes back changed means leading zeros or a shorthand like "10.1"
-    if (isV6) return Boolean(new URL(`http://[${address}]`).hostname);
-    return IPV4_PATTERN.test(address) && new URL(`http://${address}`).hostname === address;
-  } catch {
-    return false;
-  }
-}
-
-function parseEntries(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
 
 export function SecurityForm() {
   const { t } = useTranslation();

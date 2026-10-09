@@ -640,6 +640,7 @@
       "ReferralCodeResetEvent": "Реферальный код сброшен",
       "ReferralRewardIssuedEvent": "Награда за реферала",
       "InviteeRewardIssuedEvent": "Награда приглашённому",
+      "ReferralRewardReversedEvent": "Награда за реферала отменена",
       "SubscriptionAddOnGrantedEvent": "Дополнение выдано",
       "SubscriptionChangedEvent": "Подписка изменена",
       "SubscriptionPurchasedEvent": "Подписка куплена",
@@ -655,6 +656,7 @@
       "UserUnblockedEvent": "Пользователь разблокирован",
       "UsersBulkUnblockedEvent": "Массовая разблокировка",
       "TransactionRefundedEvent": "Возврат транзакции",
+      "TransactionPartiallyRefundedEvent": "Частичный возврат транзакции",
       "TransactionFulfilledManuallyEvent": "Ручная выдача подписки",
       "BackupFailedEvent": "Ошибка резервного копирования",
       "BroadcastChangedEvent": "Рассылка изменена",
@@ -676,6 +678,7 @@
       "UserLoyaltyExclusionChangedEvent": "Исключение из программы лояльности изменено",
       "AccessSettingsChangedEvent": "Настройки доступа изменены",
       "BotRequirementsChangedEvent": "Требования бота изменены",
+      "ShopSettingsChangedEvent": "Настройки магазина изменены",
       "UserRulesAcceptedEvent": "Правила приняты"
     }
   },
@@ -1315,6 +1318,9 @@
     }
   },
   "apiTokens": {
+    "ipRestricted": "IP: {{n}}",
+    "ipAllowlist": "Разрешённые IP",
+    "ipAllowlistHint": "Необязательно. Один IP-адрес или CIDR-диапазон на строку; пусто — любой адрес.",
     "title": "API-токены",
     "description": "Управление API-токенами для доступа из кода",
     "loadError": "Не удалось загрузить API-токены.",
@@ -3358,6 +3364,7 @@
     "REFERRAL_REWARD_ALREADY_GRANTED": "Эта награда уже начислена.",
     "REFERRAL_REWARD_NEGATIVE": "Награда не может быть отрицательной.",
     "REFERRAL_REWARD_PERCENT_TOO_HIGH": "Процентная награда не может быть больше 100.",
+    "REFERRAL_REWARD_TOO_HIGH": "Награда слишком большая.",
     "REFERRAL_REWARD_TOO_LOW": "Награда должна быть не меньше 1.",
     "REFERRER_ALREADY_SET": "У пользователя уже есть пригласивший.",
     "REFRESH_TOKEN_INVALID": "Сессия истекла — войдите снова.",

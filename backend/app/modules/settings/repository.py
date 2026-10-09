@@ -89,13 +89,8 @@ class SettingsRepository:
 
     async def update_shop_settings(self, data: UpdateShopSettingsDto) -> ShopSettingsDto:
         row = await self._get_or_create_singleton(ShopSettings)
-        row.max_active_subscriptions = data.max_active_subscriptions
-        row.device_single_reset_enabled = data.device_single_reset_enabled
-        row.device_single_reset_cooldown_hours = data.device_single_reset_cooldown_hours
-        row.device_all_reset_enabled = data.device_all_reset_enabled
-        row.device_all_reset_cooldown_hours = data.device_all_reset_cooldown_hours
-        row.link_reset_enabled = data.link_reset_enabled
-        row.link_reset_cooldown_hours = data.link_reset_cooldown_hours
+        for name in data.fields_set:
+            setattr(row, name, getattr(data, name))
 
         await self.session.flush()
         await self.session.refresh(row)

@@ -60,3 +60,11 @@ class InviteeRewardIssuedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     reward_type: str
     amount: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReferralRewardReversedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.REFERRAL
+    amount: str
+    reward_type: str
+    payment_key: str

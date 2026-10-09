@@ -167,9 +167,7 @@ export function deleteBroadcast(id: number): Promise<void> {
 }
 
 export function uploadBroadcastMedia(id: number, file: File): Promise<Broadcast> {
-  const form = new FormData();
-  form.append("file", file);
-  return apiUpload<Broadcast>(`/broadcasts/${id}/media`, form);
+  return apiUpload<Broadcast>(`/broadcasts/${id}/media`, file);
 }
 
 export function deleteBroadcastMedia(id: number): Promise<Broadcast> {

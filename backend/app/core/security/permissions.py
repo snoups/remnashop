@@ -453,6 +453,8 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         # irreversible or bulk
         Permission.BACKUPS_SETTINGS_MANAGE,
         Permission.BACKUPS_RUN_DELETE,
+        Permission.BLACKLIST_SOURCE_ADD,
+        Permission.BLACKLIST_SYNC,
         Permission.USERS_DELETE,
         Permission.USERS_MERGE,
         Permission.USERS_MERGE_PREVIEW,
@@ -539,7 +541,6 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.EMOJI_PACKS_IMPORT,
         Permission.EMOJI_PACKS_DELETE,
         Permission.OAUTH_SETTINGS_VIEW,
-        Permission.OAUTH_SETTINGS_MANAGE,
         Permission.LOCALES_VIEW,
         Permission.LOCALES_ADD,
         Permission.LOCALES_REMOVE,

@@ -47,6 +47,15 @@ class PermissionCatalogResponse(BaseModel):
     entries: list[PermissionCatalogEntry]
 
 
+def parse_commit_date(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 @router.get("/system/metadata", response_model=SystemMetadataResponse)
 @inject
 async def get_system_metadata(
@@ -57,7 +66,7 @@ async def get_system_metadata(
     # only a CI-baked artifact is safe to compare against GitHub releases.
     git = GitInfoResponse(
         commit_sha=config.build.commit,
-        commit_date=datetime.fromisoformat(config.build.time) if config.build.time else None,
+        commit_date=parse_commit_date(config.build.time),
         branch=config.build.branch,
         is_official_build=config.build.is_set,
     )

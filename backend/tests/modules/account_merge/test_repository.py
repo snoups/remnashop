@@ -298,3 +298,31 @@ async def test_reassign_default_sides_keep_target(
     assert (identity.user_id, identity.external_id) == (target.id, "t-gh")
     [referral] = (await session.scalars(select(Referral))).all()
     assert (referral.referrer_id, referral.referred_id) == (b.id, target.id)
+
+
+async def test_reassign_breaks_a_referral_cycle_through_the_target(
+    session: AsyncSession, user_repository: UserRepository, merge_repository
+) -> None:
+    source, target, middle = [
+        await user_repository.create(CreateUserDto(name=n)) for n in ("s", "t", "x")
+    ]
+    # target -> middle -> source; merged, source's referrer becomes target's
+    session.add_all(
+        [
+            Referral(referrer_id=target.id, referred_id=middle.id, level=1),
+            Referral(referrer_id=middle.id, referred_id=source.id, level=1),
+        ]
+    )
+    await session.flush()
+
+    await merge_repository.reassign(source.id, target.id, {})
+
+    parents = {
+        r.referred_id: r.referrer_id for r in (await session.scalars(select(Referral))).all()
+    }
+    current, seen = target.id, set()
+    while current in parents:
+        assert current not in seen
+        seen.add(current)
+        current = parents[current]
+    assert parents == {middle.id: target.id}

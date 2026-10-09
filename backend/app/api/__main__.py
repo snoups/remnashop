@@ -18,7 +18,7 @@ def build_application(config: AppConfig) -> FastAPI:
 
 def create_app() -> FastAPI:
     config = AppConfig.get()
-    setup_logger(config)
+    setup_logger(config, "api")
     return build_application(config)
 
 

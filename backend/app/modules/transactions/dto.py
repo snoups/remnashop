@@ -55,6 +55,7 @@ class TransactionDto(BaseDto, TimestampMixin):
     anchor_base_price: Decimal
     anchor_final_price: Decimal
     discount_promocode_id: Optional[int] = None
+    discount_from_promocode: bool = False
     customer_email: Optional[str] = None
     idempotency_key: str
     expires_at: datetime
@@ -88,6 +89,7 @@ class CreateTransactionDto:
     anchor_final_price: Decimal
     customer_email: Optional[str]
     discount_promocode_id: Optional[int] = None
+    discount_from_promocode: bool = False
     idempotency_key: str
     expires_at: datetime
     is_test: bool = False

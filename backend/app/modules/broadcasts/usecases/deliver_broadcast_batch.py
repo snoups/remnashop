@@ -16,7 +16,7 @@ from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.constants import REDIS_KEY_PREFIX
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BroadcastRecipientStatus, BroadcastStatus
+from app.core.enums import BroadcastCategory, BroadcastRecipientStatus, BroadcastStatus
 from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
@@ -106,7 +106,12 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
                 return False
             if broadcast.status is not BroadcastStatus.SENDING:
                 return False
-            pending = await self._broadcast_repository.claim_pending(data, BATCH_SIZE, CLAIM_LEASE)
+            pending = await self._broadcast_repository.claim_pending(
+                data,
+                BATCH_SIZE,
+                CLAIM_LEASE,
+                marketing=broadcast.category is BroadcastCategory.MARKETING,
+            )
             if not pending:
                 # rows still leased by a crashed chain: the stall watchdog re-kicks later
                 if not await self._broadcast_repository.has_pending(data):

@@ -146,6 +146,65 @@ async def test_get_transaction_returns_the_order(
     assert fetched.user is not None and fetched.user.telegram_id == 900_001
 
 
+async def test_get_transaction_hides_a_staff_buyer_from_an_admin(
+    get_transaction_use_case: GetTransactionUseCase,
+    list_transactions_use_case: ListTransactionsUseCase,
+    transaction_repository: TransactionRepository,
+    user_repository: UserRepository,
+    admin_actor: UserDto,
+    uow,
+    plan_id: int,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", role=Role.ADMIN, telegram_id=800_002)
+    )
+    async with uow:
+        created = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=staff.id, plan_id=plan_id, idempotency_key="staff-order"),
+                customer_email="staff@example.com",
+            )
+        )
+    owner_actor = UserDto(id=1, name="owner", role=Role.OWNER)
+
+    hidden = await get_transaction_use_case(admin_actor, created.id)
+    assert hidden.user is None and hidden.order.customer_email is None
+
+    shown = await get_transaction_use_case(owner_actor, created.id)
+    assert shown.user is not None and shown.order.customer_email == "staff@example.com"
+
+    items, _ = await list_transactions_use_case(admin_actor, ListTransactionsDto(user_id=staff.id))
+    assert items and all(i.user is None and i.order.customer_email is None for i in items)
+
+
+async def test_search_does_not_match_a_hidden_staff_email(
+    list_transactions_use_case: ListTransactionsUseCase,
+    transaction_repository: TransactionRepository,
+    user_repository: UserRepository,
+    admin_actor: UserDto,
+    uow,
+    plan_id: int,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", role=Role.ADMIN, telegram_id=800_003)
+    )
+    async with uow:
+        await transaction_repository.create(
+            replace(
+                _order_dto(user_id=staff.id, plan_id=plan_id, idempotency_key="staff-search"),
+                customer_email="probe-me@example.com",
+            )
+        )
+    owner_actor = UserDto(id=1, name="owner", role=Role.OWNER)
+    data = ListTransactionsDto(search="probe-me")
+
+    items, _ = await list_transactions_use_case(admin_actor, data)
+    assert items == []
+
+    items, _ = await list_transactions_use_case(owner_actor, data)
+    assert len(items) == 1
+
+
 async def test_get_transaction_raises_not_found_for_a_missing_id(
     get_transaction_use_case: GetTransactionUseCase, admin_actor: UserDto
 ) -> None:

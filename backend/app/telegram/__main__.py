@@ -63,7 +63,7 @@ def build_app(
 
 if __name__ == "__main__":
     _config = AppConfig.get()
-    setup_logger(_config)
+    setup_logger(_config, "telegram")
     add_redis_sink(_config, TELEGRAM_LOGS_KEY)
 
     # Startup crashes go through loguru too, so they reach the dashboard log view.

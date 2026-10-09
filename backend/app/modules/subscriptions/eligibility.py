@@ -27,8 +27,12 @@ class PurchaseEligibility:
         self._referrer_lookup = referrer_lookup
         self._settings_repository = settings_repository
 
-    async def assert_below_cap(self, user_id: int, *, lock: bool = False) -> None:
-        # lock=True only under the caller's purchase-cap advisory lock
+    async def lock_user(self, user_id: int) -> None:
+        # same key as NewPurchase, so a checkout and a fulfilment for one user serialize
+        await self._subscription_repository.acquire_purchase_cap_lock(user_id)
+
+    async def assert_below_cap(self, user_id: int, *, lock: bool = False, pending: int = 0) -> None:
+        # lock=True only under lock_user; pending = open orders not yet provisioned
         max_active = (await self._settings_repository.get_shop_settings()).max_active_subscriptions
         if max_active is None:
             return
@@ -36,17 +40,22 @@ class PurchaseEligibility:
             active = await self._subscription_repository.get_active_by_user_for_update(user_id)
         else:
             active = await self._subscription_repository.get_active_by_user(user_id)
-        if len(active) >= max_active:
+        if len(active) + pending >= max_active:
             raise ValidationError(
                 f"User '{user_id}' is already at the concurrent-subscription cap",
                 code=ErrorCode.SUBSCRIPTION_LIMIT_REACHED,
             )
 
-    async def purchasable(self, plans: Sequence[PlanDto], user: Actor) -> list[PlanDto]:
+    async def purchasable(
+        self, plans: Sequence[PlanDto], user: Actor, *, has_open_order: bool = False
+    ) -> list[PlanDto]:
         if not plans:
             return []
-        has_purchase_history = await self._subscription_repository.has_any_subscription(
-            user.id, include_trial=False
+        has_purchase_history = (
+            has_open_order
+            or await self._subscription_repository.has_any_subscription(
+                user.id, include_trial=False
+            )
         )
         has_referrer = await self._referrer_lookup.has_referrer(user.id)
         return [
@@ -57,8 +66,10 @@ class PurchaseEligibility:
             )
         ]
 
-    async def is_purchasable(self, plan: PlanDto, user: Actor) -> bool:
-        return bool(await self.purchasable([plan], user))
+    async def is_purchasable(
+        self, plan: PlanDto, user: Actor, *, has_open_order: bool = False
+    ) -> bool:
+        return bool(await self.purchasable([plan], user, has_open_order=has_open_order))
 
 
 async def get_owned_target(

@@ -20,6 +20,7 @@ from app.modules.subscriptions.usecases.purchase_subscription.panel import (
     SupersededError,
     configure_for_plan,
     new_panel_user,
+    reset_traffic_if_paid,
     restore,
     subscription_row,
 )
@@ -120,7 +121,9 @@ class NewPurchase:
                     )
                 await self._subscription_repository.mark_deleted(trial.id)
                 subscription = await self._subscription_repository.create(
-                    subscription_row(data, panel_user)
+                    # a disabled trial stays disabled: configure_for_plan
+                    # leaves the panel status as it is
+                    subscription_row(data, panel_user, status=SubscriptionStatus(panel_user.status))
                 )
                 await self._finish(actor, data, subscription)
         except SupersededError:
@@ -131,6 +134,8 @@ class NewPurchase:
             with suppress(Exception):
                 await self._remnawave_sdk.users.update_user(restore(trial))
             raise
+
+        await reset_traffic_if_paid(self._remnawave_sdk, data, subscription)
 
         logger.info(
             f"{actor.log} Purchased subscription '{subscription.id}' "

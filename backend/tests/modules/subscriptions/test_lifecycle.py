@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
@@ -56,7 +57,7 @@ async def test_renew_reactivates_an_expired_subscription(
 
     new_expire_at = datetime(2027, 1, 1, tzinfo=timezone.utc)
     async with uow:
-        result = await service.renew(created.id, new_expire_at)
+        result = await service.renew(created.id, new_expire_at, paid=Decimal(0), days=30)
 
     assert result.status is SubscriptionStatus.ACTIVE
     assert result.expire_at == new_expire_at

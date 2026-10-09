@@ -1,3 +1,4 @@
+import re
 from typing import Final
 
 from starlette.datastructures import MutableHeaders
@@ -6,7 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.status import HTTP_413_CONTENT_TOO_LARGE
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core.constants import API_V1
+from app.core.constants import API_V1, BROADCAST_MEDIA_MAX_BYTES
 from app.core.error_codes import ErrorCode
 
 # Bodies are read before any dependency runs (FastAPI parses forms and JSON
@@ -23,6 +24,9 @@ _UPLOAD_PATHS: Final[frozenset[str]] = frozenset(
 )
 # PUT /banners/{name}/{locale}
 _BANNER_UPLOAD_PREFIX: Final[str] = f"{API_V1}/banners/"
+# raw-body PUT, read by the route only after authentication
+_BROADCAST_MEDIA_RE: Final[re.Pattern[str]] = re.compile(rf"^{API_V1}/broadcasts/\d+/media$")
+_BROADCAST_MEDIA_BODY_LIMIT: Final[int] = BROADCAST_MEDIA_MAX_BYTES + 64 * 1024
 
 # setdefault, not overwrite: a route with a stricter policy of its own (the
 # public appearance images) keeps it.
@@ -60,11 +64,15 @@ def _too_large() -> JSONResponse:
     )
 
 
-def _is_upload(scope: Scope) -> bool:
+def _limit_for(scope: Scope) -> int:
     path: str = scope["path"]
-    return scope["method"] == "PUT" and (
-        path in _UPLOAD_PATHS or path.startswith(_BANNER_UPLOAD_PREFIX)
-    )
+    if scope["method"] != "PUT":
+        return _DEFAULT_BODY_LIMIT
+    if _BROADCAST_MEDIA_RE.match(path):
+        return _BROADCAST_MEDIA_BODY_LIMIT
+    if path in _UPLOAD_PATHS or path.startswith(_BANNER_UPLOAD_PREFIX):
+        return _UPLOAD_BODY_LIMIT
+    return _DEFAULT_BODY_LIMIT
 
 
 class BodySizeLimitMiddleware:
@@ -76,7 +84,7 @@ class BodySizeLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        limit = _UPLOAD_BODY_LIMIT if _is_upload(scope) else _DEFAULT_BODY_LIMIT
+        limit = _limit_for(scope)
         declared = dict(scope["headers"]).get(b"content-length")
         if declared is not None and declared.isdigit() and int(declared) > limit:
             await _too_large()(scope, receive, send)

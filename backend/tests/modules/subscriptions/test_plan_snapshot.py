@@ -6,6 +6,7 @@ from remnapy.enums import TrafficLimitStrategy
 
 from app.core.enums import Currency
 from app.modules.subscriptions.dto import PlanSnapshot
+from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
 def test_round_trips_through_json() -> None:
@@ -72,3 +73,15 @@ def test_to_json_serializes_price_and_currency_as_strings() -> None:
 
     assert data["price_paid"] == "10.00"
     assert data["currency"] == "USD"
+
+
+def test_credit_fields_round_trip_and_old_json_reads_as_none() -> None:
+    snapshot = make_plan_snapshot(credit_paid=Decimal("700"), credit_days=395)
+    data = snapshot.to_json()
+
+    assert PlanSnapshot.from_json(data) == snapshot
+
+    del data["credit_paid"], data["credit_days"]
+    old = PlanSnapshot.from_json(data)
+    assert old.credit_paid is None
+    assert old.credit_days is None

@@ -21,6 +21,7 @@ from app.modules.users.usecases import (
     UnblockAllUsersUseCase,
     UnblockUserUseCase,
 )
+from app.modules.users.visibility import visible_user
 
 __all__ = [
     "AcceptRulesUseCase",
@@ -42,4 +43,5 @@ __all__ = [
     "UserResponse",
     "UserStatsRepository",
     "get_users_providers",
+    "visible_user",
 ]

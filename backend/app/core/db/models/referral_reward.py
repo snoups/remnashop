@@ -1,7 +1,8 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
@@ -30,3 +31,4 @@ class ReferralReward(BaseSql, TimestampMixin):
     payment_key: Mapped[str] = mapped_column(String(36))
     type: Mapped[ReferralRewardType]
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 0))
+    reversed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

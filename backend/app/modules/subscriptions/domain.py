@@ -123,6 +123,17 @@ class SubscriptionState:
         assert_transition(self.status, target)
         return replace(self, status=target, expire_at=new_expire_at)
 
+    def add_renewal_credit(self, paid: Decimal, days: int) -> SubscriptionState:
+        snap = self.plan_snapshot
+        return replace(
+            self,
+            plan_snapshot=replace(
+                snap,
+                credit_paid=snap.effective_credit_paid + paid,
+                credit_days=snap.effective_credit_days + days,
+            ),
+        )
+
     def mark_deleted(self) -> SubscriptionState:
         assert_transition(self.status, SubscriptionStatus.DELETED)
         return replace(self, status=SubscriptionStatus.DELETED)
@@ -130,8 +141,8 @@ class SubscriptionState:
 
 def calculate_proration_credit(
     *,
-    price_paid: Decimal,
-    duration_days: int,
+    credit_paid: Decimal,
+    credit_days: int,
     expire_at: datetime,
     is_trial: bool,
     now: datetime,
@@ -142,14 +153,13 @@ def calculate_proration_credit(
     """Proration credit from the OLD subscription's fields alone. Public so
     ChangePurchase can compute the new expire_at (base days + credit days)
     before touching the panel."""
-    if is_trial or price_paid <= 0 or duration_days <= 0:
+    if is_trial or credit_paid <= 0 or credit_days <= 0:
         return Decimal("0")
     remaining_days = max(0, (expire_at - now).days)
-    daily_rate = price_paid / Decimal(duration_days)
-    credit = daily_rate * Decimal(remaining_days)
+    credit = min(credit_paid / Decimal(credit_days) * Decimal(remaining_days), credit_paid)
     # a resetting counter covers the current period, not the whole term
     if traffic_limit > 0 and traffic_limit_strategy is TrafficLimitStrategy.NO_RESET:
         limit_bytes = traffic_limit * GB_TO_BYTES
         remaining_bytes = max(0, limit_bytes - used_traffic_bytes)
-        credit = min(credit, price_paid * Decimal(remaining_bytes) / Decimal(limit_bytes))
+        credit = min(credit, credit_paid * Decimal(remaining_bytes) / Decimal(limit_bytes))
     return credit

@@ -2,10 +2,10 @@ import re
 from typing import Final, Optional
 from urllib.parse import urlsplit
 
+from app.core.constants import INT64_MAX
 from app.core.enums import BlacklistKind
 
 _MAX_VALUE_LEN: Final[int] = 254
-_NON_DIGIT_RE: Final[re.Pattern[str]] = re.compile(r"\D+")
 # local@domain.tld: a dotted domain with no empty labels
 _EMAIL_RE: Final[re.Pattern[str]] = re.compile(r"[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+")
 _GITHUB_HOSTS: Final[frozenset[str]] = frozenset({"github.com", "raw.githubusercontent.com"})
@@ -17,8 +17,10 @@ def normalize_identity(kind: BlacklistKind, raw: str) -> Optional[str]:
         return None
 
     if kind is BlacklistKind.TELEGRAM_ID:
-        digits = _NON_DIGIT_RE.sub("", trimmed).lstrip("0")
-        return digits or None
+        if not (trimmed.isascii() and trimmed.isdigit()):
+            return None
+        value = int(trimmed)
+        return str(value) if 0 < value <= INT64_MAX else None
 
     lowered = trimmed.lower()
     return lowered if _EMAIL_RE.fullmatch(lowered) else None

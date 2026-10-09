@@ -33,6 +33,18 @@ class PlanSnapshot:
     is_trial: bool
     internal_squads: list[UUID] = field(default_factory=list)
     external_squad: Optional[UUID] = None
+    # money and days behind the current credit, accumulated by RENEW and grants since
+    # the last NEW/CHANGE; None on a snapshot written before they existed
+    credit_paid: Optional[Decimal] = None
+    credit_days: Optional[int] = None
+
+    @property
+    def effective_credit_paid(self) -> Decimal:
+        return self.credit_paid if self.credit_paid is not None else self.price_paid
+
+    @property
+    def effective_credit_days(self) -> int:
+        return self.credit_days if self.credit_days is not None else self.duration_days
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -48,6 +60,8 @@ class PlanSnapshot:
             "is_trial": self.is_trial,
             "internal_squads": [str(squad) for squad in self.internal_squads],
             "external_squad": str(self.external_squad) if self.external_squad else None,
+            "credit_paid": str(self.credit_paid) if self.credit_paid is not None else None,
+            "credit_days": self.credit_days,
         }
 
     @classmethod
@@ -65,6 +79,10 @@ class PlanSnapshot:
             is_trial=data["is_trial"],
             internal_squads=[UUID(squad) for squad in data["internal_squads"]],
             external_squad=UUID(data["external_squad"]) if data["external_squad"] else None,
+            credit_paid=(
+                Decimal(data["credit_paid"]) if data.get("credit_paid") is not None else None
+            ),
+            credit_days=data.get("credit_days"),
         )
 
     @classmethod
@@ -90,6 +108,8 @@ class PlanSnapshot:
             is_trial=plan.is_trial or is_trial,
             internal_squads=plan.internal_squads,
             external_squad=plan.external_squad,
+            credit_paid=price_paid,
+            credit_days=duration_days,
         )
 
 
@@ -185,7 +205,8 @@ class PurchaseSubscriptionDto:
     target_subscription_id: Optional[int] = None
     idempotency_key: Optional[str] = None
     # False for a paid checkout order: the cap was enforced at checkout, and
-    # refusing after the charge leaves the customer paid with nothing.
+    # refusing after the charge leaves the customer paid with nothing. A free
+    # order keeps it.
     enforce_subscription_cap: bool = True
     # False for a paid order too: a disabled target was refused at checkout,
     # and one disabled after the charge is still owed its renewal
@@ -253,7 +274,6 @@ class CatalogDurationDto:
 @dataclass(frozen=True, kw_only=True)
 class CatalogPlanDto:
     id: int
-    public_code: str
     name: str
     description: Optional[str]
     tag: Optional[str]

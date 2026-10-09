@@ -30,6 +30,9 @@ class PruneExpiredTransactionsUseCase(UseCase[None, None]):
             for order in canceled:
                 if order.discount_source is DiscountSource.PURCHASE:
                     await self._user_repository.restore_purchase_discount(
-                        order.user_id, order.discount_percent, order.discount_promocode_id
+                        order.user_id,
+                        order.discount_percent,
+                        order.discount_promocode_id,
+                        from_promocode=order.discount_from_promocode,
                     )
         logger.info(f"Canceled {len(canceled)} unpaid transaction(s) past their expiry")

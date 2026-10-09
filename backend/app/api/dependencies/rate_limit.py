@@ -14,6 +14,7 @@ from app.core.constants import API_V1, REDIS_KEY_PREFIX, REMNAWAVE_WEBHOOK_PATH
 from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token
 from app.core.utils.http import resolve_client_ip
+from app.core.utils.rate_counter import hit_counter
 from app.modules.users import UserDto
 
 _GLOBAL_RATE_LIMIT: Final[int] = 300
@@ -41,11 +42,7 @@ async def _enforce(
     key: str,
     log_label: str,
 ) -> None:
-    current = await redis.incr(redis_key)
-    # NX (not "only on current == 1") so a crash/dropped connection between
-    # incr() and expire() self-heals on the next request instead of leaving
-    # the key stuck with no TTL forever.
-    await redis.expire(redis_key, window_seconds, nx=True)
+    current = await hit_counter(redis, redis_key, window_seconds)
 
     if current > limit:
         RATE_LIMIT_HITS.labels(key=key).inc()

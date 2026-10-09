@@ -1,5 +1,7 @@
 from dataclasses import replace
 from decimal import Decimal
+from functools import partial
+from typing import Optional
 from uuid import uuid4
 
 from loguru import logger
@@ -12,6 +14,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans import PlanRepository
+from app.modules.referrals.dispatch import BonusRenewalDispatch
 from app.modules.referrals.dto import BonusDaysRedemptionDto, RedeemBonusDaysDto
 from app.modules.referrals.events import BonusDaysRedeemedEvent
 from app.modules.subscriptions import (
@@ -37,6 +40,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
         idempotency_repository: PurchaseIdempotencyRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
+        bonus_renewal_dispatch: BonusRenewalDispatch,
     ) -> None:
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
@@ -45,6 +49,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
         self._idempotency = idempotency_repository
         self._uow = uow
         self._event_publisher = event_publisher
+        self._bonus_renewal_dispatch = bonus_renewal_dispatch
 
     async def _execute(self, actor: UserDto, data: RedeemBonusDaysDto) -> BonusDaysRedemptionDto:
         async with self._uow:
@@ -91,12 +96,38 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             logger.warning(
                 f"{actor.log} Bonus days renewal '{key}' failed after pinning its date, retrying"
             )
-            # the pinned date is owed now: a disable since must not strand the days
-            subscription = await self._purchase_subscription_use_case(
-                actor, replace(renewal, refuse_disabled_target=False)
-            )
+            try:
+                # the pinned date is owed now: a disable since must not strand the days
+                subscription = await self._purchase_subscription_use_case(
+                    actor, replace(renewal, refuse_disabled_target=False)
+                )
+            except Exception:
+                logger.exception(
+                    f"{actor.log} Bonus days renewal '{key}' failed again, handing it to the worker"
+                )
+                return await self._finish(actor, data, target, pending_key=key)
+        return await self._finish(actor, data, subscription)
 
+    async def _finish(
+        self,
+        actor: UserDto,
+        data: RedeemBonusDaysDto,
+        subscription: SubscriptionDto,
+        *,
+        pending_key: Optional[str] = None,
+    ) -> BonusDaysRedemptionDto:
         async with self._uow:
+            if pending_key is not None:
+                # the days stay debited; the worker completes the same pinned key
+                await self._uow.after_commit(
+                    partial(
+                        self._bonus_renewal_dispatch.kiq,
+                        user_id=actor.id,
+                        subscription_id=subscription.id,
+                        days=data.days,
+                        idempotency_key=pending_key,
+                    )
+                )
             await self._event_publisher.publish(
                 BonusDaysRedeemedEvent(user=actor, subscription_id=subscription.id, days=data.days)
             )
@@ -111,6 +142,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             subscription_id=subscription.id,
             expire_at=subscription.expire_at,
             bonus_days=refreshed.bonus_days,
+            pending=pending_key is not None,
         )
 
     async def _assert_redeemable(self, target: SubscriptionDto) -> None:

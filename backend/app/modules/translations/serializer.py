@@ -64,6 +64,12 @@ def _block(value: str, indent: str) -> str:
     return f"\n{indent}".join([first, *map(_escape_line_start, rest)])
 
 
+def fluent_value_source(value: str) -> str:
+    """The right-hand side of `key = ...` as serialize_to_fluent writes a
+    message-level value."""
+    return _block(value, "    ")
+
+
 # Ids are written unescaped: one that isn't an identifier would start a new
 # top-level entry and shadow a real message, so such a row is dropped.
 _FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"[a-zA-Z][a-zA-Z0-9_-]*")

@@ -8,7 +8,10 @@ from app.modules.transactions.dto import (
     PriceQuote,
     TransactionDto,
 )
-from app.modules.transactions.events import TransactionRefundedEvent
+from app.modules.transactions.events import (
+    TransactionPartiallyRefundedEvent,
+    TransactionRefundedEvent,
+)
 from app.modules.transactions.gateways.base import (
     PaymentGateway,
     PaymentIntent,
@@ -41,6 +44,7 @@ __all__ = [
     "PriceQuote",
     "ProviderPayment",
     "TransactionDto",
+    "TransactionPartiallyRefundedEvent",
     "TransactionRefundedEvent",
     "TransactionRepository",
     "TransactionStatsRepository",

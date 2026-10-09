@@ -39,3 +39,8 @@ def test_tokens_cannot_send_recall_retry_or_delete() -> None:
     assert Permission.BROADCASTS_DELETE not in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.BROADCASTS_CREATE in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.BROADCASTS_SUMMARY_VIEW in TOKEN_GRANTABLE_PERMISSIONS
+
+
+def test_tokens_cannot_add_or_sync_blacklist_sources() -> None:
+    assert Permission.BLACKLIST_SOURCE_ADD not in TOKEN_GRANTABLE_PERMISSIONS
+    assert Permission.BLACKLIST_SYNC not in TOKEN_GRANTABLE_PERMISSIONS

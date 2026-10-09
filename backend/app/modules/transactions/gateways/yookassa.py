@@ -98,11 +98,15 @@ class YooKassaGateway(PaymentGateway):
         payment_id = (
             obj.get("payment_id") if event.startswith(_REFUND_EVENT_PREFIX) else obj.get("id")
         )
+        refund_amount = obj.get("amount") if event.startswith(_REFUND_EVENT_PREFIX) else None
+        refund_amount = refund_amount if isinstance(refund_amount, dict) else {}
         return WebhookSignal(
             reference=str(metadata.get("order_ref", "")),
             claims_paid=event == _PAID_EVENT,
             provider_payment_id=str(payment_id) if payment_id else None,
             reported_status=_REPORTED_EVENTS.get(event),
+            refund_amount=to_decimal(refund_amount.get("value")),
+            refund_currency=refund_amount.get("currency"),
         )
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:

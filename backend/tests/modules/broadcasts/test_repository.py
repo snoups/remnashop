@@ -96,7 +96,7 @@ async def test_materialize_is_idempotent_and_claims_in_order(
         await broadcast_repository.materialize(created.id, created.audience, created.category, now)
         == 2
     )
-    claimed = await broadcast_repository.claim_pending(created.id, 10, _LEASE)
+    claimed = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
     assert [r.user_id for r in claimed] == [a, b]
     assert claimed[0].telegram_id == 8101
 
@@ -115,12 +115,44 @@ async def test_claim_pending_fails_unreachable_recipients(
         created.id, created.audience, created.category, datetime_now()
     )
     await session.execute(update(User).where(User.id == a).values(telegram_id=None))
-    claimed = await broadcast_repository.claim_pending(created.id, 10, _LEASE)
+    claimed = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
     assert [r.user_id for r in claimed] == [b]
     failed, total = await broadcast_repository.list_recipients(
         ListBroadcastRecipientsDto(broadcast_id=created.id, status=R.FAILED)
     )
     assert total == 1 and failed[0].user_id == a and failed[0].error == "no telegram"
+
+
+@pytest.mark.parametrize(
+    ("marketing", "canceled"),
+    [(True, {"a": "opted out", "b": "blocked"}), (False, {"b": "blocked"})],
+)
+async def test_claim_pending_cancels_opted_out_and_blocked(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    marketing: bool,
+    canceled: dict[str, str],
+) -> None:
+    ids = {
+        name: await make_customer(user_repository, session, telegram_id=8121 + i)
+        for i, name in enumerate("abc")
+    }
+    created = await broadcast_repository.create(
+        save_dto(audience=BroadcastAudienceDto(user_ids=list(ids.values()))), created_by=None
+    )
+    await broadcast_repository.materialize(
+        created.id, created.audience, created.category, datetime_now()
+    )
+    await session.execute(update(User).where(User.id == ids["a"]).values(marketing_opt_out=True))
+    await session.execute(update(User).where(User.id == ids["b"]).values(is_blocked=True))
+    claimed = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=marketing)
+    names = {v: k for k, v in ids.items()}
+    assert {names[r.user_id] for r in claimed} == {"a", "b", "c"} - canceled.keys()
+    rows, _ = await broadcast_repository.list_recipients(
+        ListBroadcastRecipientsDto(broadcast_id=created.id, status=R.CANCELED)
+    )
+    assert {names[r.user_id]: r.error for r in rows} == canceled
 
 
 async def test_counts_and_attempts(
@@ -135,7 +167,9 @@ async def test_counts_and_attempts(
     await broadcast_repository.materialize(
         created.id, created.audience, created.category, datetime_now()
     )
-    first, second, third = await broadcast_repository.claim_pending(created.id, 10, _LEASE)
+    first, second, third = await broadcast_repository.claim_pending(
+        created.id, 10, _LEASE, marketing=False
+    )
     await broadcast_repository.mark_recipient(first.id, R.SENT, message_id=11)
     await broadcast_repository.mark_recipient(second.id, R.BLOCKED)
     for _ in range(3):
@@ -203,7 +237,7 @@ async def test_recall_keeps_send_history(
     await broadcast_repository.materialize(
         created.id, created.audience, created.category, datetime_now()
     )
-    (pending,) = await broadcast_repository.claim_pending(created.id, 10, _LEASE)
+    (pending,) = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
     await broadcast_repository.mark_recipient(pending.id, R.SENT, message_id=11)
     await broadcast_repository.mark_recipient(pending.id, R.RECALLED)
     row = (
@@ -242,18 +276,18 @@ async def test_claim_pending_leases_rows(
     await broadcast_repository.materialize(
         created.id, created.audience, created.category, datetime_now()
     )
-    first = await broadcast_repository.claim_pending(created.id, 2, _LEASE)
-    second = await broadcast_repository.claim_pending(created.id, 2, _LEASE)
+    first = await broadcast_repository.claim_pending(created.id, 2, _LEASE, marketing=False)
+    second = await broadcast_repository.claim_pending(created.id, 2, _LEASE, marketing=False)
     assert [r.user_id for r in first] == ids[:2]
     assert [r.user_id for r in second] == ids[2:]
-    assert await broadcast_repository.claim_pending(created.id, 2, _LEASE) == []
+    assert await broadcast_repository.claim_pending(created.id, 2, _LEASE, marketing=False) == []
 
     await session.execute(
         update(BroadcastRecipient)
         .where(BroadcastRecipient.id == first[0].id)
         .values(claimed_until=datetime_now() - timedelta(seconds=1))
     )
-    again = await broadcast_repository.claim_pending(created.id, 2, _LEASE)
+    again = await broadcast_repository.claim_pending(created.id, 2, _LEASE, marketing=False)
     assert [r.id for r in again] == [first[0].id]
 
 
@@ -269,7 +303,9 @@ async def test_bump_attempt_releases_lease_and_keeps_cancel(
     await broadcast_repository.materialize(
         created.id, created.audience, created.category, datetime_now()
     )
-    retried, canceled = await broadcast_repository.claim_pending(created.id, 10, _LEASE)
+    retried, canceled = await broadcast_repository.claim_pending(
+        created.id, 10, _LEASE, marketing=False
+    )
     await broadcast_repository.mark_recipient(canceled.id, R.CANCELED)
 
     await broadcast_repository.bump_attempt(retried.id, max_attempts=3, error="timeout")
@@ -285,9 +321,10 @@ async def test_bump_attempt_releases_lease_and_keeps_cancel(
     }
     assert (rows[canceled.id].status, rows[canceled.id].attempts) == (R.CANCELED, 0)
     assert (rows[retried.id].status, rows[retried.id].attempts) == (R.PENDING, 1)
-    assert [r.id for r in await broadcast_repository.claim_pending(created.id, 10, _LEASE)] == [
-        retried.id
-    ]
+    assert [
+        r.id
+        for r in await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
+    ] == [retried.id]
 
 
 async def test_sent_clears_stale_error(
@@ -302,7 +339,7 @@ async def test_sent_clears_stale_error(
     await broadcast_repository.materialize(
         created.id, created.audience, created.category, datetime_now()
     )
-    (pending,) = await broadcast_repository.claim_pending(created.id, 10, _LEASE)
+    (pending,) = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
     await broadcast_repository.bump_attempt(pending.id, max_attempts=3, error="timeout")
     await broadcast_repository.mark_recipient(pending.id, R.SENT, message_id=11)
     row = (

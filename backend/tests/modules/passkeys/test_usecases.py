@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -5,6 +6,7 @@ from webauthn.helpers import base64url_to_bytes, bytes_to_base64url
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, NotFoundError
 from app.core.ports import EventPublisher
 from app.modules.auth import SessionIssuer
@@ -15,6 +17,7 @@ from app.modules.passkeys.dto import (
     VerifyPasskeyRegistrationDto,
 )
 from app.modules.passkeys.repository import PasskeyRepository
+from app.modules.passkeys.usecases import verify_registration
 from app.modules.passkeys.usecases.delete_passkey import DeletePasskeyUseCase
 from app.modules.passkeys.usecases.get_authentication_options import (
     GetPasskeyAuthenticationOptionsUseCase,
@@ -406,3 +409,42 @@ async def test_verify_authentication_rejects_malformed_credential_structure(
 
     with pytest.raises(AuthenticationError):
         await use_case.execute(credential, CLIENT_IP, USER_AGENT)
+
+
+async def test_verify_registration_rejects_an_oversized_credential_id(
+    monkeypatch: pytest.MonkeyPatch,
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    actor = await _create_user(user_repository, uow, "owner")
+    await _enable_passkeys(settings_repository)
+    challenge = b"a-real-looking-challenge"
+    await redis_challenge_store.store_registration_challenge(actor.id, challenge)
+    monkeypatch.setattr(
+        verify_registration,
+        "verify_registration_response",
+        lambda **_: SimpleNamespace(
+            credential_id=b"x" * 300,
+            credential_public_key=b"key",
+            sign_count=0,
+            credential_device_type=SimpleNamespace(value="single_device"),
+            credential_backed_up=False,
+        ),
+    )
+    use_case = VerifyPasskeyRegistrationUseCase(
+        settings_repository, passkey_repository, redis_challenge_store, uow, event_publisher
+    )
+
+    with pytest.raises(AuthenticationError) as error:
+        await use_case(
+            actor,
+            VerifyPasskeyRegistrationDto(
+                credential=_fake_registration_credential(challenge), name=None
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PASSKEY_REGISTRATION_FAILED

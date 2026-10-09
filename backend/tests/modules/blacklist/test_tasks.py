@@ -123,3 +123,35 @@ async def test_sync_replaces_lists_and_records_error(
     assert fetched is not None
     assert fetched.entries_count == 2  # kept last-good
     assert fetched.last_error == "dead link"
+
+
+async def test_sync_isolates_a_source_whose_write_fails(
+    blacklist_repository: BlacklistRepository, uow, monkeypatch
+) -> None:
+    # committed, as in production: the failing source's rollback must not take them along
+    async with uow:
+        bad = await blacklist_repository.add_source(
+            AddBlacklistSourceDto(url="https://feed.example/a.txt")
+        )
+        good = await blacklist_repository.add_source(
+            AddBlacklistSourceDto(url="https://feed.example/b.txt")
+        )
+
+    async def fake_fetch(url: str) -> ParsedSourceList:
+        return ParsedSourceList(telegram_ids=[7], emails=[])
+
+    replace = blacklist_repository.replace_source_lists
+
+    async def failing_replace(source_id: int, parsed: ParsedSourceList, *, error) -> None:  # type: ignore[no-untyped-def]
+        if source_id == bad.id:
+            raise ValueError("value out of range")
+        await replace(source_id, parsed, error=error)
+
+    monkeypatch.setattr(fetch_blacklist_sources, "fetch_source", fake_fetch)
+    monkeypatch.setattr(blacklist_repository, "replace_source_lists", failing_replace)
+    await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
+
+    failed = await blacklist_repository.get_source(bad.id)
+    synced = await blacklist_repository.get_source(good.id)
+    assert failed is not None and failed.last_error == "value out of range"
+    assert synced is not None and synced.entries_count == 1 and synced.last_error is None

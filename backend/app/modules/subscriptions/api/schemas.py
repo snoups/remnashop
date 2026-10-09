@@ -101,7 +101,6 @@ class PublicPlanDurationItem(BaseModel):
 
 class PublicPlanResponse(BaseModel):
     id: int
-    public_code: str
     name: str
     description: Optional[str] = None
     tag: Optional[str] = None

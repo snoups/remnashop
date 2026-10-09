@@ -1,6 +1,10 @@
+import pytest
+
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import AuthenticationError
 from app.core.security import decode_access_token
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import SessionIssuer
@@ -77,3 +81,25 @@ async def test_issue_revokes_prior_session_with_same_fingerprint(
 
     assert [session.id for session in active] == [int(second_payload["sid"])]
     assert int(first_payload["sid"]) != int(second_payload["sid"])
+
+
+async def test_reissue_on_a_session_revoked_meanwhile_is_unauthorized(
+    session_repository: SessionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    async with uow:
+        user = await user_repository.create(
+            CreateUserDto(login="owner3", name="owner3", role=Role.OWNER, language=Locale.EN)
+        )
+    issuer = SessionIssuer(session_repository, uow, config)
+    await issuer.issue(user.id, "203.0.113.1", "pytest")
+    session = (await session_repository.list_active_by_user(user.id))[0]
+    async with uow:
+        await session_repository.revoke_by_id(session.id)
+
+    with pytest.raises(AuthenticationError) as error:
+        await issuer.reissue_access_only(user.id, session.id, "new-refresh-token")
+
+    assert error.value.code is ErrorCode.REFRESH_TOKEN_INVALID

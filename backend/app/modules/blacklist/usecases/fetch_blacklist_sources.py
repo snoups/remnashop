@@ -20,13 +20,15 @@ class FetchBlacklistSourcesUseCase(UseCase[None, None]):
                 continue
             try:
                 parsed = await fetch_source(source.url)
+                async with self._uow:
+                    await self._blacklist_repository.replace_source_lists(
+                        source.id, parsed, error=None
+                    )
             except Exception as exc:  # one bad source must not abort the rest
                 logger.warning(f"Blacklist source '{source.url}' sync failed: {exc}")
                 async with self._uow:
                     await self._blacklist_repository.mark_source_error(source.id, str(exc))
                 continue
-            async with self._uow:
-                await self._blacklist_repository.replace_source_lists(source.id, parsed, error=None)
             logger.info(
                 f"Blacklist source '{source.url}' synced: "
                 f"{len(parsed.telegram_ids)} ids, {len(parsed.emails)} emails"

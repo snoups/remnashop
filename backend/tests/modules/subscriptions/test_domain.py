@@ -174,8 +174,8 @@ def _credit(
 ) -> Decimal:
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
     return calculate_proration_credit(
-        price_paid=Decimal("300"),
-        duration_days=30,
+        credit_paid=Decimal("300"),
+        credit_days=30,
         expire_at=now + timedelta(days=20),
         is_trial=False,
         now=now,
@@ -201,3 +201,29 @@ def test_proration_credit_ignores_traffic_on_an_unlimited_plan() -> None:
 
 def test_proration_credit_ignores_a_counter_that_resets_every_period() -> None:
     assert _credit(used_gb=95, strategy=TrafficLimitStrategy.MONTH) == Decimal("200")
+
+
+@pytest.mark.parametrize(
+    ("credit_paid", "credit_days", "remaining", "expected"),
+    [
+        (Decimal("700"), 395, 395, Decimal("700")),
+        (Decimal("100"), 30, 400, Decimal("100")),
+        (Decimal("700"), 395, 100, Decimal("700") / 395 * 100),
+    ],
+)
+def test_proration_credit_is_capped_at_what_was_paid(
+    credit_paid: Decimal, credit_days: int, remaining: int, expected: Decimal
+) -> None:
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    credit = calculate_proration_credit(
+        credit_paid=credit_paid,
+        credit_days=credit_days,
+        expire_at=now + timedelta(days=remaining),
+        is_trial=False,
+        now=now,
+        traffic_limit=0,
+        traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
+        used_traffic_bytes=0,
+    )
+
+    assert credit == expected

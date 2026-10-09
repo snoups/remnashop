@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Final
 
 import httpx
@@ -13,6 +14,7 @@ _TIMEOUT_S: Final[float] = 10.0
 # this bounds the whole download.
 _DEADLINE_S: Final[float] = 60.0
 _MAX_BYTES: Final[int] = 5 * 1024 * 1024
+_FIELD_SEPARATOR_RE: Final[re.Pattern[str]] = re.compile(r"[,;]")
 
 
 def parse_source_text(text: str) -> ParsedSourceList:
@@ -22,9 +24,8 @@ def parse_source_text(text: str) -> ParsedSourceList:
         token = line.split("#", 1)[0].strip()
         if not token:
             continue
-        token = token.split()[0]
-        # EMAIL first: normalize_identity(TELEGRAM_ID, ...) strips every
-        # non-digit, so "john99@gmail.com" would otherwise become id 99.
+        # first CSV/`;` field: "123,spam,2024-01-01" is id 123 plus metadata
+        token = _FIELD_SEPARATOR_RE.split(token.split()[0], maxsplit=1)[0]
         if "@" in token:
             email = normalize_identity(BlacklistKind.EMAIL, token)
             if email is not None:
@@ -64,4 +65,5 @@ async def fetch_source(url: str) -> ParsedSourceList:
         raise ValueError(
             f"blacklist source did not finish within {_DEADLINE_S:.0f}s: {url}"
         ) from error
-    return parse_source_text(body.decode("utf-8", errors="replace"))
+    # utf-8-sig: a byte order mark would otherwise make the first id unreadable
+    return parse_source_text(body.decode("utf-8-sig", errors="replace"))

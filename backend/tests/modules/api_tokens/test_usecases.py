@@ -1,10 +1,12 @@
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
+from app.modules.api_tokens.api.schemas import CreateApiTokenRequest
 from app.modules.api_tokens.dto import IssueApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.api_tokens.usecases import (
@@ -171,3 +173,13 @@ async def test_create_token_rejects_a_scope_granting_nothing(
     for scope in ("users:delete", "nonexistent:*", "oauth_settings:write", "NOT_A_PERMISSION"):
         with pytest.raises(ValidationError):
             await use_case(OWNER, IssueApiTokenDto(name="bad", scopes=[scope], expires_in_days=30))
+
+
+def test_create_request_rejects_invalid_ip_allowlist() -> None:
+    with pytest.raises(PydanticValidationError):
+        CreateApiTokenRequest(name="x", scopes=["*"], expires_in_days=1, ip_allowlist=["nope"])
+
+
+def test_create_token_request_bounds_expiry() -> None:
+    with pytest.raises(PydanticValidationError):
+        CreateApiTokenRequest(name="t", scopes=["*"], expires_in_days=3_000_000)

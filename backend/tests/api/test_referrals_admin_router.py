@@ -288,3 +288,14 @@ async def test_invitee_reward_amount_rejects_a_negative(
         headers=admin_auth_headers,
     )
     assert response.status_code == 422
+
+
+async def test_adjust_user_points_rejects_a_delta_past_the_column(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
+) -> None:
+    response = await client.post(
+        f"{API_V1}/users/{user_id}/actions/adjust-points",
+        json={"delta": str(10**13)},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 422

@@ -16,7 +16,7 @@ from app.modules.notifications.dto import (
     channels_for,
     group_of,
 )
-from app.modules.notifications.render import notification_args
+from app.modules.notifications.render import NotificationRenderer, notification_args
 from app.modules.notifications.sources import BotTokenSource, NotificationRendererFactory
 from app.modules.notifications.telegram import send_telegram_message
 from app.modules.notifications.webpush import WebPushSender
@@ -36,6 +36,12 @@ def _wanted_channels(
     if not PermissionPolicy.has_permission(user, Permission.NOTIFICATIONS_VIEW):
         return frozenset()
     return channels_for(user, group) - {NotificationChannel.BELL}
+
+
+def _suppressed_note(renderer: NotificationRenderer, user: UserDto, count: int) -> str:
+    if not count:
+        return ""
+    return "\n" + renderer.render_message(user.language, "ntf-suppressed", {"count": count})
 
 
 class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
@@ -77,6 +83,7 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
             title, body = renderer.render(user.language, data.event_type, args)
             if len(body) > MAX_BODY_LENGTH:
                 body = body[: MAX_BODY_LENGTH - 1] + "…"
+            body += _suppressed_note(renderer, user, data.suppressed)
             if NotificationChannel.PUSH in channels:
                 try:
                     await self._push_sender.send(

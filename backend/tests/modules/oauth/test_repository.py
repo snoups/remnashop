@@ -1,5 +1,9 @@
+import pytest
+
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, OAuthProvider, Role
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ConflictError
 from app.modules.oauth.dto import CreateOAuthIdentityDto
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -129,3 +133,33 @@ async def test_delete_by_user_and_provider_returns_false_when_missing(
         user.id, OAuthProvider.GITHUB
     )
     assert not deleted
+
+
+async def test_create_for_an_external_id_linked_to_another_user_conflicts(
+    oauth_identity_repository: OAuthIdentityRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    # the connect callback's pre-check passed for both racing requests
+    first = await _create_user(user_repository, uow, "owner")
+    async with uow:
+        second = await user_repository.create(
+            CreateUserDto(login="admin", name="admin", role=Role.ADMIN, language=Locale.EN)
+        )
+    identity = CreateOAuthIdentityDto(
+        user_id=first.id, provider=OAuthProvider.GITHUB, external_id="777", external_login="a"
+    )
+    await oauth_identity_repository.create(identity)
+
+    with pytest.raises(ConflictError) as error:
+        async with uow:
+            await oauth_identity_repository.create(
+                CreateOAuthIdentityDto(
+                    user_id=second.id,
+                    provider=OAuthProvider.GITHUB,
+                    external_id="777",
+                    external_login="b",
+                )
+            )
+
+    assert error.value.code is ErrorCode.OAUTH_ACCOUNT_LINKED_ELSEWHERE

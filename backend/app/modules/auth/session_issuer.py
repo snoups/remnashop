@@ -5,6 +5,8 @@ from typing import Optional
 from app.core.config import AppConfig
 from app.core.constants import TTL_30D
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import AuthenticationError
 from app.core.security import (
     create_access_token,
     derive_csrf_token,
@@ -72,7 +74,11 @@ class SessionIssuer:
         # for RefreshSessionUseCase after it rotated the row: mints the
         # access/csrf pair for an existing session instead of creating one
         session = await self._session_repository.get_active_by_id(session_id)
-        assert session is not None
+        if session is None:
+            # revoked between the rotation and this read
+            raise AuthenticationError(
+                "Invalid or expired refresh token", code=ErrorCode.REFRESH_TOKEN_INVALID
+            )
         secret = self._config.jwt_secret.get_secret_value()
         access_token = create_access_token(user_id, session_id, secret)
         csrf_token = derive_csrf_token(refresh_token, secret)

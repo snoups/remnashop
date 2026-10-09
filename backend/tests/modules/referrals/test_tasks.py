@@ -17,6 +17,7 @@ from app.core.enums import (
     ReferralRewardStrategy,
     ReferralRewardType,
     SubscriptionStatus,
+    TransactionStatus,
 )
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
@@ -61,9 +62,17 @@ def assign_rewards(
     )
 
 
+async def _set_status(
+    session: AsyncSession, order_id: int, status: TransactionStatus = TransactionStatus.PAID
+) -> None:
+    await TransactionRepository(session).mark_status_if(
+        order_id, status, current=frozenset(TransactionStatus)
+    )
+
+
 async def _paid_order(session: AsyncSession, buyer: int, idempotency_key: str) -> None:
     anchor = (await PricingRepository(session).get_rate_table()).anchor
-    await TransactionRepository(session).create(
+    order = await TransactionRepository(session).create(
         CreateTransactionDto(
             user_id=buyer,
             plan_id=None,
@@ -84,6 +93,7 @@ async def _paid_order(session: AsyncSession, buyer: int, idempotency_key: str) -
             expires_at=datetime_now() + timedelta(minutes=30),
         )
     )
+    await _set_status(session, order.id)
 
 
 async def _create_user(user_repository: UserRepository, telegram_id: int) -> int:
@@ -573,7 +583,7 @@ async def test_assign_referral_rewards_percent_points_from_order_price(
     pricing_repository = PricingRepository(session)
     anchor = (await pricing_repository.get_rate_table()).anchor
     transaction_repository = TransactionRepository(session)
-    await transaction_repository.create(
+    order = await transaction_repository.create(
         CreateTransactionDto(
             user_id=buyer,
             plan_id=None,
@@ -594,6 +604,7 @@ async def test_assign_referral_rewards_percent_points_from_order_price(
             expires_at=datetime_now() + timedelta(minutes=30),
         )
     )
+    await _set_status(session, order.id)
 
     await assign_rewards.system(
         AssignReferralRewardsDto(
@@ -629,7 +640,7 @@ async def test_assign_referral_rewards_percent_points_from_order_anchor_amount(
     buyer = await _create_user(user_repository, 4112)
     await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
     subscription_id = await _create_active_subscription(subscription_repository, buyer, 4112)
-    await TransactionRepository(referral_repository.session).create(
+    order = await TransactionRepository(referral_repository.session).create(
         CreateTransactionDto(
             user_id=buyer,
             plan_id=None,
@@ -650,6 +661,7 @@ async def test_assign_referral_rewards_percent_points_from_order_anchor_amount(
             expires_at=datetime_now() + timedelta(minutes=30),
         )
     )
+    await _set_status(referral_repository.session, order.id)
 
     await assign_rewards.system(
         AssignReferralRewardsDto(
@@ -898,7 +910,8 @@ async def test_free_order_earns_no_referral_reward(
     pricing_repository = PricingRepository(session)
     transaction_repository = TransactionRepository(session)
     anchor = (await pricing_repository.get_rate_table()).anchor
-    await transaction_repository.create(_free_order(buyer, "order-free", anchor))
+    order = await transaction_repository.create(_free_order(buyer, "order-free", anchor))
+    await _set_status(session, order.id)
 
     await assign_rewards.system(
         AssignReferralRewardsDto(
@@ -1213,3 +1226,84 @@ async def test_a_blocked_referrer_earns_nothing_from_payments(
 
     assert (await user_repository.get_by_id(referrer)).bonus_days == 0
     assert await referral_repository.list_rewards_by_referrer(referrer) == []
+
+
+async def test_refunded_order_earns_no_referral_reward(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(
+            enabled=True,
+            max_level=1,
+            accrual_strategy=ReferralAccrualStrategy.EVERY_PAYMENT,
+            reward_type=ReferralRewardType.POINTS,
+            reward_strategy=ReferralRewardStrategy.AMOUNT,
+            reward_amounts={1: Decimal("5")},
+        )
+    )
+    referrer = await _create_user(user_repository, 4401)
+    buyer = await _create_user(user_repository, 4402)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    subscription_id = await _create_active_subscription(subscription_repository, buyer, 4402)
+    session = referral_repository.session
+    await _paid_order(session, buyer, "order-refunded")
+    order = await TransactionRepository(session).get_by_idempotency_key("order-refunded")
+    assert order is not None
+    await _set_status(session, order.id, TransactionStatus.REFUNDED)
+
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-refunded",
+        )
+    )
+
+    assert (await user_repository.get_by_id(referrer)).points == Decimal(0)
+
+
+async def test_first_payment_rewards_the_earlier_of_two_paid_subscriptions(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(
+            enabled=True,
+            max_level=1,
+            accrual_strategy=ReferralAccrualStrategy.FIRST_PAYMENT,
+            reward_type=ReferralRewardType.POINTS,
+            reward_amounts={1: Decimal("10")},
+        )
+    )
+    referrer_id = await _create_user(user_repository, 4091)
+    buyer_id = await _create_user(user_repository, 4092)
+    await referral_repository.create_referral(
+        referrer_id=referrer_id, referred_id=buyer_id, level=1
+    )
+    # both bought before either reward ran
+    first = await _create_active_subscription(subscription_repository, buyer_id, 4092)
+    second = await _create_active_subscription(subscription_repository, buyer_id, 4093)
+    await _paid_order(referral_repository.session, buyer_id, "order-1")
+    await _paid_order(referral_repository.session, buyer_id, "order-2")
+
+    for subscription_id, key in ((first, "order-1"), (second, "order-2")):
+        await assign_rewards.system(
+            AssignReferralRewardsDto(
+                user_id=buyer_id,
+                subscription_id=subscription_id,
+                is_new_purchase=True,
+                payment_key=key,
+            )
+        )
+
+    assert (await user_repository.get_by_id(referrer_id)).points == Decimal("10")
+    rewarded = await referral_repository.session.scalars(
+        select(ReferralReward.subscription_id).where(ReferralReward.referrer_id == referrer_id)
+    )
+    assert rewarded.all() == [first]

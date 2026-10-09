@@ -52,6 +52,7 @@ async def create_api_token(
             name=payload.name,
             scopes=payload.scopes,
             expires_in_days=payload.expires_in_days,
+            ip_allowlist=payload.ip_allowlist,
         ),
     )
     return CreatedApiTokenResponse(

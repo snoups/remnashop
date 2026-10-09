@@ -17,6 +17,12 @@ class AccessSettingsChangedEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class ShopSettingsChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.SETTINGS
+    changed_fields: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
 class BotRequirementsChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
     changed_fields: list[str] = field(default_factory=list)

@@ -649,11 +649,23 @@ async def test_restore_purchase_discount_skips_an_order_without_a_promocode(
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="u", telegram_id=930_010))
 
-    await user_repository.restore_purchase_discount(user.id, 20, None)
+    await user_repository.restore_purchase_discount(user.id, 20, None, from_promocode=True)
 
     restored = await user_repository.get_by_id(user.id)
     assert restored is not None
     assert restored.purchase_discount == 0
+
+
+async def test_restore_purchase_discount_gives_back_an_admin_granted_one(
+    user_repository: UserRepository,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="u", telegram_id=930_011))
+
+    await user_repository.restore_purchase_discount(user.id, 20, None, from_promocode=False)
+
+    restored = await user_repository.get_by_id(user.id)
+    assert restored is not None
+    assert (restored.purchase_discount, restored.purchase_discount_promocode_id) == (20, None)
 
 
 async def test_get_many_by_ids_skips_missing(

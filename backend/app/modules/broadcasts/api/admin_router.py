@@ -3,11 +3,12 @@ from typing import Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, Query, Request, status
 
 from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.constants import BROADCAST_MEDIA_MAX_BYTES
 from app.core.enums import BroadcastRecipientStatus, BroadcastStatus
 from app.modules.broadcasts.api.schemas import (
     AudiencePreviewResponse,
@@ -48,7 +49,6 @@ from app.modules.broadcasts.usecases import (
     SetBroadcastMediaUseCase,
     UpdateBroadcastUseCase,
 )
-from app.modules.broadcasts.usecases.set_broadcast_media import MAX_MEDIA_SIZE_BYTES
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/broadcasts", tags=["broadcasts"])
@@ -221,19 +221,21 @@ async def delete_broadcast(
 @inject
 async def upload_broadcast_media(
     broadcast_id: int,
+    request: Request,
     use_case: FromDishka[SetBroadcastMediaUseCase],
     actor: Actor = Depends(require_admin),
-    file: UploadFile = File(...),
 ) -> BroadcastResponse:
-    # bounded read: an oversized upload is rejected before it's buffered
-    data = await file.read(MAX_MEDIA_SIZE_BYTES + 1)
+    # raw body, no File()/Form(): FastAPI would parse a form before require_admin runs
+    data = bytearray()
+    async for chunk in request.stream():
+        data += chunk
+        if len(data) > BROADCAST_MEDIA_MAX_BYTES:
+            break  # one byte over is enough for the usecase to reject it
+    content_type = request.headers.get("content-type", "").split(";")[0].strip()
     result = await use_case(
         actor,
         SetBroadcastMediaDto(
-            broadcast_id=broadcast_id,
-            content_type=file.content_type or "",
-            filename=file.filename or "",
-            data=data,
+            broadcast_id=broadcast_id, content_type=content_type, data=bytes(data)
         ),
     )
     return BroadcastResponse.model_validate(result, from_attributes=True)

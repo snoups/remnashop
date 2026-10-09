@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from typing import Final
+
 import pytest
 
 from app.core.db.uow import UnitOfWork
@@ -5,6 +8,8 @@ from app.core.enums import BackupKind, BackupRunStatus
 from app.core.exceptions import NotFoundError
 from app.modules.backups.dto import CreateBackupRunDto, UpdateBackupSettingsDto
 from app.modules.backups.repository import BackupRepository
+
+_LONG_AGO: Final[datetime] = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
 
 async def test_get_settings_returns_defaults_before_any_write(
@@ -56,12 +61,12 @@ async def test_has_active_counts_pending_and_running(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
     # PENDING counts: a second click before the worker starts must not pass
-    assert await backup_repository.has_active(BackupKind.DATABASE) is True
-    assert await backup_repository.has_active(BackupKind.ASSETS) is False
+    assert await backup_repository.has_active(BackupKind.DATABASE, started_after=_LONG_AGO) is True
+    assert await backup_repository.has_active(BackupKind.ASSETS, started_after=_LONG_AGO) is False
 
     async with uow:
         await backup_repository.mark_running(run.id)
-    assert await backup_repository.has_active(BackupKind.DATABASE) is True
+    assert await backup_repository.has_active(BackupKind.DATABASE, started_after=_LONG_AGO) is True
 
 
 async def test_has_active_excludes_its_own_run_id(
@@ -70,12 +75,27 @@ async def test_has_active_excludes_its_own_run_id(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
     # run_backup() passes its own PENDING row, which must not match itself
-    assert await backup_repository.has_active(BackupKind.DATABASE, exclude_run_id=run.id) is False
+    assert (
+        await backup_repository.has_active(
+            BackupKind.DATABASE, started_after=_LONG_AGO, exclude_run_id=run.id
+        )
+        is False
+    )
 
     async with uow:
         other = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
-    assert await backup_repository.has_active(BackupKind.DATABASE, exclude_run_id=run.id) is True
-    assert await backup_repository.has_active(BackupKind.DATABASE, exclude_run_id=other.id) is True
+    assert (
+        await backup_repository.has_active(
+            BackupKind.DATABASE, started_after=_LONG_AGO, exclude_run_id=run.id
+        )
+        is True
+    )
+    assert (
+        await backup_repository.has_active(
+            BackupKind.DATABASE, started_after=_LONG_AGO, exclude_run_id=other.id
+        )
+        is True
+    )
 
 
 async def test_mark_completed_sets_terminal_fields(

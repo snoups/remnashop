@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
@@ -8,6 +8,7 @@ from app.core.dto import BaseDto, TimestampMixin
 class ApiTokenDto(BaseDto, TimestampMixin):
     name: str
     scopes: list[str]
+    ip_allowlist: list[str] = []
     created_by_user_id: Optional[int] = None
     last_used_at: Optional[datetime] = None
     revoked_at: Optional[datetime] = None
@@ -21,6 +22,7 @@ class CreateApiTokenDto:
     token_hash: str
     created_by_user_id: Optional[int]
     expires_at: Optional[datetime]
+    ip_allowlist: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,6 +30,7 @@ class IssueApiTokenDto:
     name: str
     scopes: list[str]
     expires_in_days: int
+    ip_allowlist: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)
